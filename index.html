@@ -173,9 +173,9 @@ max_tokens: 1000,
 system: PERSONAS[activePersona].system,
 messages: messages[activePersona]
 });
-fetch("/.netlify/functions/chat", {
+fetch("https://corsproxy.io/?https://api.anthropic.com/v1/messages",
 method: "POST",
-headers: { "Content-Type": "application/json" },
+headers: { "Content-Type": "application/json", "x-api-key": "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", "anthropic-version": "2023-06-01" },
 body: payload
 }).then(function(res) {
 return res.json();
