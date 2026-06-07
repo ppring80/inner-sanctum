@@ -1,748 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>The Inner Sanctum — Fantasy Football</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy Football Oracle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 <style>
-:root {
-  --gold: #c9a84c;
-  --gold-light: #e8c97a;
-  --gold-pale: #f5e6b8;
-  --crimson: #8b1a1a;
-  --obsidian: #0d0b09;
-  --slate: #1a1713;
-  --parchment: #f0e6cc;
-  --ink: #2a1f0e;
-  --smoke: rgba(201,168,76,0.08);
-  --shadow: rgba(0,0,0,0.7);
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--obsidian);
-  color: var(--parchment);
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 18px;
-  line-height: 1.7;
-  min-height: 100vh;
-}
-
-/* NAV */
-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 48px;
-  background: linear-gradient(to bottom, rgba(13,11,9,0.98), transparent);
-  border-bottom: 1px solid rgba(201,168,76,0.15);
-}
-.nav-brand {
-  font-family: 'Cinzel', serif;
-  font-size: 13px; letter-spacing: 4px;
-  color: var(--gold); text-transform: uppercase;
-}
-.nav-links { display: flex; gap: 36px; }
-.nav-links a {
-  font-family: 'Cinzel', serif; font-size: 11px;
-  letter-spacing: 3px; color: rgba(240,230,204,0.6);
-  text-decoration: none; text-transform: uppercase;
-  transition: color 0.3s;
-}
-.nav-links a:hover { color: var(--gold); }
-
-/* HERO */
-.hero {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  text-align: center;
-  padding: 120px 24px 80px;
-  position: relative;
-  background: radial-gradient(ellipse at 50% 60%, #1a0f00 0%, var(--obsidian) 70%);
-  overflow: hidden;
-}
-.hero::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  pointer-events: none;
-}
-.hero-eyebrow {
-  font-family: 'Cinzel', serif; font-size: 11px;
-  letter-spacing: 6px; color: var(--gold);
-  text-transform: uppercase; margin-bottom: 24px;
-}
-.hero h1 {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: clamp(48px, 10vw, 96px);
-  font-weight: 900; line-height: 1;
-  color: var(--gold-light);
-  text-shadow: 0 0 80px rgba(201,168,76,0.4);
-  margin-bottom: 16px;
-}
-.hero-sub {
-  font-family: 'Cinzel', serif; font-size: 14px;
-  letter-spacing: 4px; color: rgba(240,230,204,0.5);
-  text-transform: uppercase; margin-bottom: 32px;
-}
-.hero-divider {
-  display: flex; align-items: center; gap: 16px;
-  margin-bottom: 32px; color: var(--gold);
-}
-.hero-divider::before, .hero-divider::after {
-  content: ''; flex: 1; max-width: 80px;
-  height: 1px; background: var(--gold); opacity: 0.4;
-}
-.hero-tagline {
-  font-style: italic; font-size: 18px;
-  color: rgba(240,230,204,0.6); max-width: 520px;
-  margin: 0 auto 48px;
-}
-.hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-.btn {
-  font-family: 'Cinzel', serif; font-size: 11px;
-  letter-spacing: 3px; text-transform: uppercase;
-  padding: 14px 32px; border-radius: 2px;
-  cursor: pointer; transition: all 0.3s; text-decoration: none;
-  display: inline-block;
-}
-.btn-gold {
-  background: transparent;
-  border: 1px solid var(--gold); color: var(--gold);
-}
-.btn-gold:hover { background: var(--gold); color: var(--obsidian); }
-.btn-outline {
-  background: transparent;
-  border: 1px solid rgba(240,230,204,0.3);
-  color: rgba(240,230,204,0.6);
-}
-.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
-.scroll-hint {
-  position: absolute; bottom: 40px;
-  font-family: 'Cinzel', serif; font-size: 10px;
-  letter-spacing: 3px; color: rgba(201,168,76,0.4);
-  text-transform: uppercase;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.scroll-line {
-  width: 1px; height: 40px;
-  background: linear-gradient(to bottom, var(--gold), transparent);
-}
-
-/* SECTIONS */
-section { padding: 100px 24px; }
-.section-inner { max-width: 1100px; margin: 0 auto; }
-.section-header { text-align: center; margin-bottom: 64px; }
-.section-eyebrow {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  letter-spacing: 5px; color: var(--gold);
-  text-transform: uppercase; margin-bottom: 16px;
-}
-.section-title {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: clamp(28px, 5vw, 42px);
-  color: var(--gold-light); margin-bottom: 16px;
-}
-.section-rule {
-  width: 60px; height: 1px;
-  background: var(--gold); margin: 0 auto;
-  opacity: 0.5;
-}
-
-/* STANDINGS */
-.standings-section { background: var(--slate); }
-.standings-table { width: 100%; border-collapse: collapse; }
-.standings-table th {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  letter-spacing: 3px; color: var(--gold);
-  text-transform: uppercase; padding: 12px 16px;
-  border-bottom: 1px solid rgba(201,168,76,0.2);
-  text-align: left;
-}
-.standings-table td {
-  padding: 14px 16px; font-size: 16px;
-  border-bottom: 1px solid rgba(201,168,76,0.08);
-  color: rgba(240,230,204,0.8);
-}
-.standings-table tr:hover td { background: var(--smoke); color: var(--parchment); }
-.rank { font-family: 'Cinzel', serif; color: var(--gold); font-weight: 600; }
-.rank-1 { color: #ffd700; }
-.rank-2 { color: #c0c0c0; }
-.rank-3 { color: #cd7f32; }
-.team-name { font-weight: 600; }
-.record { font-family: 'Cinzel', serif; font-size: 14px; }
-.pts { color: var(--gold-light); font-family: 'Cinzel', serif; }
-.streak-w { color: #4caf50; font-family: 'Cinzel', serif; font-size: 13px; }
-.streak-l { color: #f44336; font-family: 'Cinzel', serif; font-size: 13px; }
-
-/* MATCHUPS */
-.matchups-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
-.matchup-card {
-  background: var(--slate);
-  border: 1px solid rgba(201,168,76,0.15);
-  border-radius: 4px; padding: 28px;
-  transition: border-color 0.3s;
-}
-.matchup-card:hover { border-color: rgba(201,168,76,0.4); }
-.matchup-week {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  letter-spacing: 3px; color: var(--gold);
-  text-transform: uppercase; margin-bottom: 20px;
-}
-.matchup-teams { display: flex; align-items: center; gap: 16px; }
-.matchup-team { flex: 1; }
-.matchup-team-name { font-family: 'Cinzel', serif; font-size: 15px; color: var(--parchment); margin-bottom: 4px; }
-.matchup-record { font-size: 13px; color: rgba(240,230,204,0.4); }
-.matchup-vs {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: 12px; color: var(--gold); opacity: 0.6;
-}
-.matchup-proj {
-  margin-top: 16px; padding-top: 16px;
-  border-top: 1px solid rgba(201,168,76,0.1);
-  font-size: 13px; color: rgba(240,230,204,0.4);
-  font-family: 'Cinzel', serif; letter-spacing: 1px;
-}
-
-/* NEWS */
-.news-section { background: var(--slate); }
-.news-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
-.news-card {
-  border-left: 2px solid var(--gold);
-  padding: 24px; opacity: 0.9;
-  transition: opacity 0.3s;
-}
-.news-card:hover { opacity: 1; }
-.news-tag {
-  font-family: 'Cinzel', serif; font-size: 9px;
-  letter-spacing: 3px; color: var(--gold);
-  text-transform: uppercase; margin-bottom: 10px;
-}
-.news-headline { font-size: 17px; color: var(--parchment); margin-bottom: 8px; line-height: 1.4; }
-.news-body { font-size: 14px; color: rgba(240,230,204,0.5); line-height: 1.6; }
-
-/* FOOTER */
-footer {
-  padding: 48px 24px;
-  text-align: center;
-  border-top: 1px solid rgba(201,168,76,0.1);
-}
-.footer-brand {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: 20px; color: var(--gold);
-  margin-bottom: 12px;
-}
-.footer-sub {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  letter-spacing: 3px; color: rgba(240,230,204,0.3);
-  text-transform: uppercase;
-}
-
-/* ============================================
-   AI CHAT WIDGET
-   ============================================ */
-#chat-fab {
-  position: fixed; bottom: 32px; right: 32px; z-index: 999;
-  width: 60px; height: 60px; border-radius: 50%;
-  background: linear-gradient(135deg, #c9a84c, #8b6914);
-  border: none; cursor: pointer;
-  box-shadow: 0 4px 24px rgba(201,168,76,0.5);
-  font-size: 26px;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform 0.3s, box-shadow 0.3s;
-  animation: fabPulse 2.5s infinite;
-}
-#chat-fab:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 32px rgba(201,168,76,0.7);
-}
-@keyframes fabPulse {
-  0%, 100% { box-shadow: 0 4px 24px rgba(201,168,76,0.5); }
-  50% { box-shadow: 0 4px 40px rgba(201,168,76,0.8); }
-}
-.fab-tooltip {
-  position: fixed; bottom: 100px; right: 32px; z-index: 999;
-  background: #1a1713; border: 1px solid rgba(201,168,76,0.3);
-  border-radius: 8px; padding: 8px 14px;
-  font-family: 'Cinzel', serif; font-size: 11px;
-  color: var(--gold); letter-spacing: 1px;
-  white-space: nowrap;
-  animation: fadeInTooltip 1s 2s forwards;
-  opacity: 0;
-  pointer-events: none;
-}
-@keyframes fadeInTooltip {
-  0% { opacity: 0; transform: translateY(8px); }
-  20% { opacity: 1; transform: translateY(0); }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-#chat-window {
-  position: fixed; bottom: 108px; right: 32px; z-index: 998;
-  width: 380px; height: 560px;
-  background: #0d0b09;
-  border: 1px solid rgba(201,168,76,0.3);
-  border-radius: 16px;
-  display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-  transform: scale(0.8) translateY(40px);
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-#chat-window.open {
-  transform: scale(1) translateY(0);
-  opacity: 1;
-  pointer-events: all;
-}
-.chat-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(201,168,76,0.15);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.chat-header-title {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: 14px; color: var(--gold);
-}
-.chat-header-sub {
-  font-family: 'Cinzel', serif; font-size: 9px;
-  letter-spacing: 2px; color: rgba(201,168,76,0.5);
-  text-transform: uppercase; margin-top: 2px;
-}
-.chat-close {
-  background: none; border: none; color: rgba(240,230,204,0.4);
-  font-size: 18px; cursor: pointer; padding: 4px;
-  transition: color 0.2s;
-}
-.chat-close:hover { color: var(--gold); }
-
-.persona-tabs {
-  display: flex; gap: 8px; padding: 12px 16px;
-  border-bottom: 1px solid rgba(201,168,76,0.1);
-}
-.persona-tab {
-  flex: 1; padding: 8px 12px; border-radius: 8px;
-  border: 1px solid #222; background: #111;
-  color: #555; cursor: pointer; font-family: 'Cinzel', serif;
-  font-size: 11px; letter-spacing: 1px;
-  transition: all 0.3s; text-align: center;
-}
-.persona-tab.active-oracle {
-  border-color: #c9a84c;
-  background: rgba(201,168,76,0.15);
-  color: #c9a84c;
-}
-.persona-tab.active-trash {
-  border-color: #ff4444;
-  background: rgba(255,68,68,0.15);
-  color: #ff4444;
-}
-
-.chat-messages {
-  flex: 1; overflow-y: auto; padding: 16px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.chat-messages::-webkit-scrollbar { width: 3px; }
-.chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-.chat-greeting {
-  font-style: italic; font-size: 13px;
-  color: rgba(240,230,204,0.6); line-height: 1.6;
-  padding: 10px 14px;
-  background: #111; border-radius: 4px 12px 12px 12px;
-  border: 1px solid rgba(201,168,76,0.2);
-}
-.chat-suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-.chat-suggestion {
-  background: transparent; border: 1px solid #222;
-  border-radius: 6px; padding: 6px 12px;
-  color: #555; font-size: 12px; font-family: 'EB Garamond', serif;
-  text-align: left; cursor: pointer; transition: all 0.2s;
-}
-.chat-suggestion:hover { border-color: rgba(201,168,76,0.4); color: #999; }
-
-.chat-msg { display: flex; gap: 8px; align-items: flex-start; }
-.chat-msg.user { flex-direction: row-reverse; }
-.chat-avatar {
-  width: 28px; height: 28px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; flex-shrink: 0;
-  background: rgba(201,168,76,0.15);
-  border: 1px solid rgba(201,168,76,0.3);
-}
-.chat-bubble {
-  max-width: 78%; padding: 10px 14px;
-  font-size: 13px; line-height: 1.55;
-  border-radius: 4px 12px 12px 12px;
-}
-.chat-bubble.assistant {
-  background: #111; border: 1px solid #222; color: #ccc;
-}
-.chat-bubble.user-oracle {
-  background: rgba(201,168,76,0.2); border: 1px solid rgba(201,168,76,0.3);
-  color: #e0d0a0; border-radius: 12px 4px 12px 12px;
-}
-.chat-bubble.user-trash {
-  background: rgba(255,68,68,0.2); border: 1px solid rgba(255,68,68,0.3);
-  color: #ffaaaa; border-radius: 12px 4px 12px 12px;
-}
-.chat-dots {
-  display: flex; gap: 4px; align-items: center;
-  padding: 12px 16px; background: #111; border: 1px solid #222;
-  border-radius: 4px 12px 12px 12px;
-}
-.chat-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: #c9a84c; animation: dotPulse 1.2s infinite;
-}
-.chat-dot:nth-child(2) { animation-delay: 0.2s; }
-.chat-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1); }
-}
-
-.chat-input-area {
-  padding: 12px 16px;
-  border-top: 1px solid rgba(201,168,76,0.1);
-  display: flex; gap: 8px; align-items: flex-end;
-}
-.chat-input-wrap {
-  flex: 1; background: #0e0e0e;
-  border-radius: 10px; padding: 8px 12px;
-  border: 1px solid rgba(201,168,76,0.2);
-}
-.chat-input-wrap.trash-active { border-color: rgba(255,68,68,0.2); }
-#chat-input {
-  width: 100%; background: transparent; border: none;
-  color: #ddd; font-size: 13px; font-family: 'EB Garamond', serif;
-  resize: none; max-height: 80px; overflow-y: auto; line-height: 1.4;
-}
-#chat-input:focus { outline: none; }
-#chat-send {
-  width: 32px; height: 32px; border-radius: 8px; border: none;
-  background: linear-gradient(135deg, #c9a84c, #8b6914);
-  color: #000; font-size: 14px; font-weight: bold;
-  cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-}
-#chat-send:disabled { background: #222; color: #444; cursor: not-allowed; }
-#chat-send.trash-active {
-  background: linear-gradient(135deg, #ff4444, #cc0000);
-  color: #fff;
-}
+  :root{--gold:#c9a84c;--blood:#8b0000;--void:#050508;--mist:#1a1a2e;--glow:rgba(201,168,76,.25)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--void);color:#ddd;font-family:'Crimson Text',serif;font-size:18px;min-height:100vh;display:flex;flex-direction:column;align-items:center;background-image:radial-gradient(ellipse at 20% 50%,rgba(139,0,0,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(201,168,76,.06) 0%,transparent 50%)}
+  h1{font-family:'Cinzel Decorative',cursive;font-size:clamp(1.1rem,3vw,1.8rem);color:var(--gold);text-align:center;padding:20px 10px 4px;letter-spacing:2px;text-shadow:0 0 30px var(--glow)}
+  .subtitle{font-style:italic;color:#666;font-size:.95rem;margin-bottom:16px;text-align:center}
+  .persona-toggle{display:flex;gap:0;margin-bottom:18px;border:1px solid #2a2a3a;border-radius:4px;overflow:hidden}
+  .persona-btn{flex:1;padding:9px 18px;background:transparent;color:#888;border:none;cursor:pointer;font-family:'Crimson Text',serif;font-size:1rem;transition:all .3s;letter-spacing:1px}
+  .persona-btn.active{color:var(--void)}
+  .persona-btn[data-p="oracle"].active{background:var(--gold);text-shadow:none}
+  .persona-btn[data-p="trash"].active{background:var(--blood)}
+  .chat-box{width:min(680px,95vw);flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-height:54vh;scrollbar-width:thin;scrollbar-color:#2a2a3a transparent}
+  .msg{max-width:82%;padding:11px 15px;border-radius:3px;line-height:1.55;animation:fadeUp .35s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .msg.user{align-self:flex-end;background:#12121f;border:1px solid #2a2a40;color:#ccc}
+  .msg.bot{align-self:flex-start;border-left:3px solid var(--gold);background:rgba(201,168,76,.05);color:#e8e0cc}
+  .msg.bot.trash{border-left-color:var(--blood);background:rgba(139,0,0,.07)}
+  .msg .speaker{font-family:'Cinzel Decorative',cursive;font-size:.6rem;letter-spacing:2px;margin-bottom:5px;opacity:.7}
+  .msg.bot .speaker{color:var(--gold)}
+  .msg.bot.trash .speaker{color:#c0392b}
+  .msg.thinking{opacity:.5;font-style:italic}
+  .input-row{width:min(680px,95vw);display:flex;gap:8px;padding:14px 0 20px}
+  textarea{flex:1;background:#0d0d18;border:1px solid #252535;color:#ddd;padding:10px 14px;font-family:'Crimson Text',serif;font-size:1rem;resize:none;border-radius:3px;outline:none;height:50px;line-height:1.4;transition:border-color .2s}
+  textarea:focus{border-color:var(--gold)}
+  button#send{background:var(--gold);color:var(--void);border:none;padding:0 20px;font-family:'Cinzel Decorative',cursive;font-size:.7rem;cursor:pointer;border-radius:3px;letter-spacing:1px;transition:opacity .2s}
+  button#send:hover{opacity:.85}
+  button#send:disabled{opacity:.4;cursor:not-allowed}
+  .api-row{width:min(680px,95vw);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .api-row input{flex:1;background:#0a0a14;border:1px solid #1e1e30;color:#aaa;padding:7px 12px;font-family:monospace;font-size:.8rem;border-radius:3px;outline:none}
+  .api-row label{color:#555;font-size:.85rem;white-space:nowrap}
+  .rune{position:fixed;font-size:8rem;opacity:.018;pointer-events:none;user-select:none}
+  .rune:nth-child(1){top:5%;left:2%}.rune:nth-child(2){bottom:10%;right:3%}.rune:nth-child(3){top:40%;right:1%}
 </style>
 </head>
 <body>
+<div class="rune">᚛</div><div class="rune">ᚾ</div><div class="rune">ᛟ</div>
+<h1>⚜ The Fantasy Sanctum ⚜</h1>
+<p class="subtitle">Seek counsel. Risk everything.</p>
 
-<!-- NAV -->
-<nav>
-  <div class="nav-brand">Sanctum</div>
-  <div class="nav-links">
-    <a href="#standings">Standings</a>
-    <a href="#matchups">Matchups</a>
-    <a href="#performers">Performers</a>
-    <a href="#news">News</a>
-  </div>
-</nav>
+<div class="persona-toggle">
+  <button class="persona-btn active" data-p="oracle" onclick="setPersona('oracle')">🔮 The Oracle</button>
+  <button class="persona-btn" data-p="trash" onclick="setPersona('trash')">🗑️ The Trash Lord</button>
+</div>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-eyebrow">✦ Season XII — Week II ✦</div>
-  <h1>The Inner<br>Sanctum</h1>
-  <div class="hero-sub">Fantasy Football League of Legends</div>
-  <div class="hero-divider">◆</div>
-  <p class="hero-tagline">Where empires rise on Sunday afternoons and glory is measured in touchdowns. Ten managers. One throne. No mercy.</p>
-  <div class="hero-buttons">
-    <a href="#standings" class="btn btn-gold">View Standings</a>
-    <a href="#matchups" class="btn btn-outline">This Week's Matchups</a>
-  </div>
-  <div class="scroll-hint">
-    <span>Scroll</span>
-    <div class="scroll-line"></div>
-  </div>
-</section>
+<div class="api-row">
+  <label>API Key:</label>
+  <input type="password" id="apiKey" placeholder="sk-ant-...">
+</div>
 
-<!-- STANDINGS -->
-<section class="standings-section" id="standings">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-eyebrow">The Leaderboard</div>
-      <div class="section-title">Current Standings</div>
-      <div class="section-rule"></div>
-    </div>
-    <table class="standings-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Manager</th>
-          <th>Record</th>
-          <th>Pts For</th>
-          <th>Pts Against</th>
-          <th>Streak</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td class="rank rank-1">1</td><td class="team-name">Dynasty Destroyers</td><td class="record">8-2</td><td class="pts">1,847</td><td>1,612</td><td class="streak-w">W4</td></tr>
-        <tr><td class="rank rank-2">2</td><td class="team-name">Gridiron Ghosts</td><td class="record">7-3</td><td class="pts">1,791</td><td>1,654</td><td class="streak-w">W2</td></tr>
-        <tr><td class="rank rank-3">3</td><td class="team-name">The Benchmarks</td><td class="record">7-3</td><td class="pts">1,756</td><td>1,698</td><td class="streak-l">L1</td></tr>
-        <tr><td class="rank">4</td><td class="team-name">Touchdown Prophets</td><td class="record">6-4</td><td class="pts">1,723</td><td>1,701</td><td class="streak-w">W1</td></tr>
-        <tr><td class="rank">5</td><td class="team-name">Red Zone Raiders</td><td class="record">5-5</td><td class="pts">1,698</td><td>1,721</td><td class="streak-l">L2</td></tr>
-        <tr><td class="rank">6</td><td class="team-name">Waiver Wire Warriors</td><td class="record">5-5</td><td class="pts">1,654</td><td>1,743</td><td class="streak-w">W1</td></tr>
-        <tr><td class="rank">7</td><td class="team-name">Blitz Brigade</td><td class="record">4-6</td><td class="pts">1,612</td><td>1,789</td><td class="streak-l">L3</td></tr>
-        <tr><td class="rank">8</td><td class="team-name">Fourth & Forever</td><td class="record">3-7</td><td class="pts">1,587</td><td>1,812</td><td class="streak-l">L1</td></tr>
-        <tr><td class="rank">9</td><td class="team-name">End Zone Emperors</td><td class="record">2-8</td><td class="pts">1,543</td><td>1,867</td><td class="streak-l">L4</td></tr>
-        <tr><td class="rank">10</td><td class="team-name">The Bye Week Bandits</td><td class="record">1-9</td><td class="pts">1,498</td><td>1,901</td><td class="streak-l">L5</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
+<div class="chat-box" id="chat"></div>
 
-<!-- MATCHUPS -->
-<section id="matchups">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-eyebrow">Week II</div>
-      <div class="section-title">Current Matchups</div>
-      <div class="section-rule"></div>
-    </div>
-    <div class="matchups-grid">
-      <div class="matchup-card">
-        <div class="matchup-week">Featured Matchup</div>
-        <div class="matchup-teams">
-          <div class="matchup-team"><div class="matchup-team-name">Dynasty Destroyers</div><div class="matchup-record">8-2 · 1,847 pts</div></div>
-          <div class="matchup-vs">VS</div>
-          <div class="matchup-team" style="text-align:right"><div class="matchup-team-name">Gridiron Ghosts</div><div class="matchup-record">7-3 · 1,791 pts</div></div>
-        </div>
-        <div class="matchup-proj">Projected: 142.6 — 138.4</div>
-      </div>
-      <div class="matchup-card">
-        <div class="matchup-week">Week II</div>
-        <div class="matchup-teams">
-          <div class="matchup-team"><div class="matchup-team-name">The Benchmarks</div><div class="matchup-record">7-3</div></div>
-          <div class="matchup-vs">VS</div>
-          <div class="matchup-team" style="text-align:right"><div class="matchup-team-name">Touchdown Prophets</div><div class="matchup-record">6-4</div></div>
-        </div>
-        <div class="matchup-proj">Projected: 136.2 — 131.8</div>
-      </div>
-      <div class="matchup-card">
-        <div class="matchup-week">Week II</div>
-        <div class="matchup-teams">
-          <div class="matchup-team"><div class="matchup-team-name">Red Zone Raiders</div><div class="matchup-record">5-5</div></div>
-          <div class="matchup-vs">VS</div>
-          <div class="matchup-team" style="text-align:right"><div class="matchup-team-name">Waiver Wire Warriors</div><div class="matchup-record">5-5</div></div>
-        </div>
-        <div class="matchup-proj">Projected: 128.4 — 127.1</div>
-      </div>
-      <div class="matchup-card">
-        <div class="matchup-week">Week II</div>
-        <div class="matchup-teams">
-          <div class="matchup-team"><div class="matchup-team-name">Blitz Brigade</div><div class="matchup-record">4-6</div></div>
-          <div class="matchup-vs">VS</div>
-          <div class="matchup-team" style="text-align:right"><div class="matchup-team-name">Fourth & Forever</div><div class="matchup-record">3-7</div></div>
-        </div>
-        <div class="matchup-proj">Projected: 119.7 — 114.3</div>
-      </div>
-      <div class="matchup-card">
-        <div class="matchup-week">Week II</div>
-        <div class="matchup-teams">
-          <div class="matchup-team"><div class="matchup-team-name">End Zone Emperors</div><div class="matchup-record">2-8</div></div>
-          <div class="matchup-vs">VS</div>
-          <div class="matchup-team" style="text-align:right"><div class="matchup-team-name">The Bye Week Bandits</div><div class="matchup-record">1-9</div></div>
-        </div>
-        <div class="matchup-proj">Projected: 108.2 — 103.6</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- NEWS -->
-<section class="news-section" id="news">
-  <div class="section-inner">
-    <div class="section-header">
-      <div class="section-eyebrow">The Wire</div>
-      <div class="section-title">League News & Moves</div>
-      <div class="section-rule"></div>
-    </div>
-    <div class="news-grid">
-      <div class="news-card">
-        <div class="news-tag">🔥 Hot Take</div>
-        <div class="news-headline">Dynasty Destroyers look unstoppable heading into playoffs</div>
-        <div class="news-body">Four straight wins and the league's top scorer. Ask The Oracle if this dynasty is real or if the football gods are setting them up for heartbreak.</div>
-      </div>
-      <div class="news-card">
-        <div class="news-tag">📋 Waiver Wire</div>
-        <div class="news-headline">Three sleeper pickups the Trash Lord says you're sleeping on</div>
-        <div class="news-body">Bye Week Bandits continue to make questionable moves. Ask The Trash Lord for a brutally honest waiver wire assessment.</div>
-      </div>
-      <div class="news-card">
-        <div class="news-tag">⚖️ Trade Talk</div>
-        <div class="news-headline">The most lopsided trade in league history? You decide.</div>
-        <div class="news-body">A trade that has the league buzzing. Bring it to The Oracle for wisdom or The Trash Lord for the unfiltered truth.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-brand">The Inner Sanctum</div>
-  <div class="footer-sub">Fantasy Football League of Legends · Est. 1987 · Powered by 38 Seasons of Wisdom</div>
-</footer>
-
-<!-- AI CHAT FAB -->
-<div class="fab-tooltip">Ask The Oracle 🔮</div>
-<button id="chat-fab" onclick="toggleChat()">🔮</button>
-
-<!-- AI CHAT WINDOW -->
-<div id="chat-window">
-  <div class="chat-header">
-    <div>
-      <div class="chat-header-title">The Inner Sanctum AI</div>
-      <div class="chat-header-sub">38 Seasons of Wisdom · Your League Villain</div>
-    </div>
-    <button class="chat-close" onclick="toggleChat()">✕</button>
-  </div>
-
-  <div class="persona-tabs">
-    <button class="persona-tab active-oracle" id="tab-oracle" onclick="switchPersona('oracle')">🔮 The Oracle</button>
-    <button class="persona-tab" id="tab-trash" onclick="switchPersona('trash')">🔥 Trash Lord</button>
-  </div>
-
-  <div class="chat-messages" id="chat-messages">
-    <div class="chat-greeting" id="chat-greeting">
-      I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.
-    </div>
-    <div class="chat-suggestions" id="chat-suggestions">
-      <button class="chat-suggestion" onclick="sendMsg('Should I start or sit my RB this week?')">Should I start or sit my RB?</button>
-      <button class="chat-suggestion" onclick="sendMsg('Help me decide on a trade')">Help me decide on a trade</button>
-      <button class="chat-suggestion" onclick="sendMsg('Who should I pick up on waivers?')">Who to pick up on waivers?</button>
-      <button class="chat-suggestion" onclick="sendMsg('Give me a hot take on my roster')">Hot take on my roster</button>
-    </div>
-  </div>
-
-  <div class="chat-input-area">
-    <div class="chat-input-wrap" id="chat-input-wrap">
-      <textarea id="chat-input" rows="1" placeholder="Ask the Oracle for wisdom..."
-        onkeydown="handleChatKey(event)"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-    </div>
-    <button id="chat-send" onclick="sendMsg()">↑</button>
-  </div>
+<div class="input-row">
+  <textarea id="input" placeholder="Ask about starts, sits, trades, waivers…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+  <button id="send" onclick="send()">CONSULT</button>
 </div>
 
 <script>
+let persona = 'oracle';
+
 const PERSONAS = {
   oracle: {
-    system: "You are 'The Oracle' — a wise, all-knowing fantasy football sage with 38 years of experience. You speak with gravitas, dropping hard-won wisdom and historical context. You reference legendary players from past eras (Jerry Rice, Barry Sanders, Emmitt Smith, Lawrence Taylor, etc.) to illustrate modern advice. Your tone is warm but authoritative, like a beloved mentor. You occasionally use mystical language like 'I have seen this before...', 'The football gods have shown me...', 'In the ancient seasons of 94...'. Keep responses to 3-5 sentences max. Always give concrete actionable fantasy football advice wrapped in your sage persona.",
-    greeting: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.",
-    placeholder: "Ask the Oracle for wisdom...",
-    emoji: "🔮",
+    name: 'THE ORACLE',
+    system: `You are The Oracle — a cryptic, mystical fantasy football advisor who speaks in dark, prophetic tones. You reference fate, runes, the cosmos, and ancient wisdom while giving sharp, accurate fantasy football advice. You use dramatic language but always include concrete, actionable recommendations. Keep responses under 120 words. Never break character.`
   },
   trash: {
-    system: "You are 'The Trash Lord' — the ultimate fantasy football trash talker and hype machine. You are brutally snarky, hilarious, and savage but never genuinely mean or hurtful. You roast bad decisions, hype up good ones, and deliver spicy hot takes. Use sports slang, dramatic reactions, ALL CAPS for emphasis occasionally. Give real fantasy advice wrapped in maximum bravado. Keep responses to 3-5 sentences max. Be funny, bold, and the chaos agent your league deserves.",
-    greeting: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let's hear your sad little fantasy problem. 😂",
-    placeholder: "Brace yourself for the truth...",
-    emoji: "🔥",
+    name: 'THE TRASH LORD',
+    system: `You are The Trash Lord — a hilariously savage, trash-talking fantasy football advisor who roasts bad picks, mocks waiver scrubs, and dishes brutal honesty with profane energy (keep it PG-13). You're crude but surprisingly knowledgeable. You use slang, insults, and hyperbole while giving real fantasy football advice. Keep responses under 120 words. Never break character.`
   }
 };
 
-let chatOpen = false;
-let activePersona = "oracle";
-let messages = { oracle: [], trash: [] };
-let loading = false;
+function setPersona(p) {
+  persona = p;
+  document.querySelectorAll('.persona-btn').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+}
 
-function toggleChat() {
-  chatOpen = !chatOpen;
-  const win = document.getElementById("chat-window");
-  const fab = document.getElementById("chat-fab");
-  if (chatOpen) {
-    win.classList.add("open");
-    fab.textContent = "✕";
-  } else {
-    win.classList.remove("open");
-    fab.textContent = "🔮";
+function addMsg(text, role, p) {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = `msg ${role}` + (role==='bot' && p==='trash' ? ' trash' : '');
+  if (role === 'bot') {
+    const sp = document.createElement('div');
+    sp.className = 'speaker';
+    sp.textContent = PERSONAS[p].name;
+    div.appendChild(sp);
   }
+  const txt = document.createElement('span');
+  txt.textContent = text;
+  div.appendChild(txt);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
 }
 
-function switchPersona(p) {
-  activePersona = p;
-  document.getElementById("tab-oracle").className = "persona-tab" + (p === "oracle" ? " active-oracle" : "");
-  document.getElementById("tab-trash").className = "persona-tab" + (p === "trash" ? " active-trash" : "");
-  document.getElementById("chat-input").placeholder = PERSONAS[p].placeholder;
-  document.getElementById("chat-greeting").textContent = PERSONAS[p].greeting;
-  const wrap = document.getElementById("chat-input-wrap");
-  const send = document.getElementById("chat-send");
-  wrap.className = "chat-input-wrap" + (p === "trash" ? " trash-active" : "");
-  send.className = p === "trash" ? "trash-active" : "";
-  renderMessages();
-}
+async function send() {
+  const input = document.getElementById('input');
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const text = input.value.trim();
+  if (!text || !apiKey) { alert(!apiKey ? 'Enter your Anthropic API key.' : 'Type a question.'); return; }
 
-function renderMessages() {
-  const container = document.getElementById("chat-messages");
-  const msgs = messages[activePersona];
-  const hasMsgs = msgs.length > 0;
-  document.getElementById("chat-suggestions").style.display = hasMsgs ? "none" : "flex";
-  container.querySelectorAll(".chat-msg").forEach(e => e.remove());
-  const loadingEl = document.getElementById("chat-loading");
-  if (loadingEl) loadingEl.remove();
+  input.value = '';
+  addMsg(text, 'user');
+  const btn = document.getElementById('send');
+  btn.disabled = true;
 
-  msgs.forEach(msg => {
-    const div = document.createElement("div");
-    div.className = "chat-msg " + msg.role;
-    if (msg.role === "assistant") {
-      div.innerHTML = '<div class="chat-avatar">' + PERSONAS[activePersona].emoji + '</div><div class="chat-bubble assistant">' + msg.content + '</div>';
-    } else {
-      div.innerHTML = '<div class="chat-bubble user-' + activePersona + '">' + msg.content + '</div>';
-    }
-    container.appendChild(div);
-  });
+  const thinking = addMsg('Channeling the dark energies…', 'bot', persona);
+  thinking.classList.add('thinking');
 
-  if (loading) {
-    const div = document.createElement("div");
-    div.className = "chat-msg assistant"; div.id = "chat-loading";
-    div.innerHTML = '<div class="chat-avatar">' + PERSONAS[activePersona].emoji + '</div><div class="chat-dots"><div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div></div>';
-    container.appendChild(div);
-  }
-  container.scrollTop = container.scrollHeight;
-}
-
-async function sendMsg(text) {
-  const input = document.getElementById("chat-input");
-  const msg = text || input.value.trim();
-  if (!msg || loading) return;
-  input.value = ""; input.style.height = "auto";
-  loading = true;
-  messages[activePersona].push({ role: "user", content: msg });
-  renderMessages();
   try {
-    const res = await fetch("/.netlify/functions/chat", {
-      method: "POST",
-     headers: { "Content-Type": "application/json" },
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: PERSONAS[activePersona].system,
-        messages: messages[activePersona],
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: PERSONAS[persona].system,
+        messages: [{ role: 'user', content: text }]
       })
     });
     const data = await res.json();
-    const reply = data.content && data.content.map(function(b) { return b.text || ""; }).join("") || "The spirits are silent. Try again.";
-    messages[activePersona].push({ role: "assistant", content: reply });
+    thinking.remove();
+    const reply = data?.content?.[0]?.text || data?.error?.message || 'The void offers no answer.';
+    addMsg(reply, 'bot', persona);
   } catch(e) {
-    messages[activePersona].push({ role: "assistant", content: "Error: " + e.message });
+    thinking.remove();
+    addMsg('The ritual failed. Check your API key and try again.', 'bot', persona);
   }
-  loading = false;
-  renderMessages();
-}
-
-function handleChatKey(e) {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  btn.disabled = false;
 }
 </script>
 </body>
