@@ -22,4 +22,3 @@ exports.handler = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
-Copy that and paste it in! Tell me when it's pasted! 😊Sonnet 4.6 Low
