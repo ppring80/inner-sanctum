@@ -735,7 +735,7 @@ async function sendMsg(text) {
     const reply = data.content && data.content.map(function(b) { return b.text || ""; }).join("") || "The spirits are silent. Try again.";
     messages[activePersona].push({ role: "assistant", content: reply });
   } catch(e) {
-    messages[activePersona].push({ role: "assistant", content: "The mystical connection was severed. Try again." });
+    messages[activePersona].push({ role: "assistant", content: "Error: " + e.message });
   }
   loading = false;
   renderMessages();
