@@ -8,7 +8,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { min-height: 100vh; background: #080810; font-family: 'EB Garamond', Georgia, serif; display: flex; flex-direction: column; align-items: center; color: #ccc; background-image: radial-gradient(ellipse at 20% 50%, #1a0a2e 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, #0a1a0a 0%, transparent 60%); }
-.container { width: 100%; max-width: 680px; display: flex; flex-direction: column; height: 100vh; position: relative; z-index: 1; }
+.container { width: 100%; max-width: 680px; display: flex; flex-direction: column; height: 100vh; }
 .header { padding: 24px 24px 0; text-align: center; }
 .header-eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 8px; }
 .header h1 { font-family: 'Cinzel Decorative', serif; font-size: 28px; color: #e8d5a3; letter-spacing: 2px; margin-bottom: 4px; text-shadow: 0 0 40px rgba(201,168,76,0.3); }
@@ -21,8 +21,6 @@ body { min-height: 100vh; background: #080810; font-family: 'EB Garamond', Georg
 .persona-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; }
 .persona-title { font-size: 11px; opacity: 0.6; margin-top: 1px; }
 .chat-area { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
-.chat-area::-webkit-scrollbar { width: 3px; }
-.chat-area::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
 .greeting { display: flex; gap: 10px; align-items: flex-start; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .avatar-oracle { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); }
@@ -55,7 +53,6 @@ textarea:focus { outline: none; }
 .send-btn { width: 34px; height: 34px; border-radius: 9px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .send-btn.oracle { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
 .send-btn.trash { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
-.send-btn:disabled { background: #1a1a1a; color: #333; cursor: not-allowed; }
 .footer-text { text-align: center; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px; color: #1a1a1a; margin-top: 8px; text-transform: uppercase; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dotBounce { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
@@ -87,90 +84,121 @@ textarea:focus { outline: none; }
     </div>
     <div class="suggestions" id="suggestions">
       <div class="suggestions-label">Try asking...</div>
-      <button class="suggestion-btn" onclick="send('Should I start or sit my RB this week?')">Should I start or sit my RB this week?</button>
-      <button class="suggestion-btn" onclick="send('Help me decide on a trade')">Help me decide on a trade</button>
-      <button class="suggestion-btn" onclick="send('Who should I pick up on waivers?')">Who should I pick up on waivers?</button>
-      <button class="suggestion-btn" onclick="send('Rate my team\'s chances this season')">Rate my team's chances this season</button>
-      <button class="suggestion-btn" onclick="send('Give me a hot take on my roster')">Give me a hot take on my roster</button>
+      <button class="suggestion-btn" onclick="sendMsg('Should I start or sit my RB this week?')">Should I start or sit my RB this week?</button>
+      <button class="suggestion-btn" onclick="sendMsg('Help me decide on a trade')">Help me decide on a trade</button>
+      <button class="suggestion-btn" onclick="sendMsg('Who should I pick up on waivers?')">Who should I pick up on waivers?</button>
+      <button class="suggestion-btn" onclick="sendMsg('Rate my team\'s chances this season')">Rate my team's chances this season</button>
+      <button class="suggestion-btn" onclick="sendMsg('Give me a hot take on my roster')">Give me a hot take on my roster</button>
     </div>
   </div>
   <div class="input-area">
     <div class="input-wrap oracle" id="input-wrap">
       <textarea id="user-input" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="handleKey(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-      <button class="send-btn oracle" id="send-btn" onclick="send()">↑</button>
+      <button class="send-btn oracle" id="send-btn" onclick="sendMsg()">↑</button>
     </div>
     <div class="footer-text">The Inner Sanctum · Fantasy AI · Est. 1987</div>
   </div>
 </div>
 <script>
-  const PERSONAS = {oracle: { system: "You are 'The Oracle' — a wise, all-knowing fantasy football sage with 38 years of experience. You speak with gravitas, dropping hard-won wisdom and historical context. You reference legendary players from past eras (Jerry Rice, Barry Sanders, Emmitt Smith, Lawrence Taylor) to illustrate modern advice. Your tone is warm but authoritative. Use mystical language like 'I have seen this before...', 'The football gods have shown me...', 'In the ancient seasons of 94...'. Keep responses to 3-5 sentences. Always give concrete actionable fantasy football advice.", greeting: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.", placeholder: "Ask the Oracle for wisdom...", emoji: "🔮" },
-  trash: { system: "You are 'The Trash Lord' — the ultimate fantasy football trash talker and hype machine. You are brutally snarky, hilarious, and savage but never genuinely mean. You roast bad decisions, hype up good ones, and deliver spicy hot takes. Use sports slang, ALL CAPS for emphasis. Give real fantasy advice wrapped in maximum bravado. Keep responses to 3-5 sentences.", greeting: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let's hear your sad little fantasy problem. 😂", placeholder: "Brace yourself for the truth...", emoji: "🔥" }
+var PERSONAS = {
+  oracle: {
+    system: "You are The Oracle, a wise fantasy football sage with 38 years of experience. Speak with gravitas and wisdom. Reference legends like Jerry Rice and Barry Sanders. Use mystical language. Give concrete fantasy football advice in 3-5 sentences.",
+    greeting: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.",
+    placeholder: "Ask the Oracle for wisdom...",
+    emoji: "🔮"
+  },
+  trash: {
+    system: "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, savage but never mean. Use ALL CAPS for emphasis. Give real fantasy advice wrapped in bravado. Keep it to 3-5 sentences.",
+    greeting: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let us hear your sad little fantasy problem.",
+    placeholder: "Brace yourself for the truth...",
+    emoji: "🔥"
+  }
 };
-let activePersona = "oracle";
-let messages = { oracle: [], trash: [] };
-let loading = false;
+var activePersona = "oracle";
+var messages = { oracle: [], trash: [] };
+var loading = false;
 function switchPersona(p) {
-  activePersona = p;
-  document.getElementById("btn-oracle").className = "persona-btn" + (p === "oracle" ? " oracle-active" : "");
-  document.getElementById("btn-trash").className = "persona-btn" + (p === "trash" ? " trash-active" : "");
-  document.getElementById("input-wrap").className = "input-wrap " + p;
-  document.getElementById("send-btn").className = "send-btn " + p;
-  document.getElementById("user-input").placeholder = PERSONAS[p].placeholder;
-  document.getElementById("greeting-avatar").textContent = PERSONAS[p].emoji;
-  document.getElementById("greeting-avatar").className = "avatar avatar-" + p;
-  document.getElementById("greeting-text").textContent = PERSONAS[p].greeting;
-  document.getElementById("greeting-text").className = "greeting-text " + p;
-  renderMessages();
+activePersona = p;
+document.getElementById("btn-oracle").className = "persona-btn" + (p === "oracle" ? " oracle-active" : "");
+document.getElementById("btn-trash").className = "persona-btn" + (p === "trash" ? " trash-active" : "");
+document.getElementById("input-wrap").className = "input-wrap " + p;
+document.getElementById("send-btn").className = "send-btn " + p;
+document.getElementById("user-input").placeholder = PERSONAS[p].placeholder;
+document.getElementById("greeting-avatar").textContent = PERSONAS[p].emoji;
+document.getElementById("greeting-avatar").className = "avatar avatar-" + p;
+document.getElementById("greeting-text").textContent = PERSONAS[p].greeting;
+document.getElementById("greeting-text").className = "greeting-text " + p;
+renderMessages();
 }
 function renderMessages() {
-  const chat = document.getElementById("chat");
-  const msgs = messages[activePersona];
-  document.getElementById("suggestions").style.display = msgs.length > 0 ? "none" : "flex";
-  chat.querySelectorAll(".message").forEach(e => e.remove());
-  const loadEl = document.getElementById("loading-el");
-  if (loadEl) loadEl.remove();
-  msgs.forEach(msg => {
-    const div = document.createElement("div");
-    div.className = "message " + msg.role;
-    if (msg.role === "assistant") {
-      div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="bubble assistant">' + msg.content + '</div>';
-    } else {
-      div.innerHTML = '<div class="bubble user-' + activePersona + '">' + msg.content + '</div>';
-    }
-    chat.appendChild(div);
-  });
-  if (loading) {
-    const div = document.createElement("div");
-    div.className = "message assistant"; div.id = "loading-el";
-    div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="loading-dots"><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div></div>';
-    chat.appendChild(div);
-  }
-  chat.scrollTop = chat.scrollHeight;
+var chat = document.getElementById("chat");
+var msgs = messages[activePersona];
+document.getElementById("suggestions").style.display = msgs.length > 0 ? "none" : "flex";
+var existing = chat.querySelectorAll(".message");
+for (var i = 0; i < existing.length; i++) { existing[i].remove(); }
+var loadEl = document.getElementById("loading-el");
+if (loadEl) { loadEl.remove(); }
+for (var j = 0; j < msgs.length; j++) {
+var msg = msgs[j];
+var div = document.createElement("div");
+div.className = "message " + msg.role;
+if (msg.role === "assistant") {
+div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="bubble assistant">' + msg.content + '</div>';
+} else {
+div.innerHTML = '<div class="bubble user-' + activePersona + '">' + msg.content + '</div>';
 }
-async function send(text) {
-  const input = document.getElementById("user-input");
-  const msg = text || input.value.trim();
-  if (!msg || loading) return;
-  input.value = ""; input.style.height = "auto";
-  loading = true;
-  messages[activePersona].push({ role: "user", content: msg });
-  renderMessages();
-  try {
-    const res = await fetch("/.netlify/functions/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: PERSONAS[activePersona].system, messages: messages[activePersona] })
-    });
-    const data = await res.json();
-    const reply = data.content && data.content.length > 0 ? data.content[0].text : "The spirits are silent. Try again.";
-    messages[activePersona].push({ role: "assistant", content: reply });
-  } catch(e) {
-    messages[activePersona].push({ role: "assistant", content: "Connection lost: " + e.message });
-  }
-  loading = false;
-  renderMessages();
+chat.appendChild(div);
 }
-function handleKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }
+if (loading) {
+var ldiv = document.createElement("div");
+ldiv.className = "message assistant";
+ldiv.id = "loading-el";
+ldiv.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="loading-dots"><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div></div>';
+chat.appendChild(ldiv);
+}
+chat.scrollTop = chat.scrollHeight;
+}
+function sendMsg(text) {
+var input = document.getElementById("user-input");
+var msg = text || input.value.trim();
+if (!msg || loading) { return; }
+input.value = "";
+input.style.height = "auto";
+loading = true;
+messages[activePersona].push({ role: "user", content: msg });
+renderMessages();
+var payload = JSON.stringify({
+model: "claude-sonnet-4-20250514",
+max_tokens: 1000,
+system: PERSONAS[activePersona].system,
+messages: messages[activePersona]
+});
+fetch("/.netlify/functions/chat", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: payload
+}).then(function(res) {
+return res.json();
+}).then(function(data) {
+var reply = "The spirits are silent. Try again.";
+if (data && data.content && data.content.length > 0) {
+reply = data.content[0].text;
+}
+messages[activePersona].push({ role: "assistant", content: reply });
+loading = false;
+renderMessages();
+}).catch(function(err) {
+messages[activePersona].push({ role: "assistant", content: "Error: " + err.message });
+loading = false;
+renderMessages();
+});
+}
+function handleKey(e) {
+if (e.key === "Enter" && !e.shiftKey) {
+e.preventDefault();
+sendMsg();
+}
+}
 </script>
 </body>
 </html>
