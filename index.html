@@ -3,141 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fantasy Football Oracle</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<title>The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 <style>
-  :root{--gold:#c9a84c;--blood:#8b0000;--void:#050508;--mist:#1a1a2e;--glow:rgba(201,168,76,.25)}
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--void);color:#ddd;font-family:'Crimson Text',serif;font-size:18px;min-height:100vh;display:flex;flex-direction:column;align-items:center;background-image:radial-gradient(ellipse at 20% 50%,rgba(139,0,0,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(201,168,76,.06) 0%,transparent 50%)}
-  h1{font-family:'Cinzel Decorative',cursive;font-size:clamp(1.1rem,3vw,1.8rem);color:var(--gold);text-align:center;padding:20px 10px 4px;letter-spacing:2px;text-shadow:0 0 30px var(--glow)}
-  .subtitle{font-style:italic;color:#666;font-size:.95rem;margin-bottom:16px;text-align:center}
-  .persona-toggle{display:flex;gap:0;margin-bottom:18px;border:1px solid #2a2a3a;border-radius:4px;overflow:hidden}
-  .persona-btn{flex:1;padding:9px 18px;background:transparent;color:#888;border:none;cursor:pointer;font-family:'Crimson Text',serif;font-size:1rem;transition:all .3s;letter-spacing:1px}
-  .persona-btn.active{color:var(--void)}
-  .persona-btn[data-p="oracle"].active{background:var(--gold);text-shadow:none}
-  .persona-btn[data-p="trash"].active{background:var(--blood)}
-  .chat-box{width:min(680px,95vw);flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-height:54vh;scrollbar-width:thin;scrollbar-color:#2a2a3a transparent}
-  .msg{max-width:82%;padding:11px 15px;border-radius:3px;line-height:1.55;animation:fadeUp .35s ease}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .msg.user{align-self:flex-end;background:#12121f;border:1px solid #2a2a40;color:#ccc}
-  .msg.bot{align-self:flex-start;border-left:3px solid var(--gold);background:rgba(201,168,76,.05);color:#e8e0cc}
-  .msg.bot.trash{border-left-color:var(--blood);background:rgba(139,0,0,.07)}
-  .msg .speaker{font-family:'Cinzel Decorative',cursive;font-size:.6rem;letter-spacing:2px;margin-bottom:5px;opacity:.7}
-  .msg.bot .speaker{color:var(--gold)}
-  .msg.bot.trash .speaker{color:#c0392b}
-  .msg.thinking{opacity:.5;font-style:italic}
-  .input-row{width:min(680px,95vw);display:flex;gap:8px;padding:14px 0 20px}
-  textarea{flex:1;background:#0d0d18;border:1px solid #252535;color:#ddd;padding:10px 14px;font-family:'Crimson Text',serif;font-size:1rem;resize:none;border-radius:3px;outline:none;height:50px;line-height:1.4;transition:border-color .2s}
-  textarea:focus{border-color:var(--gold)}
-  button#send{background:var(--gold);color:var(--void);border:none;padding:0 20px;font-family:'Cinzel Decorative',cursive;font-size:.7rem;cursor:pointer;border-radius:3px;letter-spacing:1px;transition:opacity .2s}
-  button#send:hover{opacity:.85}
-  button#send:disabled{opacity:.4;cursor:not-allowed}
-  .api-row{width:min(680px,95vw);display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .api-row input{flex:1;background:#0a0a14;border:1px solid #1e1e30;color:#aaa;padding:7px 12px;font-family:monospace;font-size:.8rem;border-radius:3px;outline:none}
-  .api-row label{color:#555;font-size:.85rem;white-space:nowrap}
-  .rune{position:fixed;font-size:8rem;opacity:.018;pointer-events:none;user-select:none}
-  .rune:nth-child(1){top:5%;left:2%}.rune:nth-child(2){bottom:10%;right:3%}.rune:nth-child(3){top:40%;right:1%}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { min-height: 100vh; background: #080810; font-family: 'EB Garamond', Georgia, serif; display: flex; flex-direction: column; align-items: center; color: #ccc; background-image: radial-gradient(ellipse at 20% 50%, #1a0a2e 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, #0a1a0a 0%, transparent 60%); }
+.container { width: 100%; max-width: 680px; display: flex; flex-direction: column; height: 100vh; position: relative; z-index: 1; }
+.header { padding: 24px 24px 0; text-align: center; }
+.header-eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 8px; }
+.header h1 { font-family: 'Cinzel Decorative', serif; font-size: 28px; color: #e8d5a3; letter-spacing: 2px; margin-bottom: 4px; text-shadow: 0 0 40px rgba(201,168,76,0.3); }
+.header-sub { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; margin-bottom: 20px; }
+.persona-switcher { display: flex; gap: 10px; padding: 0 24px; margin-bottom: 4px; }
+.persona-btn { flex: 1; padding: 12px 16px; border-radius: 10px; border: 2px solid #1a1a1a; background: #0e0e0e; color: #444; cursor: pointer; text-align: left; transition: all 0.3s; font-family: 'EB Garamond', serif; }
+.persona-btn.oracle-active { border-color: #c9a84c; background: rgba(201,168,76,0.08); color: #c9a84c; }
+.persona-btn.trash-active { border-color: #ff4444; background: rgba(255,68,68,0.08); color: #ff4444; }
+.persona-emoji { font-size: 22px; margin-bottom: 3px; }
+.persona-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; }
+.persona-title { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+.chat-area { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+.chat-area::-webkit-scrollbar { width: 3px; }
+.chat-area::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+.greeting { display: flex; gap: 10px; align-items: flex-start; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.avatar-oracle { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); }
+.avatar-trash { background: rgba(255,68,68,0.15); border: 1px solid rgba(255,68,68,0.4); }
+.greeting-text { background: #0e0e0e; border-radius: 4px 14px 14px 14px; padding: 12px 16px; font-style: italic; font-size: 15px; line-height: 1.6; color: rgba(240,230,204,0.7); max-width: 85%; }
+.greeting-text.oracle { border: 1px solid rgba(201,168,76,0.2); }
+.greeting-text.trash { border: 1px solid rgba(255,68,68,0.2); }
+.suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.suggestions-label { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 3px; color: #333; text-transform: uppercase; margin-bottom: 2px; }
+.suggestion-btn { background: transparent; border: 1px solid #1a1a1a; border-radius: 8px; padding: 8px 14px; color: #444; font-size: 14px; font-family: 'EB Garamond', serif; text-align: left; cursor: pointer; transition: all 0.2s; }
+.suggestion-btn:hover { border-color: rgba(201,168,76,0.3); color: #888; }
+.message { display: flex; gap: 10px; align-items: flex-start; animation: slideUp 0.3s ease forwards; }
+.message.user { flex-direction: row-reverse; }
+.bubble { max-width: 80%; padding: 11px 15px; font-size: 15px; line-height: 1.6; border-radius: 4px 14px 14px 14px; }
+.bubble.assistant { background: #0e0e0e; border: 1px solid #1a1a1a; color: #ccc; }
+.bubble.user-oracle { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); color: #e0d0a0; border-radius: 14px 4px 14px 14px; }
+.bubble.user-trash { background: rgba(255,68,68,0.12); border: 1px solid rgba(255,68,68,0.25); color: #ffaaaa; border-radius: 14px 4px 14px 14px; }
+.loading-dots { display: flex; gap: 5px; align-items: center; padding: 14px 18px; background: #0e0e0e; border: 1px solid #1a1a1a; border-radius: 4px 14px 14px 14px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; animation: dotBounce 1.2s infinite; }
+.dot-oracle { background: #c9a84c; }
+.dot-trash { background: #ff4444; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+.input-area { padding: 12px 24px 28px; border-top: 1px solid #111; }
+.input-wrap { display: flex; gap: 10px; align-items: flex-end; background: #0a0a0a; border-radius: 14px; padding: 10px 12px; }
+.input-wrap.oracle { border: 1px solid rgba(201,168,76,0.3); }
+.input-wrap.trash { border: 1px solid rgba(255,68,68,0.3); }
+textarea { flex: 1; background: transparent; border: none; color: #ddd; font-size: 15px; line-height: 1.5; font-family: 'EB Garamond', serif; padding: 2px 4px; resize: none; max-height: 100px; overflow-y: auto; }
+textarea:focus { outline: none; }
+.send-btn { width: 34px; height: 34px; border-radius: 9px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.send-btn.oracle { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
+.send-btn.trash { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+.send-btn:disabled { background: #1a1a1a; color: #333; cursor: not-allowed; }
+.footer-text { text-align: center; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px; color: #1a1a1a; margin-top: 8px; text-transform: uppercase; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes dotBounce { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 </style>
 </head>
 <body>
-<div class="rune">᚛</div><div class="rune">ᚾ</div><div class="rune">ᛟ</div>
-<h1>⚜ The Fantasy Sanctum ⚜</h1>
-<p class="subtitle">Seek counsel. Risk everything.</p>
-
-<div class="persona-toggle">
-  <button class="persona-btn active" data-p="oracle" onclick="setPersona('oracle')">🔮 The Oracle</button>
-  <button class="persona-btn" data-p="trash" onclick="setPersona('trash')">🗑️ The Trash Lord</button>
+<div class="container">
+  <div class="header">
+    <div class="header-eyebrow">✦ Fantasy Football AI ✦</div>
+    <h1>The Inner Sanctum</h1>
+    <div class="header-sub">Choose your counsel wisely</div>
+  </div>
+  <div class="persona-switcher">
+    <button class="persona-btn oracle-active" id="btn-oracle" onclick="switchPersona('oracle')">
+      <div class="persona-emoji">🔮</div>
+      <div class="persona-name">The Oracle</div>
+      <div class="persona-title">38 Seasons of Wisdom</div>
+    </button>
+    <button class="persona-btn" id="btn-trash" onclick="switchPersona('trash')">
+      <div class="persona-emoji">🔥</div>
+      <div class="persona-name">The Trash Lord</div>
+      <div class="persona-title">Certified League Villain</div>
+    </button>
+  </div>
+  <div class="chat-area" id="chat">
+    <div class="greeting" id="greeting">
+      <div class="avatar avatar-oracle" id="greeting-avatar">🔮</div>
+      <div class="greeting-text oracle" id="greeting-text">I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.</div>
+    </div>
+    <div class="suggestions" id="suggestions">
+      <div class="suggestions-label">Try asking...</div>
+      <button class="suggestion-btn" onclick="send('Should I start or sit my RB this week?')">Should I start or sit my RB this week?</button>
+      <button class="suggestion-btn" onclick="send('Help me decide on a trade')">Help me decide on a trade</button>
+      <button class="suggestion-btn" onclick="send('Who should I pick up on waivers?')">Who should I pick up on waivers?</button>
+      <button class="suggestion-btn" onclick="send('Rate my team\'s chances this season')">Rate my team's chances this season</button>
+      <button class="suggestion-btn" onclick="send('Give me a hot take on my roster')">Give me a hot take on my roster</button>
+    </div>
+  </div>
+  <div class="input-area">
+    <div class="input-wrap oracle" id="input-wrap">
+      <textarea id="user-input" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="handleKey(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button class="send-btn oracle" id="send-btn" onclick="send()">↑</button>
+    </div>
+    <div class="footer-text">The Inner Sanctum · Fantasy AI · Est. 1987</div>
+  </div>
 </div>
-
-<div class="api-row">
-  <label>API Key:</label>
-  <input type="password" id="apiKey" placeholder="sk-ant-...">
-</div>
-
-<div class="chat-box" id="chat"></div>
-
-<div class="input-row">
-  <textarea id="input" placeholder="Ask about starts, sits, trades, waivers…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
-  <button id="send" onclick="send()">CONSULT</button>
-</div>
-
 <script>
-let persona = 'oracle';
-
+const API_KEY = "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";
 const PERSONAS = {
-  oracle: {
-    name: 'THE ORACLE',
-    system: `You are The Oracle — a cryptic, mystical fantasy football advisor who speaks in dark, prophetic tones. You reference fate, runes, the cosmos, and ancient wisdom while giving sharp, accurate fantasy football advice. You use dramatic language but always include concrete, actionable recommendations. Keep responses under 120 words. Never break character.`
-  },
-  trash: {
-    name: 'THE TRASH LORD',
-    system: `You are The Trash Lord — a hilariously savage, trash-talking fantasy football advisor who roasts bad picks, mocks waiver scrubs, and dishes brutal honesty with profane energy (keep it PG-13). You're crude but surprisingly knowledgeable. You use slang, insults, and hyperbole while giving real fantasy football advice. Keep responses under 120 words. Never break character.`
-  }
+  oracle: { system: "You are 'The Oracle' — a wise, all-knowing fantasy football sage with 38 years of experience. You speak with gravitas, dropping hard-won wisdom and historical context. You reference legendary players from past eras (Jerry Rice, Barry Sanders, Emmitt Smith, Lawrence Taylor) to illustrate modern advice. Your tone is warm but authoritative. Use mystical language like 'I have seen this before...', 'The football gods have shown me...', 'In the ancient seasons of 94...'. Keep responses to 3-5 sentences. Always give concrete actionable fantasy football advice.", greeting: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.", placeholder: "Ask the Oracle for wisdom...", emoji: "🔮" },
+  trash: { system: "You are 'The Trash Lord' — the ultimate fantasy football trash talker and hype machine. You are brutally snarky, hilarious, and savage but never genuinely mean. You roast bad decisions, hype up good ones, and deliver spicy hot takes. Use sports slang, ALL CAPS for emphasis. Give real fantasy advice wrapped in maximum bravado. Keep responses to 3-5 sentences.", greeting: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let's hear your sad little fantasy problem. 😂", placeholder: "Brace yourself for the truth...", emoji: "🔥" }
 };
-
-function setPersona(p) {
-  persona = p;
-  document.querySelectorAll('.persona-btn').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+let activePersona = "oracle";
+let messages = { oracle: [], trash: [] };
+let loading = false;
+function switchPersona(p) {
+  activePersona = p;
+  document.getElementById("btn-oracle").className = "persona-btn" + (p === "oracle" ? " oracle-active" : "");
+  document.getElementById("btn-trash").className = "persona-btn" + (p === "trash" ? " trash-active" : "");
+  document.getElementById("input-wrap").className = "input-wrap " + p;
+  document.getElementById("send-btn").className = "send-btn " + p;
+  document.getElementById("user-input").placeholder = PERSONAS[p].placeholder;
+  document.getElementById("greeting-avatar").textContent = PERSONAS[p].emoji;
+  document.getElementById("greeting-avatar").className = "avatar avatar-" + p;
+  document.getElementById("greeting-text").textContent = PERSONAS[p].greeting;
+  document.getElementById("greeting-text").className = "greeting-text " + p;
+  renderMessages();
 }
-
-function addMsg(text, role, p) {
-  const chat = document.getElementById('chat');
-  const div = document.createElement('div');
-  div.className = `msg ${role}` + (role==='bot' && p==='trash' ? ' trash' : '');
-  if (role === 'bot') {
-    const sp = document.createElement('div');
-    sp.className = 'speaker';
-    sp.textContent = PERSONAS[p].name;
-    div.appendChild(sp);
+function renderMessages() {
+  const chat = document.getElementById("chat");
+  const msgs = messages[activePersona];
+  document.getElementById("suggestions").style.display = msgs.length > 0 ? "none" : "flex";
+  chat.querySelectorAll(".message").forEach(e => e.remove());
+  const loadEl = document.getElementById("loading-el");
+  if (loadEl) loadEl.remove();
+  msgs.forEach(msg => {
+    const div = document.createElement("div");
+    div.className = "message " + msg.role;
+    if (msg.role === "assistant") {
+      div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="bubble assistant">' + msg.content + '</div>';
+    } else {
+      div.innerHTML = '<div class="bubble user-' + activePersona + '">' + msg.content + '</div>';
+    }
+    chat.appendChild(div);
+  });
+  if (loading) {
+    const div = document.createElement("div");
+    div.className = "message assistant"; div.id = "loading-el";
+    div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="loading-dots"><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div></div>';
+    chat.appendChild(div);
   }
-  const txt = document.createElement('span');
-  txt.textContent = text;
-  div.appendChild(txt);
-  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-  return div;
 }
-
-async function send() {
-  const input = document.getElementById('input');
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const text = input.value.trim();
-  if (!text || !apiKey) { alert(!apiKey ? 'Enter your Anthropic API key.' : 'Type a question.'); return; }
-
-  input.value = '';
-  addMsg(text, 'user');
-  const btn = document.getElementById('send');
-  btn.disabled = true;
-
-  const thinking = addMsg('Channeling the dark energies…', 'bot', persona);
-  thinking.classList.add('thinking');
-
+async function send(text) {
+  const input = document.getElementById("user-input");
+  const msg = text || input.value.trim();
+  if (!msg || loading) return;
+  input.value = ""; input.style.height = "auto";
+  loading = true;
+  messages[activePersona].push({ role: "user", content: msg });
+  renderMessages();
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: PERSONAS[persona].system,
-        messages: [{ role: 'user', content: text }]
-      })
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: PERSONAS[activePersona].system, messages: messages[activePersona] })
     });
     const data = await res.json();
-    thinking.remove();
-    const reply = data?.content?.[0]?.text || data?.error?.message || 'The void offers no answer.';
-    addMsg(reply, 'bot', persona);
+    const reply = data.content && data.content.length > 0 ? data.content[0].text : "The spirits are silent. Try again.";
+    messages[activePersona].push({ role: "assistant", content: reply });
   } catch(e) {
-    thinking.remove();
-    addMsg('The ritual failed. Check your API key and try again.', 'bot', persona);
+    messages[activePersona].push({ role: "assistant", content: "Connection lost: " + e.message });
   }
-  btn.disabled = false;
+  loading = false;
+  renderMessages();
 }
+function handleKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }
 </script>
 </body>
 </html>
