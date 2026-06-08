@@ -1,203 +1,181 @@
+Here it is — copy everything between the lines:
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Inner Sanctum</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { min-height: 100vh; background: #080810; font-family: 'EB Garamond', Georgia, serif; display: flex; flex-direction: column; align-items: center; color: #ccc; background-image: radial-gradient(ellipse at 20% 50%, #1a0a2e 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, #0a1a0a 0%, transparent 60%); }
-.container { width: 100%; max-width: 680px; display: flex; flex-direction: column; height: 100vh; }
-.header { padding: 24px 24px 0; text-align: center; }
-.header-eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 8px; }
-.header h1 { font-family: 'Cinzel Decorative', serif; font-size: 28px; color: #e8d5a3; letter-spacing: 2px; margin-bottom: 4px; text-shadow: 0 0 40px rgba(201,168,76,0.3); }
-.header-sub { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; margin-bottom: 20px; }
-.persona-switcher { display: flex; gap: 10px; padding: 0 24px; margin-bottom: 4px; }
-.persona-btn { flex: 1; padding: 12px 16px; border-radius: 10px; border: 2px solid #1a1a1a; background: #0e0e0e; color: #444; cursor: pointer; text-align: left; transition: all 0.3s; font-family: 'EB Garamond', serif; }
-.persona-btn.oracle-active { border-color: #c9a84c; background: rgba(201,168,76,0.08); color: #c9a84c; }
-.persona-btn.trash-active { border-color: #ff4444; background: rgba(255,68,68,0.08); color: #ff4444; }
-.persona-emoji { font-size: 22px; margin-bottom: 3px; }
-.persona-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; }
-.persona-title { font-size: 11px; opacity: 0.6; margin-top: 1px; }
-.chat-area { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
-.greeting { display: flex; gap: 10px; align-items: flex-start; }
-.avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.avatar-oracle { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); }
-.avatar-trash { background: rgba(255,68,68,0.15); border: 1px solid rgba(255,68,68,0.4); }
-.greeting-text { background: #0e0e0e; border-radius: 4px 14px 14px 14px; padding: 12px 16px; font-style: italic; font-size: 15px; line-height: 1.6; color: rgba(240,230,204,0.7); max-width: 85%; }
-.greeting-text.oracle { border: 1px solid rgba(201,168,76,0.2); }
-.greeting-text.trash { border: 1px solid rgba(255,68,68,0.2); }
-.suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-.suggestions-label { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 3px; color: #333; text-transform: uppercase; margin-bottom: 2px; }
-.suggestion-btn { background: transparent; border: 1px solid #1a1a1a; border-radius: 8px; padding: 8px 14px; color: #444; font-size: 14px; font-family: 'EB Garamond', serif; text-align: left; cursor: pointer; transition: all 0.2s; }
-.suggestion-btn:hover { border-color: rgba(201,168,76,0.3); color: #888; }
-.message { display: flex; gap: 10px; align-items: flex-start; animation: slideUp 0.3s ease forwards; }
-.message.user { flex-direction: row-reverse; }
-.bubble { max-width: 80%; padding: 11px 15px; font-size: 15px; line-height: 1.6; border-radius: 4px 14px 14px 14px; }
-.bubble.assistant { background: #0e0e0e; border: 1px solid #1a1a1a; color: #ccc; }
-.bubble.user-oracle { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); color: #e0d0a0; border-radius: 14px 4px 14px 14px; }
-.bubble.user-trash { background: rgba(255,68,68,0.12); border: 1px solid rgba(255,68,68,0.25); color: #ffaaaa; border-radius: 14px 4px 14px 14px; }
-.loading-dots { display: flex; gap: 5px; align-items: center; padding: 14px 18px; background: #0e0e0e; border: 1px solid #1a1a1a; border-radius: 4px 14px 14px 14px; }
-.dot { width: 6px; height: 6px; border-radius: 50%; animation: dotBounce 1.2s infinite; }
+body { min-height: 100vh; background: #080810; font-family: Georgia, serif; display: flex; flex-direction: column; align-items: center; color: #ccc; }
+.wrap { width: 100%; max-width: 660px; display: flex; flex-direction: column; height: 100vh; }
+.top { padding: 20px 20px 0; text-align: center; }
+.top p { font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 6px; }
+.top h1 { font-size: 26px; color: #e8d5a3; margin-bottom: 4px; }
+.top small { font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; display: block; margin-bottom: 16px; }
+.tabs { display: flex; gap: 10px; padding: 0 20px; margin-bottom: 4px; }
+.tab { flex: 1; padding: 10px 14px; border-radius: 10px; border: 2px solid #1a1a1a; background: #0e0e0e; color: #444; cursor: pointer; text-align: left; font-family: Georgia, serif; }
+.tab.on-oracle { border-color: #c9a84c; background: rgba(201,168,76,0.08); color: #c9a84c; }
+.tab.on-trash { border-color: #ff4444; background: rgba(255,68,68,0.08); color: #ff4444; }
+.tab-icon { font-size: 20px; margin-bottom: 2px; }
+.tab-name { font-size: 13px; font-weight: bold; }
+.tab-sub { font-size: 10px; opacity: 0.6; }
+.msgs { flex: 1; overflow-y: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+.greet { display: flex; gap: 8px; align-items: flex-start; }
+.av { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.av-oracle { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); }
+.av-trash { background: rgba(255,68,68,0.15); border: 1px solid rgba(255,68,68,0.4); }
+.greet-txt { background: #0e0e0e; border-radius: 4px 12px 12px 12px; padding: 10px 14px; font-style: italic; font-size: 14px; line-height: 1.6; color: rgba(240,230,204,0.7); max-width: 85%; }
+.greet-txt.oracle { border: 1px solid rgba(201,168,76,0.2); }
+.greet-txt.trash { border: 1px solid rgba(255,68,68,0.2); }
+.suggs { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.sugg { background: transparent; border: 1px solid #1a1a1a; border-radius: 7px; padding: 7px 12px; color: #444; font-size: 13px; font-family: Georgia, serif; text-align: left; cursor: pointer; }
+.sugg:hover { border-color: rgba(201,168,76,0.3); color: #888; }
+.msg { display: flex; gap: 8px; align-items: flex-start; }
+.msg.user { flex-direction: row-reverse; }
+.bub { max-width: 80%; padding: 10px 14px; font-size: 14px; line-height: 1.6; border-radius: 4px 12px 12px 12px; }
+.bub.bot { background: #0e0e0e; border: 1px solid #1a1a1a; color: #ccc; }
+.bub.u-oracle { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); color: #e0d0a0; border-radius: 12px 4px 12px 12px; }
+.bub.u-trash { background: rgba(255,68,68,0.12); border: 1px solid rgba(255,68,68,0.25); color: #ffaaaa; border-radius: 12px 4px 12px 12px; }
+.dots { display: flex; gap: 4px; align-items: center; padding: 12px 16px; background: #0e0e0e; border: 1px solid #1a1a1a; border-radius: 4px 12px 12px 12px; }
+.dot { width: 5px; height: 5px; border-radius: 50%; animation: db 1.2s infinite; }
 .dot-oracle { background: #c9a84c; }
 .dot-trash { background: #ff4444; }
 .dot:nth-child(2) { animation-delay: 0.2s; }
 .dot:nth-child(3) { animation-delay: 0.4s; }
-.input-area { padding: 12px 24px 28px; border-top: 1px solid #111; }
-.input-wrap { display: flex; gap: 10px; align-items: flex-end; background: #0a0a0a; border-radius: 14px; padding: 10px 12px; }
-.input-wrap.oracle { border: 1px solid rgba(201,168,76,0.3); }
-.input-wrap.trash { border: 1px solid rgba(255,68,68,0.3); }
-textarea { flex: 1; background: transparent; border: none; color: #ddd; font-size: 15px; line-height: 1.5; font-family: 'EB Garamond', serif; padding: 2px 4px; resize: none; max-height: 100px; overflow-y: auto; }
+.bot-area { padding: 10px 20px 24px; border-top: 1px solid #111; }
+.inp-box { display: flex; gap: 8px; align-items: flex-end; background: #0a0a0a; border-radius: 12px; padding: 8px 10px; }
+.inp-box.oracle { border: 1px solid rgba(201,168,76,0.3); }
+.inp-box.trash { border: 1px solid rgba(255,68,68,0.3); }
+textarea { flex: 1; background: transparent; border: none; color: #ddd; font-size: 14px; font-family: Georgia, serif; padding: 2px 4px; resize: none; max-height: 80px; }
 textarea:focus { outline: none; }
-.send-btn { width: 34px; height: 34px; border-radius: 9px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-.send-btn.oracle { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
-.send-btn.trash { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
-.footer-text { text-align: center; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px; color: #1a1a1a; margin-top: 8px; text-transform: uppercase; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes dotBounce { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+.send { width: 32px; height: 32px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
+.send.oracle { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
+.send.trash { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+.foot { text-align: center; font-size: 9px; letter-spacing: 2px; color: #1a1a1a; margin-top: 6px; text-transform: uppercase; }
+@keyframes db { 0%,100%{opacity:.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-3px)} }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="header-eyebrow">✦ Fantasy Football AI ✦</div>
+<div class="wrap">
+  <div class="top">
+    <p>Fantasy Football AI</p>
     <h1>The Inner Sanctum</h1>
-    <div class="header-sub">Choose your counsel wisely</div>
+    <small>Choose your counsel wisely</small>
   </div>
-  <div class="persona-switcher">
-    <button class="persona-btn oracle-active" id="btn-oracle" onclick="switchPersona('oracle')">
-      <div class="persona-emoji">🔮</div>
-      <div class="persona-name">The Oracle</div>
-      <div class="persona-title">38 Seasons of Wisdom</div>
+  <div class="tabs">
+    <button class="tab on-oracle" id="t-oracle" onclick="go('oracle')">
+      <div class="tab-icon">🔮</div>
+      <div class="tab-name">The Oracle</div>
+      <div class="tab-sub">38 Seasons of Wisdom</div>
     </button>
-    <button class="persona-btn" id="btn-trash" onclick="switchPersona('trash')">
-      <div class="persona-emoji">🔥</div>
-      <div class="persona-name">The Trash Lord</div>
-      <div class="persona-title">Certified League Villain</div>
+    <button class="tab" id="t-trash" onclick="go('trash')">
+      <div class="tab-icon">🔥</div>
+      <div class="tab-name">The Trash Lord</div>
+      <div class="tab-sub">Certified League Villain</div>
     </button>
   </div>
-  <div class="chat-area" id="chat">
-    <div class="greeting" id="greeting">
-      <div class="avatar avatar-oracle" id="greeting-avatar">🔮</div>
-      <div class="greeting-text oracle" id="greeting-text">I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.</div>
+  <div class="msgs" id="msgs">
+    <div class="greet">
+      <div class="av av-oracle" id="gav">🔮</div>
+      <div class="greet-txt oracle" id="gtxt">I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.</div>
     </div>
-    <div class="suggestions" id="suggestions">
-      <div class="suggestions-label">Try asking...</div>
-      <button class="suggestion-btn" onclick="sendMsg('Should I start or sit my RB this week?')">Should I start or sit my RB this week?</button>
-      <button class="suggestion-btn" onclick="sendMsg('Help me decide on a trade')">Help me decide on a trade</button>
-      <button class="suggestion-btn" onclick="sendMsg('Who should I pick up on waivers?')">Who should I pick up on waivers?</button>
-      <button class="suggestion-btn" onclick="sendMsg('Rate my team\'s chances this season')">Rate my team's chances this season</button>
-      <button class="suggestion-btn" onclick="sendMsg('Give me a hot take on my roster')">Give me a hot take on my roster</button>
+    <div id="suggs" class="suggs">
+      <button class="sugg" onclick="ask('Should I start or sit my RB this week?')">Should I start or sit my RB this week?</button>
+      <button class="sugg" onclick="ask('Help me decide on a trade')">Help me decide on a trade</button>
+      <button class="sugg" onclick="ask('Who should I pick up on waivers?')">Who should I pick up on waivers?</button>
+      <button class="sugg" onclick="ask('Rate my team chances this season')">Rate my team chances this season</button>
+      <button class="sugg" onclick="ask('Give me a hot take on my roster')">Give me a hot take on my roster</button>
     </div>
   </div>
-  <div class="input-area">
-    <div class="input-wrap oracle" id="input-wrap">
-      <textarea id="user-input" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="handleKey(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-      <button class="send-btn oracle" id="send-btn" onclick="sendMsg()">↑</button>
+  <div class="bot-area">
+    <div class="inp-box oracle" id="ibox">
+      <textarea id="inp" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <button class="send oracle" id="sbtn" onclick="ask()">↑</button>
     </div>
-    <div class="footer-text">The Inner Sanctum · Fantasy AI · Est. 1987</div>
+    <div class="foot">The Inner Sanctum - Fantasy AI - Est. 1987</div>
   </div>
 </div>
 <script>
-var PERSONAS = {
-  oracle: {
-    system: "You are The Oracle, a wise fantasy football sage with 38 years of experience. Speak with gravitas and wisdom. Reference legends like Jerry Rice and Barry Sanders. Use mystical language. Give concrete fantasy football advice in 3-5 sentences.",
-    greeting: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.",
-    placeholder: "Ask the Oracle for wisdom...",
-    emoji: "🔮"
-  },
-  trash: {
-    system: "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, savage but never mean. Use ALL CAPS for emphasis. Give real fantasy advice wrapped in bravado. Keep it to 3-5 sentences.",
-    greeting: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let us hear your sad little fantasy problem.",
-    placeholder: "Brace yourself for the truth...",
-    emoji: "🔥"
-  }
+var K = "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";
+var P = {
+  oracle: { sys: "You are The Oracle, a wise fantasy football sage with 38 years of experience. Speak with gravitas. Reference legends like Jerry Rice and Barry Sanders. Use mystical language. Give concrete fantasy football advice in 3-5 sentences.", greet: "I have watched 38 seasons come and go, witnessed dynasties rise and fall. Ask, and I shall illuminate your path to fantasy glory.", ph: "Ask the Oracle for wisdom...", em: "🔮" },
+  trash: { sys: "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, savage but never mean. Use ALL CAPS for emphasis. Give real fantasy advice in 3-5 sentences.", greet: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let us hear your sad little fantasy problem.", ph: "Brace yourself for the truth...", em: "🔥" }
 };
-var activePersona = "oracle";
-var messages = { oracle: [], trash: [] };
-var loading = false;
-function switchPersona(p) {
-activePersona = p;
-document.getElementById("btn-oracle").className = "persona-btn" + (p === "oracle" ? " oracle-active" : "");
-document.getElementById("btn-trash").className = "persona-btn" + (p === "trash" ? " trash-active" : "");
-document.getElementById("input-wrap").className = "input-wrap " + p;
-document.getElementById("send-btn").className = "send-btn " + p;
-document.getElementById("user-input").placeholder = PERSONAS[p].placeholder;
-document.getElementById("greeting-avatar").textContent = PERSONAS[p].emoji;
-document.getElementById("greeting-avatar").className = "avatar avatar-" + p;
-document.getElementById("greeting-text").textContent = PERSONAS[p].greeting;
-document.getElementById("greeting-text").className = "greeting-text " + p;
-renderMessages();
+var ap = "oracle";
+var hist = { oracle: [], trash: [] };
+var busy = false;
+function go(p) {
+  ap = p;
+  document.getElementById("t-oracle").className = "tab" + (p === "oracle" ? " on-oracle" : "");
+  document.getElementById("t-trash").className = "tab" + (p === "trash" ? " on-trash" : "");
+  document.getElementById("ibox").className = "inp-box " + p;
+  document.getElementById("sbtn").className = "send " + p;
+  document.getElementById("inp").placeholder = P[p].ph;
+  document.getElementById("gav").textContent = P[p].em;
+  document.getElementById("gav").className = "av av-" + p;
+  document.getElementById("gtxt").textContent = P[p].greet;
+  document.getElementById("gtxt").className = "greet-txt " + p;
+  draw();
 }
-function renderMessages() {
-var chat = document.getElementById("chat");
-var msgs = messages[activePersona];
-document.getElementById("suggestions").style.display = msgs.length > 0 ? "none" : "flex";
-var existing = chat.querySelectorAll(".message");
-for (var i = 0; i < existing.length; i++) { existing[i].remove(); }
-var loadEl = document.getElementById("loading-el");
-if (loadEl) { loadEl.remove(); }
-for (var j = 0; j < msgs.length; j++) {
-var msg = msgs[j];
-var div = document.createElement("div");
-div.className = "message " + msg.role;
-if (msg.role === "assistant") {
-div.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="bubble assistant">' + msg.content + '</div>';
-} else {
-div.innerHTML = '<div class="bubble user-' + activePersona + '">' + msg.content + '</div>';
+function draw() {
+  var m = document.getElementById("msgs");
+  var h = hist[ap];
+  document.getElementById("suggs").style.display = h.length > 0 ? "none" : "flex";
+  var old = m.querySelectorAll(".msg");
+  for (var i = 0; i < old.length; i++) { old[i].remove(); }
+  var ld = document.getElementById("ld");
+  if (ld) { ld.remove(); }
+  for (var j = 0; j < h.length; j++) {
+    var d = document.createElement("div");
+    d.className = "msg " + h[j].role;
+    if (h[j].role === "assistant") {
+      d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="bub bot">' + h[j].content + '</div>';
+    } else {
+      d.innerHTML = '<div class="bub u-' + ap + '">' + h[j].content + '</div>';
+    }
+    m.appendChild(d);
+  }
+  if (busy) {
+    var ld2 = document.createElement("div");
+    ld2.className = "msg assistant";
+    ld2.id = "ld";
+    ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div></div>';
+    m.appendChild(ld2);
+  }
+  m.scrollTop = m.scrollHeight;
 }
-chat.appendChild(div);
-}
-if (loading) {
-var ldiv = document.createElement("div");
-ldiv.className = "message assistant";
-ldiv.id = "loading-el";
-ldiv.innerHTML = '<div class="avatar avatar-' + activePersona + '">' + PERSONAS[activePersona].emoji + '</div><div class="loading-dots"><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div><div class="dot dot-' + activePersona + '"></div></div>';
-chat.appendChild(ldiv);
-}
-chat.scrollTop = chat.scrollHeight;
-}
-function sendMsg(text) {
-var input = document.getElementById("user-input");
-var msg = text || input.value.trim();
-if (!msg || loading) { return; }
-input.value = "";
-input.style.height = "auto";
-loading = true;
-messages[activePersona].push({ role: "user", content: msg });
-renderMessages();
-var payload = JSON.stringify({
-model: "claude-sonnet-4-20250514",
-max_tokens: 1000,
-system: PERSONAS[activePersona].system,
-messages: messages[activePersona]
-});
-fetch("https://corsproxy.io/?https://api.anthropic.com/v1/messages",
-method: "POST",
-headers: { "Content-Type": "application/json", "x-api-key": "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", "anthropic-version": "2023-06-01" },
-body: payload
-}).then(function(res) {
-return res.json();
-}).then(function(data) {
-var reply = "The spirits are silent. Try again.";
-if (data && data.content && data.content.length > 0) {
-reply = data.content[0].text;
-}
-messages[activePersona].push({ role: "assistant", content: reply });
-loading = false;
-renderMessages();
-}).catch(function(err) {
-messages[activePersona].push({ role: "assistant", content: "Error: " + err.message });
-loading = false;
-renderMessages();
-});
-}
-function handleKey(e) {
-if (e.key === "Enter" && !e.shiftKey) {
-e.preventDefault();
-sendMsg();
-}
+function ask(txt) {
+  var inp = document.getElementById("inp");
+  var q = txt || inp.value.trim();
+  if (!q || busy) { return; }
+  inp.value = "";
+  inp.style.height = "auto";
+  busy = true;
+  hist[ap].push({ role: "user", content: q });
+  draw();
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "https://corsproxy.io/?https://api.anthropic.com/v1/messages");
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.setRequestHeader("x-api-key", K);
+  xhr.setRequestHeader("anthropic-version", "2023-06-01");
+  xhr.onload = function() {
+    var reply = "The spirits are silent. Try again.";
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (data && data.content && data.content[0]) { reply = data.content[0].text; }
+    } catch(e) { reply = "Parse error: " + e.message; }
+    hist[ap].push({ role: "assistant", content: reply });
+    busy = false;
+    draw();
+  };
+  xhr.onerror = function() {
+    hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
+    busy = false;
+    draw();
+  };
+  xhr.send(JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: P[ap].sys, messages: hist[ap] }));
 }
 </script>
 </body>
