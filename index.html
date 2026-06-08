@@ -156,8 +156,7 @@ function ask(txt) {
   hist[ap].push({ role: "user", content: q });
   draw();
   var xhr = new XMLHttpRequest();
-  xhr.open("POST", "https://proxy.cors.sh/https://api.anthropic.com/v1/messages");
-  xhr.setRequestHeader("x-cors-api-key", "temp_placeholder");
+  xhr.open("POST", "https://api.anthropic.com/v1/messages");
   xhr.setRequestHeader("Content-Type", "application/json");
   xhr.setRequestHeader("x-api-key", K);
   xhr.setRequestHeader("anthropic-version", "2023-06-01");
