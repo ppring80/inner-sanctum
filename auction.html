@@ -646,18 +646,16 @@ function generateTPS() {
   }
 
   // Normalize to budget
-  var rawTotal = slots.reduce(function(a,s){ return a+s.val; }, 0);
-  var scale = budget / rawTotal;
-  var runningTotal = 0;
-  slots.forEach(function(s,i) {
-    if (i < slots.length - 1) {
-      s.val = Math.max(1, Math.round(s.val * scale));
-      runningTotal += s.val;
-    } else {
-      s.val = Math.max(1, budget - runningTotal);
-      runningTotal += s.val;
-    }
-  });
+ var rawTotal = slots.reduce(function(a,s){return a+s.val},0);
+var scale = budget/rawTotal;
+slots.forEach(function(s){
+  s.val = Math.max(1, Math.floor(s.val * scale));
+});
+var currentTotal = slots.reduce(function(a,s){return a+s.val},0);
+var remainder = budget - currentTotal;
+for(var r = 0; r < remainder; r++){
+  slots[r % slots.length].val += 1;
+}
   var diff = runningTotal - budget;
   if (diff !== 0) {
     slots[slots.length - 1].val = Math.max(1, slots[slots.length - 1].val - diff);
