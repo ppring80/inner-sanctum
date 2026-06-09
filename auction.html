@@ -314,8 +314,10 @@ function loadSleeperPlayers(){
     .then(function(data){
       allPlayers=[];
       Object.values(data).forEach(function(p){
-        if(!p.full_name||!p.active)return;
-        if(!['QB','RB','WR','TE','K'].includes(p.position))return;
+       if(!p.full_name)return;
+if(!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status))return;
+if(p.status==='Inactive'||p.status==='Retired')return;
+if(!['QB','RB','WR','TE','K'].includes(p.position))return;
         allPlayers.push({name:p.full_name,pos:p.position,team:p.team||'FA'});
       });
       allPlayers.sort(function(a,b){return a.name.localeCompare(b.name)});
