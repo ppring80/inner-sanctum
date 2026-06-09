@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +6,7 @@
 <title>The Inner Sanctum</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { min-height: 100vh; background: linear-gradient(160deg, #1e1410 0%, #261a14 50%, #2a1520 100%);
+body { min-height: 100vh; background: linear-gradient(160deg, #1e1410 0%, #261a14 50%, #2a1520 100%); display: flex; justify-content: center; }
 .wrap { width: 100%; max-width: 660px; display: flex; flex-direction: column; height: 100vh; }
 .top { padding: 20px 20px 0; text-align: center; }
 .top p { font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 6px; }
@@ -76,10 +75,10 @@ textarea:focus { outline: none; }
     </button>
   </div>
   <div style="text-align:center; margin: 4px 0;">
-  <button id="voiceBtn" onclick="toggleVoice()" style="background:transparent; border:1px solid #1a1a1a; border-radius:8px; color:#444; font-size:11px; padding:5px 14px; cursor:pointer; font-family:Georgia,serif;">
-    🔊 Voice On
-  </button>
-</div>
+    <button id="voiceBtn" onclick="toggleVoice()" style="background:transparent; border:1px solid #1a1a1a; border-radius:8px; color:#444; font-size:11px; padding:5px 14px; cursor:pointer; font-family:Georgia,serif;">
+      🔊 Voice On
+    </button>
+  </div>
   <div class="msgs" id="msgs">
     <div class="greet">
       <div class="av av-oracle" id="gav">🔮</div>
@@ -111,7 +110,6 @@ var ap = "oracle";
 var voiceOn = true;
 var hist = { oracle: [], trash: [] };
 var busy = false;
-var voiceOn = true;
 function go(p) {
   ap = p;
   document.getElementById("t-oracle").className = "tab" + (p === "oracle" ? " on-oracle" : "");
@@ -137,9 +135,9 @@ function draw() {
     var d = document.createElement("div");
     d.className = "msg " + h[j].role;
     if (h[j].role === "assistant") {
-      d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="bub bot">' + h[j].content + '</div>';
+      d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '<\/div><div class="bub bot">' + h[j].content + '<\/div>';
     } else {
-      d.innerHTML = '<div class="bub u-' + ap + '">' + h[j].content + '</div>';
+      d.innerHTML = '<div class="bub u-' + ap + '">' + h[j].content + '<\/div>';
     }
     m.appendChild(d);
   }
@@ -147,10 +145,33 @@ function draw() {
     var ld2 = document.createElement("div");
     ld2.className = "msg assistant";
     ld2.id = "ld";
-    ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div></div>';
+    ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '<\/div><div class="dots"><div class="dot dot-' + ap + '"><\/div><div class="dot dot-' + ap + '"><\/div><div class="dot dot-' + ap + '"><\/div><\/div>';
     m.appendChild(ld2);
   }
   m.scrollTop = m.scrollHeight;
+}
+function speak(reply) {
+  if (!voiceOn) return;
+  window.speechSynthesis.cancel();
+  var utterance = new SpeechSynthesisUtterance(reply);
+  if (ap === "oracle") {
+    utterance.rate = 0.8;
+    utterance.pitch = 0.6;
+    utterance.volume = 1;
+  } else {
+    utterance.rate = 1.3;
+    utterance.pitch = 1.4;
+    utterance.volume = 1;
+  }
+  window.speechSynthesis.speak(utterance);
+}
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  window.speechSynthesis.cancel();
+  var btn = document.getElementById("voiceBtn");
+  btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
+  btn.style.color = voiceOn ? "#c9a84c" : "#444";
+  btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.3)" : "#1a1a1a";
 }
 function ask(txt) {
   var inp = document.getElementById("inp");
@@ -166,7 +187,7 @@ function ask(txt) {
   xhr.setRequestHeader("Content-Type", "application/json");
   xhr.setRequestHeader("x-api-key", K);
   xhr.setRequestHeader("anthropic-version", "2023-06-01");
- xhr.onload = function() {
+  xhr.onload = function() {
     var reply = "The spirits are silent. Try again.";
     try {
       var data = JSON.parse(xhr.responseText);
@@ -175,47 +196,14 @@ function ask(txt) {
     hist[ap].push({ role: "assistant", content: reply });
     busy = false;
     draw();
-    if (voiceOn) {
-      window.speechSynthesis.cancel();
-      var utterance = new SpeechSynthesisUtterance(reply);
-      if (ap === "oracle") {
-        utterance.rate = 0.8;
-        utterance.pitch = 0.6;
-        utterance.volume = 1;
-      } else {
-        utterance.rate = 1.3;
-        utterance.pitch = 1.4;
-        utterance.volume = 1;
-      }
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+    speak(reply);
   };
   xhr.onerror = function() {
     hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
-    var utterance = new SpeechSynthesisUtterance(reply);
-if (ap === "oracle") {
-  utterance.rate = 0.8;
-  utterance.pitch = 0.6;
-  utterance.volume = 1;
-} else {
-  utterance.rate = 1.3;
-  utterance.pitch = 1.4;
-  utterance.volume = 1;
-}
-window.speechSynthesis.speak(utterance);
     busy = false;
     draw();
   };
   xhr.send(JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 1000, system: P[ap].sys, messages: hist[ap] }));
-}
-function toggleVoice() {
-  voiceOn = !voiceOn;
-  window.speechSynthesis.cancel();
-  var btn = document.getElementById("voiceBtn");
-  btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
-  btn.style.color = voiceOn ? "#c9a84c" : "#444";
-  btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.3)" : "#1a1a1a";
 }
 </script>
 </body>
