@@ -1,0 +1,842 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft Cheat Sheet — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ── BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --void: #090604;
+  --deep: #110b06;
+  --coal: #1a1108;
+  --char: #2a1e0e;
+  --warm: #3d2a12;
+  --gold: #c9a84c;
+  --amber: #e8960a;
+  --glow: #f5c842;
+  --cream: #f0e6cc;
+  --muted: #7a6a4a;
+  --dim: #4a3a22;
+  --green: #2d6a2d;
+  --green-bright: #4caf50;
+  --yellow: #8a6a00;
+  --yellow-bright: #ffc107;
+  --red: #8a2020;
+  --red-bright: #ff5252;
+  --blue: #1a4a6a;
+  --blue-bright: #64b5f6;
+  --radius: 6px;
+}
+
+body {
+  background: var(--void);
+  color: var(--cream);
+  font-family: 'Lora', Georgia, serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(180deg, #1a1108 0%, #0d0804 100%);
+  border-bottom: 1px solid var(--dim);
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left { display: flex; align-items: center; gap: 14px; }
+
+.sanctum-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.header h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cream);
+  letter-spacing: 1px;
+}
+
+.header-sub {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ── CONTROLS ── */
+.ctrl-row {
+  background: var(--deep);
+  border-bottom: 1px solid var(--dim);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ctrl-group { display: flex; align-items: center; gap: 8px; }
+
+.ctrl-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+select {
+  background: var(--coal);
+  border: 1px solid var(--dim);
+  color: var(--cream);
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a6a4a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+select:focus { outline: none; border-color: var(--gold); }
+
+.btn {
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  border: none;
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { opacity: 0.85; }
+.btn-gold { background: var(--gold); color: #0a0600; font-weight: 600; }
+.btn-outline { background: transparent; border: 1px solid var(--dim); color: var(--muted); }
+.btn-outline:hover { border-color: var(--gold); color: var(--cream); }
+.btn-print { background: var(--char); border: 1px solid var(--dim); color: var(--gold); }
+
+.divider { flex: 1; }
+
+/* ── SEARCH ── */
+.search-wrap {
+  padding: 12px 24px;
+  background: var(--deep);
+  border-bottom: 1px solid var(--dim);
+}
+
+.search-inner { position: relative; max-width: 360px; }
+
+.search-inner input {
+  width: 100%;
+  background: var(--coal);
+  border: 1px solid var(--dim);
+  color: var(--cream);
+  font-family: 'Lora', serif;
+  font-size: 14px;
+  padding: 8px 12px 8px 36px;
+  border-radius: var(--radius);
+}
+.search-inner input:focus { outline: none; border-color: var(--gold); }
+.search-inner input::placeholder { color: var(--muted); }
+
+.search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+/* ── STATUS BAR ── */
+.status-bar {
+  padding: 8px 24px;
+  background: var(--void);
+  border-bottom: 1px solid #1a1108;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+}
+.status-dot.live { background: var(--green-bright); box-shadow: 0 0 6px var(--green-bright); animation: pulse 2s infinite; }
+.status-dot.loading { background: var(--yellow-bright); animation: pulse 0.8s infinite; }
+.status-dot.error { background: var(--red-bright); }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── MAIN CONTENT ── */
+.main { padding: 20px 24px; }
+
+/* ── POSITION SECTION ── */
+.pos-section { margin-bottom: 28px; }
+
+.pos-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dim);
+}
+
+.pos-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+.pos-badge.QB { background: rgba(100,181,246,0.15); color: var(--blue-bright); border: 1px solid rgba(100,181,246,0.3); }
+.pos-badge.RB { background: rgba(76,175,80,0.15); color: var(--green-bright); border: 1px solid rgba(76,175,80,0.3); }
+.pos-badge.WR { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+.pos-badge.TE { background: rgba(232,150,10,0.15); color: var(--amber); border: 1px solid rgba(232,150,10,0.3); }
+.pos-badge.K  { background: rgba(122,106,74,0.15); color: var(--muted); border: 1px solid rgba(122,106,74,0.3); }
+.pos-badge.DEF{ background: rgba(138,32,32,0.15); color: var(--red-bright); border: 1px solid rgba(138,32,32,0.3); }
+
+.pos-title {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  color: var(--cream);
+  letter-spacing: 1px;
+}
+
+.pos-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  margin-left: auto;
+}
+
+/* ── PLAYER GRID ── */
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+
+/* ── PLAYER CARD ── */
+.player-card {
+  background: var(--coal);
+  border: 1px solid var(--char);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.player-card:hover { border-color: var(--warm); }
+.player-card.drafted { opacity: 0.35; }
+.player-card.hidden { display: none; }
+
+.player-rank {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.player-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cream);
+  padding-right: 28px;
+  line-height: 1.2;
+}
+
+.player-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.player-team {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.player-bye {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.player-bye span { color: var(--amber); }
+
+/* ── INJURY BADGE ── */
+.injury {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.injury.Out     { background: rgba(138,32,32,0.3); color: var(--red-bright); border: 1px solid rgba(255,82,82,0.3); }
+.injury.IR      { background: rgba(138,32,32,0.4); color: #ff1744; border: 1px solid rgba(255,23,68,0.4); }
+.injury.Doubtful{ background: rgba(138,80,20,0.3); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); }
+.injury.Questionable { background: rgba(138,110,0,0.3); color: var(--yellow-bright); border: 1px solid rgba(255,193,7,0.3); }
+.injury.PUP     { background: rgba(80,20,138,0.3); color: #ce93d8; border: 1px solid rgba(206,147,216,0.3); }
+.injury.Suspended { background: rgba(32,32,138,0.3); color: var(--blue-bright); border: 1px solid rgba(100,181,246,0.3); }
+
+/* ── DRAFT TOGGLE ── */
+.draft-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--char);
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: 'Lora', serif;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.draft-btn:hover { border-color: var(--warm); color: var(--muted); }
+.player-card.drafted .draft-btn { color: var(--red-bright); border-color: rgba(255,82,82,0.3); }
+
+/* ── ORACLE TIP ── */
+.oracle-tip {
+  background: rgba(201,168,76,0.06);
+  border-left: 2px solid var(--gold);
+  border-radius: 0 4px 4px 0;
+  padding: 6px 10px;
+  font-style: italic;
+  font-size: 11px;
+  color: rgba(240,230,180,0.6);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* ── LOADING / EMPTY ── */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  text-align: center;
+}
+
+.ember-ring {
+  width: 48px; height: 48px;
+  border: 2px solid var(--dim);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.error-screen {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  background: var(--deep);
+  border-top: 1px solid var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+
+/* ── PRINT STYLES ── */
+@media print {
+  body { background: #fff !important; color: #111 !important; font-size: 11px; }
+  .header { background: #fff !important; border-bottom: 2px solid #111; padding: 10px 16px; }
+  .header h1 { color: #111 !important; font-size: 18px; }
+  .sanctum-badge, .header-sub { color: #555 !important; }
+  .ctrl-row, .search-wrap, .status-bar, .legend, .btn-print, .draft-btn, .no-print { display: none !important; }
+  .main { padding: 12px 16px; }
+  .pos-section { margin-bottom: 16px; page-break-inside: avoid; }
+  .pos-header { border-bottom: 1px solid #ccc; }
+  .pos-title { color: #111 !important; font-size: 13px; }
+  .pos-badge.QB { background: #e3f2fd !important; color: #1565c0 !important; border-color: #90caf9 !important; }
+  .pos-badge.RB { background: #e8f5e9 !important; color: #2e7d32 !important; border-color: #a5d6a7 !important; }
+  .pos-badge.WR { background: #fffde7 !important; color: #f57f17 !important; border-color: #fff176 !important; }
+  .pos-badge.TE { background: #fff3e0 !important; color: #e65100 !important; border-color: #ffcc80 !important; }
+  .pos-badge.K  { background: #f5f5f5 !important; color: #555 !important; border-color: #ccc !important; }
+  .pos-badge.DEF{ background: #fce4ec !important; color: #c62828 !important; border-color: #ef9a9a !important; }
+  .player-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .player-card { background: #f9f9f9 !important; border: 1px solid #ddd !important; padding: 6px 8px; }
+  .player-card.drafted { display: none !important; }
+  .player-name { color: #111 !important; font-size: 12px; }
+  .player-team { color: #555 !important; }
+  .player-bye { color: #777 !important; }
+  .player-bye span { color: #c75000 !important; }
+  .player-rank { color: #aaa !important; }
+  .injury.Out, .injury.IR { background: #fce4ec !important; color: #c62828 !important; border-color: #ef9a9a !important; }
+  .injury.Questionable { background: #fffde7 !important; color: #f57f17 !important; border-color: #fff176 !important; }
+  .injury.Doubtful { background: #fff3e0 !important; color: #e65100 !important; border-color: #ffcc80 !important; }
+  .injury.PUP { background: #f3e5f5 !important; color: #6a1b9a !important; border-color: #ce93d8 !important; }
+  .oracle-tip { border-left-color: #c9a84c !important; color: #555 !important; background: #fffdf0 !important; font-size: 10px; }
+  .pos-count { color: #aaa !important; }
+  .print-header-note { display: block !important; }
+}
+
+.print-header-note {
+  display: none;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <span class="sanctum-badge">The Inner Sanctum</span>
+      <h1>Draft Cheat Sheet</h1>
+      <div class="header-sub">2025 Fantasy Football Season</div>
+      <div class="print-header-note">Printed from theinnersanctum.xyz · Data: Sleeper API</div>
+    </div>
+  </div>
+  <div class="header-right no-print">
+    <button class="btn btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
+    <a href="/" style="color:var(--muted);font-size:12px;text-decoration:none;">← Back to Sanctum</a>
+  </div>
+</div>
+
+<div class="ctrl-row no-print">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Scoring</span>
+    <select id="scoring" onchange="applySettings()">
+      <option value="ppr">PPR</option>
+      <option value="half_ppr">Half PPR</option>
+      <option value="standard">Standard</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Teams</span>
+    <select id="teams" onchange="applySettings()">
+      <option value="10">10</option>
+      <option value="12" selected>12</option>
+      <option value="14">14</option>
+      <option value="8">8</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Show</span>
+    <select id="perpos" onchange="renderPlayers()">
+      <option value="20">Top 20 per position</option>
+      <option value="15">Top 15</option>
+      <option value="30">Top 30</option>
+      <option value="999">All</option>
+    </select>
+  </div>
+  <div class="divider"></div>
+  <button class="btn btn-gold no-print" onclick="clearDrafted()">Clear Drafted</button>
+  <button class="btn btn-outline no-print" onclick="loadData()">↻ Refresh Data</button>
+</div>
+
+<div class="search-wrap no-print">
+  <div class="search-inner">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="Search player name or team..." oninput="filterPlayers(this.value)">
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot loading" id="statusDot"></span><span id="statusText">Loading player data...</span></span>
+  <span id="statusTime"></span>
+</div>
+
+<div class="main" id="main">
+  <div class="loading-screen" id="loadingScreen">
+    <div class="ember-ring"></div>
+    <div class="loading-text">The Oracle consults the scrolls...</div>
+  </div>
+</div>
+
+<div class="legend no-print">
+  <span style="color:var(--gold);font-size:11px;letter-spacing:1px;">LEGEND</span>
+  <span class="legend-item"><span class="injury Out">OUT</span> Out this week</span>
+  <span class="legend-item"><span class="injury IR">IR</span> Injured reserve</span>
+  <span class="legend-item"><span class="injury Doubtful">DOUBT</span> Doubtful</span>
+  <span class="legend-item"><span class="injury Questionable">Q</span> Questionable</span>
+  <span class="legend-item"><span class="injury PUP">PUP</span> PUP list</span>
+  <span class="legend-item"><span class="injury Suspended">SUSP</span> Suspended</span>
+  <span class="legend-item" style="margin-left:8px;">Click a player card to mark as drafted</span>
+</div>
+
+<script>
+// ── ADP DATA (2025 consensus, PPR 12-team baseline) ──
+// Rank = overall PPR ADP. Adjusted by scoring in applySettings().
+const ADP = {
+  // QBs
+  "lamar-jackson": {r:34,n:"Lamar Jackson",t:"BAL",pos:"QB",bye:14},
+  "josh-allen": {r:6,n:"Josh Allen",t:"BUF",pos:"QB",bye:12},
+  "jalen-hurts": {r:18,n:"Jalen Hurts",t:"PHI",pos:"QB",bye:5},
+  "jayden-daniels": {r:28,n:"Jayden Daniels",t:"WSH",pos:"QB",bye:14},
+  "patrick-mahomes": {r:40,n:"Patrick Mahomes",t:"KC",pos:"QB",bye:10},
+  "joe-burrow": {r:45,n:"Joe Burrow",t:"CIN",pos:"QB",bye:12},
+  "dak-prescott": {r:68,n:"Dak Prescott",t:"DAL",pos:"QB",bye:7},
+  "sam-darnold": {r:80,n:"Sam Darnold",t:"MIN",pos:"QB",bye:6},
+  "tua-tagovailoa": {r:92,n:"Tua Tagovailoa",t:"MIA",pos:"QB",bye:10},
+  "bo-nix": {r:98,n:"Bo Nix",t:"DEN",pos:"QB",bye:9},
+  "brock-purdy": {r:102,n:"Brock Purdy",t:"SF",pos:"QB",bye:9},
+  "jordan-love": {r:110,n:"Jordan Love",t:"GB",pos:"QB",bye:5},
+  // RBs
+  "saquon-barkley": {r:2,n:"Saquon Barkley",t:"PHI",pos:"RB",bye:5},
+  "breece-hall": {r:7,n:"Breece Hall",t:"NYJ",pos:"RB",bye:12},
+  "de-von-achane": {r:8,n:"De'Von Achane",t:"MIA",pos:"RB",bye:10},
+  "jahmyr-gibbs": {r:10,n:"Jahmyr Gibbs",t:"DET",pos:"RB",bye:5},
+  "josh-jacobs": {r:14,n:"Josh Jacobs",t:"GB",pos:"RB",bye:5},
+  "jonathan-taylor": {r:16,n:"Jonathan Taylor",t:"IND",pos:"RB",bye:14},
+  "isaiah-pacheco": {r:22,n:"Isaiah Pacheco",t:"KC",pos:"RB",bye:10},
+  "kyren-williams": {r:24,n:"Kyren Williams",t:"LAR",pos:"RB",bye:6},
+  "derrick-henry": {r:26,n:"Derrick Henry",t:"BAL",pos:"RB",bye:14},
+  "travis-etienne": {r:30,n:"Travis Etienne",t:"JAC",pos:"RB",bye:11},
+  "joe-mixon": {r:36,n:"Joe Mixon",t:"HOU",pos:"RB",bye:14},
+  "tony-pollard": {r:42,n:"Tony Pollard",t:"TEN",pos:"RB",bye:5},
+  "james-cook": {r:46,n:"James Cook",t:"BUF",pos:"RB",bye:12},
+  "aaron-jones": {r:52,n:"Aaron Jones",t:"MIN",pos:"RB",bye:6},
+  "rhamondre-stevenson": {r:60,n:"Rhamondre Stevenson",t:"NE",pos:"RB",bye:14},
+  "gus-edwards": {r:72,n:"Gus Edwards",t:"LAC",pos:"RB",bye:5},
+  "zack-moss": {r:76,n:"Zack Moss",t:"CIN",pos:"RB",bye:12},
+  "james-conner": {r:82,n:"James Conner",t:"ARI",pos:"RB",bye:11},
+  "chuba-hubbard": {r:86,n:"Chuba Hubbard",t:"CAR",pos:"RB",bye:11},
+  "david-montgomery": {r:88,n:"David Montgomery",t:"DET",pos:"RB",bye:5},
+  // WRs
+  "ceedee-lamb": {r:1,n:"CeeDee Lamb",t:"DAL",pos:"WR",bye:7},
+  "justin-jefferson": {r:3,n:"Justin Jefferson",t:"MIN",pos:"WR",bye:6},
+  "ja-marr-chase": {r:4,n:"Ja'Marr Chase",t:"CIN",pos:"WR",bye:12},
+  "tyreek-hill": {r:5,n:"Tyreek Hill",t:"MIA",pos:"WR",bye:10},
+  "amon-ra-st-brown": {r:9,n:"Amon-Ra St. Brown",t:"DET",pos:"WR",bye:5},
+  "davante-adams": {r:12,n:"Davante Adams",t:"NYJ",pos:"WR",bye:12},
+  "stefon-diggs": {r:20,n:"Stefon Diggs",t:"HOU",pos:"WR",bye:14},
+  "deebo-samuel": {r:32,n:"Deebo Samuel",t:"SF",pos:"WR",bye:9},
+  "puka-nacua": {r:38,n:"Puka Nacua",t:"LAR",pos:"WR",bye:6},
+  "drake-london": {r:44,n:"Drake London",t:"ATL",pos:"WR",bye:12},
+  "mike-evans": {r:48,n:"Mike Evans",t:"TB",pos:"WR",bye:11},
+  "chris-olave": {r:54,n:"Chris Olave",t:"NO",pos:"WR",bye:12},
+  "tank-dell": {r:56,n:"Tank Dell",t:"HOU",pos:"WR",bye:14},
+  "rashee-rice": {r:58,n:"Rashee Rice",t:"KC",pos:"WR",bye:10},
+  "keenan-allen": {r:64,n:"Keenan Allen",t:"CHI",pos:"WR",bye:7},
+  "calvin-ridley": {r:66,n:"Calvin Ridley",t:"TEN",pos:"WR",bye:5},
+  "terry-mclaurin": {r:70,n:"Terry McLaurin",t:"WSH",pos:"WR",bye:14},
+  "courtland-sutton": {r:74,n:"Courtland Sutton",t:"DEN",pos:"WR",bye:9},
+  "gabe-davis": {r:78,n:"Gabe Davis",t:"JAC",pos:"WR",bye:11},
+  "adam-thielen": {r:84,n:"Adam Thielen",t:"CAR",pos:"WR",bye:11},
+  "tee-higgins": {r:13,n:"Tee Higgins",t:"CIN",pos:"WR",bye:12},
+  "brandon-aiyuk": {r:15,n:"Brandon Aiyuk",t:"SF",pos:"WR",bye:9},
+  // TEs
+  "sam-laporta": {r:11,n:"Sam LaPorta",t:"DET",pos:"TE",bye:5},
+  "travis-kelce": {r:17,n:"Travis Kelce",t:"KC",pos:"TE",bye:10},
+  "trey-mcbride": {r:19,n:"Trey McBride",t:"ARI",pos:"TE",bye:11},
+  "brock-bowers": {r:21,n:"Brock Bowers",t:"LV",pos:"TE",bye:8},
+  "mark-andrews": {r:35,n:"Mark Andrews",t:"BAL",pos:"TE",bye:14},
+  "jake-ferguson": {r:50,n:"Jake Ferguson",t:"DAL",pos:"TE",bye:7},
+  "pat-freiermuth": {r:62,n:"Pat Freiermuth",t:"PIT",pos:"TE",bye:9},
+  "dalton-kincaid": {r:90,n:"Dalton Kincaid",t:"BUF",pos:"TE",bye:12},
+  "cole-kmet": {r:96,n:"Cole Kmet",t:"CHI",pos:"TE",bye:7},
+  "david-njoku": {r:100,n:"David Njoku",t:"CLE",pos:"TE",bye:10},
+  // Ks
+  "justin-tucker": {r:160,n:"Justin Tucker",t:"BAL",pos:"K",bye:14},
+  "tyler-bass": {r:162,n:"Tyler Bass",t:"BUF",pos:"K",bye:12},
+  "brandon-aubrey": {r:164,n:"Brandon Aubrey",t:"DAL",pos:"K",bye:7},
+  "harrison-butker": {r:166,n:"Harrison Butker",t:"KC",pos:"K",bye:10},
+  "jake-moody": {r:168,n:"Jake Moody",t:"SF",pos:"K",bye:9},
+  // DEFs
+  "sf-def": {r:140,n:"San Francisco 49ers",t:"SF",pos:"DEF",bye:9},
+  "dal-def": {r:142,n:"Dallas Cowboys",t:"DAL",pos:"DEF",bye:7},
+  "bal-def": {r:144,n:"Baltimore Ravens",t:"BAL",pos:"DEF",bye:14},
+  "buf-def": {r:146,n:"Buffalo Bills",t:"BUF",pos:"DEF",bye:12},
+  "pit-def": {r:148,n:"Pittsburgh Steelers",t:"PIT",pos:"DEF",bye:9},
+  "kc-def":  {r:150,n:"Kansas City Chiefs",t:"KC",pos:"DEF",bye:10},
+  "phi-def": {r:152,n:"Philadelphia Eagles",t:"PHI",pos:"DEF",bye:5},
+  "cle-def": {r:154,n:"Cleveland Browns",t:"CLE",pos:"DEF",bye:10},
+};
+
+// Oracle wisdom per position
+const ORACLE_TIPS = {
+  QB: "The spirits whisper: in PPR, let your brethren exhaust themselves on quarterbacks early. The difference between QB8 and QB16 is but a few points. Take two elite receivers first — then claim your signal-caller in rounds 7-9.",
+  RB: "Running backs are the currency of champions. The elite tier vanishes by pick 20. After the top eight, the dropoff is severe. Secure two workhorse backs before Round 5, or risk a season of committee despair.",
+  WR: "Receivers are plentiful yet treacherous. The top six are cornerstones of dynasties. Beyond rank 20, injuries and target share shifts make every selection a leap of faith. Seek the young and the healthy.",
+  TE: "Two tiers exist at tight end: the transcendent few, and the replaceable many. If Bowers, Kelce, or McBride escape you in the first three rounds, pivot — streaming tight end is a viable path to glory.",
+  K: "The Oracle has watched kickers cost champions their crowns. Draft last. Always. The variance between kickers is whisper-thin. Use that roster spot for depth at positions that matter.",
+  DEF: "Defense is the final puzzle piece. The best defense in August may be the worst by October. Draft in the final two rounds, then stream matchups weekly. Handcuffing a defense is folly.",
+};
+
+// Injury data from Sleeper (we'll try to fetch; fallback to empty)
+let injuryData = {};
+let drafted = JSON.parse(localStorage.getItem('is_drafted') || '{}');
+let currentSearch = '';
+let scoringMode = 'ppr';
+let teamCount = 12;
+let perPos = 20;
+
+// ── FETCH SLEEPER INJURY DATA ──
+async function loadData() {
+  setStatus('loading', 'Consulting the Sleeper oracle...');
+  try {
+    const res = await fetch('https://api.sleeper.app/v1/players/nfl');
+    if (!res.ok) throw new Error('Sleeper API error');
+    const players = await res.json();
+
+    // Extract injury info for our players by matching names
+    injuryData = {};
+    Object.values(players).forEach(p => {
+      if (!p.full_name || !p.position) return;
+      const key = p.full_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      if (p.injury_status || p.status) {
+        injuryData[key] = {
+          injury_status: p.injury_status || null,
+          status: p.status || null,
+          injury_body_part: p.injury_body_part || null,
+        };
+        // Also try matching by name fragments
+        const nameKey = (p.first_name + '-' + p.last_name).toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        injuryData[nameKey] = injuryData[key];
+      }
+    });
+
+    const now = new Date();
+    setStatus('live', `Live · ${Object.keys(players).length.toLocaleString()} players loaded`);
+    document.getElementById('statusTime').textContent = `Updated ${now.toLocaleTimeString()}`;
+    renderPlayers();
+  } catch(e) {
+    setStatus('error', 'Could not reach Sleeper — showing cached rankings');
+    renderPlayers();
+  }
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ── SETTINGS ──
+function applySettings() {
+  scoringMode = document.getElementById('scoring').value;
+  teamCount = parseInt(document.getElementById('teams').value);
+  renderPlayers();
+}
+
+// ── SCORING ADJUSTMENT ──
+function adjustedRank(key, player) {
+  let r = player.r;
+  if (scoringMode === 'standard') {
+    if (player.pos === 'WR') r += 4;
+    if (player.pos === 'RB') r -= 3;
+    if (player.pos === 'TE') r += 2;
+  } else if (scoringMode === 'half_ppr') {
+    if (player.pos === 'WR') r += 2;
+    if (player.pos === 'RB') r -= 1;
+  }
+  return r;
+}
+
+// ── RENDER ──
+function renderPlayers() {
+  perPos = parseInt(document.getElementById('perpos').value);
+  const main = document.getElementById('main');
+  const positions = ['QB','RB','WR','TE','K','DEF'];
+
+  // Group and sort players
+  const byPos = {};
+  positions.forEach(p => byPos[p] = []);
+
+  Object.entries(ADP).forEach(([key, player]) => {
+    byPos[player.pos].push({ key, ...player, adjRank: adjustedRank(key, player) });
+  });
+
+  positions.forEach(p => byPos[p].sort((a,b) => a.adjRank - b.adjRank));
+
+  main.innerHTML = '';
+
+  positions.forEach(pos => {
+    const players = byPos[pos].slice(0, perPos);
+    const section = document.createElement('div');
+    section.className = 'pos-section';
+    section.dataset.pos = pos;
+
+    const visibleCount = players.filter(p => !p.key.includes('hidden')).length;
+
+    section.innerHTML = `
+      <div class="pos-header">
+        <span class="pos-badge ${pos}">${pos}</span>
+        <span class="pos-title">${posName(pos)}</span>
+        <span class="pos-count">${players.length} players</span>
+      </div>
+      <div class="oracle-tip">🔮 ${ORACLE_TIPS[pos]}</div>
+      <div class="player-grid" id="grid-${pos}" style="margin-top:8px;"></div>
+    `;
+
+    main.appendChild(section);
+
+    const grid = section.querySelector(`#grid-${pos}`);
+    players.forEach((player, idx) => {
+      grid.appendChild(makeCard(player, idx + 1));
+    });
+  });
+
+  filterPlayers(currentSearch);
+}
+
+function posName(p) {
+  return {QB:'Quarterbacks',RB:'Running Backs',WR:'Wide Receivers',TE:'Tight Ends',K:'Kickers',DEF:'Team Defenses'}[p];
+}
+
+function makeCard(player, posRank) {
+  const div = document.createElement('div');
+  div.className = 'player-card' + (drafted[player.key] ? ' drafted' : '');
+  div.id = 'card-' + player.key;
+  div.dataset.name = player.n.toLowerCase();
+  div.dataset.team = player.t.toLowerCase();
+
+  const injInfo = getInjury(player.key, player.n);
+  const injHtml = injInfo ? `<div class="injury ${injInfo.cls}">${injInfo.icon} ${injInfo.label}${injInfo.part ? ' · ' + injInfo.part : ''}</div>` : '';
+
+  div.innerHTML = `
+    <span class="player-rank">#${posRank}</span>
+    <div class="player-name">${player.n}</div>
+    <div class="player-meta">
+      <span class="player-team">${player.t}</span>
+      <span class="player-bye">BYE <span>${player.bye}</span></span>
+    </div>
+    ${injHtml}
+    <button class="draft-btn no-print" onclick="toggleDrafted('${player.key}', this)">
+      ${drafted[player.key] ? '✗ Drafted — click to undo' : '+ Mark as drafted'}
+    </button>
+  `;
+
+  return div;
+}
+
+function getInjury(key, name) {
+  // Try multiple key formats against Sleeper data
+  const nameKey = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+  const data = injuryData[key] || injuryData[nameKey];
+
+  if (!data) return null;
+
+  const status = data.injury_status || data.status;
+  if (!status || status === 'Active') return null;
+
+  const map = {
+    'Out': { cls:'Out', icon:'🔴', label:'OUT' },
+    'IR': { cls:'IR', icon:'🚨', label:'IR' },
+    'Doubtful': { cls:'Doubtful', icon:'🟠', label:'DOUBTFUL' },
+    'Questionable': { cls:'Questionable', icon:'🟡', label:'QUESTIONABLE' },
+    'PUP': { cls:'PUP', icon:'🟣', label:'PUP' },
+    'Suspended': { cls:'Suspended', icon:'🔵', label:'SUSPENDED' },
+    'DNR': { cls:'Out', icon:'🔴', label:'DNR' },
+  };
+
+  return { ...(map[status] || { cls:'Questionable', icon:'⚠️', label: status }), part: data.injury_body_part };
+}
+
+// ── DRAFTED TOGGLE ──
+function toggleDrafted(key, btn) {
+  drafted[key] = !drafted[key];
+  localStorage.setItem('is_drafted', JSON.stringify(drafted));
+  const card = document.getElementById('card-' + key);
+  card.classList.toggle('drafted', drafted[key]);
+  btn.textContent = drafted[key] ? '✗ Drafted — click to undo' : '+ Mark as drafted';
+}
+
+function clearDrafted() {
+  drafted = {};
+  localStorage.setItem('is_drafted', JSON.stringify(drafted));
+  document.querySelectorAll('.player-card.drafted').forEach(c => {
+    c.classList.remove('drafted');
+    const btn = c.querySelector('.draft-btn');
+    if (btn) btn.textContent = '+ Mark as drafted';
+  });
+}
+
+// ── SEARCH ──
+function filterPlayers(query) {
+  currentSearch = query.toLowerCase();
+  document.querySelectorAll('.player-card').forEach(card => {
+    if (!currentSearch) { card.classList.remove('hidden'); return; }
+    const match = card.dataset.name.includes(currentSearch) || card.dataset.team.includes(currentSearch);
+    card.classList.toggle('hidden', !match);
+  });
+  // Hide empty sections
+  document.querySelectorAll('.pos-section').forEach(sec => {
+    const visible = sec.querySelectorAll('.player-card:not(.hidden)').length;
+    sec.style.display = visible === 0 && currentSearch ? 'none' : '';
+  });
+}
+
+// ── INIT ──
+loadData();
+</script>
+</body>
+</html>
