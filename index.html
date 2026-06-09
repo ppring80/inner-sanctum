@@ -75,6 +75,11 @@ textarea:focus { outline: none; }
       <div class="tab-sub">Certified League Villain</div>
     </button>
   </div>
+  <div style="text-align:center; margin: 4px 0;">
+  <button id="voiceBtn" onclick="toggleVoice()" style="background:transparent; border:1px solid #1a1a1a; border-radius:8px; color:#444; font-size:11px; padding:5px 14px; cursor:pointer; font-family:Georgia,serif;">
+    🔊 Voice On
+  </button>
+</div>
   <div class="msgs" id="msgs">
     <div class="greet">
       <div class="av av-oracle" id="gav">🔮</div>
@@ -105,6 +110,7 @@ var P = {
 var ap = "oracle";
 var hist = { oracle: [], trash: [] };
 var busy = false;
+var voiceOn = true;
 function go(p) {
   ap = p;
   document.getElementById("t-oracle").className = "tab" + (p === "oracle" ? " on-oracle" : "");
@@ -159,7 +165,7 @@ function ask(txt) {
   xhr.setRequestHeader("Content-Type", "application/json");
   xhr.setRequestHeader("x-api-key", K);
   xhr.setRequestHeader("anthropic-version", "2023-06-01");
-  xhr.onload = function() {
+ xhr.onload = function() {
     var reply = "The spirits are silent. Try again.";
     try {
       var data = JSON.parse(xhr.responseText);
@@ -168,6 +174,21 @@ function ask(txt) {
     hist[ap].push({ role: "assistant", content: reply });
     busy = false;
     draw();
+    if (voiceOn) {
+      window.speechSynthesis.cancel();
+      var utterance = new SpeechSynthesisUtterance(reply);
+      if (ap === "oracle") {
+        utterance.rate = 0.8;
+        utterance.pitch = 0.6;
+        utterance.volume = 1;
+      } else {
+        utterance.rate = 1.3;
+        utterance.pitch = 1.4;
+        utterance.volume = 1;
+      }
+      window.speechSynthesis.speak(utterance);
+    }
+  };
   };
   xhr.onerror = function() {
     hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
