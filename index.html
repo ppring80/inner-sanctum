@@ -208,6 +208,16 @@ window.speechSynthesis.speak(utterance);
   };
   xhr.send(JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 1000, system: P[ap].sys, messages: hist[ap] }));
 }
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  window.speechSynthesis.cancel();
+  var btn = document.getElementById("voiceBtn");
+  btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
+  btn.style.color = voiceOn ? "#c9a84c" : "#444";
+  btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.3)" : "#1a1a1a";
+}
+var voiceOn = true;
+  
 </script>
 </body>
 </html>
