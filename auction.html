@@ -655,8 +655,13 @@ function generateTPS() {
       runningTotal += s.val;
     } else {
       s.val = Math.max(1, budget - runningTotal);
+      runningTotal += s.val;
     }
   });
+  var diff = runningTotal - budget;
+  if (diff !== 0) {
+    slots[slots.length - 1].val = Math.max(1, slots[slots.length - 1].val - diff);
+  }
 
   // Render
   var grid = document.getElementById('tpsGrid');
