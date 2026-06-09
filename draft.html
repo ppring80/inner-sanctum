@@ -353,7 +353,7 @@ async function loadAll(){
     });
     dataLoaded=true;
     setStatus('live','Live ADP · Injuries updated · '+new Date().toLocaleTimeString());
-    document.getElementById('statusTime').textContent='');
+   document.getElementById('statusTime').textContent='Updated '+new Date().toLocaleTimeString();
     renderAll();
   }catch(e){
     setStatus('error','Data load failed — '+e.message);
