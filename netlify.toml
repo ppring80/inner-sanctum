@@ -4,3 +4,8 @@
 
 [context.production]
   environment = { SECRETS_SCAN_ENABLED = "false" }
+
+[[redirects]]
+  from = "/landing"
+  to = "/landing.html"
+  status = 200
