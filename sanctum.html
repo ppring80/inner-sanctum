@@ -339,8 +339,17 @@ function draw() {
     var ld2 = document.createElement("div");
     ld2.className = "msg assistant";
     ld2.id = "ld";
-    ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div></div>';
+    var loadMsgs = {
+  oracle: ["The Oracle consults the ancient scrolls...", "38 seasons of wisdom awakening...", "The spirits are gathering data...", "Visions becoming clear..."],
+  trash: ["Trash Lord pulling up the injury report to destroy you with...", "Finding new ways to roast your lineup...", "Scanning the waiver wire for your failures...", "Preparing an absolutely brutal take..."],
+  analyst: ["Scanning injury reports...", "Cross-referencing target share data...", "Pulling this week's snap counts...", "Running matchup projections..."]
+};
+var msgs2 = loadMsgs[ap];
+var loadTxt = msgs2[Math.floor(Math.random() * msgs2.length)];
+ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><span style="margin-left:8px;font-size:12px;color:#555;font-family:Georgia,serif;font-style:italic;">' + loadTxt + '</span></div>';
     m.appendChild(ld2);
+  }
+  
   }
   m.scrollTop = m.scrollHeight;
 }
