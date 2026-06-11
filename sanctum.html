@@ -358,8 +358,16 @@ function speak(reply) {
   window.speechSynthesis.cancel();
   var utterance = new SpeechSynthesisUtterance(reply);
   var voices = window.speechSynthesis.getVoices();
-  if (ap === "oracle") {
-    var preferred = ["Google UK English Male", "Microsoft George", "Microsoft David", "Alex", "Daniel"];
+ if (ap === "oracle") {
+    var voice = voices.find(function(v) {
+      return v.name === "Daniel" ||
+             v.name === "Google UK English Male" ||
+             v.name === "Alex";
+    });
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.78;
+    utterance.pitch = 0.3;
+    utterance.volume = 1;
     var voice = null;
     for (var i = 0; i < preferred.length; i++) {
       voice = voices.find(function(v) { return v.name === preferred[i]; });
