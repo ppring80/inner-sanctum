@@ -6,102 +6,414 @@
 <title>The Inner Sanctum</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { min-height: 100vh; background: linear-gradient(160deg, #1e1410 0%, #261a14 50%, #2a1520 100%); display: flex; justify-content: center; }
-.wrap { width: 100%; max-width: 660px; display: flex; flex-direction: column; height: 100vh; }
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #1a0f08 0%, #221208 40%, #261018 100%);
+  display: flex;
+  justify-content: center;
+  font-family: Georgia, serif;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
 
 /* NAV */
-.nav { display: flex; gap: 8px; padding: 10px 20px; background: #080604; border-bottom: 1px solid #111; justify-content: center; }
-.nav a { flex: 1; max-width: 220px; padding: 8px 14px; background: transparent; border: 1px solid rgba(201,168,76,0.3); border-radius: 8px; color: #c9a84c; font-size: 11px; font-family: Georgia, serif; text-align: center; text-decoration: none; display: block; letter-spacing: 2px; text-transform: uppercase; transition: all 0.2s; }
-.nav a:hover { background: rgba(201,168,76,0.1); border-color: #c9a84c; }
+.nav {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(0,0,0,0.5);
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+  justify-content: center;
+}
+.nav a {
+  flex: 1;
+  max-width: 200px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 8px;
+  color: #c9a84c;
+  font-size: 11px;
+  font-family: Georgia, serif;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.nav a:hover {
+  background: rgba(201,168,76,0.1);
+  border-color: #c9a84c;
+}
 
-/* TOP */
-.top { padding: 16px 20px 0; text-align: center; }
-.top p { font-size: 10px; letter-spacing: 5px; color: #c9a84c; text-transform: uppercase; margin-bottom: 6px; }
-.top h1 { font-size: 26px; color: #e8d5a3; margin-bottom: 4px; }
-.top small { font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; display: block; margin-bottom: 12px; }
+/* TOP — bigger, bolder */
+.top {
+  padding: 20px 20px 0;
+  text-align: center;
+}
+.top-eyebrow {
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: #c9a84c;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+.top h1 {
+  font-size: 42px;
+  color: #f0e0b0;
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 40px rgba(201,168,76,0.3);
+  font-weight: normal;
+}
+.top-sub {
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: #5a4a30;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 16px;
+}
 
 /* SLEEPER CONNECT */
-.sleeper-bar { padding: 8px 20px; background: rgba(0,0,0,0.3); border-bottom: 1px solid #111; }
-.sleeper-inner { display: flex; align-items: center; gap: 8px; max-width: 620px; margin: 0 auto; }
-.sleeper-label { font-size: 10px; letter-spacing: 2px; color: #444; text-transform: uppercase; font-family: Georgia, serif; white-space: nowrap; }
-.sleeper-input { flex: 1; background: #0a0a0a; border: 1px solid #1a1a1a; color: #ddd; font-size: 12px; font-family: Georgia, serif; padding: 5px 10px; border-radius: 6px; }
-.sleeper-input:focus { outline: none; border-color: rgba(201,168,76,0.4); }
-.sleeper-input::placeholder { color: #333; }
-.sleeper-btn { padding: 5px 14px; background: transparent; border: 1px solid rgba(201,168,76,0.3); border-radius: 6px; color: #c9a84c; font-size: 11px; font-family: Georgia, serif; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-.sleeper-btn:hover { background: rgba(201,168,76,0.1); }
-.sleeper-status { font-size: 10px; color: #4caf50; font-family: Georgia, serif; white-space: nowrap; display: none; }
+.sleeper-bar {
+  padding: 10px 20px;
+  background: rgba(0,0,0,0.25);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.sleeper-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+.sleeper-label {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: #c9a84c;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sleeper-input {
+  flex: 1;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #f0e0c0;
+  font-size: 14px;
+  font-family: Georgia, serif;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.sleeper-input:focus {
+  outline: none;
+  border-color: rgba(201,168,76,0.5);
+}
+.sleeper-input::placeholder { color: #9a8060; }
+.sleeper-btn {
+  padding: 10px 22px;
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.5);
+  border-radius: 8px;
+  color: #c9a84c;
+  font-size: 14px;
+  font-family: Georgia, serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.sleeper-btn:hover { background: rgba(201,168,76,0.2); border-color: #c9a84c; }
+.sleeper-status {
+  font-size: 11px;
+  color: #4caf50;
+  white-space: nowrap;
+  display: none;
+}
 .sleeper-status.error { color: #ff5252; }
 
-/* TABS */
-.tabs { display: flex; gap: 8px; padding: 10px 20px 0; margin-bottom: 4px; }
-.tab { flex: 1; padding: 9px 10px; border-radius: 10px; border: 2px solid #1a1a1a; background: #0e0e0e; color: #444; cursor: pointer; text-align: left; font-family: Georgia, serif; transition: all 0.2s; }
-.tab.on-oracle { border-color: #c9a84c; background: rgba(201,168,76,0.08); color: #c9a84c; }
-.tab.on-trash { border-color: #ff4444; background: rgba(255,68,68,0.08); color: #ff4444; }
-.tab.on-analyst { border-color: #64b5f6; background: rgba(100,181,246,0.08); color: #64b5f6; }
-.tab-icon { font-size: 18px; margin-bottom: 2px; }
-.tab-name { font-size: 12px; font-weight: bold; }
-.tab-sub { font-size: 9px; opacity: 0.6; }
+/* PERSONA TABS — larger, more presence */
+.tabs {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px 0;
+  margin-bottom: 6px;
+}
+.tab {
+  flex: 1;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.3);
+  color: #4a4040;
+  cursor: pointer;
+  text-align: left;
+  font-family: Georgia, serif;
+  transition: all 0.25s;
+}
+.tab:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.12);
+}
+.tab.on-oracle {
+  border-color: #c9a84c;
+  background: rgba(201,168,76,0.1);
+  color: #c9a84c;
+  box-shadow: 0 0 20px rgba(201,168,76,0.1);
+}
+.tab.on-trash {
+  border-color: #ff4444;
+  background: rgba(255,68,68,0.1);
+  color: #ff6666;
+  box-shadow: 0 0 20px rgba(255,68,68,0.1);
+}
+.tab.on-analyst {
+  border-color: #64b5f6;
+  background: rgba(100,181,246,0.1);
+  color: #64b5f6;
+  box-shadow: 0 0 20px rgba(100,181,246,0.1);
+}
+.tab-icon { font-size: 26px; margin-bottom: 6px; }
+.tab-name { font-size: 14px; font-weight: bold; letter-spacing: 0.5px; }
+.tab-sub { font-size: 10px; opacity: 0.55; margin-top: 2px; letter-spacing: 1px; }
 
 /* VOICE BTN */
-.voice-wrap { text-align: center; margin: 4px 0; }
-.voice-btn { background: transparent; border: 1px solid #1a1a1a; border-radius: 8px; color: #444; font-size: 11px; padding: 5px 14px; cursor: pointer; font-family: Georgia, serif; }
+.voice-wrap { text-align: center; margin: 6px 0 2px; }
+.voice-btn {
+  background: rgba(201,168,76,0.1);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 10px;
+  color: #c9a84c;
+  font-size: 15px;
+  padding: 10px 28px;
+  cursor: pointer;
+  font-family: Georgia, serif;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.voice-btn:hover { background: rgba(201,168,76,0.2); border-color: #c9a84c; }
 
 /* MSGS */
-.msgs { flex: 1; overflow-y: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
-.greet { display: flex; gap: 8px; align-items: flex-start; }
-.av { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.av-oracle { background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); }
-.av-trash { background: rgba(255,68,68,0.15); border: 1px solid rgba(255,68,68,0.4); }
-.av-analyst { background: rgba(100,181,246,0.15); border: 1px solid rgba(100,181,246,0.4); }
-.greet-txt { background: #0e0e0e; border-radius: 4px 12px 12px 12px; padding: 10px 14px; font-style: italic; font-size: 14px; line-height: 1.6; color: rgba(240,230,204,0.7); max-width: 85%; }
-.greet-txt.oracle { border: 1px solid rgba(201,168,76,0.2); }
-.greet-txt.trash { border: 1px solid rgba(255,68,68,0.2); }
-.greet-txt.analyst { border: 1px solid rgba(100,181,246,0.2); font-style: normal; font-family: 'Courier New', monospace; font-size: 13px; }
-.suggs { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
-.sugg { background: transparent; border: 1px solid #1a1a1a; border-radius: 7px; padding: 7px 12px; color: #444; font-size: 13px; font-family: Georgia, serif; text-align: left; cursor: pointer; transition: all 0.2s; }
-.sugg:hover { border-color: rgba(201,168,76,0.3); color: #888; }
-.msg { display: flex; gap: 8px; align-items: flex-start; }
+.msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.msgs::-webkit-scrollbar { width: 4px; }
+.msgs::-webkit-scrollbar-track { background: transparent; }
+.msgs::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+
+.greet { display: flex; gap: 10px; align-items: flex-start; }
+.av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.av-oracle { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.35); }
+.av-trash  { background: rgba(255,68,68,0.12);  border: 1px solid rgba(255,68,68,0.35); }
+.av-analyst{ background: rgba(100,181,246,0.12);border: 1px solid rgba(100,181,246,0.35);}
+
+.greet-txt {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 16px;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(240,225,190,0.75);
+  max-width: 88%;
+}
+.greet-txt.oracle  { border: 1px solid rgba(201,168,76,0.2); }
+.greet-txt.trash   { border: 1px solid rgba(255,68,68,0.2); }
+.greet-txt.analyst {
+  border: 1px solid rgba(100,181,246,0.2);
+  font-style: normal;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+/* SUGGESTION BUTTONS */
+.suggs { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.sugg {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #8a7860;
+  font-size: 15px;
+  font-family: Georgia, serif;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sugg:hover {
+  border-color: rgba(201,168,76,0.35);
+  color: #c9a87a;
+  background: rgba(201,168,76,0.07);
+}
+
+/* CHAT BUBBLES */
+.msg { display: flex; gap: 10px; align-items: flex-start; }
 .msg.user { flex-direction: row-reverse; }
-.bub { max-width: 80%; padding: 10px 14px; font-size: 14px; line-height: 1.6; border-radius: 4px 12px 12px 12px; }
-.bub.bot { background: #0e0e0e; border: 1px solid #1a1a1a; color: #ccc; }
-.bub.bot.analyst-bub { font-family: 'Courier New', monospace; font-size: 13px; border-color: rgba(100,181,246,0.2); }
-.bub.u-oracle { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); color: #e0d0a0; border-radius: 12px 4px 12px 12px; }
-.bub.u-trash { background: rgba(255,68,68,0.12); border: 1px solid rgba(255,68,68,0.25); color: #ffaaaa; border-radius: 12px 4px 12px 12px; }
-.bub.u-analyst { background: rgba(100,181,246,0.12); border: 1px solid rgba(100,181,246,0.25); color: #b3d9ff; border-radius: 12px 4px 12px 12px; }
-.dots { display: flex; gap: 4px; align-items: center; padding: 12px 16px; background: #0e0e0e; border: 1px solid #1a1a1a; border-radius: 4px 12px 12px 12px; }
-.dot { width: 5px; height: 5px; border-radius: 50%; animation: db 1.2s infinite; }
-.dot-oracle { background: #c9a84c; }
-.dot-trash { background: #ff4444; }
+.bub {
+  max-width: 82%;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.65;
+  border-radius: 4px 14px 14px 14px;
+}
+.bub.bot {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d0c0a0;
+}
+.bub.bot.analyst-bub {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  border-color: rgba(100,181,246,0.2);
+  color: #a0c8e8;
+}
+.bub.u-oracle {
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.25);
+  color: #e8d8a8;
+  border-radius: 14px 4px 14px 14px;
+}
+.bub.u-trash {
+  background: rgba(255,68,68,0.12);
+  border: 1px solid rgba(255,68,68,0.25);
+  color: #ffbbbb;
+  border-radius: 14px 4px 14px 14px;
+}
+.bub.u-analyst {
+  background: rgba(100,181,246,0.12);
+  border: 1px solid rgba(100,181,246,0.25);
+  color: #b8d8f8;
+  border-radius: 14px 4px 14px 14px;
+}
+
+/* LOADING DOTS */
+.dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px 14px 14px 14px;
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; animation: db 1.2s infinite; }
+.dot-oracle  { background: #c9a84c; }
+.dot-trash   { background: #ff4444; }
 .dot-analyst { background: #64b5f6; }
 .dot:nth-child(2) { animation-delay: 0.2s; }
 .dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* ROSTER BANNER */
-.roster-banner { margin: 4px 20px; padding: 8px 12px; background: rgba(100,181,246,0.06); border: 1px solid rgba(100,181,246,0.2); border-radius: 8px; font-size: 11px; color: #64b5f6; font-family: Georgia, serif; display: none; }
+.roster-banner {
+  margin: 4px 20px;
+  padding: 10px 14px;
+  background: rgba(100,181,246,0.06);
+  border: 1px solid rgba(100,181,246,0.18);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #64b5f6;
+  display: none;
+}
 .roster-banner.show { display: block; }
-.roster-players { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.roster-pill { background: rgba(100,181,246,0.1); border: 1px solid rgba(100,181,246,0.2); border-radius: 4px; padding: 2px 7px; font-size: 10px; color: #90caf9; }
+.roster-players { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.roster-pill {
+  background: rgba(100,181,246,0.1);
+  border: 1px solid rgba(100,181,246,0.2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #90caf9;
+}
 
-/* INPUT */
-.bot-area { padding: 10px 20px 20px; border-top: 1px solid #111; }
-.inp-box { display: flex; gap: 8px; align-items: flex-end; background: #0a0a0a; border-radius: 12px; padding: 8px 10px; }
-.inp-box.oracle { border: 1px solid rgba(201,168,76,0.3); }
-.inp-box.trash { border: 1px solid rgba(255,68,68,0.3); }
-.inp-box.analyst { border: 1px solid rgba(100,181,246,0.3); }
-textarea { flex: 1; background: transparent; border: none; color: #ddd; font-size: 14px; font-family: Georgia, serif; padding: 2px 4px; resize: none; max-height: 80px; }
+/* INPUT AREA */
+.bot-area {
+  padding: 10px 20px 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.inp-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  background: rgba(0,0,0,0.35);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.inp-box.oracle  { border: 1px solid rgba(201,168,76,0.35); }
+.inp-box.trash   { border: 1px solid rgba(255,68,68,0.35); }
+.inp-box.analyst { border: 1px solid rgba(100,181,246,0.35); }
+
+textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #e0d0b0;
+  font-size: 15px;
+  font-family: Georgia, serif;
+  padding: 2px 4px;
+  resize: none;
+  max-height: 100px;
+}
 textarea:focus { outline: none; }
-.send { width: 32px; height: 32px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
-.send.oracle { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
-.send.trash { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+textarea::placeholder { color: #3a3028; }
+
+.send {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.send:hover { opacity: 0.85; }
+.send.oracle  { background: linear-gradient(135deg, #c9a84c, #8b6914); color: #000; }
+.send.trash   { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
 .send.analyst { background: linear-gradient(135deg, #64b5f6, #1a5280); color: #fff; }
-.foot { text-align: center; font-size: 9px; letter-spacing: 2px; color: #1a1a1a; margin-top: 6px; text-transform: uppercase; }
-@keyframes db { 0%,100%{opacity:.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-3px)} }
+
+.foot {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #2a2018;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+@keyframes db {
+  0%,100% { opacity:.3; transform:translateY(0); }
+  50%      { opacity:1;  transform:translateY(-4px); }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
+
   <!-- NAV -->
-<div class="nav">
+  <div class="nav">
     <a href="/">🏠 Home</a>
     <a href="/draft">📋 Draft Cheat Sheet</a>
     <a href="/auction">⚔️ Auction War Room</a>
@@ -109,9 +421,9 @@ textarea:focus { outline: none; }
 
   <!-- TOP -->
   <div class="top">
-    <p>Fantasy Football AI</p>
+    <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
-    <small>Choose your counsel wisely</small>
+    <span class="top-sub">Choose your counsel wisely</span>
   </div>
 
   <!-- SLEEPER CONNECT -->
@@ -172,7 +484,7 @@ textarea:focus { outline: none; }
   <!-- INPUT -->
   <div class="bot-area">
     <div class="inp-box oracle" id="ibox">
-      <textarea id="inp" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <textarea id="inp" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
       <button class="send oracle" id="sbtn" onclick="ask()">↑</button>
     </div>
     <div class="foot">The Inner Sanctum · Fantasy AI · Est. 1987</div>
@@ -180,7 +492,6 @@ textarea:focus { outline: none; }
 </div>
 
 <script>
-
 var rosterContext = '';
 var sleeperConnected = false;
 
@@ -207,7 +518,6 @@ var voiceOn = true;
 var hist = { oracle: [], trash: [], analyst: [] };
 var busy = false;
 
-// SLEEPER CONNECTION
 async function connectSleeper() {
   var username = document.getElementById('sleeperUser').value.trim();
   if (!username) return;
@@ -217,70 +527,45 @@ async function connectSleeper() {
   status.style.display = 'inline';
   status.className = 'sleeper-status';
   status.textContent = '⏳ Connecting...';
-
   try {
-    // Get user
     var userRes = await fetch('https://api.sleeper.app/v1/user/' + username);
     if (!userRes.ok) throw new Error('User not found');
     var user = await userRes.json();
     if (!user || !user.user_id) throw new Error('User not found');
-
-    // Get leagues for 2025
     var leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2025');
     var leagues = await leaguesRes.json();
-
     if (!leagues || leagues.length === 0) {
-      // Try 2024
       leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2024');
       leagues = await leaguesRes.json();
     }
-
     if (!leagues || leagues.length === 0) throw new Error('No leagues found');
-
-    // Use first league
     var league = leagues[0];
     var leagueId = league.league_id;
-
-    // Get rosters
     var rostersRes = await fetch('https://api.sleeper.app/v1/league/' + leagueId + '/rosters');
     var rosters = await rostersRes.json();
-
-    // Get players
     var playersRes = await fetch('https://api.sleeper.app/v1/players/nfl');
     var allPlayers = await playersRes.json();
-
-    // Find user's roster
     var myRoster = rosters.find(function(r) { return r.owner_id === user.user_id; });
     if (!myRoster) throw new Error('Roster not found');
-
     var playerIds = (myRoster.players || []).slice(0, 20);
     var playerNames = playerIds.map(function(id) {
       var p = allPlayers[id];
       return p ? (p.full_name + ' (' + (p.position || '?') + ' - ' + (p.team || 'FA') + ')') : null;
     }).filter(Boolean);
-
-    // Build context
     rosterContext = 'The user\'s Sleeper username is ' + username + '. Their league is "' + (league.name || 'their league') + '" (' + (league.settings && league.settings.num_teams ? league.settings.num_teams : '?') + ' teams, ' + (league.scoring_settings && league.scoring_settings.rec ? 'PPR' : 'Standard') + '). Their current roster: ' + playerNames.join(', ') + '. Use this roster context to give highly personalized advice when relevant.';
     sleeperConnected = true;
-
-    // Update UI
     status.className = 'sleeper-status';
     status.textContent = '✓ ' + username + ' connected · ' + league.name;
     btn.textContent = 'Connected';
     btn.style.color = '#4caf50';
     btn.style.borderColor = 'rgba(76,175,80,0.4)';
-
-    // Show roster banner
     var banner = document.getElementById('rosterBanner');
     var pills = document.getElementById('rosterPills');
     banner.classList.add('show');
     pills.innerHTML = playerNames.slice(0, 10).map(function(n) {
       return '<span class="roster-pill">' + n + '</span>';
     }).join('');
-
-    // Update system prompts with roster context
     updateSystemPrompts();
-
   } catch(e) {
     status.className = 'sleeper-status error';
     status.textContent = '✗ ' + e.message;
@@ -299,12 +584,11 @@ function getSystemPrompt(persona) {
   return (sleeperConnected && P[persona].sysWithRoster) ? P[persona].sysWithRoster : P[persona].sys;
 }
 
-// PERSONA SWITCH
 function go(p) {
   ap = p;
   document.getElementById("t-oracle").className = "tab" + (p === "oracle" ? " on-oracle" : "");
-  document.getElementById("t-trash").className = "tab" + (p === "trash" ? " on-trash" : "");
-  document.getElementById("t-analyst").className = "tab" + (p === "analyst" ? " on-analyst" : "");
+  document.getElementById("t-trash").className  = "tab" + (p === "trash"  ? " on-trash"  : "");
+  document.getElementById("t-analyst").className= "tab" + (p === "analyst"? " on-analyst": "");
   document.getElementById("ibox").className = "inp-box " + p;
   document.getElementById("sbtn").className = "send " + p;
   document.getElementById("inp").placeholder = P[p].ph;
@@ -315,7 +599,6 @@ function go(p) {
   draw();
 }
 
-// DRAW MESSAGES
 function draw() {
   var m = document.getElementById("msgs");
   var h = hist[ap];
@@ -340,69 +623,51 @@ function draw() {
     ld2.className = "msg assistant";
     ld2.id = "ld";
     var loadMsgs = {
-  oracle: ["The Oracle consults the ancient scrolls...", "38 seasons of wisdom awakening...", "The spirits are gathering data...", "Visions becoming clear..."],
-  trash: ["Trash Lord pulling up the injury report to destroy you with...", "Finding new ways to roast your lineup...", "Scanning the waiver wire for your failures...", "Preparing an absolutely brutal take..."],
-  analyst: ["Scanning injury reports...", "Cross-referencing target share data...", "Pulling this week's snap counts...", "Running matchup projections..."]
-};
-var msgs2 = loadMsgs[ap];
-var loadTxt = msgs2[Math.floor(Math.random() * msgs2.length)];
-ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><span style="margin-left:8px;font-size:12px;color:#555;font-family:Georgia,serif;font-style:italic;">' + loadTxt + '</span></div>';
+      oracle:  ["The Oracle consults the ancient scrolls...", "38 seasons of wisdom awakening...", "The spirits are gathering data...", "Visions becoming clear..."],
+      trash:   ["Trash Lord pulling up the injury report to destroy you with...", "Finding new ways to roast your lineup...", "Scanning the waiver wire for your failures...", "Preparing an absolutely brutal take..."],
+      analyst: ["Scanning injury reports...", "Cross-referencing target share data...", "Pulling this week's snap counts...", "Running matchup projections..."]
+    };
+    var loadTxt = loadMsgs[ap][Math.floor(Math.random() * loadMsgs[ap].length)];
+    ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="dots"><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><div class="dot dot-' + ap + '"></div><span style="margin-left:10px;font-size:12px;color:#555;font-family:Georgia,serif;font-style:italic;">' + loadTxt + '</span></div>';
     m.appendChild(ld2);
   }
   m.scrollTop = m.scrollHeight;
 }
 
-// SPEAK
 function speak(reply) {
   if (!voiceOn) return;
   window.speechSynthesis.cancel();
-
   function doSpeak() {
     var voices = window.speechSynthesis.getVoices();
-    if (!voices || voices.length === 0) {
-      setTimeout(doSpeak, 100);
-      return;
-    }
+    if (!voices || voices.length === 0) { setTimeout(doSpeak, 100); return; }
     var utterance = new SpeechSynthesisUtterance(reply);
-
     if (ap === "oracle") {
-      var voice = voices.find(function(v) {
-        return v.name === "Daniel" ||
-               v.name === "Google UK English Male" ||
-               v.name === "Alex";
-      });
+      var voice = voices.find(function(v) { return v.name === "Daniel" || v.name === "Google UK English Male" || v.name === "Alex"; });
       if (voice) utterance.voice = voice;
       utterance.rate = 0.78; utterance.pitch = 0.3; utterance.volume = 1;
     } else if (ap === "trash") {
-     var voice2 = voices.find(function(v) {
-          return v.name === "Junior" ||
-                 v.name === "Fred" ||
-                 v.name === "Ralph";
-        });
-        if (voice2) utterance.voice = voice2;
-        utterance.rate = 1.2; utterance.pitch = 1.2; utterance.volume = 1;
+      var voice2 = voices.find(function(v) { return v.name === "Junior" || v.name === "Fred" || v.name === "Ralph"; });
+      if (voice2) utterance.voice = voice2;
+      utterance.rate = 1.2; utterance.pitch = 1.2; utterance.volume = 1;
     } else {
-      var voice3 = voices.find(function(v) {
-        return v.name === "Daniel" || v.name === "Alex";
-      });
+      var voice3 = voices.find(function(v) { return v.name === "Daniel" || v.name === "Alex"; });
       if (voice3) utterance.voice = voice3;
       utterance.rate = 1.0; utterance.pitch = 0.8; utterance.volume = 1;
     }
     window.speechSynthesis.speak(utterance);
   }
-
   doSpeak();
 }
+
 function toggleVoice() {
   voiceOn = !voiceOn;
   window.speechSynthesis.cancel();
   var btn = document.getElementById("voiceBtn");
   btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
   btn.style.color = voiceOn ? "#c9a84c" : "#444";
-  btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.3)" : "#1a1a1a";
+  btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)";
 }
 
-// ASK
 function ask(txt) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
@@ -435,7 +700,6 @@ function ask(txt) {
   }));
 }
 
-// Allow Enter to connect Sleeper
 document.getElementById('sleeperUser').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') connectSleeper();
 });
