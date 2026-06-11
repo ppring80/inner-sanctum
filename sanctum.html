@@ -356,45 +356,43 @@ ld2.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class=
 function speak(reply) {
   if (!voiceOn) return;
   window.speechSynthesis.cancel();
-  var utterance = new SpeechSynthesisUtterance(reply);
-  var voices = window.speechSynthesis.getVoices();
- if (ap === "oracle") {
-    var voice = voices.find(function(v) {
-      return v.name === "Daniel" ||
-             v.name === "Google UK English Male" ||
-             v.name === "Alex";
-    });
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.78;
-    utterance.pitch = 0.3;
-    utterance.volume = 1;
-    var voice = null;
-    for (var i = 0; i < preferred.length; i++) {
-      voice = voices.find(function(v) { return v.name === preferred[i]; });
-      if (voice) break;
-    }
-    if (!voice) voice = voices.find(function(v) { return v.lang.startsWith("en") && v.name.toLowerCase().includes("male"); });
-    if (voice) utterance.voice = voice;
-    utterance.rate = 0.75; utterance.pitch = 0.4; utterance.volume = 1;
- } else if (ap === "trash") {
-    var voice2 = voices.find(function(v) {
-      return v.name.includes("Zarvox") ||
-             v.name.includes("Trinoids") ||
-             v.name.includes("Bad News") ||
-             v.name.includes("Bahh") ||
-             v.name.includes("Google US English");
-    });
-    if (voice2) utterance.voice = voice2;
-    utterance.rate = 1.25; utterance.pitch = 1.8; utterance.volume = 1;
-  } else {
-    // Analyst — flat, robotic, clear
-    var voice3 = voices.find(function(v) { return v.name === "Google UK English Male" || v.name === "Alex"; });
-    if (voice3) utterance.voice = voice3;
-    utterance.rate = 1.0; utterance.pitch = 0.8; utterance.volume = 1;
-  }
-  window.speechSynthesis.speak(utterance);
-}
 
+  function doSpeak() {
+    var voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) {
+      setTimeout(doSpeak, 100);
+      return;
+    }
+    var utterance = new SpeechSynthesisUtterance(reply);
+
+    if (ap === "oracle") {
+      var voice = voices.find(function(v) {
+        return v.name === "Daniel" ||
+               v.name === "Google UK English Male" ||
+               v.name === "Alex";
+      });
+      if (voice) utterance.voice = voice;
+      utterance.rate = 0.78; utterance.pitch = 0.3; utterance.volume = 1;
+    } else if (ap === "trash") {
+      var voice2 = voices.find(function(v) {
+        return v.name === "Tom" ||
+               v.name === "Fred" ||
+               v.name === "Alex";
+      });
+      if (voice2) utterance.voice = voice2;
+      utterance.rate = 1.25; utterance.pitch = 1.1; utterance.volume = 1;
+    } else {
+      var voice3 = voices.find(function(v) {
+        return v.name === "Daniel" || v.name === "Alex";
+      });
+      if (voice3) utterance.voice = voice3;
+      utterance.rate = 1.0; utterance.pitch = 0.8; utterance.volume = 1;
+    }
+    window.speechSynthesis.speak(utterance);
+  }
+
+  doSpeak();
+}
 function toggleVoice() {
   voiceOn = !voiceOn;
   window.speechSynthesis.cancel();
