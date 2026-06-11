@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dark background circle -->
+  <circle cx="32" cy="32" r="32" fill="#1a0f08"/>
+  
+  <!-- Outer gold ring -->
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#c9a84c" stroke-width="1.5" opacity="0.6"/>
+  
+  <!-- Crystal ball base -->
+  <ellipse cx="32" cy="52" rx="10" ry="3" fill="#8b6914" opacity="0.5"/>
+  <rect x="29" y="46" width="6" height="6" rx="1" fill="#8b6914" opacity="0.6"/>
+  
+  <!-- Crystal ball glow -->
+  <circle cx="32" cy="32" r="18" fill="url(#ballGrad)"/>
+  
+  <!-- Inner shimmer -->
+  <circle cx="27" cy="26" r="5" fill="white" opacity="0.12"/>
+  <circle cx="25" cy="24" r="2" fill="white" opacity="0.18"/>
+  
+  <!-- Mystic swirl -->
+  <path d="M26 32 Q32 24 38 32 Q32 40 26 32" fill="none" stroke="#c9a84c" stroke-width="1" opacity="0.5"/>
+
+  <defs>
+    <radialGradient id="ballGrad" cx="40%" cy="35%">
+      <stop offset="0%" stop-color="#4a2060"/>
+      <stop offset="50%" stop-color="#2a1040"/>
+      <stop offset="100%" stop-color="#1a0820"/>
+    </radialGradient>
+  </defs>
+</svg>
