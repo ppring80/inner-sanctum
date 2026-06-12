@@ -530,8 +530,8 @@ function updateTrackerStats(){
   var mySpent=log.filter(function(p){return p.team===myTeam}).reduce(function(a,p){return a+p.price},0);
   var myLeft=state.budget-mySpent;
   var avg=log.length>0?Math.round(totalSpent/log.length):0;
-  var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudget/(n*15)))*100-100):0;
-  var inflationPct=Math.min(100,Math.round((totalSpent/totalMarketBudget)*100));
+  var totalRosterSpots = state.roster.QB + state.roster.RB + state.roster.WR + state.roster.TE + state.roster.FLEX + state.roster.K + state.roster.DEF + state.roster.BENCH;
+var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudget/(n*totalRosterSpots)))*100-100):0;
   document.getElementById('playersDrafted').textContent=log.length;
   document.getElementById('avgPricePaid').textContent=log.length>0?'$'+avg:'—';
   document.getElementById('inflationVal').textContent=(inflation>=0?'+':'')+inflation+'%';
