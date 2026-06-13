@@ -538,10 +538,11 @@ var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudge
   var budgetEl=document.getElementById('myBudgetLeft');
   budgetEl.textContent='$'+myLeft;
   budgetEl.className='tracker-stat-val '+(myLeft>state.budget*0.5?'good':myLeft>state.budget*0.25?'warn':'danger');
-  var fill=document.getElementById('inflationFill');
-  fill.style.width=inflationPct+'%';
-  fill.style.background=inflationPct<40?'var(--green)':inflationPct<70?'var(--amber)':'var(--red)';
-  document.getElementById('inflationPct').textContent=inflationPct+'% of total market budget committed';
+  var inflationPct=Math.min(100,Math.round((totalSpent/totalMarketBudget)*100));
+var fill=document.getElementById('inflationFill');
+fill.style.width=inflationPct+'%';
+fill.style.background=inflationPct<40?'var(--green)':inflationPct<70?'var(--amber)':'var(--red)';
+document.getElementById('inflationPct').textContent=inflationPct+'% of total market budget committed';
 }
 
 function renderDraftLog(){
