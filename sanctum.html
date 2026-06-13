@@ -489,7 +489,7 @@ textarea::placeholder { color: #3a3028; }
       <textarea id="inp" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
       <button class="send oracle" id="sbtn" onclick="ask()">↑</button>
     </div>
-    <div class="foot">The Inner Sanctum · Fantasy AI · Est. 1987</div>
+    <div class="foot">The Inner Sanctum · Fantasy AI · Est. 2026</div>
   </div>
 </div>
 
@@ -695,7 +695,7 @@ function ask(txt) {
     busy = false; draw();
   };
   xhr.send(JSON.stringify({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 1000,
     system: getSystemPrompt(ap),
     messages: hist[ap]
