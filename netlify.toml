@@ -9,3 +9,8 @@
   from = "/landing"
   to = "/theinnersanctum.xyz/landing.html"
   status = 200
+
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Content-Type = "image/svg+xml"
