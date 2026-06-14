@@ -126,16 +126,6 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
 .team-players{font-size:10px;color:var(--dim);line-height:1.6}
 .section-divider{border:none;border-top:1px solid var(--char);margin:20px 0}
 .readonly-field{color:var(--gold) !important;cursor:default !important}
-@media print{
-  .hdr,.steps,.btn-row,.draft-entry,.no-print{display:none!important}
-  body{background:#fff;color:#111}
-  .tps-slot{background:#f9f9f9;border:1px solid #ddd}
-  .tps-slot-val{color:#c9a84c}
-  .tps-slot-label,.tps-slot-pos{color:#555}
-  .oracle-guidance{border-left-color:#c9a84c;background:#fffdf0}
-  .oracle-guidance-text{color:#555}
-  .panel-title{color:#111}
-}
 /* HOW TO USE HELP PANEL */
 .help-panel{background:#fffbf0;border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
 .help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
@@ -154,12 +144,23 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
 .help-pro-tip-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:#2a6e2a;text-transform:uppercase;margin-bottom:6px}
 .help-pro-tip-text{font-size:13px;color:#2a3a2a;line-height:1.6}
 .help-strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px}
-.help-strategy-pill{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:10px 12px;font-size:11px;color:#1c1c1a;line-height:1.5}
+.help-strategy-pill{background:var(--deep);border:1px solid var(--char);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--cream);line-height:1.5}
 .help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
 .league-warning{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.4);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:none}
 .league-warning.show{display:block}
 .league-warning-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px}
-.league-warning-text{font-size:13px;color:#4a4a46;line-height:1.6}</style>
+.league-warning-text{font-size:13px;color:#4a4a46;line-height:1.6}
+@media print{
+  .hdr,.steps,.btn-row,.draft-entry,.no-print{display:none!important}
+  body{background:#fff;color:#111}
+  .tps-slot{background:#f9f9f9;border:1px solid #ddd}
+  .tps-slot-val{color:#c9a84c}
+  .tps-slot-label,.tps-slot-pos{color:#555}
+  .oracle-guidance{border-left-color:#c9a84c;background:#fffdf0}
+  .oracle-guidance-text{color:#555}
+  .panel-title{color:#111}
+}
+</style>
 </head>
 <body>
 
@@ -194,6 +195,7 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
     <div class="form-group"><label>Auction Budget ($)</label><input type="number" id="budget" value="200" min="50" max="1000"/></div>
     <div class="form-group"><label>Scoring Format</label><select id="scoring"><option value="ppr">PPR (1pt per reception)</option><option value="half">Half PPR (0.5pt)</option><option value="standard">Standard (no bonus)</option></select></div>
     <div class="form-group"><label>League Type</label><select id="leagueType"><option value="redraft">Redraft</option><option value="keeper">Keeper</option><option value="dynasty">Dynasty</option></select></div>
+    <div class="form-group"><label>League Format</label><select id="leagueFormat"><option value="standard">Standard (1 QB)</option><option value="superflex">Superflex / 2QB</option></select></div>
     <div class="form-group"><label>Platform</label><select id="platform"><option value="sleeper">Sleeper</option><option value="yahoo">Yahoo</option><option value="espn">ESPN</option><option value="custom">Custom/Other</option></select></div>
   </div>
   <hr class="section-divider">
@@ -247,6 +249,70 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
       <button class="btn btn-gold" onclick="goStep(5)">Start Live Draft →</button>
     </div>
   </div>
+
+  <!-- LEAGUE FORMAT WARNING -->
+  <div class="league-warning" id="leagueWarning">
+    <div class="league-warning-label">⚠️ League Format Detected</div>
+    <div class="league-warning-text" id="leagueWarningText"></div>
+  </div>
+
+  <!-- HOW TO USE HELP PANEL -->
+  <div class="help-panel no-print">
+    <button class="help-toggle" id="helpToggle" onclick="toggleHelp()">
+      🔮 How to Use Your Target Price Sheet — The Oracle's Guide
+      <span class="help-toggle-icon">▼</span>
+    </button>
+    <div class="help-body" id="helpBody">
+
+      <div class="help-section">
+        <div class="help-section-title">What These Numbers Mean</div>
+        <div class="help-rule"><span class="help-rule-icon">📌</span>Each dollar amount is your <strong>maximum recommended spend</strong> for that position slot.</div>
+        <div class="help-rule"><span class="help-rule-icon">⚖️</span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</div>
+        <div class="help-rule"><span class="help-rule-icon">📊</span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</div>
+      </div>
+
+      <div class="help-callout">
+        "Your Target Price Sheet is a guardrail — not a rulebook. It is your starting position, not your finish line."
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">The Most Important Rule of Auction Drafts</div>
+        <div class="help-callout" style="font-size:15px;text-align:center;font-style:normal;font-weight:600">
+          The auction has a rhythm. Your job is to read the room and pivot.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">How to Use Your Sheet During the Draft</div>
+        <div class="help-rule"><span class="help-rule-icon">💰</span><span><strong>If a player goes cheap</strong> — bank the savings and spend more on the next position.</span></div>
+        <div class="help-rule"><span class="help-rule-icon">🔥</span><span><strong>If a player goes expensive</strong> — protect your remaining budget, let rivals overpay.</span></div>
+        <div class="help-rule"><span class="help-rule-icon">📈</span><span><strong>Watch inflation</strong> — when the room overpays early, remaining values shift upward.</span></div>
+        <div class="help-rule"><span class="help-rule-icon">🔄</span><span><strong>Switch sheets when the room tells you to</strong> — that's not weakness, that's winning.</span></div>
+        <div class="help-rule"><span class="help-rule-icon">❤️</span><span><strong>Never fall in love with a number</strong> — the sheet guides you, the draft decides.</span></div>
+      </div>
+
+      <div class="help-pro-tip">
+        <div class="help-pro-tip-label">⭐ Pro Strategy — Print Multiple Par Sheets</div>
+        <div class="help-pro-tip-text">The smartest auction drafters walk into the room with <strong>2-3 target price sheets</strong> — one for each strategy. Generate a sheet for your primary strategy, a pivot strategy, and a backup. If elite RBs go cheap early, switch to your RB Heavy sheet instantly. If QBs are flying off the board, your QB Heavy sheet is ready. The manager with one sheet is reactive. <strong>The manager with three sheets is always in control.</strong></div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">When to Pivot Strategies</div>
+        <div class="help-strategy-grid">
+          <div class="help-strategy-pill"><strong>RBs going cheap?</strong>Switch to RB Heavy — load up on elite backs while rivals sleep.</div>
+          <div class="help-strategy-pill"><strong>WRs going cheap?</strong>Switch to WR Heavy — receivers at a discount are championship currency.</div>
+          <div class="help-strategy-pill"><strong>Everyone overpaying early?</strong>Go conservative — your budget sheet becomes your biggest weapon.</div>
+          <div class="help-strategy-pill"><strong>QBs flying off board?</strong>Switch to QB Heavy — or stream and feast on value elsewhere.</div>
+        </div>
+      </div>
+
+      <div class="help-callout">
+        🔮 <em>"In 38 seasons I have learned this truth — the manager who arrives with a plan and the wisdom to abandon it at the right moment, armed with the foresight to have prepared for every contingency, is the manager who lifts the trophy."</em>
+      </div>
+
+    </div>
+  </div>
+
   <div class="tps-grid" id="tpsGrid"></div>
   <div class="tps-total"><span class="tps-total-label">Total Budget</span><span class="tps-total-val" id="tpsTotal">$200</span></div>
   <div class="oracle-guidance"><div class="oracle-guidance-label">🔮 Oracle Strategy Briefing</div><div class="oracle-guidance-text" id="oracleBriefing">Loading wisdom...</div></div>
@@ -320,7 +386,7 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
 </div>
 
 <script>
-var state={step:1,leagueName:'',numTeams:10,budget:200,scoring:'ppr',leagueType:'redraft',platform:'sleeper',teamNames:[],roster:{QB:1,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6},strategy:null,targetPrices:{},draftLog:[]};
+var state={step:1,leagueName:'',numTeams:10,budget:200,scoring:'ppr',leagueType:'redraft',leagueFormat:'standard',platform:'sleeper',teamNames:[],roster:{QB:1,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6},strategy:null,targetPrices:{},draftLog:[]};
 
 var STRATEGIES={
   rb:{name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie.",splits:{QB:0.015,RB1:0.25,RB2:0.22,WR1:0.15,WR2:0.125,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.10}},
@@ -330,9 +396,16 @@ var STRATEGIES={
   custom:{name:'Custom',advice:'You have chosen the path of the master. Custom allocation is for those who know their league — the spending habits of rivals, historical inflation, and hidden value at each position. Trust your knowledge.',trash:"Custom strategy? Look at you, a VETERAN. You've done your homework. Just don't come crying to me when you blow $60 on a kicker.",splits:{QB:0.015,RB1:0.23,RB2:0.18,WR1:0.17,WR2:0.13,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}}
 };
 
+var SUPERFLEX_SPLITS={
+  rb:{name:'RB Heavy',splits:{QB:0.12,RB1:0.22,RB2:0.18,WR1:0.13,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.10}},
+  wr:{name:'WR Heavy',splits:{QB:0.12,RB1:0.18,RB2:0.11,WR1:0.21,WR2:0.16,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
+  qb:{name:'QB Heavy',splits:{QB:0.18,RB1:0.18,RB2:0.10,WR1:0.17,WR2:0.12,TE:0.02,FLEX:0.075,DEF:0.005,K:0.005,BENCH:0.10}},
+  hero:{name:'Hero RB',splits:{QB:0.12,RB1:0.20,RB2:0.09,WR1:0.21,WR2:0.15,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}},
+  custom:{name:'Custom',splits:{QB:0.13,RB1:0.20,RB2:0.15,WR1:0.15,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}}
+};
+
 var POS_COLORS={QB:'background:rgba(100,181,246,0.15);color:#64b5f6;border:1px solid rgba(100,181,246,0.3)',RB:'background:rgba(76,175,80,0.15);color:#4caf50;border:1px solid rgba(76,175,80,0.3)',WR:'background:rgba(201,168,76,0.15);color:#c9a84c;border:1px solid rgba(201,168,76,0.3)',TE:'background:rgba(232,150,10,0.15);color:#e8960a;border:1px solid rgba(232,150,10,0.3)',K:'background:rgba(160,133,80,0.15);color:#a08550;border:1px solid rgba(160,133,80,0.3)',DEF:'background:rgba(255,82,82,0.15);color:#ff5252;border:1px solid rgba(255,82,82,0.3)'};
 
-// SLEEPER PLAYERS
 var allPlayers=[];
 function loadSleeperPlayers(){
   fetch('https://api.sleeper.app/v1/players/nfl')
@@ -340,10 +413,10 @@ function loadSleeperPlayers(){
     .then(function(data){
       allPlayers=[];
       Object.values(data).forEach(function(p){
-       if(!p.full_name)return;
-if(!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status))return;
-if(p.status==='Inactive'||p.status==='Retired')return;
-if(!['QB','RB','WR','TE','K'].includes(p.position))return;
+        if(!p.full_name)return;
+        if(!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status))return;
+        if(p.status==='Inactive'||p.status==='Retired')return;
+        if(!['QB','RB','WR','TE','K'].includes(p.position))return;
         allPlayers.push({name:p.full_name,pos:p.position,team:p.team||'FA'});
       });
       allPlayers.sort(function(a,b){return a.name.localeCompare(b.name)});
@@ -401,7 +474,6 @@ document.addEventListener('click',function(e){
   }
 });
 
-// STEP NAVIGATION
 function goStep(n){
   if(n===4)generateTPS();
   if(n===5)initTracker();
@@ -445,16 +517,65 @@ function selectStrat(s){
   document.getElementById('stratAdvice').textContent=STRATEGIES[s].advice;
 }
 
-// GENERATE TARGET PRICE SHEET
+function toggleHelp(){
+  var btn=document.getElementById('helpToggle');
+  var body=document.getElementById('helpBody');
+  btn.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+function showLeagueWarning(){
+  var warning=document.getElementById('leagueWarning');
+  var text=document.getElementById('leagueWarningText');
+  var scoring=document.getElementById('scoring').value;
+  var leagueType=document.getElementById('leagueType').value;
+  var leagueFormat=document.getElementById('leagueFormat').value;
+  var msgs=[];
+
+  if(leagueFormat==='superflex'){
+    msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — Your QB target prices have been significantly increased. In 2QB and Superflex leagues quarterbacks become the scarcest commodity on the board. Budget $45-65 for an elite QB1 and $30-45 for a solid QB2. Managers who ignore QB scarcity will be scrambling at the position by nomination 30. Your price sheet has been adjusted accordingly.');
+  }
+  if(scoring==='ppr'){
+    msgs.push('📋 <strong>PPR Scoring</strong> — Pass-catching running backs and slot receivers carry premium value. Your WR and RB allocations reflect full point-per-reception scoring.');
+  }
+  if(scoring==='standard'){
+    msgs.push('🏃 <strong>Standard Scoring</strong> — Workhorse running backs dominate. Your RB allocations are weighted toward volume carriers over pass-catching backs.');
+  }
+  if(scoring==='half'){
+    msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency. Your allocations reflect the hybrid value of skill position players.');
+  }
+  if(leagueType==='keeper'){
+    msgs.push('🔒 <strong>Keeper League</strong> — Elite players kept from last season create scarcity at the top. Expect inflation on remaining top-tier talent. Budget conservatively early and strike when value presents itself.');
+  }
+  if(leagueType==='dynasty'){
+    msgs.push('👑 <strong>Dynasty League</strong> — Young players with long-term upside carry premium value. Age curves and opportunity matter more than current production alone.');
+  }
+
+  if(msgs.length>0){
+    text.innerHTML=msgs.join('<br><br>');
+    warning.classList.add('show');
+  } else {
+    warning.classList.remove('show');
+  }
+}
+
 function generateTPS(){
   state.leagueName=document.getElementById('leagueName').value||'My League';
   state.numTeams=parseInt(document.getElementById('numTeams').value);
   state.budget=parseInt(document.getElementById('budget').value)||200;
   state.scoring=document.getElementById('scoring').value;
+  state.leagueFormat=document.getElementById('leagueFormat').value;
   var n=state.numTeams;
   for(var i=1;i<=n;i++){var el=document.getElementById('team-'+i);state.teamNames[i-1]=el?(el.value||'Team '+i):'Team '+i}
   updateRoster();
-  var strat=state.strategy?STRATEGIES[state.strategy]:STRATEGIES.hero;
+
+  var isSuperflex=state.leagueFormat==='superflex';
+  var stratKey=state.strategy||'hero';
+  var strat=isSuperflex?(SUPERFLEX_SPLITS[stratKey]||SUPERFLEX_SPLITS.hero):(STRATEGIES[stratKey]||STRATEGIES.hero);
+  var stratDisplay=STRATEGIES[stratKey]||STRATEGIES.hero;
+
+  showLeagueWarning();
+
   var budget=state.budget;
   var splits=strat.splits;
   var roster=state.roster;
@@ -466,7 +587,7 @@ function generateTPS(){
   }
 
   if(roster.QB>=1)addSlot('QB','QB1',splits.QB);
-  if(roster.QB>=2)addSlot('QB','QB2',splits.QB*0.3);
+  if(roster.QB>=2)addSlot('QB','QB2',splits.QB*0.5);
   if(roster.RB>=1)addSlot('RB','RB1',splits.RB1);
   if(roster.RB>=2)addSlot('RB','RB2',splits.RB2);
   if(roster.RB>=3)addSlot('RB','RB3',splits.RB2*0.4);
@@ -481,20 +602,15 @@ function generateTPS(){
   if(roster.K>=1)addSlot('K','K',splits.K);
   for(var b=1;b<=roster.BENCH;b++){addSlot('BENCH','Bench '+b,b<=2?0.04:b<=4?0.02:0.005,true)}
 
-  // Normalize pcts
   var totalPct=slots.reduce(function(a,s){return a+s.rawPct},0);
   slots.forEach(function(s){s.normPct=s.rawPct/totalPct});
-
-  // Floor then distribute remainder — BULLETPROOF ROUNDING
   slots.forEach(function(s){s.val=Math.max(1,Math.floor(s.normPct*budget))});
   var currentTotal=slots.reduce(function(a,s){return a+s.val},0);
   var remainder=budget-currentTotal;
   for(var r=0;r<remainder;r++){slots[r%slots.length].val+=1}
 
-  // Store target prices
   slots.forEach(function(s){state.targetPrices[s.label]=s.val});
 
-  // Render
   var grid=document.getElementById('tpsGrid');
   grid.innerHTML='';
   slots.forEach(function(s){
@@ -507,12 +623,12 @@ function generateTPS(){
 
   var total=slots.reduce(function(a,s){return a+s.val},0);
   document.getElementById('tpsTotal').textContent='$'+total;
-  document.getElementById('tpsSubtitle').textContent=state.leagueName+' · '+state.numTeams+' teams · $'+state.budget+' cap · '+({ppr:'PPR',half:'Half PPR',standard:'Standard'}[state.scoring])+(state.strategy?' · '+strat.name:'');
-  document.getElementById('oracleBriefing').textContent=strat.advice;
-  document.getElementById('trashTake').textContent=strat.trash;
+  var formatLabel=isSuperflex?' · Superflex/2QB':'';
+  document.getElementById('tpsSubtitle').textContent=state.leagueName+' · '+state.numTeams+' teams · $'+state.budget+' cap · '+({ppr:'PPR',half:'Half PPR',standard:'Standard'}[state.scoring])+formatLabel+(state.strategy?' · '+stratDisplay.name:'');
+  document.getElementById('oracleBriefing').textContent=stratDisplay.advice;
+  document.getElementById('trashTake').textContent=stratDisplay.trash;
 }
 
-// LIVE DRAFT TRACKER
 function initTracker(){
   state.leagueName=document.getElementById('leagueName').value||'My League';
   state.numTeams=parseInt(document.getElementById('numTeams').value);
@@ -553,8 +669,8 @@ function updateTrackerStats(){
   var mySpent=log.filter(function(p){return p.team===myTeam}).reduce(function(a,p){return a+p.price},0);
   var myLeft=state.budget-mySpent;
   var avg=log.length>0?Math.round(totalSpent/log.length):0;
-  var totalRosterSpots = state.roster.QB + state.roster.RB + state.roster.WR + state.roster.TE + state.roster.FLEX + state.roster.K + state.roster.DEF + state.roster.BENCH;
-var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudget/(n*totalRosterSpots)))*100-100):0;
+  var totalRosterSpots=state.roster.QB+state.roster.RB+state.roster.WR+state.roster.TE+state.roster.FLEX+state.roster.K+state.roster.DEF+state.roster.BENCH;
+  var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudget/(n*totalRosterSpots)))*100-100):0;
   document.getElementById('playersDrafted').textContent=log.length;
   document.getElementById('avgPricePaid').textContent=log.length>0?'$'+avg:'—';
   document.getElementById('inflationVal').textContent=(inflation>=0?'+':'')+inflation+'%';
@@ -562,10 +678,10 @@ var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudge
   budgetEl.textContent='$'+myLeft;
   budgetEl.className='tracker-stat-val '+(myLeft>state.budget*0.5?'good':myLeft>state.budget*0.25?'warn':'danger');
   var inflationPct=Math.min(100,Math.round((totalSpent/totalMarketBudget)*100));
-var fill=document.getElementById('inflationFill');
-fill.style.width=inflationPct+'%';
-fill.style.background=inflationPct<40?'var(--green)':inflationPct<70?'var(--amber)':'var(--red)';
-document.getElementById('inflationPct').textContent=inflationPct+'% of total market budget committed';
+  var fill=document.getElementById('inflationFill');
+  fill.style.width=inflationPct+'%';
+  fill.style.background=inflationPct<40?'var(--green)':inflationPct<70?'var(--amber)':'var(--red)';
+  document.getElementById('inflationPct').textContent=inflationPct+'% of total market budget committed';
 }
 
 function renderDraftLog(){
