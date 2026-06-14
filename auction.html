@@ -136,7 +136,30 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
   .oracle-guidance-text{color:#555}
   .panel-title{color:#111}
 }
-</style>
+/* HOW TO USE HELP PANEL */
+.help-panel{background:#fffbf0;border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+.help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
+.help-toggle:hover{background:rgba(201,168,76,0.05)}
+.help-toggle-icon{font-size:18px;transition:transform 0.3s;color:var(--gold)}
+.help-toggle.open .help-toggle-icon{transform:rotate(180deg)}
+.help-body{display:none;padding:0 16px 16px}
+.help-body.open{display:block}
+.help-section{margin-bottom:16px}
+.help-section:last-child{margin-bottom:0}
+.help-section-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.help-rule{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:13px;color:#4a4a46;line-height:1.6}
+.help-rule-icon{flex-shrink:0;font-size:14px}
+.help-callout{background:rgba(201,168,76,0.08);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;margin:12px 0;font-style:italic;font-size:13px;color:#5a4a1a;line-height:1.7}
+.help-pro-tip{background:rgba(76,175,80,0.06);border:1px solid rgba(76,175,80,0.2);border-radius:var(--r);padding:12px 14px;margin:12px 0}
+.help-pro-tip-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:#2a6e2a;text-transform:uppercase;margin-bottom:6px}
+.help-pro-tip-text{font-size:13px;color:#2a3a2a;line-height:1.6}
+.help-strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px}
+.help-strategy-pill{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:10px 12px;font-size:11px;color:#1c1c1a;line-height:1.5}
+.help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
+.league-warning{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.4);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:none}
+.league-warning.show{display:block}
+.league-warning-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px}
+.league-warning-text{font-size:13px;color:#4a4a46;line-height:1.6}</style>
 </head>
 <body>
 
