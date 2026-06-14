@@ -112,8 +112,8 @@ body {
 
 .lineup-header-left { display: flex; align-items: center; gap: 10px; }
 .lineup-header-icon { font-size: 22px; }
-.lineup-header-title { font-size: 14px; font-weight: bold; color: #c9a84c; letter-spacing: 1px; text-transform: uppercase; }
-.lineup-header-sub { font-size: 10px; color: #7a6a3a; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+.lineup-header-title { font-size: 16px; font-weight: bold; color: #c9a84c; letter-spacing: 1px; text-transform: uppercase; }
+.lineup-header-sub { font-size: 12px; color: #7a6a3a; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
 .lineup-header-badge {
   background: rgba(201,168,76,0.15);
   border: 1px solid rgba(201,168,76,0.35);
@@ -138,7 +138,7 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.05);
   background: rgba(0,0,0,0.2);
 }
-.lineup-week-label { font-size: 11px; letter-spacing: 2px; color: #7a6a3a; text-transform: uppercase; white-space: nowrap; }
+.lineup-week-label { font-size: 13px; letter-spacing: 2px; color: #a08a5a; text-transform: uppercase; white-space: nowrap; }
 .lineup-week-select {
   background: rgba(0,0,0,0.4);
   border: 1px solid rgba(201,168,76,0.25);
@@ -182,10 +182,10 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7a6a3a;
+  color: #a08a5a;
   font-family: 'Courier New', monospace;
 }
 
@@ -208,16 +208,16 @@ body {
 .lineup-slot-input {
   width: 100%;
   background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 8px;
-  color: #e0d0b0;
-  font-size: 13px;
+  color: #f0e0b0;
+  font-size: 15px;
   font-family: Georgia, serif;
   padding: 9px 12px;
   transition: border-color 0.2s;
 }
 .lineup-slot-input:focus { outline: none; border-color: rgba(201,168,76,0.5); }
-.lineup-slot-input::placeholder { color: #3a3028; }
+.lineup-slot-input::placeholder { color: #6a5a3a; }
 .lineup-slot-input.filled {
   border-color: rgba(201,168,76,0.3);
   background: rgba(201,168,76,0.05);
@@ -263,9 +263,9 @@ body {
   gap: 8px;
   padding: 4px 18px 10px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 2px;
-  color: #5a4a30;
+  color: #7a6a3a;
   text-transform: uppercase;
   transition: color 0.2s;
 }
@@ -290,11 +290,11 @@ body {
 
 .lineup-get-btn {
   flex: 1;
-  padding: 13px 20px;
+  padding: 14px 20px;
   border: none;
   border-radius: 10px;
   font-family: Georgia, serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
   letter-spacing: 1px;
   cursor: pointer;
@@ -499,7 +499,7 @@ textarea::placeholder { color: #3a3028; }
           <option value="17">Week 17</option><option value="18">Week 18</option>
         </select>
         <span class="lineup-auto-note" id="lineupAutoNote">✓ Auto-filled from Sleeper</span>
-        <span style="font-size:11px;color:#5a4a30;margin-left:auto;font-family:'Courier New',monospace" id="lineupFilledCount">0 / 9 starters</span>
+        <span style="font-size:13px;color:#a08a5a;font-family:'Courier New',monospace" id="lineupFilledCount">0 / 10 starters</span>
       </div>
 
       <!-- STARTER SLOTS -->
