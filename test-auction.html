@@ -105,19 +105,19 @@ body{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 40%,#261018 100%)
 // ═══════════════════════════════════════
 
 var STRATEGIES = {
-  rb:     {splits:{QB:0.015,RB1:0.25,RB2:0.22,WR1:0.15,WR2:0.125,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.10}},
-  wr:     {splits:{QB:0.015,RB1:0.21,RB2:0.135,WR1:0.25,WR2:0.19,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
-  qb:     {splits:{QB:0.11,RB1:0.21,RB2:0.125,WR1:0.19,WR2:0.14,TE:0.02,FLEX:0.085,DEF:0.005,K:0.005,BENCH:0.11}},
-  hero:   {splits:{QB:0.015,RB1:0.23,RB2:0.10,WR1:0.245,WR2:0.17,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}},
-  custom: {splits:{QB:0.015,RB1:0.23,RB2:0.18,WR1:0.17,WR2:0.13,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}}
+  rb:     {splits:{QB:0.11, RB1:0.26, RB2:0.19, WR1:0.16, WR2:0.11, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  wr:     {splits:{QB:0.11, RB1:0.17, RB2:0.11, WR1:0.26, WR2:0.18, TE:0.10, FLEX:0.06, DEF:0.01, K:0.01, BENCH:0.01}},
+  qb:     {splits:{QB:0.20, RB1:0.19, RB2:0.11, WR1:0.17, WR2:0.11, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  hero:   {splits:{QB:0.11, RB1:0.25, RB2:0.09, WR1:0.23, WR2:0.14, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  custom: {splits:{QB:0.12, RB1:0.20, RB2:0.14, WR1:0.19, WR2:0.12, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}}
 };
 
 var SUPERFLEX_SPLITS = {
-  rb:     {splits:{QB:0.12,RB1:0.22,RB2:0.18,WR1:0.13,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.10}},
-  wr:     {splits:{QB:0.12,RB1:0.18,RB2:0.11,WR1:0.21,WR2:0.16,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
-  qb:     {splits:{QB:0.18,RB1:0.18,RB2:0.10,WR1:0.17,WR2:0.12,TE:0.02,FLEX:0.075,DEF:0.005,K:0.005,BENCH:0.10}},
-  hero:   {splits:{QB:0.12,RB1:0.20,RB2:0.09,WR1:0.21,WR2:0.15,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}},
-  custom: {splits:{QB:0.13,RB1:0.20,RB2:0.15,WR1:0.15,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}}
+  rb:     {splits:{QB:0.17, RB1:0.22, RB2:0.16, WR1:0.13, WR2:0.09, TE:0.10, FLEX:0.08, DEF:0.01, K:0.01, BENCH:0.01}},
+  wr:     {splits:{QB:0.17, RB1:0.14, RB2:0.09, WR1:0.21, WR2:0.15, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  qb:     {splits:{QB:0.24, RB1:0.16, RB2:0.09, WR1:0.15, WR2:0.10, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  hero:   {splits:{QB:0.17, RB1:0.20, RB2:0.08, WR1:0.19, WR2:0.13, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}},
+  custom: {splits:{QB:0.17, RB1:0.17, RB2:0.12, WR1:0.16, WR2:0.10, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01}}
 };
 
 function generatePriceSheet(budget, stratKey, roster, isSuperflex) {
