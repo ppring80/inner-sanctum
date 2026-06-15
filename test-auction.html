@@ -250,8 +250,8 @@ var TESTS = [
   {id:10, category:'Slots', name:'Standard roster generates correct number of slots',
     fn: function() {
       var slots = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
-      // QB1, RB1, RB2, WR1, WR2, TE1, FLEX, DEF, 6 bench = 13 slots (no K)
-      var expected = 13;
+      // QB1, RB1, RB2, WR1, WR2, TE1, FLEX, DEF, 6 bench = 14 slots (no K)
+      var expected = 14;
       if (slots.length !== expected) throw new Error('Got '+slots.length+' slots, expected '+expected);
       return slots.length+' slots generated ✓';
     }},
