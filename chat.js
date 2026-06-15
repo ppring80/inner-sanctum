@@ -147,12 +147,18 @@ exports.handler = async (event) => {
       ]
     });
 
-    // Pull all text blocks out of the response — skip tool use and thinking
-    const fullText = response.content
+    // Pull all text blocks out of the response — strip thinking/research preamble
+    const rawText = response.content
       .filter(block => block.type === "text")
       .map(block => block.text)
-      .join("\n")
-      .replace(/^(I see|Let me check|I need to|I'll search|Searching for|Looking up|I'm going to search|I should check|I found|Based on my search|I can see)[^\n]*\n/gim, '')
+      .join("\n");
+
+    // Remove any lines that are internal research/thinking monologue
+    const thinkingPhrases = /^(I see|Let me check|I need to|I'll search|Searching for|Looking up|I'm going to|I should check|I found|Based on my search|I can see|The search results|Let me search|I will search|I'll look|I'm looking|I'll need|I need to search|I'll find|I'll check|I'll look up|I'll now|I'll use|I'll get|Wait,|Actually,|Hmm,|Let me|I notice|I'm checking|I'm searching|I'm looking|I can find|I'll verify)[^\n]*\n?/gim;
+
+    const fullText = rawText
+      .replace(thinkingPhrases, '')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
 
     return {
