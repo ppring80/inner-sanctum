@@ -2,181 +2,244 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
- <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="icon" type="image/png" href="/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auction War Room — The Inner Sanctum</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--void:#f2f1ef;--deep:#e8e7e4;--coal:#ffffff;--char:#d4d2ce;--warm:#b8b5b0;--gold:#b8921a;--amber:#c8780a;--glow:#f5c842;--cream:#1c1c1a;--muted:#4a4a46;--dim:#7a7a76;--green:#4caf50;--red:#8a2020;--blue:#64b5f6;--r:6px}
-body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
-.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid var(--char);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.hdr-left span{font-family:'Cinzel',serif;font-size:13px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
-.hdr-left h1{font-family:'Cinzel',serif;font-size:28px;font-weight:600;color:var(--cream)}
-.hdr-right{display:flex;align-items:center;gap:12px}
-.back-link{color:#c9a84c;font-size:15px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:all 0.2s}
-.back-link:hover{color:#f5c842;opacity:1;text-shadow:0 0 12px rgba(201,168,76,0.4)}
-.lock-badge{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace}
-.steps{display:flex;align-items:center;padding:0 24px;background:var(--deep);border-bottom:1px solid var(--char);overflow-x:auto}
-.step-tab{padding:14px 20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;transition:color 0.15s}
+
+:root{
+  --bg:#f2f1ef;
+  --bg2:#e8e7e4;
+  --surface:#ffffff;
+  --border:#d4d2ce;
+  --border2:#b8b5b0;
+  --gold:#b8921a;
+  --amber:#c8780a;
+  --glow:#f5c842;
+  --ink:#1c1c1a;
+  --muted:#4a4a46;
+  --dim:#7a7a76;
+  --green:#2e7d32;
+  --red:#8a2020;
+  --blue:#1565c0;
+  --r:6px;
+}
+
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+/* HEADER */
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* STEP TABS */
+.steps{display:flex;align-items:center;padding:0 24px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;gap:0}
+.step-tab{padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;transition:color 0.15s;user-select:none}
+.step-tab:hover{color:var(--muted)}
 .step-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
 .step-tab.done{color:var(--muted)}
-.step-num{width:20px;height:20px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid currentColor;flex-shrink:0}
+.step-num{width:20px;height:20px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid currentColor;flex-shrink:0;transition:all 0.15s}
 .step-tab.active .step-num{background:var(--gold);color:#000;border-color:var(--gold)}
-.step-tab.done .step-num{background:var(--dim);border-color:var(--dim)}
+.step-tab.done .step-num{background:var(--dim);color:#fff;border-color:var(--dim)}
+
+/* PANELS */
 .panel{display:none;padding:28px 24px;max-width:960px;margin:0 auto}
 .panel.active{display:block}
-.panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px}
+.panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px;color:var(--ink)}
 .panel-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+
+/* FORMS */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
 .form-group{display:flex;flex-direction:column;gap:6px}
-.form-group label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace}
-.form-group input,.form-group select{background:var(--coal);border:1px solid var(--char);color:#1c1c1a;font-family:'Lora',serif;font-size:14px;padding:9px 12px;border-radius:var(--r);width:100%;appearance:none;-webkit-appearance:none}
+.form-group label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.form-group input,.form-group select{background:var(--surface);border:1px solid var(--border);color:var(--ink);font-family:'Lora',serif;font-size:14px;padding:9px 12px;border-radius:var(--r);width:100%;transition:border-color 0.15s}
 .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--gold)}
-.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a08550'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.form-group select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a08550'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 .form-group input::placeholder{color:#9a9a96}
-.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
-.pos-slot{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px}
-.pos-slot-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
-.pos-badge{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600}
-.pos-badge.QB{background:rgba(100,181,246,0.15);color:var(--blue);border:1px solid rgba(100,181,246,0.3)}
-.pos-badge.RB{background:rgba(76,175,80,0.15);color:var(--green);border:1px solid rgba(76,175,80,0.3)}
-.pos-badge.WR{background:rgba(201,168,76,0.15);color:var(--gold);border:1px solid rgba(201,168,76,0.3)}
-.pos-badge.TE{background:rgba(232,150,10,0.15);color:var(--amber);border:1px solid rgba(232,150,10,0.3)}
-.pos-badge.FLEX{background:rgba(200,150,200,0.15);color:#ce93d8;border:1px solid rgba(206,147,216,0.3)}
-.pos-badge.K{background:rgba(160,133,80,0.15);color:var(--muted);border:1px solid rgba(160,133,80,0.3)}
-.pos-badge.DEF{background:rgba(255,82,82,0.15);color:var(--red);border:1px solid rgba(255,82,82,0.3)}
-.pos-badge.BENCH{background:rgba(74,58,34,0.3);color:var(--dim);border:1px solid rgba(74,58,34,0.5)}
-.pos-slot input{background:var(--char);border:1px solid var(--warm);color:#ffffff;font-family:'JetBrains Mono',monospace;font-size:13px;padding:6px 10px;border-radius:4px;width:100%;text-align:center}
-.pos-slot input:focus{outline:none;border-color:var(--gold)}
-.pos-hint{font-size:10px;color:var(--dim);text-align:center}
-.strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
-.strat-card{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color 0.15s;position:relative}
-.strat-card:hover{border-color:var(--warm)}
-.strat-card.selected{border-color:var(--gold);background:rgba(201,168,76,0.06)}
-.strat-card.selected::after{content:'✓';position:absolute;top:10px;right:10px;color:var(--gold);font-size:14px}
-.strat-name{font-family:'Cinzel',serif;font-size:14px;margin-bottom:4px;color:var(--cream)}
-.strat-desc{font-size:11px;color:var(--muted);line-height:1.5}
-.strat-custom{font-size:10px;color:var(--dim);margin-top:6px;font-style:italic}
+.form-group input[readonly]{background:var(--bg2);color:var(--gold);cursor:default;font-family:'JetBrains Mono',monospace}
+
+/* BUTTONS */
 .btn-row{display:flex;gap:10px;align-items:center;margin-top:24px;flex-wrap:wrap}
-.btn{padding:10px 24px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:14px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap}
+.btn{padding:10px 22px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:14px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap}
 .btn:hover{opacity:0.85}
 .btn-gold{background:var(--gold);color:#0a0600;font-weight:600}
-.btn-outline{background:transparent;border:1px solid var(--char);color:var(--muted)}
-.btn-outline:hover{border-color:var(--gold);color:var(--cream)}
-.btn-danger{background:transparent;border:1px solid rgba(255,82,82,0.3);color:var(--red)}
-.tps-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
-.tps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:24px}
-.tps-slot{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
-.tps-slot-pos{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#4a4a46}
-.tps-slot-label{font-size:13px;color:#1c1c1a}
-.tps-slot-val{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--gold)}
-.tps-slot-pct{font-size:10px;color:#4a4a46}
-.tps-slot.bench{opacity:0.6}
-.tps-slot.bench .tps-slot-val{font-size:18px;color:var(--muted)}
-.tps-total{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.tps-total-label{font-family:'Cinzel',serif;font-size:14px}
-.tps-total-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--gold)}
-.oracle-guidance{background:rgba(201,168,76,0.05);border-left:2px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
-.oracle-guidance-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
-.oracle-guidance-text{font-style:italic;font-size:13px;color:#4a4a46;line-height:1.7}
-.tracker-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
-.tracker-stat{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:12px 14px}
-.tracker-stat-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
-.tracker-stat-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--cream)}
-.tracker-stat-val.warn{color:var(--amber)}
-.tracker-stat-val.danger{color:var(--red)}
-.tracker-stat-val.good{color:var(--green)}
-.inflation-bar{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
-.inflation-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:8px;display:flex;justify-content:space-between}
-.inflation-track{background:var(--char);border-radius:4px;height:8px;overflow:hidden}
-.inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s}
-.draft-entry{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:16px;margin-bottom:16px}
-.draft-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
-.draft-entry-grid{display:grid;grid-template-columns:2fr 80px 100px 120px auto;gap:10px;align-items:end}
-.draft-entry-grid .form-group{margin:0}
-.autocomplete-wrap{position:relative}
-.player-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid var(--gold);border-radius:var(--r);max-height:220px;overflow-y:auto;z-index:999;margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
-.player-dropdown-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--char);display:flex;align-items:center;justify-content:space-between;transition:background 0.1s}
-.player-dropdown-item:hover{background:rgba(201,168,76,0.08)}
-.player-dropdown-item:last-child{border-bottom:none}
-.player-item-left{display:flex;align-items:center;gap:8px}
-.player-item-name{color:var(--cream);font-size:13px}
-.player-item-team{color:var(--muted);font-size:11px}
-.player-item-right{display:flex;align-items:center;gap:8px}
-.player-item-pos{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
-.player-item-val{color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px}
-.draft-log{margin-top:16px}
-.draft-log-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
-.draft-log-table{width:100%;border-collapse:collapse}
-.draft-log-table th{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);font-family:'JetBrains Mono',monospace;padding:6px 8px;text-align:left;border-bottom:1px solid var(--char)}
-.draft-log-table td{padding:8px;font-size:13px;border-bottom:1px solid var(--char);color:var(--cream)}
-.draft-log-table td.price{font-family:'JetBrains Mono',monospace;color:var(--gold)}
-.draft-log-table td.team-col{font-size:11px;color:var(--muted)}
-.draft-log-table td.pos-col .pos-pill{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
-.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:16px}
-.team-card{background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:12px}
-.team-name{font-family:'Cinzel',serif;font-size:12px;color:var(--cream);margin-bottom:8px}
-.team-budget{display:flex;justify-content:space-between;margin-bottom:6px}
-.team-budget-label{font-size:10px;color:var(--muted)}
-.team-budget-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)}
-.team-budget-track{background:var(--char);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px}
-.team-budget-fill{height:100%;background:var(--gold);border-radius:3px;transition:width 0.3s}
-.team-players{font-size:10px;color:var(--dim);line-height:1.6}
-.section-divider{border:none;border-top:1px solid var(--char);margin:20px 0}
-.readonly-field{color:var(--gold) !important;cursor:default !important}
-/* HOW TO USE HELP PANEL */
-.help-panel{background:#fffbf0;border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
-.help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
-.help-toggle:hover{background:rgba(201,168,76,0.05)}
-.help-toggle-icon{font-size:18px;transition:transform 0.3s;color:var(--gold)}
-.help-toggle.open .help-toggle-icon{transform:rotate(180deg)}
-.help-body{display:none;padding:0 16px 16px}
-.help-body.open{display:block}
-.help-section{margin-bottom:16px}
-.help-section:last-child{margin-bottom:0}
-.help-section-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
-.help-rule{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:13px;color:#4a4a46;line-height:1.6}
-.help-rule-icon{flex-shrink:0;font-size:14px}
-.help-callout{background:rgba(201,168,76,0.08);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;margin:12px 0;font-style:italic;font-size:13px;color:#5a4a1a;line-height:1.7}
-.help-pro-tip{background:rgba(76,175,80,0.06);border:1px solid rgba(76,175,80,0.2);border-radius:var(--r);padding:12px 14px;margin:12px 0}
-.help-pro-tip-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:#2a6e2a;text-transform:uppercase;margin-bottom:6px}
-.help-pro-tip-text{font-size:13px;color:#2a3a2a;line-height:1.6}
-.help-strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px}
-.help-strategy-pill{background:var(--deep);border:1px solid var(--char);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--cream);line-height:1.5}
-.help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
-.league-warning{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.4);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:none}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-outline:hover{border-color:var(--gold);color:var(--ink)}
+.btn-danger{background:transparent;border:1px solid rgba(138,32,32,0.4);color:var(--red)}
+.btn-danger:hover{background:rgba(138,32,32,0.05)}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* ROSTER GRID */
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.pos-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px}
+.pos-slot-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
+.pos-badge{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600}
+.pos-badge.QB{background:rgba(21,101,192,0.12);color:#1565c0;border:1px solid rgba(21,101,192,0.3)}
+.pos-badge.RB{background:rgba(46,125,50,0.12);color:#2e7d32;border:1px solid rgba(46,125,50,0.3)}
+.pos-badge.WR{background:rgba(184,146,26,0.12);color:var(--gold);border:1px solid rgba(184,146,26,0.3)}
+.pos-badge.TE{background:rgba(200,120,10,0.12);color:var(--amber);border:1px solid rgba(200,120,10,0.3)}
+.pos-badge.FLEX{background:rgba(156,39,176,0.12);color:#6a1b9a;border:1px solid rgba(156,39,176,0.3)}
+.pos-badge.K{background:rgba(120,100,60,0.12);color:var(--muted);border:1px solid rgba(120,100,60,0.3)}
+.pos-badge.DEF{background:rgba(138,32,32,0.12);color:var(--red);border:1px solid rgba(138,32,32,0.3)}
+.pos-badge.BENCH{background:rgba(100,100,100,0.1);color:var(--dim);border:1px solid rgba(100,100,100,0.2)}
+.pos-slot input[type="number"]{background:var(--bg2);border:1px solid var(--border2);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:14px;padding:6px 10px;border-radius:4px;width:100%;text-align:center}
+.pos-slot input[type="number"]:focus{outline:none;border-color:var(--gold)}
+.pos-hint{font-size:10px;color:var(--dim);text-align:center}
+.roster-total{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.roster-total-label{font-family:'Cinzel',serif;font-size:13px}
+.roster-total-val{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--gold)}
+
+/* STRATEGY CARDS */
+.strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:24px}
+.strat-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color 0.15s,background 0.15s;position:relative}
+.strat-card:hover{border-color:var(--border2)}
+.strat-card.selected{border-color:var(--gold);background:rgba(184,146,26,0.04)}
+.strat-card.selected::after{content:'✓';position:absolute;top:10px;right:12px;color:var(--gold);font-size:16px;font-weight:600}
+.strat-name{font-family:'Cinzel',serif;font-size:13px;margin-bottom:5px;color:var(--ink)}
+.strat-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:4px}
+.strat-best{font-size:10px;color:var(--dim);font-style:italic}
+
+/* ORACLE GUIDANCE */
+.oracle-box{background:rgba(184,146,26,0.05);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
+.oracle-box-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+
+/* TRASH LORD BOX */
+.trash-box{background:rgba(138,32,32,0.04);border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
+.trash-box-label{font-size:9px;letter-spacing:3px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.trash-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+
+/* LEAGUE WARNING */
+.league-warning{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.35);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:none}
 .league-warning.show{display:block}
 .league-warning-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px}
-.league-warning-text{font-size:13px;color:#4a4a46;line-height:1.6}
+.league-warning-text{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* HELP PANEL */
+.help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+.help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
+.help-toggle:hover{background:rgba(184,146,26,0.04)}
+.help-icon{font-size:16px;transition:transform 0.3s}
+.help-icon.open{transform:rotate(180deg)}
+.help-body{display:none;padding:0 16px 16px}
+.help-body.open{display:block}
+.help-section-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin:14px 0 8px}
+.help-rule{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:13px;color:var(--muted);line-height:1.6}
+.help-callout{background:rgba(184,146,26,0.07);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;margin:12px 0;font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+.help-pro-tip{background:rgba(46,125,50,0.05);border:1px solid rgba(46,125,50,0.2);border-radius:var(--r);padding:12px 14px;margin:12px 0}
+.help-pro-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:6px}
+.help-strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px}
+.help-strategy-pill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--ink);line-height:1.5}
+.help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
+
+/* TARGET PRICE SHEET */
+.tps-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.tps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px}
+.tps-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;transition:border-color 0.15s}
+.tps-slot:hover{border-color:var(--border2)}
+.tps-slot.bench{opacity:0.55}
+.tps-pos{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+.tps-label{font-size:13px;color:var(--ink)}
+.tps-val{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--gold)}
+.tps-slot.bench .tps-val{font-size:20px;color:var(--muted)}
+.tps-pct{font-size:10px;color:var(--dim)}
+.tps-total-row{background:rgba(184,146,26,0.06);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.tps-total-label{font-family:'Cinzel',serif;font-size:15px}
+.tps-total-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;color:var(--gold)}
+
+/* LIVE DRAFT TRACKER */
+.tracker-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ink)}
+.stat-val.good{color:var(--green)}
+.stat-val.warn{color:var(--amber)}
+.stat-val.danger{color:var(--red)}
+.inflation-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
+.inflation-header{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:1px;margin-bottom:8px}
+.inflation-track{background:var(--bg2);border-radius:4px;height:8px;overflow:hidden}
+.inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s;background:var(--green)}
+
+/* PICK ENTRY */
+.pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
+.pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px 1fr;gap:10px;align-items:end}
+.pick-grid .form-group{margin:0}
+.pick-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.autocomplete-wrap{position:relative}
+.player-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid var(--gold);border-radius:var(--r);max-height:220px;overflow-y:auto;z-index:999;margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.dd-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;transition:background 0.1s}
+.dd-item:hover{background:rgba(201,168,76,0.1)}
+.dd-item:last-child{border-bottom:none}
+.dd-name{color:#f2f1ef;font-size:13px}
+.dd-team{color:#7a7a76;font-size:11px;margin-left:6px}
+.dd-pos{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.dd-val{color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px}
+
+/* DRAFT LOG */
+.draft-log{margin-top:16px;display:none}
+.log-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
+.log-table{width:100%;border-collapse:collapse}
+.log-table th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);font-family:'JetBrains Mono',monospace;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.log-table td{padding:8px;font-size:13px;border-bottom:1px solid var(--border);color:var(--ink)}
+.log-table td.mono{font-family:'JetBrains Mono',monospace;color:var(--gold)}
+.log-table td.dim{font-size:11px;color:var(--muted)}
+.pos-pill{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+
+/* TEAMS GRID */
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.team-name{font-family:'Cinzel',serif;font-size:12px;color:var(--ink);margin-bottom:8px}
+.team-budget-row{display:flex;justify-content:space-between;margin-bottom:6px}
+.team-budget-label{font-size:10px;color:var(--muted)}
+.team-budget-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)}
+.team-track{background:var(--bg2);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px}
+.team-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.team-players{font-size:10px;color:var(--dim);line-height:1.6}
+
+/* PRINT */
 @media print{
-  .hdr,.steps,.btn-row,.draft-entry,.no-print{display:none!important}
+  .hdr,.steps,.btn-row,.pick-entry,.no-print{display:none!important}
   body{background:#fff;color:#111}
   .tps-slot{background:#f9f9f9;border:1px solid #ddd}
-  .tps-slot-val{color:#c9a84c}
-  .tps-slot-label,.tps-slot-pos{color:#555}
-  .oracle-guidance{border-left-color:#c9a84c;background:#fffdf0}
-  .oracle-guidance-text{color:#555}
+  .tps-val{color:#b8921a}
   .panel-title{color:#111}
+  .oracle-box{border-left-color:#b8921a;background:#fffdf0}
+}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .pick-grid{grid-template-columns:1fr 1fr}
+  .hdr{padding:14px 16px}
+  .panel{padding:20px 16px}
 }
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-left">
-    <span>The Inner Sanctum</span>
-    <h1>⚔️ Auction War Room</h1>
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">⚔️ Auction War Room</h1>
   </div>
   <div class="hdr-right">
     <span class="lock-badge">🔒 Acolyte Feature</span>
-    <a href="/" class="back-link">🏠 Home</a>
-    <a href="/draft" class="back-link">📋 Draft Sheet</a>
-    <a href="/sanctum" class="back-link">← Back to Sanctum</a>
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
   </div>
 </div>
 
+<!-- STEP TABS -->
 <div class="steps">
   <div class="step-tab active" id="tab-1" onclick="goStep(1)"><span class="step-num">1</span>League Setup</div>
   <div class="step-tab" id="tab-2" onclick="goStep(2)"><span class="step-num">2</span>Roster Construction</div>
@@ -185,173 +248,261 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
   <div class="step-tab" id="tab-5" onclick="goStep(5)"><span class="step-num">5</span>Live Draft Tracker</div>
 </div>
 
-<!-- STEP 1 -->
+<!-- ═══ STEP 1: LEAGUE SETUP ═══ -->
 <div class="panel active" id="panel-1">
   <p class="panel-title">League Setup</p>
   <p class="panel-sub">Tell us about your league so The Oracle can calculate your exact target prices.</p>
   <div class="form-grid">
     <div class="form-group"><label>League Name</label><input type="text" id="leagueName" placeholder="e.g. The Brotherhood"/></div>
-    <div class="form-group"><label>Number of Teams</label><select id="numTeams"><option value="8">8 Teams</option><option value="10" selected>10 Teams</option><option value="12">12 Teams</option><option value="14">14 Teams</option><option value="16">16 Teams</option></select></div>
+    <div class="form-group"><label>Number of Teams</label>
+      <select id="numTeams" onchange="buildTeamInputs()">
+        <option value="8">8 Teams</option>
+        <option value="10" selected>10 Teams</option>
+        <option value="12">12 Teams</option>
+        <option value="14">14 Teams</option>
+        <option value="16">16 Teams</option>
+      </select>
+    </div>
     <div class="form-group"><label>Auction Budget ($)</label><input type="number" id="budget" value="200" min="50" max="1000"/></div>
-    <div class="form-group"><label>Scoring Format</label><select id="scoring"><option value="ppr">PPR (1pt per reception)</option><option value="half">Half PPR (0.5pt)</option><option value="standard">Standard (no bonus)</option></select></div>
-    <div class="form-group"><label>League Type</label><select id="leagueType"><option value="redraft">Redraft</option><option value="keeper">Keeper</option><option value="dynasty">Dynasty</option></select></div>
-    <div class="form-group"><label>League Format</label><select id="leagueFormat"><option value="standard">Standard (1 QB)</option><option value="superflex">Superflex / 2QB</option></select></div>
-    <div class="form-group"><label>Platform</label><select id="platform"><option value="sleeper">Sleeper</option><option value="yahoo">Yahoo</option><option value="espn">ESPN</option><option value="custom">Custom/Other</option></select></div>
+    <div class="form-group"><label>Scoring Format</label>
+      <select id="scoring">
+        <option value="ppr">PPR (1pt per reception)</option>
+        <option value="half">Half PPR (0.5pt)</option>
+        <option value="standard">Standard (no bonus)</option>
+      </select>
+    </div>
+    <div class="form-group"><label>League Type</label>
+      <select id="leagueType">
+        <option value="redraft">Redraft</option>
+        <option value="keeper">Keeper</option>
+        <option value="dynasty">Dynasty</option>
+      </select>
+    </div>
+    <div class="form-group"><label>League Format</label>
+      <select id="leagueFormat">
+        <option value="standard">Standard (1 QB)</option>
+        <option value="superflex">Superflex / 2QB</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Platform</label>
+      <select id="platform">
+        <option value="sleeper">Sleeper</option>
+        <option value="yahoo">Yahoo</option>
+        <option value="espn">ESPN</option>
+        <option value="custom">Custom/Other</option>
+      </select>
+    </div>
   </div>
-  <hr class="section-divider">
+  <hr class="divider">
   <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Enter team names to power the Live Draft Tracker.</p>
   <div class="form-grid" id="teamNamesGrid"></div>
   <div class="btn-row"><button class="btn btn-gold" onclick="goStep(2)">Continue to Roster Setup →</button></div>
 </div>
 
-<!-- STEP 2 -->
+<!-- ═══ STEP 2: ROSTER CONSTRUCTION ═══ -->
 <div class="panel" id="panel-2">
   <p class="panel-title">Roster Construction</p>
   <p class="panel-sub">Set your lineup and bench spots. The Oracle calculates target prices based on your exact roster.</p>
   <div class="roster-grid">
-    <div class="pos-slot"><div class="pos-slot-label"><span>Quarterbacks</span><span class="pos-badge QB">QB</span></div><input type="number" id="slot-QB" value="1" min="0" max="3" onchange="updateRoster()"/><div class="pos-hint">starting QBs (set to 2 for Superflex)</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Running Backs</span><span class="pos-badge RB">RB</span></div><input type="number" id="slot-RB" value="2" min="0" max="4" onchange="updateRoster()"/><div class="pos-hint">starting RBs</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Wide Receivers</span><span class="pos-badge WR">WR</span></div><input type="number" id="slot-WR" value="2" min="0" max="4" onchange="updateRoster()"/><div class="pos-hint">starting WRs</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Tight Ends</span><span class="pos-badge TE">TE</span></div><input type="number" id="slot-TE" value="1" min="0" max="2" onchange="updateRoster()"/><div class="pos-hint">starting TEs</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Flex</span><span class="pos-badge FLEX">FLEX</span></div><input type="number" id="slot-FLEX" value="1" min="0" max="3" onchange="updateRoster()"/><div class="pos-hint">RB/WR/TE flex</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Kicker</span><span class="pos-badge K">K</span></div><input type="number" id="slot-K" value="0" min="0" max="1" onchange="updateRoster()"/><div class="pos-hint">kicker spots</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Defense</span><span class="pos-badge DEF">DEF</span></div><input type="number" id="slot-DEF" value="1" min="0" max="1" onchange="updateRoster()"/><div class="pos-hint">D/ST spots</div></div>
-    <div class="pos-slot"><div class="pos-slot-label"><span>Bench Spots</span><span class="pos-badge BENCH">BN</span></div><input type="number" id="slot-BENCH" value="6" min="0" max="10" onchange="updateRoster()"/><div class="pos-hint">bench players</div></div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Quarterbacks</span><span class="pos-badge QB">QB</span></div>
+      <input type="number" id="slot-QB" value="1" min="0" max="3" onchange="updateRoster()"/>
+      <div class="pos-hint">starting QBs (set to 2 for Superflex)</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Running Backs</span><span class="pos-badge RB">RB</span></div>
+      <input type="number" id="slot-RB" value="2" min="0" max="4" onchange="updateRoster()"/>
+      <div class="pos-hint">starting RBs</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Wide Receivers</span><span class="pos-badge WR">WR</span></div>
+      <input type="number" id="slot-WR" value="2" min="0" max="4" onchange="updateRoster()"/>
+      <div class="pos-hint">starting WRs</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Tight Ends</span><span class="pos-badge TE">TE</span></div>
+      <input type="number" id="slot-TE" value="1" min="0" max="2" onchange="updateRoster()"/>
+      <div class="pos-hint">starting TEs</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Flex</span><span class="pos-badge FLEX">FLEX</span></div>
+      <input type="number" id="slot-FLEX" value="1" min="0" max="3" onchange="updateRoster()"/>
+      <div class="pos-hint">RB/WR/TE flex</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Kicker</span><span class="pos-badge K">K</span></div>
+      <input type="number" id="slot-K" value="0" min="0" max="1" onchange="updateRoster()"/>
+      <div class="pos-hint">kicker spots</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Defense</span><span class="pos-badge DEF">DEF</span></div>
+      <input type="number" id="slot-DEF" value="1" min="0" max="1" onchange="updateRoster()"/>
+      <div class="pos-hint">D/ST spots</div>
+    </div>
+    <div class="pos-slot">
+      <div class="pos-slot-label"><span>Bench Spots</span><span class="pos-badge BENCH">BN</span></div>
+      <input type="number" id="slot-BENCH" value="6" min="0" max="10" onchange="updateRoster()"/>
+      <div class="pos-hint">bench players</div>
+    </div>
   </div>
-  <div style="background:var(--coal);border:1px solid var(--char);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-    <span style="font-family:'Cinzel',serif;font-size:13px">Total Roster Spots</span>
-    <span style="font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--gold)" id="totalSpots">13</span>
+  <div class="roster-total">
+    <span class="roster-total-label">Total Roster Spots</span>
+    <span class="roster-total-val" id="totalSpots">13</span>
   </div>
-  <div class="btn-row"><button class="btn btn-outline" onclick="goStep(1)">← Back</button><button class="btn btn-gold" onclick="goStep(3)">Continue to Strategy →</button></div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
+    <button class="btn btn-gold" onclick="goStep(3)">Continue to Strategy →</button>
+  </div>
 </div>
 
-<!-- STEP 3 -->
+<!-- ═══ STEP 3: DRAFT STRATEGY ═══ -->
 <div class="panel" id="panel-3">
   <p class="panel-title">Draft Strategy</p>
   <p class="panel-sub">Choose your approach. The Oracle adjusts your target prices to match your game plan.</p>
   <div class="strategy-grid">
-    <div class="strat-card" id="strat-rb" onclick="selectStrat('rb')"><div class="strat-name">🏃 RB Heavy</div><div class="strat-desc">Load up on elite running backs. Spend big on two RB1s and fill the rest cheap.</div><div class="strat-custom">Best for: PPR leagues with strong RB ADP</div></div>
-    <div class="strat-card" id="strat-wr" onclick="selectStrat('wr')"><div class="strat-name">🎯 WR Heavy</div><div class="strat-desc">Target elite receivers. Let others overpay for RBs while you secure top pass catchers.</div><div class="strat-custom">Best for: PPR leagues, receiver-friendly offenses</div></div>
-    <div class="strat-card" id="strat-qb" onclick="selectStrat('qb')"><div class="strat-name">🎳 QB Heavy</div><div class="strat-desc">Secure an elite QB early. In superflex or 2QB leagues this is often mandatory.</div><div class="strat-custom">Best for: Superflex / 2QB leagues</div></div>
-    <div class="strat-card" id="strat-hero" onclick="selectStrat('hero')"><div class="strat-name">🦸 Hero RB</div><div class="strat-desc">One elite RB1 anchor, then pivot to WRs. Balance studs with consistent contributors.</div><div class="strat-custom">Best for: Balanced leagues, first-time auction drafters</div></div>
-    <div class="strat-card" id="strat-custom" onclick="selectStrat('custom')"><div class="strat-name">⚙️ Custom</div><div class="strat-desc">Set your own target prices manually in the next step.</div><div class="strat-custom">Best for: Experienced auction drafters</div></div>
+    <div class="strat-card" id="strat-rb" onclick="selectStrat('rb')">
+      <div class="strat-name">🏃 RB Heavy</div>
+      <div class="strat-desc">Load up on elite running backs. Spend big on two RB1s and fill the rest cheap.</div>
+      <div class="strat-best">Best for: PPR leagues with strong RB ADP</div>
+    </div>
+    <div class="strat-card" id="strat-wr" onclick="selectStrat('wr')">
+      <div class="strat-name">🎯 WR Heavy</div>
+      <div class="strat-desc">Target elite receivers. Let others overpay for RBs while you secure top pass catchers.</div>
+      <div class="strat-best">Best for: PPR leagues, receiver-friendly offenses</div>
+    </div>
+    <div class="strat-card" id="strat-qb" onclick="selectStrat('qb')">
+      <div class="strat-name">🎳 QB Heavy</div>
+      <div class="strat-desc">Secure an elite QB early. In superflex or 2QB leagues this is often mandatory.</div>
+      <div class="strat-best">Best for: Superflex / 2QB leagues</div>
+    </div>
+    <div class="strat-card" id="strat-hero" onclick="selectStrat('hero')">
+      <div class="strat-name">🦸 Hero RB</div>
+      <div class="strat-desc">One elite RB1 anchor, then pivot to WRs. Balance studs with consistent contributors.</div>
+      <div class="strat-best">Best for: Balanced leagues, first-time auction drafters</div>
+    </div>
+    <div class="strat-card" id="strat-custom" onclick="selectStrat('custom')">
+      <div class="strat-name">⚙️ Custom</div>
+      <div class="strat-desc">Set your own target prices manually in the next step.</div>
+      <div class="strat-best">Best for: Experienced auction drafters</div>
+    </div>
   </div>
-  <div class="oracle-guidance"><div class="oracle-guidance-label">🔮 The Oracle advises</div><div class="oracle-guidance-text" id="stratAdvice">Select a strategy above and I shall reveal the ancient wisdom of the auction room...</div></div>
-  <div class="btn-row"><button class="btn btn-outline" onclick="goStep(2)">← Back</button><button class="btn btn-gold" onclick="goStep(4)">Generate Target Price Sheet →</button></div>
+  <div class="oracle-box">
+    <div class="oracle-box-label">🔮 The Oracle advises</div>
+    <div class="oracle-box-text" id="stratAdvice">Select a strategy above and I shall reveal the ancient wisdom of the auction room...</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="goStep(2)">← Back</button>
+    <button class="btn btn-gold" onclick="goStep(4)">Generate Target Price Sheet →</button>
+  </div>
 </div>
 
-<!-- STEP 4 -->
+<!-- ═══ STEP 4: TARGET PRICE SHEET ═══ -->
 <div class="panel" id="panel-4">
   <div class="tps-header">
-    <div><p class="panel-title">Target Price Sheet</p><p class="panel-sub" style="margin-bottom:0" id="tpsSubtitle">Your personalized auction budget blueprint</p></div>
+    <div>
+      <p class="panel-title">Target Price Sheet</p>
+      <p class="panel-sub" id="tpsSubtitle" style="margin-bottom:0">Your personalized auction budget blueprint</p>
+    </div>
     <div class="btn-row no-print" style="margin:0">
       <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
       <button class="btn btn-gold" onclick="goStep(5)">Start Live Draft →</button>
     </div>
   </div>
 
-  <!-- LEAGUE FORMAT WARNING -->
   <div class="league-warning" id="leagueWarning">
     <div class="league-warning-label">⚠️ League Format Detected</div>
     <div class="league-warning-text" id="leagueWarningText"></div>
   </div>
 
-  <!-- HOW TO USE HELP PANEL -->
   <div class="help-panel no-print">
     <button class="help-toggle" id="helpToggle" onclick="toggleHelp()">
       🔮 How to Use Your Target Price Sheet — The Oracle's Guide
-      <span class="help-toggle-icon">▼</span>
+      <span class="help-icon" id="helpIcon">▼</span>
     </button>
     <div class="help-body" id="helpBody">
-
-      <div class="help-section">
-        <div class="help-section-title">What These Numbers Mean</div>
-        <div class="help-rule"><span class="help-rule-icon">📌</span>Each dollar amount is your <strong>maximum recommended spend</strong> for that position slot.</div>
-        <div class="help-rule"><span class="help-rule-icon">⚖️</span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</div>
-        <div class="help-rule"><span class="help-rule-icon">📊</span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</div>
-      </div>
-
-      <div class="help-callout">
-        "Your Target Price Sheet is a guardrail — not a rulebook. It is your starting position, not your finish line."
-      </div>
-
-      <div class="help-section">
-        <div class="help-section-title">The Most Important Rule of Auction Drafts</div>
-        <div class="help-callout" style="font-size:15px;text-align:center;font-style:normal;font-weight:600">
-          The auction has a rhythm. Your job is to read the room and pivot.
-        </div>
-      </div>
-
-      <div class="help-section">
-        <div class="help-section-title">How to Use Your Sheet During the Draft</div>
-        <div class="help-rule"><span class="help-rule-icon">💰</span><span><strong>If a player goes cheap</strong> — bank the savings and spend more on the next position.</span></div>
-        <div class="help-rule"><span class="help-rule-icon">🔥</span><span><strong>If a player goes expensive</strong> — protect your remaining budget, let rivals overpay.</span></div>
-        <div class="help-rule"><span class="help-rule-icon">📈</span><span><strong>Watch inflation</strong> — when the room overpays early, remaining values shift upward.</span></div>
-        <div class="help-rule"><span class="help-rule-icon">🔄</span><span><strong>Switch sheets when the room tells you to</strong> — that's not weakness, that's winning.</span></div>
-        <div class="help-rule"><span class="help-rule-icon">❤️</span><span><strong>Never fall in love with a number</strong> — the sheet guides you, the draft decides.</span></div>
-      </div>
-
+      <div class="help-section-title">What these numbers mean</div>
+      <div class="help-rule"><span>📌</span><span>Each dollar amount is your <strong>maximum recommended spend</strong> for that roster slot.</span></div>
+      <div class="help-rule"><span>⚖️</span><span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</span></div>
+      <div class="help-rule"><span>📊</span><span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</span></div>
+      <div class="help-callout">"Your Target Price Sheet is a guardrail — not a rulebook. It is your starting position, not your finish line."</div>
+      <div class="help-section-title">The most important rule of auction drafts</div>
+      <div class="help-callout" style="text-align:center;font-style:normal;font-weight:600;font-size:15px">The auction has a rhythm. Your job is to read the room and pivot.</div>
+      <div class="help-section-title">How to use your sheet during the draft</div>
+      <div class="help-rule"><span>💰</span><span><strong>If a player goes cheap</strong> — bank the savings and spend more on the next position.</span></div>
+      <div class="help-rule"><span>🔥</span><span><strong>If a player goes expensive</strong> — protect your remaining budget, let rivals overpay.</span></div>
+      <div class="help-rule"><span>📈</span><span><strong>Watch inflation</strong> — when the room overpays early, remaining values shift upward.</span></div>
+      <div class="help-rule"><span>🔄</span><span><strong>Switch sheets when the room tells you to</strong> — that's not weakness, that's winning.</span></div>
+      <div class="help-rule"><span>❤️</span><span><strong>Never fall in love with a number</strong> — the sheet guides you, the draft decides.</span></div>
       <div class="help-pro-tip">
-        <div class="help-pro-tip-label">⭐ Pro Strategy — Print Multiple Par Sheets</div>
-        <div class="help-pro-tip-text">The smartest auction drafters walk into the room with <strong>2-3 target price sheets</strong> — one for each strategy. Generate a sheet for your primary strategy, a pivot strategy, and a backup. If elite RBs go cheap early, switch to your RB Heavy sheet instantly. If QBs are flying off the board, your QB Heavy sheet is ready. The manager with one sheet is reactive. <strong>The manager with three sheets is always in control.</strong></div>
+        <div class="help-pro-label">⭐ Pro Strategy — Print Multiple Price Sheets</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">The smartest auction drafters walk in with <strong>2–3 target price sheets</strong>. Generate your primary strategy, a pivot, and a backup. The manager with one sheet is reactive. <strong>The manager with three sheets is always in control.</strong></div>
       </div>
-
-      <div class="help-section">
-        <div class="help-section-title">When to Pivot Strategies</div>
-        <div class="help-strategy-grid">
-          <div class="help-strategy-pill"><strong>RBs going cheap?</strong>Switch to RB Heavy — load up on elite backs while rivals sleep.</div>
-          <div class="help-strategy-pill"><strong>WRs going cheap?</strong>Switch to WR Heavy — receivers at a discount are championship currency.</div>
-          <div class="help-strategy-pill"><strong>Everyone overpaying early?</strong>Go conservative — your budget sheet becomes your biggest weapon.</div>
-          <div class="help-strategy-pill"><strong>QBs flying off board?</strong>Switch to QB Heavy — or stream and feast on value elsewhere.</div>
-        </div>
+      <div class="help-section-title">When to pivot strategies</div>
+      <div class="help-strategy-grid">
+        <div class="help-strategy-pill"><strong>RBs going cheap?</strong>Switch to RB Heavy — load up on elite backs while rivals sleep.</div>
+        <div class="help-strategy-pill"><strong>WRs going cheap?</strong>Switch to WR Heavy — receivers at a discount are championship currency.</div>
+        <div class="help-strategy-pill"><strong>Everyone overpaying early?</strong>Go conservative — your budget sheet becomes your biggest weapon.</div>
+        <div class="help-strategy-pill"><strong>QBs flying off board?</strong>Switch to QB Heavy — or stream and feast on value elsewhere.</div>
       </div>
-
-      <div class="help-callout">
-        🔮 <em>"In 38 seasons I have learned this truth — the manager who arrives with a plan and the wisdom to abandon it at the right moment, armed with the foresight to have prepared for every contingency, is the manager who lifts the trophy."</em>
-      </div>
-
+      <div class="help-callout">🔮 <em>"In 38 seasons I have learned this truth — the manager who arrives with a plan and the wisdom to abandon it at the right moment, armed with the foresight to have prepared for every contingency, is the manager who lifts the trophy."</em></div>
     </div>
   </div>
 
   <div class="tps-grid" id="tpsGrid"></div>
-  <div class="tps-total"><span class="tps-total-label">Total Budget</span><span class="tps-total-val" id="tpsTotal">$200</span></div>
-  <div class="oracle-guidance"><div class="oracle-guidance-label">🔮 Oracle Strategy Briefing</div><div class="oracle-guidance-text" id="oracleBriefing">Loading wisdom...</div></div>
-  <div style="background:rgba(255,82,82,0.5);border:1px solid rgba(255,82,82,0.2);border-radius:var(--r);padding:14px 16px;margin-bottom:20px">
-    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--red);font-family:'JetBrains Mono',monospace;margin-bottom:6px">🔥 Trash Lord's Take</div>
-    <div style="font-style:italic;font-size:13px;color:#ffffff;line-height:1.7" id="trashTake">Loading chaos...</div>
+  <div class="tps-total-row">
+    <span class="tps-total-label">Total Budget</span>
+    <span class="tps-total-val" id="tpsTotal">$200</span>
   </div>
-  <div class="btn-row no-print"><button class="btn btn-outline" onclick="goStep(3)">← Change Strategy</button><button class="btn btn-gold" onclick="goStep(5)">Enter Live Draft Tracker →</button></div>
+  <div class="oracle-box">
+    <div class="oracle-box-label">🔮 Oracle Strategy Briefing</div>
+    <div class="oracle-box-text" id="oracleBriefing">Loading wisdom...</div>
+  </div>
+  <div class="trash-box">
+    <div class="trash-box-label">🔥 Trash Lord's Take</div>
+    <div class="trash-box-text" id="trashTake">Loading chaos...</div>
+  </div>
+  <div class="btn-row no-print">
+    <button class="btn btn-outline" onclick="goStep(3)">← Change Strategy</button>
+    <button class="btn btn-gold" onclick="goStep(5)">Enter Live Draft Tracker →</button>
+  </div>
 </div>
 
-<!-- STEP 5 -->
+<!-- ═══ STEP 5: LIVE DRAFT TRACKER ═══ -->
 <div class="panel" id="panel-5">
   <p class="panel-title">Live Draft Tracker</p>
   <p class="panel-sub">Log each pick as it happens. The Oracle tracks inflation and alerts you to value in real time.</p>
-  <div class="tracker-top">
-    <div class="tracker-stat"><div class="tracker-stat-label">Your Budget Left</div><div class="tracker-stat-val good" id="myBudgetLeft">$200</div></div>
-    <div class="tracker-stat"><div class="tracker-stat-label">Players Drafted</div><div class="tracker-stat-val" id="playersDrafted">0</div></div>
-    <div class="tracker-stat"><div class="tracker-stat-label">Avg Price Paid</div><div class="tracker-stat-val" id="avgPricePaid">—</div></div>
-    <div class="tracker-stat"><div class="tracker-stat-label">Market Inflation</div><div class="tracker-stat-val warn" id="inflationVal">0%</div></div>
+
+  <div class="tracker-stats">
+    <div class="stat-card"><div class="stat-label">Your Budget Left</div><div class="stat-val good" id="myBudgetLeft">$200</div></div>
+    <div class="stat-card"><div class="stat-label">Players Drafted</div><div class="stat-val" id="playersDrafted">0</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Price Paid</div><div class="stat-val" id="avgPricePaid">—</div></div>
+    <div class="stat-card"><div class="stat-label">Market Inflation</div><div class="stat-val warn" id="inflationVal">0%</div></div>
   </div>
+
   <div class="inflation-bar">
-    <div class="inflation-label"><span>Budget Spent (Market)</span><span id="inflationPct">0% of total market budget used</span></div>
-    <div class="inflation-track"><div class="inflation-fill" id="inflationFill" style="width:0%;background:var(--green)"></div></div>
+    <div class="inflation-header">
+      <span>Budget Spent (Market)</span>
+      <span id="inflationPct">0% of total market budget used</span>
+    </div>
+    <div class="inflation-track"><div class="inflation-fill" id="inflationFill" style="width:0%"></div></div>
   </div>
-  <div class="draft-entry">
-    <div class="draft-entry-title">Log a Pick</div>
-    <div class="draft-entry-grid">
+
+  <div class="pick-entry">
+    <div class="pick-entry-title">Log a Pick</div>
+    <div class="pick-grid">
       <div class="form-group autocomplete-wrap">
         <label>Player Name</label>
-        <input type="text" id="pickPlayer" placeholder="Type to search players..." autocomplete="off" oninput="searchPlayers(this.value)" onfocus="searchPlayers(this.value)"/>
+        <input type="text" id="pickPlayer" placeholder="Type to search players..." autocomplete="off"
+          oninput="searchPlayers(this.value)" onfocus="searchPlayers(this.value)"/>
         <div class="player-dropdown" id="playerDropdown"></div>
       </div>
       <div class="form-group">
         <label>Position</label>
-        <input type="text" id="pickPosition" placeholder="Auto" readonly class="readonly-field"/>
+        <input type="text" id="pickPosition" placeholder="Auto" readonly/>
       </div>
       <div class="form-group">
         <label>$ Projected</label>
-        <input type="number" id="pickProjected" placeholder="Auto" readonly class="readonly-field"/>
+        <input type="number" id="pickProjected" placeholder="Auto" readonly/>
       </div>
       <div class="form-group">
         <label>$ Paid</label>
@@ -362,23 +513,30 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
         <select id="pickTeam"></select>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-top:10px">
-      <div></div>
+    <div class="pick-actions">
       <button class="btn btn-gold" onclick="logPick()">Log Pick ↵</button>
     </div>
-    <div class="draft-log" id="draftLog" style="display:none">
-      <div class="draft-log-title" style="margin-top:16px">Draft Log</div>
-      <table class="draft-log-table">
-        <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th></tr></thead>
+    <div class="draft-log" id="draftLog">
+      <div class="log-title" style="margin-top:16px">Draft Log</div>
+      <table class="log-table">
+        <thead>
+          <tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th></tr>
+        </thead>
         <tbody id="draftLogBody"></tbody>
       </table>
     </div>
   </div>
-  <div class="oracle-guidance"><div class="oracle-guidance-label">🔮 Oracle Live Update</div><div class="oracle-guidance-text" id="liveOracle">The draft has not yet begun. When the first player is nominated, I shall advise...</div></div>
+
+  <div class="oracle-box">
+    <div class="oracle-box-label">🔮 Oracle Live Update</div>
+    <div class="oracle-box-text" id="liveOracle">The draft has not yet begun. When the first player is nominated, I shall advise...</div>
+  </div>
+
   <div>
     <p style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Team Budgets</p>
     <div class="teams-grid" id="teamsGrid"></div>
   </div>
+
   <div class="btn-row" style="margin-top:20px">
     <button class="btn btn-outline" onclick="goStep(4)">← Back to Price Sheet</button>
     <button class="btn btn-danger" onclick="resetDraft()">Reset Draft</button>
@@ -386,372 +544,536 @@ body{background:var(--void);color:var(--cream);font-family:'Lora',Georgia,serif;
 </div>
 
 <script>
-var state={step:1,leagueName:'',numTeams:10,budget:200,scoring:'ppr',leagueType:'redraft',leagueFormat:'standard',platform:'sleeper',teamNames:[],roster:{QB:1,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6},strategy:null,targetPrices:{},draftLog:[]};
-
-var STRATEGIES={
-  rb:{name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie.",splits:{QB:0.015,RB1:0.25,RB2:0.22,WR1:0.15,WR2:0.125,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.10}},
-  wr:{name:'WR Heavy',advice:'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',trash:"WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me.",splits:{QB:0.015,RB1:0.21,RB2:0.135,WR1:0.25,WR2:0.19,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
-  qb:{name:'QB Heavy',advice:'In the realm of superflex and two-quarterback leagues, the signal caller is currency itself. Securing the elite tier means your opponent forever chases a position of power.',trash:"QB Heavy means you're either in a superflex league (smart) or just vibing (less smart). Either way, having Lamar while everyone else fights over backup QBs? CHEF'S KISS.",splits:{QB:0.11,RB1:0.21,RB2:0.125,WR1:0.19,WR2:0.14,TE:0.02,FLEX:0.085,DEF:0.005,K:0.005,BENCH:0.11}},
-  hero:{name:'Hero RB',advice:'One anchor. One cornerstone. Secure your elite running back and build the supporting cast from the depths of value. This is the path of the patient drafter who strikes once with precision, then harvests the remaining rounds.',trash:"Hero RB is the move of CHAMPIONS who did their homework. Get one stud RB, then let the WR value come to YOU. It's not luck, it's knowing the market better than everyone in that room.",splits:{QB:0.015,RB1:0.23,RB2:0.10,WR1:0.245,WR2:0.17,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}},
-  custom:{name:'Custom',advice:'You have chosen the path of the master. Custom allocation is for those who know their league — the spending habits of rivals, historical inflation, and hidden value at each position. Trust your knowledge.',trash:"Custom strategy? Look at you, a VETERAN. You've done your homework. Just don't come crying to me when you blow $60 on a kicker.",splits:{QB:0.015,RB1:0.23,RB2:0.18,WR1:0.17,WR2:0.13,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}}
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+var state = {
+  step: 1,
+  leagueName: '',
+  numTeams: 10,
+  budget: 200,
+  scoring: 'ppr',
+  leagueType: 'redraft',
+  leagueFormat: 'standard',
+  platform: 'sleeper',
+  teamNames: [],
+  roster: { QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6 },
+  strategy: null,
+  targetPrices: {},
+  draftLog: []
 };
 
-var SUPERFLEX_SPLITS={
-  rb:{name:'RB Heavy',splits:{QB:0.12,RB1:0.22,RB2:0.18,WR1:0.13,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.10}},
-  wr:{name:'WR Heavy',splits:{QB:0.12,RB1:0.18,RB2:0.11,WR1:0.21,WR2:0.16,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
-  qb:{name:'QB Heavy',splits:{QB:0.18,RB1:0.18,RB2:0.10,WR1:0.17,WR2:0.12,TE:0.02,FLEX:0.075,DEF:0.005,K:0.005,BENCH:0.10}},
-  hero:{name:'Hero RB',splits:{QB:0.12,RB1:0.20,RB2:0.09,WR1:0.21,WR2:0.15,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}},
-  custom:{name:'Custom',splits:{QB:0.13,RB1:0.20,RB2:0.15,WR1:0.15,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}}
+// ═══════════════════════════════════════════
+// POSITION COLORS
+// ═══════════════════════════════════════════
+var POS_COLORS = {
+  QB: 'background:rgba(21,101,192,0.15);color:#1565c0;border:1px solid rgba(21,101,192,0.3)',
+  RB: 'background:rgba(46,125,50,0.15);color:#2e7d32;border:1px solid rgba(46,125,50,0.3)',
+  WR: 'background:rgba(184,146,26,0.15);color:#b8921a;border:1px solid rgba(184,146,26,0.3)',
+  TE: 'background:rgba(200,120,10,0.15);color:#c8780a;border:1px solid rgba(200,120,10,0.3)',
+  K:  'background:rgba(120,100,60,0.15);color:#7a7a76;border:1px solid rgba(120,100,60,0.3)',
+  DEF:'background:rgba(138,32,32,0.15);color:#8a2020;border:1px solid rgba(138,32,32,0.3)'
 };
 
-var POS_COLORS={QB:'background:rgba(100,181,246,0.15);color:#64b5f6;border:1px solid rgba(100,181,246,0.3)',RB:'background:rgba(76,175,80,0.15);color:#4caf50;border:1px solid rgba(76,175,80,0.3)',WR:'background:rgba(201,168,76,0.15);color:#c9a84c;border:1px solid rgba(201,168,76,0.3)',TE:'background:rgba(232,150,10,0.15);color:#e8960a;border:1px solid rgba(232,150,10,0.3)',K:'background:rgba(160,133,80,0.15);color:#a08550;border:1px solid rgba(160,133,80,0.3)',DEF:'background:rgba(255,82,82,0.15);color:#ff5252;border:1px solid rgba(255,82,82,0.3)'};
+// ═══════════════════════════════════════════
+// STRATEGIES — MARKET-CALIBRATED SPLITS
+// These percentages are calibrated to real auction
+// market values for a 10-team $200 cap PPR league.
+// The normalization math ensures they always sum to
+// exactly the user's budget regardless of roster size.
+// ═══════════════════════════════════════════
+var STRATEGIES = {
+  rb: {
+    name: 'RB Heavy',
+    advice: 'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',
+    trash: "RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie.",
+    splits: { QB:0.11, RB1:0.26, RB2:0.19, WR1:0.16, WR2:0.11, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 }
+  },
+  wr: {
+    name: 'WR Heavy',
+    advice: 'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',
+    trash: "WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me.",
+    splits: { QB:0.11, RB1:0.17, RB2:0.11, WR1:0.26, WR2:0.18, TE:0.10, FLEX:0.06, DEF:0.01, K:0.01, BENCH:0.01 }
+  },
+  qb: {
+    name: 'QB Heavy',
+    advice: 'In the realm of superflex and two-quarterback leagues, the signal caller is currency itself. Securing the elite tier means your opponent forever chases a position of power. Even in standard leagues, an elite QB provides a ceiling others cannot match.',
+    trash: "QB Heavy means you're either in a superflex league (smart) or just vibing (less smart). Either way, having Lamar while everyone else fights over backup QBs? CHEF'S KISS.",
+    splits: { QB:0.20, RB1:0.19, RB2:0.11, WR1:0.17, WR2:0.11, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 }
+  },
+  hero: {
+    name: 'Hero RB',
+    advice: 'One anchor. One cornerstone. Secure your elite running back and build the supporting cast from the depths of value. This is the path of the patient drafter who strikes once with precision, then harvests the remaining rounds.',
+    trash: "Hero RB is the move of CHAMPIONS who did their homework. Get one stud RB, then let the WR value come to YOU. It's not luck, it's knowing the market better than everyone in that room.",
+    splits: { QB:0.11, RB1:0.25, RB2:0.09, WR1:0.23, WR2:0.14, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 }
+  },
+  custom: {
+    name: 'Custom',
+    advice: 'You have chosen the path of the master. Custom allocation is for those who know their league — the spending habits of rivals, historical inflation, and hidden value at each position. Trust your knowledge.',
+    trash: "Custom strategy? Look at you, a VETERAN. You've done your homework. Just don't come crying to me when you blow $60 on a kicker.",
+    splits: { QB:0.12, RB1:0.20, RB2:0.14, WR1:0.19, WR2:0.12, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 }
+  }
+};
 
-var allPlayers=[];
-function loadSleeperPlayers(){
+// Superflex adjusts QB allocation significantly upward
+var SUPERFLEX_SPLITS = {
+  rb:     { QB:0.17, RB1:0.22, RB2:0.16, WR1:0.13, WR2:0.09, TE:0.10, FLEX:0.08, DEF:0.01, K:0.01, BENCH:0.01 },
+  wr:     { QB:0.17, RB1:0.14, RB2:0.09, WR1:0.21, WR2:0.15, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 },
+  qb:     { QB:0.24, RB1:0.16, RB2:0.09, WR1:0.15, WR2:0.10, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 },
+  hero:   { QB:0.17, RB1:0.20, RB2:0.08, WR1:0.19, WR2:0.13, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 },
+  custom: { QB:0.17, RB1:0.17, RB2:0.12, WR1:0.16, WR2:0.10, TE:0.10, FLEX:0.07, DEF:0.01, K:0.01, BENCH:0.01 }
+};
+
+// ═══════════════════════════════════════════
+// SLEEPER PLAYER DATABASE
+// ═══════════════════════════════════════════
+var allPlayers = [];
+
+function loadSleeperPlayers() {
   fetch('https://api.sleeper.app/v1/players/nfl')
-    .then(function(r){return r.json()})
-    .then(function(data){
-      allPlayers=[];
-      Object.values(data).forEach(function(p){
-        if(!p.full_name)return;
-        if(!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status))return;
-        if(p.status==='Inactive'||p.status==='Retired')return;
-        if(!['QB','RB','WR','TE','K'].includes(p.position))return;
-        allPlayers.push({name:p.full_name,pos:p.position,team:p.team||'FA'});
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      allPlayers = [];
+      Object.values(data).forEach(function(p) {
+        if (!p.full_name) return;
+        if (!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status)) return;
+        if (p.status === 'Inactive' || p.status === 'Retired') return;
+        if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
+        allPlayers.push({ name: p.full_name, pos: p.position, team: p.team || 'FA' });
       });
-      allPlayers.sort(function(a,b){return a.name.localeCompare(b.name)});
+      allPlayers.sort(function(a, b) { return a.name.localeCompare(b.name); });
     })
-    .catch(function(){console.log('Sleeper API unavailable')});
+    .catch(function() { console.log('Sleeper API unavailable — player search limited'); });
 }
 loadSleeperPlayers();
 
-function searchPlayers(query){
-  var dd=document.getElementById('playerDropdown');
-  if(!query||query.length<2){dd.style.display='none';return}
-  var q=query.toLowerCase();
-  var matches=allPlayers.filter(function(p){
-    return p.name.toLowerCase().includes(q)||(p.team&&p.team.toLowerCase().includes(q));
-  }).slice(0,12);
-  if(!matches.length){dd.style.display='none';return}
-  dd.innerHTML='';
-  matches.forEach(function(p){
-    var proj=getProjectedValue(p.pos);
-    var posStyle=POS_COLORS[p.pos]||'background:rgba(100,100,100,0.15);color:#888';
-    var item=document.createElement('div');
-    item.className='player-dropdown-item';
-    item.innerHTML=
-      '<div class="player-item-left">'+
-        '<span class="player-item-name">'+p.name+'</span>'+
-        '<span class="player-item-team">'+p.team+'</span>'+
-      '</div>'+
-      '<div class="player-item-right">'+
-        '<span class="player-item-pos" style="'+posStyle+'">'+p.pos+'</span>'+
-        (proj?'<span class="player-item-val">$'+proj+'</span>':'')+'</div>';
-    item.onclick=function(){
-      document.getElementById('pickPlayer').value=p.name;
-      document.getElementById('pickPosition').value=p.pos;
-      if(proj)document.getElementById('pickProjected').value=proj;
-      else document.getElementById('pickProjected').value='';
-      dd.style.display='none';
+// ═══════════════════════════════════════════
+// PLAYER SEARCH AUTOCOMPLETE
+// ═══════════════════════════════════════════
+function searchPlayers(query) {
+  var dd = document.getElementById('playerDropdown');
+  if (!query || query.length < 2) { dd.style.display = 'none'; return; }
+  var q = query.toLowerCase();
+  var matches = allPlayers.filter(function(p) {
+    return p.name.toLowerCase().includes(q) || (p.team && p.team.toLowerCase().includes(q));
+  }).slice(0, 12);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = '';
+  matches.forEach(function(p) {
+    var proj = getProjectedValue(p.pos);
+    var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
+    var item = document.createElement('div');
+    item.className = 'dd-item';
+    item.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="dd-name">' + p.name + '</span>' +
+        '<span class="dd-team">' + p.team + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="dd-pos" style="' + posStyle + '">' + p.pos + '</span>' +
+        (proj ? '<span class="dd-val">$' + proj + '</span>' : '') +
+      '</div>';
+    item.onclick = function() {
+      document.getElementById('pickPlayer').value = p.name;
+      document.getElementById('pickPosition').value = p.pos;
+      document.getElementById('pickProjected').value = proj || '';
+      dd.style.display = 'none';
       document.getElementById('pickPrice').focus();
     };
     dd.appendChild(item);
   });
-  dd.style.display='block';
+  dd.style.display = 'block';
 }
 
-function getProjectedValue(pos){
-  var prices=state.targetPrices;
-  if(!prices||!Object.keys(prices).length)return null;
-  var map={QB:'QB1',RB:'RB1',WR:'WR1',TE:'TE1',K:'K',DEF:'D/ST'};
-  return prices[map[pos]]||null;
+function getProjectedValue(pos) {
+  var map = { QB:'QB1', RB:'RB1', WR:'WR1', TE:'TE1', K:'K', DEF:'D/ST' };
+  return state.targetPrices[map[pos]] || null;
 }
 
-document.addEventListener('click',function(e){
-  if(!e.target.closest('#pickPlayer')&&!e.target.closest('#playerDropdown')){
-    var d=document.getElementById('playerDropdown');
-    if(d)d.style.display='none';
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#pickPlayer') && !e.target.closest('#playerDropdown')) {
+    var d = document.getElementById('playerDropdown');
+    if (d) d.style.display = 'none';
   }
 });
 
-function goStep(n){
-  if(n===4)generateTPS();
-  if(n===5)initTracker();
-  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
-  document.querySelectorAll('.step-tab').forEach(function(t,i){
-    t.classList.remove('active','done');
-    if(i+1<n)t.classList.add('done');
-    if(i+1===n)t.classList.add('active');
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goStep(n) {
+  if (n === 4) generateTPS();
+  if (n === 5) initTracker();
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.step-tab').forEach(function(t, i) {
+    t.classList.remove('active', 'done');
+    if (i + 1 < n) t.classList.add('done');
+    if (i + 1 === n) t.classList.add('active');
   });
-  document.getElementById('panel-'+n).classList.add('active');
-  state.step=n;
-  window.scrollTo(0,0);
-  if(n===1)buildTeamInputs();
+  document.getElementById('panel-' + n).classList.add('active');
+  state.step = n;
+  window.scrollTo(0, 0);
 }
 
-function buildTeamInputs(){
-  var n=parseInt(document.getElementById('numTeams').value);
-  var grid=document.getElementById('teamNamesGrid');
-  grid.innerHTML='';
-  for(var i=1;i<=n;i++){
-    var g=document.createElement('div');
-    g.className='form-group';
-    g.innerHTML='<label>Team '+i+'</label><input type="text" id="team-'+i+'" placeholder="Team '+i+' name" value="'+(state.teamNames[i-1]||'')+'"/>';
+// ═══════════════════════════════════════════
+// STEP 1 — TEAM NAME INPUTS
+// ═══════════════════════════════════════════
+function buildTeamInputs() {
+  var n = parseInt(document.getElementById('numTeams').value);
+  var grid = document.getElementById('teamNamesGrid');
+  grid.innerHTML = '';
+  for (var i = 1; i <= n; i++) {
+    var g = document.createElement('div');
+    g.className = 'form-group';
+    g.innerHTML = '<label>Team ' + i + '</label>' +
+      '<input type="text" id="team-' + i + '" placeholder="Team ' + i + ' name" value="' + (state.teamNames[i-1] || '') + '"/>';
     grid.appendChild(g);
   }
 }
-document.getElementById('numTeams').addEventListener('change',buildTeamInputs);
 buildTeamInputs();
 
-function updateRoster(){
-  var slots=['QB','RB','WR','TE','FLEX','K','DEF','BENCH'];
-  var total=0;
-  slots.forEach(function(s){var v=parseInt(document.getElementById('slot-'+s).value)||0;state.roster[s]=v;total+=v});
-  document.getElementById('totalSpots').textContent=total;
+// ═══════════════════════════════════════════
+// STEP 2 — ROSTER
+// ═══════════════════════════════════════════
+function updateRoster() {
+  var slots = ['QB','RB','WR','TE','FLEX','K','DEF','BENCH'];
+  var total = 0;
+  slots.forEach(function(s) {
+    var v = parseInt(document.getElementById('slot-' + s).value) || 0;
+    state.roster[s] = v;
+    total += v;
+  });
+  document.getElementById('totalSpots').textContent = total;
 }
 
-function selectStrat(s){
-  state.strategy=s;
-  document.querySelectorAll('.strat-card').forEach(function(c){c.classList.remove('selected')});
-  document.getElementById('strat-'+s).classList.add('selected');
-  document.getElementById('stratAdvice').textContent=STRATEGIES[s].advice;
+// ═══════════════════════════════════════════
+// STEP 3 — STRATEGY SELECTION
+// ═══════════════════════════════════════════
+function selectStrat(s) {
+  state.strategy = s;
+  document.querySelectorAll('.strat-card').forEach(function(c) { c.classList.remove('selected'); });
+  document.getElementById('strat-' + s).classList.add('selected');
+  document.getElementById('stratAdvice').textContent = STRATEGIES[s].advice;
 }
 
-function toggleHelp(){
-  var btn=document.getElementById('helpToggle');
-  var body=document.getElementById('helpBody');
-  btn.classList.toggle('open');
-  body.classList.toggle('open');
+// ═══════════════════════════════════════════
+// STEP 4 — HELP PANEL TOGGLE
+// ═══════════════════════════════════════════
+function toggleHelp() {
+  document.getElementById('helpToggle').classList.toggle('open');
+  document.getElementById('helpIcon').classList.toggle('open');
+  document.getElementById('helpBody').classList.toggle('open');
 }
 
-function showLeagueWarning(){
-  var warning=document.getElementById('leagueWarning');
-  var text=document.getElementById('leagueWarningText');
-  var scoring=document.getElementById('scoring').value;
-  var leagueType=document.getElementById('leagueType').value;
-  var leagueFormat=document.getElementById('leagueFormat').value;
-  var msgs=[];
+// ═══════════════════════════════════════════
+// STEP 4 — LEAGUE FORMAT WARNING
+// ═══════════════════════════════════════════
+function showLeagueWarning() {
+  var warning = document.getElementById('leagueWarning');
+  var text = document.getElementById('leagueWarningText');
+  var scoring = document.getElementById('scoring').value;
+  var leagueType = document.getElementById('leagueType').value;
+  var leagueFormat = document.getElementById('leagueFormat').value;
+  var msgs = [];
 
-  if(leagueFormat==='superflex'){
-    msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — Your QB target prices have been significantly increased. In 2QB and Superflex leagues quarterbacks become the scarcest commodity on the board. Budget $45-65 for an elite QB1 and $30-45 for a solid QB2. Managers who ignore QB scarcity will be scrambling at the position by nomination 30. Your price sheet has been adjusted accordingly.');
+  if (leagueFormat === 'superflex') {
+    msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — QB target prices have been significantly increased. Budget $45–65 for an elite QB1 and $30–45 for a solid QB2. Managers who ignore QB scarcity will be scrambling by nomination 30.');
   }
-  if(scoring==='ppr'){
+  if (scoring === 'ppr') {
     msgs.push('📋 <strong>PPR Scoring</strong> — Pass-catching running backs and slot receivers carry premium value. Your WR and RB allocations reflect full point-per-reception scoring.');
   }
-  if(scoring==='standard'){
+  if (scoring === 'standard') {
     msgs.push('🏃 <strong>Standard Scoring</strong> — Workhorse running backs dominate. Your RB allocations are weighted toward volume carriers over pass-catching backs.');
   }
-  if(scoring==='half'){
-    msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency. Your allocations reflect the hybrid value of skill position players.');
+  if (scoring === 'half') {
+    msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency.');
   }
-  if(leagueType==='keeper'){
+  if (leagueType === 'keeper') {
     msgs.push('🔒 <strong>Keeper League</strong> — Elite players kept from last season create scarcity at the top. Expect inflation on remaining top-tier talent. Budget conservatively early and strike when value presents itself.');
   }
-  if(leagueType==='dynasty'){
+  if (leagueType === 'dynasty') {
     msgs.push('👑 <strong>Dynasty League</strong> — Young players with long-term upside carry premium value. Age curves and opportunity matter more than current production alone.');
   }
 
-  if(msgs.length>0){
-    text.innerHTML=msgs.join('<br><br>');
+  if (msgs.length > 0) {
+    text.innerHTML = msgs.join('<br><br>');
     warning.classList.add('show');
   } else {
     warning.classList.remove('show');
   }
 }
 
-function generateTPS(){
-  state.leagueName=document.getElementById('leagueName').value||'My League';
-  state.numTeams=parseInt(document.getElementById('numTeams').value);
-  state.budget=parseInt(document.getElementById('budget').value)||200;
-  state.scoring=document.getElementById('scoring').value;
-  state.leagueFormat=document.getElementById('leagueFormat').value;
-  var n=state.numTeams;
-  for(var i=1;i<=n;i++){var el=document.getElementById('team-'+i);state.teamNames[i-1]=el?(el.value||'Team '+i):'Team '+i}
+// ═══════════════════════════════════════════
+// STEP 4 — GENERATE TARGET PRICE SHEET
+// ═══════════════════════════════════════════
+function generateTPS() {
+  // Read current form values
+  state.leagueName = document.getElementById('leagueName').value || 'My League';
+  state.numTeams = parseInt(document.getElementById('numTeams').value);
+  state.budget = parseInt(document.getElementById('budget').value) || 200;
+  state.scoring = document.getElementById('scoring').value;
+  state.leagueFormat = document.getElementById('leagueFormat').value;
+
+  var n = state.numTeams;
+  for (var i = 1; i <= n; i++) {
+    var el = document.getElementById('team-' + i);
+    state.teamNames[i-1] = el ? (el.value || 'Team ' + i) : 'Team ' + i;
+  }
   updateRoster();
-
-  var isSuperflex=state.leagueFormat==='superflex';
-  var stratKey=state.strategy||'hero';
-  var strat=isSuperflex?(SUPERFLEX_SPLITS[stratKey]||SUPERFLEX_SPLITS.hero):(STRATEGIES[stratKey]||STRATEGIES.hero);
-  var stratDisplay=STRATEGIES[stratKey]||STRATEGIES.hero;
-
   showLeagueWarning();
 
-  var budget=state.budget;
-  var splits=strat.splits;
-  var roster=state.roster;
-  var slots=[];
-  state.targetPrices={};
+  var isSuperflex = state.leagueFormat === 'superflex';
+  var stratKey = state.strategy || 'hero';
+  var strat = STRATEGIES[stratKey];
+  var splits = isSuperflex ? SUPERFLEX_SPLITS[stratKey] : strat.splits;
+  var budget = state.budget;
+  var roster = state.roster;
 
-  function addSlot(pos,label,pct,bench){
-    slots.push({pos:pos,label:label,rawPct:pct,bench:bench||false});
+  // Build slot list with raw percentage weights
+  var slots = [];
+  function add(pos, label, pct, bench) {
+    slots.push({ pos:pos, label:label, rawPct:pct, bench:bench||false });
   }
 
-  if(roster.QB>=1)addSlot('QB','QB1',splits.QB);
-  if(roster.QB>=2)addSlot('QB','QB2',splits.QB*0.5);
-  if(roster.RB>=1)addSlot('RB','RB1',splits.RB1);
-  if(roster.RB>=2)addSlot('RB','RB2',splits.RB2);
-  if(roster.RB>=3)addSlot('RB','RB3',splits.RB2*0.4);
-  if(roster.WR>=1)addSlot('WR','WR1',splits.WR1);
-  if(roster.WR>=2)addSlot('WR','WR2',splits.WR2);
-  if(roster.WR>=3)addSlot('WR','WR3',splits.WR2*0.4);
-  if(roster.TE>=1)addSlot('TE','TE1',splits.TE);
-  if(roster.TE>=2)addSlot('TE','TE2',0.01);
-  if(roster.FLEX>=1)addSlot('FLEX','FLEX',splits.FLEX);
-  if(roster.FLEX>=2)addSlot('FLEX','FLEX2',splits.FLEX*0.5);
-  if(roster.DEF>=1)addSlot('DEF','D/ST',splits.DEF);
-  if(roster.K>=1)addSlot('K','K',splits.K);
-  for(var b=1;b<=roster.BENCH;b++){addSlot('BENCH','Bench '+b,b<=2?0.04:b<=4?0.02:0.005,true)}
+  if (roster.QB >= 1) add('QB', 'QB1', splits.QB);
+  if (roster.QB >= 2) add('QB', 'QB2', splits.QB * 0.55);
+  if (roster.RB >= 1) add('RB', 'RB1', splits.RB1);
+  if (roster.RB >= 2) add('RB', 'RB2', splits.RB2);
+  if (roster.RB >= 3) add('RB', 'RB3', splits.RB2 * 0.40);
+  if (roster.WR >= 1) add('WR', 'WR1', splits.WR1);
+  if (roster.WR >= 2) add('WR', 'WR2', splits.WR2);
+  if (roster.WR >= 3) add('WR', 'WR3', splits.WR2 * 0.40);
+  if (roster.TE >= 1) add('TE', 'TE1', splits.TE);
+  if (roster.TE >= 2) add('TE', 'TE2', splits.TE * 0.30);
+  if (roster.FLEX >= 1) add('FLEX', 'FLEX', splits.FLEX);
+  if (roster.FLEX >= 2) add('FLEX', 'FLEX2', splits.FLEX * 0.50);
+  if (roster.DEF >= 1) add('DEF', 'D/ST', splits.DEF);
+  if (roster.K >= 1)   add('K',   'K',    splits.K);
+  for (var b = 1; b <= roster.BENCH; b++) {
+    add('BENCH', 'Bench ' + b, b <= 2 ? 0.035 : b <= 4 ? 0.018 : 0.005, true);
+  }
 
-  var totalPct=slots.reduce(function(a,s){return a+s.rawPct},0);
-  slots.forEach(function(s){s.normPct=s.rawPct/totalPct});
-  slots.forEach(function(s){s.val=Math.max(1,Math.floor(s.normPct*budget))});
-  var currentTotal=slots.reduce(function(a,s){return a+s.val},0);
-  var remainder=budget-currentTotal;
-  for(var r=0;r<remainder;r++){slots[r%slots.length].val+=1}
+  // Normalize percentages so they sum to exactly 1.0,
+  // then allocate dollars and distribute any remainder
+  var totalPct = slots.reduce(function(a, s) { return a + s.rawPct; }, 0);
+  slots.forEach(function(s) { s.normPct = s.rawPct / totalPct; });
+  slots.forEach(function(s) { s.val = Math.max(1, Math.floor(s.normPct * budget)); });
+  var allocated = slots.reduce(function(a, s) { return a + s.val; }, 0);
+  var remainder = budget - allocated;
+  // Distribute remainder $1 at a time to highest-value starters first
+  for (var r = 0; r < remainder; r++) { slots[r % slots.length].val += 1; }
 
-  slots.forEach(function(s){state.targetPrices[s.label]=s.val});
+  // Store for use in tracker projected values
+  state.targetPrices = {};
+  slots.forEach(function(s) { state.targetPrices[s.label] = s.val; });
 
-  var grid=document.getElementById('tpsGrid');
-  grid.innerHTML='';
-  slots.forEach(function(s){
-    var pct=Math.round(s.normPct*100);
-    var div=document.createElement('div');
-    div.className='tps-slot'+(s.bench?' bench':'');
-    div.innerHTML='<div class="tps-slot-pos">'+s.pos+'</div><div class="tps-slot-label">'+s.label+'</div><div class="tps-slot-val">$'+s.val+'</div><div class="tps-slot-pct">'+pct+'% of budget</div>';
+  // Render price sheet
+  var grid = document.getElementById('tpsGrid');
+  grid.innerHTML = '';
+  slots.forEach(function(s) {
+    var pct = Math.round(s.normPct * 100);
+    var div = document.createElement('div');
+    div.className = 'tps-slot' + (s.bench ? ' bench' : '');
+    div.innerHTML =
+      '<div class="tps-pos">' + s.pos + '</div>' +
+      '<div class="tps-label">' + s.label + '</div>' +
+      '<div class="tps-val">$' + s.val + '</div>' +
+      '<div class="tps-pct">' + pct + '% of budget</div>';
     grid.appendChild(div);
   });
 
-  var total=slots.reduce(function(a,s){return a+s.val},0);
-  document.getElementById('tpsTotal').textContent='$'+total;
-  var formatLabel=isSuperflex?' · Superflex/2QB':'';
-  document.getElementById('tpsSubtitle').textContent=state.leagueName+' · '+state.numTeams+' teams · $'+state.budget+' cap · '+({ppr:'PPR',half:'Half PPR',standard:'Standard'}[state.scoring])+formatLabel+(state.strategy?' · '+stratDisplay.name:'');
-  document.getElementById('oracleBriefing').textContent=stratDisplay.advice;
-  document.getElementById('trashTake').textContent=stratDisplay.trash;
+  // Update totals and subtitles
+  var total = slots.reduce(function(a, s) { return a + s.val; }, 0);
+  document.getElementById('tpsTotal').textContent = '$' + total;
+  var formatLabel = isSuperflex ? ' · Superflex/2QB' : '';
+  var scoringLabel = { ppr:'PPR', half:'Half PPR', standard:'Standard' }[state.scoring];
+  document.getElementById('tpsSubtitle').textContent =
+    state.leagueName + ' · ' + state.numTeams + ' teams · $' + state.budget +
+    ' cap · ' + scoringLabel + formatLabel + ' · ' + strat.name;
+  document.getElementById('oracleBriefing').textContent = strat.advice;
+  document.getElementById('trashTake').textContent = strat.trash;
 }
 
-function initTracker(){
-  state.leagueName=document.getElementById('leagueName').value||'My League';
-  state.numTeams=parseInt(document.getElementById('numTeams').value);
-  state.budget=parseInt(document.getElementById('budget').value)||200;
-  var n=state.numTeams;
-  for(var i=1;i<=n;i++){var el=document.getElementById('team-'+i);state.teamNames[i-1]=el?(el.value||'Team '+i):'Team '+i}
-  var sel=document.getElementById('pickTeam');
-  sel.innerHTML='';
-  state.teamNames.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o)});
+// ═══════════════════════════════════════════
+// STEP 5 — INITIALIZE TRACKER
+// ═══════════════════════════════════════════
+function initTracker() {
+  state.leagueName = document.getElementById('leagueName').value || 'My League';
+  state.numTeams = parseInt(document.getElementById('numTeams').value);
+  state.budget = parseInt(document.getElementById('budget').value) || 200;
+  var n = state.numTeams;
+  for (var i = 1; i <= n; i++) {
+    var el = document.getElementById('team-' + i);
+    state.teamNames[i-1] = el ? (el.value || 'Team ' + i) : 'Team ' + i;
+  }
+  var sel = document.getElementById('pickTeam');
+  sel.innerHTML = '';
+  state.teamNames.forEach(function(t) {
+    var o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+  document.getElementById('myBudgetLeft').textContent = '$' + state.budget;
   renderTeams();
-  document.getElementById('myBudgetLeft').textContent='$'+state.budget;
 }
 
-function logPick(){
-  var player=document.getElementById('pickPlayer').value.trim();
-  var pos=document.getElementById('pickPosition').value.trim();
-  var projected=parseInt(document.getElementById('pickProjected').value)||null;
-  var price=parseInt(document.getElementById('pickPrice').value);
-  var team=document.getElementById('pickTeam').value;
-  if(!player||!price||price<1){document.getElementById('liveOracle').textContent='Enter a player name and price before logging, seeker.';return}
-  state.draftLog.push({player:player,pos:pos||'—',projected:projected,price:price,team:team,num:state.draftLog.length+1});
-  document.getElementById('pickPlayer').value='';
-  document.getElementById('pickPosition').value='';
-  document.getElementById('pickProjected').value='';
-  document.getElementById('pickPrice').value='';
+// ═══════════════════════════════════════════
+// STEP 5 — LOG A PICK
+// ═══════════════════════════════════════════
+function logPick() {
+  var player = document.getElementById('pickPlayer').value.trim();
+  var pos = document.getElementById('pickPosition').value.trim();
+  var projected = parseInt(document.getElementById('pickProjected').value) || null;
+  var price = parseInt(document.getElementById('pickPrice').value);
+  var team = document.getElementById('pickTeam').value;
+
+  if (!player || !price || price < 1) {
+    document.getElementById('liveOracle').textContent = 'Enter a player name and price before logging, seeker.';
+    return;
+  }
+
+  state.draftLog.push({
+    player: player,
+    pos: pos || '—',
+    projected: projected,
+    price: price,
+    team: team,
+    num: state.draftLog.length + 1
+  });
+
+  // Clear entry fields
+  document.getElementById('pickPlayer').value = '';
+  document.getElementById('pickPosition').value = '';
+  document.getElementById('pickProjected').value = '';
+  document.getElementById('pickPrice').value = '';
+
   updateTrackerStats();
   renderDraftLog();
   renderTeams();
-  updateOracleLive(player,price,team,projected);
+  updateOracleLive(player, price, team, projected);
+  document.getElementById('pickPlayer').focus();
 }
 
-function updateTrackerStats(){
-  var log=state.draftLog;
-  var n=state.numTeams;
-  var totalMarketBudget=state.budget*n;
-  var totalSpent=log.reduce(function(a,p){return a+p.price},0);
-  var myTeam=document.getElementById('pickTeam').value;
-  var mySpent=log.filter(function(p){return p.team===myTeam}).reduce(function(a,p){return a+p.price},0);
-  var myLeft=state.budget-mySpent;
-  var avg=log.length>0?Math.round(totalSpent/log.length):0;
-  var totalRosterSpots=state.roster.QB+state.roster.RB+state.roster.WR+state.roster.TE+state.roster.FLEX+state.roster.K+state.roster.DEF+state.roster.BENCH;
-  var inflation=log.length>0?Math.round(((totalSpent/log.length)/(totalMarketBudget/(n*totalRosterSpots)))*100-100):0;
-  document.getElementById('playersDrafted').textContent=log.length;
-  document.getElementById('avgPricePaid').textContent=log.length>0?'$'+avg:'—';
-  document.getElementById('inflationVal').textContent=(inflation>=0?'+':'')+inflation+'%';
-  var budgetEl=document.getElementById('myBudgetLeft');
-  budgetEl.textContent='$'+myLeft;
-  budgetEl.className='tracker-stat-val '+(myLeft>state.budget*0.5?'good':myLeft>state.budget*0.25?'warn':'danger');
-  var inflationPct=Math.min(100,Math.round((totalSpent/totalMarketBudget)*100));
-  var fill=document.getElementById('inflationFill');
-  fill.style.width=inflationPct+'%';
-  fill.style.background=inflationPct<40?'var(--green)':inflationPct<70?'var(--amber)':'var(--red)';
-  document.getElementById('inflationPct').textContent=inflationPct+'% of total market budget committed';
+// ═══════════════════════════════════════════
+// STEP 5 — UPDATE STATS
+// ═══════════════════════════════════════════
+function updateTrackerStats() {
+  var log = state.draftLog;
+  var n = state.numTeams;
+  var totalMarketBudget = state.budget * n;
+  var totalSpent = log.reduce(function(a, p) { return a + p.price; }, 0);
+
+  var myTeam = document.getElementById('pickTeam').value;
+  var mySpent = log.filter(function(p) { return p.team === myTeam; })
+                   .reduce(function(a, p) { return a + p.price; }, 0);
+  var myLeft = state.budget - mySpent;
+
+  var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
+
+  var totalRosterSpots = Object.values(state.roster).reduce(function(a, v) { return a + v; }, 0);
+  var expectedAvg = totalMarketBudget / (n * totalRosterSpots);
+  var inflation = log.length > 0 ? Math.round(((totalSpent / log.length) / expectedAvg) * 100 - 100) : 0;
+
+  document.getElementById('playersDrafted').textContent = log.length;
+  document.getElementById('avgPricePaid').textContent = log.length > 0 ? '$' + avg : '—';
+  document.getElementById('inflationVal').textContent = (inflation >= 0 ? '+' : '') + inflation + '%';
+
+  var budgetEl = document.getElementById('myBudgetLeft');
+  budgetEl.textContent = '$' + myLeft;
+  budgetEl.className = 'stat-val ' + (myLeft > state.budget * 0.5 ? 'good' : myLeft > state.budget * 0.25 ? 'warn' : 'danger');
+
+  var pctSpent = Math.min(100, Math.round((totalSpent / totalMarketBudget) * 100));
+  var fill = document.getElementById('inflationFill');
+  fill.style.width = pctSpent + '%';
+  fill.style.background = pctSpent < 40 ? 'var(--green)' : pctSpent < 70 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('inflationPct').textContent = pctSpent + '% of total market budget committed';
 }
 
-function renderDraftLog(){
-  var log=state.draftLog;
-  document.getElementById('draftLog').style.display=log.length>0?'block':'none';
-  var tbody=document.getElementById('draftLogBody');
-  tbody.innerHTML='';
-  log.slice().reverse().forEach(function(p){
-    var diff=p.projected?p.price-p.projected:null;
-    var diffStr=diff===null?'—':(diff>0?'<span style="color:var(--red)">+$'+diff+' overpaid</span>':'<span style="color:var(--green)">$'+Math.abs(diff)+' value</span>');
-    var posStyle=POS_COLORS[p.pos]||'background:rgba(100,100,100,0.15);color:#888';
-    var tr=document.createElement('tr');
-    tr.innerHTML=
-      '<td style="color:var(--dim);font-family:\'JetBrains Mono\',monospace;font-size:11px">#'+p.num+'</td>'+
-      '<td>'+p.player+'</td>'+
-      '<td class="pos-col"><span class="pos-pill" style="'+posStyle+'">'+p.pos+'</span></td>'+
-      '<td class="price">$'+p.price+'</td>'+
-      '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--muted)">'+(p.projected?'$'+p.projected:'—')+'</td>'+
-      '<td style="font-size:11px">'+diffStr+'</td>'+
-      '<td class="team-col">'+p.team+'</td>';
+// ═══════════════════════════════════════════
+// STEP 5 — RENDER DRAFT LOG
+// ═══════════════════════════════════════════
+function renderDraftLog() {
+  var log = state.draftLog;
+  document.getElementById('draftLog').style.display = log.length > 0 ? 'block' : 'none';
+  var tbody = document.getElementById('draftLogBody');
+  tbody.innerHTML = '';
+  log.slice().reverse().forEach(function(p) {
+    var diff = p.projected ? p.price - p.projected : null;
+    var diffStr = diff === null ? '—' :
+      diff > 0 ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
+                 '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>';
+    var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="dim">#' + p.num + '</td>' +
+      '<td>' + p.player + '</td>' +
+      '<td><span class="pos-pill" style="' + posStyle + '">' + p.pos + '</span></td>' +
+      '<td class="mono">$' + p.price + '</td>' +
+      '<td class="dim">' + (p.projected ? '$' + p.projected : '—') + '</td>' +
+      '<td style="font-size:11px">' + diffStr + '</td>' +
+      '<td class="dim">' + p.team + '</td>';
     tbody.appendChild(tr);
   });
 }
 
-function renderTeams(){
-  var grid=document.getElementById('teamsGrid');
-  grid.innerHTML='';
-  state.teamNames.forEach(function(name){
-    var picks=state.draftLog.filter(function(p){return p.team===name});
-    var spent=picks.reduce(function(a,p){return a+p.price},0);
-    var left=state.budget-spent;
-    var pct=Math.min(100,Math.round((spent/state.budget)*100));
-    var playerList=picks.map(function(p){return p.player+(p.pos?' ('+p.pos+')':'')}).join(', ');
-    var div=document.createElement('div');
-    div.className='team-card';
-    div.innerHTML=
-      '<div class="team-name">'+name+'</div>'+
-      '<div class="team-budget"><span class="team-budget-label">Remaining</span><span class="team-budget-val">$'+left+'</span></div>'+
-      '<div class="team-budget-track"><div class="team-budget-fill" style="width:'+pct+'%;background:'+(pct<50?'var(--green)':pct<75?'var(--amber)':'var(--red)')+'"></div></div>'+
-      '<div class="team-players">'+(playerList||'No picks yet')+'</div>';
+// ═══════════════════════════════════════════
+// STEP 5 — RENDER TEAM BUDGET CARDS
+// ═══════════════════════════════════════════
+function renderTeams() {
+  var grid = document.getElementById('teamsGrid');
+  grid.innerHTML = '';
+  state.teamNames.forEach(function(name) {
+    var picks = state.draftLog.filter(function(p) { return p.team === name; });
+    var spent = picks.reduce(function(a, p) { return a + p.price; }, 0);
+    var left = state.budget - spent;
+    var pct = Math.min(100, Math.round((spent / state.budget) * 100));
+    var fillColor = pct < 50 ? 'var(--green)' : pct < 75 ? 'var(--amber)' : 'var(--red)';
+    var playerList = picks.map(function(p) { return p.player + (p.pos ? ' (' + p.pos + ')' : ''); }).join(', ');
+    var div = document.createElement('div');
+    div.className = 'team-card';
+    div.innerHTML =
+      '<div class="team-name">' + name + '</div>' +
+      '<div class="team-budget-row">' +
+        '<span class="team-budget-label">Remaining</span>' +
+        '<span class="team-budget-val">$' + left + '</span>' +
+      '</div>' +
+      '<div class="team-track"><div class="team-fill" style="width:' + pct + '%;background:' + fillColor + '"></div></div>' +
+      '<div class="team-players">' + (playerList || 'No picks yet') + '</div>';
     grid.appendChild(div);
   });
 }
 
-function updateOracleLive(player,price,team,projected){
-  var log=state.draftLog;
-  var totalSpent=log.reduce(function(a,p){return a+p.price},0);
-  var avg=Math.round(totalSpent/log.length);
-  var valueMsg='';
-  if(projected){
-    var diff=price-projected;
-    if(diff>5)valueMsg=' That price was $'+diff+' above projection — a costly overpay.';
-    else if(diff<-5)valueMsg=' That was $'+Math.abs(diff)+' below projection — excellent value secured.';
-    else valueMsg=' That price was right on projection — well executed.';
+// ═══════════════════════════════════════════
+// STEP 5 — ORACLE LIVE COMMENTARY
+// ═══════════════════════════════════════════
+function updateOracleLive(player, price, team, projected) {
+  var log = state.draftLog;
+  var totalSpent = log.reduce(function(a, p) { return a + p.price; }, 0);
+  var avg = Math.round(totalSpent / log.length);
+  var valueMsg = '';
+  if (projected) {
+    var diff = price - projected;
+    if (diff > 5) valueMsg = ' That price was $' + diff + ' above projection — a costly overpay.';
+    else if (diff < -5) valueMsg = ' That was $' + Math.abs(diff) + ' below projection — excellent value secured.';
+    else valueMsg = ' That price was right on projection — well executed.';
   }
-  var msgs=[
-    'The spirits have spoken. '+player+' goes to '+team+' for $'+price+'.'+valueMsg+' The market averages $'+avg+' per player. Watch your remaining budget carefully, seeker.',
-    'So it is written. '+player+' — $'+price+' to '+team+'.'+valueMsg+' With '+log.length+' souls claimed, the value lies in those yet to be nominated.',
-    player+' claimed by '+team+' at $'+price+'.'+valueMsg+' In '+log.length+' picks I have observed the room. The wise manager now asks: what positions remain unfilled?'
+  var msgs = [
+    'The spirits have spoken. ' + player + ' goes to ' + team + ' for $' + price + '.' + valueMsg + ' The market averages $' + avg + ' per player. Watch your remaining budget carefully, seeker.',
+    'So it is written. ' + player + ' — $' + price + ' to ' + team + '.' + valueMsg + ' With ' + log.length + ' souls claimed, the value lies in those yet to be nominated.',
+    player + ' claimed by ' + team + ' at $' + price + '.' + valueMsg + ' In ' + log.length + ' picks I have observed the room. The wise manager now asks: what positions remain unfilled?'
   ];
-  document.getElementById('liveOracle').textContent=msgs[log.length%msgs.length];
+  document.getElementById('liveOracle').textContent = msgs[log.length % msgs.length];
 }
 
-function resetDraft(){
-  if(confirm('Reset the entire draft log? This cannot be undone.')){
-    state.draftLog=[];
+// ═══════════════════════════════════════════
+// STEP 5 — RESET DRAFT
+// ═══════════════════════════════════════════
+function resetDraft() {
+  if (confirm('Reset the entire draft log? This cannot be undone.')) {
+    state.draftLog = [];
     renderDraftLog();
     renderTeams();
     updateTrackerStats();
-    document.getElementById('liveOracle').textContent='The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
+    document.getElementById('liveOracle').textContent = 'The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
   }
 }
 </script>
