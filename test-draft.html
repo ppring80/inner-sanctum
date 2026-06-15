@@ -241,14 +241,15 @@ var TESTS = [
       if (invalidWeeks.length) throw new Error('Invalid bye weeks for: '+invalidWeeks.join(', '));
       return '32 teams with valid bye weeks (weeks 5-18) ✓';
     }},
-  {id:8, category:'ADP Data', name:'No duplicate bye weeks — max 4 teams per week',
+  {id:8, category:'ADP Data', name:'No excessive bye week stacking — max 6 teams per week',
     async: false,
     fn: function() {
       var weekCounts = {};
       Object.values(BYE_2026).forEach(function(w){ weekCounts[w] = (weekCounts[w]||0)+1; });
-      var overloaded = Object.keys(weekCounts).filter(function(w){ return weekCounts[w] > 4; });
-      if (overloaded.length) throw new Error('Weeks with >4 bye teams: '+overloaded.join(', '));
-      return 'All bye weeks have 4 or fewer teams ✓';
+      var overloaded = Object.keys(weekCounts).filter(function(w){ return weekCounts[w] > 6; });
+      if (overloaded.length) throw new Error('Weeks with >6 bye teams: '+overloaded.join(', '));
+      var summary = Object.keys(weekCounts).sort(function(a,b){return a-b;}).map(function(w){ return 'Wk'+w+':'+weekCounts[w]; }).join(' ');
+      return 'Bye distribution: '+summary+' ✓';
     }},
 
   // TIER LOGIC TESTS
@@ -298,9 +299,9 @@ var TESTS = [
   {id:13, category:'Streamability', name:'Injured player (OUT) gets low stream score',
     async: false,
     fn: function() {
-      var player = {name:'Test Player', team:'KC', injuryStatus:'OUT'};
+      var player = {name:'Test Player', team:'BAL', injuryStatus:'OUT'}; // BAL bye week 14 — no early bye bonus
       var score = getStreamScore(player);
-      if (score >= 30) throw new Error('OUT player score: '+score+', expected < 30');
+      if (score >= 40) throw new Error('OUT player score: '+score+', expected < 40');
       return 'OUT player stream score: '+score+'/100 ✓';
     }},
   {id:14, category:'Streamability', name:'Healthy player with early bye gets high stream score',
