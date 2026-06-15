@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inner Sanctum — Test Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a0f08;--bg2:#221208;--surface:rgba(0,0,0,0.4);
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.2);
+  --green:#4caf50;--red:#ff5252;--amber:#ff9800;--blue:#64b5f6;
+  --text:#f0e0b0;--text-dim:#7a6a3a;--text-muted:#4a3a22;
+  --r:8px;
+}
+body{
+  background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 40%,#261018 100%);
+  color:var(--text);font-family:'Lora',Georgia,serif;font-size:15px;
+  line-height:1.6;min-height:100vh;padding:24px 20px 60px;
+}
+.wrap{max-width:900px;margin:0 auto;}
+
+/* HEADER */
+.hdr{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(201,168,76,0.2);}
+.hdr-badge{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:block;}
+.hdr h1{font-family:'Cinzel',serif;font-size:28px;font-weight:600;color:#f0e6cc;margin-bottom:6px;}
+.hdr-sub{font-size:12px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;}
+
+/* SCORE CARDS */
+.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+.score-card{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:14px;text-align:center;}
+.score-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.score-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--gold);}
+
+/* CONTROLS */
+.controls{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:18px;margin-bottom:24px;}
+.controls-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.controls-row:last-child{margin-bottom:0;}
+.ctrl-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
+select,input{background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.25);border-radius:var(--r);color:var(--text);font-family:'Lora',serif;font-size:13px;padding:8px 12px;}
+select:focus,input:focus{outline:none;border-color:var(--gold);}
+.btn{padding:10px 20px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:13px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.btn-gold{background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-weight:600;}
+.btn-gold:hover{opacity:0.88;transform:translateY(-1px);}
+.btn-gold:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-dim);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-green{background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);color:var(--green);}
+.btn-red{background:rgba(255,82,82,0.15);border:1px solid rgba(255,82,82,0.3);color:var(--red);}
+
+/* PROGRESS */
+.progress-wrap{margin-bottom:24px;display:none;}
+.progress-track{background:rgba(0,0,0,0.4);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s;}
+.progress-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+
+/* TEST RESULTS */
+.test-card{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px;margin-bottom:10px;transition:border-color 0.2s;}
+.test-card.status-pass{border-color:rgba(76,175,80,0.3);}
+.test-card.status-review{border-color:rgba(255,152,0,0.3);}
+.test-card.status-error{border-color:rgba(255,82,82,0.3);}
+.test-card.status-running{border-color:rgba(100,181,246,0.3);}
+.test-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.test-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);min-width:28px;}
+.pill{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;letter-spacing:1px;}
+.pill-persona-oracle{background:rgba(201,168,76,0.12);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.pill-persona-trash{background:rgba(255,68,68,0.12);color:#ff6666;border:1px solid rgba(255,68,68,0.3);}
+.pill-persona-analyst{background:rgba(100,181,246,0.12);color:var(--blue);border:1px solid rgba(100,181,246,0.3);}
+.pill-cat{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.pill-status-pass{background:rgba(76,175,80,0.12);color:var(--green);border:1px solid rgba(76,175,80,0.3);}
+.pill-status-review{background:rgba(255,152,0,0.12);color:var(--amber);border:1px solid rgba(255,152,0,0.3);}
+.pill-status-error{background:rgba(255,82,82,0.12);color:var(--red);border:1px solid rgba(255,82,82,0.3);}
+.pill-status-running{background:rgba(100,181,246,0.12);color:var(--blue);border:1px solid rgba(100,181,246,0.3);}
+.pill-status-pending{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.test-question{font-size:14px;color:#e0d0b0;font-weight:600;margin-bottom:10px;}
+.test-flags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.flag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,152,0,0.1);color:var(--amber);border:1px solid rgba(255,152,0,0.25);}
+.test-response{background:rgba(0,0,0,0.3);border-radius:var(--r);padding:12px 14px;font-size:13px;color:rgba(240,220,176,0.7);line-height:1.7;font-style:italic;margin-bottom:10px;border-left:2px solid rgba(201,168,76,0.2);}
+.test-actions{display:flex;gap:8px;}
+
+/* SUMMARY */
+.summary{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:var(--r);padding:18px;margin-bottom:24px;display:none;}
+.summary-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);margin-bottom:12px;letter-spacing:1px;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+.summary-item{font-size:13px;color:var(--text-dim);}
+.summary-item strong{color:var(--text);display:block;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:48px 24px;color:var(--text-dim);}
+.empty-icon{font-size:48px;margin-bottom:16px;display:block;}
+.empty-title{font-family:'Cinzel',serif;font-size:18px;color:var(--gold);margin-bottom:8px;}
+
+/* FOOTER */
+.foot{text-align:center;margin-top:40px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <span class="hdr-badge">Pringle AI LLC · Internal Tool</span>
+    <h1>🔮 The Inner Sanctum</h1>
+    <div class="hdr-sub">AI Persona Test Dashboard · 30 Questions · 3 Personas</div>
+  </div>
+
+  <!-- SCORE CARDS -->
+  <div class="score-grid">
+    <div class="score-card">
+      <div class="score-label">🔮 Oracle</div>
+      <div class="score-val" id="oracle-score">—</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label">🔥 Trash Lord</div>
+      <div class="score-val" id="trash-score">—</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label">📊 Analyst</div>
+      <div class="score-val" id="analyst-score">—</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label">Overall</div>
+      <div class="score-val" id="overall-score">—</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label">Passed</div>
+      <div class="score-val" id="stat-pass" style="color:var(--green)">0</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label">Need Review</div>
+      <div class="score-val" id="stat-review" style="color:var(--amber)">0</div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="controls-row">
+      <span class="ctrl-label">Filter persona</span>
+      <select id="persona-filter" onchange="renderList()">
+        <option value="all">All personas</option>
+        <option value="oracle">🔮 Oracle only</option>
+        <option value="trash">🔥 Trash Lord only</option>
+        <option value="analyst">📊 Analyst only</option>
+      </select>
+      <span class="ctrl-label">Filter status</span>
+      <select id="status-filter" onchange="renderList()">
+        <option value="all">All results</option>
+        <option value="pass">Passed only</option>
+        <option value="review">Needs review</option>
+        <option value="pending">Pending only</option>
+      </select>
+    </div>
+    <div class="controls-row">
+      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All 30 Tests</button>
+      <button class="btn btn-outline" onclick="runFailed()">↺ Re-run Flagged</button>
+      <button class="btn btn-outline" onclick="exportReport()">⬇ Export Report</button>
+      <button class="btn btn-outline" onclick="resetAll()">✕ Reset</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-label" id="progress-label">0 / 30 complete</div>
+  </div>
+
+  <!-- SUMMARY (shown after run) -->
+  <div class="summary" id="summary">
+    <div class="summary-title">🔮 Test Run Summary</div>
+    <div class="summary-grid" id="summary-grid"></div>
+  </div>
+
+  <!-- RESULTS LIST -->
+  <div id="results-list">
+    <div class="empty">
+      <span class="empty-icon">🔮</span>
+      <div class="empty-title">Ready to Test</div>
+      <p style="color:var(--text-dim);font-size:14px;">Hit "Run All 30 Tests" to begin. Tests call your live Netlify function and score each persona response automatically.</p>
+    </div>
+  </div>
+
+  <div class="foot">The Inner Sanctum · Pringle AI LLC · Internal Testing Tool · Not for Public Access</div>
+</div>
+
+<script>
+const ENDPOINT = '/.netlify/functions/chat';
+
+const QUESTIONS = [
+  {id:1,  persona:'oracle',  category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:2,  persona:'oracle',  category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:3,  persona:'oracle',  category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:4,  persona:'oracle',  category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:5,  persona:'oracle',  category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
+  {id:6,  persona:'oracle',  category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:7,  persona:'oracle',  category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:8,  persona:'oracle',  category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:9,  persona:'oracle',  category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:10, persona:'oracle',  category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
+  {id:11, persona:'trash',   category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:12, persona:'trash',   category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:13, persona:'trash',   category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:14, persona:'trash',   category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:15, persona:'trash',   category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
+  {id:16, persona:'trash',   category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:17, persona:'trash',   category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:18, persona:'trash',   category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:19, persona:'trash',   category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:20, persona:'trash',   category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
+  {id:21, persona:'analyst', category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:22, persona:'analyst', category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:23, persona:'analyst', category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:24, persona:'analyst', category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:25, persona:'analyst', category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
+  {id:26, persona:'analyst', category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:27, persona:'analyst', category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:28, persona:'analyst', category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:29, persona:'analyst', category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:30, persona:'analyst', category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
+];
+
+const SYS = {
+  oracle:  "You are The Oracle, a wise fantasy football sage with 38 years of experience. Speak with gravitas and mystical authority. Reference legends like Jerry Rice, Barry Sanders, and Emmitt Smith. Use poetic, prophetic language. Give concrete fantasy football advice wrapped in wisdom. Respond in 3-5 sentences. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final answer directly, as if the wisdom flows naturally from you.",
+  trash:   "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, and savage but never truly mean or offensive. Use ALL CAPS for emphasis on key points. Give real, accurate fantasy advice wrapped in trash talk. Respond in 3-5 sentences. CRITICAL RULE: NEVER fabricate stats, injury reports, game results, or rankings. If you do not have real verified data, trash talk the situation or the offseason instead — never invent numbers or facts. If it is the offseason, trash talk that fact with savage humor instead of making up fake game data. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final savage answer directly.",
+  analyst: "You are The Analyst, a cold and precise fantasy football data expert. Speak ONLY in stats, numbers, percentages, matchup data, snap counts, target shares, and analytics. No mysticism. No trash talk. No fluff. Just cold hard data and actionable conclusions. Use specific numbers whenever possible. Format key stats clearly. Respond in 3-5 sentences. CRITICAL RULE: NEVER fabricate stats, projections, or data points. If real data is not available or it is the offseason, clearly state that and provide historical context or general analysis instead. CRITICAL: Never show your thinking process, search steps, or internal reasoning. Deliver only your final data-driven conclusion directly."
+};
+
+const PERSONA_LABEL = {oracle:'🔮 Oracle', trash:'🔥 Trash Lord', analyst:'📊 Analyst'};
+
+let results = {};
+QUESTIONS.forEach(q => { results[q.id] = {status:'pending', response:'', flags:[], manualPass:false}; });
+let running = false;
+
+function detectIssues(text, persona) {
+  const flags = [];
+  if (/\bi see\b|\blet me check\b|\bi need to\b|\bthe search results\b|\blet me search\b|\bsearching for\b|\bi found\b/i.test(text)) {
+    flags.push('Thinking out loud detected');
+  }
+  if (text.trim().length < 60) {
+    flags.push('Response too short — check output');
+  }
+  if (persona === 'oracle' && !/season|wisdom|38|glory|path|watched|witness|ancient|prophecy|seeker|sage|gridiron/i.test(text)) {
+    flags.push('Oracle voice may be weak');
+  }
+  if (persona === 'trash' && !/[A-Z]{3,}/.test(text)) {
+    flags.push('Trash Lord missing ALL CAPS emphasis');
+  }
+  if (persona === 'analyst' && !/\d+/.test(text)) {
+    flags.push('Analyst response has no numbers');
+  }
+  return flags;
+}
+
+async function runTest(q) {
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        system: SYS[q.persona],
+        messages: [{role: 'user', content: q.q}]
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    if (!text) throw new Error('Empty response from API');
+    const flags = detectIssues(text, q.persona);
+    results[q.id] = {status: flags.length ? 'review' : 'pass', response: text, flags, manualPass: false};
+  } catch(e) {
+    results[q.id] = {status: 'error', response: 'Error: ' + e.message, flags: ['API/Network error: ' + e.message], manualPass: false};
+  }
+}
+
+async function runAllTests() {
+  if (running) return;
+  running = true;
+  const btn = document.getElementById('run-btn');
+  btn.textContent = '⏳ Running tests...';
+  btn.disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  QUESTIONS.forEach(q => { results[q.id] = {status:'running', response:'', flags:[], manualPass:false}; });
+  renderList();
+
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    await runTest(QUESTIONS[i]);
+    const pct = Math.round(((i+1)/QUESTIONS.length)*100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = (i+1) + ' / ' + QUESTIONS.length + ' complete — ' + pct + '%';
+    renderList();
+    updateStats();
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  running = false;
+  btn.textContent = '▶ Run All 30 Tests';
+  btn.disabled = false;
+  showSummary();
+}
+
+async function runFailed() {
+  if (running) return;
+  const toRun = QUESTIONS.filter(q => ['review','error'].includes(results[q.id].status) && !results[q.id].manualPass);
+  if (!toRun.length) { alert('No flagged tests to re-run!'); return; }
+  running = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  for (let i = 0; i < toRun.length; i++) {
+    results[toRun[i].id] = {status:'running', response:'', flags:[], manualPass:false};
+    renderList();
+    await runTest(toRun[i]);
+    const pct = Math.round(((i+1)/toRun.length)*100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = 'Re-running: ' + (i+1) + ' / ' + toRun.length;
+    renderList();
+    updateStats();
+    await new Promise(r => setTimeout(r, 600));
+  }
+  running = false;
+  showSummary();
+}
+
+function markPass(id) {
+  results[id].status = 'pass';
+  results[id].manualPass = true;
+  renderList();
+  updateStats();
+}
+
+function markFail(id) {
+  results[id].status = 'review';
+  results[id].manualPass = false;
+  renderList();
+  updateStats();
+}
+
+function resetAll() {
+  if (!confirm('Reset all test results?')) return;
+  QUESTIONS.forEach(q => { results[q.id] = {status:'pending', response:'', flags:[], manualPass:false}; });
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  renderList();
+  updateStats();
+}
+
+function updateStats() {
+  const pScores = {oracle:{p:0,t:0}, trash:{p:0,t:0}, analyst:{p:0,t:0}};
+  let pass = 0, review = 0;
+  QUESTIONS.forEach(q => {
+    const r = results[q.id];
+    pScores[q.persona].t++;
+    if (r.status === 'pass') { pass++; pScores[q.persona].p++; }
+    else if (r.status === 'review' || r.status === 'error') review++;
+  });
+
+  ['oracle','trash','analyst'].forEach(p => {
+    const s = pScores[p];
+    const pct = s.t ? Math.round((s.p/s.t)*100) : 0;
+    const el = document.getElementById(p+'-score');
+    el.textContent = s.p > 0 || s.t > 0 ? pct + '%' : '—';
+    el.style.color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : pct > 0 ? 'var(--red)' : 'var(--gold)';
+  });
+
+  const overallPct = Math.round((pass / QUESTIONS.length) * 100);
+  const oel = document.getElementById('overall-score');
+  oel.textContent = pass > 0 ? overallPct + '%' : '—';
+  oel.style.color = overallPct >= 80 ? 'var(--green)' : overallPct >= 60 ? 'var(--amber)' : overallPct > 0 ? 'var(--red)' : 'var(--gold)';
+
+  document.getElementById('stat-pass').textContent = pass;
+  document.getElementById('stat-review').textContent = review;
+}
+
+function showSummary() {
+  const pass = QUESTIONS.filter(q => results[q.id].status === 'pass').length;
+  const review = QUESTIONS.filter(q => results[q.id].status === 'review' || results[q.id].status === 'error').length;
+  const pct = Math.round((pass/QUESTIONS.length)*100);
+  const verdict = pct >= 90 ? '🎉 LAUNCH READY' : pct >= 75 ? '⚠️ MOSTLY READY — review flagged items' : '🔴 NEEDS WORK — fix flagged items before launch';
+
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="summary-item"><strong>${pass} / 30</strong>Tests passed</div>
+    <div class="summary-item"><strong>${review}</strong>Need manual review</div>
+    <div class="summary-item"><strong>${pct}%</strong>Overall score</div>
+    <div class="summary-item"><strong>${verdict}</strong>Launch status</div>
+  `;
+  document.getElementById('summary').style.display = 'block';
+}
+
+function renderList() {
+  const pf = document.getElementById('persona-filter').value;
+  const sf = document.getElementById('status-filter').value;
+
+  const filtered = QUESTIONS.filter(q => {
+    if (pf !== 'all' && q.persona !== pf) return false;
+    const s = results[q.id].status;
+    if (sf === 'pass' && s !== 'pass') return false;
+    if (sf === 'review' && s !== 'review' && s !== 'error') return false;
+    if (sf === 'pending' && s !== 'pending' && s !== 'running') return false;
+    return true;
+  });
+
+  if (!filtered.length && QUESTIONS.every(q => results[q.id].status === 'pending')) {
+    document.getElementById('results-list').innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">🔮</span>
+        <div class="empty-title">Ready to Test</div>
+        <p style="color:var(--text-dim);font-size:14px;">Hit "Run All 30 Tests" to begin. Tests call your live Netlify function and score each persona response automatically.</p>
+      </div>`;
+    return;
+  }
+
+  const statusLabel = {pass:'Pass ✓', review:'Review ⚠', error:'Error ✗', running:'Testing...', pending:'Pending'};
+  const statusPill = {pass:'pill-status-pass', review:'pill-status-review', error:'pill-status-error', running:'pill-status-running', pending:'pill-status-pending'};
+
+  document.getElementById('results-list').innerHTML = filtered.map(q => {
+    const r = results[q.id];
+    const cardClass = ['pass','review','error','running'].includes(r.status) ? 'status-' + r.status : '';
+    const personaPill = 'pill-persona-' + q.persona;
+
+    const flagsHtml = r.flags.length
+      ? `<div class="test-flags">${r.flags.map(f => `<span class="flag">${f}</span>`).join('')}</div>`
+      : '';
+
+    const responseHtml = r.response
+      ? `<div class="test-response">"${r.response.slice(0, 320)}${r.response.length > 320 ? '...' : ''}"</div>`
+      : '';
+
+    const actions = r.status === 'review' || r.status === 'error'
+      ? `<button class="btn btn-green" onclick="markPass(${q.id})" style="font-size:12px;padding:6px 14px;">✓ Mark Pass</button>`
+      : r.status === 'pass' && r.manualPass
+      ? `<button class="btn btn-red" onclick="markFail(${q.id})" style="font-size:12px;padding:6px 14px;">✗ Unmark</button>`
+      : '';
+
+    return `<div class="test-card ${cardClass}">
+      <div class="test-meta">
+        <span class="test-num">#${q.id}</span>
+        <span class="pill ${personaPill}">${PERSONA_LABEL[q.persona]}</span>
+        <span class="pill pill-cat">${q.category}</span>
+        <span class="pill ${statusPill[r.status] || 'pill-status-pending'}">${statusLabel[r.status] || 'Pending'}</span>
+      </div>
+      <div class="test-question">${q.q}</div>
+      ${flagsHtml}
+      ${responseHtml}
+      ${actions ? `<div class="test-actions">${actions}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function exportReport() {
+  const pass = QUESTIONS.filter(q => results[q.id].status === 'pass').length;
+  const review = QUESTIONS.filter(q => results[q.id].status === 'review' || results[q.id].status === 'error').length;
+  let report = '═══════════════════════════════════════\n';
+  report += 'THE INNER SANCTUM — PERSONA TEST REPORT\n';
+  report += 'Pringle AI LLC · theinnersanctum.xyz\n';
+  report += 'Generated: ' + new Date().toLocaleString() + '\n';
+  report += '═══════════════════════════════════════\n\n';
+  report += `SUMMARY: ${pass}/30 passed (${Math.round(pass/30*100)}%) · ${review} need review\n\n`;
+
+  ['oracle','trash','analyst'].forEach(persona => {
+    const pqs = QUESTIONS.filter(q => q.persona === persona);
+    const pp = pqs.filter(q => results[q.id].status === 'pass').length;
+    report += `${PERSONA_LABEL[persona]}: ${pp}/${pqs.length} passed\n`;
+  });
+
+  report += '\n═══════════════════════════════════════\nDETAILED RESULTS\n═══════════════════════════════════════\n\n';
+
+  QUESTIONS.forEach(q => {
+    const r = results[q.id];
+    const s = r.status === 'pass' ? 'PASS' : r.status === 'review' ? 'REVIEW' : r.status === 'error' ? 'ERROR' : 'PENDING';
+    report += `[${s}] #${q.id} ${PERSONA_LABEL[q.persona]} · ${q.category}\n`;
+    report += `Q: ${q.q}\n`;
+    if (r.response) report += `A: ${r.response.slice(0, 300)}\n`;
+    if (r.flags.length) report += `FLAGS: ${r.flags.join(' | ')}\n`;
+    report += '\n';
+  });
+
+  const blob = new Blob([report], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'InnerSanctum_TestReport_' + new Date().toISOString().slice(0,10) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+renderList();
+updateStats();
+</script>
+</body>
+</html>
