@@ -279,10 +279,11 @@ async function runAllTests() {
   if (running) return;
   running = true;
   const btn = document.getElementById('run-btn');
-  btn.textContent = '⏳ Running tests...';
+  btn.textContent = '⏳ Running persona tests (1-30)...';
   btn.disabled = true;
   document.getElementById('progress-wrap').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
+  document.getElementById('lineup-results').innerHTML = '';
   QUESTIONS.forEach(q => { results[q.id] = {status:'running', response:'', flags:[], manualPass:false}; });
   renderList();
 
@@ -290,16 +291,24 @@ async function runAllTests() {
     await runTest(QUESTIONS[i]);
     const pct = Math.round(((i+1)/QUESTIONS.length)*100);
     document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-label').textContent = (i+1) + ' / ' + QUESTIONS.length + ' complete — ' + pct + '%';
+    document.getElementById('progress-label').textContent = 'Persona tests: ' + (i+1) + ' / ' + QUESTIONS.length + ' — ' + pct + '%';
     renderList();
     updateStats();
     await new Promise(r => setTimeout(r, 600));
   }
 
+  showSummary();
+
+  // Now run lineup tests
+  btn.textContent = '⏳ Running lineup tests (31-50)...';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('lineup-results').innerHTML = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests — Running...</h2>';
+
+  await runLineupTests();
+
   running = false;
   btn.textContent = '▶ Run All 50 Tests';
   btn.disabled = false;
-  showSummary();
 }
 
 async function runFailed() {
@@ -769,16 +778,6 @@ async function runLineupTests() {
   }
   return lineupResults;
 }
-
-// Patch runAllTests to also run lineup tests
-const _origRunAll = runAllTests;
-runAllTests = async function() {
-  await _origRunAll();
-  // Small delay then run lineup tests
-  await new Promise(function(r){ setTimeout(r, 500); });
-  document.getElementById('lineup-results').innerHTML = '<div style="text-align:center;padding:20px;color:var(--gold);font-family:\'Cinzel\',serif;">⚡ Starting Lineup Advisor Tests...</div>';
-  await runLineupTests();
-};
 
 renderList();
 updateStats();
