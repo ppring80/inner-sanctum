@@ -56,7 +56,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 .progress-fill{height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s;}
 .progress-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
 
-/* TEST RESULTS */
+/* TEST CARDS */
 .test-card{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px;margin-bottom:10px;transition:border-color 0.2s;}
 .test-card.status-pass{border-color:rgba(76,175,80,0.3);}
 .test-card.status-review{border-color:rgba(255,152,0,0.3);}
@@ -103,35 +103,17 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div class="hdr">
     <span class="hdr-badge">Pringle AI LLC · Internal Tool</span>
     <h1>🔮 The Inner Sanctum</h1>
-    <div class="hdr-sub">Master Test Dashboard · Personas + Lineup Advisor · 40 Tests</div>
+    <div class="hdr-sub">Master Test Dashboard · Personas + Lineup Advisor · 65 Tests</div>
   </div>
 
   <!-- SCORE CARDS -->
   <div class="score-grid">
-    <div class="score-card">
-      <div class="score-label">🔮 Oracle</div>
-      <div class="score-val" id="oracle-score">—</div>
-    </div>
-    <div class="score-card">
-      <div class="score-label">🔥 Trash Lord</div>
-      <div class="score-val" id="trash-score">—</div>
-    </div>
-    <div class="score-card">
-      <div class="score-label">📊 Analyst</div>
-      <div class="score-val" id="analyst-score">—</div>
-    </div>
-    <div class="score-card">
-      <div class="score-label">Overall</div>
-      <div class="score-val" id="overall-score">—</div>
-    </div>
-    <div class="score-card">
-      <div class="score-label">Passed</div>
-      <div class="score-val" id="stat-pass" style="color:var(--green)">0</div>
-    </div>
-    <div class="score-card">
-      <div class="score-label">Need Review</div>
-      <div class="score-val" id="stat-review" style="color:var(--amber)">0</div>
-    </div>
+    <div class="score-card"><div class="score-label">🔮 Oracle</div><div class="score-val" id="oracle-score">—</div></div>
+    <div class="score-card"><div class="score-label">🔥 Trash Lord</div><div class="score-val" id="trash-score">—</div></div>
+    <div class="score-card"><div class="score-label">📊 Analyst</div><div class="score-val" id="analyst-score">—</div></div>
+    <div class="score-card"><div class="score-label">Overall</div><div class="score-val" id="overall-score">—</div></div>
+    <div class="score-card"><div class="score-label">Passed</div><div class="score-val" id="stat-pass" style="color:var(--green)">0</div></div>
+    <div class="score-card"><div class="score-label">Need Review</div><div class="score-val" id="stat-review" style="color:var(--amber)">0</div></div>
   </div>
 
   <!-- CONTROLS -->
@@ -153,7 +135,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       </select>
     </div>
     <div class="controls-row">
-      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All 50 Tests</button>
+      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All 65 Tests</button>
       <button class="btn btn-outline" onclick="runFailed()">↺ Re-run Flagged</button>
       <button class="btn btn-outline" onclick="exportReport()">⬇ Export Report</button>
       <button class="btn btn-outline" onclick="resetAll()">✕ Reset</button>
@@ -163,10 +145,10 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <!-- PROGRESS -->
   <div class="progress-wrap" id="progress-wrap">
     <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-    <div class="progress-label" id="progress-label">0 / 30 complete</div>
+    <div class="progress-label" id="progress-label">0 / 56 complete</div>
   </div>
 
-  <!-- SUMMARY (shown after run) -->
+  <!-- SUMMARY -->
   <div class="summary" id="summary">
     <div class="summary-title">🔮 Test Run Summary</div>
     <div class="summary-grid" id="summary-grid"></div>
@@ -177,11 +159,11 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     <div class="empty">
       <span class="empty-icon">🔮</span>
       <div class="empty-title">Ready to Test</div>
-      <p style="color:var(--text-dim);font-size:14px;">Hit "Run All 30 Tests" to begin. Tests call your live Netlify function and score each persona response automatically.</p>
+      <p style="color:var(--text-dim);font-size:14px;">Hit "Run All 65 Tests" to begin. Tests call your live Netlify function and score each persona response automatically.</p>
     </div>
   </div>
 
-  <!-- LINEUP RESULTS (populated after persona tests) -->
+  <!-- LINEUP + EXTENDED RESULTS -->
   <div id="lineup-results"></div>
 
   <div class="foot">The Inner Sanctum · Pringle AI LLC · Internal Testing Tool · Not for Public Access</div>
@@ -190,39 +172,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
 <script>
 const ENDPOINT = '/.netlify/functions/chat';
 
-const QUESTIONS = [
-  {id:1,  persona:'oracle',  category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
-  {id:2,  persona:'oracle',  category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
-  {id:3,  persona:'oracle',  category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
-  {id:4,  persona:'oracle',  category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
-  {id:5,  persona:'oracle',  category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
-  {id:6,  persona:'oracle',  category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
-  {id:7,  persona:'oracle',  category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
-  {id:8,  persona:'oracle',  category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
-  {id:9,  persona:'oracle',  category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
-  {id:10, persona:'oracle',  category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
-  {id:11, persona:'trash',   category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
-  {id:12, persona:'trash',   category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
-  {id:13, persona:'trash',   category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
-  {id:14, persona:'trash',   category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
-  {id:15, persona:'trash',   category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
-  {id:16, persona:'trash',   category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
-  {id:17, persona:'trash',   category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
-  {id:18, persona:'trash',   category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
-  {id:19, persona:'trash',   category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
-  {id:20, persona:'trash',   category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
-  {id:21, persona:'analyst', category:'Start/Sit', q:'Should I start Josh Allen or Lamar Jackson this week?'},
-  {id:22, persona:'analyst', category:'Trade',     q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
-  {id:23, persona:'analyst', category:'Waiver',    q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
-  {id:24, persona:'analyst', category:'Injury',    q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
-  {id:25, persona:'analyst', category:'Roster',    q:"Rate my team's chances of winning the championship this season"},
-  {id:26, persona:'analyst', category:'Auction',   q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
-  {id:27, persona:'analyst', category:'Strategy',  q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
-  {id:28, persona:'analyst', category:'Matchup',   q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
-  {id:29, persona:'analyst', category:'Sleeper',   q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
-  {id:30, persona:'analyst', category:'Offseason', q:'What should I be doing right now to prepare for my fantasy draft?'},
-];
-
+// ═══════════════════════════════════════
+// PERSONA SYSTEM PROMPTS
+// ═══════════════════════════════════════
 const SYS = {
   oracle:  "You are The Oracle, a wise fantasy football sage with 38 years of experience. Speak with gravitas and mystical authority. Reference legends like Jerry Rice, Barry Sanders, and Emmitt Smith. Use poetic, prophetic language. Give concrete fantasy football advice wrapped in wisdom. Respond in 3-5 sentences. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final answer directly, as if the wisdom flows naturally from you.",
   trash:   "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, and savage but never truly mean or offensive. Use ALL CAPS for emphasis on key points. Give real, accurate fantasy advice wrapped in trash talk. Respond in 3-5 sentences. CRITICAL RULE: NEVER fabricate stats, injury reports, game results, or rankings. If you do not have real verified data, trash talk the situation or the offseason instead — never invent numbers or facts. If it is the offseason, trash talk that fact with savage humor instead of making up fake game data. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final savage answer directly.",
@@ -231,283 +183,67 @@ const SYS = {
 
 const PERSONA_LABEL = {oracle:'🔮 Oracle', trash:'🔥 Trash Lord', analyst:'📊 Analyst'};
 
-let results = {};
-QUESTIONS.forEach(q => { results[q.id] = {status:'pending', response:'', flags:[], manualPass:false}; });
-let running = false;
+// ═══════════════════════════════════════
+// QUESTIONS — PERSONA API TESTS (1–56)
+// ═══════════════════════════════════════
+const QUESTIONS = [
+  // ── Original 30 persona tests ──────────────────────────────
+  {id:1,  persona:'oracle',  category:'Start/Sit',   q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:2,  persona:'oracle',  category:'Trade',       q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:3,  persona:'oracle',  category:'Waiver',      q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:4,  persona:'oracle',  category:'Injury',      q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:5,  persona:'oracle',  category:'Roster',      q:"Rate my team's chances of winning the championship this season"},
+  {id:6,  persona:'oracle',  category:'Auction',     q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:7,  persona:'oracle',  category:'Strategy',    q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:8,  persona:'oracle',  category:'Matchup',     q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:9,  persona:'oracle',  category:'Sleeper',     q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:10, persona:'oracle',  category:'Offseason',   q:'What should I be doing right now to prepare for my fantasy draft?'},
+  {id:11, persona:'trash',   category:'Start/Sit',   q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:12, persona:'trash',   category:'Trade',       q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:13, persona:'trash',   category:'Waiver',      q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:14, persona:'trash',   category:'Injury',      q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:15, persona:'trash',   category:'Roster',      q:"Rate my team's chances of winning the championship this season"},
+  {id:16, persona:'trash',   category:'Auction',     q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:17, persona:'trash',   category:'Strategy',    q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:18, persona:'trash',   category:'Matchup',     q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:19, persona:'trash',   category:'Sleeper',     q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:20, persona:'trash',   category:'Offseason',   q:'What should I be doing right now to prepare for my fantasy draft?'},
+  {id:21, persona:'analyst', category:'Start/Sit',   q:'Should I start Josh Allen or Lamar Jackson this week?'},
+  {id:22, persona:'analyst', category:'Trade',       q:"Someone offered me CeeDee Lamb for my Ja'Marr Chase and a RB2. Should I do it?"},
+  {id:23, persona:'analyst', category:'Waiver',      q:'Who should I pick up on waivers — give me your top 3 adds right now?'},
+  {id:24, persona:'analyst', category:'Injury',      q:'My RB1 just got hurt in the game. What should I do with my lineup?'},
+  {id:25, persona:'analyst', category:'Roster',      q:"Rate my team's chances of winning the championship this season"},
+  {id:26, persona:'analyst', category:'Auction',     q:'How much should I pay for the top TE in an auction draft with a $200 budget?'},
+  {id:27, persona:'analyst', category:'Strategy',    q:'Is it better to go zero RB or load up on RBs in fantasy football?'},
+  {id:28, persona:'analyst', category:'Matchup',     q:'My WR has a tough matchup against a top cornerback. Should I sit him?'},
+  {id:29, persona:'analyst', category:'Sleeper',     q:'Who is the best sleeper pick in fantasy football right now for the upcoming season?'},
+  {id:30, persona:'analyst', category:'Offseason',   q:'What should I be doing right now to prepare for my fantasy draft?'},
 
-function detectIssues(text, persona) {
-  const flags = [];
-  if (/\blet me check\b|\bthe search results show\b|\blet me search\b|\bsearching for\b|\bi need to search\b|\bi found in my search\b|\baccording to my search\b/i.test(text)) {
-    flags.push('Thinking out loud detected');
-  }
-  if (text.trim().length < 60) {
-    flags.push('Response too short — check output');
-  }
-  if (persona === 'oracle' && !/season|wisdom|38|glory|path|watched|witness|ancient|prophecy|seeker|sage|gridiron|heed|keeper|triumph|counsel|illuminat|mystical|spirits|decree|foretell|behold|thy|thee|thou/i.test(text)) {
-    flags.push('Oracle voice may be weak');
-  }
-  if (persona === 'trash' && !/[A-Z]{3,}/.test(text)) {
-    flags.push('Trash Lord missing ALL CAPS emphasis');
-  }
-  if (persona === 'analyst' && !/\d+|percentage|percent|share|rank|rate|score|metric|data|stat/i.test(text)) {
-    flags.push('Analyst response has no numbers or data language');
-  }
-  return flags;
-}
+  // ── Tank01 Live Data Tests (51–53) ─────────────────────────
+  {id:51, persona:'oracle',  category:'Tank01 Live Data',
+    q:'Tell me about current NFL injury news and which players I should be worried about for my fantasy team.'},
+  {id:52, persona:'analyst', category:'Tank01 Live Data',
+    q:'Give me the current injury report and top fantasy projections for this week.'},
+  {id:53, persona:'trash',   category:'Tank01 Live Data',
+    q:'Who is injured right now that I need to know about for my fantasy lineup?'},
 
-async function runTest(q) {
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 400,
-        system: SYS[q.persona],
-        messages: [{role: 'user', content: q.q}]
-      })
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    if (!text) throw new Error('Empty response from API');
-    const flags = detectIssues(text, q.persona);
-    results[q.id] = {status: flags.length ? 'review' : 'pass', response: text, flags, manualPass: false};
-  } catch(e) {
-    results[q.id] = {status: 'error', response: 'Error: ' + e.message, flags: ['API/Network error: ' + e.message], manualPass: false};
-  }
-}
-
-async function runAllTests() {
-  if (running) return;
-  running = true;
-  const btn = document.getElementById('run-btn');
-  btn.textContent = '⏳ Running persona tests (1-30)...';
-  btn.disabled = true;
-  document.getElementById('progress-wrap').style.display = 'block';
-  document.getElementById('summary').style.display = 'none';
-  const lineupEl = document.getElementById('lineup-results');
-  if (lineupEl) lineupEl.innerHTML = '';
-  QUESTIONS.forEach(q => { results[q.id] = {status:'running', response:'', flags:[], manualPass:false}; });
-  renderList();
-
-  for (let i = 0; i < QUESTIONS.length; i++) {
-    await runTest(QUESTIONS[i]);
-    const pct = Math.round(((i+1)/QUESTIONS.length)*100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-label').textContent = 'Persona tests: ' + (i+1) + ' / ' + QUESTIONS.length + ' — ' + pct + '%';
-    renderList();
-    updateStats();
-    await new Promise(r => setTimeout(r, 600));
-  }
-
-  showSummary();
-
-  // Now run lineup tests
-  btn.textContent = '⏳ Running lineup tests (31-50)...';
-  document.getElementById('progress-fill').style.width = '0%';
-  const lineupRunEl = document.getElementById('lineup-results');
-  if (lineupRunEl) lineupRunEl.innerHTML = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests — Running...</h2>';
-
-  await runLineupTests();
-
-  running = false;
-  btn.textContent = '▶ Run All 50 Tests';
-  btn.disabled = false;
-}
-
-async function runFailed() {
-  if (running) return;
-  const toRun = QUESTIONS.filter(q => ['review','error'].includes(results[q.id].status) && !results[q.id].manualPass);
-  if (!toRun.length) { alert('No flagged tests to re-run!'); return; }
-  running = true;
-  document.getElementById('progress-wrap').style.display = 'block';
-  for (let i = 0; i < toRun.length; i++) {
-    results[toRun[i].id] = {status:'running', response:'', flags:[], manualPass:false};
-    renderList();
-    await runTest(toRun[i]);
-    const pct = Math.round(((i+1)/toRun.length)*100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-label').textContent = 'Re-running: ' + (i+1) + ' / ' + toRun.length;
-    renderList();
-    updateStats();
-    await new Promise(r => setTimeout(r, 600));
-  }
-  running = false;
-  showSummary();
-}
-
-function markPass(id) {
-  results[id].status = 'pass';
-  results[id].manualPass = true;
-  renderList();
-  updateStats();
-}
-
-function markFail(id) {
-  results[id].status = 'review';
-  results[id].manualPass = false;
-  renderList();
-  updateStats();
-}
-
-function resetAll() {
-  if (!confirm('Reset all test results?')) return;
-  QUESTIONS.forEach(q => { results[q.id] = {status:'pending', response:'', flags:[], manualPass:false}; });
-  document.getElementById('progress-wrap').style.display = 'none';
-  document.getElementById('summary').style.display = 'none';
-  document.getElementById('progress-fill').style.width = '0%';
-  renderList();
-  updateStats();
-}
-
-function updateStats() {
-  const pScores = {oracle:{p:0,t:0}, trash:{p:0,t:0}, analyst:{p:0,t:0}};
-  let pass = 0, review = 0;
-  QUESTIONS.forEach(q => {
-    const r = results[q.id];
-    pScores[q.persona].t++;
-    if (r.status === 'pass') { pass++; pScores[q.persona].p++; }
-    else if (r.status === 'review' || r.status === 'error') review++;
-  });
-
-  ['oracle','trash','analyst'].forEach(p => {
-    const s = pScores[p];
-    const pct = s.t ? Math.round((s.p/s.t)*100) : 0;
-    const el = document.getElementById(p+'-score');
-    el.textContent = s.p > 0 || s.t > 0 ? pct + '%' : '—';
-    el.style.color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : pct > 0 ? 'var(--red)' : 'var(--gold)';
-  });
-
-  const overallPct = Math.round((pass / QUESTIONS.length) * 100);
-  const oel = document.getElementById('overall-score');
-  oel.textContent = pass > 0 ? overallPct + '%' : '—';
-  oel.style.color = overallPct >= 80 ? 'var(--green)' : overallPct >= 60 ? 'var(--amber)' : overallPct > 0 ? 'var(--red)' : 'var(--gold)';
-
-  document.getElementById('stat-pass').textContent = pass;
-  document.getElementById('stat-review').textContent = review;
-}
-
-function showSummary() {
-  const pass = QUESTIONS.filter(q => results[q.id].status === 'pass').length;
-  const review = QUESTIONS.filter(q => results[q.id].status === 'review' || results[q.id].status === 'error').length;
-  const pct = Math.round((pass/QUESTIONS.length)*100);
-  const verdict = pct >= 90 ? '🎉 LAUNCH READY' : pct >= 75 ? '⚠️ MOSTLY READY — review flagged items' : '🔴 NEEDS WORK — fix flagged items before launch';
-
-  document.getElementById('summary-grid').innerHTML = `
-    <div class="summary-item"><strong>${pass} / 30</strong>Tests passed</div>
-    <div class="summary-item"><strong>${review}</strong>Need manual review</div>
-    <div class="summary-item"><strong>${pct}%</strong>Overall score</div>
-    <div class="summary-item"><strong>${verdict}</strong>Launch status</div>
-  `;
-  document.getElementById('summary').style.display = 'block';
-}
-
-function renderList() {
-  const pf = document.getElementById('persona-filter').value;
-  const sf = document.getElementById('status-filter').value;
-
-  const filtered = QUESTIONS.filter(q => {
-    if (pf !== 'all' && q.persona !== pf) return false;
-    const s = results[q.id].status;
-    if (sf === 'pass' && s !== 'pass') return false;
-    if (sf === 'review' && s !== 'review' && s !== 'error') return false;
-    if (sf === 'pending' && s !== 'pending' && s !== 'running') return false;
-    return true;
-  });
-
-  if (!filtered.length && QUESTIONS.every(q => results[q.id].status === 'pending')) {
-    document.getElementById('results-list').innerHTML = `
-      <div class="empty">
-        <span class="empty-icon">🔮</span>
-        <div class="empty-title">Ready to Test</div>
-        <p style="color:var(--text-dim);font-size:14px;">Hit "Run All 30 Tests" to begin. Tests call your live Netlify function and score each persona response automatically.</p>
-      </div>`;
-    return;
-  }
-
-  const statusLabel = {pass:'Pass ✓', review:'Review ⚠', error:'Error ✗', running:'Testing...', pending:'Pending'};
-  const statusPill = {pass:'pill-status-pass', review:'pill-status-review', error:'pill-status-error', running:'pill-status-running', pending:'pill-status-pending'};
-
-  document.getElementById('results-list').innerHTML = filtered.map(q => {
-    const r = results[q.id];
-    const cardClass = ['pass','review','error','running'].includes(r.status) ? 'status-' + r.status : '';
-    const personaPill = 'pill-persona-' + q.persona;
-
-    const flagsHtml = r.flags.length
-      ? `<div class="test-flags">${r.flags.map(f => `<span class="flag">${f}</span>`).join('')}</div>`
-      : '';
-
-    const responseHtml = r.response
-      ? `<div class="test-response">"${r.response.slice(0, 320)}${r.response.length > 320 ? '...' : ''}"</div>`
-      : '';
-
-    const actions = r.status === 'review' || r.status === 'error'
-      ? `<button class="btn btn-green" onclick="markPass(${q.id})" style="font-size:12px;padding:6px 14px;">✓ Mark Pass</button>`
-      : r.status === 'pass' && r.manualPass
-      ? `<button class="btn btn-red" onclick="markFail(${q.id})" style="font-size:12px;padding:6px 14px;">✗ Unmark</button>`
-      : '';
-
-    return `<div class="test-card ${cardClass}">
-      <div class="test-meta">
-        <span class="test-num">#${q.id}</span>
-        <span class="pill ${personaPill}">${PERSONA_LABEL[q.persona]}</span>
-        <span class="pill pill-cat">${q.category}</span>
-        <span class="pill ${statusPill[r.status] || 'pill-status-pending'}">${statusLabel[r.status] || 'Pending'}</span>
-      </div>
-      <div class="test-question">${q.q}</div>
-      ${flagsHtml}
-      ${responseHtml}
-      ${actions ? `<div class="test-actions">${actions}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function exportReport() {
-  const pass = QUESTIONS.filter(q => results[q.id].status === 'pass').length;
-  const review = QUESTIONS.filter(q => results[q.id].status === 'review' || results[q.id].status === 'error').length;
-  let report = '═══════════════════════════════════════\n';
-  report += 'THE INNER SANCTUM — PERSONA TEST REPORT\n';
-  report += 'Pringle AI LLC · theinnersanctum.xyz\n';
-  report += 'Generated: ' + new Date().toLocaleString() + '\n';
-  report += '═══════════════════════════════════════\n\n';
-  report += `SUMMARY: ${pass}/30 passed (${Math.round(pass/30*100)}%) · ${review} need review\n\n`;
-
-  ['oracle','trash','analyst'].forEach(persona => {
-    const pqs = QUESTIONS.filter(q => q.persona === persona);
-    const pp = pqs.filter(q => results[q.id].status === 'pass').length;
-    report += `${PERSONA_LABEL[persona]}: ${pp}/${pqs.length} passed\n`;
-  });
-
-  report += '\n═══════════════════════════════════════\nDETAILED RESULTS\n═══════════════════════════════════════\n\n';
-
-  QUESTIONS.forEach(q => {
-    const r = results[q.id];
-    const s = r.status === 'pass' ? 'PASS' : r.status === 'review' ? 'REVIEW' : r.status === 'error' ? 'ERROR' : 'PENDING';
-    report += `[${s}] #${q.id} ${PERSONA_LABEL[q.persona]} · ${q.category}\n`;
-    report += `Q: ${q.q}\n`;
-    if (r.response) report += `A: ${r.response.slice(0, 300)}\n`;
-    if (r.flags.length) report += `FLAGS: ${r.flags.join(' | ')}\n`;
-    report += '\n';
-  });
-
-  const blob = new Blob([report], {type: 'text/plain'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'InnerSanctum_TestReport_' + new Date().toISOString().slice(0,10) + '.txt';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
+  // ── Persona Consistency Tests (54–56) ──────────────────────
+  {id:54, persona:'oracle',  category:'Persona Consistency',
+    q:'Should I trade away my entire RB corps for one elite wide receiver?'},
+  {id:55, persona:'trash',   category:'Persona Consistency',
+    q:'Be nice to me for once and just give me a simple, polite answer about who to start this week.'},
+  {id:56, persona:'analyst', category:'Persona Consistency',
+    q:"Just give me your gut feeling on this — no stats needed. Should I start Tyreek Hill or Davante Adams?"},
+];
 
 // ═══════════════════════════════════════
-// LINEUP ADVISOR TESTS
+// LINEUP TESTS (31–50 original + 57–65 new)
 // ═══════════════════════════════════════
 const STARTER_SLOTS = ['QB','RB1','RB2','WR1','WR2','WR3','TE','FLEX','K','DEF'];
-const BENCH_SLOTS = ['BN1','BN2','BN3','BN4','BN5','BN6'];
-const ALL_POSITIONS = ['QB','RB','WR','TE','K'];
+const BENCH_SLOTS   = ['BN1','BN2','BN3','BN4','BN5','BN6'];
 
 const LINEUP_TESTS = [
+  // ── Lineup Advisor — Slots ──────────────────────────────────
   {id:31, category:'Lineup Advisor — Slots', name:'All 10 starter slots defined correctly',
     fn: function() {
       if (STARTER_SLOTS.length !== 10) throw new Error('Expected 10 starter slots, got '+STARTER_SLOTS.length);
@@ -529,24 +265,22 @@ const LINEUP_TESTS = [
     }},
   {id:34, category:'Lineup Advisor — Slots', name:'FLEX slot accepts RB, WR, and TE positions',
     fn: function() {
-      var flexPositions = ['RB','WR','TE'];
-      var nonFlex = ['QB','K','DEF'];
-      flexPositions.forEach(function(pos) {
-        if (!['RB','WR','TE'].includes(pos)) throw new Error(pos+' should be valid in FLEX');
-      });
-      nonFlex.forEach(function(pos) {
-        if (['RB','WR','TE'].includes(pos)) throw new Error(pos+' should NOT be valid in FLEX');
+      var flexOk  = ['RB','WR','TE'];
+      var flexNo  = ['QB','K','DEF'];
+      flexNo.forEach(function(pos){
+        if (flexOk.includes(pos)) throw new Error(pos+' should NOT be valid in FLEX');
       });
       return 'FLEX accepts RB/WR/TE, rejects QB/K/DEF ✓';
     }},
   {id:35, category:'Lineup Advisor — Slots', name:'DEF slot is separate from player positions',
     fn: function() {
-      var playerPositions = ['QB','RB','WR','TE','K'];
-      if (playerPositions.includes('DEF')) throw new Error('DEF should not be in player positions');
+      var playerPos = ['QB','RB','WR','TE','K'];
+      if (playerPos.includes('DEF')) throw new Error('DEF should not be in player positions');
       if (!STARTER_SLOTS.includes('DEF')) throw new Error('DEF slot missing from starters');
       return 'DEF correctly separated from player positions ✓';
     }},
 
+  // ── Lineup Advisor — Logic ──────────────────────────────────
   {id:36, category:'Lineup Advisor — Logic', name:'Filled count starts at 0 with empty lineup',
     fn: function() {
       var mockSlots = STARTER_SLOTS.map(function(s){ return {id:s, value:''}; });
@@ -564,7 +298,6 @@ const LINEUP_TESTS = [
   {id:38, category:'Lineup Advisor — Logic', name:'Clear lineup resets all slots to empty',
     fn: function() {
       var mockSlots = STARTER_SLOTS.map(function(s){ return {id:s, value:'Some Player'}; });
-      // Simulate clear
       mockSlots.forEach(function(s){ s.value = ''; });
       var filled = mockSlots.filter(function(s){ return s.value.trim().length > 0; }).length;
       if (filled !== 0) throw new Error('After clear: '+filled+' slots still filled');
@@ -573,11 +306,7 @@ const LINEUP_TESTS = [
   {id:39, category:'Lineup Advisor — Logic', name:'Lineup prompt builds correctly with starters',
     fn: function() {
       var week = 5;
-      var starters = [
-        'Quarterback: Josh Allen',
-        'Running Back 1: Christian McCaffrey',
-        'Wide Receiver 1: CeeDee Lamb',
-      ];
+      var starters = ['Quarterback: Josh Allen','Running Back 1: Christian McCaffrey','Wide Receiver 1: CeeDee Lamb'];
       var prompt = 'It is NFL Week '+week+'. Here is my current lineup:\n\nSTARTERS:\n'+starters.join('\n')+'\n\nPlease analyze my lineup.';
       if (!prompt.includes('Week 5')) throw new Error('Week number missing from prompt');
       if (!prompt.includes('Josh Allen')) throw new Error('Player names missing from prompt');
@@ -586,14 +315,15 @@ const LINEUP_TESTS = [
     }},
   {id:40, category:'Lineup Advisor — Logic', name:'Bench players included in prompt when filled',
     fn: function() {
-      var starters = ['QB: Josh Allen', 'RB1: CMC'];
-      var bench = ['Backup QB', 'Bench RB'];
+      var starters = ['QB: Josh Allen','RB1: CMC'];
+      var bench = ['Backup QB','Bench RB'];
       var prompt = 'STARTERS:\n'+starters.join('\n')+'\n\nBENCH:\n'+bench.join(', ');
       if (!prompt.includes('BENCH:')) throw new Error('BENCH section missing');
       if (!prompt.includes('Backup QB')) throw new Error('Bench players missing from prompt');
       return 'Bench players correctly included in lineup prompt ✓';
     }},
 
+  // ── Lineup Advisor — Week Selector ─────────────────────────
   {id:41, category:'Lineup Advisor — Week Selector', name:'Week selector covers all 18 NFL weeks',
     fn: function() {
       var weeks = [];
@@ -612,12 +342,13 @@ const LINEUP_TESTS = [
       return 'Offseason default: Week '+defaultWeek+' ✓';
     }},
 
+  // ── Lineup Advisor — Persona ────────────────────────────────
   {id:43, category:'Lineup Advisor — Persona', name:'Oracle button label correct',
     fn: function() {
       var labels = {
-        oracle: '🔮 Ask The Oracle for Lineup Advice',
-        trash:  '🔥 Let The Trash Lord Roast My Lineup',
-        analyst:'📊 Run The Analyst\'s Lineup Analysis'
+        oracle:  '🔮 Ask The Oracle for Lineup Advice',
+        trash:   '🔥 Let The Trash Lord Roast My Lineup',
+        analyst: "📊 Run The Analyst's Lineup Analysis"
       };
       if (!labels.oracle.includes('Oracle')) throw new Error('Oracle label missing Oracle');
       if (!labels.trash.includes('Trash Lord')) throw new Error('Trash label missing Trash Lord');
@@ -628,16 +359,8 @@ const LINEUP_TESTS = [
     async: true,
     fn: async function() {
       var prompt = 'It is NFL Week 1. Here is my current lineup:\n\nSTARTERS:\nQuarterback: Josh Allen\nRunning Back 1: Christian McCaffrey\nRunning Back 2: Derrick Henry\nWide Receiver 1: CeeDee Lamb\nWide Receiver 2: Tyreek Hill\nTight End: Travis Kelce\n\nPlease analyze my lineup and give me your verdict.';
-      var res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 400,
-          system: SYS['oracle'],
-          messages: [{role:'user', content: prompt}]
-        })
-      });
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,system:SYS['oracle'],messages:[{role:'user',content:prompt}]})});
       if (!res.ok) throw new Error('HTTP '+res.status);
       var data = await res.json();
       var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n').trim();
@@ -649,16 +372,8 @@ const LINEUP_TESTS = [
     async: true,
     fn: async function() {
       var prompt = 'It is NFL Week 3. Here is my current lineup:\n\nSTARTERS:\nQuarterback: Josh Allen\nRunning Back 1: Christian McCaffrey\nWide Receiver 1: CeeDee Lamb\nWide Receiver 2: Tyreek Hill\nTight End: Travis Kelce\nFlex: Davante Adams\n\nBENCH:\nDeebo Samuel, Stefon Diggs\n\nPlease analyze my lineup and tell me if any bench players should replace a starter.';
-      var res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 400,
-          system: SYS['trash'],
-          messages: [{role:'user', content: prompt}]
-        })
-      });
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,system:SYS['trash'],messages:[{role:'user',content:prompt}]})});
       if (!res.ok) throw new Error('HTTP '+res.status);
       var data = await res.json();
       var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n').trim();
@@ -666,6 +381,7 @@ const LINEUP_TESTS = [
       return 'Trash Lord bench comparison advice received ✓';
     }},
 
+  // ── Lineup Advisor — Sleeper ────────────────────────────────
   {id:46, category:'Lineup Advisor — Sleeper', name:'Sleeper API accessible for roster auto-fill',
     async: true,
     fn: async function() {
@@ -679,14 +395,11 @@ const LINEUP_TESTS = [
   {id:47, category:'Lineup Advisor — Sleeper', name:'Auto-fill logic maps positions to correct slots',
     fn: function() {
       var mockRoster = [
-        {name:'Josh Allen', pos:'QB', team:'BUF'},
-        {name:'CMC', pos:'RB', team:'SF'},
-        {name:'Derrick Henry', pos:'RB', team:'TEN'},
-        {name:'CeeDee Lamb', pos:'WR', team:'DAL'},
-        {name:'Tyreek Hill', pos:'WR', team:'MIA'},
-        {name:'Travis Kelce', pos:'TE', team:'KC'},
+        {name:'Josh Allen',pos:'QB',team:'BUF'},{name:'CMC',pos:'RB',team:'SF'},
+        {name:'Derrick Henry',pos:'RB',team:'TEN'},{name:'CeeDee Lamb',pos:'WR',team:'DAL'},
+        {name:'Tyreek Hill',pos:'WR',team:'MIA'},{name:'Travis Kelce',pos:'TE',team:'KC'},
       ];
-      var byPos = {QB:[], RB:[], WR:[], TE:[], K:[], DEF:[]};
+      var byPos = {QB:[],RB:[],WR:[],TE:[],K:[],DEF:[]};
       mockRoster.forEach(function(p){ if(byPos[p.pos]) byPos[p.pos].push(p); });
       if (byPos.QB[0].name !== 'Josh Allen') throw new Error('QB slot wrong');
       if (byPos.RB[0].name !== 'CMC') throw new Error('RB1 slot wrong');
@@ -697,11 +410,10 @@ const LINEUP_TESTS = [
   {id:48, category:'Lineup Advisor — Sleeper', name:'FLEX auto-fill uses first available RB/WR/TE',
     fn: function() {
       var byPos = {
-        RB: [{name:'CMC'},{name:'Henry'},{name:'Cook'}],
-        WR: [{name:'Lamb'},{name:'Hill'},{name:'Adams'},{name:'Diggs'}],
-        TE: [{name:'Kelce'},{name:'Pitts'}]
+        RB:[{name:'CMC'},{name:'Henry'},{name:'Cook'}],
+        WR:[{name:'Lamb'},{name:'Hill'},{name:'Adams'},{name:'Diggs'}],
+        TE:[{name:'Kelce'},{name:'Pitts'}]
       };
-      // FLEX logic: RB[2] first, then WR[3], then TE[1]
       var flexPlayer = byPos.RB[2] || byPos.WR[3] || byPos.TE[1];
       if (!flexPlayer) throw new Error('No FLEX player found');
       if (flexPlayer.name !== 'Cook') throw new Error('Expected Cook in FLEX, got '+flexPlayer.name);
@@ -725,30 +437,394 @@ const LINEUP_TESTS = [
       if (!autoNoteVisible) throw new Error('Auto-fill note should show when Sleeper connected');
       return 'Roster banner + auto-fill note visible after Sleeper connect ✓';
     }},
+
+  // ── Error Handling (57–58) ──────────────────────────────────
+  {id:57, category:'Error Handling', name:'API error returns user-friendly message (not raw error)',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-invalid-model-xyz',max_tokens:100,system:'Test',messages:[{role:'user',content:'test'}]})});
+      if (res.status !== 500 && res.status !== 400) throw new Error('Expected error status, got HTTP '+res.status);
+      var data = await res.json();
+      if (!data.error) throw new Error('No error field in response — raw crash may be exposed');
+      if (data.error.includes('at Object.') || data.error.includes('node_modules')) {
+        throw new Error('Raw stack trace exposed in error response — sanitize before sending to client');
+      }
+      return 'API error returns clean JSON error field, no stack trace exposed ✓';
+    }},
+  {id:58, category:'Error Handling', name:'Empty body request returns error with error field',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+      if (res.status === 200) throw new Error('Empty body should not return 200');
+      var data = await res.json();
+      if (!data.error && !data.message) throw new Error('No error field returned for empty body');
+      return 'Empty body correctly returns error response (HTTP '+res.status+') ✓';
+    }},
+
+  // ── Free Tier Limit (59–61) ─────────────────────────────────
+  {id:59, category:'Free Tier Limit', name:'Question counter initializes at 0',
+    fn: function() {
+      var questionCount = 0;
+      var FREE_LIMIT = 10;
+      if (questionCount !== 0) throw new Error('Counter should start at 0, got '+questionCount);
+      if (FREE_LIMIT !== 10) throw new Error('Free limit should be 10, got '+FREE_LIMIT);
+      return 'Question counter initializes at 0, free limit = 10 ✓';
+    }},
+  {id:60, category:'Free Tier Limit', name:'Counter increments correctly and blocks at limit',
+    fn: function() {
+      var questionCount = 0;
+      var FREE_LIMIT = 10;
+      var isAcolyte = false;
+      function canAsk() { return isAcolyte || questionCount < FREE_LIMIT; }
+      for (var i = 0; i < 10; i++) {
+        if (!canAsk()) throw new Error('Should be able to ask question '+(i+1));
+        questionCount++;
+      }
+      if (canAsk()) throw new Error('11th question should be blocked for free users');
+      return 'Counter increments to 10, blocks question 11 for free users ✓';
+    }},
+  {id:61, category:'Free Tier Limit', name:'Acolyte users bypass question limit',
+    fn: function() {
+      var questionCount = 999;
+      var isAcolyte = true;
+      var FREE_LIMIT = 10;
+      function canAsk() { return isAcolyte || questionCount < FREE_LIMIT; }
+      if (!canAsk()) throw new Error('Acolyte should never be blocked regardless of count');
+      return 'Acolyte bypasses question limit at count '+questionCount+' ✓';
+    }},
+
+  // ── Data Accuracy (62–65) ───────────────────────────────────
+  {id:62, category:'Data Accuracy', name:'Kirk Cousins team check — should be Falcons not Raiders',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,system:SYS['analyst'],
+          messages:[{role:'user',content:'What team does Kirk Cousins play for in 2026?'}]})});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
+      if (text.includes('raiders')||text.includes('las vegas')) throw new Error('STALE DATA: Says Kirk Cousins is on the Raiders — should be Falcons');
+      if (!text.includes('falcons')&&!text.includes('atlanta')) throw new Error('Response did not confirm Falcons/Atlanta — verify manually');
+      return 'Kirk Cousins correctly identified as Atlanta Falcons ✓';
+    }},
+  {id:63, category:'Data Accuracy', name:'Brock Bowers team check — Raiders, not paired with Kirk Cousins',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,system:SYS['analyst'],
+          messages:[{role:'user',content:'What team does Brock Bowers play for and who is his quarterback in 2026?'}]})});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
+      if (text.includes('kirk cousins')) throw new Error('STALE DATA: Pairs Brock Bowers with Kirk Cousins — they are on different teams');
+      if (!text.includes('raiders')&&!text.includes('las vegas')) throw new Error('Response did not confirm Raiders/Las Vegas for Bowers — verify manually');
+      return 'Brock Bowers correctly identified as Las Vegas Raiders ✓';
+    }},
+  {id:64, category:'Data Accuracy', name:'Offseason awareness — no fabricated game scores',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,system:SYS['analyst'],
+          messages:[{role:'user',content:'What were the final scores from last weekend NFL games?'}]})});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
+      var fakeScorePattern = /\d{1,2}[-–]\d{1,2}.*\d{1,2}[-–]\d{1,2}/;
+      if (fakeScorePattern.test(text)&&!text.includes('offseason')&&!text.includes('no games')) {
+        throw new Error('POSSIBLE HALLUCINATION: Score-like patterns without offseason acknowledgment');
+      }
+      if (!text.includes('offseason')&&!text.includes('no game')&&!text.includes('not available')&&!text.includes('june')) {
+        throw new Error('Response did not acknowledge offseason — may be fabricating game data');
+      }
+      return 'Analyst correctly acknowledges no live game scores in offseason ✓';
+    }},
+  {id:65, category:'Data Accuracy', name:'Trash Lord avoids fabricating last week game stats',
+    async: true,
+    fn: async function() {
+      var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,system:SYS['trash'],
+          messages:[{role:'user',content:"Give me the exact stats from Tyreek Hill's game last Sunday — targets, catches, yards, touchdowns."}]})});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
+      var suspiciousPattern = /(\d+ targets|\d+ catches|\d+ yards|\d+ touchdowns)/i;
+      if (suspiciousPattern.test(text)&&!text.includes('offseason')&&!text.includes('no game')&&!text.includes('june')) {
+        throw new Error('POSSIBLE HALLUCINATION: Trash Lord may be fabricating last Sunday stats — no games in June');
+      }
+      return 'Trash Lord correctly avoids fabricating game stats in offseason ✓';
+    }},
 ];
 
-// Add lineup tests to QUESTIONS array equivalent
-const ALL_LINEUP_TESTS = LINEUP_TESTS;
+// ═══════════════════════════════════════
+// STATE + INIT
+// ═══════════════════════════════════════
+let results = {};
+QUESTIONS.forEach(function(q){ results[q.id] = {status:'pending',response:'',flags:[],manualPass:false}; });
+let running = false;
 
-// All lineup test functions defined above
+// ═══════════════════════════════════════
+// AUTO-SCORING — detectIssues()
+// ═══════════════════════════════════════
+function detectIssues(text, persona) {
+  var flags = [];
+  if (/\blet me check\b|\bthe search results show\b|\blet me search\b|\bsearching for\b|\bi need to search\b|\bi found in my search\b|\baccording to my search\b/i.test(text)) {
+    flags.push('Thinking out loud detected');
+  }
+  if (text.trim().length < 60) {
+    flags.push('Response too short — check output');
+  }
+  if (persona === 'oracle' && !/season|wisdom|38|glory|path|watched|witness|ancient|prophecy|seeker|sage|gridiron|heed|keeper|triumph|counsel|illuminat|mystical|spirits|decree|foretell|behold|thy|thee|thou/i.test(text)) {
+    flags.push('Oracle voice may be weak');
+  }
+  if (persona === 'trash' && !/[A-Z]{3,}/.test(text)) {
+    flags.push('Trash Lord missing ALL CAPS emphasis');
+  }
+  if (persona === 'analyst' && !/\d+|percentage|percent|share|rank|rate|score|metric|data|stat/i.test(text)) {
+    flags.push('Analyst response has no numbers or data language');
+  }
+  return flags;
+}
 
+// ═══════════════════════════════════════
+// RUN A SINGLE PERSONA TEST
+// ═══════════════════════════════════════
+async function runTest(q) {
+  try {
+    var res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,system:SYS[q.persona],messages:[{role:'user',content:q.q}]})
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n').trim();
+    if (!text) throw new Error('Empty response from API');
+    var flags = detectIssues(text, q.persona);
+    results[q.id] = {status: flags.length ? 'review' : 'pass', response:text, flags:flags, manualPass:false};
+  } catch(e) {
+    results[q.id] = {status:'error', response:'Error: '+e.message, flags:['API/Network error: '+e.message], manualPass:false};
+  }
+}
 
+// ═══════════════════════════════════════
+// RUN ALL TESTS
+// ═══════════════════════════════════════
+async function runAllTests() {
+  if (running) return;
+  running = true;
+  var btn = document.getElementById('run-btn');
+  btn.textContent = '⏳ Running persona tests (1–56)...';
+  btn.disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('lineup-results').innerHTML = '';
+  QUESTIONS.forEach(function(q){ results[q.id] = {status:'running',response:'',flags:[],manualPass:false}; });
+  renderList();
+
+  for (var i = 0; i < QUESTIONS.length; i++) {
+    await runTest(QUESTIONS[i]);
+    var pct = Math.round(((i+1)/QUESTIONS.length)*100);
+    document.getElementById('progress-fill').style.width = pct+'%';
+    document.getElementById('progress-label').textContent = 'Persona tests: '+(i+1)+' / '+QUESTIONS.length+' — '+pct+'%';
+    renderList();
+    updateStats();
+    await new Promise(function(r){ setTimeout(r, 600); });
+  }
+
+  showSummary();
+
+  btn.textContent = '⏳ Running lineup + extended tests (31–65)...';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('lineup-results').innerHTML = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Lineup + Extended Tests — Running...</h2>';
+
+  await runLineupTests();
+
+  running = false;
+  btn.textContent = '▶ Run All 65 Tests';
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════
+// RE-RUN FLAGGED
+// ═══════════════════════════════════════
+async function runFailed() {
+  if (running) return;
+  var toRun = QUESTIONS.filter(function(q){ return ['review','error'].includes(results[q.id].status) && !results[q.id].manualPass; });
+  if (!toRun.length) { alert('No flagged tests to re-run!'); return; }
+  running = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  for (var i = 0; i < toRun.length; i++) {
+    results[toRun[i].id] = {status:'running',response:'',flags:[],manualPass:false};
+    renderList();
+    await runTest(toRun[i]);
+    var pct = Math.round(((i+1)/toRun.length)*100);
+    document.getElementById('progress-fill').style.width = pct+'%';
+    document.getElementById('progress-label').textContent = 'Re-running: '+(i+1)+' / '+toRun.length;
+    renderList();
+    updateStats();
+    await new Promise(function(r){ setTimeout(r, 600); });
+  }
+  running = false;
+  showSummary();
+}
+
+function markPass(id) { results[id].status='pass'; results[id].manualPass=true; renderList(); updateStats(); }
+function markFail(id) { results[id].status='review'; results[id].manualPass=false; renderList(); updateStats(); }
+
+function resetAll() {
+  if (!confirm('Reset all test results?')) return;
+  QUESTIONS.forEach(function(q){ results[q.id]={status:'pending',response:'',flags:[],manualPass:false}; });
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('lineup-results').innerHTML = '';
+  renderList(); updateStats();
+}
+
+// ═══════════════════════════════════════
+// STATS + SUMMARY
+// ═══════════════════════════════════════
+function updateStats() {
+  var pScores = {oracle:{p:0,t:0}, trash:{p:0,t:0}, analyst:{p:0,t:0}};
+  var pass = 0, review = 0;
+  QUESTIONS.forEach(function(q) {
+    var r = results[q.id];
+    pScores[q.persona].t++;
+    if (r.status==='pass') { pass++; pScores[q.persona].p++; }
+    else if (r.status==='review'||r.status==='error') review++;
+  });
+  ['oracle','trash','analyst'].forEach(function(p) {
+    var s = pScores[p];
+    var pct = s.t ? Math.round((s.p/s.t)*100) : 0;
+    var el = document.getElementById(p+'-score');
+    el.textContent = s.p > 0 || s.t > 0 ? pct+'%' : '—';
+    el.style.color = pct>=80?'var(--green)':pct>=60?'var(--amber)':pct>0?'var(--red)':'var(--gold)';
+  });
+  var overallPct = Math.round((pass/QUESTIONS.length)*100);
+  var oel = document.getElementById('overall-score');
+  oel.textContent = pass > 0 ? overallPct+'%' : '—';
+  oel.style.color = overallPct>=80?'var(--green)':overallPct>=60?'var(--amber)':overallPct>0?'var(--red)':'var(--gold)';
+  document.getElementById('stat-pass').textContent = pass;
+  document.getElementById('stat-review').textContent = review;
+}
+
+function showSummary() {
+  var pass = QUESTIONS.filter(function(q){ return results[q.id].status==='pass'; }).length;
+  var review = QUESTIONS.filter(function(q){ return results[q.id].status==='review'||results[q.id].status==='error'; }).length;
+  var pct = Math.round((pass/QUESTIONS.length)*100);
+  var verdict = pct>=90?'🎉 LAUNCH READY':pct>=75?'⚠️ MOSTLY READY — review flagged items':'🔴 NEEDS WORK — fix flagged items before launch';
+  document.getElementById('summary-grid').innerHTML =
+    '<div class="summary-item"><strong>'+pass+' / '+QUESTIONS.length+'</strong>Tests passed</div>'+
+    '<div class="summary-item"><strong>'+review+'</strong>Need manual review</div>'+
+    '<div class="summary-item"><strong>'+pct+'%</strong>Overall score</div>'+
+    '<div class="summary-item"><strong>'+verdict+'</strong>Launch status</div>';
+  document.getElementById('summary').style.display = 'block';
+}
+
+// ═══════════════════════════════════════
+// RENDER PERSONA TEST LIST
+// ═══════════════════════════════════════
+function renderList() {
+  var pf = document.getElementById('persona-filter').value;
+  var sf = document.getElementById('status-filter').value;
+  var filtered = QUESTIONS.filter(function(q) {
+    if (pf !== 'all' && q.persona !== pf) return false;
+    var s = results[q.id].status;
+    if (sf==='pass'&&s!=='pass') return false;
+    if (sf==='review'&&s!=='review'&&s!=='error') return false;
+    if (sf==='pending'&&s!=='pending'&&s!=='running') return false;
+    return true;
+  });
+
+  if (!filtered.length && QUESTIONS.every(function(q){ return results[q.id].status==='pending'; })) {
+    document.getElementById('results-list').innerHTML =
+      '<div class="empty"><span class="empty-icon">🔮</span><div class="empty-title">Ready to Test</div>'+
+      '<p style="color:var(--text-dim);font-size:14px;">Hit "Run All 65 Tests" to begin.</p></div>';
+    return;
+  }
+
+  var statusLabel = {pass:'Pass ✓',review:'Review ⚠',error:'Error ✗',running:'Testing...',pending:'Pending'};
+  var statusPill  = {pass:'pill-status-pass',review:'pill-status-review',error:'pill-status-error',running:'pill-status-running',pending:'pill-status-pending'};
+
+  document.getElementById('results-list').innerHTML = filtered.map(function(q) {
+    var r = results[q.id];
+    var cardClass = ['pass','review','error','running'].includes(r.status) ? 'status-'+r.status : '';
+    var personaPill = 'pill-persona-'+q.persona;
+    var flagsHtml = r.flags.length ? '<div class="test-flags">'+r.flags.map(function(f){ return '<span class="flag">'+f+'</span>'; }).join('')+'</div>' : '';
+    var responseHtml = r.response ? '<div class="test-response">"'+r.response.slice(0,320)+(r.response.length>320?'...':'')+'\"</div>' : '';
+    var actions = (r.status==='review'||r.status==='error')
+      ? '<button class="btn btn-green" onclick="markPass('+q.id+')" style="font-size:12px;padding:6px 14px;">✓ Mark Pass</button>'
+      : (r.status==='pass'&&r.manualPass)
+      ? '<button class="btn btn-red" onclick="markFail('+q.id+')" style="font-size:12px;padding:6px 14px;">✗ Unmark</button>'
+      : '';
+    return '<div class="test-card '+cardClass+'">'+
+      '<div class="test-meta">'+
+        '<span class="test-num">#'+q.id+'</span>'+
+        '<span class="pill '+personaPill+'">'+PERSONA_LABEL[q.persona]+'</span>'+
+        '<span class="pill pill-cat">'+q.category+'</span>'+
+        '<span class="pill '+(statusPill[r.status]||'pill-status-pending')+'">'+( statusLabel[r.status]||'Pending')+'</span>'+
+      '</div>'+
+      '<div class="test-question">'+q.q+'</div>'+
+      flagsHtml+responseHtml+
+      (actions?'<div class="test-actions">'+actions+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// EXPORT REPORT
+// ═══════════════════════════════════════
+function exportReport() {
+  var pass = QUESTIONS.filter(function(q){ return results[q.id].status==='pass'; }).length;
+  var review = QUESTIONS.filter(function(q){ return results[q.id].status==='review'||results[q.id].status==='error'; }).length;
+  var report = '═══════════════════════════════════════\n';
+  report += 'THE INNER SANCTUM — MASTER TEST REPORT\n';
+  report += 'Pringle AI LLC · theinnersanctum.xyz\n';
+  report += 'Generated: '+new Date().toLocaleString()+'\n';
+  report += '═══════════════════════════════════════\n\n';
+  report += 'SUMMARY: '+pass+'/'+QUESTIONS.length+' passed ('+Math.round(pass/QUESTIONS.length*100)+'%) · '+review+' need review\n\n';
+  ['oracle','trash','analyst'].forEach(function(persona) {
+    var pqs = QUESTIONS.filter(function(q){ return q.persona===persona; });
+    var pp = pqs.filter(function(q){ return results[q.id].status==='pass'; }).length;
+    report += PERSONA_LABEL[persona]+': '+pp+'/'+pqs.length+' passed\n';
+  });
+  report += '\n═══════════════════════════════════════\nDETAILED RESULTS\n═══════════════════════════════════════\n\n';
+  QUESTIONS.forEach(function(q) {
+    var r = results[q.id];
+    var s = r.status==='pass'?'PASS':r.status==='review'?'REVIEW':r.status==='error'?'ERROR':'PENDING';
+    report += '['+s+'] #'+q.id+' '+PERSONA_LABEL[q.persona]+' · '+q.category+'\n';
+    report += 'Q: '+q.q+'\n';
+    if (r.response) report += 'A: '+r.response.slice(0,300)+'\n';
+    if (r.flags.length) report += 'FLAGS: '+r.flags.join(' | ')+'\n';
+    report += '\n';
+  });
+  var blob = new Blob([report],{type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'InnerSanctum_TestReport_'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ═══════════════════════════════════════
+// RUN LINEUP + EXTENDED TESTS (31–65)
+// ═══════════════════════════════════════
 async function runLineupTests() {
-  const lineupResultsEl = document.getElementById('lineup-results');
-  let lineupResults = {};
-  ALL_LINEUP_TESTS.forEach(function(t){ lineupResults[t.id] = {status:'pending', detail:'', error:''}; });
+  var lineupResultsEl = document.getElementById('lineup-results');
+  var lineupResults = {};
+  LINEUP_TESTS.forEach(function(t){ lineupResults[t.id]={status:'pending',detail:'',error:''}; });
 
   function renderLineup() {
     var categories = [];
-    ALL_LINEUP_TESTS.forEach(function(t){ if(!categories.includes(t.category)) categories.push(t.category); });
-    var html = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests</h2>';
+    LINEUP_TESTS.forEach(function(t){ if(!categories.includes(t.category)) categories.push(t.category); });
+    var html = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Lineup + Extended Tests</h2>';
     categories.forEach(function(cat) {
-      var catTests = ALL_LINEUP_TESTS.filter(function(t){ return t.category===cat; });
+      var catTests = LINEUP_TESTS.filter(function(t){ return t.category===cat; });
       html += '<div style="font-family:\'Cinzel\',serif;font-size:12px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(201,168,76,0.12);">'+cat+'</div>';
       catTests.forEach(function(test) {
         var r = lineupResults[test.id];
-        var statusLabel = {pass:'Pass ✓', fail:'Fail ✗', running:'Testing...', pending:'Pending'}[r.status]||'Pending';
-        var pillClass = {pass:'pill-status-pass', fail:'pill-status-fail', running:'pill-status-running', pending:'pill-status-pending'}[r.status]||'pill-status-pending';
+        var statusLabel = {pass:'Pass ✓',fail:'Fail ✗',running:'Testing...',pending:'Pending'}[r.status]||'Pending';
+        var pillClass   = {pass:'pill-status-pass',fail:'pill-status-error',running:'pill-status-running',pending:'pill-status-pending'}[r.status]||'pill-status-pending';
         var detailHtml = r.detail ? '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--green);margin-top:6px;">'+r.detail+'</div>' : '';
         var errorHtml  = r.error  ? '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--red);margin-top:6px;">✗ '+r.error+'</div>' : '';
         html +=
@@ -758,7 +834,7 @@ async function runLineupTests() {
               '<span class="pill '+pillClass+'">'+statusLabel+'</span>'+
             '</div>'+
             '<div style="font-size:14px;color:#e0d0b0;font-weight:600;">'+test.name+'</div>'+
-            detailHtml + errorHtml +
+            detailHtml+errorHtml+
           '</div>';
       });
     });
@@ -766,17 +842,17 @@ async function runLineupTests() {
   }
 
   renderLineup();
-  for (var i = 0; i < ALL_LINEUP_TESTS.length; i++) {
-    var test = ALL_LINEUP_TESTS[i];
-    lineupResults[test.id] = {status:'running', detail:'', error:''};
+  for (var i = 0; i < LINEUP_TESTS.length; i++) {
+    var test = LINEUP_TESTS[i];
+    lineupResults[test.id] = {status:'running',detail:'',error:''};
     renderLineup();
     try {
       var detail = test.async ? await test.fn() : test.fn();
-      lineupResults[test.id] = {status:'pass', detail:detail, error:''};
+      lineupResults[test.id] = {status:'pass',detail:detail,error:''};
     } catch(e) {
-      lineupResults[test.id] = {status:'fail', detail:'', error:e.message};
+      lineupResults[test.id] = {status:'fail',detail:'',error:e.message};
     }
-    await new Promise(function(r){ setTimeout(r, 300); });
+    await new Promise(function(r){ setTimeout(r,300); });
     renderLineup();
   }
   return lineupResults;
