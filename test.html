@@ -181,6 +181,9 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
     </div>
   </div>
 
+  <!-- LINEUP RESULTS (populated after persona tests) -->
+  <div id="lineup-results"></div>
+
   <div class="foot">The Inner Sanctum · Pringle AI LLC · Internal Testing Tool · Not for Public Access</div>
 </div>
 
@@ -283,7 +286,8 @@ async function runAllTests() {
   btn.disabled = true;
   document.getElementById('progress-wrap').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
-  document.getElementById('lineup-results').innerHTML = '';
+  const lineupEl = document.getElementById('lineup-results');
+  if (lineupEl) lineupEl.innerHTML = '';
   QUESTIONS.forEach(q => { results[q.id] = {status:'running', response:'', flags:[], manualPass:false}; });
   renderList();
 
@@ -302,7 +306,8 @@ async function runAllTests() {
   // Now run lineup tests
   btn.textContent = '⏳ Running lineup tests (31-50)...';
   document.getElementById('progress-fill').style.width = '0%';
-  document.getElementById('lineup-results').innerHTML = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests — Running...</h2>';
+  const lineupRunEl = document.getElementById('lineup-results');
+  if (lineupRunEl) lineupRunEl.innerHTML = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests — Running...</h2>';
 
   await runLineupTests();
 
@@ -725,10 +730,8 @@ const LINEUP_TESTS = [
 // Add lineup tests to QUESTIONS array equivalent
 const ALL_LINEUP_TESTS = LINEUP_TESTS;
 
-document.getElementById('results-list').insertAdjacentHTML('beforeend', '<div id="lineup-results"></div>');
+// All lineup test functions defined above
 
-// Override renderList to include lineup tests
-const originalRenderList = renderList;
 
 async function runLineupTests() {
   const lineupResultsEl = document.getElementById('lineup-results');
