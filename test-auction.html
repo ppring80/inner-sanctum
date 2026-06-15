@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inner Sanctum — Auction War Room Tests</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a0f08;--bg2:#221208;--surface:rgba(0,0,0,0.4);
+  --gold:#c9a84c;--green:#4caf50;--red:#ff5252;--amber:#ff9800;--blue:#64b5f6;
+  --text:#f0e0b0;--text-dim:#7a6a3a;--text-muted:#4a3a22;--r:8px;
+}
+body{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 40%,#261018 100%);color:var(--text);font-family:'Lora',Georgia,serif;font-size:15px;line-height:1.6;min-height:100vh;padding:24px 20px 60px;}
+.wrap{max-width:900px;margin:0 auto;}
+.hdr{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(201,168,76,0.2);}
+.hdr-badge{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:block;}
+.hdr h1{font-family:'Cinzel',serif;font-size:28px;font-weight:600;color:#f0e6cc;margin-bottom:6px;}
+.hdr-sub{font-size:12px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;}
+.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.score-card{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:14px;text-align:center;}
+.score-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.score-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--gold);}
+.controls{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:18px;margin-bottom:24px;}
+.controls-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.btn{padding:10px 20px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:13px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.btn-gold{background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-weight:600;}
+.btn-gold:hover{opacity:0.88;transform:translateY(-1px);}
+.btn-gold:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-dim);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-green{background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);color:var(--green);}
+.progress-wrap{margin-bottom:24px;display:none;}
+.progress-track{background:rgba(0,0,0,0.4);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s;}
+.progress-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+.section-header{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.15);}
+.test-card{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px;margin-bottom:8px;}
+.test-card.pass{border-color:rgba(76,175,80,0.3);}
+.test-card.fail{border-color:rgba(255,82,82,0.3);}
+.test-card.running{border-color:rgba(100,181,246,0.3);}
+.test-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.test-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);min-width:28px;}
+.pill{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;letter-spacing:1px;}
+.pill-cat{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.pill-pass{background:rgba(76,175,80,0.12);color:var(--green);border:1px solid rgba(76,175,80,0.3);}
+.pill-fail{background:rgba(255,82,82,0.12);color:var(--red);border:1px solid rgba(255,82,82,0.3);}
+.pill-running{background:rgba(100,181,246,0.12);color:var(--blue);border:1px solid rgba(100,181,246,0.3);}
+.pill-pending{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.test-name{font-size:14px;color:#e0d0b0;font-weight:600;margin-bottom:6px;}
+.test-detail{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);line-height:1.6;}
+.test-detail.error{color:var(--red);}
+.test-detail.success{color:var(--green);}
+.summary{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:var(--r);padding:18px;margin-bottom:24px;display:none;}
+.summary-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);margin-bottom:12px;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+.summary-item strong{color:var(--text);display:block;}
+.summary-item{font-size:13px;color:var(--text-dim);}
+.foot{text-align:center;margin-top:40px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <span class="hdr-badge">Pringle AI LLC · Internal Tool</span>
+    <h1>⚔️ Auction War Room</h1>
+    <div class="hdr-sub">Automated Test Suite · Logic & Math Validation</div>
+  </div>
+
+  <div class="score-grid">
+    <div class="score-card"><div class="score-label">Passed</div><div class="score-val" id="stat-pass" style="color:var(--green)">0</div></div>
+    <div class="score-card"><div class="score-label">Failed</div><div class="score-val" id="stat-fail" style="color:var(--red)">0</div></div>
+    <div class="score-card"><div class="score-label">Total</div><div class="score-val" id="stat-total">0</div></div>
+    <div class="score-card"><div class="score-label">Score</div><div class="score-val" id="stat-score">—</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="controls-row">
+      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All Tests</button>
+      <button class="btn btn-outline" onclick="resetTests()">✕ Reset</button>
+      <button class="btn btn-outline" onclick="exportReport()">⬇ Export Report</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-label" id="progress-label">0% complete</div>
+  </div>
+
+  <div class="summary" id="summary">
+    <div class="summary-title">⚔️ Test Run Summary</div>
+    <div class="summary-grid" id="summary-grid"></div>
+  </div>
+
+  <div id="results-list"></div>
+
+  <div class="foot">The Inner Sanctum · Pringle AI LLC · Auction War Room Test Suite</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// COPY OF AUCTION LOGIC FROM auction.html
+// ═══════════════════════════════════════
+
+var STRATEGIES = {
+  rb:     {splits:{QB:0.015,RB1:0.25,RB2:0.22,WR1:0.15,WR2:0.125,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.10}},
+  wr:     {splits:{QB:0.015,RB1:0.21,RB2:0.135,WR1:0.25,WR2:0.19,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
+  qb:     {splits:{QB:0.11,RB1:0.21,RB2:0.125,WR1:0.19,WR2:0.14,TE:0.02,FLEX:0.085,DEF:0.005,K:0.005,BENCH:0.11}},
+  hero:   {splits:{QB:0.015,RB1:0.23,RB2:0.10,WR1:0.245,WR2:0.17,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}},
+  custom: {splits:{QB:0.015,RB1:0.23,RB2:0.18,WR1:0.17,WR2:0.13,TE:0.02,FLEX:0.10,DEF:0.005,K:0.005,BENCH:0.11}}
+};
+
+var SUPERFLEX_SPLITS = {
+  rb:     {splits:{QB:0.12,RB1:0.22,RB2:0.18,WR1:0.13,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.10}},
+  wr:     {splits:{QB:0.12,RB1:0.18,RB2:0.11,WR1:0.21,WR2:0.16,TE:0.02,FLEX:0.06,DEF:0.005,K:0.005,BENCH:0.11}},
+  qb:     {splits:{QB:0.18,RB1:0.18,RB2:0.10,WR1:0.17,WR2:0.12,TE:0.02,FLEX:0.075,DEF:0.005,K:0.005,BENCH:0.10}},
+  hero:   {splits:{QB:0.12,RB1:0.20,RB2:0.09,WR1:0.21,WR2:0.15,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}},
+  custom: {splits:{QB:0.13,RB1:0.20,RB2:0.15,WR1:0.15,WR2:0.11,TE:0.02,FLEX:0.09,DEF:0.005,K:0.005,BENCH:0.11}}
+};
+
+function generatePriceSheet(budget, stratKey, roster, isSuperflex) {
+  var strat = isSuperflex ? (SUPERFLEX_SPLITS[stratKey] || SUPERFLEX_SPLITS.hero) : (STRATEGIES[stratKey] || STRATEGIES.hero);
+  var splits = strat.splits;
+  var slots = [];
+
+  function addSlot(pos, label, pct) { slots.push({pos:pos, label:label, rawPct:pct}); }
+
+  if (roster.QB >= 1) addSlot('QB','QB1',splits.QB);
+  if (roster.QB >= 2) addSlot('QB','QB2',splits.QB*0.5);
+  if (roster.RB >= 1) addSlot('RB','RB1',splits.RB1);
+  if (roster.RB >= 2) addSlot('RB','RB2',splits.RB2);
+  if (roster.RB >= 3) addSlot('RB','RB3',splits.RB2*0.4);
+  if (roster.WR >= 1) addSlot('WR','WR1',splits.WR1);
+  if (roster.WR >= 2) addSlot('WR','WR2',splits.WR2);
+  if (roster.WR >= 3) addSlot('WR','WR3',splits.WR2*0.4);
+  if (roster.TE >= 1) addSlot('TE','TE1',splits.TE);
+  if (roster.FLEX >= 1) addSlot('FLEX','FLEX',splits.FLEX);
+  if (roster.DEF >= 1) addSlot('DEF','D/ST',splits.DEF);
+  if (roster.K >= 1) addSlot('K','K',splits.K);
+  for (var b = 1; b <= roster.BENCH; b++) { addSlot('BENCH','Bench '+b, b<=2?0.04:b<=4?0.02:0.005); }
+
+  var totalPct = slots.reduce(function(a,s){return a+s.rawPct;}, 0);
+  slots.forEach(function(s){ s.normPct = s.rawPct/totalPct; });
+  slots.forEach(function(s){ s.val = Math.max(1, Math.floor(s.normPct*budget)); });
+  var currentTotal = slots.reduce(function(a,s){return a+s.val;}, 0);
+  var remainder = budget - currentTotal;
+  for (var r = 0; r < remainder; r++) { slots[r % slots.length].val += 1; }
+
+  return slots;
+}
+
+// ═══════════════════════════════════════
+// TEST DEFINITIONS
+// ═══════════════════════════════════════
+var DEFAULT_ROSTER = {QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6};
+
+var TESTS = [
+  // BUDGET MATH TESTS
+  {id:1,  category:'Budget Math', name:'$200 budget — RB Heavy strategy sums exactly',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'rb', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      if (total !== 200) throw new Error('Total was $'+total+', expected $200');
+      return 'Total: $'+total+' ✓';
+    }},
+  {id:2,  category:'Budget Math', name:'$200 budget — WR Heavy strategy sums exactly',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'wr', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      if (total !== 200) throw new Error('Total was $'+total+', expected $200');
+      return 'Total: $'+total+' ✓';
+    }},
+  {id:3,  category:'Budget Math', name:'$200 budget — QB Heavy strategy sums exactly',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'qb', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      if (total !== 200) throw new Error('Total was $'+total+', expected $200');
+      return 'Total: $'+total+' ✓';
+    }},
+  {id:4,  category:'Budget Math', name:'$200 budget — Hero RB strategy sums exactly',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      if (total !== 200) throw new Error('Total was $'+total+', expected $200');
+      return 'Total: $'+total+' ✓';
+    }},
+  {id:5,  category:'Budget Math', name:'$100 budget — all strategies sum exactly',
+    fn: function() {
+      var strats = ['rb','wr','qb','hero','custom'];
+      var errors = [];
+      strats.forEach(function(s) {
+        var slots = generatePriceSheet(100, s, DEFAULT_ROSTER, false);
+        var total = slots.reduce(function(a,sl){return a+sl.val;},0);
+        if (total !== 100) errors.push(s+': $'+total);
+      });
+      if (errors.length) throw new Error('Failed: '+errors.join(', '));
+      return 'All 5 strategies = $100 ✓';
+    }},
+  {id:6,  category:'Budget Math', name:'$150 budget — all strategies sum exactly',
+    fn: function() {
+      var strats = ['rb','wr','qb','hero','custom'];
+      var errors = [];
+      strats.forEach(function(s) {
+        var slots = generatePriceSheet(150, s, DEFAULT_ROSTER, false);
+        var total = slots.reduce(function(a,sl){return a+sl.val;},0);
+        if (total !== 150) errors.push(s+': $'+total);
+      });
+      if (errors.length) throw new Error('Failed: '+errors.join(', '));
+      return 'All 5 strategies = $150 ✓';
+    }},
+  {id:7,  category:'Budget Math', name:'$250 budget — all strategies sum exactly',
+    fn: function() {
+      var strats = ['rb','wr','qb','hero','custom'];
+      var errors = [];
+      strats.forEach(function(s) {
+        var slots = generatePriceSheet(250, s, DEFAULT_ROSTER, false);
+        var total = slots.reduce(function(a,sl){return a+sl.val;},0);
+        if (total !== 250) errors.push(s+': $'+total);
+      });
+      if (errors.length) throw new Error('Failed: '+errors.join(', '));
+      return 'All 5 strategies = $250 ✓';
+    }},
+
+  // SUPERFLEX TESTS
+  {id:8,  category:'Superflex', name:'Superflex QB allocation higher than standard',
+    fn: function() {
+      var standard = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
+      var superflex = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, true);
+      var stdQB = standard.find(function(s){return s.label==='QB1';}).val;
+      var sfQB  = superflex.find(function(s){return s.label==='QB1';}).val;
+      if (sfQB <= stdQB) throw new Error('Superflex QB1 ($'+sfQB+') not higher than standard ($'+stdQB+')');
+      return 'Standard QB1: $'+stdQB+' → Superflex QB1: $'+sfQB+' ✓';
+    }},
+  {id:9,  category:'Superflex', name:'Superflex $200 budget sums exactly — all strategies',
+    fn: function() {
+      var strats = ['rb','wr','qb','hero','custom'];
+      var errors = [];
+      strats.forEach(function(s) {
+        var slots = generatePriceSheet(200, s, DEFAULT_ROSTER, true);
+        var total = slots.reduce(function(a,sl){return a+sl.val;},0);
+        if (total !== 200) errors.push(s+': $'+total);
+      });
+      if (errors.length) throw new Error('Failed: '+errors.join(', '));
+      return 'All 5 superflex strategies = $200 ✓';
+    }},
+
+  // SLOT GENERATION TESTS
+  {id:10, category:'Slots', name:'Standard roster generates correct number of slots',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
+      // QB1, RB1, RB2, WR1, WR2, TE1, FLEX, DEF, 6 bench = 13 slots (no K)
+      var expected = 13;
+      if (slots.length !== expected) throw new Error('Got '+slots.length+' slots, expected '+expected);
+      return slots.length+' slots generated ✓';
+    }},
+  {id:11, category:'Slots', name:'All slots have value >= $1',
+    fn: function() {
+      var strats = ['rb','wr','qb','hero','custom'];
+      var errors = [];
+      strats.forEach(function(s) {
+        var slots = generatePriceSheet(200, s, DEFAULT_ROSTER, false);
+        slots.forEach(function(sl) {
+          if (sl.val < 1) errors.push(s+' '+sl.label+': $'+sl.val);
+        });
+      });
+      if (errors.length) throw new Error('Slots below $1: '+errors.join(', '));
+      return 'All slots >= $1 across all strategies ✓';
+    }},
+  {id:12, category:'Slots', name:'RB Heavy — RB1 allocation highest of skill positions',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'rb', DEFAULT_ROSTER, false);
+      var rb1 = slots.find(function(s){return s.label==='RB1';}).val;
+      var wr1 = slots.find(function(s){return s.label==='WR1';}).val;
+      var qb1 = slots.find(function(s){return s.label==='QB1';}).val;
+      if (rb1 <= wr1) throw new Error('RB1 ($'+rb1+') should be > WR1 ($'+wr1+') in RB Heavy');
+      if (rb1 <= qb1) throw new Error('RB1 ($'+rb1+') should be > QB1 ($'+qb1+') in RB Heavy');
+      return 'RB1: $'+rb1+' > WR1: $'+wr1+' > QB1: $'+qb1+' ✓';
+    }},
+  {id:13, category:'Slots', name:'WR Heavy — WR1 allocation highest of skill positions',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'wr', DEFAULT_ROSTER, false);
+      var wr1 = slots.find(function(s){return s.label==='WR1';}).val;
+      var rb1 = slots.find(function(s){return s.label==='RB1';}).val;
+      if (wr1 <= rb1) throw new Error('WR1 ($'+wr1+') should be > RB1 ($'+rb1+') in WR Heavy');
+      return 'WR1: $'+wr1+' > RB1: $'+rb1+' ✓';
+    }},
+  {id:14, category:'Slots', name:'QB Heavy — QB allocation significantly higher than standard',
+    fn: function() {
+      var standard = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
+      var qbheavy  = generatePriceSheet(200, 'qb',   DEFAULT_ROSTER, false);
+      var stdQB = standard.find(function(s){return s.label==='QB1';}).val;
+      var qhQB  = qbheavy.find(function(s){return s.label==='QB1';}).val;
+      if (qhQB <= stdQB) throw new Error('QB Heavy QB1 ($'+qhQB+') not higher than hero QB1 ($'+stdQB+')');
+      return 'Hero QB1: $'+stdQB+' → QB Heavy QB1: $'+qhQB+' ✓';
+    }},
+
+  // INFLATION TRACKER TESTS
+  {id:15, category:'Inflation Tracker', name:'Budget spent calculation — basic pick logging',
+    fn: function() {
+      var budget = 200;
+      var numTeams = 10;
+      var totalMarket = budget * numTeams;
+      var picks = [{price:50},{price:40},{price:30}];
+      var totalSpent = picks.reduce(function(a,p){return a+p.price;},0);
+      var pct = Math.round((totalSpent/totalMarket)*100);
+      if (totalSpent !== 120) throw new Error('Total spent: $'+totalSpent+', expected $120');
+      if (pct !== 6) throw new Error('Inflation pct: '+pct+'%, expected 6%');
+      return 'Spent: $'+totalSpent+' = '+pct+'% of $'+totalMarket+' market ✓';
+    }},
+  {id:16, category:'Inflation Tracker', name:'Average price paid calculation',
+    fn: function() {
+      var picks = [{price:50},{price:40},{price:30},{price:20}];
+      var total = picks.reduce(function(a,p){return a+p.price;},0);
+      var avg = Math.round(total/picks.length);
+      if (avg !== 35) throw new Error('Avg: $'+avg+', expected $35');
+      return 'Avg price: $'+avg+' ✓';
+    }},
+  {id:17, category:'Inflation Tracker', name:'My budget remaining tracks correctly',
+    fn: function() {
+      var budget = 200;
+      var myPicks = [{price:50, team:'My Team'},{price:30, team:'My Team'},{price:20, team:'Other'}];
+      var mySpent = myPicks.filter(function(p){return p.team==='My Team';}).reduce(function(a,p){return a+p.price;},0);
+      var myLeft = budget - mySpent;
+      if (mySpent !== 80) throw new Error('My spent: $'+mySpent+', expected $80');
+      if (myLeft !== 120) throw new Error('My remaining: $'+myLeft+', expected $120');
+      return 'Spent: $'+mySpent+' | Remaining: $'+myLeft+' ✓';
+    }},
+  {id:18, category:'Inflation Tracker', name:'Inflation bar color logic — green/amber/red thresholds',
+    fn: function() {
+      function getColor(pct) {
+        return pct < 40 ? 'green' : pct < 70 ? 'amber' : 'red';
+      }
+      var tests = [{pct:20, expected:'green'},{pct:50, expected:'amber'},{pct:80, expected:'red'}];
+      var errors = [];
+      tests.forEach(function(t) {
+        var c = getColor(t.pct);
+        if (c !== t.expected) errors.push(t.pct+'% → '+c+' (expected '+t.expected+')');
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return '20%=green, 50%=amber, 80%=red ✓';
+    }},
+
+  // EDGE CASES
+  {id:19, category:'Edge Cases', name:'Very small budget ($50) — all slots still >= $1',
+    fn: function() {
+      var slots = generatePriceSheet(50, 'hero', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      var belowOne = slots.filter(function(s){return s.val < 1;});
+      if (total !== 50) throw new Error('Total $'+total+', expected $50');
+      if (belowOne.length) throw new Error(belowOne.length+' slots below $1');
+      return 'All slots >= $1 with $50 budget ✓';
+    }},
+  {id:20, category:'Edge Cases', name:'Large budget ($500) — math still exact',
+    fn: function() {
+      var slots = generatePriceSheet(500, 'hero', DEFAULT_ROSTER, false);
+      var total = slots.reduce(function(a,s){return a+s.val;},0);
+      if (total !== 500) throw new Error('Total $'+total+', expected $500');
+      return 'Total: $'+total+' ✓';
+    }},
+  {id:21, category:'Edge Cases', name:'Roster with Kicker — slot count increases by 1',
+    fn: function() {
+      var noK   = generatePriceSheet(200, 'hero', {QB:1,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6}, false);
+      var withK = generatePriceSheet(200, 'hero', {QB:1,RB:2,WR:2,TE:1,FLEX:1,K:1,DEF:1,BENCH:6}, false);
+      if (withK.length !== noK.length + 1) throw new Error('With K: '+withK.length+' slots, without K: '+noK.length);
+      var totalK = withK.reduce(function(a,s){return a+s.val;},0);
+      if (totalK !== 200) throw new Error('With kicker total: $'+totalK);
+      return 'No K: '+noK.length+' slots → With K: '+withK.length+' slots, total $200 ✓';
+    }},
+  {id:22, category:'Edge Cases', name:'2QB roster generates QB1 and QB2 slots',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'qb', {QB:2,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6}, false);
+      var qb1 = slots.find(function(s){return s.label==='QB1';});
+      var qb2 = slots.find(function(s){return s.label==='QB2';});
+      if (!qb1) throw new Error('QB1 slot missing');
+      if (!qb2) throw new Error('QB2 slot missing');
+      if (qb1.val <= qb2.val) throw new Error('QB1 ($'+qb1.val+') should be > QB2 ($'+qb2.val+')');
+      return 'QB1: $'+qb1.val+' > QB2: $'+qb2.val+' ✓';
+    }},
+  {id:23, category:'Edge Cases', name:'3-WR roster generates WR1, WR2, WR3 slots',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'wr', {QB:1,RB:2,WR:3,TE:1,FLEX:1,K:0,DEF:1,BENCH:6}, false);
+      var wr3 = slots.find(function(s){return s.label==='WR3';});
+      if (!wr3) throw new Error('WR3 slot missing');
+      if (wr3.val < 1) throw new Error('WR3 value below $1');
+      return 'WR3 slot present at $'+wr3.val+' ✓';
+    }},
+  {id:24, category:'Edge Cases', name:'Bench slots always cheaper than starters',
+    fn: function() {
+      var slots = generatePriceSheet(200, 'hero', DEFAULT_ROSTER, false);
+      var bench = slots.filter(function(s){return s.pos==='BENCH';});
+      var rb1 = slots.find(function(s){return s.label==='RB1';}).val;
+      var errors = [];
+      bench.forEach(function(b) {
+        if (b.val >= rb1) errors.push(b.label+' ($'+b.val+') >= RB1 ($'+rb1+')');
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'All bench slots < RB1 ($'+rb1+') ✓';
+    }},
+  {id:25, category:'Edge Cases', name:'Custom strategy sums correctly at all budgets',
+    fn: function() {
+      var budgets = [100,150,200,250,300];
+      var errors = [];
+      budgets.forEach(function(b) {
+        var slots = generatePriceSheet(b, 'custom', DEFAULT_ROSTER, false);
+        var total = slots.reduce(function(a,s){return a+s.val;},0);
+        if (total !== b) errors.push('$'+b+' → $'+total);
+      });
+      if (errors.length) throw new Error('Totals off: '+errors.join(', '));
+      return 'Custom strategy correct at $100/$150/$200/$250/$300 ✓';
+    }},
+];
+
+// ═══════════════════════════════════════
+// TEST RUNNER
+// ═══════════════════════════════════════
+var results = {};
+TESTS.forEach(function(t) { results[t.id] = {status:'pending', detail:'', error:''}; });
+
+function runAllTests() {
+  var btn = document.getElementById('run-btn');
+  btn.textContent = '⏳ Running...';
+  btn.disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+
+  var i = 0;
+  function runNext() {
+    if (i >= TESTS.length) {
+      btn.textContent = '▶ Run All Tests';
+      btn.disabled = false;
+      showSummary();
+      return;
+    }
+    var test = TESTS[i];
+    results[test.id] = {status:'running', detail:'', error:''};
+    renderList();
+
+    setTimeout(function() {
+      try {
+        var detail = test.fn();
+        results[test.id] = {status:'pass', detail:detail, error:''};
+      } catch(e) {
+        results[test.id] = {status:'fail', detail:'', error:e.message};
+      }
+      i++;
+      var pct = Math.round((i/TESTS.length)*100);
+      document.getElementById('progress-fill').style.width = pct+'%';
+      document.getElementById('progress-label').textContent = i+' / '+TESTS.length+' complete — '+pct+'%';
+      updateStats();
+      renderList();
+      runNext();
+    }, 80);
+  }
+  runNext();
+}
+
+function resetTests() {
+  TESTS.forEach(function(t) { results[t.id] = {status:'pending', detail:'', error:''}; });
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  renderList();
+  updateStats();
+}
+
+function updateStats() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var total = pass + fail;
+  var pct = total ? Math.round((pass/TESTS.length)*100) : 0;
+  document.getElementById('stat-pass').textContent = pass;
+  document.getElementById('stat-fail').textContent = fail;
+  document.getElementById('stat-total').textContent = TESTS.length;
+  var scoreEl = document.getElementById('stat-score');
+  scoreEl.textContent = total ? pct+'%' : '—';
+  scoreEl.style.color = pct>=90?'var(--green)':pct>=70?'var(--amber)':'var(--red)';
+}
+
+function showSummary() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var pct = Math.round((pass/TESTS.length)*100);
+  var verdict = pct===100 ? '🎉 PERFECT — Budget math is bulletproof!' : pct>=90 ? '✅ LAUNCH READY — Fix the '+fail+' failed tests' : '⚠️ NEEDS WORK — '+fail+' tests failing';
+  document.getElementById('summary-grid').innerHTML =
+    '<div class="summary-item"><strong>'+pass+' / '+TESTS.length+'</strong>Tests passed</div>'+
+    '<div class="summary-item"><strong>'+fail+'</strong>Tests failed</div>'+
+    '<div class="summary-item"><strong>'+pct+'%</strong>Score</div>'+
+    '<div class="summary-item"><strong>'+verdict+'</strong>Verdict</div>';
+  document.getElementById('summary').style.display = 'block';
+}
+
+function renderList() {
+  var categories = [...new Set(TESTS.map(function(t){return t.category;}))];
+  var html = '';
+  categories.forEach(function(cat) {
+    var catTests = TESTS.filter(function(t){return t.category===cat;});
+    html += '<div class="section-header">'+cat+'</div>';
+    catTests.forEach(function(test) {
+      var r = results[test.id];
+      var cardClass = r.status==='pass'?'pass':r.status==='fail'?'fail':r.status==='running'?'running':'';
+      var pillClass = r.status==='pass'?'pill-pass':r.status==='fail'?'pill-fail':r.status==='running'?'pill-running':'pill-pending';
+      var pillLabel = r.status==='pass'?'Pass ✓':r.status==='fail'?'Fail ✗':r.status==='running'?'Running...':'Pending';
+      var detailHtml = r.detail ? '<div class="test-detail success">'+r.detail+'</div>' : '';
+      var errorHtml  = r.error  ? '<div class="test-detail error">✗ '+r.error+'</div>' : '';
+      html +=
+        '<div class="test-card '+cardClass+'">'+
+          '<div class="test-meta">'+
+            '<span class="test-num">#'+test.id+'</span>'+
+            '<span class="pill pill-cat">'+cat+'</span>'+
+            '<span class="pill '+pillClass+'">'+pillLabel+'</span>'+
+          '</div>'+
+          '<div class="test-name">'+test.name+'</div>'+
+          detailHtml + errorHtml +
+        '</div>';
+    });
+  });
+  document.getElementById('results-list').innerHTML = html;
+}
+
+function exportReport() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var report = '═══════════════════════════════════════\n';
+  report += 'THE INNER SANCTUM — AUCTION WAR ROOM TEST REPORT\n';
+  report += 'Generated: '+new Date().toLocaleString()+'\n';
+  report += '═══════════════════════════════════════\n\n';
+  report += 'SUMMARY: '+pass+'/'+TESTS.length+' passed ('+Math.round(pass/TESTS.length*100)+'%) · '+fail+' failed\n\n';
+  TESTS.forEach(function(t) {
+    var r = results[t.id];
+    var s = r.status==='pass'?'PASS':r.status==='fail'?'FAIL':'PENDING';
+    report += '['+s+'] #'+t.id+' ['+t.category+'] '+t.name+'\n';
+    if (r.detail) report += '  Result: '+r.detail+'\n';
+    if (r.error)  report += '  Error: '+r.error+'\n';
+    report += '\n';
+  });
+  var blob = new Blob([report], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'InnerSanctum_AuctionTests_'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+renderList();
+updateStats();
+</script>
+</body>
+</html>
