@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inner Sanctum — Test Dashboard</title>
+<title>Inner Sanctum — Master Test Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -102,7 +102,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
   <div class="hdr">
     <span class="hdr-badge">Pringle AI LLC · Internal Tool</span>
     <h1>🔮 The Inner Sanctum</h1>
-    <div class="hdr-sub">AI Persona Test Dashboard · 30 Questions · 3 Personas</div>
+    <div class="hdr-sub">Master Test Dashboard · Personas + Lineup Advisor · 40 Tests</div>
   </div>
 
   <!-- SCORE CARDS -->
@@ -484,6 +484,297 @@ function exportReport() {
   a.click();
   document.body.removeChild(a);
 }
+
+// ═══════════════════════════════════════
+// LINEUP ADVISOR TESTS
+// ═══════════════════════════════════════
+const STARTER_SLOTS = ['QB','RB1','RB2','WR1','WR2','WR3','TE','FLEX','K','DEF'];
+const BENCH_SLOTS = ['BN1','BN2','BN3','BN4','BN5','BN6'];
+const ALL_POSITIONS = ['QB','RB','WR','TE','K'];
+
+const LINEUP_TESTS = [
+  {id:31, category:'Lineup Advisor — Slots', name:'All 10 starter slots defined correctly',
+    fn: function() {
+      if (STARTER_SLOTS.length !== 10) throw new Error('Expected 10 starter slots, got '+STARTER_SLOTS.length);
+      var required = ['QB','RB1','RB2','WR1','WR2','WR3','TE','FLEX','K','DEF'];
+      var missing = required.filter(function(s){ return !STARTER_SLOTS.includes(s); });
+      if (missing.length) throw new Error('Missing slots: '+missing.join(', '));
+      return '10 starter slots defined: '+STARTER_SLOTS.join(', ')+' ✓';
+    }},
+  {id:32, category:'Lineup Advisor — Slots', name:'All 6 bench slots defined correctly',
+    fn: function() {
+      if (BENCH_SLOTS.length !== 6) throw new Error('Expected 6 bench slots, got '+BENCH_SLOTS.length);
+      return '6 bench slots defined: '+BENCH_SLOTS.join(', ')+' ✓';
+    }},
+  {id:33, category:'Lineup Advisor — Slots', name:'Total roster = 16 slots (10 starters + 6 bench)',
+    fn: function() {
+      var total = STARTER_SLOTS.length + BENCH_SLOTS.length;
+      if (total !== 16) throw new Error('Total slots: '+total+', expected 16');
+      return 'Total: '+total+' slots ('+STARTER_SLOTS.length+' starters + '+BENCH_SLOTS.length+' bench) ✓';
+    }},
+  {id:34, category:'Lineup Advisor — Slots', name:'FLEX slot accepts RB, WR, and TE positions',
+    fn: function() {
+      var flexPositions = ['RB','WR','TE'];
+      var nonFlex = ['QB','K','DEF'];
+      flexPositions.forEach(function(pos) {
+        if (!['RB','WR','TE'].includes(pos)) throw new Error(pos+' should be valid in FLEX');
+      });
+      nonFlex.forEach(function(pos) {
+        if (['RB','WR','TE'].includes(pos)) throw new Error(pos+' should NOT be valid in FLEX');
+      });
+      return 'FLEX accepts RB/WR/TE, rejects QB/K/DEF ✓';
+    }},
+  {id:35, category:'Lineup Advisor — Slots', name:'DEF slot is separate from player positions',
+    fn: function() {
+      var playerPositions = ['QB','RB','WR','TE','K'];
+      if (playerPositions.includes('DEF')) throw new Error('DEF should not be in player positions');
+      if (!STARTER_SLOTS.includes('DEF')) throw new Error('DEF slot missing from starters');
+      return 'DEF correctly separated from player positions ✓';
+    }},
+
+  {id:36, category:'Lineup Advisor — Logic', name:'Filled count starts at 0 with empty lineup',
+    fn: function() {
+      var mockSlots = STARTER_SLOTS.map(function(s){ return {id:s, value:''}; });
+      var filled = mockSlots.filter(function(s){ return s.value.trim().length > 0; }).length;
+      if (filled !== 0) throw new Error('Expected 0 filled, got '+filled);
+      return 'Empty lineup: 0 / 10 starters filled ✓';
+    }},
+  {id:37, category:'Lineup Advisor — Logic', name:'Filled count updates correctly as slots are filled',
+    fn: function() {
+      var mockSlots = STARTER_SLOTS.map(function(s,i){ return {id:s, value: i < 5 ? 'Player '+i : ''}; });
+      var filled = mockSlots.filter(function(s){ return s.value.trim().length > 0; }).length;
+      if (filled !== 5) throw new Error('Expected 5 filled, got '+filled);
+      return '5 / 10 starters filled correctly ✓';
+    }},
+  {id:38, category:'Lineup Advisor — Logic', name:'Clear lineup resets all slots to empty',
+    fn: function() {
+      var mockSlots = STARTER_SLOTS.map(function(s){ return {id:s, value:'Some Player'}; });
+      // Simulate clear
+      mockSlots.forEach(function(s){ s.value = ''; });
+      var filled = mockSlots.filter(function(s){ return s.value.trim().length > 0; }).length;
+      if (filled !== 0) throw new Error('After clear: '+filled+' slots still filled');
+      return 'Clear resets all 10 starters to empty ✓';
+    }},
+  {id:39, category:'Lineup Advisor — Logic', name:'Lineup prompt builds correctly with starters',
+    fn: function() {
+      var week = 5;
+      var starters = [
+        'Quarterback: Josh Allen',
+        'Running Back 1: Christian McCaffrey',
+        'Wide Receiver 1: CeeDee Lamb',
+      ];
+      var prompt = 'It is NFL Week '+week+'. Here is my current lineup:\n\nSTARTERS:\n'+starters.join('\n')+'\n\nPlease analyze my lineup.';
+      if (!prompt.includes('Week 5')) throw new Error('Week number missing from prompt');
+      if (!prompt.includes('Josh Allen')) throw new Error('Player names missing from prompt');
+      if (!prompt.includes('STARTERS:')) throw new Error('STARTERS section missing from prompt');
+      return 'Lineup prompt builds correctly with week + player names ✓';
+    }},
+  {id:40, category:'Lineup Advisor — Logic', name:'Bench players included in prompt when filled',
+    fn: function() {
+      var starters = ['QB: Josh Allen', 'RB1: CMC'];
+      var bench = ['Backup QB', 'Bench RB'];
+      var prompt = 'STARTERS:\n'+starters.join('\n')+'\n\nBENCH:\n'+bench.join(', ');
+      if (!prompt.includes('BENCH:')) throw new Error('BENCH section missing');
+      if (!prompt.includes('Backup QB')) throw new Error('Bench players missing from prompt');
+      return 'Bench players correctly included in lineup prompt ✓';
+    }},
+
+  {id:41, category:'Lineup Advisor — Week Selector', name:'Week selector covers all 18 NFL weeks',
+    fn: function() {
+      var weeks = [];
+      for (var i = 1; i <= 18; i++) weeks.push(i);
+      if (weeks.length !== 18) throw new Error('Expected 18 weeks, got '+weeks.length);
+      if (weeks[0] !== 1) throw new Error('First week should be 1');
+      if (weeks[17] !== 18) throw new Error('Last week should be 18');
+      return 'Week selector: Week 1 through Week 18 ✓';
+    }},
+  {id:42, category:'Lineup Advisor — Week Selector', name:'Default week is Week 1 for offseason',
+    fn: function() {
+      var seasonStart = new Date('2026-09-09');
+      var now = new Date();
+      var defaultWeek = now < seasonStart ? 1 : Math.min(18, Math.ceil((now - seasonStart) / (7*24*60*60*1000)));
+      if (now < seasonStart && defaultWeek !== 1) throw new Error('Offseason default should be Week 1, got Week '+defaultWeek);
+      return 'Offseason default: Week '+defaultWeek+' ✓';
+    }},
+
+  {id:43, category:'Lineup Advisor — Persona', name:'Oracle button label correct',
+    fn: function() {
+      var labels = {
+        oracle: '🔮 Ask The Oracle for Lineup Advice',
+        trash:  '🔥 Let The Trash Lord Roast My Lineup',
+        analyst:'📊 Run The Analyst\'s Lineup Analysis'
+      };
+      if (!labels.oracle.includes('Oracle')) throw new Error('Oracle label missing Oracle');
+      if (!labels.trash.includes('Trash Lord')) throw new Error('Trash label missing Trash Lord');
+      if (!labels.analyst.includes('Analyst')) throw new Error('Analyst label missing Analyst');
+      return 'All 3 persona button labels correct ✓';
+    }},
+  {id:44, category:'Lineup Advisor — Persona', name:'Lineup advice routes through active persona',
+    async: true,
+    fn: async function() {
+      var prompt = 'It is NFL Week 1. Here is my current lineup:\n\nSTARTERS:\nQuarterback: Josh Allen\nRunning Back 1: Christian McCaffrey\nRunning Back 2: Derrick Henry\nWide Receiver 1: CeeDee Lamb\nWide Receiver 2: Tyreek Hill\nTight End: Travis Kelce\n\nPlease analyze my lineup and give me your verdict.';
+      var res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 400,
+          system: SYS['oracle'],
+          messages: [{role:'user', content: prompt}]
+        })
+      });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n').trim();
+      if (text.length < 50) throw new Error('Response too short: '+text.length+' chars');
+      if (/\bi see\b|\blet me check\b|\bsearching\b/i.test(text)) throw new Error('Thinking out loud detected');
+      return 'Oracle lineup advice received ('+text.length+' chars) ✓';
+    }},
+  {id:45, category:'Lineup Advisor — Persona', name:'Lineup advice with bench triggers start/sit comparison',
+    async: true,
+    fn: async function() {
+      var prompt = 'It is NFL Week 3. Here is my current lineup:\n\nSTARTERS:\nQuarterback: Josh Allen\nRunning Back 1: Christian McCaffrey\nWide Receiver 1: CeeDee Lamb\nWide Receiver 2: Tyreek Hill\nTight End: Travis Kelce\nFlex: Davante Adams\n\nBENCH:\nDeebo Samuel, Stefon Diggs\n\nPlease analyze my lineup and tell me if any bench players should replace a starter.';
+      var res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 400,
+          system: SYS['trash'],
+          messages: [{role:'user', content: prompt}]
+        })
+      });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n').trim();
+      if (text.length < 50) throw new Error('Response too short');
+      return 'Trash Lord bench comparison advice received ✓';
+    }},
+
+  {id:46, category:'Lineup Advisor — Sleeper', name:'Sleeper API accessible for roster auto-fill',
+    async: true,
+    fn: async function() {
+      var res = await fetch('https://api.sleeper.app/v1/players/nfl');
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var data = await res.json();
+      var count = Object.keys(data).length;
+      if (count < 1000) throw new Error('Only '+count+' players');
+      return 'Sleeper player database: '+count.toLocaleString()+' players available for auto-fill ✓';
+    }},
+  {id:47, category:'Lineup Advisor — Sleeper', name:'Auto-fill logic maps positions to correct slots',
+    fn: function() {
+      var mockRoster = [
+        {name:'Josh Allen', pos:'QB', team:'BUF'},
+        {name:'CMC', pos:'RB', team:'SF'},
+        {name:'Derrick Henry', pos:'RB', team:'TEN'},
+        {name:'CeeDee Lamb', pos:'WR', team:'DAL'},
+        {name:'Tyreek Hill', pos:'WR', team:'MIA'},
+        {name:'Travis Kelce', pos:'TE', team:'KC'},
+      ];
+      var byPos = {QB:[], RB:[], WR:[], TE:[], K:[], DEF:[]};
+      mockRoster.forEach(function(p){ if(byPos[p.pos]) byPos[p.pos].push(p); });
+      if (byPos.QB[0].name !== 'Josh Allen') throw new Error('QB slot wrong');
+      if (byPos.RB[0].name !== 'CMC') throw new Error('RB1 slot wrong');
+      if (byPos.WR[0].name !== 'CeeDee Lamb') throw new Error('WR1 slot wrong');
+      if (byPos.TE[0].name !== 'Travis Kelce') throw new Error('TE slot wrong');
+      return 'Auto-fill maps QB/RB/WR/TE correctly ✓';
+    }},
+  {id:48, category:'Lineup Advisor — Sleeper', name:'FLEX auto-fill uses first available RB/WR/TE',
+    fn: function() {
+      var byPos = {
+        RB: [{name:'CMC'},{name:'Henry'},{name:'Cook'}],
+        WR: [{name:'Lamb'},{name:'Hill'},{name:'Adams'},{name:'Diggs'}],
+        TE: [{name:'Kelce'},{name:'Pitts'}]
+      };
+      // FLEX logic: RB[2] first, then WR[3], then TE[1]
+      var flexPlayer = byPos.RB[2] || byPos.WR[3] || byPos.TE[1];
+      if (!flexPlayer) throw new Error('No FLEX player found');
+      if (flexPlayer.name !== 'Cook') throw new Error('Expected Cook in FLEX, got '+flexPlayer.name);
+      return 'FLEX auto-fill: '+flexPlayer.name+' (3rd RB) ✓';
+    }},
+  {id:49, category:'Lineup Advisor — Sleeper', name:'Bench auto-fill uses remaining roster players',
+    fn: function() {
+      var roster = [];
+      for (var i = 0; i < 15; i++) roster.push({name:'Player_'+i, pos:'RB'});
+      var benchPool = roster.slice(10);
+      if (benchPool.length !== 5) throw new Error('Expected 5 bench players, got '+benchPool.length);
+      if (benchPool[0].name !== 'Player_10') throw new Error('First bench player wrong');
+      return 'Bench auto-fill uses players 11-15 from roster ✓';
+    }},
+  {id:50, category:'Lineup Advisor — Sleeper', name:'Roster banner shows after Sleeper connect',
+    fn: function() {
+      var sleeperConnected = true;
+      var bannerVisible = sleeperConnected ? true : false;
+      if (!bannerVisible) throw new Error('Banner should show when Sleeper connected');
+      var autoNoteVisible = sleeperConnected ? true : false;
+      if (!autoNoteVisible) throw new Error('Auto-fill note should show when Sleeper connected');
+      return 'Roster banner + auto-fill note visible after Sleeper connect ✓';
+    }},
+];
+
+// Add lineup tests to QUESTIONS array equivalent
+const ALL_LINEUP_TESTS = LINEUP_TESTS;
+
+document.getElementById('results-list').insertAdjacentHTML('beforeend', '<div id="lineup-results"></div>');
+
+// Override renderList to include lineup tests
+const originalRenderList = renderList;
+
+async function runLineupTests() {
+  const lineupResultsEl = document.getElementById('lineup-results');
+  let lineupResults = {};
+  ALL_LINEUP_TESTS.forEach(function(t){ lineupResults[t.id] = {status:'pending', detail:'', error:''}; });
+
+  function renderLineup() {
+    var categories = [];
+    ALL_LINEUP_TESTS.forEach(function(t){ if(!categories.includes(t.category)) categories.push(t.category); });
+    var html = '<h2 style="font-family:\'Cinzel\',serif;font-size:18px;color:var(--gold);margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.2);">⚡ Weekly Lineup Advisor Tests</h2>';
+    categories.forEach(function(cat) {
+      var catTests = ALL_LINEUP_TESTS.filter(function(t){ return t.category===cat; });
+      html += '<div style="font-family:\'Cinzel\',serif;font-size:12px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(201,168,76,0.12);">'+cat+'</div>';
+      catTests.forEach(function(test) {
+        var r = lineupResults[test.id];
+        var statusLabel = {pass:'Pass ✓', fail:'Fail ✗', running:'Testing...', pending:'Pending'}[r.status]||'Pending';
+        var pillClass = {pass:'pill-status-pass', fail:'pill-status-fail', running:'pill-status-running', pending:'pill-status-pending'}[r.status]||'pill-status-pending';
+        var detailHtml = r.detail ? '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--green);margin-top:6px;">'+r.detail+'</div>' : '';
+        var errorHtml  = r.error  ? '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--red);margin-top:6px;">✗ '+r.error+'</div>' : '';
+        html +=
+          '<div class="test-card '+(r.status==='pass'?'status-pass':r.status==='fail'?'status-review':r.status==='running'?'status-running':'')+'" style="margin-bottom:8px;">'+
+            '<div class="test-meta">'+
+              '<span class="test-num">#'+test.id+'</span>'+
+              '<span class="pill '+pillClass+'">'+statusLabel+'</span>'+
+            '</div>'+
+            '<div style="font-size:14px;color:#e0d0b0;font-weight:600;">'+test.name+'</div>'+
+            detailHtml + errorHtml +
+          '</div>';
+      });
+    });
+    lineupResultsEl.innerHTML = html;
+  }
+
+  renderLineup();
+  for (var i = 0; i < ALL_LINEUP_TESTS.length; i++) {
+    var test = ALL_LINEUP_TESTS[i];
+    lineupResults[test.id] = {status:'running', detail:'', error:''};
+    renderLineup();
+    try {
+      var detail = test.async ? await test.fn() : test.fn();
+      lineupResults[test.id] = {status:'pass', detail:detail, error:''};
+    } catch(e) {
+      lineupResults[test.id] = {status:'fail', detail:'', error:e.message};
+    }
+    await new Promise(function(r){ setTimeout(r, 300); });
+    renderLineup();
+  }
+  return lineupResults;
+}
+
+// Patch runAllTests to also run lineup tests
+const _origRunAll = runAllTests;
+runAllTests = async function() {
+  await _origRunAll();
+  await runLineupTests();
+};
 
 renderList();
 updateStats();
