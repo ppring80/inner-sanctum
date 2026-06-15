@@ -111,11 +111,20 @@ function getCurrentNFLWeek() {
 // ═══════════════════════════════════════
 // MAIN HANDLER
 // ═══════════════════════════════════════
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
-  }
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json"
+};
 
+exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+  }
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, headers: CORS_HEADERS, body: "Method Not Allowed" };
+  }
   try {
     const { model, max_tokens, system, messages } = JSON.parse(event.body);
 
@@ -150,7 +159,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: CORS_HEADERS,
       body: JSON.stringify({ content: [{ type: "text", text: fullText }] }),
     };
 
