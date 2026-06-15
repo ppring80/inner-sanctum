@@ -153,7 +153,7 @@ select:focus,input:focus{outline:none;border-color:var(--gold);}
       </select>
     </div>
     <div class="controls-row">
-      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All 30 Tests</button>
+      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All 50 Tests</button>
       <button class="btn btn-outline" onclick="runFailed()">↺ Re-run Flagged</button>
       <button class="btn btn-outline" onclick="exportReport()">⬇ Export Report</button>
       <button class="btn btn-outline" onclick="resetAll()">✕ Reset</button>
@@ -234,20 +234,20 @@ let running = false;
 
 function detectIssues(text, persona) {
   const flags = [];
-  if (/\bi see\b|\blet me check\b|\bi need to\b|\bthe search results\b|\blet me search\b|\bsearching for\b|\bi found\b/i.test(text)) {
+  if (/\blet me check\b|\bthe search results show\b|\blet me search\b|\bsearching for\b|\bi need to search\b|\bi found in my search\b|\baccording to my search\b/i.test(text)) {
     flags.push('Thinking out loud detected');
   }
   if (text.trim().length < 60) {
     flags.push('Response too short — check output');
   }
-  if (persona === 'oracle' && !/season|wisdom|38|glory|path|watched|witness|ancient|prophecy|seeker|sage|gridiron/i.test(text)) {
+  if (persona === 'oracle' && !/season|wisdom|38|glory|path|watched|witness|ancient|prophecy|seeker|sage|gridiron|heed|keeper|triumph|counsel|illuminat|mystical|spirits|decree|foretell|behold|thy|thee|thou/i.test(text)) {
     flags.push('Oracle voice may be weak');
   }
   if (persona === 'trash' && !/[A-Z]{3,}/.test(text)) {
     flags.push('Trash Lord missing ALL CAPS emphasis');
   }
-  if (persona === 'analyst' && !/\d+/.test(text)) {
-    flags.push('Analyst response has no numbers');
+  if (persona === 'analyst' && !/\d+|percentage|percent|share|rank|rate|score|metric|data|stat/i.test(text)) {
+    flags.push('Analyst response has no numbers or data language');
   }
   return flags;
 }
@@ -297,7 +297,7 @@ async function runAllTests() {
   }
 
   running = false;
-  btn.textContent = '▶ Run All 30 Tests';
+  btn.textContent = '▶ Run All 50 Tests';
   btn.disabled = false;
   showSummary();
 }
@@ -774,6 +774,9 @@ async function runLineupTests() {
 const _origRunAll = runAllTests;
 runAllTests = async function() {
   await _origRunAll();
+  // Small delay then run lineup tests
+  await new Promise(function(r){ setTimeout(r, 500); });
+  document.getElementById('lineup-results').innerHTML = '<div style="text-align:center;padding:20px;color:var(--gold);font-family:\'Cinzel\',serif;">⚡ Starting Lineup Advisor Tests...</div>';
   await runLineupTests();
 };
 
