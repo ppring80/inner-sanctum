@@ -1,9 +1,10 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
- <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Draft Command Center — The Inner Sanctum</title>
@@ -56,6 +57,13 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .dctr{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px}
 .dbadge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 .main{padding:16px 24px;max-width:1200px;margin:0 auto}
+
+/* SEARCH RESULTS — flat list shown when search active */
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+.search-results-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.search-results-count{color:var(--gold);font-weight:600}
+.search-no-results{padding:32px;text-align:center;color:var(--text3);font-style:italic}
+
 .pos-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
 .pos-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
 .pbadge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
@@ -77,7 +85,6 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .prow{border-bottom:1px solid var(--border);transition:background 0.1s}
 .prow:hover{background:#f8f6f0}
 .prow.drafted{opacity:0.3;text-decoration:line-through}
-.prow.hidden{display:none}
 .prow td{padding:7px 10px;vertical-align:middle}
 .r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
 .r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
@@ -103,7 +110,6 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
 .pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
 .pcard.drafted{opacity:0.3}
-.pcard.hidden{display:none}
 .crank{position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);font-weight:600}
 .cname{font-size:13px;font-weight:600;color:var(--text);padding-right:26px;line-height:1.3;margin-bottom:4px}
 .cmeta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
@@ -156,7 +162,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
   <div class="hdr-right no-print">
     <a href="/" class="hdr-btn">🏠 Home</a>
     <a href="/auction" class="hdr-btn">⚔️ Auction</a>
-   <a href="/sanctum" class="hdr-btn">← Sanctum</a>
+    <a href="/sanctum" class="hdr-btn">← Sanctum</a>
     <button class="hdr-btn" onclick="window.print()">🖨 Print</button>
     <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">Clear Drafted</button>
     <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
@@ -236,6 +242,9 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 </div>
 
 <script>
+// ═══════════════════════════════════════
+// ORACLE / TRASH LORD WISDOM
+// ═══════════════════════════════════════
 var ORACLE={
   QB:'The spirits whisper: in PPR, let your brethren exhaust themselves on quarterbacks early. The difference between QB8 and QB16 is but a few points. Take two elite skill players first — then claim your signal-caller in rounds 7-9.',
   RB:'Running backs are the currency of champions. The elite tier vanishes by pick 20. After the top eight, the dropoff is severe. Secure two workhorse backs before Round 5, or risk a season of committee despair.',
@@ -262,15 +271,35 @@ var TIERS={
 };
 var TIER_CUTS={QB:[3,6,9,15],RB:[4,8,12,18,25],WR:[5,10,16,24,35],TE:[4,8,12,20],K:[5,12],DEF:[4,8,15]};
 var POS_MAX={QB:40,RB:100,WR:100,TE:60,K:32,DEF:32};
-var BYE={BUF:12,MIA:10,NE:14,NYJ:12,BAL:14,CIN:12,CLE:10,PIT:9,HOU:14,IND:14,JAC:11,TEN:5,DEN:9,KC:10,LV:8,LAC:5,DAL:7,NYG:11,PHI:5,WSH:14,CHI:7,DET:5,GB:5,MIN:6,ATL:12,CAR:11,NO:12,TB:11,ARI:11,LAR:6,SF:9,SEA:10};
+
+// ═══════════════════════════════════════
+// 2026 BYE WEEKS — UPDATE WHEN NFL SCHEDULE RELEASES
+// ═══════════════════════════════════════
+var BYE={
+  BUF:12,MIA:10,NE:14,NYJ:12,
+  BAL:14,CIN:12,CLE:10,PIT:9,
+  HOU:14,IND:14,JAC:11,TEN:5,
+  DEN:9,KC:10,LV:8,LAC:5,
+  DAL:7,NYG:11,PHI:5,WSH:14,
+  CHI:7,DET:5,GB:5,MIN:6,
+  ATL:12,CAR:11,NO:12,TB:11,
+  ARI:11,LAR:6,SF:9,SEA:10
+};
+
 var PCOL={QB:'#1a5280',RB:'#2a6e2a',WR:'#8a7010',TE:'#a06010',K:'#6a6a6a',DEF:'#8a2020'};
 
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
 var adpByPos={};
 var injuries={};
 var drafted=JSON.parse(localStorage.getItem('isd')||'{}');
 var cmpList=[];var cmpData={};
 var curPos='ALL';var curView='list';var curSearch='';var ready=false;
 
+// ═══════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════
 function key(n){return(n||'').toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-')}
 function tier(rank,pos){var cuts=TIER_CUTS[pos]||[5,10,20];for(var i=0;i<cuts.length;i++){if(rank<=cuts[i])return i+1}return cuts.length+1}
 function sScore(rank,pos){return Math.min(8,tier(rank,pos)+2)}
@@ -286,6 +315,9 @@ function getInj(name){
 }
 function setStatus(s,t){document.getElementById('sdot').className='dot '+s;document.getElementById('stxt').textContent=t}
 
+// ═══════════════════════════════════════
+// LOAD DATA
+// ═══════════════════════════════════════
 async function loadAll(){
   var scoring=document.getElementById('scoringSel').value;
   var teams=document.getElementById('teamsSel').value;
@@ -293,8 +325,8 @@ async function loadAll(){
   document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
 
   try{
-    // Call FFC directly from browser
-    var adpUrl='https://fantasyfootballcalculator.com/api/v1/adp/'+scoring+'?teams='+teams+'&year=2025&count=300';
+    // ── FIX: year updated to 2026 ──────────────────────────
+    var adpUrl='https://fantasyfootballcalculator.com/api/v1/adp/'+scoring+'?teams='+teams+'&year=2026&count=300';
     var results=await Promise.all([
       fetch(adpUrl).then(function(r){return r.json()}),
       fetch('https://api.sleeper.app/v1/players/nfl').then(function(r){return r.json()})
@@ -302,7 +334,6 @@ async function loadAll(){
     var adpData=results[0];
     var sleeper=results[1];
 
-    // Parse ADP
     adpByPos={};
     var players=adpData.players||[];
     players.forEach(function(p){
@@ -314,7 +345,6 @@ async function loadAll(){
     });
     Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
 
-    // Parse injuries
     injuries={};
     Object.values(sleeper).forEach(function(p){
       if(!p.full_name)return;
@@ -326,32 +356,161 @@ async function loadAll(){
 
     ready=true;
     var total=Object.values(adpByPos).reduce(function(a,arr){return a+arr.length},0);
-    setStatus('live','Live · '+total+' players · '+new Date().toLocaleTimeString());
+    setStatus('live','2026 Live ADP · '+total+' players · '+new Date().toLocaleTimeString());
     render();
   }catch(e){
-    // FFC blocked browser too — fall back to hardcoded 2025 ADP
-    setStatus('loading','Using 2025 consensus ADP...');
+    setStatus('loading','Using 2026 consensus ADP (fallback)...');
     loadFallback();
   }
 }
 
+// ═══════════════════════════════════════
+// FALLBACK DATA — 2026 ROSTERS
+// Key changes from 2025: Kirk Cousins → LV Raiders
+// Update further when 2026 ADP data is available
+// ═══════════════════════════════════════
 function loadFallback(){
-  function mk(n,t,a,p){return{name:n,team:t,adp:a,pos:p,key:n.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-')}}
+  function mk(n,t,a,p){return{name:n,team:t,adp:a,pos:p,key:key(n)}}
   adpByPos={
-    QB:[mk('Josh Allen','BUF',6,'QB'),mk('Lamar Jackson','BAL',8,'QB'),mk('Jalen Hurts','PHI',18,'QB'),mk('Jayden Daniels','WSH',28,'QB'),mk('Patrick Mahomes','KC',40,'QB'),mk('Joe Burrow','CIN',45,'QB'),mk('Dak Prescott','DAL',68,'QB'),mk('Sam Darnold','MIN',80,'QB'),mk('Tua Tagovailoa','MIA',92,'QB'),mk('Bo Nix','DEN',98,'QB'),mk('Brock Purdy','SF',102,'QB'),mk('Jordan Love','GB',110,'QB'),mk('Caleb Williams','CHI',115,'QB'),mk('Anthony Richardson','IND',120,'QB'),mk('CJ Stroud','HOU',125,'QB'),mk('Kyler Murray','ARI',130,'QB'),mk('Trevor Lawrence','JAC',135,'QB'),mk('Justin Herbert','LAC',140,'QB'),mk('Geno Smith','SEA',145,'QB'),mk('Derek Carr','NO',150,'QB'),mk('Baker Mayfield','TB',155,'QB'),mk('Kirk Cousins','ATL',160,'QB'),mk('Daniel Jones','NYG',165,'QB'),mk('Justin Fields','PIT',168,'QB'),mk('Will Levis','TEN',172,'QB'),mk('Bryce Young','CAR',175,'QB'),mk('Deshaun Watson','CLE',178,'QB'),mk('Mac Jones','NE',180,'QB'),mk('Gardner Minshew','LV',182,'QB'),mk('Russell Wilson','PIT',185,'QB'),mk('Aidan O\'Connell','LV',188,'QB'),mk('Jake Browning','CIN',190,'QB'),mk('Zach Wilson','DEN',192,'QB'),mk('Sam Howell','WSH',194,'QB'),mk('Tyson Bagent','CHI',196,'QB'),mk('Joshua Dobbs','MIN',198,'QB'),mk('Easton Stick','LAC',200,'QB'),mk('Tommy DeVito','NYG',202,'QB'),mk('Nathan Rourke','JAC',204,'QB'),mk('Joe Flacco','CLE',206,'QB')],
-    RB:[mk('Saquon Barkley','PHI',2,'RB'),mk('Breece Hall','NYJ',7,'RB'),mk("De'Von Achane",'MIA',8,'RB'),mk('Jahmyr Gibbs','DET',10,'RB'),mk('Josh Jacobs','GB',14,'RB'),mk('Jonathan Taylor','IND',16,'RB'),mk('Isaiah Pacheco','KC',22,'RB'),mk('Kyren Williams','LAR',24,'RB'),mk('Derrick Henry','BAL',26,'RB'),mk('Travis Etienne','JAC',30,'RB'),mk('Joe Mixon','HOU',36,'RB'),mk('Tony Pollard','TEN',42,'RB'),mk('James Cook','BUF',46,'RB'),mk('Aaron Jones','MIN',52,'RB'),mk('Rhamondre Stevenson','NE',60,'RB'),mk('Gus Edwards','LAC',72,'RB'),mk('Zack Moss','CIN',76,'RB'),mk('James Conner','ARI',82,'RB'),mk('Chuba Hubbard','CAR',86,'RB'),mk('David Montgomery','DET',88,'RB'),mk('Brian Robinson','WSH',95,'RB'),mk('Javonte Williams','DEN',105,'RB'),mk('Rachaad White','TB',108,'RB'),mk('Najee Harris','PIT',112,'RB'),mk('Miles Sanders','CAR',116,'RB'),mk('Dameon Pierce','HOU',120,'RB'),mk('Khalil Herbert','CHI',124,'RB'),mk('Jamaal Williams','NO',128,'RB'),mk('Elijah Mitchell','SF',132,'RB'),mk('Tyler Allgeier','ATL',136,'RB'),mk('Kareem Hunt','CLE',140,'RB'),mk('AJ Dillon','GB',144,'RB'),mk('Ty Chandler','MIN',148,'RB'),mk('Roschon Johnson','CHI',152,'RB'),mk('Tyjae Spears','TEN',156,'RB'),mk('Jerome Ford','CLE',160,'RB'),mk('Joshua Kelley','LAC',164,'RB'),mk('Zamir White','LV',188,'RB'),mk('Devin Singletary','NYG',192,'RB'),mk('Samaje Perine','DEN',196,'RB'),mk('Craig Reynolds','DET',200,'RB'),mk('Patrick Taylor','GB',204,'RB'),mk('Salvon Ahmed','MIA',208,'RB'),mk('Dontrell Hilliard','TEN',212,'RB'),mk('Cam Akers','MIN',176,'RB'),mk('Clyde Edwards-Helaire','KC',180,'RB'),mk('Michael Carter','NYJ',184,'RB'),mk('Matt Breida','NYG',168,'RB'),mk('Boston Scott','PHI',172,'RB'),mk('Darrell Henderson','LAR',216,'RB')],
-    WR:[mk('CeeDee Lamb','DAL',1,'WR'),mk('Justin Jefferson','MIN',3,'WR'),mk("Ja'Marr Chase",'CIN',4,'WR'),mk('Tyreek Hill','MIA',5,'WR'),mk('Amon-Ra St. Brown','DET',9,'WR'),mk('Tee Higgins','CIN',13,'WR'),mk('Brandon Aiyuk','SF',15,'WR'),mk('Davante Adams','NYJ',17,'WR'),mk('Stefon Diggs','HOU',20,'WR'),mk('Deebo Samuel','SF',32,'WR'),mk('Puka Nacua','LAR',38,'WR'),mk('Drake London','ATL',44,'WR'),mk('Mike Evans','TB',48,'WR'),mk('Chris Olave','NO',54,'WR'),mk('Tank Dell','HOU',56,'WR'),mk('Rashee Rice','KC',58,'WR'),mk('Keenan Allen','CHI',64,'WR'),mk('Calvin Ridley','TEN',66,'WR'),mk('Terry McLaurin','WSH',70,'WR'),mk('Courtland Sutton','DEN',74,'WR'),mk('Gabe Davis','JAC',78,'WR'),mk('Adam Thielen','CAR',84,'WR'),mk('DeVonta Smith','PHI',90,'WR'),mk('Christian Kirk','JAC',94,'WR'),mk('Jaylen Waddle','MIA',102,'WR'),mk('DJ Moore','CHI',106,'WR'),mk('Michael Pittman','IND',114,'WR'),mk('Diontae Johnson','CAR',122,'WR'),mk('Marvin Harrison Jr','ARI',130,'WR'),mk('Rome Odunze','CHI',134,'WR'),mk('Xavier Legette','CAR',138,'WR'),mk('Quentin Johnston','LAC',142,'WR'),mk('Darius Slayton','NYG',146,'WR'),mk('Brandin Cooks','DAL',150,'WR'),mk('Tyler Lockett','SEA',154,'WR'),mk('Jaxon Smith-Njigba','SEA',158,'WR'),mk('Elijah Moore','CLE',162,'WR'),mk('Van Jefferson','ATL',166,'WR'),mk('Cedrick Tillman','CLE',170,'WR'),mk('Odell Beckham Jr','MIA',174,'WR'),mk('Kendrick Bourne','NE',178,'WR'),mk('Mecole Hardman','KC',182,'WR'),mk('Demario Douglas','NE',186,'WR'),mk('Tutu Atwell','LAR',198,'WR'),mk('Rakim Jarrett','WSH',194,'WR'),mk('Dontayvion Wicks','GB',98,'WR'),mk('Zay Jones','ARI',118,'WR'),mk('JuJu Smith-Schuster','NE',126,'WR'),mk('Trent Sherfield','BUF',110,'WR'),mk('Jontre Kirklin','NO',202,'WR'),mk('Phillip Dorsett','HOU',206,'WR')],
-    TE:[mk('Sam LaPorta','DET',11,'TE'),mk('Travis Kelce','KC',17,'TE'),mk('Trey McBride','ARI',19,'TE'),mk('Brock Bowers','LV',21,'TE'),mk('Mark Andrews','BAL',35,'TE'),mk('Kyle Pitts','ATL',55,'TE'),mk('Jake Ferguson','DAL',50,'TE'),mk('T.J. Hockenson','MIN',65,'TE'),mk('Isaiah Likely','BAL',75,'TE'),mk('Pat Freiermuth','PIT',62,'TE'),mk('Dalton Kincaid','BUF',90,'TE'),mk('Cole Kmet','CHI',96,'TE'),mk('David Njoku','CLE',100,'TE'),mk('Tyler Higbee','LAR',110,'TE'),mk('Evan Engram','JAC',115,'TE'),mk('Mike Gesicki','NE',120,'TE'),mk('Juwan Johnson','NO',130,'TE'),mk('Jonnu Smith','ATL',135,'TE'),mk('Gerald Everett','LAC',140,'TE'),mk('Kylen Granson','IND',145,'TE'),mk('Logan Thomas','WSH',155,'TE'),mk('Dan Arnold','JAC',160,'TE'),mk('Charlie Kolar','BAL',165,'TE'),mk('Noah Fant','SEA',170,'TE'),mk('Hunter Henry','NE',175,'TE'),mk('Tucker Kraft','GB',178,'TE'),mk('Luke Musgrave','GB',182,'TE'),mk('Cade Otton','TB',186,'TE'),mk('Chigoziem Okonkwo','TEN',190,'TE'),mk('Will Dissly','SEA',194,'TE'),mk('Anthony Firkser','ATL',202,'TE'),mk('Tommy Tremble','CAR',206,'TE'),mk('Brevin Jordan','HOU',210,'TE'),mk('Donald Parham','LAC',214,'TE'),mk('Adam Trautman','DEN',218,'TE'),mk('Zach Ertz','WSH',222,'TE'),mk('Mo Alie-Cox','IND',226,'TE'),mk('Taysom Hill','NO',266,'TE'),mk('Michael Mayer','LV',168,'TE'),mk('Greg Dulcich','DEN',286,'TE'),mk('Daniel Bellinger','NYG',282,'TE'),mk('Ryan Griffin','CHI',262,'TE'),mk('Ian Thomas','CAR',258,'TE'),mk('Codey McElroy','GB',270,'TE'),mk('Brycen Hopkins','LAR',274,'TE'),mk('Tanner Hudson','NYG',230,'TE'),mk('Geoff Swaim','TEN',234,'TE'),mk('Durham Smythe','MIA',238,'TE'),mk('Cole Turner','WSH',242,'TE'),mk('Jelani Woods','IND',246,'TE'),mk('Nate Wieting','DET',250,'TE'),mk('Tre McKitty','LAC',254,'TE'),mk('Stone Smartt','LAC',210,'TE'),mk('Josiah Deguara','GB',220,'TE'),mk('Marcedes Lewis','GB',290,'TE'),mk('Jahleel Wydermeyer','HOU',200,'TE'),mk('Drew Sample','CIN',150,'TE'),mk('Austin Hooper','NE',198,'TE'),mk('Darren Waller','NYG',125,'TE')],
-    K:[mk('Justin Tucker','BAL',160,'K'),mk('Tyler Bass','BUF',162,'K'),mk('Brandon Aubrey','DAL',164,'K'),mk('Harrison Butker','KC',166,'K'),mk('Jake Moody','SF',168,'K'),mk('Evan McPherson','CIN',170,'K'),mk('Younghoe Koo','ATL',172,'K'),mk("Ka'imi Fairbairn",'HOU',174,'K'),mk('Greg Zuerlein','NYJ',176,'K'),mk('Matt Gay','IND',178,'K'),mk('Jason Myers','SEA',180,'K'),mk('Dustin Hopkins','CLE',182,'K'),mk('Graham Gano','NYG',184,'K'),mk('Daniel Carlson','LV',186,'K'),mk('Rodrigo Blankenship','IND',188,'K'),mk('Riley Patterson','JAC',190,'K'),mk('Chris Boswell','PIT',192,'K'),mk('Cairo Santos','CHI',194,'K'),mk('Cameron Dicker','LAC',196,'K'),mk('Nick Folk','TEN',198,'K'),mk('Matt Prater','ARI',200,'K'),mk('Joey Slye','WSH',204,'K'),mk('Jason Sanders','MIA',206,'K'),mk('Michael Badgley','DET',208,'K'),mk('Tristan Vizcaino','TB',210,'K'),mk('Randy Bullock','TEN',212,'K'),mk('Eddy Pineiro','CAR',214,'K'),mk('Ryan Succop','TB',216,'K'),mk('Matthew Wright','JAC',218,'K'),mk('Sam Ficken','NE',220,'K'),mk('Chase McLaughlin','CLE',222,'K'),mk('Robbie Gould','SF',202,'K')],
-    DEF:[mk('San Francisco 49ers','SF',140,'DEF'),mk('Dallas Cowboys','DAL',142,'DEF'),mk('Baltimore Ravens','BAL',144,'DEF'),mk('Buffalo Bills','BUF',146,'DEF'),mk('Pittsburgh Steelers','PIT',148,'DEF'),mk('Kansas City Chiefs','KC',150,'DEF'),mk('Philadelphia Eagles','PHI',152,'DEF'),mk('Cleveland Browns','CLE',154,'DEF'),mk('New England Patriots','NE',156,'DEF'),mk('New York Jets','NYJ',158,'DEF'),mk('Cincinnati Bengals','CIN',160,'DEF'),mk('Miami Dolphins','MIA',162,'DEF'),mk('Los Angeles Rams','LAR',164,'DEF'),mk('Minnesota Vikings','MIN',166,'DEF'),mk('Jacksonville Jaguars','JAC',168,'DEF'),mk('Denver Broncos','DEN',170,'DEF'),mk('Detroit Lions','DET',172,'DEF'),mk('Green Bay Packers','GB',174,'DEF'),mk('Los Angeles Chargers','LAC',176,'DEF'),mk('Indianapolis Colts','IND',178,'DEF'),mk('Tampa Bay Buccaneers','TB',180,'DEF'),mk('Seattle Seahawks','SEA',182,'DEF'),mk('New Orleans Saints','NO',184,'DEF'),mk('Tennessee Titans','TEN',186,'DEF'),mk('Atlanta Falcons','ATL',188,'DEF'),mk('Arizona Cardinals','ARI',190,'DEF'),mk('Las Vegas Raiders','LV',192,'DEF'),mk('Washington Commanders','WSH',194,'DEF'),mk('Carolina Panthers','CAR',196,'DEF'),mk('Chicago Bears','CHI',198,'DEF'),mk('New York Giants','NYG',200,'DEF'),mk('Houston Texans','HOU',202,'DEF')]
+    QB:[
+      mk('Josh Allen','BUF',6,'QB'),mk('Lamar Jackson','BAL',8,'QB'),mk('Jalen Hurts','PHI',18,'QB'),
+      mk('Jayden Daniels','WSH',28,'QB'),mk('Patrick Mahomes','KC',40,'QB'),mk('Joe Burrow','CIN',45,'QB'),
+      mk('Dak Prescott','DAL',68,'QB'),mk('Sam Darnold','MIN',80,'QB'),mk('Tua Tagovailoa','MIA',92,'QB'),
+      mk('Bo Nix','DEN',98,'QB'),mk('Brock Purdy','SF',102,'QB'),mk('Jordan Love','GB',110,'QB'),
+      mk('Caleb Williams','CHI',115,'QB'),mk('Anthony Richardson','IND',120,'QB'),mk('CJ Stroud','HOU',125,'QB'),
+      mk('Kyler Murray','ARI',130,'QB'),mk('Trevor Lawrence','JAC',135,'QB'),mk('Justin Herbert','LAC',140,'QB'),
+      mk('Geno Smith','SEA',145,'QB'),mk('Baker Mayfield','TB',155,'QB'),
+      mk('Kirk Cousins','LV',160,'QB'),  // ← 2026: signed with Raiders
+      mk('Daniel Jones','NYG',165,'QB'),mk('Justin Fields','PIT',168,'QB'),mk('Will Levis','TEN',172,'QB'),
+      mk('Bryce Young','CAR',175,'QB'),mk('Deshaun Watson','CLE',178,'QB'),mk('Mac Jones','NE',180,'QB'),
+      mk('Gardner Minshew','LV',182,'QB'),mk('Russell Wilson','PIT',185,'QB'),
+      mk('Aidan O\'Connell','LV',188,'QB'),mk('Jake Browning','CIN',190,'QB'),
+      mk('Zach Wilson','DEN',192,'QB'),mk('Tyson Bagent','CHI',196,'QB'),
+      mk('Tommy DeVito','NYG',202,'QB'),mk('Joe Flacco','CLE',206,'QB'),
+      mk('Sam Howell','WSH',194,'QB'),mk('Joshua Dobbs','MIN',198,'QB'),
+      mk('Nathan Rourke','JAC',204,'QB'),mk('Easton Stick','LAC',200,'QB')
+    ],
+    RB:[
+      mk('Saquon Barkley','PHI',2,'RB'),mk('Breece Hall','NYJ',7,'RB'),mk("De'Von Achane",'MIA',8,'RB'),
+      mk('Jahmyr Gibbs','DET',10,'RB'),mk('Josh Jacobs','GB',14,'RB'),mk('Jonathan Taylor','IND',16,'RB'),
+      mk('Isaiah Pacheco','KC',22,'RB'),mk('Kyren Williams','LAR',24,'RB'),mk('Derrick Henry','BAL',26,'RB'),
+      mk('Travis Etienne','JAC',30,'RB'),mk('Joe Mixon','HOU',36,'RB'),mk('Tony Pollard','TEN',42,'RB'),
+      mk('James Cook','BUF',46,'RB'),mk('Aaron Jones','MIN',52,'RB'),mk('Rhamondre Stevenson','NE',60,'RB'),
+      mk('Gus Edwards','LAC',72,'RB'),mk('Zack Moss','CIN',76,'RB'),mk('James Conner','ARI',82,'RB'),
+      mk('Chuba Hubbard','CAR',86,'RB'),mk('David Montgomery','DET',88,'RB'),
+      mk('Brian Robinson','WSH',95,'RB'),mk('Javonte Williams','DEN',105,'RB'),
+      mk('Rachaad White','TB',108,'RB'),mk('Najee Harris','PIT',112,'RB'),mk('Miles Sanders','CAR',116,'RB'),
+      mk('Dameon Pierce','HOU',120,'RB'),mk('Khalil Herbert','CHI',124,'RB'),mk('Jamaal Williams','NO',128,'RB'),
+      mk('Elijah Mitchell','SF',132,'RB'),mk('Tyler Allgeier','ATL',136,'RB'),mk('Kareem Hunt','CLE',140,'RB'),
+      mk('AJ Dillon','GB',144,'RB'),mk('Tyjae Spears','TEN',156,'RB'),mk('Jerome Ford','CLE',160,'RB'),
+      mk('Joshua Kelley','LAC',164,'RB'),mk('Zamir White','LV',168,'RB'),mk('Devin Singletary','NYG',172,'RB'),
+      mk('Samaje Perine','DEN',176,'RB'),mk('Boston Scott','PHI',180,'RB'),mk('Clyde Edwards-Helaire','KC',184,'RB'),
+      mk('Michael Carter','NYJ',188,'RB'),mk('Roschon Johnson','CHI',192,'RB'),mk('Craig Reynolds','DET',196,'RB'),
+      mk('Ty Chandler','MIN',200,'RB'),mk('Cam Akers','MIN',204,'RB'),mk('Matt Breida','NYG',208,'RB'),
+      mk('Darrell Henderson','LAR',212,'RB'),mk('Patrick Taylor','GB',216,'RB'),mk('Salvon Ahmed','MIA',220,'RB')
+    ],
+    WR:[
+      mk('CeeDee Lamb','DAL',1,'WR'),mk('Justin Jefferson','MIN',3,'WR'),mk("Ja'Marr Chase",'CIN',4,'WR'),
+      mk('Tyreek Hill','MIA',5,'WR'),mk('Amon-Ra St. Brown','DET',9,'WR'),mk('Tee Higgins','CIN',13,'WR'),
+      mk('Brandon Aiyuk','SF',15,'WR'),mk('Davante Adams','NYJ',17,'WR'),mk('Stefon Diggs','HOU',20,'WR'),
+      mk('Deebo Samuel','SF',32,'WR'),mk('Puka Nacua','LAR',38,'WR'),mk('Drake London','ATL',44,'WR'),
+      mk('Mike Evans','TB',48,'WR'),mk('Chris Olave','NO',54,'WR'),mk('Tank Dell','HOU',56,'WR'),
+      mk('Rashee Rice','KC',58,'WR'),mk('Keenan Allen','CHI',64,'WR'),mk('Calvin Ridley','TEN',66,'WR'),
+      mk('Terry McLaurin','WSH',70,'WR'),mk('Courtland Sutton','DEN',74,'WR'),mk('Gabe Davis','JAC',78,'WR'),
+      mk('Adam Thielen','CAR',84,'WR'),mk('DeVonta Smith','PHI',90,'WR'),mk('Christian Kirk','JAC',94,'WR'),
+      mk('Jaylen Waddle','MIA',102,'WR'),mk('DJ Moore','CHI',106,'WR'),mk('Michael Pittman','IND',114,'WR'),
+      mk('Diontae Johnson','CAR',122,'WR'),mk('Marvin Harrison Jr','ARI',130,'WR'),mk('Rome Odunze','CHI',134,'WR'),
+      mk('Xavier Legette','CAR',138,'WR'),mk('Quentin Johnston','LAC',142,'WR'),mk('Darius Slayton','NYG',146,'WR'),
+      mk('Tyler Lockett','SEA',154,'WR'),mk('Jaxon Smith-Njigba','SEA',158,'WR'),mk('Elijah Moore','CLE',162,'WR'),
+      mk('Dontayvion Wicks','GB',98,'WR'),mk('Zay Jones','ARI',118,'WR'),mk('Trent Sherfield','BUF',110,'WR'),
+      mk('Brandin Cooks','DAL',150,'WR'),mk('Van Jefferson','ATL',166,'WR'),mk('Cedrick Tillman','CLE',170,'WR'),
+      mk('Kendrick Bourne','NE',178,'WR'),mk('Mecole Hardman','KC',182,'WR'),mk('Demario Douglas','NE',186,'WR'),
+      mk('Rakim Jarrett','WSH',194,'WR'),mk('Tutu Atwell','LAR',198,'WR'),mk('JuJu Smith-Schuster','NE',126,'WR'),
+      mk('Odell Beckham Jr','MIA',174,'WR'),mk('Phillip Dorsett','HOU',206,'WR')
+    ],
+    TE:[
+      mk('Brock Bowers','LV',11,'TE'),  // ← 2026 TE1
+      mk('Trey McBride','ARI',17,'TE'),mk('Travis Kelce','KC',19,'TE'),mk('Sam LaPorta','DET',21,'TE'),
+      mk('Mark Andrews','BAL',35,'TE'),mk('Jake Ferguson','DAL',50,'TE'),mk('Kyle Pitts','ATL',55,'TE'),
+      mk('T.J. Hockenson','MIN',65,'TE'),mk('Pat Freiermuth','PIT',62,'TE'),mk('Isaiah Likely','BAL',75,'TE'),
+      mk('Dalton Kincaid','BUF',90,'TE'),mk('Cole Kmet','CHI',96,'TE'),mk('David Njoku','CLE',100,'TE'),
+      mk('Tyler Higbee','LAR',110,'TE'),mk('Evan Engram','JAC',115,'TE'),mk('Mike Gesicki','NE',120,'TE'),
+      mk('Juwan Johnson','NO',130,'TE'),mk('Jonnu Smith','ATL',135,'TE'),mk('Gerald Everett','LAC',140,'TE'),
+      mk('Kylen Granson','IND',145,'TE'),mk('Logan Thomas','WSH',155,'TE'),mk('Noah Fant','SEA',170,'TE'),
+      mk('Hunter Henry','NE',175,'TE'),mk('Tucker Kraft','GB',178,'TE'),mk('Luke Musgrave','GB',182,'TE'),
+      mk('Cade Otton','TB',186,'TE'),mk('Chigoziem Okonkwo','TEN',190,'TE'),mk('Will Dissly','SEA',194,'TE'),
+      mk('Charlie Kolar','BAL',165,'TE'),mk('Dan Arnold','JAC',160,'TE')
+    ],
+    K:[
+      mk('Justin Tucker','BAL',160,'K'),mk('Tyler Bass','BUF',162,'K'),mk('Brandon Aubrey','DAL',164,'K'),
+      mk('Harrison Butker','KC',166,'K'),mk('Jake Moody','SF',168,'K'),mk('Evan McPherson','CIN',170,'K'),
+      mk('Younghoe Koo','ATL',172,'K'),mk("Ka'imi Fairbairn",'HOU',174,'K'),mk('Greg Zuerlein','NYJ',176,'K'),
+      mk('Matt Gay','IND',178,'K'),mk('Jason Myers','SEA',180,'K'),mk('Dustin Hopkins','CLE',182,'K'),
+      mk('Graham Gano','NYG',184,'K'),mk('Daniel Carlson','LV',186,'K'),mk('Rodrigo Blankenship','IND',188,'K'),
+      mk('Riley Patterson','JAC',190,'K'),mk('Chris Boswell','PIT',192,'K'),mk('Cairo Santos','CHI',194,'K'),
+      mk('Cameron Dicker','LAC',196,'K'),mk('Nick Folk','TEN',198,'K'),mk('Matt Prater','ARI',200,'K'),
+      mk('Joey Slye','WSH',204,'K'),mk('Jason Sanders','MIA',206,'K'),mk('Michael Badgley','DET',208,'K'),
+      mk('Tristan Vizcaino','TB',210,'K'),mk('Eddy Pineiro','CAR',214,'K'),mk('Ryan Succop','TB',216,'K'),
+      mk('Matthew Wright','JAC',218,'K'),mk('Sam Ficken','NE',220,'K'),mk('Chase McLaughlin','CLE',222,'K'),
+      mk('Robbie Gould','SF',202,'K'),mk('Randy Bullock','TEN',212,'K')
+    ],
+    DEF:[
+      mk('San Francisco 49ers','SF',140,'DEF'),mk('Dallas Cowboys','DAL',142,'DEF'),
+      mk('Baltimore Ravens','BAL',144,'DEF'),mk('Buffalo Bills','BUF',146,'DEF'),
+      mk('Pittsburgh Steelers','PIT',148,'DEF'),mk('Kansas City Chiefs','KC',150,'DEF'),
+      mk('Philadelphia Eagles','PHI',152,'DEF'),mk('Cleveland Browns','CLE',154,'DEF'),
+      mk('New England Patriots','NE',156,'DEF'),mk('New York Jets','NYJ',158,'DEF'),
+      mk('Cincinnati Bengals','CIN',160,'DEF'),mk('Miami Dolphins','MIA',162,'DEF'),
+      mk('Los Angeles Rams','LAR',164,'DEF'),mk('Minnesota Vikings','MIN',166,'DEF'),
+      mk('Jacksonville Jaguars','JAC',168,'DEF'),mk('Denver Broncos','DEN',170,'DEF'),
+      mk('Detroit Lions','DET',172,'DEF'),mk('Green Bay Packers','GB',174,'DEF'),
+      mk('Los Angeles Chargers','LAC',176,'DEF'),mk('Indianapolis Colts','IND',178,'DEF'),
+      mk('Tampa Bay Buccaneers','TB',180,'DEF'),mk('Seattle Seahawks','SEA',182,'DEF'),
+      mk('New Orleans Saints','NO',184,'DEF'),mk('Tennessee Titans','TEN',186,'DEF'),
+      mk('Atlanta Falcons','ATL',188,'DEF'),mk('Arizona Cardinals','ARI',190,'DEF'),
+      mk('Las Vegas Raiders','LV',192,'DEF'),mk('Washington Commanders','WSH',194,'DEF'),
+      mk('Carolina Panthers','CAR',196,'DEF'),mk('Chicago Bears','CHI',198,'DEF'),
+      mk('New York Giants','NYG',200,'DEF'),mk('Houston Texans','HOU',202,'DEF')
+    ]
   };
+
+  // Load Sleeper injuries separately — this works fine on mobile
+  fetch('https://api.sleeper.app/v1/players/nfl')
+    .then(function(r){return r.json()})
+    .then(function(sleeper){
+      injuries={};
+      Object.values(sleeper).forEach(function(p){
+        if(!p.full_name)return;
+        var k=key(p.full_name);
+        if(p.injury_status||p.status==='Injured Reserve'||p.status==='PUP'){
+          injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
+        }
+      });
+      setStatus('live','2026 Consensus ADP · Injury data live · '+new Date().toLocaleTimeString());
+      render();
+    })
+    .catch(function(){
+      setStatus('live','2026 Consensus ADP · Injury data unavailable · '+new Date().toLocaleTimeString());
+      render();
+    });
+
   ready=true;
-  setStatus('live','2025 Consensus ADP · Injury data live · '+new Date().toLocaleTimeString());
+  setStatus('loading','2026 Consensus ADP · Loading injury data...');
   render();
 }
 
+// ═══════════════════════════════════════
+// RENDER — POSITION SECTIONS
+// ═══════════════════════════════════════
 function render(){
   if(!ready)return;
+
+  // ── If search is active, use fast search render instead ──
+  // This is the mobile performance fix: instead of rendering
+  // hundreds of rows across all positions, we render only
+  // matching players in a single flat list.
+  if(curSearch){renderSearch();return;}
+
   var main=document.getElementById('main');
   var show=parseInt(document.getElementById('showSel').value);
   var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
@@ -396,7 +555,8 @@ function render(){
         var safeName=p.name.replace(/'/g,'&#39;');
         var tr=document.createElement('tr');
         tr.className='prow'+(dk?' drafted':'');
-        tr.id='row-'+p.key;tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=pos;
+        tr.id='row-'+p.key;
+        tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=pos;
         tr.innerHTML=
           '<td class="r-ovr">'+ovrStr+'</td>'+
           '<td class="r-pos">'+pr+'</td>'+
@@ -432,9 +592,87 @@ function render(){
     main.appendChild(sec);
   });
 
-  updateDBar();doSearch(curSearch);
+  updateDBar();
 }
 
+// ═══════════════════════════════════════
+// SEARCH RENDER — MOBILE PERFORMANCE FIX
+// When search is active, renders a single flat list
+// of matching players instead of all position sections.
+// This prevents the mobile browser from choking on
+// rendering hundreds of rows across 6 positions.
+// ═══════════════════════════════════════
+function renderSearch(){
+  var main=document.getElementById('main');
+  var q=curSearch.toLowerCase();
+  var matches=[];
+
+  // Search across all positions (or just current position)
+  var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
+  positions.forEach(function(pos){
+    var all=adpByPos[pos]||[];
+    all.forEach(function(p,i){
+      if(p.name.toLowerCase().includes(q)||(p.team&&p.team.toLowerCase().includes(q))){
+        matches.push({p:p,pos:pos,rank:i+1});
+      }
+    });
+  });
+
+  // Sort by ADP
+  matches.sort(function(a,b){return a.p.adp-b.p.adp});
+
+  main.innerHTML='';
+
+  var sec=document.createElement('div');
+  sec.className='search-results';
+
+  if(!matches.length){
+    sec.innerHTML=
+      '<div class="search-results-hdr">🔍 Search results for "'+curSearch+'"</div>'+
+      '<div class="search-no-results">No players found matching "'+curSearch+'"</div>';
+    main.appendChild(sec);
+    return;
+  }
+
+  sec.innerHTML='<div class="search-results-hdr">🔍 Search results for "'+curSearch+'" — <span class="search-results-count">'+matches.length+' players</span></div>';
+
+  var wrap=document.createElement('div');wrap.style.overflowX='auto';
+  var tbl=document.createElement('table');tbl.className='ptable';
+  tbl.innerHTML='<thead><tr><th>Pos</th><th>Rank</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th></tr></thead>';
+  var tbody=document.createElement('tbody');
+
+  matches.forEach(function(m){
+    var p=m.p;var pos=m.pos;var pr=m.rank;
+    var dk=!!drafted[p.key];
+    var inj2=getInj(p.name);var sc=sScore(pr,pos);
+    var bye=BYE[p.team]||'—';
+    var adpStr=p.adp<900?p.adp.toFixed(1):'—';
+    var injHtml=inj2?
+      '<span class="ibadge '+inj2.cls+'">'+inj2.icon+' '+inj2.label+'</span>':
+      '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+    var tr=document.createElement('tr');
+    tr.className='prow'+(dk?' drafted':'');
+    tr.id='srow-'+p.key;
+    tr.innerHTML=
+      '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
+      '<td class="r-pos">'+pr+'</td>'+
+      '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+      '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
+      '<td class="bye-td">'+bye+'</td>'+
+      '<td class="adp-td">'+adpStr+'</td>'+
+      '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
+      '<td class="inj-td">'+injHtml+'</td>'+
+      '<td><button class="act-btn draft-btn" onclick="tDraftSearch(\''+p.key+'\',this)">'+(dk?'✗ Drafted':'+ Draft')+'</button></td>';
+    tbody.appendChild(tr);
+  });
+
+  tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
+  main.appendChild(sec);
+}
+
+// ═══════════════════════════════════════
+// DRAFT TOGGLE
+// ═══════════════════════════════════════
 function tDraft(k,btn,type){
   drafted[k]=!drafted[k];localStorage.setItem('isd',JSON.stringify(drafted));
   var el=document.getElementById((type==='row'?'row-':'card-')+k);
@@ -442,8 +680,20 @@ function tDraft(k,btn,type){
   updateDBar();
 }
 
+// Draft toggle for search results
+function tDraftSearch(k,btn){
+  drafted[k]=!drafted[k];localStorage.setItem('isd',JSON.stringify(drafted));
+  var el=document.getElementById('srow-'+k);
+  if(el) el.classList.toggle('drafted',drafted[k]);
+  btn.textContent=drafted[k]?'✗ Drafted':'+ Draft';
+  updateDBar();
+}
+
 function clearDrafted(){if(!confirm('Clear all drafted players?'))return;drafted={};localStorage.setItem('isd',JSON.stringify(drafted));render()}
 
+// ═══════════════════════════════════════
+// DRAFTED BAR
+// ═══════════════════════════════════════
 function updateDBar(){
   var bar=document.getElementById('dbar');
   var counts={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};var total=0;
@@ -461,31 +711,31 @@ function updateDBar(){
   });
 }
 
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
 function goPos(pos){
   curPos=pos;
   document.querySelectorAll('.pos-tab').forEach(function(t){t.classList.remove('active')});
-  document.querySelector('.pos-tab.'+pos).classList.add('active');render();
+  document.querySelector('.pos-tab.'+pos).classList.add('active');
+  render();
 }
 
 function doSearch(q){
-  curSearch=(q||'').toLowerCase();
-  document.querySelectorAll('.prow,.pcard').forEach(function(el){
-    if(!curSearch){el.classList.remove('hidden');return}
-    var m=(el.dataset.name||'').includes(curSearch)||(el.dataset.team||'').includes(curSearch);
-    el.classList.toggle('hidden',!m);
-  });
-  document.querySelectorAll('.pos-sec').forEach(function(s){
-    var v=s.querySelectorAll('.prow:not(.hidden),.pcard:not(.hidden)').length;
-    s.style.display=v===0&&curSearch?'none':'';
-  });
+  curSearch=(q||'').toLowerCase().trim();
+  render(); // render() routes to renderSearch() when curSearch is set
 }
 
 function goView(v){
   curView=v;
   document.getElementById('listBtn').classList.toggle('active',v==='list');
-  document.getElementById('cardBtn').classList.toggle('active',v==='card');render();
+  document.getElementById('cardBtn').classList.toggle('active',v==='card');
+  render();
 }
 
+// ═══════════════════════════════════════
+// COMPARE
+// ═══════════════════════════════════════
 function addCmp(k,pos,name,adp,team){
   if(cmpList.length>=2){alert('Clear compare first.');return}
   if(cmpList.includes(k))return;
