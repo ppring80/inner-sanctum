@@ -11,17 +11,6 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
   : ["https://theinnersanctum.xyz"];
 
-// ═══════════════════════════════════════
-// VALID MODELS
-// Only these Claude models are accepted.
-// Update as new models are approved.
-// ═══════════════════════════════════════
-const VALID_MODELS = [
-  "claude-sonnet-4-6",
-  "claude-opus-4-6",
-  "claude-haiku-4-5-20251001"
-];
-
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -68,7 +57,7 @@ function getCurrentNFLWeek() {
 
 // ═══════════════════════════════════════
 // LIVE NFL CONTEXT BUILDER
-// Assembles 5 data sources from Tank01.
+// Assembles up to 4 data sources from Tank01.
 // Any individual source can fail silently —
 // response continues with whatever data loaded.
 // ═══════════════════════════════════════
@@ -134,35 +123,6 @@ async function getLiveNFLContext() {
     console.log("Tank01 ADP fetch failed:", e.message);
   }
 
-  // 5. NFL depth charts — authoritative source for current team assignments.
-  // Resolves player team changes from free agency and trades.
-  // Updated multiple times per day by Tank01.
-  try {
-    const depth = await fetchTank01("getNFLDepthCharts");
-    if (depth?.body) {
-      const rosterLines = [];
-      const teams = Object.keys(depth.body).slice(0, 32);
-      teams.forEach(team => {
-        const positions = depth.body[team];
-        if (!positions) return;
-        Object.keys(positions).forEach(pos => {
-          const players = positions[pos];
-          if (!Array.isArray(players)) return;
-          players.slice(0, 2).forEach(p => {
-            if (p.longName || p.playerName) {
-              rosterLines.push(`${p.longName || p.playerName} (${pos}, ${team})`);
-            }
-          });
-        });
-      });
-      if (rosterLines.length > 0) {
-        contextParts.push(`CURRENT NFL ROSTERS (depth charts — updated daily):\n${rosterLines.join("\n")}`);
-      }
-    }
-  } catch (e) {
-    console.log("Tank01 depth charts fetch failed:", e.message);
-  }
-
   return contextParts.join("\n\n");
 }
 
@@ -182,6 +142,10 @@ exports.handler = async (event) => {
   }
 
   // ── Origin check ──────────────────────────────────────────
+  // Blocks requests from outside your allowed domains.
+  // To add CI testers or localhost, set ALLOWED_ORIGINS
+  // in Netlify: Settings → Environment Variables
+  // Example: https://theinnersanctum.xyz,http://localhost:3000
   const origin = event.headers.origin || event.headers.Origin || "";
   const originAllowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
   if (!originAllowed) {
@@ -193,49 +157,9 @@ exports.handler = async (event) => {
     };
   }
 
-  // ── Body parsing + validation ─────────────────────────────
-  // Use "null" fallback so JSON.parse never receives undefined/null.
-  // An empty or missing body will parse to null, caught by the
-  // object check below — returns 400 with a clear error field.
-  let parsed;
   try {
-    parsed = JSON.parse(event.body || "null");
-  } catch (e) {
-    return {
-      statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: "Invalid JSON body" })
-    };
-  }
+    const { model, max_tokens, system, messages } = JSON.parse(event.body);
 
-  // Reject null, arrays, and non-objects
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {
-      statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: "Request body must be a JSON object" })
-    };
-  }
-
-  const { model, max_tokens, system, messages } = parsed;
-
-  if (!model || !messages || !Array.isArray(messages) || messages.length === 0) {
-    return {
-      statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: "Missing required fields: model, messages" })
-    };
-  }
-
-  if (!VALID_MODELS.includes(model)) {
-    return {
-      statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: `Invalid model: ${model}` })
-    };
-  }
-
-  try {
     // Fetch live NFL context from Tank01 (non-fatal)
     let liveDataContext = "";
     try {
@@ -244,11 +168,9 @@ exports.handler = async (event) => {
       console.log("Tank01 context fetch failed:", e.message);
     }
 
-    // Inject live data into the system prompt.
-    // CRITICAL: Depth chart data is the single source of truth for team assignments.
-    // Claude must override training knowledge with this live data.
+    // Inject live data into the system prompt
     const enhancedSystem = liveDataContext
-      ? `${system}\n\n═══════════════════════════════════\nLIVE NFL DATA — AUTHORITATIVE SOURCE:\n\nCRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.\n\n${liveDataContext}\n═══════════════════════════════════\nAlways reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today.`
+      ? `${system}\n\n═══════════════════════════════════\nLIVE NFL DATA — USE THIS IN YOUR RESPONSE:\n${liveDataContext}\n═══════════════════════════════════\nAlways reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today.`
       : system;
 
     // Call Claude API
