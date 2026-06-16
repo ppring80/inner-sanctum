@@ -179,13 +179,7 @@ exports.handler = async (event) => {
 
   // ── Body parsing ──────────────────────────────────────────
   // FIX (tests 57/58): treat missing/empty body as invalid JSON
-  if (!event.body || event.body.trim() === "") {
-    return {
-      statusCode: 400,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: "Request body is required" })
-    };
-  }
+
 
   let parsed;
   try {
