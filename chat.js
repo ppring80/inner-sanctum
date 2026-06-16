@@ -2,6 +2,10 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
+// Set ALLOWED_ORIGINS in Netlify environment variables
+// to add CI testers or localhost without touching code.
+// Example value: https://theinnersanctum.xyz,http://localhost:3000
+// If not set, defaults to production domain only.
 // ═══════════════════════════════════════
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
@@ -9,6 +13,8 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 
 // ═══════════════════════════════════════
 // VALID MODELS
+// Only these Claude models are accepted.
+// Update as new models are approved.
 // ═══════════════════════════════════════
 const VALID_MODELS = [
   "claude-sonnet-4-6",
@@ -25,6 +31,8 @@ const CORS_HEADERS = {
 
 // ═══════════════════════════════════════
 // TANK01 DATA FETCHER
+// Each call wrapped independently — one failure
+// does not affect others or block the response.
 // ═══════════════════════════════════════
 async function fetchTank01(endpoint, params = {}) {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
@@ -46,6 +54,9 @@ async function fetchTank01(endpoint, params = {}) {
 
 // ═══════════════════════════════════════
 // NFL WEEK CALCULATOR
+// 2026 season starts September 9, 2026.
+// Returns "1" during offseason/preseason.
+// UPDATE seasonStart each year.
 // ═══════════════════════════════════════
 function getCurrentNFLWeek() {
   const seasonStart = new Date("2026-09-09");
@@ -57,6 +68,9 @@ function getCurrentNFLWeek() {
 
 // ═══════════════════════════════════════
 // LIVE NFL CONTEXT BUILDER
+// Assembles 5 data sources from Tank01.
+// Any individual source can fail silently —
+// response continues with whatever data loaded.
 // ═══════════════════════════════════════
 async function getLiveNFLContext() {
   const contextParts = [];
@@ -79,7 +93,7 @@ async function getLiveNFLContext() {
   try {
     const projections = await fetchTank01("getNFLProjections", {
       week: getCurrentNFLWeek(),
-      season: "2026"
+      season: "2026"  // UPDATE EACH SEASON
     });
     if (projections?.body) {
       const topPlayers = Object.values(projections.body)
@@ -108,7 +122,7 @@ async function getLiveNFLContext() {
 
   // 4. Current ADP data
   try {
-    const adp = await fetchTank01("getNFLADP", { season: "2026" });
+    const adp = await fetchTank01("getNFLADP", { season: "2026" });  // UPDATE EACH SEASON
     if (adp?.body?.length > 0) {
       const adpList = adp.body
         .slice(0, 20)
@@ -120,7 +134,9 @@ async function getLiveNFLContext() {
     console.log("Tank01 ADP fetch failed:", e.message);
   }
 
-  // 5. NFL depth charts — authoritative source for current team assignments
+  // 5. NFL depth charts — authoritative source for current team assignments.
+  // Resolves player team changes from free agency and trades.
+  // Updated multiple times per day by Tank01.
   try {
     const depth = await fetchTank01("getNFLDepthCharts");
     if (depth?.body) {
@@ -177,13 +193,13 @@ exports.handler = async (event) => {
     };
   }
 
-  // ── Body parsing ──────────────────────────────────────────
-  // FIX (tests 57/58): treat missing/empty body as invalid JSON
-
-
+  // ── Body parsing + validation ─────────────────────────────
+  // Use "null" fallback so JSON.parse never receives undefined/null.
+  // An empty or missing body will parse to null, caught by the
+  // object check below — returns 400 with a clear error field.
   let parsed;
   try {
-    parsed = JSON.parse(event.body);
+    parsed = JSON.parse(event.body || "null");
   } catch (e) {
     return {
       statusCode: 400,
@@ -192,7 +208,7 @@ exports.handler = async (event) => {
     };
   }
 
-  // FIX (tests 57/58): null/non-object body parses without throwing but is invalid
+  // Reject null, arrays, and non-objects
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return {
       statusCode: 400,
@@ -228,8 +244,9 @@ exports.handler = async (event) => {
       console.log("Tank01 context fetch failed:", e.message);
     }
 
-    // FIX (test 62): depth chart data is the single source of truth for team assignments.
-    // Claude's training knowledge about player teams MUST be overridden by this live data.
+    // Inject live data into the system prompt.
+    // CRITICAL: Depth chart data is the single source of truth for team assignments.
+    // Claude must override training knowledge with this live data.
     const enhancedSystem = liveDataContext
       ? `${system}\n\n═══════════════════════════════════\nLIVE NFL DATA — AUTHORITATIVE SOURCE:\n\nCRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.\n\n${liveDataContext}\n═══════════════════════════════════\nAlways reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today.`
       : system;
