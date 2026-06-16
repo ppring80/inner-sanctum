@@ -57,7 +57,7 @@ function getCurrentNFLWeek() {
 
 // ═══════════════════════════════════════
 // LIVE NFL CONTEXT BUILDER
-// Assembles up to 4 data sources from Tank01.
+// Assembles data sources from Tank01.
 // Any individual source can fail silently —
 // response continues with whatever data loaded.
 // ═══════════════════════════════════════
@@ -78,22 +78,23 @@ async function getLiveNFLContext() {
     console.log("Tank01 news fetch failed:", e.message);
   }
 
-  // 2. Fantasy projections for current week
-  try {
-    const projections = await fetchTank01("getNFLProjections", {
-      week: getCurrentNFLWeek(),
-      season: "2026"  // UPDATE EACH SEASON
-    });
-    if (projections?.body && typeof projections.body === 'object') {
-      const topPlayers = Object.values(projections.body)
-        .slice(0, 20)
-        .map(p => `${p.longName || p.playerName} (${p.pos}, ${p.team}): ${p.fantasyPoints || "N/A"} proj pts`)
-        .join("\n");
-      contextParts.push(`TOP FANTASY PROJECTIONS THIS WEEK:\n${topPlayers}`);
-    }
-  } catch (e) {
-    console.log("Tank01 projections fetch failed:", e.message);
-  }
+  // 2. Fantasy projections — DISABLED (Tank01 returns non-iterable body in offseason)
+  // Re-enable in September when season starts.
+  // try {
+  //   const projections = await fetchTank01("getNFLProjections", {
+  //     week: getCurrentNFLWeek(),
+  //     season: "2026"
+  //   });
+  //   if (projections?.body && typeof projections.body === 'object' && !Array.isArray(projections.body)) {
+  //     const topPlayers = Object.values(projections.body)
+  //       .slice(0, 20)
+  //       .map(p => `${p.longName || p.playerName} (${p.pos}, ${p.team}): ${p.fantasyPoints || "N/A"} proj pts`)
+  //       .join("\n");
+  //     contextParts.push(`TOP FANTASY PROJECTIONS THIS WEEK:\n${topPlayers}`);
+  //   }
+  // } catch (e) {
+  //   console.log("Tank01 projections fetch failed:", e.message);
+  // }
 
   // 3. Current injury report
   try {
@@ -142,10 +143,6 @@ exports.handler = async (event) => {
   }
 
   // ── Origin check ──────────────────────────────────────────
-  // Blocks requests from outside your allowed domains.
-  // To add CI testers or localhost, set ALLOWED_ORIGINS
-  // in Netlify: Settings → Environment Variables
-  // Example: https://theinnersanctum.xyz,http://localhost:3000
   const origin = event.headers.origin || event.headers.Origin || "";
   const originAllowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
   if (!originAllowed) {
