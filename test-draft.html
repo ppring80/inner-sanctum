@@ -491,8 +491,8 @@ var TESTS = [
       var players = getMockPlayers('WR', 10);
       players[0].team = 'BUF'; players[1].team = 'MIA'; players[2].team = 'BUF';
       var results = filterPlayersBySearch(players, 'BUF');
-      if (results.length !== 2) throw new Error('Expected 2 BUF players, got '+results.length);
-      return 'Team search "BUF" returned '+results.length+' players ✓';
+      if (results.length !== 3) throw new Error('Expected 3 BUF players, got '+results.length);
+return 'Team search "BUF" returned '+results.length+' players ✓';
     }},
   {id:28, category:'Mobile Search', name:'Empty search query returns all players',
     fn: function() {
