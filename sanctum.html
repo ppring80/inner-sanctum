@@ -1031,12 +1031,19 @@ function ask(txt) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
+
+  // Question limit check (free tier only)
+  if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
+    showUpgradeModal();
+    return;
+  }
+
   inp.value = ""; inp.style.height = "auto";
   busy = true;
+  questionCount++;
   hist[ap].push({ role: "user", content: q });
   draw();
 
-  // Scroll chat into view
   document.getElementById('msgs').scrollIntoView({ behavior: 'smooth', block: 'end' });
 
   var xhr = new XMLHttpRequest();
@@ -1050,6 +1057,11 @@ function ask(txt) {
     } catch(e) { reply = "Parse error: " + e.message; }
     hist[ap].push({ role: "assistant", content: reply });
     busy = false; draw(); speak(reply);
+
+    // Show upgrade prompt after question 10 response renders
+    if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
+      setTimeout(showUpgradeModal, 1200);
+    }
   };
   xhr.onerror = function() {
     hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
@@ -1061,6 +1073,15 @@ function ask(txt) {
     system: getSystemPrompt(ap),
     messages: hist[ap]
   }));
+}
+
+function showUpgradeModal() {
+  var m = document.getElementById('upgradeModal');
+  m.style.display = 'flex';
+}
+
+function closeUpgradeModal() {
+  document.getElementById('upgradeModal').style.display = 'none';
 }
 
 // ═══════════════════════════════════════
