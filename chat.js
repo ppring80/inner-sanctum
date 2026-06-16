@@ -11,6 +11,17 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
   : ["https://theinnersanctum.xyz"];
 
+// ═══════════════════════════════════════
+// VALID MODELS
+// Only these Claude models are accepted.
+// Update as new models are approved.
+// ═══════════════════════════════════════
+const VALID_MODELS = [
+  "claude-sonnet-4-6",
+  "claude-opus-4-6",
+  "claude-haiku-4-5-20251001"
+];
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -157,9 +168,25 @@ exports.handler = async (event) => {
     };
   }
 
+  // ── Body parsing + validation ─────────────────────────────
+  let parsed;
   try {
-    const { model, max_tokens, system, messages } = JSON.parse(event.body);
+    parsed = JSON.parse(event.body);
+  } catch (e) {
+    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "Invalid JSON body" }) };
+  }
 
+  const { model, max_tokens, system, messages } = parsed;
+
+  if (!model || !messages || !Array.isArray(messages) || messages.length === 0) {
+    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "Missing required fields: model, messages" }) };
+  }
+
+  if (!VALID_MODELS.includes(model)) {
+    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: `Invalid model: ${model}` }) };
+  }
+
+  try {
     // Fetch live NFL context from Tank01 (non-fatal)
     let liveDataContext = "";
     try {
