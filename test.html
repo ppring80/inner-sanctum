@@ -495,31 +495,31 @@ const LINEUP_TESTS = [
     }},
 
   // ── Data Accuracy (62–65) ───────────────────────────────────
-  {id:62, category:'Data Accuracy', name:'Kirk Cousins team check — should be Falcons not Raiders',
+  {id:62, category:'Data Accuracy', name:'Kirk Cousins team check — Las Vegas Raiders (via live depth charts)',
     async: true,
     fn: async function() {
       var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,system:SYS['analyst'],
-          messages:[{role:'user',content:'What team does Kirk Cousins play for in 2026?'}]})});
+          messages:[{role:'user',content:'What team does Kirk Cousins play for in 2026? Use the live roster data provided.'}]})});
       if (!res.ok) throw new Error('HTTP '+res.status);
       var data = await res.json();
       var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
-      if (text.includes('raiders')||text.includes('las vegas')) throw new Error('STALE DATA: Says Kirk Cousins is on the Raiders — should be Falcons');
-      if (!text.includes('falcons')&&!text.includes('atlanta')) throw new Error('Response did not confirm Falcons/Atlanta — verify manually');
-      return 'Kirk Cousins correctly identified as Atlanta Falcons ✓';
+      if (text.includes('falcons')||text.includes('atlanta')) throw new Error('STALE DATA: Says Kirk Cousins is on the Falcons — live depth charts show Raiders (signed April 2026)');
+      if (!text.includes('raiders')&&!text.includes('las vegas')) throw new Error('Live depth charts did not surface Raiders for Kirk Cousins — verify Tank01 depth chart data');
+      return 'Kirk Cousins correctly identified as Las Vegas Raiders via live depth charts ✓';
     }},
-  {id:63, category:'Data Accuracy', name:'Brock Bowers team check — Raiders, not paired with Kirk Cousins',
+  {id:63, category:'Data Accuracy', name:'Brock Bowers QB check — Kirk Cousins his QB (both Raiders via live depth charts)',
     async: true,
     fn: async function() {
       var res = await fetch(ENDPOINT, {method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:200,system:SYS['analyst'],
-          messages:[{role:'user',content:'What team does Brock Bowers play for and who is his quarterback in 2026?'}]})});
+          messages:[{role:'user',content:'What team does Brock Bowers play for and who is his starting quarterback in 2026? Use the live roster data provided.'}]})});
       if (!res.ok) throw new Error('HTTP '+res.status);
       var data = await res.json();
       var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').toLowerCase();
-      if (text.includes('kirk cousins')) throw new Error('STALE DATA: Pairs Brock Bowers with Kirk Cousins — they are on different teams');
-      if (!text.includes('raiders')&&!text.includes('las vegas')) throw new Error('Response did not confirm Raiders/Las Vegas for Bowers — verify manually');
-      return 'Brock Bowers correctly identified as Las Vegas Raiders ✓';
+      if (!text.includes('raiders')&&!text.includes('las vegas')) throw new Error('Live depth charts did not surface Raiders for Brock Bowers — verify Tank01 depth chart data');
+      if (!text.includes('kirk cousins')) throw new Error('Live depth charts did not identify Kirk Cousins as Raiders QB — verify Tank01 depth chart data');
+      return 'Brock Bowers correctly on Las Vegas Raiders with Kirk Cousins at QB via live depth charts ✓';
     }},
   {id:64, category:'Data Accuracy', name:'Offseason awareness — no fabricated game scores',
     async: true,
