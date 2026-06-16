@@ -84,7 +84,7 @@ async function getLiveNFLContext() {
       week: getCurrentNFLWeek(),
       season: "2026"  // UPDATE EACH SEASON
     });
-    if (projections?.body) {
+    if (projections?.body && typeof projections.body === 'object') {
       const topPlayers = Object.values(projections.body)
         .slice(0, 20)
         .map(p => `${p.longName || p.playerName} (${p.pos}, ${p.team}): ${p.fantasyPoints || "N/A"} proj pts`)
