@@ -1082,5 +1082,17 @@ document.addEventListener('click', function(e) {
 buildLineupSlots();
 loadPlayerList();
 </script>
+  <!-- UPGRADE MODAL -->
+<div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:linear-gradient(160deg,#1a0f08,#221208);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.15);">
+    <div style="font-size:40px;margin-bottom:12px;">🔮</div>
+    <div style="font-size:11px;letter-spacing:4px;color:#c9a84c;text-transform:uppercase;margin-bottom:10px;">Your Wisdom Is Spent</div>
+    <div style="font-size:20px;color:#f0e0b0;margin-bottom:12px;font-weight:bold;">You've reached your 10-question limit</div>
+    <div style="font-size:14px;color:#8a7860;line-height:1.7;margin-bottom:24px;">Free Apprentices receive 10 questions per session. Upgrade to <strong style="color:#c9a84c;">Founding Acolyte</strong> for unlimited access to all three personas, the Auction War Room, and Sleeper integration.</div>
+    <a href="https://www.patreon.com/theinnersanctum" target="_blank" style="display:block;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-family:Georgia,serif;font-size:15px;font-weight:bold;padding:14px 20px;border-radius:10px;text-decoration:none;margin-bottom:12px;letter-spacing:1px;">⚔️ Become a Founding Acolyte — $4.99/mo</a>
+    <button onclick="closeUpgradeModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#4a4040;font-family:Georgia,serif;font-size:13px;padding:10px 20px;cursor:pointer;width:100%;">Maybe Later</button>
+    <div style="font-size:10px;color:#3a3028;margin-top:14px;letter-spacing:2px;">QUESTIONS RESET ON PAGE RELOAD</div>
+  </div>
+</div>
 </body>
 </html>
