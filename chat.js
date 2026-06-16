@@ -1,4 +1,5 @@
-const Anthropic = require("@anthropic-ai/sdk");
+Here's the complete chat.js — replace the entire file:
+javascriptconst Anthropic = require("@anthropic-ai/sdk");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -68,7 +69,7 @@ function getCurrentNFLWeek() {
 
 // ═══════════════════════════════════════
 // LIVE NFL CONTEXT BUILDER
-// Assembles up to 4 data sources from Tank01.
+// Assembles 5 data sources from Tank01.
 // Any individual source can fail silently —
 // response continues with whatever data loaded.
 // ═══════════════════════════════════════
@@ -134,6 +135,35 @@ async function getLiveNFLContext() {
     console.log("Tank01 ADP fetch failed:", e.message);
   }
 
+  // 5. NFL depth charts — current rosters and team assignments
+  // Resolves player team changes from free agency and trades.
+  // Updated multiple times per day by Tank01.
+  try {
+    const depth = await fetchTank01("getNFLDepthCharts");
+    if (depth?.body) {
+      const rosterLines = [];
+      const teams = Object.keys(depth.body).slice(0, 32);
+      teams.forEach(team => {
+        const positions = depth.body[team];
+        if (!positions) return;
+        Object.keys(positions).forEach(pos => {
+          const players = positions[pos];
+          if (!Array.isArray(players)) return;
+          players.slice(0, 2).forEach(p => {
+            if (p.longName || p.playerName) {
+              rosterLines.push(`${p.longName || p.playerName} (${pos}, ${team})`);
+            }
+          });
+        });
+      });
+      if (rosterLines.length > 0) {
+        contextParts.push(`CURRENT NFL ROSTERS (depth charts — updated daily):\n${rosterLines.join("\n")}`);
+      }
+    }
+  } catch (e) {
+    console.log("Tank01 depth charts fetch failed:", e.message);
+  }
+
   return contextParts.join("\n\n");
 }
 
@@ -173,17 +203,29 @@ exports.handler = async (event) => {
   try {
     parsed = JSON.parse(event.body);
   } catch (e) {
-    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "Invalid JSON body" }) };
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: "Invalid JSON body" })
+    };
   }
 
   const { model, max_tokens, system, messages } = parsed;
 
   if (!model || !messages || !Array.isArray(messages) || messages.length === 0) {
-    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "Missing required fields: model, messages" }) };
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: "Missing required fields: model, messages" })
+    };
   }
 
   if (!VALID_MODELS.includes(model)) {
-    return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: `Invalid model: ${model}` }) };
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: `Invalid model: ${model}` })
+    };
   }
 
   try {
