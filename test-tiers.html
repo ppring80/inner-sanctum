@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inner Sanctum — Oracle Tier List Tests</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1a0f08;--bg2:#221208;--surface:rgba(0,0,0,0.4);
+  --gold:#c9a84c;--green:#4caf50;--red:#ff5252;--amber:#ff9800;--blue:#64b5f6;
+  --text:#f0e0b0;--text-dim:#7a6a3a;--text-muted:#4a3a22;--r:8px;
+}
+body{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 40%,#261018 100%);color:var(--text);font-family:'Lora',Georgia,serif;font-size:15px;line-height:1.6;min-height:100vh;padding:24px 20px 60px;}
+.wrap{max-width:900px;margin:0 auto;}
+.hdr{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(201,168,76,0.2);}
+.hdr-badge{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:8px;display:block;}
+.hdr h1{font-family:'Cinzel',serif;font-size:28px;font-weight:600;color:#f0e6cc;margin-bottom:6px;}
+.hdr-sub{font-size:12px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;}
+.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.score-card{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:14px;text-align:center;}
+.score-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.score-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;color:var(--gold);}
+.controls{background:var(--surface);border:1px solid rgba(201,168,76,0.2);border-radius:var(--r);padding:18px;margin-bottom:24px;}
+.controls-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.btn{padding:10px 20px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:13px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.btn-gold{background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-weight:600;}
+.btn-gold:hover{opacity:0.88;transform:translateY(-1px);}
+.btn-gold:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-dim);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-green{background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);color:var(--green);}
+.progress-wrap{margin-bottom:24px;display:none;}
+.progress-track{background:rgba(0,0,0,0.4);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px;}
+.progress-fill{height:100%;background:var(--gold);border-radius:4px;transition:width 0.4s;}
+.progress-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+.section-header{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,0.15);}
+.test-card{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:16px;margin-bottom:8px;}
+.test-card.pass{border-color:rgba(76,175,80,0.3);}
+.test-card.fail{border-color:rgba(255,82,82,0.3);}
+.test-card.running{border-color:rgba(100,181,246,0.3);}
+.test-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.test-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);min-width:28px;}
+.pill{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;letter-spacing:1px;}
+.pill-cat{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.pill-pass{background:rgba(76,175,80,0.12);color:var(--green);border:1px solid rgba(76,175,80,0.3);}
+.pill-fail{background:rgba(255,82,82,0.12);color:var(--red);border:1px solid rgba(255,82,82,0.3);}
+.pill-running{background:rgba(100,181,246,0.12);color:var(--blue);border:1px solid rgba(100,181,246,0.3);}
+.pill-pending{background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid rgba(255,255,255,0.1);}
+.test-name{font-size:14px;color:#e0d0b0;font-weight:600;margin-bottom:6px;}
+.test-detail{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);line-height:1.6;}
+.test-detail.error{color:var(--red);}
+.test-detail.success{color:var(--green);}
+.summary{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:var(--r);padding:18px;margin-bottom:24px;display:none;}
+.summary-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);margin-bottom:12px;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+.summary-item strong{color:var(--text);display:block;}
+.summary-item{font-size:13px;color:var(--text-dim);}
+.foot{text-align:center;margin-top:40px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <span class="hdr-badge">Pringle AI LLC · Internal Tool</span>
+    <h1>🏆 Oracle Tier List</h1>
+    <div class="hdr-sub">Automated Test Suite · Logic & Math Validation</div>
+  </div>
+
+  <div class="score-grid">
+    <div class="score-card"><div class="score-label">Passed</div><div class="score-val" id="stat-pass" style="color:var(--green)">0</div></div>
+    <div class="score-card"><div class="score-label">Failed</div><div class="score-val" id="stat-fail" style="color:var(--red)">0</div></div>
+    <div class="score-card"><div class="score-label">Total</div><div class="score-val" id="stat-total">0</div></div>
+    <div class="score-card"><div class="score-label">Score</div><div class="score-val" id="stat-score">—</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="controls-row">
+      <button class="btn btn-gold" id="run-btn" onclick="runAllTests()">▶ Run All Tests</button>
+      <button class="btn btn-outline" onclick="resetTests()">✕ Reset</button>
+      <button class="btn btn-outline" onclick="exportReport()">⬇ Export Report</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-label" id="progress-label">0% complete</div>
+  </div>
+
+  <div class="summary" id="summary">
+    <div class="summary-title">🏆 Test Run Summary</div>
+    <div class="summary-grid" id="summary-grid"></div>
+  </div>
+
+  <div id="results-list"></div>
+
+  <div class="foot">The Inner Sanctum · Pringle AI LLC · Oracle Tier List Test Suite</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// COPY OF TIER LOGIC FROM tiers.html
+// ═══════════════════════════════════════
+
+var POS_LIST = ['QB','RB','WR','TE','K','DEF'];
+
+var STRATEGY_CONFIG = {
+  rb:     { primaryPos: 'RB', targetTiers: [1, 2], icon: '🏃' },
+  wr:     { primaryPos: 'WR', targetTiers: [1, 2], icon: '🎯' },
+  qb:     { primaryPos: 'QB', targetTiers: [1],    icon: '🎳' },
+  hero:   { primaryPos: 'RB', targetTiers: [1],    icon: '🦸' },
+  custom: { primaryPos: 'QB', targetTiers: [1, 2], icon: '⚙️' }
+};
+
+var TIER_BREAKS = {
+  QB:  [5,10,20,32,40], RB: [8,18,32,56,80], WR: [8,18,32,56,80],
+  TE:  [4, 8,16,28,40], K:  [4, 8,16,24,32], DEF:[4, 8,16,24,32]
+};
+var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
+
+// Synthetic pools sized to match production counts (40 QB, 80 RB, 80 WR, 40 TE, 32 K, 32 DEF)
+// ADP spacing mirrors real pool: ascending, no duplicate values.
+function makePool(count, namePrefix) {
+  var pool = [];
+  for (var i = 0; i < count; i++) {
+    pool.push({ name: namePrefix + '_' + i, team: 'TST', adp: (i + 1) * 1.5 });
+  }
+  return pool;
+}
+
+var PLAYER_POOL = {
+  QB:  makePool(40, 'QB'),
+  RB:  makePool(80, 'RB'),
+  WR:  makePool(80, 'WR'),
+  TE:  makePool(40, 'TE'),
+  K:   makePool(32, 'K'),
+  DEF: makePool(32, 'DEF')
+};
+
+// Mirrors generateTiers()'s core sort + dedupe + tier-bucket logic from tiers.html,
+// minus the scoring-format ADP nudges (irrelevant to tier-break math) and minus the
+// async/UI scaffolding (loading states, DOM rendering).
+function buildTiers(format) {
+  var tiers = {};
+  POS_LIST.forEach(function(pos) {
+    var pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
+    pool.sort(function(a, b) { return a.adp - b.adp; });
+
+    var seen = {};
+    pool = pool.filter(function(p) {
+      if (seen[p.name]) return false;
+      seen[p.name] = true;
+      return true;
+    });
+
+    var breaks = (pos === 'QB' && format === 'superflex') ? SUPERFLEX_QB_BREAKS : TIER_BREAKS[pos];
+
+    tiers[pos] = {1: [], 2: [], 3: [], 4: [], 5: []};
+    pool.forEach(function(p, i) {
+      var t = i < breaks[0] ? 1 : i < breaks[1] ? 2 : i < breaks[2] ? 3 : i < breaks[3] ? 4 : 5;
+      tiers[pos][t].push(p);
+    });
+  });
+  return tiers;
+}
+
+// Mirrors renderPos()'s maxTier display cap from tiers.html
+function getMaxDisplayTier(pos) {
+  return (pos === 'K' || pos === 'DEF') ? 4 : 5;
+}
+
+// Mirrors the drop-handler's move logic from setupDrop() in tiers.html
+function movePlayer(tiers, pos, playerName, toTier) {
+  var found = false;
+  var moved = null;
+  for (var t = 1; t <= 5; t++) {
+    if (!tiers[pos][t]) continue;
+    var idx = -1;
+    for (var i = 0; i < tiers[pos][t].length; i++) {
+      if (tiers[pos][t][i].name === playerName) { idx = i; break; }
+    }
+    if (idx !== -1) {
+      moved = tiers[pos][t][idx];
+      tiers[pos][t].splice(idx, 1);
+      found = true;
+      break;
+    }
+  }
+  if (!found) return false;
+  if (!tiers[pos][toTier]) tiers[pos][toTier] = [];
+  tiers[pos][toTier].push(moved);
+  return true;
+}
+
+// Mirrors readSavedStrategy()'s localStorage shape contract from tiers.html
+function isValidStrategyShape(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  var hasStrategy = typeof obj.strategy === 'string' && STRATEGY_CONFIG.hasOwnProperty(obj.strategy);
+  var hasScoring  = ['ppr','half','standard'].indexOf(obj.scoring) !== -1;
+  var hasFormat   = ['standard','superflex'].indexOf(obj.format) !== -1;
+  var hasBudget   = !isNaN(parseFloat(obj.budget));
+  return hasStrategy && hasScoring && hasFormat && hasBudget;
+}
+
+// ═══════════════════════════════════════
+// TEST DEFINITIONS
+// ═══════════════════════════════════════
+
+var TESTS = [
+  // TIER BREAK MATH
+  {id:1, category:'Tier Break Math', name:'QB standard tier breaks produce correct bucket sizes',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var sizes = [1,2,3,4,5].map(function(t){ return tiers.QB[t].length; });
+      var expected = [5,5,10,12,8]; // breaks [5,10,20,32,40] on a 40-player pool
+      for (var i = 0; i < 5; i++) {
+        if (sizes[i] !== expected[i]) throw new Error('QB Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+      }
+      return 'QB tier sizes: '+sizes.join('/')+' ✓';
+    }},
+  {id:2, category:'Tier Break Math', name:'RB standard tier breaks produce correct bucket sizes',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var sizes = [1,2,3,4,5].map(function(t){ return tiers.RB[t].length; });
+      var expected = [8,10,14,24,24]; // breaks [8,18,32,56,80] on an 80-player pool
+      for (var i = 0; i < 5; i++) {
+        if (sizes[i] !== expected[i]) throw new Error('RB Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+      }
+      return 'RB tier sizes: '+sizes.join('/')+' ✓';
+    }},
+  {id:3, category:'Tier Break Math', name:'WR standard tier breaks produce correct bucket sizes',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var sizes = [1,2,3,4,5].map(function(t){ return tiers.WR[t].length; });
+      var expected = [8,10,14,24,24];
+      for (var i = 0; i < 5; i++) {
+        if (sizes[i] !== expected[i]) throw new Error('WR Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+      }
+      return 'WR tier sizes: '+sizes.join('/')+' ✓';
+    }},
+  {id:4, category:'Tier Break Math', name:'TE standard tier breaks produce correct bucket sizes',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var sizes = [1,2,3,4,5].map(function(t){ return tiers.TE[t].length; });
+      var expected = [4,4,8,12,12]; // breaks [4,8,16,28,40] on a 40-player pool
+      for (var i = 0; i < 5; i++) {
+        if (sizes[i] !== expected[i]) throw new Error('TE Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+      }
+      return 'TE tier sizes: '+sizes.join('/')+' ✓';
+    }},
+  {id:5, category:'Tier Break Math', name:'K and DEF tier breaks produce correct bucket sizes',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var errors = [];
+      ['K','DEF'].forEach(function(pos) {
+        var sizes = [1,2,3,4,5].map(function(t){ return tiers[pos][t].length; });
+        var expected = [4,4,8,8,8]; // breaks [4,8,16,24,32] on a 32-player pool
+        for (var i = 0; i < 5; i++) {
+          if (sizes[i] !== expected[i]) errors.push(pos+' Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+        }
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'K and DEF tier sizes correct (4/4/8/8/8 each) ✓';
+    }},
+  {id:6, category:'Tier Break Math', name:'Every position fills all 5 tiers (no empty tiers in full pool)',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var errors = [];
+      POS_LIST.forEach(function(pos) {
+        for (var t = 1; t <= 5; t++) {
+          if (tiers[pos][t].length === 0) errors.push(pos+' Tier '+t+' is empty');
+        }
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'All 6 positions have non-empty Tiers 1-5 ✓';
+    }},
+  {id:7, category:'Tier Break Math', name:'Total players per position matches pool size after tiering',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var poolSizes = {QB:40, RB:80, WR:80, TE:40, K:32, DEF:32};
+      var errors = [];
+      POS_LIST.forEach(function(pos) {
+        var total = [1,2,3,4,5].reduce(function(a,t){ return a + tiers[pos][t].length; }, 0);
+        if (total !== poolSizes[pos]) errors.push(pos+': '+total+' tiered, expected '+poolSizes[pos]);
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'All position totals match pool sizes (40/80/80/40/32/32) ✓';
+    }},
+  {id:8, category:'Tier Break Math', name:'Players within a tier are sorted by ascending ADP',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var errors = [];
+      POS_LIST.forEach(function(pos) {
+        for (var t = 1; t <= 5; t++) {
+          var arr = tiers[pos][t];
+          for (var i = 1; i < arr.length; i++) {
+            if (arr[i].adp < arr[i-1].adp) errors.push(pos+' Tier '+t+' out of order at index '+i);
+          }
+        }
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'ADP ascending within every tier, every position ✓';
+    }},
+
+  // SUPERFLEX LOGIC
+  {id:9, category:'Superflex Logic', name:'Superflex QB Tier 1 is wider than standard QB Tier 1',
+    fn: function() {
+      var std = buildTiers('standard');
+      var sf  = buildTiers('superflex');
+      if (sf.QB[1].length <= std.QB[1].length) {
+        throw new Error('Superflex Tier 1 ('+sf.QB[1].length+') not wider than standard ('+std.QB[1].length+')');
+      }
+      return 'Standard QB T1: '+std.QB[1].length+' → Superflex QB T1: '+sf.QB[1].length+' ✓';
+    }},
+  {id:10, category:'Superflex Logic', name:'Superflex QB breaks match SUPERFLEX_QB_BREAKS exactly',
+    fn: function() {
+      var sf = buildTiers('superflex');
+      var sizes = [1,2,3,4,5].map(function(t){ return sf.QB[t].length; });
+      var expected = [8,6,10,10,6]; // breaks [8,14,24,34,40] on a 40-player pool
+      for (var i = 0; i < 5; i++) {
+        if (sizes[i] !== expected[i]) throw new Error('Superflex QB Tier '+(i+1)+': got '+sizes[i]+', expected '+expected[i]);
+      }
+      return 'Superflex QB tier sizes: '+sizes.join('/')+' ✓';
+    }},
+  {id:11, category:'Superflex Logic', name:'Superflex format does not affect non-QB positions',
+    fn: function() {
+      var std = buildTiers('standard');
+      var sf  = buildTiers('superflex');
+      var errors = [];
+      ['RB','WR','TE','K','DEF'].forEach(function(pos) {
+        for (var t = 1; t <= 5; t++) {
+          if (std[pos][t].length !== sf[pos][t].length) errors.push(pos+' Tier '+t+' changed under superflex');
+        }
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'RB/WR/TE/K/DEF tier sizes identical in standard vs superflex ✓';
+    }},
+  {id:12, category:'Superflex Logic', name:'Superflex QB pool total still equals 40 after re-tiering',
+    fn: function() {
+      var sf = buildTiers('superflex');
+      var total = [1,2,3,4,5].reduce(function(a,t){ return a + sf.QB[t].length; }, 0);
+      if (total !== 40) throw new Error('Total: '+total+', expected 40');
+      return 'Superflex QB total: '+total+' ✓';
+    }},
+
+  // DRAG-AND-DROP
+  {id:13, category:'Drag-and-Drop', name:'Moving a player removes them from source tier',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var player = tiers.RB[1][0];
+      var beforeCount = tiers.RB[1].length;
+      movePlayer(tiers, 'RB', player.name, 3);
+      if (tiers.RB[1].length !== beforeCount - 1) throw new Error('Source tier count: '+tiers.RB[1].length+', expected '+(beforeCount-1));
+      return 'Source tier shrank from '+beforeCount+' to '+tiers.RB[1].length+' ✓';
+    }},
+  {id:14, category:'Drag-and-Drop', name:'Moving a player adds them to destination tier',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var player = tiers.WR[2][0];
+      var beforeCount = tiers.WR[4].length;
+      movePlayer(tiers, 'WR', player.name, 4);
+      if (tiers.WR[4].length !== beforeCount + 1) throw new Error('Dest tier count: '+tiers.WR[4].length+', expected '+(beforeCount+1));
+      var present = tiers.WR[4].some(function(p){ return p.name === player.name; });
+      if (!present) throw new Error('Player not found in destination tier');
+      return 'Destination tier grew from '+beforeCount+' to '+tiers.WR[4].length+', player present ✓';
+    }},
+  {id:15, category:'Drag-and-Drop', name:'Moving a player preserves total player count for that position',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var totalBefore = [1,2,3,4,5].reduce(function(a,t){ return a + tiers.QB[t].length; }, 0);
+      var player = tiers.QB[3][0];
+      movePlayer(tiers, 'QB', player.name, 5);
+      var totalAfter = [1,2,3,4,5].reduce(function(a,t){ return a + tiers.QB[t].length; }, 0);
+      if (totalBefore !== totalAfter) throw new Error('Total changed from '+totalBefore+' to '+totalAfter);
+      return 'QB total stable at '+totalAfter+' before and after move ✓';
+    }},
+  {id:16, category:'Drag-and-Drop', name:'Moving a nonexistent player is a no-op (returns false)',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var totalBefore = [1,2,3,4,5].reduce(function(a,t){ return a + tiers.TE[t].length; }, 0);
+      var result = movePlayer(tiers, 'TE', 'Nonexistent_Player_XYZ', 2);
+      var totalAfter = [1,2,3,4,5].reduce(function(a,t){ return a + tiers.TE[t].length; }, 0);
+      if (result !== false) throw new Error('Expected false return for nonexistent player');
+      if (totalBefore !== totalAfter) throw new Error('Total changed despite no-op move');
+      return 'No-op correctly returned false, total unchanged at '+totalAfter+' ✓';
+    }},
+  {id:17, category:'Drag-and-Drop', name:'Player retains name/team/adp fields after being moved',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var player = tiers.RB[1][2];
+      var origName = player.name, origTeam = player.team, origAdp = player.adp;
+      movePlayer(tiers, 'RB', origName, 5);
+      var moved = tiers.RB[5].filter(function(p){ return p.name === origName; })[0];
+      if (!moved) throw new Error('Player not found after move');
+      if (moved.team !== origTeam || moved.adp !== origAdp) throw new Error('Player fields changed after move');
+      return 'name/team/adp preserved across move ✓';
+    }},
+
+  // SMART CONNECTOR
+  {id:18, category:'Smart Connector', name:'STRATEGY_CONFIG maps all 5 strategies to a valid primaryPos',
+    fn: function() {
+      var errors = [];
+      Object.keys(STRATEGY_CONFIG).forEach(function(key) {
+        var cfg = STRATEGY_CONFIG[key];
+        if (POS_LIST.indexOf(cfg.primaryPos) === -1) errors.push(key+' has invalid primaryPos: '+cfg.primaryPos);
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'rb/wr/qb/hero/custom all map to valid positions ✓';
+    }},
+  {id:19, category:'Smart Connector', name:'RB Heavy and WR Heavy target Tiers 1 and 2; QB Heavy and Hero RB target Tier 1 only',
+    fn: function() {
+      var errors = [];
+      if (STRATEGY_CONFIG.rb.targetTiers.join(',') !== '1,2') errors.push('rb targetTiers wrong: '+STRATEGY_CONFIG.rb.targetTiers);
+      if (STRATEGY_CONFIG.wr.targetTiers.join(',') !== '1,2') errors.push('wr targetTiers wrong: '+STRATEGY_CONFIG.wr.targetTiers);
+      if (STRATEGY_CONFIG.qb.targetTiers.join(',') !== '1') errors.push('qb targetTiers wrong: '+STRATEGY_CONFIG.qb.targetTiers);
+      if (STRATEGY_CONFIG.hero.targetTiers.join(',') !== '1') errors.push('hero targetTiers wrong: '+STRATEGY_CONFIG.hero.targetTiers);
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'Target tiers correct for all 4 named strategies ✓';
+    }},
+  {id:20, category:'Smart Connector', name:'Valid localStorage strategy shape passes validation',
+    fn: function() {
+      var valid = {strategy:'rb', scoring:'ppr', format:'standard', budget:200};
+      if (!isValidStrategyShape(valid)) throw new Error('Valid shape incorrectly rejected');
+      return 'Valid {strategy,scoring,format,budget} shape accepted ✓';
+    }},
+  {id:21, category:'Smart Connector', name:'Malformed localStorage data is rejected by shape validation',
+    fn: function() {
+      var bad1 = {strategy:'not_a_real_strategy', scoring:'ppr', format:'standard', budget:200};
+      var bad2 = {strategy:'rb', scoring:'wrong_scoring', format:'standard', budget:200};
+      var bad3 = {strategy:'rb', scoring:'ppr', format:'standard', budget:'not_a_number'};
+      var bad4 = null;
+      var errors = [];
+      if (isValidStrategyShape(bad1)) errors.push('invalid strategy key accepted');
+      if (isValidStrategyShape(bad2)) errors.push('invalid scoring value accepted');
+      if (isValidStrategyShape(bad3)) errors.push('invalid budget accepted');
+      if (isValidStrategyShape(bad4)) errors.push('null accepted');
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'All 4 malformed shapes correctly rejected ✓';
+    }},
+  {id:22, category:'Smart Connector', name:'Primary position tier-1 player count is correctly derived for banner copy',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var cfg = STRATEGY_CONFIG.rb;
+      var t1count = tiers[cfg.primaryPos][1].length;
+      if (t1count !== 8) throw new Error('RB Heavy primary pos (RB) Tier 1 count: '+t1count+', expected 8');
+      return 'RB Heavy banner would reference '+t1count+' Tier 1 RBs ✓';
+    }},
+
+  // STRUCTURAL CHECKS
+  {id:23, category:'Structural Checks', name:'K and DEF data legitimately populate Tier 5 (display cap is UI-only, not a data bug)',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var kTier5 = tiers.K[5].length;
+      var defTier5 = tiers.DEF[5].length;
+      if (kTier5 === 0) throw new Error('K Tier 5 is empty in underlying data — expected 8 kickers');
+      if (defTier5 === 0) throw new Error('DEF Tier 5 is empty in underlying data — expected 8 defenses');
+      if (kTier5 !== 8) throw new Error('K Tier 5 has '+kTier5+' players, expected 8');
+      return 'K Tier 5: '+kTier5+' kickers, DEF Tier 5: '+defTier5+' defenses — both present in data, UI caps display at Tier 4 ✓';
+    }},
+  {id:24, category:'Structural Checks', name:'getMaxDisplayTier caps K/DEF at 4, all others at 5',
+    fn: function() {
+      var errors = [];
+      POS_LIST.forEach(function(pos) {
+        var max = getMaxDisplayTier(pos);
+        var expected = (pos === 'K' || pos === 'DEF') ? 4 : 5;
+        if (max !== expected) errors.push(pos+': got '+max+', expected '+expected);
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'Display cap correct: K/DEF=4, QB/RB/WR/TE=5 ✓';
+    }},
+  {id:25, category:'Structural Checks', name:'No duplicate player names within any single position pool after tiering',
+    fn: function() {
+      var tiers = buildTiers('standard');
+      var errors = [];
+      POS_LIST.forEach(function(pos) {
+        var seen = {};
+        for (var t = 1; t <= 5; t++) {
+          tiers[pos][t].forEach(function(p) {
+            if (seen[p.name]) errors.push(pos+': duplicate "'+p.name+'"');
+            seen[p.name] = true;
+          });
+        }
+      });
+      if (errors.length) throw new Error(errors.join(', '));
+      return 'No duplicate names across tiers, all 6 positions ✓';
+    }},
+];
+
+// ═══════════════════════════════════════
+// TEST RUNNER
+// ═══════════════════════════════════════
+var results = {};
+TESTS.forEach(function(t) { results[t.id] = {status:'pending', detail:'', error:''}; });
+
+function runAllTests() {
+  var btn = document.getElementById('run-btn');
+  btn.textContent = '⏳ Running...';
+  btn.disabled = true;
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+
+  var i = 0;
+  function runNext() {
+    if (i >= TESTS.length) {
+      btn.textContent = '▶ Run All Tests';
+      btn.disabled = false;
+      showSummary();
+      return;
+    }
+    var test = TESTS[i];
+    results[test.id] = {status:'running', detail:'', error:''};
+    renderList();
+
+    setTimeout(function() {
+      try {
+        var detail = test.fn();
+        results[test.id] = {status:'pass', detail:detail, error:''};
+      } catch(e) {
+        results[test.id] = {status:'fail', detail:'', error:e.message};
+      }
+      i++;
+      var pct = Math.round((i/TESTS.length)*100);
+      document.getElementById('progress-fill').style.width = pct+'%';
+      document.getElementById('progress-label').textContent = i+' / '+TESTS.length+' complete — '+pct+'%';
+      updateStats();
+      renderList();
+      runNext();
+    }, 80);
+  }
+  runNext();
+}
+
+function resetTests() {
+  TESTS.forEach(function(t) { results[t.id] = {status:'pending', detail:'', error:''}; });
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  renderList();
+  updateStats();
+}
+
+function updateStats() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var total = pass + fail;
+  var pct = total ? Math.round((pass/TESTS.length)*100) : 0;
+  document.getElementById('stat-pass').textContent = pass;
+  document.getElementById('stat-fail').textContent = fail;
+  document.getElementById('stat-total').textContent = TESTS.length;
+  var scoreEl = document.getElementById('stat-score');
+  scoreEl.textContent = total ? pct+'%' : '—';
+  scoreEl.style.color = pct>=90?'var(--green)':pct>=70?'var(--amber)':'var(--red)';
+}
+
+function showSummary() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var pct = Math.round((pass/TESTS.length)*100);
+  var verdict = pct===100 ? '🎉 PERFECT — Tier logic is bulletproof!' : pct>=90 ? '✅ LAUNCH READY — Fix the '+fail+' failed tests' : '⚠️ NEEDS WORK — '+fail+' tests failing';
+  document.getElementById('summary-grid').innerHTML =
+    '<div class="summary-item"><strong>'+pass+' / '+TESTS.length+'</strong>Tests passed</div>'+
+    '<div class="summary-item"><strong>'+fail+'</strong>Tests failed</div>'+
+    '<div class="summary-item"><strong>'+pct+'%</strong>Score</div>'+
+    '<div class="summary-item"><strong>'+verdict+'</strong>Verdict</div>';
+  document.getElementById('summary').style.display = 'block';
+}
+
+function renderList() {
+  var categories = [...new Set(TESTS.map(function(t){return t.category;}))];
+  var html = '';
+  categories.forEach(function(cat) {
+    var catTests = TESTS.filter(function(t){return t.category===cat;});
+    html += '<div class="section-header">'+cat+'</div>';
+    catTests.forEach(function(test) {
+      var r = results[test.id];
+      var cardClass = r.status==='pass'?'pass':r.status==='fail'?'fail':r.status==='running'?'running':'';
+      var pillClass = r.status==='pass'?'pill-pass':r.status==='fail'?'pill-fail':r.status==='running'?'pill-running':'pill-pending';
+      var pillLabel = r.status==='pass'?'Pass ✓':r.status==='fail'?'Fail ✗':r.status==='running'?'Running...':'Pending';
+      var detailHtml = r.detail ? '<div class="test-detail success">'+r.detail+'</div>' : '';
+      var errorHtml  = r.error  ? '<div class="test-detail error">✗ '+r.error+'</div>' : '';
+      html +=
+        '<div class="test-card '+cardClass+'">'+
+          '<div class="test-meta">'+
+            '<span class="test-num">#'+test.id+'</span>'+
+            '<span class="pill pill-cat">'+cat+'</span>'+
+            '<span class="pill '+pillClass+'">'+pillLabel+'</span>'+
+          '</div>'+
+          '<div class="test-name">'+test.name+'</div>'+
+          detailHtml + errorHtml +
+        '</div>';
+    });
+  });
+  document.getElementById('results-list').innerHTML = html;
+}
+
+function exportReport() {
+  var pass = TESTS.filter(function(t){return results[t.id].status==='pass';}).length;
+  var fail = TESTS.filter(function(t){return results[t.id].status==='fail';}).length;
+  var report = '═══════════════════════════════════════\n';
+  report += 'THE INNER SANCTUM — ORACLE TIER LIST TEST REPORT\n';
+  report += 'Generated: '+new Date().toLocaleString()+'\n';
+  report += '═══════════════════════════════════════\n\n';
+  report += 'SUMMARY: '+pass+'/'+TESTS.length+' passed ('+Math.round(pass/TESTS.length*100)+'%) · '+fail+' failed\n\n';
+  TESTS.forEach(function(t) {
+    var r = results[t.id];
+    var s = r.status==='pass'?'PASS':r.status==='fail'?'FAIL':'PENDING';
+    report += '['+s+'] #'+t.id+' ['+t.category+'] '+t.name+'\n';
+    if (r.detail) report += '  Result: '+r.detail+'\n';
+    if (r.error)  report += '  Error: '+r.error+'\n';
+    report += '\n';
+  });
+  var blob = new Blob([report], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'InnerSanctum_TiersTests_'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+renderList();
+updateStats();
+</script>
+</body>
+</html>
