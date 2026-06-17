@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tier List — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f2f1ef;
+  --bg2:#e8e7e4;
+  --surface:#ffffff;
+  --border:#d4d2ce;
+  --border2:#b8b5b0;
+  --gold:#b8921a;
+  --amber:#c8780a;
+  --glow:#f5c842;
+  --ink:#1c1c1a;
+  --muted:#4a4a46;
+  --dim:#7a7a76;
+  --green:#2e7d32;
+  --red:#8a2020;
+  --blue:#1565c0;
+  --r:6px;
+}
+
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:#c9a84c;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* ── SETTINGS BAR ── */
+.settings-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px}
+.settings-inner{max-width:960px;margin:0 auto;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.setting-group{display:flex;flex-direction:column;gap:5px}
+.setting-group label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.setting-group select{background:var(--surface);border:1px solid var(--border);color:var(--ink);font-family:'Lora',serif;font-size:13px;padding:7px 28px 7px 10px;border-radius:var(--r);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a08550'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color 0.15s}
+.setting-group select:focus{outline:none;border-color:var(--gold)}
+.generate-btn{padding:9px 22px;background:var(--gold);color:#0a0600;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border:none;border-radius:var(--r);cursor:pointer;letter-spacing:0.5px;transition:opacity 0.15s;white-space:nowrap}
+.generate-btn:hover{opacity:0.85}
+.generate-btn:disabled{opacity:0.4;cursor:not-allowed}
+.auction-link-btn{padding:9px 18px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Cinzel',serif;font-size:12px;border-radius:var(--r);cursor:pointer;letter-spacing:0.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s}
+.auction-link-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── CONNECTOR BANNER ── */
+.connector-banner{background:rgba(184,146,26,0.06);border-bottom:1px solid rgba(184,146,26,0.2);padding:10px 24px;display:none}
+.connector-banner.show{display:block}
+.connector-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.connector-icon{font-size:16px}
+.connector-text{font-size:12px;color:var(--muted);font-style:italic;flex:1}
+.connector-text strong{color:var(--gold);font-style:normal}
+
+/* ── POSITION TABS ── */
+.pos-nav{display:flex;gap:0;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;max-width:100%}
+.pos-tab{padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;color:var(--dim);white-space:nowrap;transition:color 0.15s;user-select:none;display:flex;align-items:center;gap:6px}
+.pos-tab:hover{color:var(--muted)}
+.pos-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.pos-dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:0.6}
+
+/* ── MAIN CONTENT ── */
+.main{max-width:960px;margin:0 auto;padding:24px}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 20px}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.4}
+.empty-title{font-family:'Cinzel',serif;font-size:18px;color:var(--muted);margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--dim);line-height:1.7}
+
+/* ── LOADING STATE ── */
+.loading-state{text-align:center;padding:60px 20px;display:none}
+.loading-state.show{display:block}
+.loading-dots{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+.loading-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);animation:pulse 1.2s infinite}
+.loading-dot:nth-child(2){animation-delay:0.2s}
+.loading-dot:nth-child(3){animation-delay:0.4s}
+@keyframes pulse{0%,100%{opacity:0.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+.loading-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:1px;margin-bottom:6px}
+.loading-sub{font-size:12px;color:var(--dim);font-style:italic}
+
+/* ── TIER SECTION ── */
+.tier-section{display:none}
+.tier-section.show{display:block}
+
+.tier-block{margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+.tier-label-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.tier-label{font-family:'Cinzel',serif;font-size:12px;font-weight:600;letter-spacing:1px}
+.tier-sublabel{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:1px}
+.tier-count{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);margin-left:auto}
+
+/* Tier colors */
+.tier-1 .tier-label-row{background:rgba(184,146,26,0.08);border-bottom-color:rgba(184,146,26,0.2)}
+.tier-1 .tier-label{color:var(--gold)}
+.tier-2 .tier-label-row{background:rgba(21,101,192,0.05);border-bottom-color:rgba(21,101,192,0.15)}
+.tier-2 .tier-label{color:var(--blue)}
+.tier-3 .tier-label-row{background:rgba(46,125,50,0.05);border-bottom-color:rgba(46,125,50,0.15)}
+.tier-3 .tier-label{color:var(--green)}
+.tier-4 .tier-label-row{background:rgba(120,100,60,0.05);border-bottom-color:rgba(120,100,60,0.12)}
+.tier-4 .tier-label{color:var(--amber)}
+.tier-5 .tier-label-row{background:rgba(100,100,100,0.04);border-bottom-color:rgba(100,100,100,0.1)}
+.tier-5 .tier-label{color:var(--dim)}
+
+/* ── PLAYER CARDS GRID ── */
+.tier-players{display:flex;flex-wrap:wrap;gap:8px;padding:12px 12px;background:var(--surface);min-height:56px}
+.tier-players.drag-over{background:rgba(184,146,26,0.04);outline:2px dashed rgba(184,146,26,0.3);outline-offset:-2px}
+
+.player-card{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  cursor:grab;
+  user-select:none;
+  transition:box-shadow 0.15s,border-color 0.15s,transform 0.1s;
+  position:relative;
+}
+.player-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.player-card:active{cursor:grabbing}
+.player-card.dragging{opacity:0.45;transform:scale(0.97)}
+.player-card.drag-target{border-color:var(--gold);background:rgba(184,146,26,0.04)}
+
+.pc-pos{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;flex-shrink:0}
+.pc-pos.QB{background:rgba(21,101,192,0.12);color:#1565c0;border:1px solid rgba(21,101,192,0.25)}
+.pc-pos.RB{background:rgba(46,125,50,0.12);color:#2e7d32;border:1px solid rgba(46,125,50,0.25)}
+.pc-pos.WR{background:rgba(184,146,26,0.12);color:var(--gold);border:1px solid rgba(184,146,26,0.25)}
+.pc-pos.TE{background:rgba(200,120,10,0.12);color:var(--amber);border:1px solid rgba(200,120,10,0.25)}
+.pc-pos.K{background:rgba(120,100,60,0.12);color:var(--muted);border:1px solid rgba(120,100,60,0.25)}
+.pc-pos.DEF{background:rgba(138,32,32,0.12);color:var(--red);border:1px solid rgba(138,32,32,0.25)}
+
+.pc-name{font-size:13px;color:var(--ink);white-space:nowrap}
+.pc-team{font-size:10px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+.pc-adp{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;background:var(--bg2);padding:1px 5px;border-radius:3px}
+.pc-drag-handle{color:var(--dim);font-size:11px;opacity:0.4;margin-left:2px}
+
+/* ── ORACLE BOX ── */
+.oracle-box{background:rgba(184,146,26,0.05);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:24px}
+.oracle-box-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+
+/* ── PRICE SHEET CONNECTOR ── */
+.ps-connector{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:24px;display:none}
+.ps-connector.show{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.ps-connector-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+.ps-connector-body{flex:1}
+.ps-connector-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:4px;letter-spacing:0.5px}
+.ps-connector-text{font-size:13px;color:var(--muted);line-height:1.6}
+.ps-connector-btn{align-self:center;padding:8px 16px;background:var(--gold);color:#0a0600;font-family:'Cinzel',serif;font-size:12px;font-weight:600;border:none;border-radius:var(--r);cursor:pointer;text-decoration:none;white-space:nowrap;transition:opacity 0.15s}
+.ps-connector-btn:hover{opacity:0.85}
+
+/* ── RESET BTN ── */
+.reset-row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.reset-btn{padding:8px 18px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Lora',serif;font-size:13px;border-radius:var(--r);cursor:pointer;transition:all 0.15s}
+.reset-btn:hover{border-color:rgba(138,32,32,0.4);color:var(--red)}
+.save-note{font-size:11px;color:var(--dim);font-style:italic}
+
+/* ── TIER LABELS COPY ── */
+.tier-names-grid{display:none;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.tier-names-grid.show{display:grid}
+.tier-name-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;text-align:center}
+.tier-name-num{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:3px}
+.tier-name-label{font-family:'Cinzel',serif;font-size:11px;color:var(--ink)}
+
+@media(max-width:600px){
+  .settings-inner{gap:10px}
+  .pos-nav{padding:0 16px}
+  .main{padding:16px}
+  .tier-names-grid{grid-template-columns:repeat(3,1fr)}
+  .pick-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">🏆 Oracle Tier List</h1>
+  </div>
+  <div class="hdr-right">
+    <span class="lock-badge">🔒 Acolyte Feature</span>
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<!-- SETTINGS BAR -->
+<div class="settings-bar">
+  <div class="settings-inner">
+    <div class="setting-group">
+      <label>Scoring Format</label>
+      <select id="settingScoring">
+        <option value="ppr">PPR</option>
+        <option value="half">Half PPR</option>
+        <option value="standard">Standard</option>
+      </select>
+    </div>
+    <div class="setting-group">
+      <label>League Format</label>
+      <select id="settingFormat">
+        <option value="standard">Standard (1 QB)</option>
+        <option value="superflex">Superflex / 2QB</option>
+      </select>
+    </div>
+    <div class="setting-group">
+      <label>Budget</label>
+      <select id="settingBudget">
+        <option value="200">$200 cap</option>
+        <option value="100">$100 cap</option>
+        <option value="250">$250 cap</option>
+        <option value="300">$300 cap</option>
+      </select>
+    </div>
+    <button class="generate-btn" id="generateBtn" onclick="generateTiers()">🔮 Generate Tier List</button>
+    <a href="/auction" class="auction-link-btn">⚔️ Open Price Sheet</a>
+  </div>
+</div>
+
+<!-- CONNECTOR BANNER -->
+<div class="connector-banner" id="connectorBanner">
+  <div class="connector-inner">
+    <span class="connector-icon">⚔️</span>
+    <span class="connector-text">
+      <strong>Tier List + Price Sheet:</strong> Your Tier 1 players are your top auction targets. If you're running RB Heavy and Tier 1 has 5 RBs, those are your $30+ priority bids. Open the War Room to build your full price sheet.
+    </span>
+    <a href="/auction" class="nav-link" style="white-space:nowrap;font-size:12px">Build Price Sheet →</a>
+  </div>
+</div>
+
+<!-- POSITION TABS -->
+<div class="pos-nav" id="posNav" style="display:none">
+  <div class="pos-tab active" id="ptab-QB" onclick="showPos('QB')"><span class="pos-dot"></span>QB</div>
+  <div class="pos-tab" id="ptab-RB" onclick="showPos('RB')"><span class="pos-dot"></span>RB</div>
+  <div class="pos-tab" id="ptab-WR" onclick="showPos('WR')"><span class="pos-dot"></span>WR</div>
+  <div class="pos-tab" id="ptab-TE" onclick="showPos('TE')"><span class="pos-dot"></span>TE</div>
+  <div class="pos-tab" id="ptab-K" onclick="showPos('K')"><span class="pos-dot"></span>K</div>
+  <div class="pos-tab" id="ptab-DEF" onclick="showPos('DEF')"><span class="pos-dot"></span>DEF</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Empty state -->
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">🔮</div>
+    <div class="empty-title">The Oracle awaits your league settings</div>
+    <div class="empty-sub">Select your scoring format and league type above,<br>then generate your personalized tier list.</div>
+  </div>
+
+  <!-- Loading state -->
+  <div class="loading-state" id="loadingState">
+    <div class="loading-dots">
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+      <div class="loading-dot"></div>
+    </div>
+    <div class="loading-title">The Oracle is consulting the ancient scrolls...</div>
+    <div class="loading-sub" id="loadingSub">Pulling ADP data from the Sleeper database</div>
+  </div>
+
+  <!-- Oracle briefing (shown after generation) -->
+  <div class="oracle-box" id="oracleBriefing" style="display:none">
+    <div class="oracle-box-label">🔮 Oracle Tier Briefing</div>
+    <div class="oracle-box-text" id="oracleBriefingText"></div>
+  </div>
+
+  <!-- Tier legend -->
+  <div class="tier-names-grid" id="tierLegend">
+    <div class="tier-name-card"><div class="tier-name-num">TIER 1</div><div class="tier-name-label">The Untouchables</div></div>
+    <div class="tier-name-card"><div class="tier-name-num">TIER 2</div><div class="tier-name-label">Elite Starters</div></div>
+    <div class="tier-name-card"><div class="tier-name-num">TIER 3</div><div class="tier-name-label">Solid Starters</div></div>
+    <div class="tier-name-card"><div class="tier-name-num">TIER 4</div><div class="tier-name-label">Streamers &amp; Sleepers</div></div>
+    <div class="tier-name-card"><div class="tier-name-num">TIER 5</div><div class="tier-name-label">Lottery Tickets</div></div>
+  </div>
+
+  <!-- Price Sheet Connector -->
+  <div class="ps-connector" id="psConnector">
+    <span class="ps-connector-icon">⚔️</span>
+    <div class="ps-connector-body">
+      <div class="ps-connector-title">Connect to Your Price Sheet</div>
+      <div class="ps-connector-text" id="psConnectorText">Your Tier 1 players are your top auction targets — budget your highest dollar amounts for them. Head to the Auction War Room to build your full personalized price sheet.</div>
+    </div>
+    <a href="/auction" class="ps-connector-btn">Build Price Sheet →</a>
+  </div>
+
+  <!-- Tier sections (one per position, built by JS) -->
+  <div id="tierQB" class="tier-section"></div>
+  <div id="tierRB" class="tier-section"></div>
+  <div id="tierWR" class="tier-section"></div>
+  <div id="tierTE" class="tier-section"></div>
+  <div id="tierK"  class="tier-section"></div>
+  <div id="tierDEF" class="tier-section"></div>
+
+  <!-- Reset row -->
+  <div class="reset-row" id="resetRow" style="display:none">
+    <button class="reset-btn" onclick="resetTiers()">↺ Reset to Oracle Defaults</button>
+    <span class="save-note">Drag players between tiers to customize. Changes are saved in this session.</span>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+var tiers = {}; // { QB: { 1:[players], 2:[players], ... }, ... }
+var originalTiers = {};
+var currentPos = 'QB';
+var allPlayers = [];
+var generated = false;
+
+var TIER_NAMES = {
+  1: 'The Untouchables',
+  2: 'Elite Starters',
+  3: 'Solid Starters',
+  4: 'Streamers & Sleepers',
+  5: 'Lottery Tickets'
+};
+
+var POS_LIST = ['QB','RB','WR','TE','K','DEF'];
+
+// ADP-based player pool (seeded from Sleeper data)
+var PLAYER_POOL = {
+  QB: [
+    {name:'Lamar Jackson',team:'BAL',adp:1.2},{name:'Josh Allen',team:'BUF',adp:2.1},
+    {name:'Jalen Hurts',team:'PHI',adp:3.8},{name:'Joe Burrow',team:'CIN',adp:7.4},
+    {name:'C.J. Stroud',team:'HOU',adp:10.2},{name:'Dak Prescott',team:'DAL',adp:11.8},
+    {name:'Anthony Richardson',team:'IND',adp:14.5},{name:'Tua Tagovailoa',team:'MIA',adp:16.3},
+    {name:'Jordan Love',team:'GB',adp:19.1},{name:'Sam Darnold',team:'MIN',adp:21.6},
+    {name:'Kyler Murray',team:'ARI',adp:24.4},{name:'Baker Mayfield',team:'TB',adp:27.3},
+    {name:'Derek Carr',team:'NO',adp:31.2},{name:'Russell Wilson',team:'PIT',adp:34.8},
+    {name:'Justin Fields',team:'PIT',adp:38.5},{name:'Geno Smith',team:'SEA',adp:42.1},
+    {name:'Caleb Williams',team:'CHI',adp:46.0},{name:'Jayden Daniels',team:'WAS',adp:49.7},
+    {name:'Drake Maye',team:'NE',adp:55.3},{name:'Bo Nix',team:'DEN',adp:61.2}
+  ],
+  RB: [
+    {name:'Christian McCaffrey',team:'SF',adp:1.0},{name:'Breece Hall',team:'NYJ',adp:2.9},
+    {name:'Bijan Robinson',team:'ATL',adp:4.2},{name:'Jahmyr Gibbs',team:'DET',adp:6.3},
+    {name:'Jonathan Taylor',team:'IND',adp:8.8},{name:'Saquon Barkley',team:'PHI',adp:11.1},
+    {name:'De\'Von Achane',team:'MIA',adp:12.7},{name:'Josh Jacobs',team:'GB',adp:14.4},
+    {name:'Tony Pollard',team:'TEN',adp:17.8},{name:'Rachaad White',team:'TB',adp:20.5},
+    {name:'James Cook',team:'BUF',adp:23.1},{name:'Kyren Williams',team:'LAR',adp:25.6},
+    {name:'Joe Mixon',team:'HOU',adp:28.9},{name:'Travis Etienne',team:'JAX',adp:31.4},
+    {name:'Derrick Henry',team:'BAL',adp:33.7},{name:'Rhamondre Stevenson',team:'NE',adp:37.2},
+    {name:'Aaron Jones',team:'MIN',adp:40.8},{name:'Isiah Pacheco',team:'KC',adp:43.5},
+    {name:'D\'Andre Swift',team:'CHI',adp:47.1},{name:'Zamir White',team:'LV',adp:50.6},
+    {name:'Brian Robinson',team:'WAS',adp:54.3},{name:'Zach Charbonnet',team:'SEA',adp:57.9},
+    {name:'David Montgomery',team:'DET',adp:61.2},{name:'Jaleel McLaughlin',team:'DEN',adp:65.8}
+  ],
+  WR: [
+    {name:'CeeDee Lamb',team:'DAL',adp:1.8},{name:'Ja\'Marr Chase',team:'CIN',adp:3.1},
+    {name:'Tyreek Hill',team:'MIA',adp:5.6},{name:'Justin Jefferson',team:'MIN',adp:6.9},
+    {name:'Davante Adams',team:'LV',adp:9.3},{name:'Stefon Diggs',team:'BUF',adp:12.4},
+    {name:'A.J. Brown',team:'PHI',adp:13.8},{name:'Amon-Ra St. Brown',team:'DET',adp:15.2},
+    {name:'DeVonta Smith',team:'PHI',adp:17.6},{name:'Drake London',team:'ATL',adp:19.4},
+    {name:'Jaylen Waddle',team:'MIA',adp:22.1},{name:'Chris Olave',team:'NO',adp:24.8},
+    {name:'Puka Nacua',team:'LAR',adp:27.3},{name:'Mike Evans',team:'TB',adp:29.7},
+    {name:'Tee Higgins',team:'CIN',adp:32.5},{name:'Terry McLaurin',team:'WAS',adp:35.1},
+    {name:'Garrett Wilson',team:'NYJ',adp:38.8},{name:'Christian Kirk',team:'JAX',adp:41.9},
+    {name:'Zay Flowers',team:'BAL',adp:44.3},{name:'Tank Dell',team:'HOU',adp:47.6},
+    {name:'George Pickens',team:'PIT',adp:50.2},{name:'Michael Pittman',team:'IND',adp:53.8},
+    {name:'Keenan Allen',team:'CHI',adp:57.4},{name:'Calvin Ridley',team:'TEN',adp:60.1}
+  ],
+  TE: [
+    {name:'Travis Kelce',team:'KC',adp:4.5},{name:'Sam LaPorta',team:'DET',adp:9.2},
+    {name:'Mark Andrews',team:'BAL',adp:13.7},{name:'Trey McBride',team:'ARI',adp:16.8},
+    {name:'Dallas Goedert',team:'PHI',adp:21.4},{name:'Evan Engram',team:'JAX',adp:26.9},
+    {name:'David Njoku',team:'CLE',adp:32.1},{name:'Kyle Pitts',team:'ATL',adp:37.8},
+    {name:'Jake Ferguson',team:'DAL',adp:44.2},{name:'Cole Kmet',team:'CHI',adp:50.6},
+    {name:'Tucker Kraft',team:'GB',adp:57.3},{name:'Dalton Kincaid',team:'BUF',adp:63.1},
+    {name:'Isaiah Likely',team:'BAL',adp:68.9},{name:'Chigoziem Okonkwo',team:'TEN',adp:74.2}
+  ],
+  K: [
+    {name:'Justin Tucker',team:'BAL',adp:2.1},{name:'Evan McPherson',team:'CIN',adp:4.8},
+    {name:'Tyler Bass',team:'BUF',adp:7.2},{name:'Brandon Aubrey',team:'DAL',adp:9.6},
+    {name:'Jake Elliott',team:'PHI',adp:12.3},{name:'Harrison Butker',team:'KC',adp:15.1},
+    {name:'Jake Moody',team:'SF',adp:18.7},{name:'Cameron Dicker',team:'LAC',adp:22.4},
+    {name:'Greg Zuerlein',team:'NYJ',adp:26.9},{name:'Wil Lutz',team:'DEN',adp:31.5}
+  ],
+  DEF: [
+    {name:'San Francisco 49ers',team:'SF',adp:3.2},{name:'Dallas Cowboys',team:'DAL',adp:6.7},
+    {name:'Baltimore Ravens',team:'BAL',adp:9.1},{name:'New England Patriots',team:'NE',adp:12.6},
+    {name:'Philadelphia Eagles',team:'PHI',adp:15.4},{name:'Buffalo Bills',team:'BUF',adp:18.9},
+    {name:'Kansas City Chiefs',team:'KC',adp:22.3},{name:'Cleveland Browns',team:'CLE',adp:26.8},
+    {name:'Pittsburgh Steelers',team:'PIT',adp:30.5},{name:'Miami Dolphins',team:'MIA',adp:34.1}
+  ]
+};
+
+// Tier breakpoints by position (index ranges into sorted ADP list)
+var TIER_BREAKS = {
+  QB:  [3, 7, 12, 16, 20],
+  RB:  [5, 10, 15, 20, 24],
+  WR:  [5, 10, 16, 20, 24],
+  TE:  [3,  6,  9, 12, 14],
+  K:   [2,  4,  7, 10, 10],
+  DEF: [2,  4,  7, 10, 10]
+};
+
+// Superflex QB bumps: top 2 QBs move into Tier 1 company
+var SUPERFLEX_QB_BREAKS = [5, 9, 14, 18, 20];
+
+// Scoring adjustments (bump certain player ADP for PPR)
+var PPR_BUMPS = ['Christian McCaffrey','Breece Hall','Ja\'Marr Chase','Tyreek Hill'];
+var STD_BUMPS = ['Derrick Henry','David Montgomery','Jonathan Taylor'];
+
+// ═══════════════════════════════════════════════════════════
+// GENERATE TIERS
+// ═══════════════════════════════════════════════════════════
+function generateTiers() {
+  var scoring = document.getElementById('settingScoring').value;
+  var format  = document.getElementById('settingFormat').value;
+  var budget  = parseInt(document.getElementById('settingBudget').value);
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loadingState').classList.add('show');
+  document.getElementById('generateBtn').disabled = true;
+
+  var msgs = [
+    'Pulling ADP data from the Sleeper database',
+    'Applying scoring format adjustments',
+    'Consulting 38 seasons of wisdom',
+    'Carving the final tier breaks'
+  ];
+  var msgIdx = 0;
+  var msgInterval = setInterval(function(){
+    msgIdx = (msgIdx + 1) % msgs.length;
+    document.getElementById('loadingSub').textContent = msgs[msgIdx];
+  }, 800);
+
+  // Simulate async generation with slight delay for effect
+  setTimeout(function(){
+    clearInterval(msgInterval);
+
+    // Build tiers per position
+    tiers = {};
+    POS_LIST.forEach(function(pos){
+      var pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
+
+      // Apply scoring adjustments to ADP
+      if (scoring === 'ppr') {
+        pool.forEach(function(p){
+          if (PPR_BUMPS.includes(p.name)) p.adp = Math.max(1, p.adp - 1.5);
+        });
+      } else if (scoring === 'standard') {
+        pool.forEach(function(p){
+          if (STD_BUMPS.includes(p.name)) p.adp = Math.max(1, p.adp - 1.5);
+        });
+      }
+
+      // Superflex QB bump
+      var breaks = pos === 'QB' && format === 'superflex'
+        ? SUPERFLEX_QB_BREAKS
+        : TIER_BREAKS[pos];
+
+      pool.sort(function(a,b){ return a.adp - b.adp; });
+
+      tiers[pos] = {1:[],2:[],3:[],4:[],5:[]};
+      pool.forEach(function(p, i){
+        var tier = 5;
+        if (i < breaks[0])      tier = 1;
+        else if (i < breaks[1]) tier = 2;
+        else if (i < breaks[2]) tier = 3;
+        else if (i < breaks[3]) tier = 4;
+        else                    tier = 5;
+        tiers[pos][tier].push(p);
+      });
+    });
+
+    // Deep copy for reset
+    originalTiers = JSON.parse(JSON.stringify(tiers));
+
+    document.getElementById('loadingState').classList.remove('show');
+    document.getElementById('generateBtn').disabled = false;
+
+    // Show UI
+    document.getElementById('posNav').style.display = 'flex';
+    document.getElementById('connectorBanner').classList.add('show');
+    document.getElementById('oracleBriefing').style.display = 'block';
+    document.getElementById('tierLegend').classList.add('show');
+    document.getElementById('psConnector').classList.add('show');
+    document.getElementById('resetRow').style.display = 'flex';
+
+    // Oracle briefing text
+    var briefings = {
+      ppr_standard:   'In PPR scoring, volume is king. Pass-catching backs and slot receivers ascend. Your Tier 1 contains the scarcest commodities in the game — secure one before your rivals can bid.',
+      ppr_superflex:  'Superflex PPR — the most expensive format in fantasy football. Two elite QBs command 30-40% of your budget. Your Tier 1 QB tier is wider than standard leagues. Do not enter the room without a plan for both signal callers.',
+      half_standard:  'Half PPR rewards efficiency alongside volume. Your Tier 1 players offer both. Watch Tier 3 carefully — this is where Half PPR creates the most value inefficiency for the prepared manager.',
+      half_superflex: 'Half PPR Superflex demands QB priority. Tier 1 is stacked with dual threats. The smart manager targets one elite QB and pivots to the Tier 2 depth at running back.',
+      standard_standard: 'Standard scoring. Workhorse running backs dominate your Tier 1 and Tier 2. If a top RB slips into the second round of nominations, act decisively — the floor on elite standard backs is higher than your rivals believe.',
+      standard_superflex:'Standard Superflex. The ground game still rules, but elite QBs command a premium no manager can ignore. Your Tier 1 is a mix of mobile QBs and workhorse backs — spend accordingly.'
+    };
+    var format2 = format === 'superflex' ? 'superflex' : 'standard';
+    var key = scoring + '_' + format2;
+    document.getElementById('oracleBriefingText').textContent =
+      briefings[key] || briefings['ppr_standard'];
+
+    // Connector text
+    var stratHints = {
+      ppr:      'Running RB Heavy? Your two top RB targets should come from RB Tier 1. Running WR Heavy? Lock in two Tier 1 receivers before the room pivots.',
+      half:     'In Half PPR, Tier 2 WRs often outperform their cost. If you\'re WR Heavy, use the Tier 2 list to find your second and third receiver.',
+      standard: 'Standard leagues reward Tier 1 RB investment more than any other strategy. If two Tier 1 RBs are available, bid aggressively on both.'
+    };
+    document.getElementById('psConnectorText').textContent =
+      stratHints[scoring] || stratHints['ppr'];
+
+    generated = true;
+    renderPos('QB');
+    showPos('QB');
+
+  }, 2200);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER A POSITION'S TIER BLOCKS
+// ═══════════════════════════════════════════════════════════
+function renderPos(pos) {
+  var container = document.getElementById('tier' + pos);
+  container.innerHTML = '';
+  var maxTier = (pos === 'K' || pos === 'DEF') ? 3 : 5;
+
+  for (var t = 1; t <= maxTier; t++) {
+    var players = tiers[pos][t] || [];
+    // Skip empty tiers 4-5 for K/DEF
+    if (!players.length && t > 3) continue;
+
+    var block = document.createElement('div');
+    block.className = 'tier-block tier-' + t;
+    block.dataset.pos = pos;
+    block.dataset.tier = t;
+
+    var labelRow = document.createElement('div');
+    labelRow.className = 'tier-label-row';
+    labelRow.innerHTML =
+      '<span class="tier-label">Tier ' + t + '</span>' +
+      '<span class="tier-sublabel">' + TIER_NAMES[t] + '</span>' +
+      '<span class="tier-count">' + players.length + ' player' + (players.length !== 1 ? 's' : '') + '</span>';
+    block.appendChild(labelRow);
+
+    var playersDiv = document.createElement('div');
+    playersDiv.className = 'tier-players';
+    playersDiv.dataset.pos = pos;
+    playersDiv.dataset.tier = t;
+
+    players.forEach(function(p){
+      playersDiv.appendChild(makeCard(p, pos));
+    });
+
+    setupDrop(playersDiv, pos, t);
+    block.appendChild(playersDiv);
+    container.appendChild(block);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAKE PLAYER CARD
+// ═══════════════════════════════════════════════════════════
+function makeCard(player, pos) {
+  var card = document.createElement('div');
+  card.className = 'player-card';
+  card.draggable = true;
+  card.dataset.name = player.name;
+  card.dataset.pos = pos;
+
+  card.innerHTML =
+    '<span class="pc-pos ' + pos + '">' + pos + '</span>' +
+    '<span class="pc-name">' + player.name + '</span>' +
+    '<span class="pc-team">' + player.team + '</span>' +
+    '<span class="pc-adp">ADP ' + player.adp.toFixed(1) + '</span>' +
+    '<span class="pc-drag-handle">⠿</span>';
+
+  // Drag events
+  card.addEventListener('dragstart', function(e){
+    card.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      name: player.name, team: player.team, adp: player.adp, pos: pos
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', function(){
+    card.classList.remove('dragging');
+  });
+
+  return card;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAG & DROP — DROP ZONE SETUP
+// ═══════════════════════════════════════════════════════════
+function setupDrop(zone, pos, tier) {
+  zone.addEventListener('dragover', function(e){
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', function(){
+    zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', function(e){
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    var data;
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch(err){ return; }
+    if (!data || data.pos !== pos) return; // Only allow same-position moves
+
+    // Remove from old tier
+    var oldTier = null;
+    for (var t = 1; t <= 5; t++) {
+      if (!tiers[pos][t]) continue;
+      var idx = tiers[pos][t].findIndex(function(p){ return p.name === data.name; });
+      if (idx !== -1) {
+        tiers[pos][t].splice(idx, 1);
+        oldTier = t;
+        break;
+      }
+    }
+    if (oldTier === null) return;
+
+    // Add to new tier
+    if (!tiers[pos][tier]) tiers[pos][tier] = [];
+    tiers[pos][tier].push({ name: data.name, team: data.team, adp: data.adp });
+
+    renderPos(pos);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SWITCH POSITION TAB
+// ═══════════════════════════════════════════════════════════
+function showPos(pos) {
+  currentPos = pos;
+
+  POS_LIST.forEach(function(p){
+    document.getElementById('ptab-' + p).classList.toggle('active', p === pos);
+    var section = document.getElementById('tier' + p);
+    section.classList.toggle('show', p === pos);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESET TIERS
+// ═══════════════════════════════════════════════════════════
+function resetTiers() {
+  if (!generated) return;
+  if (!confirm('Reset all tiers to Oracle defaults? Your custom moves will be lost.')) return;
+  tiers = JSON.parse(JSON.stringify(originalTiers));
+  renderPos(currentPos);
+}
+</script>
+</body>
+</html>
