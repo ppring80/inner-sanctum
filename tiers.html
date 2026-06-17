@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -116,11 +117,43 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .reset-btn{padding:8px 18px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Lora',serif;font-size:13px;border-radius:var(--r);cursor:pointer;transition:all 0.15s}
 .reset-btn:hover{border-color:rgba(138,32,32,0.4);color:var(--red)}
 .save-note{font-size:11px;color:var(--dim);font-style:italic}
+/* ── HOW TO USE HELP PANEL ── */
+.help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
+.help-toggle{width:100%;background:transparent;border:none;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left;transition:background 0.15s}
+.help-toggle:hover{background:rgba(184,146,26,0.05)}
+.help-chevron{font-size:13px;transition:transform 0.3s;color:var(--gold);flex-shrink:0}
+.help-chevron.open{transform:rotate(180deg)}
+.help-body{display:none;padding:4px 18px 20px}
+.help-body.open{display:block}
+.help-section{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin:18px 0 10px}
+.help-item{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(184,146,26,0.1)}
+.help-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.help-item-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.help-item-body{}
+.help-item-title{font-family:'Cinzel',serif;font-size:13px;color:var(--ink);margin-bottom:3px}
+.help-item-text{font-size:13px;color:var(--muted);line-height:1.7}
+.help-item-text strong{color:var(--ink)}
+.help-callout{background:rgba(184,146,26,0.07);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 16px;margin:14px 0;font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+.help-tier-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+.help-tier-pill{border-radius:var(--r);padding:10px 12px;font-size:12px;line-height:1.5}
+.help-tier-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;margin-bottom:2px}
+.htp-1{background:rgba(184,146,26,0.08);border:1px solid rgba(184,146,26,0.2);color:var(--gold)}
+.htp-1 strong{color:var(--gold)}
+.htp-2{background:rgba(21,101,192,0.06);border:1px solid rgba(21,101,192,0.15);color:var(--blue)}
+.htp-2 strong{color:var(--blue)}
+.htp-3{background:rgba(46,125,50,0.06);border:1px solid rgba(46,125,50,0.15);color:var(--green)}
+.htp-3 strong{color:var(--green)}
+.htp-4{background:rgba(200,120,10,0.06);border:1px solid rgba(200,120,10,0.15);color:var(--amber)}
+.htp-4 strong{color:var(--amber)}
+.htp-5{background:rgba(100,100,100,0.05);border:1px solid rgba(100,100,100,0.12);color:var(--dim)}
+.htp-5 strong{color:var(--dim)}
+
 @media(max-width:600px){
   .settings-inner{gap:10px}
   .tier-legend{grid-template-columns:repeat(3,1fr)}
   .main{padding:16px}
   .pos-tab{padding:10px 12px;font-size:10px}
+  .help-tier-grid{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
@@ -193,6 +226,100 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </div>
 
 <div class="main">
+
+  <!-- HOW TO USE HELP PANEL -->
+  <div class="help-panel">
+    <button class="help-toggle" onclick="toggleHelp()">
+      📖 How to Use the Oracle Tier List — A Beginner's Guide
+      <span class="help-chevron" id="helpChevron">▼</span>
+    </button>
+    <div class="help-body" id="helpBody">
+
+      <div class="help-section">What is a Tier List?</div>
+      <div class="help-item">
+        <span class="help-item-icon">🏆</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Think of it like ranking players from best to worst</div>
+          <div class="help-item-text">A tier list groups players into buckets based on how valuable they are in fantasy football. Instead of saying "Player A is better than Player B," tiers say "these 8 players are all elite — grab any one of them and you're in great shape."</div>
+        </div>
+      </div>
+
+      <div class="help-section">What Do the Tiers Mean?</div>
+      <div class="help-tier-grid">
+        <div class="help-tier-pill htp-1"><strong>Tier 1 — The Untouchables</strong>The best players in the game. If you can get one, spend whatever it takes.</div>
+        <div class="help-tier-pill htp-2"><strong>Tier 2 — Elite Starters</strong>Not quite Tier 1, but still players who can win you your league. Great value targets.</div>
+        <div class="help-tier-pill htp-3"><strong>Tier 3 — Solid Starters</strong>Reliable players who start every week. Good for filling out your roster.</div>
+        <div class="help-tier-pill htp-4"><strong>Tier 4 — Streamers &amp; Sleepers</strong>Players who might surprise you. Lower cost, higher risk — great for late in the draft.</div>
+        <div class="help-tier-pill htp-5"><strong>Tier 5 — Lottery Tickets</strong>Long shots. You might get lucky, you might not. Draft these last if at all.</div>
+      </div>
+
+      <div class="help-section">The Settings Bar</div>
+      <div class="help-item">
+        <span class="help-item-icon">📋</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Scoring Format — PPR, Half PPR, or Standard</div>
+          <div class="help-item-text">This is how your league awards points. <strong>PPR</strong> means a player gets a point every time they catch the ball — so receivers and pass-catching running backs become way more valuable. <strong>Standard</strong> means only touchdowns and yards count. <strong>Half PPR</strong> is in the middle — catches are worth half a point each.</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <span class="help-item-icon">🎳</span>
+        <div class="help-item-body">
+          <div class="help-item-title">League Format — Standard vs Superflex</div>
+          <div class="help-item-text"><strong>Standard</strong> means your team starts one quarterback. <strong>Superflex</strong> means you can start two — which makes quarterbacks much more valuable. If your league is Superflex, QBs jump up big in the tier list, because everyone needs two of them.</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <span class="help-item-icon">💰</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Budget — How much money your league gives you</div>
+          <div class="help-item-text">In an auction draft, every manager gets the same amount of fake money to bid on players. Most leagues use <strong>$200</strong>. Set this to match your league so the tier list lines up with your price sheet in the War Room.</div>
+        </div>
+      </div>
+
+      <div class="help-section">Using the Tier List</div>
+      <div class="help-item">
+        <span class="help-item-icon">🔮</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Step 1 — Hit Generate Tier List</div>
+          <div class="help-item-text">Once you've set your scoring format and league format, hit the gold <strong>Generate Tier List</strong> button. The Oracle will build your personalized tier list in a few seconds, adjusting player rankings based on your exact league settings.</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <span class="help-item-icon">📑</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Step 2 — Browse positions using the tabs</div>
+          <div class="help-item-text">After generating, click the <strong>QB, RB, WR, TE, K, DEF</strong> tabs to see each position's tiers. Each position has its own separate list — so Tier 1 QBs are the best quarterbacks, Tier 1 RBs are the best running backs, and so on.</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <span class="help-item-icon">✋</span>
+        <div class="help-item-body">
+          <div class="help-item-title">Step 3 — Move players between tiers if you disagree</div>
+          <div class="help-item-text">The Oracle is smart, but <strong>you know your league</strong>. If you think a player belongs in a higher or lower tier, just <strong>drag their card</strong> to a different tier. Think of it like rearranging sticky notes on a board. Your changes stay for your whole session.</div>
+        </div>
+      </div>
+
+      <div class="help-section">Connecting to Your Price Sheet</div>
+      <div class="help-item">
+        <span class="help-item-icon">⚔️</span>
+        <div class="help-item-body">
+          <div class="help-item-title">The tier list and price sheet work together</div>
+          <div class="help-item-text">Head to the <strong>Auction War Room</strong> first and pick your strategy — like RB Heavy or WR Heavy. When you come back to the tier list, it will automatically highlight which tiers are your main targets. For example: if you picked <strong>RB Heavy</strong>, Tier 1 and Tier 2 RBs will show a <strong>★ YOUR TARGET</strong> badge — those are the players you're spending big on.</div>
+        </div>
+      </div>
+      <div class="help-item">
+        <span class="help-item-icon">⭐</span>
+        <div class="help-item-body">
+          <div class="help-item-title">What does ★ YOUR TARGET mean?</div>
+          <div class="help-item-text">When you see <strong>★ YOUR TARGET</strong> on a tier, those are the players your strategy says to focus on. If there are 8 RBs in Tier 1 and you're RB Heavy, those 8 players are your top priorities on draft day — bid aggressively for them and don't let them go cheap.</div>
+        </div>
+      </div>
+
+      <div class="help-callout">🔮 <em>"The tier list is your map. The price sheet is your budget. Used together, they tell you exactly who to target and exactly how much to spend. That is how championships are won."</em></div>
+
+    </div>
+  </div>
+
   <div class="empty-state" id="emptyState">
     <div class="empty-icon">🔮</div>
     <div class="empty-title">The Oracle awaits your league settings</div>
@@ -464,6 +591,13 @@ var TIER_BREAKS = {
 var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
 
 // ── READ localStorage ON LOAD ────────────────────────────────────────────────
+function toggleHelp() {
+  var body = document.getElementById('helpBody');
+  var chevron = document.getElementById('helpChevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
 function readSavedStrategy() {
   try {
     var raw = localStorage.getItem('sanctum_strategy');
