@@ -1,15 +1,24 @@
 [build]
   publish = "."
   functions = "netlify/functions"
-
 [context.production]
   environment = { SECRETS_SCAN_ENABLED = "false" }
-
 [[redirects]]
   from = "/landing"
-  to = "/theinnersanctum.xyz/landing.html"
-  status = 200
-
+  to = "/"
+  status = 308
+[[redirects]]
+  from = "/landing.html"
+  to = "/"
+  status = 308
+[[redirects]]
+  from = "/home.html"
+  to = "/"
+  status = 308
+[[redirects]]
+  from = "/sanctum.html"
+  to = "/sanctum"
+  status = 308
 [[headers]]
   for = "/favicon.svg"
   [headers.values]
