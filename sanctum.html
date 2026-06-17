@@ -1007,35 +1007,71 @@ function draw() {
 
 // ═══════════════════════════════════════
 // VOICE
+// Calls the tts.js Netlify function, which proxies to
+// ElevenLabs and returns MP3 audio. Replaces the previous
+// browser speechSynthesis implementation — same on/off
+// behavior and same call site (invoked from ask()'s xhr.onload),
+// but real persona voices instead of OS-default voices.
 // ═══════════════════════════════════════
+var currentAudio = null;
+
 function speak(reply) {
   if (!voiceOn) return;
-  window.speechSynthesis.cancel();
-  function doSpeak() {
-    var voices = window.speechSynthesis.getVoices();
-    if (!voices || voices.length === 0) { setTimeout(doSpeak, 100); return; }
-    var utterance = new SpeechSynthesisUtterance(reply);
-    if (ap === "oracle") {
-      var v = voices.find(function(v) { return v.name === "Daniel" || v.name === "Google UK English Male" || v.name === "Alex"; });
-      if (v) utterance.voice = v;
-      utterance.rate = 0.78; utterance.pitch = 0.3; utterance.volume = 1;
-    } else if (ap === "trash") {
-      var v2 = voices.find(function(v) { return v.name === "Junior" || v.name === "Fred" || v.name === "Ralph"; });
-      if (v2) utterance.voice = v2;
-      utterance.rate = 1.2; utterance.pitch = 1.2; utterance.volume = 1;
-    } else {
-      var v3 = voices.find(function(v) { return v.name === "Daniel" || v.name === "Alex"; });
-      if (v3) utterance.voice = v3;
-      utterance.rate = 1.0; utterance.pitch = 0.8; utterance.volume = 1;
-    }
-    window.speechSynthesis.speak(utterance);
+
+  // Stop any audio already playing before starting new audio —
+  // mirrors the old window.speechSynthesis.cancel() behavior so
+  // overlapping responses don't talk over each other.
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
   }
-  doSpeak();
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/.netlify/functions/tts");
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.responseType = "arraybuffer";
+
+  xhr.onload = function() {
+    // Voice is an enhancement, not core functionality — any
+    // failure here (rate limit, bad key, network issue) should
+    // fail silently rather than interrupt or break the chat.
+    if (xhr.status !== 200) {
+      console.log("TTS request failed:", xhr.status);
+      return;
+    }
+    try {
+      var blob = new Blob([xhr.response], { type: "audio/mpeg" });
+      var url = URL.createObjectURL(blob);
+      var audio = new Audio(url);
+      currentAudio = audio;
+      audio.addEventListener("ended", function() {
+        URL.revokeObjectURL(url);
+        if (currentAudio === audio) currentAudio = null;
+      });
+      // Autoplay can be blocked by the browser if this fires
+      // outside a direct user gesture context. Swallow that
+      // silently too — text is already on screen either way.
+      audio.play().catch(function(err) {
+        console.log("Audio playback blocked:", err.message);
+      });
+    } catch (e) {
+      console.log("TTS playback error:", e.message);
+    }
+  };
+
+  xhr.onerror = function() {
+    console.log("TTS request network error");
+  };
+
+  xhr.send(JSON.stringify({ text: reply, persona: ap }));
 }
 
 function toggleVoice() {
   voiceOn = !voiceOn;
-  window.speechSynthesis.cancel();
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
   var btn = document.getElementById("voiceBtn");
   btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
   btn.style.color = voiceOn ? "#c9a84c" : "#444";
