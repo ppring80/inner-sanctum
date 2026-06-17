@@ -733,6 +733,13 @@ function selectStrat(s) {
   document.querySelectorAll('.strat-card').forEach(function(c){ c.classList.remove('selected'); });
   document.getElementById('strat-' + s).classList.add('selected');
   document.getElementById('stratAdvice').textContent = STRATEGIES[s].advice;
+
+  localStorage.setItem('sanctum_strategy', JSON.stringify({
+    strategy : s,
+    scoring  : document.getElementById('scoring').value,
+    format   : document.getElementById('leagueFormat').value,
+    budget   : parseInt(document.getElementById('budget').value) || 200
+  }));
 }
 
 // ═══════════════════════════════════════════════════════════
