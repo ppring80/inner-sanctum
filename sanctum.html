@@ -410,12 +410,12 @@ textarea::placeholder { color: #3a3028; }
 <div class="wrap">
 
   <!-- NAV -->
- <div class="nav">
+  <div class="nav">
     <a href="/">🏠 Home</a>
     <a href="/draft">📋 Draft Cheat Sheet</a>
     <a href="/auction">⚔️ Auction War Room</a>
     <a href="/tiers">🏆 Tier List</a>
-</div>
+  </div>
 
   <!-- TOP -->
   <div class="top">
@@ -563,6 +563,12 @@ var allSleeperPlayers = [];
 var lineupOpen = true;
 var benchOpen = false;
 
+// Player statuses that mean "currently a real, rosterable NFL
+// player." Anything outside this list (Retired, Inactive, Cut,
+// Practice Squad with no active deal, etc.) is excluded so the
+// autocomplete never surfaces retired or non-rostered players.
+var ROSTERABLE_STATUSES = ['Active', 'Injured Reserve', 'PUP', 'NFI'];
+
 var STARTER_SLOTS = [
   { id: 'QB',   label: 'Quarterback',   pos: 'QB',   badge: 'badge-QB' },
   { id: 'RB1',  label: 'Running Back 1',pos: 'RB',   badge: 'badge-RB' },
@@ -690,7 +696,7 @@ function slotSearch(input) {
       '</span>' +
       '<span style="display:flex;gap:6px;align-items:center">' +
         '<span class="slot-item-meta">' + p.pos + '</span>' +
-        '<span class="slot-item-team">' + (p.team || 'FA') + '</span>' +
+        '<span class="slot-item-team">' + p.team + '</span>' +
       '</span>';
     item.onmousedown = function(e) {
       e.preventDefault();
@@ -817,6 +823,28 @@ function toggleBench() {
 }
 
 // ═══════════════════════════════════════
+// PLAYER LIST FILTERING (shared logic)
+// ═══════════════════════════════════════
+// Builds a clean, rosterable-only player list from Sleeper's raw
+// player database. Excludes retired players, cut players, and
+// anyone without a current NFL team — Sleeper's database keeps
+// every player who has EVER had a roster spot, so this filter is
+// required to avoid surfacing names like long-retired veterans
+// in the lineup search.
+function buildRosterablePlayerList(rawPlayers) {
+  var list = [];
+  Object.values(rawPlayers).forEach(function(p) {
+    if (!p.full_name) return;
+    if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
+    if (!ROSTERABLE_STATUSES.includes(p.status)) return;
+    if (!p.team) return; // no current team = not a startable option
+    list.push({ name: p.full_name, pos: p.position, team: p.team });
+  });
+  list.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  return list;
+}
+
+// ═══════════════════════════════════════
 // SLEEPER CONNECT
 // ═══════════════════════════════════════
 async function connectSleeper() {
@@ -847,14 +875,8 @@ async function connectSleeper() {
     var playersDb = await fetch('https://api.sleeper.app/v1/players/nfl');
     var allPlayers = await playersDb.json();
 
-    // Build full player list for autocomplete
-    allSleeperPlayers = [];
-    Object.values(allPlayers).forEach(function(p) {
-      if (!p.full_name) return;
-      if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
-      allSleeperPlayers.push({ name: p.full_name, pos: p.position, team: p.team || 'FA' });
-    });
-    allSleeperPlayers.sort(function(a,b) { return a.name.localeCompare(b.name); });
+    // Build full player list for autocomplete — rosterable players only
+    allSleeperPlayers = buildRosterablePlayerList(allPlayers);
 
     var myRoster = rosters.find(function(r) { return r.owner_id === user.user_id; });
     if (!myRoster) throw new Error('Roster not found');
@@ -899,13 +921,7 @@ function loadPlayerList() {
   fetch('https://api.sleeper.app/v1/players/nfl')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      allSleeperPlayers = [];
-      Object.values(data).forEach(function(p) {
-        if (!p.full_name) return;
-        if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
-        allSleeperPlayers.push({ name: p.full_name, pos: p.position, team: p.team || 'FA' });
-      });
-      allSleeperPlayers.sort(function(a,b) { return a.name.localeCompare(b.name); });
+      allSleeperPlayers = buildRosterablePlayerList(data);
     })
     .catch(function() { console.log('Player list unavailable'); });
 }
