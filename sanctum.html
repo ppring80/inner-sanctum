@@ -87,6 +87,11 @@ body {
 .voice-wrap { text-align: center; margin: 6px 0 2px; }
 .voice-btn { background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.4); border-radius: 10px; color: #c9a84c; font-size: 15px; padding: 10px 28px; cursor: pointer; font-family: Georgia, serif; letter-spacing: 1px; transition: all 0.2s; }
 .voice-btn:hover { background: rgba(201,168,76,0.2); border-color: #c9a84c; }
+.voice-btn.loading { animation: voicePulse 1.1s ease-in-out infinite; }
+@keyframes voicePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
 
 /* ═══════════════════════════════════════════
    LINEUP ADVISOR
@@ -1014,6 +1019,25 @@ function draw() {
 // but real persona voices instead of OS-default voices.
 // ═══════════════════════════════════════
 var currentAudio = null;
+var audioUnlocked = false;
+
+// Browsers block audio.play() unless it happens inside a direct
+// user gesture (a click). The chat's first spoken response fires
+// from a network callback, not a click, so it gets silently
+// blocked on a user's very first message — discovered when
+// toggling Voice Off/On "fixed" it, since that toggle IS a click.
+// This unlocks playback permission once, on the first real click
+// anywhere on the page, so every later automatic speak() call
+// works without requiring that manual toggle dance.
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    var unlock = new Audio();
+    unlock.play().catch(function() {});
+  } catch (e) {}
+}
+document.addEventListener("click", unlockAudioOnce, { once: true });
 
 function speak(reply) {
   if (!voiceOn) return;
@@ -1026,12 +1050,25 @@ function speak(reply) {
     currentAudio = null;
   }
 
+  // The TTS round-trip (this request + ElevenLabs generation)
+  // typically takes several seconds, arriving well after the
+  // text response already rendered. A pulsing voice button signals
+  // that audio is on its way rather than leaving the wait silent
+  // and unexplained. Cleared on every exit path below so it can
+  // never get stuck mid-pulse.
+  var voiceBtn = document.getElementById("voiceBtn");
+  if (voiceBtn) voiceBtn.classList.add("loading");
+  function clearLoading() {
+    if (voiceBtn) voiceBtn.classList.remove("loading");
+  }
+
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/.netlify/functions/tts");
   xhr.setRequestHeader("Content-Type", "application/json");
   xhr.responseType = "arraybuffer";
 
   xhr.onload = function() {
+    clearLoading();
     // Voice is an enhancement, not core functionality — any
     // failure here (rate limit, bad key, network issue) should
     // fail silently rather than interrupt or break the chat.
@@ -1048,9 +1085,9 @@ function speak(reply) {
         URL.revokeObjectURL(url);
         if (currentAudio === audio) currentAudio = null;
       });
-      // Autoplay can be blocked by the browser if this fires
-      // outside a direct user gesture context. Swallow that
-      // silently too — text is already on screen either way.
+      // Should rarely fire now that unlockAudioOnce() has run on
+      // the user's first click, but still swallow silently as a
+      // backstop — text is already on screen either way.
       audio.play().catch(function(err) {
         console.log("Audio playback blocked:", err.message);
       });
@@ -1060,6 +1097,7 @@ function speak(reply) {
   };
 
   xhr.onerror = function() {
+    clearLoading();
     console.log("TTS request network error");
   };
 
@@ -1073,6 +1111,7 @@ function toggleVoice() {
     currentAudio = null;
   }
   var btn = document.getElementById("voiceBtn");
+  btn.classList.remove("loading");
   btn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
   btn.style.color = voiceOn ? "#c9a84c" : "#444";
   btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)";
