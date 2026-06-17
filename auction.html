@@ -29,7 +29,7 @@
 
 body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
 
-/* HEADER */
+/* ── HEADER ── */
 .hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
 .hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
@@ -38,7 +38,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .nav-link:hover{opacity:1;color:#f5c842}
 .lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
 
-/* STEP TABS */
+/* ── STEP TABS ── */
 .steps{display:flex;align-items:center;padding:0 24px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;gap:0}
 .step-tab{padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;transition:color 0.15s;user-select:none}
 .step-tab:hover{color:var(--muted)}
@@ -48,13 +48,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .step-tab.active .step-num{background:var(--gold);color:#000;border-color:var(--gold)}
 .step-tab.done .step-num{background:var(--dim);color:#fff;border-color:var(--dim)}
 
-/* PANELS */
+/* ── PANELS ── */
 .panel{display:none;padding:28px 24px;max-width:960px;margin:0 auto}
 .panel.active{display:block}
 .panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px;color:var(--ink)}
 .panel-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
 
-/* FORMS */
+/* ── FORMS ── */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
 .form-group{display:flex;flex-direction:column;gap:6px}
 .form-group label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace}
@@ -64,7 +64,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .form-group input::placeholder{color:#9a9a96}
 .form-group input[readonly]{background:var(--bg2);color:var(--gold);cursor:default;font-family:'JetBrains Mono',monospace}
 
-/* BUTTONS */
+/* ── BUTTONS ── */
 .btn-row{display:flex;gap:10px;align-items:center;margin-top:24px;flex-wrap:wrap}
 .btn{padding:10px 22px;border-radius:var(--r);border:none;font-family:'Lora',serif;font-size:14px;cursor:pointer;transition:opacity 0.15s;white-space:nowrap}
 .btn:hover{opacity:0.85}
@@ -74,10 +74,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .btn-danger{background:transparent;border:1px solid rgba(138,32,32,0.4);color:var(--red)}
 .btn-danger:hover{background:rgba(138,32,32,0.05)}
 
-/* DIVIDER */
+/* ── DIVIDER ── */
 .divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
-/* ROSTER GRID */
+/* ── ROSTER GRID ── */
 .roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
 .pos-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px}
 .pos-slot-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
@@ -97,7 +97,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .roster-total-label{font-family:'Cinzel',serif;font-size:13px}
 .roster-total-val{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--gold)}
 
-/* STRATEGY CARDS */
+/* ── STRATEGY CARDS ── */
 .strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:24px}
 .strat-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color 0.15s,background 0.15s;position:relative}
 .strat-card:hover{border-color:var(--border2)}
@@ -107,7 +107,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .strat-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:4px}
 .strat-best{font-size:10px;color:var(--dim);font-style:italic}
 
-/* ORACLE / TRASH BOXES */
+/* ── ORACLE / TRASH BOXES ── */
 .oracle-box{background:rgba(184,146,26,0.05);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
 .oracle-box-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
 .oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
@@ -115,13 +115,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .trash-box-label{font-size:9px;letter-spacing:3px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
 .trash-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
 
-/* LEAGUE WARNING */
+/* ── LEAGUE WARNING ── */
 .league-warning{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.35);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:none}
 .league-warning.show{display:block}
 .league-warning-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:6px}
 .league-warning-text{font-size:13px;color:var(--muted);line-height:1.6}
 
-/* HELP PANEL */
+/* ── HELP PANEL ── */
 .help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
 .help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
 .help-toggle:hover{background:rgba(184,146,26,0.04)}
@@ -138,21 +138,33 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .help-strategy-pill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--ink);line-height:1.5}
 .help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
 
-/* TARGET PRICE SHEET */
-.tps-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+/* ── TARGET PRICE SHEET ── */
+.tps-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.tps-edit-note{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6}
+.tps-edit-note strong{color:var(--gold)}
 .tps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px}
-.tps-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.tps-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;transition:border-color 0.2s}
+.tps-slot:not(.bench):hover{border-color:rgba(184,146,26,0.4)}
 .tps-slot.bench{opacity:0.55}
 .tps-pos{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
 .tps-label{font-size:13px;color:var(--ink)}
-.tps-val{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--gold)}
-.tps-slot.bench .tps-val{font-size:20px;color:var(--muted)}
+.tps-val-input{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--gold);background:transparent;border:none;border-bottom:2px solid rgba(184,146,26,0.2);width:100%;padding:2px 0 4px;cursor:text;transition:border-color 0.2s;-moz-appearance:textfield}
+.tps-val-input::-webkit-outer-spin-button,.tps-val-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tps-val-input:focus{outline:none;border-bottom-color:var(--gold)}
+.tps-slot.bench .tps-val-input{font-size:20px;color:var(--muted)}
 .tps-pct{font-size:10px;color:var(--dim)}
 .tps-total-row{background:rgba(184,146,26,0.06);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .tps-total-label{font-family:'Cinzel',serif;font-size:15px}
-.tps-total-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;color:var(--gold)}
+.tps-total-right{display:flex;align-items:baseline;gap:12px}
+.tps-total-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:600;color:var(--gold);transition:color 0.2s}
+.tps-total-val.over{color:var(--red)}
+.tps-total-val.exact{color:var(--green)}
+.tps-budget-status{font-family:'JetBrains Mono',monospace;font-size:12px;transition:color 0.2s}
+.tps-budget-status.over{color:var(--red)}
+.tps-budget-status.exact{color:var(--green)}
+.tps-budget-status.under{color:var(--amber)}
 
-/* LIVE DRAFT TRACKER */
+/* ── LIVE DRAFT TRACKER ── */
 .tracker-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
 .stat-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
@@ -165,7 +177,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .inflation-track{background:var(--bg2);border-radius:4px;height:8px;overflow:hidden}
 .inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s;background:var(--green)}
 
-/* PICK ENTRY */
+/* ── PICK ENTRY ── */
 .pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
 .pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
 .pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px 1fr;gap:10px;align-items:end}
@@ -181,7 +193,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .dd-pos{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 .dd-val{color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px}
 
-/* DRAFT LOG */
+/* ── DRAFT LOG ── */
 .draft-log{margin-top:16px;display:none}
 .log-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
 .log-table{width:100%;border-collapse:collapse}
@@ -191,7 +203,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .log-table td.dim{font-size:11px;color:var(--muted)}
 .pos-pill{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 
-/* TEAMS GRID */
+/* ── TEAMS GRID ── */
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
 .team-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px}
 .team-name{font-family:'Cinzel',serif;font-size:12px;color:var(--ink);margin-bottom:8px}
@@ -202,14 +214,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .team-fill{height:100%;border-radius:3px;transition:width 0.3s}
 .team-players{font-size:10px;color:var(--dim);line-height:1.6}
 
-/* PRINT */
+/* ── PRINT ── */
 @media print{
   .hdr,.steps,.btn-row,.pick-entry,.no-print{display:none!important}
   body{background:#fff;color:#111}
   .tps-slot{background:#f9f9f9;border:1px solid #ddd}
-  .tps-val{color:#b8921a}
+  .tps-val-input{color:#b8921a;border-bottom:none;font-size:26px}
   .panel-title{color:#111}
   .oracle-box{border-left-color:#b8921a;background:#fffdf0}
+  .tps-edit-note{display:none}
 }
 
 @media(max-width:600px){
@@ -242,7 +255,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   <div class="step-tab" id="tab-5" onclick="goStep(5)"><span class="step-num">5</span>Live Draft Tracker</div>
 </div>
 
-<!-- STEP 1 -->
+<!-- ═══ STEP 1 — LEAGUE SETUP ═══ -->
 <div class="panel active" id="panel-1">
   <p class="panel-title">League Setup</p>
   <p class="panel-sub">Tell us about your league so The Oracle can calculate your exact target prices.</p>
@@ -293,7 +306,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   <div class="btn-row"><button class="btn btn-gold" onclick="goStep(2)">Continue to Roster Setup →</button></div>
 </div>
 
-<!-- STEP 2 -->
+<!-- ═══ STEP 2 — ROSTER CONSTRUCTION ═══ -->
 <div class="panel" id="panel-2">
   <p class="panel-title">Roster Construction</p>
   <p class="panel-sub">Set your lineup and bench spots. The Oracle calculates target prices based on your exact roster.</p>
@@ -349,7 +362,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 
-<!-- STEP 3 -->
+<!-- ═══ STEP 3 — DRAFT STRATEGY ═══ -->
 <div class="panel" id="panel-3">
   <p class="panel-title">Draft Strategy</p>
   <p class="panel-sub">Choose your approach. The Oracle adjusts your target prices to match your game plan.</p>
@@ -390,7 +403,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 
-<!-- STEP 4 -->
+<!-- ═══ STEP 4 — TARGET PRICE SHEET ═══ -->
 <div class="panel" id="panel-4">
   <div class="tps-header">
     <div>
@@ -417,6 +430,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
       <div class="help-section-title">What these numbers mean</div>
       <div class="help-rule"><span>📌</span><span>Each dollar amount is your <strong>maximum recommended spend</strong> for that roster slot.</span></div>
       <div class="help-rule"><span>⚖️</span><span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</span></div>
+      <div class="help-rule"><span>✏️</span><span><strong>Click any price to customize it.</strong> The budget tracker updates live so you always know where you stand.</span></div>
       <div class="help-rule"><span>📊</span><span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</span></div>
       <div class="help-callout">"Your Target Price Sheet is a guardrail — not a rulebook. It is your starting position, not your finish line."</div>
       <div class="help-section-title">The most important rule of auction drafts</div>
@@ -442,11 +456,20 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     </div>
   </div>
 
+  <div class="tps-edit-note no-print">
+    ✏️ <strong>Prices are fully customizable.</strong> Click any dollar amount to edit it directly. The budget tracker below updates live — adjust until your total matches your cap exactly. Prices represent your <em>maximum recommended spend</em> per roster slot.
+  </div>
+
   <div class="tps-grid" id="tpsGrid"></div>
+
   <div class="tps-total-row">
     <span class="tps-total-label">Total Budget</span>
-    <span class="tps-total-val" id="tpsTotal">$200</span>
+    <div class="tps-total-right">
+      <span class="tps-total-val" id="tpsTotal">$200</span>
+      <span class="tps-budget-status" id="tpsBudgetStatus"></span>
+    </div>
   </div>
+
   <div class="oracle-box">
     <div class="oracle-box-label">🔮 Oracle Strategy Briefing</div>
     <div class="oracle-box-text" id="oracleBriefing">Loading wisdom...</div>
@@ -461,7 +484,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 
-<!-- STEP 5 -->
+<!-- ═══ STEP 5 — LIVE DRAFT TRACKER ═══ -->
 <div class="panel" id="panel-5">
   <p class="panel-title">Live Draft Tracker</p>
   <p class="panel-sub">Log each pick as it happens. The Oracle tracks inflation and alerts you to value in real time.</p>
@@ -536,9 +559,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </div>
 
 <script>
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 var state = {
   step: 1,
   leagueName: '',
@@ -564,9 +587,9 @@ var POS_COLORS = {
   DEF:'background:rgba(138,32,32,0.15);color:#8a2020;border:1px solid rgba(138,32,32,0.3)'
 };
 
-// ═══════════════════════════════════════
-// MARKET-CALIBRATED SPLITS
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// STRATEGY DATA
+// ═══════════════════════════════════════════════════════════
 var STRATEGIES = {
   rb:     {name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie.",splits:{QB:0.11,RB1:0.26,RB2:0.19,WR1:0.16,WR2:0.11,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
   wr:     {name:'WR Heavy',advice:'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',trash:"WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me.",splits:{QB:0.11,RB1:0.17,RB2:0.11,WR1:0.26,WR2:0.18,TE:0.10,FLEX:0.06,DEF:0.01,K:0.01,BENCH:0.01}},
@@ -583,58 +606,58 @@ var SUPERFLEX_SPLITS = {
   custom: {splits:{QB:0.17,RB1:0.17,RB2:0.12,WR1:0.16,WR2:0.10,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}}
 };
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // SLEEPER PLAYER DATABASE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 var allPlayers = [];
 function loadSleeperPlayers() {
   fetch('https://api.sleeper.app/v1/players/nfl')
-    .then(function(r){return r.json();})
+    .then(function(r){ return r.json(); })
     .then(function(data){
       allPlayers = [];
       Object.values(data).forEach(function(p){
         if (!p.full_name) return;
         if (!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status)) return;
-        if (p.status==='Inactive'||p.status==='Retired') return;
+        if (p.status === 'Inactive' || p.status === 'Retired') return;
         if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
-        allPlayers.push({name:p.full_name, pos:p.position, team:p.team||'FA'});
+        allPlayers.push({ name: p.full_name, pos: p.position, team: p.team || 'FA' });
       });
-      allPlayers.sort(function(a,b){return a.name.localeCompare(b.name);});
+      allPlayers.sort(function(a, b){ return a.name.localeCompare(b.name); });
     })
-    .catch(function(){console.log('Sleeper API unavailable');});
+    .catch(function(){ console.log('Sleeper API unavailable'); });
 }
 loadSleeperPlayers();
 
-// ═══════════════════════════════════════
-// PLAYER SEARCH AUTOCOMPLETE
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// PLAYER AUTOCOMPLETE
+// ═══════════════════════════════════════════════════════════
 function searchPlayers(query) {
   var dd = document.getElementById('playerDropdown');
-  if (!query||query.length<2){dd.style.display='none';return;}
+  if (!query || query.length < 2) { dd.style.display = 'none'; return; }
   var q = query.toLowerCase();
   var matches = allPlayers.filter(function(p){
-    return p.name.toLowerCase().includes(q)||(p.team&&p.team.toLowerCase().includes(q));
-  }).slice(0,12);
-  if (!matches.length){dd.style.display='none';return;}
+    return p.name.toLowerCase().includes(q) || (p.team && p.team.toLowerCase().includes(q));
+  }).slice(0, 12);
+  if (!matches.length) { dd.style.display = 'none'; return; }
   dd.innerHTML = '';
   matches.forEach(function(p){
     var proj = getProjectedValue(p.pos);
-    var posStyle = POS_COLORS[p.pos]||'background:rgba(100,100,100,0.15);color:#888';
+    var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var item = document.createElement('div');
     item.className = 'dd-item';
     item.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px">'+
-        '<span class="dd-name">'+p.name+'</span>'+
-        '<span class="dd-team">'+p.team+'</span>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:8px">'+
-        '<span class="dd-pos" style="'+posStyle+'">'+p.pos+'</span>'+
-        (proj?'<span class="dd-val">$'+proj+'</span>':'')+
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="dd-name">' + p.name + '</span>' +
+        '<span class="dd-team">' + p.team + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="dd-pos" style="' + posStyle + '">' + p.pos + '</span>' +
+        (proj ? '<span class="dd-val">$' + proj + '</span>' : '') +
       '</div>';
     item.onclick = function(){
       document.getElementById('pickPlayer').value = p.name;
       document.getElementById('pickPosition').value = p.pos;
-      document.getElementById('pickProjected').value = proj||'';
+      document.getElementById('pickProjected').value = proj || '';
       dd.style.display = 'none';
       document.getElementById('pickPrice').focus();
     };
@@ -644,77 +667,76 @@ function searchPlayers(query) {
 }
 
 function getProjectedValue(pos) {
-  var map = {QB:'QB1',RB:'RB1',WR:'WR1',TE:'TE1',K:'K',DEF:'D/ST'};
-  return state.targetPrices[map[pos]]||null;
+  var map = { QB:'QB1', RB:'RB1', WR:'WR1', TE:'TE1', K:'K', DEF:'D/ST' };
+  return state.targetPrices[map[pos]] || null;
 }
 
 document.addEventListener('click', function(e){
-  if (!e.target.closest('#pickPlayer')&&!e.target.closest('#playerDropdown')){
+  if (!e.target.closest('#pickPlayer') && !e.target.closest('#playerDropdown')) {
     var d = document.getElementById('playerDropdown');
     if (d) d.style.display = 'none';
   }
 });
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // NAVIGATION
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function goStep(n) {
-  if (n===4) generateTPS();
-  if (n===5) initTracker();
-  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.step-tab').forEach(function(t,i){
-    t.classList.remove('active','done');
-    if (i+1<n) t.classList.add('done');
-    if (i+1===n) t.classList.add('active');
+  if (n === 4) generateTPS();
+  if (n === 5) initTracker();
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.step-tab').forEach(function(t, i){
+    t.classList.remove('active', 'done');
+    if (i + 1 < n) t.classList.add('done');
+    if (i + 1 === n) t.classList.add('active');
   });
-  document.getElementById('panel-'+n).classList.add('active');
+  document.getElementById('panel-' + n).classList.add('active');
   state.step = n;
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 1 — TEAM NAME INPUTS
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function buildTeamInputs() {
   var n = parseInt(document.getElementById('numTeams').value);
   var grid = document.getElementById('teamNamesGrid');
   grid.innerHTML = '';
-  for (var i=1; i<=n; i++) {
+  for (var i = 1; i <= n; i++) {
     var g = document.createElement('div');
     g.className = 'form-group';
-    g.innerHTML = '<label>Team '+i+'</label><input type="text" id="team-'+i+'" placeholder="Team '+i+' name" value="'+(state.teamNames[i-1]||'')+'"/>';
+    g.innerHTML = '<label>Team ' + i + '</label><input type="text" id="team-' + i + '" placeholder="Team ' + i + ' name" value="' + (state.teamNames[i-1] || '') + '"/>';
     grid.appendChild(g);
   }
 }
 buildTeamInputs();
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 2 — ROSTER
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function updateRoster() {
-  var slots = ['QB','RB','WR','TE','FLEX','K','DEF','BENCH'];
   var total = 0;
-  slots.forEach(function(s){
-    var v = parseInt(document.getElementById('slot-'+s).value)||0;
+  ['QB','RB','WR','TE','FLEX','K','DEF','BENCH'].forEach(function(s){
+    var v = parseInt(document.getElementById('slot-' + s).value) || 0;
     state.roster[s] = v;
     total += v;
   });
   document.getElementById('totalSpots').textContent = total;
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 3 — STRATEGY
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function selectStrat(s) {
   state.strategy = s;
-  document.querySelectorAll('.strat-card').forEach(function(c){c.classList.remove('selected');});
-  document.getElementById('strat-'+s).classList.add('selected');
+  document.querySelectorAll('.strat-card').forEach(function(c){ c.classList.remove('selected'); });
+  document.getElementById('strat-' + s).classList.add('selected');
   document.getElementById('stratAdvice').textContent = STRATEGIES[s].advice;
 }
 
-// ═══════════════════════════════════════
-// STEP 4 — HELP + WARNINGS
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// STEP 4 — HELP TOGGLE + LEAGUE WARNINGS
+// ═══════════════════════════════════════════════════════════
 function toggleHelp() {
   document.getElementById('helpToggle').classList.toggle('open');
   document.getElementById('helpIcon').classList.toggle('open');
@@ -728,117 +750,152 @@ function showLeagueWarning() {
   var leagueType = document.getElementById('leagueType').value;
   var leagueFormat = document.getElementById('leagueFormat').value;
   var msgs = [];
-  if (leagueFormat==='superflex') msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — QB target prices have been significantly increased. Budget $45–65 for an elite QB1 and $30–45 for a solid QB2.');
-  if (scoring==='ppr') msgs.push('📋 <strong>PPR Scoring</strong> — Pass-catching running backs and slot receivers carry premium value.');
-  if (scoring==='standard') msgs.push('🏃 <strong>Standard Scoring</strong> — Workhorse running backs dominate.');
-  if (scoring==='half') msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency.');
-  if (leagueType==='keeper') msgs.push('🔒 <strong>Keeper League</strong> — Elite players kept from last season create scarcity at the top. Budget conservatively early.');
-  if (leagueType==='dynasty') msgs.push('👑 <strong>Dynasty League</strong> — Young players with long-term upside carry premium value.');
-  if (msgs.length>0) {text.innerHTML=msgs.join('<br><br>');warning.classList.add('show');}
+  if (leagueFormat === 'superflex') msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — QB target prices have been significantly increased. Budget $45–65 for an elite QB1 and $30–45 for a solid QB2.');
+  if (scoring === 'ppr') msgs.push('📋 <strong>PPR Scoring</strong> — Pass-catching running backs and slot receivers carry premium value.');
+  if (scoring === 'standard') msgs.push('🏃 <strong>Standard Scoring</strong> — Workhorse running backs dominate.');
+  if (scoring === 'half') msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency.');
+  if (leagueType === 'keeper') msgs.push('🔒 <strong>Keeper League</strong> — Elite players kept from last season create scarcity at the top. Budget conservatively early.');
+  if (leagueType === 'dynasty') msgs.push('👑 <strong>Dynasty League</strong> — Young players with long-term upside carry premium value.');
+  if (msgs.length > 0) { text.innerHTML = msgs.join('<br><br>'); warning.classList.add('show'); }
   else warning.classList.remove('show');
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 4 — GENERATE TARGET PRICE SHEET
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function generateTPS() {
-  state.leagueName = document.getElementById('leagueName').value||'My League';
+  state.leagueName = document.getElementById('leagueName').value || 'My League';
   state.numTeams = parseInt(document.getElementById('numTeams').value);
-  state.budget = parseInt(document.getElementById('budget').value)||200;
+  state.budget = parseInt(document.getElementById('budget').value) || 200;
   state.scoring = document.getElementById('scoring').value;
   state.leagueFormat = document.getElementById('leagueFormat').value;
+
   var n = state.numTeams;
-  for (var i=1; i<=n; i++) {
-    var el = document.getElementById('team-'+i);
-    state.teamNames[i-1] = el?(el.value||'Team '+i):'Team '+i;
+  for (var i = 1; i <= n; i++) {
+    var el = document.getElementById('team-' + i);
+    state.teamNames[i-1] = el ? (el.value || 'Team ' + i) : 'Team ' + i;
   }
   updateRoster();
   showLeagueWarning();
 
-  var isSuperflex = state.leagueFormat==='superflex';
-  var stratKey = state.strategy||'hero';
+  var isSuperflex = state.leagueFormat === 'superflex';
+  var stratKey = state.strategy || 'hero';
   var strat = STRATEGIES[stratKey];
-  var splits = isSuperflex?SUPERFLEX_SPLITS[stratKey].splits:strat.splits;
+  var splits = isSuperflex ? SUPERFLEX_SPLITS[stratKey].splits : strat.splits;
   var budget = state.budget;
   var roster = state.roster;
   var slots = [];
 
-  function add(pos,label,pct,bench){slots.push({pos:pos,label:label,rawPct:pct,bench:bench||false});}
-
-  if (roster.QB>=1) add('QB','QB1',splits.QB);
-  if (roster.QB>=2) add('QB','QB2',splits.QB*0.55);
-  if (roster.RB>=1) add('RB','RB1',splits.RB1);
-  if (roster.RB>=2) add('RB','RB2',splits.RB2);
-  if (roster.RB>=3) add('RB','RB3',splits.RB2*0.40);
-  if (roster.WR>=1) add('WR','WR1',splits.WR1);
-  if (roster.WR>=2) add('WR','WR2',splits.WR2);
-  if (roster.WR>=3) add('WR','WR3',splits.WR2*0.40);
-  if (roster.TE>=1) add('TE','TE1',splits.TE);
-  if (roster.TE>=2) add('TE','TE2',splits.TE*0.30);
-  if (roster.FLEX>=1) add('FLEX','FLEX',splits.FLEX);
-  if (roster.FLEX>=2) add('FLEX','FLEX2',splits.FLEX*0.50);
-  if (roster.DEF>=1) add('DEF','D/ST',splits.DEF);
-  if (roster.K>=1)   add('K','K',splits.K);
-  for (var b=1; b<=roster.BENCH; b++) {
-    add('BENCH','Bench '+b, b<=2?0.035:b<=4?0.018:0.005, true);
+  function add(pos, label, pct, bench) {
+    slots.push({ pos:pos, label:label, rawPct:pct, bench:bench||false });
   }
 
-  var totalPct = slots.reduce(function(a,s){return a+s.rawPct;},0);
-  slots.forEach(function(s){s.normPct=s.rawPct/totalPct;});
-  slots.forEach(function(s){s.val=Math.max(1,Math.floor(s.normPct*budget));});
-  var allocated = slots.reduce(function(a,s){return a+s.val;},0);
-  var remainder = budget-allocated;
-  for (var r=0; r<remainder; r++){slots[r%slots.length].val+=1;}
+  if (roster.QB >= 1) add('QB','QB1',splits.QB);
+  if (roster.QB >= 2) add('QB','QB2',splits.QB * 0.55);
+  if (roster.RB >= 1) add('RB','RB1',splits.RB1);
+  if (roster.RB >= 2) add('RB','RB2',splits.RB2);
+  if (roster.RB >= 3) add('RB','RB3',splits.RB2 * 0.40);
+  if (roster.WR >= 1) add('WR','WR1',splits.WR1);
+  if (roster.WR >= 2) add('WR','WR2',splits.WR2);
+  if (roster.WR >= 3) add('WR','WR3',splits.WR2 * 0.40);
+  if (roster.TE >= 1) add('TE','TE1',splits.TE);
+  if (roster.TE >= 2) add('TE','TE2',splits.TE * 0.30);
+  if (roster.FLEX >= 1) add('FLEX','FLEX',splits.FLEX);
+  if (roster.FLEX >= 2) add('FLEX','FLEX2',splits.FLEX * 0.50);
+  if (roster.DEF >= 1) add('DEF','D/ST',splits.DEF);
+  if (roster.K >= 1)   add('K','K',splits.K);
+  for (var b = 1; b <= roster.BENCH; b++) {
+    add('BENCH','Bench ' + b, b <= 2 ? 0.035 : b <= 4 ? 0.018 : 0.005, true);
+  }
+
+  var totalPct = slots.reduce(function(a, s){ return a + s.rawPct; }, 0);
+  slots.forEach(function(s){ s.normPct = s.rawPct / totalPct; });
+  slots.forEach(function(s){ s.val = Math.max(1, Math.floor(s.normPct * budget)); });
+  var allocated = slots.reduce(function(a, s){ return a + s.val; }, 0);
+  var remainder = budget - allocated;
+  for (var r = 0; r < remainder; r++) { slots[r % slots.length].val += 1; }
 
   state.targetPrices = {};
-  slots.forEach(function(s){state.targetPrices[s.label]=s.val;});
+  slots.forEach(function(s){ state.targetPrices[s.label] = s.val; });
 
+  // Build grid
   var grid = document.getElementById('tpsGrid');
   grid.innerHTML = '';
   slots.forEach(function(s){
-    var pct = Math.round(s.normPct*100);
+    var pct = Math.round(s.normPct * 100);
     var div = document.createElement('div');
-    div.className = 'tps-slot'+(s.bench?' bench':'');
+    div.className = 'tps-slot' + (s.bench ? ' bench' : '');
     div.innerHTML =
-      '<div class="tps-pos">'+s.pos+'</div>'+
-      '<div class="tps-label">'+s.label+'</div>'+
-      '<div class="tps-val">$'+s.val+'</div>'+
-      '<div class="tps-pct">'+pct+'% of budget</div>';
+      '<div class="tps-pos">' + s.pos + '</div>' +
+      '<div class="tps-label">' + s.label + '</div>' +
+      '<input type="number" class="tps-val-input" value="' + s.val + '" min="1" ' +
+        'data-label="' + s.label + '" oninput="updateTpsTotal()" />' +
+      '<div class="tps-pct" id="pct-' + s.label.replace(/\s/g,'-') + '">' + pct + '% of budget</div>';
     grid.appendChild(div);
   });
 
-  var total = slots.reduce(function(a,s){return a+s.val;},0);
-  document.getElementById('tpsTotal').textContent = '$'+total;
-  var scoringLabel = {ppr:'PPR',half:'Half PPR',standard:'Standard'}[state.scoring];
-  var formatLabel = isSuperflex?' · Superflex/2QB':'';
+  updateTpsTotal();
+
+  var scoringLabel = { ppr:'PPR', half:'Half PPR', standard:'Standard' }[state.scoring];
+  var formatLabel = isSuperflex ? ' · Superflex/2QB' : '';
   document.getElementById('tpsSubtitle').textContent =
-    state.leagueName+' · '+state.numTeams+' teams · $'+state.budget+' cap · '+scoringLabel+formatLabel+' · '+strat.name;
+    state.leagueName + ' · ' + state.numTeams + ' teams · $' + state.budget + ' cap · ' + scoringLabel + formatLabel + ' · ' + strat.name;
   document.getElementById('oracleBriefing').textContent = strat.advice;
   document.getElementById('trashTake').textContent = strat.trash;
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// STEP 4 — LIVE BUDGET TRACKER
+// ═══════════════════════════════════════════════════════════
+function updateTpsTotal() {
+  var inputs = document.querySelectorAll('.tps-val-input');
+  var total = 0;
+  inputs.forEach(function(inp){ total += parseInt(inp.value) || 0; });
+
+  var budget = state.budget;
+  var diff = total - budget;
+
+  var totalEl = document.getElementById('tpsTotal');
+  var statusEl = document.getElementById('tpsBudgetStatus');
+
+  totalEl.textContent = '$' + total;
+  totalEl.className = 'tps-total-val' + (diff > 0 ? ' over' : diff === 0 ? ' exact' : '');
+
+  if (diff > 0) {
+    statusEl.textContent = '$' + diff + ' over budget';
+    statusEl.className = 'tps-budget-status over';
+  } else if (diff === 0) {
+    statusEl.textContent = '✓ Exactly on budget';
+    statusEl.className = 'tps-budget-status exact';
+  } else {
+    statusEl.textContent = '$' + Math.abs(diff) + ' remaining';
+    statusEl.className = 'tps-budget-status under';
+  }
+
+  // Sync pct labels and state
+  inputs.forEach(function(inp){
+    var label = inp.dataset.label;
+    var val = parseInt(inp.value) || 0;
+    var safeId = label.replace(/\s/g, '-');
+    var pctEl = document.getElementById('pct-' + safeId);
+    if (pctEl) pctEl.textContent = Math.round((val / budget) * 100) + '% of budget';
+    state.targetPrices[label] = val;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — INITIALIZE TRACKER
-// BUG FIX: state.teamNames is reset to [] before
-// rebuilding so that changing numTeams on Step 1
-// and returning to the tracker always reflects the
-// correct team count — no stale teams from a previous
-// selection remain in the Drafted By dropdown.
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function initTracker() {
-  state.leagueName = document.getElementById('leagueName').value||'My League';
+  state.leagueName = document.getElementById('leagueName').value || 'My League';
   state.numTeams = parseInt(document.getElementById('numTeams').value);
-  state.budget = parseInt(document.getElementById('budget').value)||200;
+  state.budget = parseInt(document.getElementById('budget').value) || 200;
   var n = state.numTeams;
 
-  // ── KEY FIX ──────────────────────────────────────────────
-  // Always rebuild teamNames fresh from current numTeams.
-  // Without this reset, reducing from 16→12 teams still
-  // showed 16 entries in the Drafted By dropdown.
   state.teamNames = [];
-  for (var i=1; i<=n; i++) {
-    var el = document.getElementById('team-'+i);
-    state.teamNames.push(el?(el.value||'Team '+i):'Team '+i);
+  for (var i = 1; i <= n; i++) {
+    var el = document.getElementById('team-' + i);
+    state.teamNames.push(el ? (el.value || 'Team ' + i) : 'Team ' + i);
   }
 
   var sel = document.getElementById('pickTeam');
@@ -849,149 +906,154 @@ function initTracker() {
     sel.appendChild(o);
   });
 
-  document.getElementById('myBudgetLeft').textContent = '$'+state.budget;
+  document.getElementById('myBudgetLeft').textContent = '$' + state.budget;
   renderTeams();
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — LOG A PICK
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function logPick() {
   var player = document.getElementById('pickPlayer').value.trim();
   var pos = document.getElementById('pickPosition').value.trim();
-  var projected = parseInt(document.getElementById('pickProjected').value)||null;
+  var projected = parseInt(document.getElementById('pickProjected').value) || null;
   var price = parseInt(document.getElementById('pickPrice').value);
   var team = document.getElementById('pickTeam').value;
-  if (!player||!price||price<1){
-    document.getElementById('liveOracle').textContent='Enter a player name and price before logging, seeker.';
+
+  if (!player || !price || price < 1) {
+    document.getElementById('liveOracle').textContent = 'Enter a player name and price before logging, seeker.';
     return;
   }
-  state.draftLog.push({player:player,pos:pos||'—',projected:projected,price:price,team:team,num:state.draftLog.length+1});
+
+  state.draftLog.push({ player:player, pos:pos||'—', projected:projected, price:price, team:team, num:state.draftLog.length+1 });
   document.getElementById('pickPlayer').value = '';
   document.getElementById('pickPosition').value = '';
   document.getElementById('pickProjected').value = '';
   document.getElementById('pickPrice').value = '';
+
   updateTrackerStats();
   renderDraftLog();
   renderTeams();
-  updateOracleLive(player,price,team,projected);
+  updateOracleLive(player, price, team, projected);
   document.getElementById('pickPlayer').focus();
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — UPDATE STATS
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function updateTrackerStats() {
   var log = state.draftLog;
-  var n = state.numTeams;
-  var totalMarketBudget = state.budget*n;
-  var totalSpent = log.reduce(function(a,p){return a+p.price;},0);
+  var totalMarketBudget = state.budget * state.numTeams;
+  var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
   var myTeam = document.getElementById('pickTeam').value;
-  var mySpent = log.filter(function(p){return p.team===myTeam;}).reduce(function(a,p){return a+p.price;},0);
-  var myLeft = state.budget-mySpent;
-  var avg = log.length>0?Math.round(totalSpent/log.length):0;
-  var totalRosterSpots = Object.values(state.roster).reduce(function(a,v){return a+v;},0);
-  var expectedAvg = totalMarketBudget/(n*totalRosterSpots);
-  var inflation = log.length>0?Math.round(((totalSpent/log.length)/expectedAvg)*100-100):0;
+  var mySpent = log.filter(function(p){ return p.team === myTeam; }).reduce(function(a, p){ return a + p.price; }, 0);
+  var myLeft = state.budget - mySpent;
+  var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
+  var totalRosterSpots = Object.values(state.roster).reduce(function(a, v){ return a + v; }, 0);
+  var expectedAvg = totalMarketBudget / (state.numTeams * totalRosterSpots);
+  var inflation = log.length > 0 ? Math.round(((totalSpent / log.length) / expectedAvg) * 100 - 100) : 0;
+
   document.getElementById('playersDrafted').textContent = log.length;
-  document.getElementById('avgPricePaid').textContent = log.length>0?'$'+avg:'—';
-  document.getElementById('inflationVal').textContent = (inflation>=0?'+':'')+inflation+'%';
+  document.getElementById('avgPricePaid').textContent = log.length > 0 ? '$' + avg : '—';
+  document.getElementById('inflationVal').textContent = (inflation >= 0 ? '+' : '') + inflation + '%';
+
   var budgetEl = document.getElementById('myBudgetLeft');
-  budgetEl.textContent = '$'+myLeft;
-  budgetEl.className = 'stat-val '+(myLeft>state.budget*0.5?'good':myLeft>state.budget*0.25?'warn':'danger');
-  var pctSpent = Math.min(100,Math.round((totalSpent/totalMarketBudget)*100));
+  budgetEl.textContent = '$' + myLeft;
+  budgetEl.className = 'stat-val ' + (myLeft > state.budget * 0.5 ? 'good' : myLeft > state.budget * 0.25 ? 'warn' : 'danger');
+
+  var pctSpent = Math.min(100, Math.round((totalSpent / totalMarketBudget) * 100));
   var fill = document.getElementById('inflationFill');
-  fill.style.width = pctSpent+'%';
-  fill.style.background = pctSpent<40?'var(--green)':pctSpent<70?'var(--amber)':'var(--red)';
-  document.getElementById('inflationPct').textContent = pctSpent+'% of total market budget committed';
+  fill.style.width = pctSpent + '%';
+  fill.style.background = pctSpent < 40 ? 'var(--green)' : pctSpent < 70 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('inflationPct').textContent = pctSpent + '% of total market budget committed';
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — RENDER DRAFT LOG
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function renderDraftLog() {
   var log = state.draftLog;
-  document.getElementById('draftLog').style.display = log.length>0?'block':'none';
+  document.getElementById('draftLog').style.display = log.length > 0 ? 'block' : 'none';
   var tbody = document.getElementById('draftLogBody');
   tbody.innerHTML = '';
   log.slice().reverse().forEach(function(p){
-    var diff = p.projected?p.price-p.projected:null;
-    var diffStr = diff===null?'—':
-      diff>0?'<span style="color:var(--red)">+$'+diff+' overpaid</span>':
-             '<span style="color:var(--green)">$'+Math.abs(diff)+' value</span>';
-    var posStyle = POS_COLORS[p.pos]||'background:rgba(100,100,100,0.15);color:#888';
+    var diff = p.projected ? p.price - p.projected : null;
+    var diffStr = diff === null ? '—' :
+      diff > 0 ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
+                 '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>';
+    var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var tr = document.createElement('tr');
     tr.innerHTML =
-      '<td class="dim">#'+p.num+'</td>'+
-      '<td>'+p.player+'</td>'+
-      '<td><span class="pos-pill" style="'+posStyle+'">'+p.pos+'</span></td>'+
-      '<td class="mono">$'+p.price+'</td>'+
-      '<td class="dim">'+(p.projected?'$'+p.projected:'—')+'</td>'+
-      '<td style="font-size:11px">'+diffStr+'</td>'+
-      '<td class="dim">'+p.team+'</td>';
+      '<td class="dim">#' + p.num + '</td>' +
+      '<td>' + p.player + '</td>' +
+      '<td><span class="pos-pill" style="' + posStyle + '">' + p.pos + '</span></td>' +
+      '<td class="mono">$' + p.price + '</td>' +
+      '<td class="dim">' + (p.projected ? '$' + p.projected : '—') + '</td>' +
+      '<td style="font-size:11px">' + diffStr + '</td>' +
+      '<td class="dim">' + p.team + '</td>';
     tbody.appendChild(tr);
   });
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — RENDER TEAM BUDGET CARDS
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function renderTeams() {
   var grid = document.getElementById('teamsGrid');
   grid.innerHTML = '';
   state.teamNames.forEach(function(name){
-    var picks = state.draftLog.filter(function(p){return p.team===name;});
-    var spent = picks.reduce(function(a,p){return a+p.price;},0);
-    var left = state.budget-spent;
-    var pct = Math.min(100,Math.round((spent/state.budget)*100));
-    var fillColor = pct<50?'var(--green)':pct<75?'var(--amber)':'var(--red)';
-    var playerList = picks.map(function(p){return p.player+(p.pos?' ('+p.pos+')':'');}).join(', ');
+    var picks = state.draftLog.filter(function(p){ return p.team === name; });
+    var spent = picks.reduce(function(a, p){ return a + p.price; }, 0);
+    var left = state.budget - spent;
+    var pct = Math.min(100, Math.round((spent / state.budget) * 100));
+    var fillColor = pct < 50 ? 'var(--green)' : pct < 75 ? 'var(--amber)' : 'var(--red)';
+    var playerList = picks.map(function(p){ return p.player + (p.pos ? ' (' + p.pos + ')' : ''); }).join(', ');
     var div = document.createElement('div');
     div.className = 'team-card';
     div.innerHTML =
-      '<div class="team-name">'+name+'</div>'+
-      '<div class="team-budget-row">'+
-        '<span class="team-budget-label">Remaining</span>'+
-        '<span class="team-budget-val">$'+left+'</span>'+
-      '</div>'+
-      '<div class="team-track"><div class="team-fill" style="width:'+pct+'%;background:'+fillColor+'"></div></div>'+
-      '<div class="team-players">'+(playerList||'No picks yet')+'</div>';
+      '<div class="team-name">' + name + '</div>' +
+      '<div class="team-budget-row">' +
+        '<span class="team-budget-label">Remaining</span>' +
+        '<span class="team-budget-val">$' + left + '</span>' +
+      '</div>' +
+      '<div class="team-track"><div class="team-fill" style="width:' + pct + '%;background:' + fillColor + '"></div></div>' +
+      '<div class="team-players">' + (playerList || 'No picks yet') + '</div>';
     grid.appendChild(div);
   });
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — ORACLE LIVE COMMENTARY
-// ═══════════════════════════════════════
-function updateOracleLive(player,price,team,projected) {
+// ═══════════════════════════════════════════════════════════
+function updateOracleLive(player, price, team, projected) {
   var log = state.draftLog;
-  var totalSpent = log.reduce(function(a,p){return a+p.price;},0);
-  var avg = Math.round(totalSpent/log.length);
+  var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
+  var avg = Math.round(totalSpent / log.length);
   var valueMsg = '';
   if (projected) {
-    var diff = price-projected;
-    if (diff>5) valueMsg=' That price was $'+diff+' above projection — a costly overpay.';
-    else if (diff<-5) valueMsg=' That was $'+Math.abs(diff)+' below projection — excellent value secured.';
-    else valueMsg=' That price was right on projection — well executed.';
+    var diff = price - projected;
+    if (diff > 5) valueMsg = ' That price was $' + diff + ' above projection — a costly overpay.';
+    else if (diff < -5) valueMsg = ' That was $' + Math.abs(diff) + ' below projection — excellent value secured.';
+    else valueMsg = ' That price was right on projection — well executed.';
   }
   var msgs = [
-    'The spirits have spoken. '+player+' goes to '+team+' for $'+price+'.'+valueMsg+' The market averages $'+avg+' per player. Watch your remaining budget carefully, seeker.',
-    'So it is written. '+player+' — $'+price+' to '+team+'.'+valueMsg+' With '+log.length+' souls claimed, the value lies in those yet to be nominated.',
-    player+' claimed by '+team+' at $'+price+'.'+valueMsg+' In '+log.length+' picks I have observed the room. The wise manager now asks: what positions remain unfilled?'
+    'The spirits have spoken. ' + player + ' goes to ' + team + ' for $' + price + '.' + valueMsg + ' The market averages $' + avg + ' per player. Watch your remaining budget carefully, seeker.',
+    'So it is written. ' + player + ' — $' + price + ' to ' + team + '.' + valueMsg + ' With ' + log.length + ' souls claimed, the value lies in those yet to be nominated.',
+    player + ' claimed by ' + team + ' at $' + price + '.' + valueMsg + ' In ' + log.length + ' picks I have observed the room. The wise manager now asks: what positions remain unfilled?'
   ];
-  document.getElementById('liveOracle').textContent = msgs[log.length%msgs.length];
+  document.getElementById('liveOracle').textContent = msgs[log.length % msgs.length];
 }
 
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — RESET DRAFT
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 function resetDraft() {
   if (confirm('Reset the entire draft log? This cannot be undone.')) {
     state.draftLog = [];
     renderDraftLog();
     renderTeams();
     updateTrackerStats();
-    document.getElementById('liveOracle').textContent='The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
+    document.getElementById('liveOracle').textContent = 'The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
   }
 }
 </script>
