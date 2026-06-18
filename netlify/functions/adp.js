@@ -1,6 +1,5 @@
 
-Totally fair — full replace is safer than patching one line at a time. Here's the complete, corrected file. Select all in the GitHub editor for netlify/functions/adp.js, delete everything, and paste this whole thing in:
-javascript// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 // ALLOWED ORIGINS
 // Mirrors chat.js's convention — set ALLOWED_ORIGINS in Netlify
 // environment variables to add CI testers or localhost without
