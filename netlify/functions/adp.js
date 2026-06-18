@@ -1,5 +1,6 @@
 
-// ═══════════════════════════════════════
+Totally fair — full replace is safer than patching one line at a time. Here's the complete, corrected file. Select all in the GitHub editor for netlify/functions/adp.js, delete everything, and paste this whole thing in:
+javascript// ═══════════════════════════════════════
 // ALLOWED ORIGINS
 // Mirrors chat.js's convention — set ALLOWED_ORIGINS in Netlify
 // environment variables to add CI testers or localhost without
@@ -55,8 +56,13 @@ exports.handler = async (event) => {
   }
 
   // ── Origin check ──────────────────────────────────────────
+  // Note: unlike chat.js (POST), this is a GET endpoint. Browsers
+  // often omit the Origin header on same-origin GET requests, so
+  // an empty origin is treated as allowed. A real cross-origin
+  // request still arrives with its own (non-matching) Origin
+  // value and gets blocked normally.
   const origin = event.headers.origin || event.headers.Origin || "";
-  const originAllowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  const originAllowed = origin === "" || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
   if (!originAllowed) {
     console.log(`Blocked request from origin: ${origin}`);
     return {
