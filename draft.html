@@ -51,6 +51,11 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .dot.loading{background:var(--amber);animation:pulse 0.8s infinite}
 .dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.fallback-banner{display:none;background:#3a1408;border-bottom:3px solid #ff4d2e;padding:10px 24px;align-items:center;gap:10px}
+.fallback-banner.on{display:flex}
+.fallback-banner-icon{font-size:18px;animation:pulse 1.2s infinite}
+.fallback-banner-text{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#ffd6c2}
+.fallback-banner-text b{color:#ff8a5c}
 .drafted-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .dctr{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px}
 .dbadge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
@@ -142,7 +147,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .attr{text-align:center;font-size:10px;color:var(--text3);padding:14px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border)}
 .attr a{color:var(--gold);text-decoration:none}
 @media print{
-  .hdr-right,.ctrl-bar,.status-bar,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print{display:none!important}
+  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print{display:none!important}
   body{background:#fff}
   .pos-sec{border:1px solid #ccc;box-shadow:none}
   .prow.drafted,.pcard.drafted{display:none}
@@ -210,6 +215,11 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 <div class="status-bar" id="sb">
   <span><span class="dot loading" id="sdot"></span><span id="stxt">Loading live data...</span></span>
   <span id="stime"></span>
+</div>
+
+<div class="fallback-banner" id="fallbackBanner">
+  <span class="fallback-banner-icon">⚠️</span>
+  <span class="fallback-banner-text"><b>USING FALLBACK DATA</b> — live ADP could not be reached. Rankings below are the static backup list, not real-time.</span>
 </div>
 
 <div class="drafted-bar no-print" id="dbar">
@@ -315,6 +325,8 @@ function getInj(name){
   return{cls:r.c,icon:r.i,label:r.l,part:d.part};
 }
 function setStatus(s,t){document.getElementById('sdot').className='dot '+s;document.getElementById('stxt').textContent=t}
+function showFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.add('on')}
+function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.remove('on')}
 
 // ═══════════════════════════════════════
 // LOAD DATA
@@ -326,14 +338,18 @@ async function loadAll(){
   document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
 
   try{
-    // ── FIX: year updated to 2026 ──────────────────────────
-    var adpUrl='https://fantasyfootballcalculator.com/api/v1/adp/'+scoring+'?teams='+teams+'&year=2026&count=300';
+    // ── Live ADP via Netlify proxy (server-side, avoids CORS) ──
+    var adpUrl='/.netlify/functions/adp?scoring='+scoring+'&teams='+teams+'&year=2026&count=300';
     var results=await Promise.all([
       fetch(adpUrl).then(function(r){return r.json()}),
       fetch('https://api.sleeper.app/v1/players/nfl').then(function(r){return r.json()})
     ]);
     var adpData=results[0];
     var sleeper=results[1];
+
+    if(adpData.status==='Error'||!adpData.players){
+      throw new Error(adpData.errors||'ADP proxy returned no players');
+    }
 
     adpByPos={};
     var players=adpData.players||[];
@@ -356,11 +372,13 @@ async function loadAll(){
     });
 
     ready=true;
+    hideFallbackBanner();
     var total=Object.values(adpByPos).reduce(function(a,arr){return a+arr.length},0);
     setStatus('live','2026 Live ADP · '+total+' players · '+new Date().toLocaleTimeString());
     render();
   }catch(e){
-    setStatus('loading','Using 2026 consensus ADP (fallback)...');
+    setStatus('error','Live ADP unavailable — using fallback');
+    showFallbackBanner();
     loadFallback();
   }
 }
@@ -490,16 +508,13 @@ function loadFallback(){
           injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
         }
       });
-      setStatus('live','2026 Consensus ADP · Injury data live · '+new Date().toLocaleTimeString());
       render();
     })
     .catch(function(){
-      setStatus('live','2026 Consensus ADP · Injury data unavailable · '+new Date().toLocaleTimeString());
       render();
     });
 
   ready=true;
-  setStatus('loading','2026 Consensus ADP · Loading injury data...');
   render();
 }
 
