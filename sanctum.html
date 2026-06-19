@@ -166,6 +166,101 @@ body {
 }
 .lineup-auto-note.show { display: block; }
 
+/* ROSTER FORMAT */
+.lineup-config-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(0,0,0,0.15);
+  flex-wrap: wrap;
+}
+.lineup-config-label { font-size: 13px; letter-spacing: 2px; color: #a08a5a; text-transform: uppercase; white-space: nowrap; }
+.lineup-config-select {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 6px;
+  color: #c9a84c;
+  font-size: 13px;
+  font-family: Georgia, serif;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.lineup-config-select:focus { outline: none; border-color: rgba(201,168,76,0.5); }
+.lineup-config-synced {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #4caf50;
+  font-family: 'Courier New', monospace;
+  flex-wrap: wrap;
+}
+.lineup-config-change {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: #8a7860;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: Georgia, serif;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.lineup-config-change:hover { border-color: rgba(201,168,76,0.4); color: #c9a84c; }
+
+.lineup-custom-panel {
+  display: none;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(0,0,0,0.1);
+}
+.lineup-custom-panel.open { display: block; }
+.lineup-custom-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media(max-width: 560px) {
+  .lineup-custom-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.lineup-custom-field { display: flex; flex-direction: column; gap: 4px; }
+.lineup-custom-field label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #7a6a3a;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lineup-custom-field input {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  color: #f0e0b0;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  padding: 6px 8px;
+  width: 100%;
+}
+.lineup-custom-field input:focus { outline: none; border-color: rgba(201,168,76,0.5); }
+.lineup-custom-apply {
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #c9a84c, #8b6914);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.lineup-custom-apply:hover { opacity: 0.9; }
+
 /* SLOTS GRID */
 .lineup-slots {
   display: grid;
@@ -209,6 +304,7 @@ body {
 .badge-FLEX { background: rgba(200,150,200,0.15); color: #ce93d8; border: 1px solid rgba(206,147,216,0.3); }
 .badge-K { background: rgba(160,133,80,0.15); color: #a08550; border: 1px solid rgba(160,133,80,0.3); }
 .badge-DEF { background: rgba(255,82,82,0.15); color: #ff5252; border: 1px solid rgba(255,82,82,0.3); }
+.badge-SFLEX { background: rgba(255,193,7,0.15); color: #ffc107; border: 1px solid rgba(255,193,7,0.3); }
 
 .lineup-slot-wrap { position: relative; }
 
@@ -511,6 +607,39 @@ textarea::placeholder { color: #3a3028; }
         <span style="font-size:13px;color:#a08a5a;font-family:'Courier New',monospace" id="lineupFilledCount">0 / 10 starters</span>
       </div>
 
+      <!-- ROSTER FORMAT -->
+      <div class="lineup-config-bar" id="lineupConfigBar">
+        <span class="lineup-config-label">🧩 Roster Format</span>
+        <select class="lineup-config-select" id="rosterFormatSelect" onchange="onFormatSelectChange()">
+          <option value="standard">Standard (1QB·2RB·3WR·1TE·1FLEX·1K·1DEF)</option>
+          <option value="superflex">Superflex (1QB·1SFLEX·2RB·2WR·1TE·1FLEX·1K·1DEF)</option>
+          <option value="twoqb">2-QB (2QB·2RB·2WR·1TE·1FLEX·1K·1DEF)</option>
+          <option value="nokicker">No-Kicker, 2-Flex (1QB·2RB·3WR·1TE·2FLEX·1DEF)</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <span class="lineup-config-synced" id="lineupConfigSynced" style="display:none">
+          <span id="lineupConfigSyncedText"></span>
+          <button class="lineup-config-change" onclick="revealManualFormat()">Change</button>
+        </span>
+      </div>
+
+      <!-- CUSTOM ROSTER FORMAT PANEL -->
+      <div class="lineup-custom-panel" id="lineupCustomPanel">
+        <div class="lineup-custom-grid">
+          <div class="lineup-custom-field"><label>QB</label><input type="number" id="cfg-QB" min="0" max="4" value="1"></div>
+          <div class="lineup-custom-field"><label>RB</label><input type="number" id="cfg-RB" min="0" max="6" value="2"></div>
+          <div class="lineup-custom-field"><label>WR</label><input type="number" id="cfg-WR" min="0" max="6" value="3"></div>
+          <div class="lineup-custom-field"><label>TE</label><input type="number" id="cfg-TE" min="0" max="4" value="1"></div>
+          <div class="lineup-custom-field"><label>Flex RB/WR/TE</label><input type="number" id="cfg-FLEX" min="0" max="4" value="1"></div>
+          <div class="lineup-custom-field"><label>Flex WR/TE</label><input type="number" id="cfg-RECFLEX" min="0" max="4" value="0"></div>
+          <div class="lineup-custom-field"><label>Superflex</label><input type="number" id="cfg-SFLEX" min="0" max="4" value="0"></div>
+          <div class="lineup-custom-field"><label>Kicker</label><input type="number" id="cfg-K" min="0" max="2" value="1"></div>
+          <div class="lineup-custom-field"><label>Defense</label><input type="number" id="cfg-DEF" min="0" max="2" value="1"></div>
+          <div class="lineup-custom-field"><label>Bench</label><input type="number" id="cfg-BENCH" min="0" max="12" value="6"></div>
+        </div>
+        <button class="lineup-custom-apply" onclick="applyCustomFormat()">Apply Format</button>
+      </div>
+
       <!-- STARTER SLOTS -->
       <div class="lineup-slots" id="lineupSlots">
         <!-- Built by JS -->
@@ -577,27 +706,87 @@ var benchOpen = false;
 // autocomplete never surfaces retired or non-rostered players.
 var ROSTERABLE_STATUSES = ['Active', 'Injured Reserve', 'PUP', 'NFI'];
 
-var STARTER_SLOTS = [
-  { id: 'QB',   label: 'Quarterback',   pos: 'QB',   badge: 'badge-QB' },
-  { id: 'RB1',  label: 'Running Back 1',pos: 'RB',   badge: 'badge-RB' },
-  { id: 'RB2',  label: 'Running Back 2',pos: 'RB',   badge: 'badge-RB' },
-  { id: 'WR1',  label: 'Wide Receiver 1',pos: 'WR',  badge: 'badge-WR' },
-  { id: 'WR2',  label: 'Wide Receiver 2',pos: 'WR',  badge: 'badge-WR' },
-  { id: 'WR3',  label: 'Wide Receiver 3',pos: 'WR',  badge: 'badge-WR' },
-  { id: 'TE',   label: 'Tight End',      pos: 'TE',  badge: 'badge-TE' },
-  { id: 'FLEX', label: 'Flex (RB/WR/TE)',pos: 'FLEX', badge: 'badge-FLEX' },
-  { id: 'K',    label: 'Kicker',         pos: 'K',   badge: 'badge-K' },
-  { id: 'DEF',  label: 'Defense / ST',   pos: 'DEF', badge: 'badge-DEF' },
-];
+// Full team names for building defense display names — see
+// TEAM_NAMES note below buildRosterablePlayerList for why this
+// is needed at all.
+var TEAM_NAMES = {
+  ARI: 'Arizona Cardinals', ATL: 'Atlanta Falcons', BAL: 'Baltimore Ravens', BUF: 'Buffalo Bills',
+  CAR: 'Carolina Panthers', CHI: 'Chicago Bears', CIN: 'Cincinnati Bengals', CLE: 'Cleveland Browns',
+  DAL: 'Dallas Cowboys', DEN: 'Denver Broncos', DET: 'Detroit Lions', GB: 'Green Bay Packers',
+  HOU: 'Houston Texans', IND: 'Indianapolis Colts', JAX: 'Jacksonville Jaguars', KC: 'Kansas City Chiefs',
+  LAC: 'Los Angeles Chargers', LAR: 'Los Angeles Rams', LV: 'Las Vegas Raiders', MIA: 'Miami Dolphins',
+  MIN: 'Minnesota Vikings', NE: 'New England Patriots', NO: 'New Orleans Saints', NYG: 'New York Giants',
+  NYJ: 'New York Jets', PHI: 'Philadelphia Eagles', PIT: 'Pittsburgh Steelers', SEA: 'Seattle Seahawks',
+  SF: 'San Francisco 49ers', TB: 'Tampa Bay Buccaneers', TEN: 'Tennessee Titans', WAS: 'Washington Commanders'
+};
 
-var BENCH_SLOTS = [
-  { id: 'BN1', label: 'Bench 1', pos: 'ANY' },
-  { id: 'BN2', label: 'Bench 2', pos: 'ANY' },
-  { id: 'BN3', label: 'Bench 3', pos: 'ANY' },
-  { id: 'BN4', label: 'Bench 4', pos: 'ANY' },
-  { id: 'BN5', label: 'Bench 5', pos: 'ANY' },
-  { id: 'BN6', label: 'Bench 6', pos: 'ANY' },
-];
+// ═══════════════════════════════════════
+// ROSTER FORMAT / CONFIGURATION
+// Starter slots used to be a fixed 10-slot array, which only
+// matched one specific league shape (1QB/2RB/3WR/1TE/1FLEX/1K/1DEF).
+// This builds the slot list dynamically from a position-count
+// config instead, so Superflex, 2-QB, no-kicker, etc. all work —
+// either picked manually or auto-detected from a connected
+// Sleeper league's actual roster_positions.
+// ═══════════════════════════════════════
+var POS_META = {
+  QB:      { label: 'Quarterback',             badge: 'badge-QB',   short: 'QB' },
+  RB:      { label: 'Running Back',            badge: 'badge-RB',   short: 'RB' },
+  WR:      { label: 'Wide Receiver',           badge: 'badge-WR',   short: 'WR' },
+  TE:      { label: 'Tight End',               badge: 'badge-TE',   short: 'TE' },
+  FLEX:    { label: 'Flex (RB/WR/TE)',         badge: 'badge-FLEX', short: 'FLEX' },
+  RECFLEX: { label: 'Flex (WR/TE)',            badge: 'badge-FLEX', short: 'W/T' },
+  SFLEX:   { label: 'Superflex (QB/RB/WR/TE)', badge: 'badge-SFLEX',short: 'SFLX' },
+  K:       { label: 'Kicker',                  badge: 'badge-K',    short: 'K' },
+  DEF:     { label: 'Defense / ST',             badge: 'badge-DEF', short: 'DEF' }
+};
+var POS_ORDER = ['QB', 'SFLEX', 'RB', 'WR', 'TE', 'FLEX', 'RECFLEX', 'K', 'DEF'];
+
+var ROSTER_PRESETS = {
+  standard:  { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 1, RECFLEX: 0, SFLEX: 0, K: 1, DEF: 1, BENCH: 6 },
+  superflex: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, RECFLEX: 0, SFLEX: 1, K: 1, DEF: 1, BENCH: 6 },
+  twoqb:     { QB: 2, RB: 2, WR: 2, TE: 1, FLEX: 1, RECFLEX: 0, SFLEX: 0, K: 1, DEF: 1, BENCH: 6 },
+  nokicker:  { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 2, RECFLEX: 0, SFLEX: 0, K: 0, DEF: 1, BENCH: 6 }
+};
+
+// Sleeper's league.roster_positions codes -> our internal position
+// keys. Anything not in this map (IDP slots like DL/LB/DB/IDP_FLEX,
+// or a SUPER_FLEX-style alias we don't recognize) is counted but not
+// built as a typeable slot — Sanctum tracks offense + K + DEF only.
+var SLEEPER_POS_MAP = {
+  QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', FLEX: 'FLEX',
+  WR_TE: 'RECFLEX', REC_FLEX: 'RECFLEX', SUPER_FLEX: 'SFLEX',
+  DEF: 'DEF', K: 'K'
+};
+
+function buildSlotsFromCounts(counts) {
+  var slots = [];
+  POS_ORDER.forEach(function(pos) {
+    var n = counts[pos] || 0;
+    var meta = POS_META[pos];
+    for (var i = 1; i <= n; i++) {
+      slots.push({
+        id: pos + (n > 1 ? i : ''),
+        label: n > 1 ? meta.label + ' ' + i : meta.label,
+        pos: pos,
+        badge: meta.badge
+      });
+    }
+  });
+  return slots;
+}
+
+function buildBenchSlotsFromCount(n) {
+  var slots = [];
+  for (var i = 1; i <= (n || 0); i++) {
+    slots.push({ id: 'BN' + i, label: 'Bench ' + i, pos: 'ANY' });
+  }
+  return slots;
+}
+
+var currentRosterFormat = 'standard';
+var STARTER_SLOTS = buildSlotsFromCounts(ROSTER_PRESETS.standard);
+var BENCH_SLOTS = buildBenchSlotsFromCount(ROSTER_PRESETS.standard.BENCH);
 
 var P = {
   oracle: {
@@ -650,7 +839,7 @@ function createSlotEl(slot, isBench) {
   div.className = 'lineup-slot';
 
   var badgeClass = slot.badge || 'badge-FLEX';
-  var posShort = slot.pos === 'ANY' ? 'BN' : slot.pos;
+  var posShort = slot.pos === 'ANY' ? 'BN' : ((POS_META[slot.pos] && POS_META[slot.pos].short) || slot.pos);
 
   div.innerHTML =
     '<div class="lineup-slot-label">' +
@@ -669,6 +858,81 @@ function createSlotEl(slot, isBench) {
 }
 
 // ═══════════════════════════════════════
+// ROSTER FORMAT — APPLY / SWITCH
+// ═══════════════════════════════════════
+function applyRosterCounts(counts, source) {
+  STARTER_SLOTS = buildSlotsFromCounts(counts);
+  BENCH_SLOTS = buildBenchSlotsFromCount(counts.BENCH != null ? counts.BENCH : 6);
+  buildLineupSlots();
+  updateFilledCount();
+  if (source === 'sleeper') autoFillFromSleeper();
+}
+
+function onFormatSelectChange() {
+  var val = document.getElementById('rosterFormatSelect').value;
+  currentRosterFormat = val;
+  var panel = document.getElementById('lineupCustomPanel');
+  if (val === 'custom') { panel.classList.add('open'); return; }
+  panel.classList.remove('open');
+  applyRosterCounts(ROSTER_PRESETS[val], 'manual');
+}
+
+function applyCustomFormat() {
+  var counts = {};
+  ['QB', 'RB', 'WR', 'TE', 'FLEX', 'RECFLEX', 'SFLEX', 'K', 'DEF'].forEach(function(p) {
+    counts[p] = parseInt(document.getElementById('cfg-' + p).value, 10) || 0;
+  });
+  counts.BENCH = parseInt(document.getElementById('cfg-BENCH').value, 10) || 0;
+  applyRosterCounts(counts, 'manual');
+}
+
+function rosterConfigFromSleeper(rosterPositions) {
+  var counts = { QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, RECFLEX: 0, SFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
+  var unsupported = 0;
+  (rosterPositions || []).forEach(function(code) {
+    if (code === 'BN') { counts.BENCH++; return; }
+    var mapped = SLEEPER_POS_MAP[code];
+    if (mapped) { counts[mapped]++; } else { unsupported++; }
+  });
+  return { counts: counts, unsupported: unsupported };
+}
+
+function formatCountsLabel(counts) {
+  var parts = [];
+  POS_ORDER.concat(['BENCH']).forEach(function(pos) {
+    var n = counts[pos];
+    if (!n) return;
+    parts.push(n + (pos === 'BENCH' ? 'BN' : (POS_META[pos] ? POS_META[pos].short : pos)));
+  });
+  return parts.join('·');
+}
+
+// Called once a Sleeper league connects successfully — replaces the
+// manual format dropdown with a "synced" readout reflecting the
+// league's actual roster_positions, since that's the real source of
+// truth rather than asking the user to re-declare what they already
+// told Sleeper when they set up their league.
+function applySleeperRosterFormat(rosterPositions) {
+  var result = rosterConfigFromSleeper(rosterPositions);
+  applyRosterCounts(result.counts, 'sleeper');
+
+  document.getElementById('rosterFormatSelect').style.display = 'none';
+  document.getElementById('lineupCustomPanel').classList.remove('open');
+  var synced = document.getElementById('lineupConfigSynced');
+  synced.style.display = 'flex';
+  var label = '✓ Synced from Sleeper: ' + formatCountsLabel(result.counts);
+  if (result.unsupported > 0) {
+    label += ' (+' + result.unsupported + ' IDP slot' + (result.unsupported > 1 ? 's' : '') + ' not tracked)';
+  }
+  document.getElementById('lineupConfigSyncedText').textContent = label;
+}
+
+function revealManualFormat() {
+  document.getElementById('lineupConfigSynced').style.display = 'none';
+  document.getElementById('rosterFormatSelect').style.display = 'inline-block';
+}
+
+// ═══════════════════════════════════════
 // PLAYER SEARCH & AUTOCOMPLETE
 // ═══════════════════════════════════════
 function slotSearch(input) {
@@ -684,11 +948,16 @@ function slotSearch(input) {
 
   // Filter from Sleeper player list — prefer roster players if connected
   var pool = allSleeperPlayers.length > 0 ? allSleeperPlayers : [];
+  // Which actual positions are eligible to fill each slot type. Plain
+  // position slots (QB/RB/WR/TE/K/DEF) just match themselves.
+  var FLEX_ELIGIBLE = { FLEX: ['RB', 'WR', 'TE'], RECFLEX: ['WR', 'TE'], SFLEX: ['QB', 'RB', 'WR', 'TE'] };
   var matches = pool.filter(function(p) {
-    if (pos !== 'ANY' && pos !== 'FLEX' && pos !== 'DEF' && p.pos !== pos) return false;
-    if (pos === 'FLEX' && !['RB','WR','TE'].includes(p.pos)) return false;
-    if (pos === 'DEF' && p.pos !== 'DEF') return false;
-    return p.name.toLowerCase().includes(q) || (p.team && p.team.toLowerCase().includes(q));
+    var q2 = q;
+    var nameOrTeamMatch = p.name.toLowerCase().includes(q2) || (p.team && p.team.toLowerCase().includes(q2));
+    if (!nameOrTeamMatch) return false;
+    if (pos === 'ANY') return true;
+    if (FLEX_ELIGIBLE[pos]) return FLEX_ELIGIBLE[pos].includes(p.pos);
+    return p.pos === pos;
   }).slice(0, 10);
 
   if (!matches.length) { dd.style.display = 'none'; return; }
@@ -755,28 +1024,45 @@ function autoFillFromSleeper() {
     if (byPos[p.pos]) byPos[p.pos].push(p);
   });
 
-  function fillSlot(slotId, player) {
-    var el = document.getElementById('slot-' + slotId);
-    if (el && player) { el.value = player.name; el.classList.add('filled'); }
+  // How many of each position have already been assigned to a starter
+  // slot, so multi-slot positions (RB1/RB2, QB1/QB2 in a 2-QB league,
+  // etc.) each get a distinct player instead of all showing the same one.
+  var used = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
+
+  function nextFrom(eligiblePositions) {
+    for (var i = 0; i < eligiblePositions.length; i++) {
+      var p = eligiblePositions[i];
+      if (byPos[p] && byPos[p][used[p]]) {
+        var player = byPos[p][used[p]];
+        used[p]++;
+        return player;
+      }
+    }
+    return null;
   }
 
-  fillSlot('QB',  byPos.QB[0]);
-  fillSlot('RB1', byPos.RB[0]);
-  fillSlot('RB2', byPos.RB[1]);
-  fillSlot('WR1', byPos.WR[0]);
-  fillSlot('WR2', byPos.WR[1]);
-  fillSlot('WR3', byPos.WR[2]);
-  fillSlot('TE',  byPos.TE[0]);
-  // FLEX — first remaining RB/WR/TE
-  var flexPlayer = byPos.RB[2] || byPos.WR[3] || byPos.TE[1];
-  fillSlot('FLEX', flexPlayer);
-  fillSlot('K',   byPos.K[0]);
-  fillSlot('DEF', byPos.DEF[0]);
+  STARTER_SLOTS.forEach(function(slot) {
+    var player;
+    if (slot.pos === 'FLEX') player = nextFrom(['RB', 'WR', 'TE']);
+    else if (slot.pos === 'RECFLEX') player = nextFrom(['WR', 'TE']);
+    else if (slot.pos === 'SFLEX') player = nextFrom(['QB', 'RB', 'WR', 'TE']);
+    else player = nextFrom([slot.pos]);
 
-  // Bench
-  var benchPool = sleeperRosterPlayers.slice(10);
+    var el = document.getElementById('slot-' + slot.id);
+    if (el && player) { el.value = player.name; el.classList.add('filled'); }
+  });
+
+  // Bench — whatever roster players didn't get used as a starter above,
+  // in original roster order.
+  var usedCopy = { QB: used.QB, RB: used.RB, WR: used.WR, TE: used.TE, K: used.K, DEF: used.DEF };
+  var assignedNames = {};
+  Object.keys(byPos).forEach(function(pos) {
+    byPos[pos].slice(0, usedCopy[pos]).forEach(function(p) { assignedNames[p.name] = true; });
+  });
+  var benchPool = sleeperRosterPlayers.filter(function(p) { return !assignedNames[p.name]; });
   BENCH_SLOTS.forEach(function(s, i) {
-    if (benchPool[i]) fillSlot(s.id, benchPool[i]);
+    var el = document.getElementById('slot-' + s.id);
+    if (el && benchPool[i]) { el.value = benchPool[i].name; el.classList.add('filled'); }
   });
 
   document.getElementById('lineupAutoNote').classList.add('show');
@@ -839,9 +1125,30 @@ function toggleBench() {
 // every player who has EVER had a roster spot, so this filter is
 // required to avoid surfacing names like long-retired veterans
 // in the lineup search.
+//
+// Team defenses are a special case in Sleeper's data: each one's
+// player_id IS the team's abbreviation (e.g. "SF"), and full_name/
+// first_name/last_name are all null — there's no real "player" to
+// name. That's why DEF search was returning nothing: the old
+// `!p.full_name` check silently dropped every defense before the
+// position whitelist even ran. sleeperPlayerName() below builds a
+// real display name ("San Francisco 49ers") from the team code.
+function sleeperPlayerName(p) {
+  if (p.position === 'DEF') return TEAM_NAMES[p.team] || p.team || 'Defense';
+  return p.full_name || null;
+}
+
 function buildRosterablePlayerList(rawPlayers) {
   var list = [];
   Object.values(rawPlayers).forEach(function(p) {
+    if (p.position === 'DEF') {
+      // Defenses have no meaningful `status` in Sleeper's data either
+      // (it's null, not "Active") — a team defense is rosterable as
+      // long as the team exists, so it skips the status check below.
+      if (!p.team) return;
+      list.push({ name: sleeperPlayerName(p), pos: 'DEF', team: p.team });
+      return;
+    }
     if (!p.full_name) return;
     if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
     if (!ROSTERABLE_STATUSES.includes(p.status)) return;
@@ -891,7 +1198,9 @@ async function connectSleeper() {
     var playerIds = (myRoster.players || []).slice(0, 20);
     sleeperRosterPlayers = playerIds.map(function(id) {
       var p = allPlayers[id];
-      return p ? { name: p.full_name, pos: p.position || '?', team: p.team || 'FA' } : null;
+      if (!p) return null;
+      var name = sleeperPlayerName(p);
+      return name ? { name: name, pos: p.position || '?', team: p.team || 'FA' } : null;
     }).filter(Boolean);
 
     var playerNames = sleeperRosterPlayers.map(function(p) {
@@ -915,7 +1224,11 @@ async function connectSleeper() {
     }).join('');
 
     updateSystemPrompts();
-    autoFillFromSleeper();
+    if (league.roster_positions && league.roster_positions.length) {
+      applySleeperRosterFormat(league.roster_positions);
+    } else {
+      autoFillFromSleeper();
+    }
 
   } catch(e) {
     status.className = 'sleeper-status error';
@@ -1196,6 +1509,7 @@ document.addEventListener('click', function(e) {
 });
 
 buildLineupSlots();
+updateFilledCount();
 loadPlayerList();
 </script>
   <!-- UPGRADE MODAL -->
