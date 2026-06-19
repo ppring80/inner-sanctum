@@ -173,6 +173,11 @@ exports.handler = async (event) => {
       };
     });
 
+    // ── Debug mode: ?debug=1 returns one raw odds object as-is ──
+    // so we can see Tank01's actual field names instead of
+    // guessing. Remove once the real shape is confirmed.
+    const debugRaw = params.debug ? Object.values(oddsByGameId)[0] || null : undefined;
+
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
@@ -180,7 +185,8 @@ exports.handler = async (event) => {
         status: "Success",
         week, season, seasonType,
         games: merged,
-        oddsErrors: oddsErrors.length ? oddsErrors : undefined
+        oddsErrors: oddsErrors.length ? oddsErrors : undefined,
+        debugRawOddsSample: debugRaw
       })
     };
 
