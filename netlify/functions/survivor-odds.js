@@ -143,19 +143,28 @@ exports.handler = async (event) => {
 
       let awayWinPct = null, homeWinPct = null, spread = null, sportsbook = null;
 
-      if (odds?.sportsbooks) {
-        const bookEntries = Object.entries(odds.sportsbooks);
+      // Tank01's actual shape: sportsbook names are top-level keys on the
+      // odds object itself (no "sportsbooks" wrapper), mixed in alongside
+      // metadata fields. Filter those out, then prefer a consistent book
+      // when available so numbers don't jump between different books from
+      // game to game; fall back to whichever book is present otherwise.
+      if (odds) {
+        const META_KEYS = new Set([
+          "awayTeam", "homeTeam", "gameDate", "gameID",
+          "teamIDAway", "teamIDHome", "last_updated_e_time"
+        ]);
+        const bookEntries = Object.entries(odds).filter(
+          ([k, v]) => !META_KEYS.has(k) && v && typeof v === "object"
+        );
         if (bookEntries.length) {
-          const [bookName, book] = bookEntries[0]; // first available book
+          const PREFERRED = ["draftkings", "fanduel", "betmgm", "caesars"];
+          const preferredEntry = bookEntries.find(([k]) => PREFERRED.includes(k));
+          const [bookName, book] = preferredEntry || bookEntries[0];
           sportsbook = bookName;
-          if (book?.moneyline) {
-            const rawAway = moneylineToProb(book.moneyline.away);
-            const rawHome = moneylineToProb(book.moneyline.home);
-            [awayWinPct, homeWinPct] = devig(rawAway, rawHome);
-          }
-          if (book?.spread) {
-            spread = book.spread.home ?? book.spread.away ?? null;
-          }
+          const rawAway = moneylineToProb(book.awayTeamMLOdds);
+          const rawHome = moneylineToProb(book.homeTeamMLOdds);
+          [awayWinPct, homeWinPct] = devig(rawAway, rawHome);
+          spread = book.homeTeamSpread ?? book.awayTeamSpread ?? null;
         }
       }
 
