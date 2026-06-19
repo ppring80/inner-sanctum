@@ -94,6 +94,54 @@ body {
   50% { opacity: 0.45; }
 }
 
+/* TIER NOTE (under page title) */
+.tier-note { font-size: 11px; color: #6a5a3a; letter-spacing: 0.5px; margin-top: -10px; margin-bottom: 16px; }
+.tier-note-link {
+  background: none;
+  border: none;
+  color: #c9a84c;
+  font-family: Georgia, serif;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.5px;
+}
+.tier-note-link:hover { color: #f0e0b0; }
+
+/* HOW THIS WORKS */
+.howto-wrap { padding: 0 20px; margin: 8px 0 0; }
+.howto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #7a6a3a;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+  user-select: none;
+}
+.howto-toggle:hover { color: #c9a84c; }
+.howto-chevron { font-size: 10px; transition: transform 0.3s; }
+.howto-chevron.open { transform: rotate(180deg); }
+.howto-panel {
+  display: none;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-top: 4px;
+}
+.howto-panel.open { display: block; }
+.howto-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.6; color: #c8b890; margin-bottom: 10px; }
+.howto-item:last-child { margin-bottom: 0; }
+.howto-icon { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+.howto-item strong { color: #e8d8a8; }
+
 /* ═══════════════════════════════════════════
    LINEUP ADVISOR
 ═══════════════════════════════════════════ */
@@ -526,6 +574,7 @@ textarea::placeholder { color: #3a3028; }
     <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
     <span class="top-sub">Choose your counsel wisely</span>
+    <div class="tier-note">🎁 Free tier: 10 questions/session · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
 
   <!-- SLEEPER CONNECT -->
@@ -561,6 +610,20 @@ textarea::placeholder { color: #3a3028; }
       <div class="tab-name">The Analyst</div>
       <div class="tab-sub">Pure Data. No Fluff.</div>
     </button>
+  </div>
+
+  <!-- HOW THIS WORKS -->
+  <div class="howto-wrap">
+    <div class="howto-toggle" onclick="toggleHowTo()">
+      <span>❓ How This Works</span>
+      <span class="howto-chevron" id="howtoChevron">▼</span>
+    </div>
+    <div class="howto-panel" id="howtoPanel">
+      <div class="howto-item"><span class="howto-icon">🔮</span><span><strong>Pick a persona</strong> — Oracle, Trash Lord, and Analyst all give real advice in a different voice. Switching tabs starts a separate conversation with that persona; they don't see what you asked the others.</span></div>
+      <div class="howto-item"><span class="howto-icon">🏈</span><span><strong>Connect Sleeper</strong> (optional) to auto-fill your actual roster and lineup format below, and get advice based on your real team instead of generic tips.</span></div>
+      <div class="howto-item"><span class="howto-icon">⚡</span><span><strong>Weekly Lineup Advisor</strong> — enter your starters (or let Sleeper fill them in), set your roster format if it wasn't auto-detected, then ask your persona for a full lineup verdict.</span></div>
+      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions per session across all personas combined. Resets if you reload the page. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
+    </div>
   </div>
 
   <!-- VOICE -->
@@ -1114,6 +1177,13 @@ function toggleBench() {
   benchOpen = !benchOpen;
   document.getElementById('lineupBench').className = 'lineup-bench' + (benchOpen ? ' open' : '');
   document.getElementById('benchToggleIcon').textContent = benchOpen ? '▼' : '▶';
+}
+
+var howtoOpen = false;
+function toggleHowTo() {
+  howtoOpen = !howtoOpen;
+  document.getElementById('howtoPanel').classList.toggle('open', howtoOpen);
+  document.getElementById('howtoChevron').classList.toggle('open', howtoOpen);
 }
 
 // ═══════════════════════════════════════
