@@ -1,3 +1,4 @@
+
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
 // Mirrors chat.js / adp.js convention — set ALLOWED_ORIGINS in
@@ -158,8 +159,16 @@ exports.handler = async (event) => {
         );
         if (bookEntries.length) {
           const PREFERRED = ["draftkings", "fanduel", "betmgm", "caesars"];
-          const preferredEntry = bookEntries.find(([k]) => PREFERRED.includes(k));
-          const [bookName, book] = preferredEntry || bookEntries[0];
+          // Walk PREFERRED in priority order and take the first one
+          // actually present, instead of walking bookEntries (Tank01's
+          // return order) and taking whichever preferred book happens
+          // to appear first there — that was the bug: it silently
+          // picked whatever preferred book Tank01 listed first rather
+          // than strictly preferring draftkings, then fanduel, etc.
+          const bookByName = Object.fromEntries(bookEntries);
+          const preferredName = PREFERRED.find(name => bookByName[name]);
+          const bookName = preferredName || bookEntries[0][0];
+          const book = bookByName[bookName] || bookEntries[0][1];
           sportsbook = bookName;
           const rawAway = moneylineToProb(book.awayTeamMLOdds);
           const rawHome = moneylineToProb(book.homeTeamMLOdds);
