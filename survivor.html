@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survivor Pool — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ef;--bg2:#e8e7e4;--surface:#ffffff;--border:#d4d2ce;
+  --text:#1c1c1a;--text2:#4a4a46;--text3:#7a7a76;
+  --gold:#b8921a;--gold-lt:#c9a84c;--amber:#c8780a;
+  --green:#2a6e2a;--red:#b83020;--blue:#1a5280;--r:6px;
+  --char:#2a1810;--char-bd:#5c2a1a;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+.hdr{background:#1a1108;border-bottom:2px solid var(--gold-lt);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-brand{font-family:'Cinzel',serif;font-size:9px;letter-spacing:4px;color:var(--gold-lt);text-transform:uppercase;display:block;margin-bottom:2px}
+.hdr-title{font-family:'Cinzel',serif;font-size:20px;font-weight:600;color:#f0e6cc}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hdr-btn{color:#a08550;font-size:12px;text-decoration:none;padding:5px 12px;border:1px solid #3d2a12;border-radius:var(--r);transition:all 0.15s;background:transparent;cursor:pointer;font-family:'Lora',serif}
+.hdr-btn:hover{color:var(--gold-lt);border-color:var(--gold-lt)}
+
+.ctrl-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.week-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.week-tab{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--bg2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.week-tab:hover{border-color:var(--gold);color:var(--gold)}
+.week-tab.active{background:var(--gold);color:#fff;border-color:transparent}
+.week-tab.has-pick::after{content:'';position:absolute}
+.week-tab.has-pick{box-shadow:0 0 0 2px var(--green) inset}
+
+.status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.live{background:var(--green);animation:pulse 2s infinite}
+.dot.loading{background:var(--amber);animation:pulse 0.8s infinite}
+.dot.pending{background:var(--text3)}
+.dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.notice{background:#fffbf0;border-bottom:1px solid #f0e8c0;padding:8px 24px;font-size:12px;font-style:italic;color:#5a4a1a;display:none}
+.notice.on{display:block}
+
+.layout{display:grid;grid-template-columns:1fr 300px;gap:20px;padding:16px 24px;max-width:1280px;margin:0 auto;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+
+.oracle-box{background:#fffbf0;border-left:3px solid var(--gold);padding:10px 14px;font-style:italic;font-size:12px;color:#5a4a1a;line-height:1.7;border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--r);margin-bottom:14px}
+.oracle-lbl{font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:2px;font-style:normal}
+.trash-box{background:#fff8f8;border:1px solid var(--border);border-left:3px solid var(--red);padding:10px 14px;font-style:italic;font-size:12px;color:#5a1a1a;line-height:1.7;border-radius:var(--r);margin-bottom:16px}
+.trash-lbl{font-size:9px;letter-spacing:2px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:2px;font-style:normal}
+
+.week-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.week-hdr h1{font-family:'Cinzel',serif;font-size:18px;color:var(--text);font-weight:600}
+.week-hdr .sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+
+.matchups{display:flex;flex-direction:column;gap:10px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.mcard-meta{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);display:flex;justify-content:space-between}
+.mcard-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch}
+.tpick{padding:14px 16px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;transition:background 0.15s;position:relative}
+.tpick:hover:not(.used):not(.selected){background:#f8f6f0}
+.tpick.away{text-align:left}
+.tpick.home{text-align:right;align-items:flex-end}
+.tname{font-size:16px;font-weight:600;color:var(--text)}
+.tpct{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2)}
+.tpct.fav{color:var(--green);font-weight:600}
+.tbar{height:4px;border-radius:2px;background:var(--bg2);overflow:hidden;width:100%}
+.tbar-fill{height:100%;background:var(--gold);border-radius:2px}
+.tpick.home .tbar-fill{margin-left:auto}
+.vs-divider{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px;border-left:1px solid var(--border);border-right:1px solid var(--border);background:var(--bg)}
+.vs-spread{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);white-space:nowrap}
+.vs-at{font-family:'Cinzel',serif;font-size:11px;color:var(--text3)}
+
+.tpick.selected{background:#e8f5e9}
+.tpick.selected .tname::after{content:' ✓';color:var(--green)}
+.pick-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--green);text-transform:uppercase}
+
+/* ── BURNED — the signature element. Used teams are not just  ── */
+/* ── greyed out, they're sealed shut, same fire motif as the   ── */
+/* ── Trash Lord's bomb-pick warnings elsewhere on the site.     ── */
+.tpick.used{cursor:not-allowed;background:var(--char);color:#a89186}
+.tpick.used .tname{color:#c4a896;text-decoration:line-through;text-decoration-color:#7a4030}
+.tpick.used .tpct{color:#7a6358}
+.tpick.used .tbar{background:#1a0f0a}
+.tpick.used .tbar-fill{background:#5c2a1a}
+.burn-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:#e08050;text-transform:uppercase;display:flex;align-items:center;gap:3px}
+
+.no-odds{color:var(--text3);font-style:italic;font-size:12px;padding:2px 0}
+
+/* ── Sidebar ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.panel-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 14px;font-family:'Cinzel',serif;font-size:13px;color:var(--text)}
+.panel-body{padding:12px 14px}
+.season-pick-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bg2);font-size:12px}
+.season-pick-row:last-child{border-bottom:none}
+.season-pick-wk{font-family:'JetBrains Mono',monospace;color:var(--text3);width:50px}
+.season-pick-team{font-weight:600;flex:1}
+.season-pick-team.empty{color:var(--text3);font-weight:400;font-style:italic}
+.season-pick-clear{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:13px}
+.season-pick-clear:hover{color:var(--red)}
+.burned-grid{display:flex;flex-wrap:wrap;gap:5px}
+.burned-chip{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 8px;border-radius:3px;background:var(--char);color:#c4a896;border:1px solid var(--char-bd)}
+.remaining-count{font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--gold);font-weight:600}
+.remaining-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.bye-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:8px}
+
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:14px;text-align:center}
+.ring{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-lbl{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--text3);text-transform:uppercase}
+
+.attr{text-align:center;font-size:10px;color:var(--text3);padding:14px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border)}
+.attr a{color:var(--gold);text-decoration:none}
+
+@media (max-width:600px){
+  .tname{font-size:14px}
+  .mcard-teams{grid-template-columns:1fr auto 1fr}
+  .tpick{padding:10px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-brand">The Inner Sanctum</span>
+    <div class="hdr-title">☠️ Survivor Pool</div>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="hdr-btn">🏠 Home</a>
+    <a href="/draft" class="hdr-btn">📋 Draft</a>
+    <a href="/auction" class="hdr-btn">⚔️ Auction</a>
+    <a href="/tiers" class="hdr-btn">🏆 Tier List</a>
+    <a href="/sanctum" class="hdr-btn">← Sanctum</a>
+  </div>
+</div>
+
+<div class="ctrl-bar">
+  <div class="week-tabs" id="weekTabs"></div>
+</div>
+
+<div class="status-bar" id="sb">
+  <span><span class="dot loading" id="sdot"></span><span id="stxt">Loading week...</span></span>
+</div>
+
+<div class="notice" id="notice"></div>
+
+<div class="layout">
+  <div>
+    <div class="week-hdr">
+      <h1 id="weekTitle">Week 1</h1>
+      <span class="sub" id="weekSub"></span>
+    </div>
+
+    <div class="oracle-box"><div class="oracle-lbl">🔮 The Oracle</div><div id="oracleTxt">The spirits favor patience. The biggest favorite of any given week is rarely the best week to spend it — ask yourself not "who wins this week" but "who do I need most in Week 15."</div></div>
+    <div class="trash-box"><div class="trash-lbl">🔥 Trash Lord Warning</div><div id="trashTxt">BOMB PICK: Burning your best team in Week 2 because they happen to be favored by 20 is how rookies finish in November. Survivor is a 17-week game, not a 1-week game.</div></div>
+
+    <div id="main"><div class="loading"><div class="ring"></div><div class="loading-lbl">The Oracle consults the schedule...</div></div></div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <div class="panel-hdr">🔥 Teams Remaining</div>
+      <div class="panel-body">
+        <div class="remaining-count" id="remainCount">32</div>
+        <div class="remaining-lbl">of 32 unburned</div>
+        <div class="bye-note" id="byeNote"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">📜 Your Season</div>
+      <div class="panel-body" id="seasonPicks"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">⚰️ Burned Teams</div>
+      <div class="panel-body">
+        <div class="burned-grid" id="burnedGrid"><span style="color:var(--text3);font-style:italic;font-size:12px">None yet — the season is young.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="attr">
+  Odds: <a href="https://tank01.com" target="_blank">Tank01</a> · pre-game lines, updated live as sportsbooks post them &nbsp;·&nbsp; Picks stored locally in this browser only
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// 2026 BYE WEEKS — same source as draft.html, kept in sync
+// ═══════════════════════════════════════
+var BYE={
+  BUF:7,MIA:6,NE:11,NYJ:13,
+  BAL:13,CIN:6,CLE:11,PIT:9,
+  HOU:8,IND:13,JAC:7,TEN:9,
+  DEN:10,KC:5,LV:13,LAC:7,
+  DAL:14,NYG:8,PHI:10,WSH:7,
+  CHI:10,DET:6,GB:11,MIN:6,
+  ATL:11,CAR:5,NO:8,TB:10,
+  ARI:14,LAR:11,SF:8,SEA:11
+};
+var ALL_TEAMS=Object.keys(BYE);
+
+// ═══════════════════════════════════════
+// NFL WEEK CALCULATOR — mirrors chat.js / survivor-odds.js so
+// the default week is consistent everywhere on the site.
+// UPDATE seasonStart each year.
+// ═══════════════════════════════════════
+function getCurrentNFLWeek(){
+  var seasonStart=new Date('2026-09-09');
+  var now=new Date();
+  if(now<seasonStart)return 1;
+  var diffDays=Math.floor((now-seasonStart)/(1000*60*60*24));
+  return Math.max(1,Math.min(18,Math.floor(diffDays/7)+1));
+}
+
+// ═══════════════════════════════════════
+// STATE
+// picks: {"1":"TB","2":"KC",...} — week number -> team picked
+// Versioned by season so old picks don't carry over next year.
+// ═══════════════════════════════════════
+var STORAGE_KEY='survivorPicks2026';  // UPDATE EACH SEASON
+var picks=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+var curWeek=getCurrentNFLWeek();
+var weekData={}; // cache of fetched weeks: {1: [...games], 2: [...]}
+
+function savePicks(){localStorage.setItem(STORAGE_KEY,JSON.stringify(picks))}
+function usedTeams(excludeWeek){
+  var s=new Set();
+  Object.keys(picks).forEach(function(wk){
+    if(String(wk)===String(excludeWeek))return;
+    s.add(picks[wk]);
+  });
+  return s;
+}
+
+function setStatus(s,t){document.getElementById('sdot').className='dot '+s;document.getElementById('stxt').textContent=t}
+function showNotice(t){var n=document.getElementById('notice');n.textContent=t;n.classList.add('on')}
+function hideNotice(){document.getElementById('notice').classList.remove('on')}
+
+// ═══════════════════════════════════════
+// WEEK TABS
+// ═══════════════════════════════════════
+function renderWeekTabs(){
+  var wrap=document.getElementById('weekTabs');
+  wrap.innerHTML='';
+  for(var w=1;w<=18;w++){
+    var btn=document.createElement('button');
+    btn.className='week-tab'+(w===curWeek?' active':'')+(picks[w]?' has-pick':'');
+    btn.textContent=w;
+    btn.title=picks[w]?('Week '+w+' — picked '+picks[w]):('Week '+w);
+    btn.onclick=(function(wk){return function(){goWeek(wk)}})(w);
+    wrap.appendChild(btn);
+  }
+}
+
+function goWeek(w){
+  curWeek=w;
+  renderWeekTabs();
+  loadWeek(w);
+}
+
+// ═══════════════════════════════════════
+// LOAD WEEK DATA
+// ═══════════════════════════════════════
+async function loadWeek(w){
+  document.getElementById('weekTitle').textContent='Week '+w;
+  hideNotice();
+
+  if(weekData[w]){
+    renderWeek(w);
+    return;
+  }
+
+  setStatus('loading','Loading Week '+w+' schedule + odds...');
+  document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
+
+  try{
+    var res=await fetch('/.netlify/functions/survivor-odds?week='+w);
+    var data=await res.json();
+    if(data.status==='Error'||!Array.isArray(data.games)){
+      throw new Error(data.error||data.errors||'No schedule data returned');
+    }
+    weekData[w]=data.games;
+    setStatus('live','Week '+w+' · '+data.games.length+' games · '+new Date().toLocaleTimeString());
+    renderWeek(w);
+  }catch(e){
+    setStatus('error','Could not load Week '+w);
+    document.getElementById('main').innerHTML='<div class="loading"><div class="loading-lbl" style="color:var(--red)">Could not load this week\'s schedule.<br>Try refreshing.</div></div>';
+    console.log('Week load failed:',e.message);
+  }
+}
+
+// ═══════════════════════════════════════
+// RENDER WEEK
+// ═══════════════════════════════════════
+function renderWeek(w){
+  var games=weekData[w]||[];
+  var main=document.getElementById('main');
+  var used=usedTeams(w);
+
+  // Sort: if real odds exist, best-favorite-first. Otherwise
+  // chronological — there's no "best pick" signal yet.
+  var hasOdds=games.some(function(g){return g.homeWinPct!=null});
+  var sorted=games.slice().sort(function(a,b){
+    if(hasOdds){
+      var am=Math.max(a.awayWinPct||0,a.homeWinPct||0);
+      var bm=Math.max(b.awayWinPct||0,b.homeWinPct||0);
+      return bm-am;
+    }
+    return (a.gameDate+a.gameTime).localeCompare(b.gameDate+b.gameTime);
+  });
+
+  if(!hasOdds){
+    showNotice('⏳ Sportsbooks haven\'t posted lines for Week '+w+' yet — showing the schedule only. Win% and spreads will appear automatically once odds open, typically about a week or two before kickoff.');
+  }else{
+    hideNotice();
+  }
+
+  // Dynamic Trash Lord line: call out this week's biggest chalk pick
+  if(hasOdds&&sorted.length){
+    var top=sorted[0];
+    var topTeam=top.awayWinPct>top.homeWinPct?top.away:top.home;
+    var topPct=Math.max(top.awayWinPct,top.homeWinPct);
+    document.getElementById('trashTxt').textContent='BOMB PICK WATCH: '+topTeam+' at '+topPct+'% is this week\'s biggest chalk — half the pool will burn them here. If you\'re saving them for a tougher week down the line, good. If you\'re just taking the "safe" pick out of habit, that\'s exactly how everyone ends up dead in the same week.';
+  }
+
+  var byeTeams=ALL_TEAMS.filter(function(t){
+    return !games.some(function(g){return g.away===t||g.home===t});
+  });
+  document.getElementById('byeNote').textContent=byeTeams.length?('Bye this week: '+byeTeams.join(', ')):'';
+
+  main.innerHTML='';
+  if(!sorted.length){
+    main.innerHTML='<div class="loading"><div class="loading-lbl">No games found for this week.</div></div>';
+    return;
+  }
+
+  sorted.forEach(function(g){
+    var card=document.createElement('div');
+    card.className='mcard';
+
+    var hasPct=g.awayWinPct!=null&&g.homeWinPct!=null;
+    var awayFav=hasPct&&g.awayWinPct>g.homeWinPct;
+    var homeFav=hasPct&&g.homeWinPct>g.awayWinPct;
+
+    var awayUsed=used.has(g.away);
+    var homeUsed=used.has(g.home);
+    var awaySel=picks[w]===g.away;
+    var homeSel=picks[w]===g.home;
+
+    var spreadTxt=g.spread!=null?('Spread '+g.spread):'';
+    var dateTxt=formatGameDate(g.gameDate)+' · '+(g.gameTime||'');
+
+    card.innerHTML=
+      '<div class="mcard-meta"><span>'+dateTxt+'</span><span>'+(g.sportsbook?('via '+g.sportsbook):'')+'</span></div>'+
+      '<div class="mcard-teams">'+
+        teamPickHtml(g.away,'away',hasPct?g.awayWinPct:null,awayFav,awayUsed,awaySel,w)+
+        '<div class="vs-divider"><span class="vs-at">@</span><span class="vs-spread">'+spreadTxt+'</span></div>'+
+        teamPickHtml(g.home,'home',hasPct?g.homeWinPct:null,homeFav,homeUsed,homeSel,w)+
+      '</div>';
+    main.appendChild(card);
+  });
+
+  // Wire up click handlers (event delegation would also work, but
+  // this stays consistent with draft.html's inline-onclick style)
+  main.querySelectorAll('[data-pick-team]').forEach(function(el){
+    el.addEventListener('click',function(){
+      var team=el.getAttribute('data-pick-team');
+      if(el.classList.contains('used'))return;
+      makePick(w,team);
+    });
+  });
+
+  renderSidebar();
+}
+
+function teamPickHtml(team,side,pct,isFav,isUsed,isSel,w){
+  var pctTxt=pct!=null?(pct+'%'):'';
+  var barWidth=pct!=null?pct:0;
+  var cls='tpick '+side+(isUsed?' used':'')+(isSel?' selected':'');
+  var tag=isUsed?'<span class="burn-tag">🔥 BURNED — Wk '+findBurnWeek(team)+'</span>':
+           isSel?'<span class="pick-tag">Your pick</span>':'';
+  return '<button class="'+cls+'" data-pick-team="'+team+'" '+(isUsed?'disabled':'')+'>'+
+    '<span class="tname">'+team+'</span>'+
+    (pctTxt?'<span class="tpct'+(isFav?' fav':'')+'">'+pctTxt+' to win</span>':'<span class="no-odds">odds pending</span>')+
+    (pct!=null?'<div class="tbar"><div class="tbar-fill" style="width:'+barWidth+'%"></div></div>':'')+
+    tag+
+    '</button>';
+}
+
+function findBurnWeek(team){
+  for(var wk in picks){if(picks[wk]===team)return wk}
+  return '?';
+}
+
+function formatGameDate(yyyymmdd){
+  if(!yyyymmdd||yyyymmdd.length!==8)return yyyymmdd||'';
+  var y=yyyymmdd.slice(0,4),m=yyyymmdd.slice(4,6),d=yyyymmdd.slice(6,8);
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(m)-1]+' '+parseInt(d);
+}
+
+// ═══════════════════════════════════════
+// MAKE / CHANGE A PICK
+// ═══════════════════════════════════════
+function makePick(w,team){
+  if(picks[w]===team){
+    delete picks[w]; // click your own pick again to undo it
+  }else{
+    picks[w]=team;
+  }
+  savePicks();
+  renderWeekTabs();
+  renderWeek(w);
+}
+
+// ═══════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════
+function renderSidebar(){
+  var used=usedTeams(null);
+  document.getElementById('remainCount').textContent=(32-used.size);
+
+  var burnedGrid=document.getElementById('burnedGrid');
+  if(used.size){
+    burnedGrid.innerHTML='';
+    Array.from(used).sort().forEach(function(t){
+      var chip=document.createElement('span');
+      chip.className='burned-chip';
+      chip.textContent=t;
+      burnedGrid.appendChild(chip);
+    });
+  }else{
+    burnedGrid.innerHTML='<span style="color:var(--text3);font-style:italic;font-size:12px">None yet — the season is young.</span>';
+  }
+
+  var seasonPicks=document.getElementById('seasonPicks');
+  seasonPicks.innerHTML='';
+  for(var w=1;w<=18;w++){
+    var row=document.createElement('div');
+    row.className='season-pick-row';
+    var team=picks[w];
+    row.innerHTML=
+      '<span class="season-pick-wk">Wk '+w+'</span>'+
+      '<span class="season-pick-team'+(team?'':' empty')+'">'+(team||'— no pick —')+'</span>'+
+      (team?'<button class="season-pick-clear" title="Clear this pick" onclick="clearPick('+w+')">✕</button>':'');
+    seasonPicks.appendChild(row);
+  }
+}
+
+function clearPick(w){
+  delete picks[w];
+  savePicks();
+  renderWeekTabs();
+  if(weekData[w])renderWeek(w);
+  else renderSidebar();
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+renderWeekTabs();
+loadWeek(curWeek);
+</script>
+</body>
+</html>
