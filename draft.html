@@ -266,6 +266,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
   </div>
 </div>
 
+<script src="/shared-player-data.js"></script>
 <script>
 // ═══════════════════════════════════════
 // ORACLE / TRASH LORD WISDOM
@@ -305,9 +306,9 @@ var POS_MAX={QB:40,RB:100,WR:100,TE:60,K:32,DEF:32};
 var BYE={
   BUF:7,MIA:6,NE:11,NYJ:13,
   BAL:13,CIN:6,CLE:11,PIT:9,
-  HOU:8,IND:13,JAC:7,TEN:9,
+  HOU:8,IND:13,JAX:7,TEN:9,
   DEN:10,KC:5,LV:13,LAC:7,
-  DAL:14,NYG:8,PHI:10,WSH:7,
+  DAL:14,NYG:8,PHI:10,WAS:7,
   CHI:10,DET:6,GB:11,MIN:6,
   ATL:11,CAR:5,NO:8,TB:10,
   ARI:14,LAR:11,SF:8,SEA:11
@@ -379,12 +380,24 @@ async function loadAll(){
     Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
 
     injuries={};
+    var sleeperTeamMap={};
     Object.values(sleeper).forEach(function(p){
       if(!p.full_name)return;
       var k=key(p.full_name);
       if(p.injury_status||p.status==='Injured Reserve'||p.status==='PUP'){
         injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
       }
+      if(p.team){
+        sleeperTeamMap[normalizePlayerName(p.full_name)]=p.team;
+      }
+    });
+
+    // ── Correct team labels against Sleeper's live roster data ──
+    // The ADP proxy's own team field can lag a trade/signing just like a
+    // hand-typed fallback list can. Sleeper's player list is the most
+    // current source we have, so it wins whenever it has a match.
+    ['QB','RB','WR','TE','K'].forEach(function(pos){
+      if(adpByPos[pos])adpByPos[pos]=applyLiveTeams(adpByPos[pos],sleeperTeamMap);
     });
 
     ready=true;
@@ -400,129 +413,37 @@ async function loadAll(){
 }
 
 // ═══════════════════════════════════════
-// FALLBACK DATA — 2026 ROSTERS
-// Key changes from 2025: Kirk Cousins → LV Raiders
-// Update further when 2026 ADP data is available
+// FALLBACK DATA
+// Player pool now lives in /shared-player-data.js (window.PLAYER_POOL),
+// shared with the Oracle Tier List so the two pages can't drift apart
+// again. See backlog #97.
 // ═══════════════════════════════════════
 function loadFallback(){
-  function mk(n,t,a,p){return{name:n,team:t,adp:a,pos:p,key:key(n)}}
-  adpByPos={
-    QB:[
-      mk('Josh Allen','BUF',6,'QB'),mk('Lamar Jackson','BAL',8,'QB'),mk('Jalen Hurts','PHI',18,'QB'),
-      mk('Jayden Daniels','WSH',28,'QB'),mk('Patrick Mahomes','KC',40,'QB'),mk('Joe Burrow','CIN',45,'QB'),
-      mk('Dak Prescott','DAL',68,'QB'),mk('Sam Darnold','SEA',80,'QB'),mk('Tua Tagovailoa','ATL',92,'QB'),  // ← 2026: released by MIA, signed with Falcons (March 2026)
-      mk('Bo Nix','DEN',98,'QB'),mk('Brock Purdy','SF',102,'QB'),mk('Jordan Love','GB',110,'QB'),
-      mk('Caleb Williams','CHI',115,'QB'),mk('Anthony Richardson','IND',120,'QB'),mk('CJ Stroud','HOU',125,'QB'),
-      mk('Kyler Murray','MIN',130,'QB'),  // ← 2026: signed with Vikings after ARI release
-      mk('Trevor Lawrence','JAC',135,'QB'),mk('Justin Herbert','LAC',140,'QB'),
-      mk('Geno Smith','NYJ',145,'QB'),  // ← 2026: traded from Raiders to Jets
-      mk('Baker Mayfield','TB',155,'QB'),
-      mk('Kirk Cousins','LV',160,'QB'),  // ← 2026: signed with Raiders
-      mk('Daniel Jones','NYG',165,'QB'),mk('Justin Fields','PIT',168,'QB'),mk('Will Levis','TEN',172,'QB'),
-      mk('Bryce Young','CAR',175,'QB'),mk('Deshaun Watson','CLE',178,'QB'),mk('Mac Jones','NE',180,'QB'),
-      mk('Gardner Minshew','ARI',182,'QB'),  // ← 2026: signed with Cardinals
-      mk('Russell Wilson','PIT',185,'QB'),
-      mk('Aidan O\'Connell','LV',188,'QB'),mk('Jake Browning','CIN',190,'QB'),
-      mk('Zach Wilson','DEN',192,'QB'),mk('Tyson Bagent','CHI',196,'QB'),
-      mk('Tommy DeVito','NYG',202,'QB'),mk('Joe Flacco','CLE',206,'QB'),
-      mk('Sam Howell','WSH',194,'QB'),mk('Joshua Dobbs','MIN',198,'QB'),
-      mk('Nathan Rourke','JAC',204,'QB'),mk('Easton Stick','LAC',200,'QB')
-    ],
-    RB:[
-      mk('Saquon Barkley','PHI',2,'RB'),mk('Breece Hall','NYJ',7,'RB'),mk("De'Von Achane",'MIA',8,'RB'),
-      mk('Jahmyr Gibbs','DET',10,'RB'),mk('Josh Jacobs','GB',14,'RB'),mk('Jonathan Taylor','IND',16,'RB'),
-      mk('Isaiah Pacheco','KC',22,'RB'),mk('Kyren Williams','LAR',24,'RB'),mk('Derrick Henry','BAL',26,'RB'),
-      mk('Travis Etienne','JAC',30,'RB'),mk('Joe Mixon','HOU',36,'RB'),mk('Tony Pollard','TEN',42,'RB'),
-      mk('James Cook','BUF',46,'RB'),mk('Aaron Jones','MIN',52,'RB'),mk('Rhamondre Stevenson','NE',60,'RB'),
-      mk('Gus Edwards','LAC',72,'RB'),mk('Zack Moss','CIN',76,'RB'),mk('James Conner','ARI',82,'RB'),
-      mk('Chuba Hubbard','CAR',86,'RB'),mk('David Montgomery','DET',88,'RB'),
-      mk('Brian Robinson','WSH',95,'RB'),mk('Javonte Williams','DEN',105,'RB'),
-      mk('Rachaad White','TB',108,'RB'),mk('Najee Harris','PIT',112,'RB'),mk('Miles Sanders','CAR',116,'RB'),
-      mk('Dameon Pierce','HOU',120,'RB'),mk('Khalil Herbert','CHI',124,'RB'),mk('Jamaal Williams','NO',128,'RB'),
-      mk('Elijah Mitchell','SF',132,'RB'),mk('Tyler Allgeier','ATL',136,'RB'),mk('Kareem Hunt','CLE',140,'RB'),
-      mk('AJ Dillon','GB',144,'RB'),mk('Tyjae Spears','TEN',156,'RB'),mk('Jerome Ford','CLE',160,'RB'),
-      mk('Joshua Kelley','LAC',164,'RB'),mk('Zamir White','LV',168,'RB'),mk('Devin Singletary','NYG',172,'RB'),
-      mk('Samaje Perine','DEN',176,'RB'),mk('Boston Scott','PHI',180,'RB'),mk('Clyde Edwards-Helaire','KC',184,'RB'),
-      mk('Michael Carter','NYJ',188,'RB'),mk('Roschon Johnson','CHI',192,'RB'),mk('Craig Reynolds','DET',196,'RB'),
-      mk('Ty Chandler','MIN',200,'RB'),mk('Cam Akers','MIN',204,'RB'),mk('Matt Breida','NYG',208,'RB'),
-      mk('Darrell Henderson','LAR',212,'RB'),mk('Patrick Taylor','GB',216,'RB'),mk('Salvon Ahmed','MIA',220,'RB')
-    ],
-    WR:[
-      mk('CeeDee Lamb','DAL',1,'WR'),mk('Justin Jefferson','MIN',3,'WR'),mk("Ja'Marr Chase",'CIN',4,'WR'),
-      mk('Tyreek Hill','MIA',5,'WR'),mk('Amon-Ra St. Brown','DET',9,'WR'),mk('Tee Higgins','CIN',13,'WR'),
-      mk('Brandon Aiyuk','SF',15,'WR'),mk('Davante Adams','NYJ',17,'WR'),mk('Stefon Diggs','HOU',20,'WR'),
-      mk('Deebo Samuel','SF',32,'WR'),mk('Puka Nacua','LAR',38,'WR'),mk('Drake London','ATL',44,'WR'),
-      mk('Mike Evans','TB',48,'WR'),mk('Chris Olave','NO',54,'WR'),mk('Tank Dell','HOU',56,'WR'),
-      mk('Rashee Rice','KC',58,'WR'),mk('Keenan Allen','CHI',64,'WR'),mk('Calvin Ridley','TEN',66,'WR'),
-      mk('Terry McLaurin','WSH',70,'WR'),mk('Courtland Sutton','DEN',74,'WR'),mk('Gabe Davis','JAC',78,'WR'),
-      mk('Adam Thielen','CAR',84,'WR'),mk('DeVonta Smith','PHI',90,'WR'),mk('Christian Kirk','JAC',94,'WR'),
-      mk('Jaylen Waddle','MIA',102,'WR'),mk('DJ Moore','CHI',106,'WR'),mk('Michael Pittman','IND',114,'WR'),
-      mk('Diontae Johnson','CAR',122,'WR'),mk('Marvin Harrison Jr','ARI',130,'WR'),mk('Rome Odunze','CHI',134,'WR'),
-      mk('Xavier Legette','CAR',138,'WR'),mk('Quentin Johnston','LAC',142,'WR'),mk('Darius Slayton','NYG',146,'WR'),
-      mk('Tyler Lockett','SEA',154,'WR'),mk('Jaxon Smith-Njigba','SEA',158,'WR'),mk('Elijah Moore','CLE',162,'WR'),
-      mk('Dontayvion Wicks','GB',98,'WR'),mk('Zay Jones','ARI',118,'WR'),mk('Trent Sherfield','BUF',110,'WR'),
-      mk('Brandin Cooks','DAL',150,'WR'),mk('Van Jefferson','ATL',166,'WR'),mk('Cedrick Tillman','CLE',170,'WR'),
-      mk('Kendrick Bourne','NE',178,'WR'),mk('Mecole Hardman','KC',182,'WR'),mk('Demario Douglas','NE',186,'WR'),
-      mk('Rakim Jarrett','WSH',194,'WR'),mk('Tutu Atwell','LAR',198,'WR'),mk('JuJu Smith-Schuster','NE',126,'WR'),
-      mk('Odell Beckham Jr','MIA',174,'WR'),mk('Phillip Dorsett','HOU',206,'WR')
-    ],
-    TE:[
-      mk('Brock Bowers','LV',11,'TE'),  // ← 2026 TE1
-      mk('Trey McBride','ARI',17,'TE'),mk('Travis Kelce','KC',19,'TE'),mk('Sam LaPorta','DET',21,'TE'),
-      mk('Mark Andrews','BAL',35,'TE'),mk('Jake Ferguson','DAL',50,'TE'),mk('Kyle Pitts','ATL',55,'TE'),
-      mk('T.J. Hockenson','MIN',65,'TE'),mk('Pat Freiermuth','PIT',62,'TE'),mk('Isaiah Likely','BAL',75,'TE'),
-      mk('Dalton Kincaid','BUF',90,'TE'),mk('Cole Kmet','CHI',96,'TE'),mk('David Njoku','CLE',100,'TE'),
-      mk('Tyler Higbee','LAR',110,'TE'),mk('Evan Engram','JAC',115,'TE'),mk('Mike Gesicki','NE',120,'TE'),
-      mk('Juwan Johnson','NO',130,'TE'),mk('Jonnu Smith','ATL',135,'TE'),mk('Gerald Everett','LAC',140,'TE'),
-      mk('Kylen Granson','IND',145,'TE'),mk('Logan Thomas','WSH',155,'TE'),mk('Noah Fant','SEA',170,'TE'),
-      mk('Hunter Henry','NE',175,'TE'),mk('Tucker Kraft','GB',178,'TE'),mk('Luke Musgrave','GB',182,'TE'),
-      mk('Cade Otton','TB',186,'TE'),mk('Chigoziem Okonkwo','TEN',190,'TE'),mk('Will Dissly','SEA',194,'TE'),
-      mk('Charlie Kolar','BAL',165,'TE'),mk('Dan Arnold','JAC',160,'TE')
-    ],
-    K:[
-      mk('Justin Tucker','BAL',160,'K'),mk('Tyler Bass','BUF',162,'K'),mk('Brandon Aubrey','DAL',164,'K'),
-      mk('Harrison Butker','KC',166,'K'),mk('Jake Moody','SF',168,'K'),mk('Evan McPherson','CIN',170,'K'),
-      mk('Younghoe Koo','ATL',172,'K'),mk("Ka'imi Fairbairn",'HOU',174,'K'),mk('Greg Zuerlein','NYJ',176,'K'),
-      mk('Matt Gay','IND',178,'K'),mk('Jason Myers','SEA',180,'K'),mk('Dustin Hopkins','CLE',182,'K'),
-      mk('Graham Gano','NYG',184,'K'),mk('Daniel Carlson','LV',186,'K'),mk('Rodrigo Blankenship','IND',188,'K'),
-      mk('Riley Patterson','JAC',190,'K'),mk('Chris Boswell','PIT',192,'K'),mk('Cairo Santos','CHI',194,'K'),
-      mk('Cameron Dicker','LAC',196,'K'),mk('Nick Folk','TEN',198,'K'),mk('Matt Prater','ARI',200,'K'),
-      mk('Joey Slye','WSH',204,'K'),mk('Jason Sanders','MIA',206,'K'),mk('Michael Badgley','DET',208,'K'),
-      mk('Tristan Vizcaino','TB',210,'K'),mk('Eddy Pineiro','CAR',214,'K'),mk('Ryan Succop','TB',216,'K'),
-      mk('Matthew Wright','JAC',218,'K'),mk('Sam Ficken','NE',220,'K'),mk('Chase McLaughlin','CLE',222,'K'),
-      mk('Robbie Gould','SF',202,'K'),mk('Randy Bullock','TEN',212,'K')
-    ],
-    DEF:[
-      mk('San Francisco 49ers','SF',140,'DEF'),mk('Dallas Cowboys','DAL',142,'DEF'),
-      mk('Baltimore Ravens','BAL',144,'DEF'),mk('Buffalo Bills','BUF',146,'DEF'),
-      mk('Pittsburgh Steelers','PIT',148,'DEF'),mk('Kansas City Chiefs','KC',150,'DEF'),
-      mk('Philadelphia Eagles','PHI',152,'DEF'),mk('Cleveland Browns','CLE',154,'DEF'),
-      mk('New England Patriots','NE',156,'DEF'),mk('New York Jets','NYJ',158,'DEF'),
-      mk('Cincinnati Bengals','CIN',160,'DEF'),mk('Miami Dolphins','MIA',162,'DEF'),
-      mk('Los Angeles Rams','LAR',164,'DEF'),mk('Minnesota Vikings','MIN',166,'DEF'),
-      mk('Jacksonville Jaguars','JAC',168,'DEF'),mk('Denver Broncos','DEN',170,'DEF'),
-      mk('Detroit Lions','DET',172,'DEF'),mk('Green Bay Packers','GB',174,'DEF'),
-      mk('Los Angeles Chargers','LAC',176,'DEF'),mk('Indianapolis Colts','IND',178,'DEF'),
-      mk('Tampa Bay Buccaneers','TB',180,'DEF'),mk('Seattle Seahawks','SEA',182,'DEF'),
-      mk('New Orleans Saints','NO',184,'DEF'),mk('Tennessee Titans','TEN',186,'DEF'),
-      mk('Atlanta Falcons','ATL',188,'DEF'),mk('Arizona Cardinals','ARI',190,'DEF'),
-      mk('Las Vegas Raiders','LV',192,'DEF'),mk('Washington Commanders','WSH',194,'DEF'),
-      mk('Carolina Panthers','CAR',196,'DEF'),mk('Chicago Bears','CHI',198,'DEF'),
-      mk('New York Giants','NYG',200,'DEF'),mk('Houston Texans','HOU',202,'DEF')
-    ]
-  };
+  adpByPos=JSON.parse(JSON.stringify(window.PLAYER_POOL));
+  Object.keys(adpByPos).forEach(function(pos){
+    adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=key(p.name); });
+  });
 
-  // Load Sleeper injuries separately — this works fine on mobile
+  // Sleeper injuries + live team correction — this works fine on mobile.
+  // Even on the fallback path, team labels are corrected live rather than
+  // frozen at whatever they were when this file was last hand-edited.
   fetch('https://api.sleeper.app/v1/players/nfl')
     .then(function(r){return r.json()})
     .then(function(sleeper){
       injuries={};
+      var sleeperTeamMap={};
       Object.values(sleeper).forEach(function(p){
         if(!p.full_name)return;
         var k=key(p.full_name);
         if(p.injury_status||p.status==='Injured Reserve'||p.status==='PUP'){
           injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
         }
+        if(p.team){
+          sleeperTeamMap[normalizePlayerName(p.full_name)]=p.team;
+        }
+      });
+      ['QB','RB','WR','TE','K'].forEach(function(pos){
+        if(adpByPos[pos])adpByPos[pos]=applyLiveTeams(adpByPos[pos],sleeperTeamMap);
       });
       render();
     })
