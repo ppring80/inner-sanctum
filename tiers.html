@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -90,9 +89,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tier-5 .tier-label{color:var(--dim)}
 .tier-players{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--surface);min-height:56px}
 .tier-players.drag-over{background:rgba(184,146,26,0.04);outline:2px dashed rgba(184,146,26,0.35);outline-offset:-2px}
-.player-card{display:flex;align-items:center;gap:7px;padding:7px 11px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);cursor:grab;user-select:none;transition:box-shadow 0.15s,border-color 0.15s;font-size:13px}
+.player-card{display:flex;align-items:center;gap:7px;padding:7px 11px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);cursor:grab;user-select:none;touch-action:none;transition:box-shadow 0.15s,border-color 0.15s;font-size:13px}
 .player-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-.player-card.dragging{opacity:0.4;transform:scale(0.96)}
+.player-card.dragging{opacity:0.95;box-shadow:0 10px 28px rgba(0,0,0,0.28);transform:scale(1.05);cursor:grabbing}
 .pc-pos{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;flex-shrink:0}
 .pc-pos.QB{background:rgba(21,101,192,0.12);color:#1565c0;border:1px solid rgba(21,101,192,0.25)}
 .pc-pos.RB{background:rgba(46,125,50,0.12);color:#2e7d32;border:1px solid rgba(46,125,50,0.25)}
@@ -425,7 +424,7 @@ QB:[
   {name:'Lamar Jackson',team:'BAL',adp:1.2},{name:'Josh Allen',team:'BUF',adp:2.1},
   {name:'Jalen Hurts',team:'PHI',adp:3.8},{name:'Joe Burrow',team:'CIN',adp:7.4},
   {name:'C.J. Stroud',team:'HOU',adp:10.2},{name:'Dak Prescott',team:'DAL',adp:11.8},
-  {name:'Anthony Richardson',team:'IND',adp:14.5},{name:'Tua Tagovailoa',team:'MIA',adp:16.3},
+  {name:'Anthony Richardson',team:'IND',adp:14.5},{name:'Tua Tagovailoa',team:'ATL',adp:16.3},
   {name:'Jordan Love',team:'GB',adp:19.1},{name:'Sam Darnold',team:'MIN',adp:21.6},
   {name:'Kyler Murray',team:'ARI',adp:24.4},{name:'Baker Mayfield',team:'TB',adp:27.3},
   {name:'Derek Carr',team:'NO',adp:31.2},{name:'Russell Wilson',team:'PIT',adp:34.8},
@@ -433,7 +432,7 @@ QB:[
   {name:'Caleb Williams',team:'CHI',adp:46.0},{name:'Jayden Daniels',team:'WAS',adp:49.7},
   {name:'Drake Maye',team:'NE',adp:55.3},{name:'Bo Nix',team:'DEN',adp:61.2},
   {name:'Brock Purdy',team:'SF',adp:65.8},{name:'Trevor Lawrence',team:'JAX',adp:69.4},
-  {name:'Kirk Cousins',team:'ATL',adp:73.1},{name:'Matthew Stafford',team:'LAR',adp:77.8},
+  {name:'Kirk Cousins',team:'LV',adp:73.1},{name:'Matthew Stafford',team:'LAR',adp:77.8},
   {name:'Patrick Mahomes',team:'KC',adp:82.2},{name:'Deshaun Watson',team:'CLE',adp:86.5},
   {name:'Aaron Rodgers',team:'NYJ',adp:91.0},{name:'Jared Goff',team:'DET',adp:95.3},
   {name:'Daniel Jones',team:'NYG',adp:99.8},{name:'Zach Wilson',team:'LV',adp:104.2},
@@ -791,17 +790,24 @@ function renderPos(pos) {
     zone.dataset.tier = t;
 
     players.forEach(function(p){ zone.appendChild(makeCard(p, pos)); });
-    setupDrop(zone, pos, t);
     block.appendChild(zone);
     container.appendChild(block);
   }
 }
 
-// ── PLAYER CARD ───────────────────────────────────────────────────────────────
+// ── PLAYER CARD + DRAG (mouse + touch via Pointer Events) ────────────────────
+// Native HTML5 drag-and-drop (dragstart/dragover/drop) only fires from a
+// mouse gesture — touch browsers (Samsung Internet, mobile Chrome/Safari)
+// never fire those events from a finger drag. That's why grabbing a card
+// and moving it never actually re-filed it into the new tier on mobile:
+// the drop handler simply never ran. Pointer Events (pointerdown/move/up)
+// fire identically for mouse AND touch, so dragging is now built on those
+// instead, with no native HTML5 DnD involved at all.
+var dragState = null;
+
 function makeCard(player, pos) {
   var card = document.createElement('div');
   card.className = 'player-card';
-  card.draggable = true;
   card.dataset.name = player.name;
   card.innerHTML =
     '<span class="pc-pos ' + pos + '">' + pos + '</span>' +
@@ -810,42 +816,114 @@ function makeCard(player, pos) {
     '<span class="pc-adp">ADP ' + Number(player.adp).toFixed(1) + '</span>' +
     '<span class="pc-handle">⠿</span>';
 
-  card.addEventListener('dragstart', function(e){
-    card.classList.add('dragging');
-    e.dataTransfer.setData('application/json', JSON.stringify({name:player.name,team:player.team,adp:player.adp,pos:pos}));
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  card.addEventListener('dragend', function(){ card.classList.remove('dragging'); });
+  card.addEventListener('pointerdown', function(e){ startDrag(e, card, player, pos); });
   return card;
 }
 
-// ── DROP ZONE ─────────────────────────────────────────────────────────────────
-function setupDrop(zone, pos, tier) {
-  zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', function(){ zone.classList.remove('drag-over'); });
-  zone.addEventListener('drop', function(e){
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    var data;
-    try { data = JSON.parse(e.dataTransfer.getData('application/json')); } catch(err){ return; }
-    if (!data || data.pos !== pos) return;
+function startDrag(e, card, player, pos) {
+  if (e.button !== undefined && e.button !== 0) return; // left-click only; touch has no .button
+  e.preventDefault();
 
-    var found = false;
-    for (var t = 1; t <= 5; t++){
-      if (!tiers[pos][t]) continue;
-      var idx = -1;
-      for (var i = 0; i < tiers[pos][t].length; i++){
-        if (tiers[pos][t][i].name === data.name){ idx = i; break; }
-      }
-      if (idx !== -1){ tiers[pos][t].splice(idx, 1); found = true; break; }
+  var rect = card.getBoundingClientRect();
+  dragState = {
+    card: card, player: player, pos: pos,
+    offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top,
+    width: rect.width,
+    startX: e.clientX, startY: e.clientY,
+    moved: false, overZone: null
+  };
+
+  try { card.setPointerCapture(e.pointerId); } catch(err) {}
+  card.addEventListener('pointermove', onDragMove);
+  card.addEventListener('pointerup', onDragEnd);
+  card.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  var dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
+
+  // Small threshold so a plain tap never gets treated as a drag.
+  if (!dragState.moved && (Math.abs(dx) + Math.abs(dy)) < 4) return;
+
+  if (!dragState.moved) {
+    dragState.moved = true;
+    dragState.card.classList.add('dragging');
+    dragState.card.style.position = 'fixed';
+    dragState.card.style.width = dragState.width + 'px';
+    dragState.card.style.zIndex = 1000;
+    dragState.card.style.pointerEvents = 'none';
+  }
+
+  dragState.card.style.left = (e.clientX - dragState.offsetX) + 'px';
+  dragState.card.style.top  = (e.clientY - dragState.offsetY) + 'px';
+
+  // Hide the dragged card itself for a moment so elementFromPoint can see
+  // what's actually underneath the finger/cursor, not the card being moved.
+  dragState.card.style.display = 'none';
+  var under = document.elementFromPoint(e.clientX, e.clientY);
+  dragState.card.style.display = '';
+
+  document.querySelectorAll('.tier-players.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
+  var zone = under ? under.closest('.tier-players') : null;
+  if (zone && zone.dataset.pos === dragState.pos) {
+    zone.classList.add('drag-over');
+    dragState.overZone = zone;
+  } else {
+    dragState.overZone = null;
+  }
+}
+
+function onDragEnd(e) {
+  if (!dragState) return;
+  var card = dragState.card;
+  card.removeEventListener('pointermove', onDragMove);
+  card.removeEventListener('pointerup', onDragEnd);
+  card.removeEventListener('pointercancel', onDragEnd);
+  try { card.releasePointerCapture(e.pointerId); } catch(err) {}
+
+  document.querySelectorAll('.tier-players.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
+
+  var zone = dragState.overZone;
+  var pos = dragState.pos;
+  var player = dragState.player;
+  var moved = dragState.moved;
+
+  card.classList.remove('dragging');
+  card.style.position = '';
+  card.style.left = '';
+  card.style.top = '';
+  card.style.width = '';
+  card.style.zIndex = '';
+  card.style.pointerEvents = '';
+
+  dragState = null;
+
+  if (!moved || !zone) return; // a tap, or dropped outside any valid tier — leave it where it was
+
+  var targetTier = parseInt(zone.dataset.tier, 10);
+  movePlayerToTier(pos, player.name, targetTier);
+}
+
+function movePlayerToTier(pos, name, targetTier) {
+  var found = false;
+  for (var t = 1; t <= 5; t++) {
+    if (!tiers[pos][t]) continue;
+    var idx = -1;
+    for (var i = 0; i < tiers[pos][t].length; i++) {
+      if (tiers[pos][t][i].name === name) { idx = i; break; }
     }
-    if (!found) return;
-
-    if (!tiers[pos][tier]) tiers[pos][tier] = [];
-    tiers[pos][tier].push({name:data.name, team:data.team, adp:data.adp});
-    renderPos(pos);
-    markTargetTiers(savedStrategy, pos);
-  });
+    if (idx !== -1) {
+      var rec = tiers[pos][t].splice(idx, 1)[0];
+      found = true;
+      if (!tiers[pos][targetTier]) tiers[pos][targetTier] = [];
+      tiers[pos][targetTier].push(rec);
+      break;
+    }
+  }
+  if (!found) return;
+  renderPos(pos);
+  markTargetTiers(savedStrategy, pos);
 }
 
 // ── SHOW POSITION TAB ─────────────────────────────────────────────────────────
