@@ -575,7 +575,7 @@ textarea::placeholder { color: #3a3028; }
     <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
     <span class="top-sub">Choose your counsel wisely</span>
-    <div class="tier-note">🎁 Free tier: 10 questions/session · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
+    <div class="tier-note">🎁 Free tier: 10 questions every 3 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
 
   <!-- SLEEPER CONNECT -->
@@ -623,7 +623,7 @@ textarea::placeholder { color: #3a3028; }
       <div class="howto-item"><span class="howto-icon">🔮</span><span><strong>Pick a persona</strong> — Oracle, Trash Lord, and Analyst all give real advice in a different voice. Switching tabs starts a separate conversation with that persona; they don't see what you asked the others.</span></div>
       <div class="howto-item"><span class="howto-icon">🏈</span><span><strong>Connect Sleeper</strong> (optional) to auto-fill your actual roster and lineup format below, and get advice based on your real team instead of generic tips.</span></div>
       <div class="howto-item"><span class="howto-icon">⚡</span><span><strong>Weekly Lineup Advisor</strong> — enter your starters (or let Sleeper fill them in), set your roster format if it wasn't auto-detected, then ask your persona for a full lineup verdict.</span></div>
-      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions per session across all personas combined. Resets if you reload the page. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
+      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions every 3 hours, across all personas combined. The count is saved on your device, so reloading or closing the page won't reset it early — it unlocks again automatically once the window passes. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
     </div>
   </div>
 
@@ -876,10 +876,75 @@ var hist = { oracle: [], trash: [], analyst: [] };
 var busy = false;
   // ═══════════════════════════════════════
 // QUESTION LIMIT (Free tier)
+// Previously `questionCount` was a plain in-memory var, reset to 0
+// by definition every time this script re-ran on page load — that
+// was the reload bug. It's now persisted in localStorage alongside
+// a window-start timestamp, so the limit survives reloads and only
+// actually resets RESET_WINDOW_HOURS after the first question in
+// the current window. Change RESET_WINDOW_HOURS to 24 for a once-
+// a-day reset instead of every few hours.
 // ═══════════════════════════════════════
-var questionCount = 0;
 var QUESTION_LIMIT = 10;
+var RESET_WINDOW_HOURS = 3;
+var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
+var QUESTION_STORAGE_KEY = 'sanctum_question_window';
 var isAcolyte = false; // Set to true for paying members (future: Patreon auth)
+var questionCount = 0;
+var windowStart = null;
+
+// Reads the current window from localStorage, starting a fresh one
+// if none exists yet or if the stored window has already expired.
+// Called on page load AND right before every question is asked, so
+// two tabs open at once (or a window expiring mid-visit) both stay
+// in sync with what's actually been persisted rather than trusting
+// a possibly-stale in-memory value from whenever the page loaded.
+function loadQuestionWindow() {
+  try {
+    var raw = localStorage.getItem(QUESTION_STORAGE_KEY);
+    if (!raw) { startNewQuestionWindow(); return; }
+    var data = JSON.parse(raw);
+    if (!data || typeof data.windowStart !== 'number' || (Date.now() - data.windowStart) >= RESET_WINDOW_MS) {
+      startNewQuestionWindow();
+    } else {
+      questionCount = data.count || 0;
+      windowStart = data.windowStart;
+    }
+  } catch (e) {
+    // Storage blocked or corrupt (private browsing, etc.) — fail open
+    // to a fresh in-memory-only window rather than breaking the chat.
+    questionCount = 0;
+    windowStart = Date.now();
+  }
+}
+
+function startNewQuestionWindow() {
+  questionCount = 0;
+  windowStart = Date.now();
+  saveQuestionWindow();
+}
+
+function saveQuestionWindow() {
+  try {
+    localStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify({ count: questionCount, windowStart: windowStart }));
+  } catch (e) {
+    // Storage unavailable — the limit just won't persist across
+    // reloads for this particular user; chat itself still works.
+  }
+}
+
+function msUntilReset() {
+  if (windowStart == null) return 0;
+  return Math.max(0, RESET_WINDOW_MS - (Date.now() - windowStart));
+}
+
+function formatResetCountdown() {
+  var totalMinutes = Math.ceil(msUntilReset() / 60000);
+  var hrs = Math.floor(totalMinutes / 60);
+  var mins = totalMinutes % 60;
+  if (hrs <= 0) return mins + ' minute' + (mins === 1 ? '' : 's');
+  if (mins === 0) return hrs + ' hour' + (hrs === 1 ? '' : 's');
+  return hrs + 'h ' + mins + 'm';
+}
 
 // ═══════════════════════════════════════
 // LINEUP ADVISOR — BUILD SLOTS
@@ -1511,15 +1576,21 @@ function ask(txt) {
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
 
-  // Question limit check (free tier only)
-  if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
-    showUpgradeModal();
-    return;
+  // Question limit check (free tier only). Re-sync from localStorage
+  // first — handles both a fresh page load and the window having
+  // expired naturally while this tab sat open.
+  if (!isAcolyte) {
+    loadQuestionWindow();
+    if (questionCount >= QUESTION_LIMIT) {
+      showUpgradeModal();
+      return;
+    }
   }
 
   inp.value = ""; inp.style.height = "auto";
   busy = true;
   questionCount++;
+  saveQuestionWindow();
   hist[ap].push({ role: "user", content: q });
   draw();
 
@@ -1555,6 +1626,10 @@ function ask(txt) {
 }
 
 function showUpgradeModal() {
+  var note = document.getElementById('upgradeResetNote');
+  if (note) {
+    note.textContent = isAcolyte ? '' : ('🕐 Free questions return in about ' + formatResetCountdown() + '.');
+  }
   var m = document.getElementById('upgradeModal');
   m.style.display = 'flex';
 }
@@ -1582,6 +1657,7 @@ document.addEventListener('click', function(e) {
 buildLineupSlots();
 updateFilledCount();
 loadPlayerList();
+loadQuestionWindow();
 </script>
   <!-- UPGRADE MODAL -->
 <div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
@@ -1592,7 +1668,8 @@ loadPlayerList();
     <div style="font-size:14px;color:#8a7860;line-height:1.7;margin-bottom:24px;">Free Apprentices receive 10 questions per session. Upgrade to <strong style="color:#c9a84c;">Founding Acolyte</strong> for unlimited access to all three personas, the Auction War Room, and Sleeper integration.</div>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" style="display:block;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-family:Georgia,serif;font-size:15px;font-weight:bold;padding:14px 20px;border-radius:10px;text-decoration:none;margin-bottom:12px;letter-spacing:1px;">⚔️ Become a Founding Acolyte — $7.99/mo</a>
     <button onclick="closeUpgradeModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9a8a7a;font-family:Georgia,serif;font-size:13px;padding:10px 20px;cursor:pointer;width:100%;">Maybe Later</button>
-    <div style="font-size:10px;color:#9a8a7a;margin-top:14px;letter-spacing:2px;">FIRST 100 MEMBERS · $9.99/MO AFTER · QUESTIONS RESET ON PAGE RELOAD</div>
+    <div id="upgradeResetNote" style="font-size:12px;color:#c9a84c;margin-top:14px;letter-spacing:0.5px;"></div>
+    <div style="font-size:10px;color:#9a8a7a;margin-top:6px;letter-spacing:2px;">FIRST 100 MEMBERS · $9.99/MO AFTER · FREE QUESTIONS RESET EVERY 3 HOURS</div>
   </div>
 </div>
 </body>
