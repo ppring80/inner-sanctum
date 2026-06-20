@@ -216,12 +216,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── PRINT ── */
 @media print{
-  .hdr,.steps,.btn-row,.pick-entry,.no-print{display:none!important}
+  .hdr,.steps,.btn-row,.pick-entry,.no-print,.trash-box{display:none!important}
   body{background:#fff;color:#111}
   .tps-slot{background:#f9f9f9;border:1px solid #ddd}
-  .tps-val-input{color:#b8921a;border-bottom:none;font-size:26px}
+  .tps-val-input{color:#000;border-bottom:none;font-size:26px}
+  .tps-total-val{color:#000!important}
+  .tps-budget-status{color:#000!important}
   .panel-title{color:#111}
-  .oracle-box{border-left-color:#b8921a;background:#fffdf0}
+  .oracle-box{border-left-color:#999;background:#fff}
+  .oracle-box-label{color:#000!important}
+  .league-warning{border-color:#999!important;background:#fff!important}
+  .league-warning-label{color:#000!important}
   .tps-edit-note{display:none}
 }
 
