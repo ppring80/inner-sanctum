@@ -147,11 +147,25 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .attr{text-align:center;font-size:10px;color:var(--text3);padding:14px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border)}
 .attr a{color:var(--gold);text-decoration:none}
 @media print{
-  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print{display:none!important}
-  body{background:#fff}
-  .pos-sec{border:1px solid #ccc;box-shadow:none}
+  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print,.oracle-box,.trash-box{display:none!important}
+  body{background:#fff;font-size:12px;line-height:1.35}
+  .hdr{background:#fff!important;border-bottom:2px solid #000;padding:8px 0}
+  .hdr-brand,.hdr-title{color:#000!important;text-shadow:none}
+  .main{padding:0;max-width:100%}
+  .pos-sec{border:1px solid #999;box-shadow:none;margin-bottom:10px}
+  .pos-hdr{background:#fff;page-break-after:avoid}
+  .pcount{color:#000}
+  /* Badges: keep the information, drop the ink-heavy color fills */
+  .pbadge,.sbadge,.search-results-count{background:#fff!important;color:#000!important;border:1px solid #000!important}
+  .ibadge{background:#fff!important;color:#000!important;border:1px solid #000!important}
+  .tier-wisdom{color:#333!important}
+  .tier-tr{page-break-after:avoid}
+  .ptable thead{display:table-header-group}
+  .ptable tr{page-break-inside:avoid}
+  .ptable th{color:#000;background:#eee;border-bottom:2px solid #000}
+  .prow td,.ptable th{padding:4px 8px}
+  .pname{font-size:12px}
   .prow.drafted,.pcard.drafted{display:none}
-  .trash-box{display:none}
 }
 </style>
 </head>
@@ -168,7 +182,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 <a href="/tiers" class="hdr-btn">🏆 Tier List</a>
 <a href="/survivor" class="hdr-btn">☠️ Survivor</a>
 <a href="/sanctum" class="hdr-btn">← Sanctum</a>
-    <button class="hdr-btn" onclick="window.print()">🖨 Print</button>
+    <button class="hdr-btn" onclick="printList()">🖨 Print</button>
     <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">Clear Drafted</button>
     <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
@@ -751,6 +765,15 @@ function goView(v){
   document.getElementById('listBtn').classList.toggle('active',v==='list');
   document.getElementById('cardBtn').classList.toggle('active',v==='card');
   render();
+}
+
+// Card view makes a poor printed cheat sheet — dense table is what
+// you actually want at the draft table, so the print button forces
+// list view first (if it isn't already) rather than relying on
+// someone to remember to switch views before printing.
+function printList(){
+  if(curView!=='list')goView('list');
+  window.print();
 }
 
 // ═══════════════════════════════════════
