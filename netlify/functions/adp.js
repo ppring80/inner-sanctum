@@ -55,7 +55,27 @@ const CORS_HEADERS = {
 // Also confirmed live: Tank01's ADP list DOES include defenses (29 of
 // them, ranked ~150-300 overall) — they just don't appear near the top
 // of the unfiltered 507-player list, easy to miss scrolling casually.
+//
+// KNOWN PERMANENT GAP: Tank01's DST coverage is missing exactly 3 of the
+// 32 NFL teams — Arizona Cardinals, Las Vegas Raiders, New York Jets —
+// confirmed by requesting pos=DST and getting back 29 entries, not 32.
+// This isn't a parsing bug on our end; Tank01 simply doesn't have ADP
+// data for these three. MISSING_DEF_FALLBACK below splices in static
+// values for just these three so draft.html always shows all 32 teams
+// even on the live-data path. Values copied from PLAYER_POOL.DEF in
+// shared-player-data.js as of June 2026 — if those ADP estimates ever
+// get revised there, update this block too. (Deliberately kept here in
+// adp.js rather than read from shared-player-data.js, since this is a
+// server-side function and that file is browser-side; see Session 11
+// notes for why duplicating 3 rows was chosen over a cross-runtime
+// shared-data scheme.)
 // ═══════════════════════════════════════
+
+const MISSING_DEF_FALLBACK = [
+  { name: "Arizona Cardinals", position: "DEF", team: "ARI", adp: 88.7 },
+  { name: "Las Vegas Raiders", position: "DEF", team: "LV", adp: 106.8 },
+  { name: "New York Jets", position: "DEF", team: "NYJ", adp: 37.8 }
+];
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
@@ -94,8 +114,20 @@ async function fetchTank01Adp({ scoring }) {
   return translateTank01Response(json.body);
 }
 
-// Pulls the position code off the front of posADP ("RB1" -> "RB",
-// "DST1" -> "DEF" since the rest of this codebase uses DEF not DST).
+// Tank01 uses some team abbreviations that don't match the JAX/WAS
+// convention this app standardized on in backlog #97 (Sleeper and
+// PLAYER_POOL both use WAS, JAX). Confirmed live: Tank01's DST list
+// returns "WSH" for Washington. Normalize here so BYE[] lookups and
+// any downstream team-code comparisons don't silently break the way
+// the original JAC/WSH bug did before #97 fixed it.
+const TEAM_ABV_NORMALIZE = {
+  WSH: "WAS"
+};
+
+function normalizeTeamAbv(abv) {
+  if (!abv) return abv;
+  return TEAM_ABV_NORMALIZE[abv] || abv;
+}
 function extractPosition(posADP) {
   if (!posADP) return null;
   const match = posADP.match(/^[A-Za-z]+/);
@@ -121,11 +153,22 @@ function translateTank01Response(body) {
         // e.g. "HOU", "DEN") — use it. Skill positions don't have this
         // field at all; team stays null and is filled in by the Sleeper
         // merge step in draft.html. See TEAM DATA note above.
-        team: entry.teamAbv || null,
+        team: normalizeTeamAbv(entry.teamAbv) || null,
         adp: isNaN(adp) ? 999 : adp
       };
     })
     .filter(function (p) { return p && p.name; });
+
+  // Fill in the 3 teams Tank01's DST coverage is missing. Guarded by
+  // team code so this becomes a silent no-op (not a duplicate) if Tank01
+  // ever starts covering one of these teams in a future response.
+  const presentDefTeams = new Set(
+    players.filter(function (p) { return p.position === "DEF"; })
+           .map(function (p) { return p.team; })
+  );
+  MISSING_DEF_FALLBACK.forEach(function (fallbackTeam) {
+    if (!presentDefTeams.has(fallbackTeam.team)) players.push(fallbackTeam);
+  });
 
   return {
     players: players,
