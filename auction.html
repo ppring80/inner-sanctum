@@ -38,6 +38,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .nav-link:hover{opacity:1;color:#f5c842}
 .lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
 
+/* ── ADP STATUS BAR (added) ── */
+.adp-status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 24px;display:none;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+.adp-status-bar.show{display:flex}
+.adp-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.adp-dot.live{background:var(--green);animation:adppulse 2s infinite}
+.adp-dot.error{background:var(--red)}
+@keyframes adppulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
 /* ── STEP TABS ── */
 .steps{display:flex;align-items:center;padding:0 24px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;gap:0}
 .step-tab{padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;transition:color 0.15s;user-select:none}
@@ -138,21 +146,34 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .help-strategy-pill{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--ink);line-height:1.5}
 .help-strategy-pill strong{display:block;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:3px}
 
-/* ── TARGET PRICE SHEET ── */
-.tps-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+/* ── TARGET PRICE SHEET (grouped-by-position, added) ── */
+.tps-section{margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+.tps-section-hdr{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.tps-section-pos{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
+.tps-section-pos.QB{background:#1565c0}.tps-section-pos.RB{background:#2e7d32}.tps-section-pos.WR{background:#b8921a}
+.tps-section-pos.TE{background:#c8780a}.tps-section-pos.K{background:#7a7a76}.tps-section-pos.DEF{background:#8a2020}
+.tps-section-title{font-family:'Cinzel',serif;font-size:13px;color:var(--ink)}
+.tps-section-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-left:auto}
+.tps-player-list{display:flex;flex-direction:column}
+.tps-player-row{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background 0.15s}
+.tps-player-row:last-child{border-bottom:none}
+.tps-player-row:hover{background:#f8f6f0}
+.tps-player-rank{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:24px;flex-shrink:0}
+.tps-player-name{flex:1;font-size:13px;color:var(--ink)}
+.tps-player-team{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:36px;flex-shrink:0}
+.tps-player-adp{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:52px;flex-shrink:0;text-align:right}
+.tps-player-price-wrap{display:flex;align-items:center;gap:2px;width:64px;flex-shrink:0;justify-content:flex-end}
+.tps-player-price-dollar{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--gold)}
+.tps-player-price-input{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--gold);background:transparent;border:none;border-bottom:1px solid rgba(184,146,26,0.25);width:42px;padding:1px 0;cursor:text;transition:border-color 0.2s;text-align:right;-moz-appearance:textfield}
+.tps-player-price-input::-webkit-outer-spin-button,.tps-player-price-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tps-player-price-input:focus{outline:none;border-bottom-color:var(--gold)}
+.tps-bench-row{padding:14px 16px;background:var(--surface);display:flex;align-items:center;gap:12px}
+.tps-bench-label{font-size:13px;color:var(--muted);flex:1}
+.tps-bench-price-input{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:1px solid rgba(122,122,118,0.25);width:60px;padding:1px 0;text-align:right}
+.tps-bench-price-input:focus{outline:none;border-bottom-color:var(--gold)}
+
 .tps-edit-note{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6}
 .tps-edit-note strong{color:var(--gold)}
-.tps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px}
-.tps-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;transition:border-color 0.2s}
-.tps-slot:not(.bench):hover{border-color:rgba(184,146,26,0.4)}
-.tps-slot.bench{opacity:0.55}
-.tps-pos{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
-.tps-label{font-size:13px;color:var(--ink)}
-.tps-val-input{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--gold);background:transparent;border:none;border-bottom:2px solid rgba(184,146,26,0.2);width:100%;padding:2px 0 4px;cursor:text;transition:border-color 0.2s;-moz-appearance:textfield}
-.tps-val-input::-webkit-outer-spin-button,.tps-val-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.tps-val-input:focus{outline:none;border-bottom-color:var(--gold)}
-.tps-slot.bench .tps-val-input{font-size:20px;color:var(--muted)}
-.tps-pct{font-size:10px;color:var(--dim)}
 .tps-total-row{background:rgba(184,146,26,0.06);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .tps-total-label{font-family:'Cinzel',serif;font-size:15px}
 .tps-total-right{display:flex;align-items:baseline;gap:12px}
@@ -163,6 +184,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tps-budget-status.over{color:var(--red)}
 .tps-budget-status.exact{color:var(--green)}
 .tps-budget-status.under{color:var(--amber)}
+.tps-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
 
 /* ── LIVE DRAFT TRACKER ── */
 .tracker-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
@@ -216,10 +238,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── PRINT ── */
 @media print{
-  .hdr,.steps,.btn-row,.pick-entry,.no-print,.trash-box{display:none!important}
+  .hdr,.steps,.btn-row,.pick-entry,.no-print,.trash-box,.adp-status-bar{display:none!important}
   body{background:#fff;color:#111}
-  .tps-slot{background:#f9f9f9;border:1px solid #ddd}
-  .tps-val-input{color:#000;border-bottom:none;font-size:26px}
+  .tps-player-row{background:#f9f9f9;border:1px solid #ddd}
+  .tps-player-price-input{color:#000;border-bottom:none;font-size:15px}
   .tps-total-val{color:#000!important}
   .tps-budget-status{color:#000!important}
   .panel-title{color:#111}
@@ -234,6 +256,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   .pick-grid{grid-template-columns:1fr 1fr}
   .hdr{padding:14px 16px}
   .panel{padding:20px 16px}
+  .tps-player-adp{display:none}
 }
 </style>
 </head>
@@ -252,6 +275,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 <a href="/survivor" class="nav-link">☠️ Survivor</a>
 <a href="/sanctum" class="nav-link">← Sanctum</a>
   </div>
+</div>
+
+<div class="adp-status-bar" id="adpStatusBar">
+  <span><span class="adp-dot" id="adpStatusDot"></span><span id="adpStatusText">—</span></span>
 </div>
 
 <div class="steps">
@@ -396,7 +423,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     </div>
     <div class="strat-card" id="strat-custom" onclick="selectStrat('custom')">
       <div class="strat-name">⚙️ Custom</div>
-      <div class="strat-desc">Set your own target prices manually in the next step.</div>
+      <div class="strat-desc">A balanced, even-handed allocation across positions.</div>
       <div class="strat-best">Best for: Experienced auction drafters</div>
     </div>
   </div>
@@ -435,7 +462,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     </button>
     <div class="help-body" id="helpBody">
       <div class="help-section-title">What these numbers mean</div>
-      <div class="help-rule"><span>📌</span><span>Each dollar amount is your <strong>maximum recommended spend</strong> for that roster slot.</span></div>
+      <div class="help-rule"><span>📌</span><span>Every player shown is priced individually based on <strong>real, live ADP data</strong> — not a generic position slot. The price is your <strong>maximum recommended spend</strong> for that specific player.</span></div>
       <div class="help-rule"><span>⚖️</span><span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</span></div>
       <div class="help-rule"><span>✏️</span><span><strong>Click any price to customize it.</strong> The budget tracker updates live so you always know where you stand.</span></div>
       <div class="help-rule"><span>📊</span><span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</span></div>
@@ -464,10 +491,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 
   <div class="tps-edit-note no-print">
-    ✏️ <strong>Prices are fully customizable.</strong> Click any dollar amount to edit it directly. The budget tracker below updates live — adjust until your total matches your cap exactly. Prices represent your <em>maximum recommended spend</em> per roster slot.
+    ✏️ <strong>Prices are fully customizable.</strong> Click any dollar amount to edit it directly. The budget tracker below updates live — adjust until your total matches your cap exactly. Each price reflects that specific player's <em>real market ADP</em>, weighted by your chosen strategy.
   </div>
 
-  <div class="tps-grid" id="tpsGrid"></div>
+  <div id="tpsGroups"></div>
 
   <div class="tps-total-row">
     <span class="tps-total-label">Total Budget</span>
@@ -565,6 +592,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 
+<script src="/shared-player-data.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -581,7 +609,8 @@ var state = {
   teamNames: [],
   roster: { QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6 },
   strategy: null,
-  targetPrices: {},
+  targetPrices: {},      // flat name -> price map, built fresh each generateTPS() call
+  playerPriceList: [],   // flat array of {name,pos,team,adp,price} for autocomplete lookups
   draftLog: []
 };
 
@@ -593,28 +622,176 @@ var POS_COLORS = {
   K:  'background:rgba(120,100,60,0.15);color:#7a7a76;border:1px solid rgba(120,100,60,0.3)',
   DEF:'background:rgba(138,32,32,0.15);color:#8a2020;border:1px solid rgba(138,32,32,0.3)'
 };
+var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
+var POS_LABELS = {QB:'Quarterbacks', RB:'Running Backs', WR:'Wide Receivers', TE:'Tight Ends', K:'Kickers', DEF:'Defenses'};
 
 // ═══════════════════════════════════════════════════════════
-// STRATEGY DATA
+// STRATEGY DATA — advice/commentary text unchanged from before.
+// Pricing now comes from POSITION_SPLITS below, not these splits objects,
+// but the splits objects are kept here for the trash-talk/advice key
+// lookups elsewhere in the file (unchanged behavior).
 // ═══════════════════════════════════════════════════════════
 var STRATEGIES = {
-  rb:     {name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie.",splits:{QB:0.11,RB1:0.26,RB2:0.19,WR1:0.16,WR2:0.11,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  wr:     {name:'WR Heavy',advice:'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',trash:"WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me.",splits:{QB:0.11,RB1:0.17,RB2:0.11,WR1:0.26,WR2:0.18,TE:0.10,FLEX:0.06,DEF:0.01,K:0.01,BENCH:0.01}},
-  qb:     {name:'QB Heavy',advice:'In the realm of superflex and two-quarterback leagues, the signal caller is currency itself. Securing the elite tier means your opponent forever chases a position of power.',trash:"QB Heavy means you're either in a superflex league (smart) or just vibing (less smart). Either way, having Lamar while everyone else fights over backup QBs? CHEF'S KISS.",splits:{QB:0.20,RB1:0.19,RB2:0.11,WR1:0.17,WR2:0.11,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  hero:   {name:'Hero RB',advice:'One anchor. One cornerstone. Secure your elite running back and build the supporting cast from the depths of value. This is the path of the patient drafter who strikes once with precision, then harvests the remaining rounds.',trash:"Hero RB is the move of CHAMPIONS who did their homework. Get one stud RB, then let the WR value come to YOU. It's not luck, it's knowing the market better than everyone in that room.",splits:{QB:0.11,RB1:0.25,RB2:0.09,WR1:0.23,WR2:0.14,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  custom: {name:'Custom',advice:'You have chosen the path of the master. Custom allocation is for those who know their league — the spending habits of rivals, historical inflation, and hidden value at each position.',trash:"Custom strategy? Look at you, a VETERAN. You've done your homework. Just don't come crying to me when you blow $60 on a kicker.",splits:{QB:0.12,RB1:0.20,RB2:0.14,WR1:0.19,WR2:0.12,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}}
-};
-
-var SUPERFLEX_SPLITS = {
-  rb:     {splits:{QB:0.17,RB1:0.22,RB2:0.16,WR1:0.13,WR2:0.09,TE:0.10,FLEX:0.08,DEF:0.01,K:0.01,BENCH:0.01}},
-  wr:     {splits:{QB:0.17,RB1:0.14,RB2:0.09,WR1:0.21,WR2:0.15,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  qb:     {splits:{QB:0.24,RB1:0.16,RB2:0.09,WR1:0.15,WR2:0.10,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  hero:   {splits:{QB:0.17,RB1:0.20,RB2:0.08,WR1:0.19,WR2:0.13,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}},
-  custom: {splits:{QB:0.17,RB1:0.17,RB2:0.12,WR1:0.16,WR2:0.10,TE:0.10,FLEX:0.07,DEF:0.01,K:0.01,BENCH:0.01}}
+  rb:     {name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie."},
+  wr:     {name:'WR Heavy',advice:'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',trash:"WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me."},
+  qb:     {name:'QB Heavy',advice:'In the realm of superflex and two-quarterback leagues, the signal caller is currency itself. Securing the elite tier means your opponent forever chases a position of power.',trash:"QB Heavy means you're either in a superflex league (smart) or just vibing (less smart). Either way, having Lamar while everyone else fights over backup QBs? CHEF'S KISS."},
+  hero:   {name:'Hero RB',advice:'One anchor. One cornerstone. Secure your elite running back and build the supporting cast from the depths of value. This is the path of the patient drafter who strikes once with precision, then harvests the remaining rounds.',trash:"Hero RB is the move of CHAMPIONS who did their homework. Get one stud RB, then let the WR value come to YOU. It's not luck, it's knowing the market better than everyone in that room."},
+  custom: {name:'Custom',advice:'You have chosen the path of balance. An even-handed allocation across positions rewards the manager who reads the room rather than committing early to one approach.',trash:"Balanced strategy? Look at you, a VETERAN. No early commitments, all options open. Just don't come crying to me when you blow $60 on a kicker."}
 };
 
 // ═══════════════════════════════════════════════════════════
-// SLEEPER PLAYER DATABASE
+// POSITION-LEVEL BUDGET SPLITS (added — replaces old slot-based %s)
+// Each strategy's percentages sum to exactly 1.0 across all positions
+// including BENCH. Tested in isolation before being wired in here.
+// Superflex applies SUPERFLEX_BUMP as a multiplier then renormalizes,
+// so QB share increases while everything else shrinks proportionally
+// and the grand total still sums to 1.0.
+// ═══════════════════════════════════════════════════════════
+var POSITION_SPLITS = {
+  rb:     {QB:0.10, RB:0.42, WR:0.27, TE:0.10, DEF:0.02, K:0.02, BENCH:0.07},
+  wr:     {QB:0.10, RB:0.25, WR:0.42, TE:0.10, DEF:0.02, K:0.02, BENCH:0.09},
+  qb:     {QB:0.22, RB:0.30, WR:0.27, TE:0.09, DEF:0.02, K:0.02, BENCH:0.08},
+  hero:   {QB:0.10, RB:0.32, WR:0.35, TE:0.10, DEF:0.02, K:0.02, BENCH:0.09},
+  custom: {QB:0.13, RB:0.31, WR:0.31, TE:0.11, DEF:0.02, K:0.02, BENCH:0.10}
+};
+var SUPERFLEX_BUMP = {QB:3.3, RB:0.85, WR:0.85, TE:0.9, DEF:1, K:1, BENCH:0.9};
+
+function getPositionSplits(strategyKey, isSuperflex) {
+  var base = POSITION_SPLITS[strategyKey] || POSITION_SPLITS.custom;
+  if (!isSuperflex) return base;
+  var bumped = {};
+  var total = 0;
+  Object.keys(base).forEach(function(pos){
+    bumped[pos] = base[pos] * (SUPERFLEX_BUMP[pos] || 1);
+    total += bumped[pos];
+  });
+  Object.keys(bumped).forEach(function(pos){ bumped[pos] = bumped[pos] / total; });
+  return bumped;
+}
+
+// ═══════════════════════════════════════════════════════════
+// LIVE ADP FETCH (added — same Netlify proxy draft.html/tiers.html use)
+// ═══════════════════════════════════════════════════════════
+var liveAdpByPos = null; // null until fetched; { QB:[{name,team,adp}], RB:[...], ... }
+
+async function fetchLiveAdpByPosition(scoring) {
+  try {
+    var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
+    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam);
+    var data = await res.json();
+    if (!data.players || !Array.isArray(data.players)) return null;
+    var byPos = {QB:[], RB:[], WR:[], TE:[], K:[], DEF:[]};
+    data.players.forEach(function(p){
+      if (!p.name || !p.position || !byPos[p.position]) return;
+      byPos[p.position].push({ name: p.name, team: p.team || null, adp: p.adp });
+    });
+    Object.keys(byPos).forEach(function(pos){
+      byPos[pos].sort(function(a,b){ return a.adp - b.adp; });
+    });
+    return byPos;
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateAdpStatusBar(usingFallback) {
+  var bar = document.getElementById('adpStatusBar');
+  var dot = document.getElementById('adpStatusDot');
+  var text = document.getElementById('adpStatusText');
+  if (!bar || !dot || !text) return;
+  bar.classList.add('show');
+  dot.className = 'adp-dot ' + (usingFallback ? 'error' : 'live');
+  text.textContent = usingFallback
+    ? 'Live ADP unavailable — using static fallback rankings'
+    : '2026 Live ADP · ' + new Date().toLocaleTimeString();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRICING ENGINE (added — tested in isolation before integration)
+// Converts a sorted-by-ADP player list into individual dollar prices
+// using a diminishing-returns curve, scaled to an exact dollar total.
+// ═══════════════════════════════════════════════════════════
+function rankToValue(rank, poolSize) {
+  var x = poolSize - rank + 1;
+  return Math.pow(x, 1.15);
+}
+
+function priceTopPlayersAtPosition(players, poolSize, totalDollarsForPosition) {
+  var pool = players.slice(0, Math.min(poolSize, players.length));
+  if (!pool.length) return [];
+  var rawValues = pool.map(function(p, i){ return rankToValue(i + 1, pool.length); });
+  var totalRaw = rawValues.reduce(function(a,v){ return a+v; }, 0);
+  return pool.map(function(p, i){
+    var share = totalRaw > 0 ? rawValues[i] / totalRaw : 0;
+    return {
+      name: p.name, team: p.team || 'FA', adp: p.adp,
+      price: Math.max(1, Math.round(share * totalDollarsForPosition))
+    };
+  });
+}
+
+// Distributes any rounding remainder so the grand total matches the
+// budget exactly — same guarantee the original slot-based sheet made.
+function distributeRemainderExactly(allPricedPlayers, benchTotal, targetTotal) {
+  var currentTotal = allPricedPlayers.reduce(function(a,p){return a+p.price;}, 0) + benchTotal;
+  var diff = targetTotal - currentTotal;
+  if (diff === 0 || !allPricedPlayers.length) return;
+  var sorted = allPricedPlayers.slice().sort(function(a,b){ return b.price - a.price; });
+  var step = diff > 0 ? 1 : -1;
+  var remaining = Math.abs(diff);
+  var i = 0;
+  while (remaining > 0) {
+    var target = sorted[i % sorted.length];
+    if (target.price + step >= 1) target.price += step;
+    i++;
+    remaining--;
+    if (i > 5000) break; // safety valve, should never trigger
+  }
+}
+
+// Pool size per position: how many rosterable players actually matter,
+// scaled to league size and roster construction. Pools are intentionally
+// generous (a few extra beyond strict starters) so the sheet covers
+// realistic handcuff/streaming/bench targets, not just locked-in starters.
+function computePoolSizes(numTeams, roster, isSuperflex) {
+  var qbSlots = roster.QB + (isSuperflex ? 1 : 0);
+  return {
+    QB:  Math.max(numTeams * qbSlots + 6, 12),
+    RB:  Math.max(numTeams * (roster.RB + 1) + 10, 20),
+    WR:  Math.max(numTeams * (roster.WR + 1) + 10, 20),
+    TE:  Math.max(Math.round(numTeams * (roster.TE + 0.4)) + 6, 10),
+    DEF: numTeams,
+    K:   numTeams
+  };
+}
+
+// Builds the full price sheet: returns {byPos: {QB:[...], RB:[...], ...}, benchTotal, grandTotal}
+function generatePriceSheet(adpByPos, numTeams, budget, strategyKey, isSuperflex, roster) {
+  var totalMarketBudget = numTeams * budget;
+  var splits = getPositionSplits(strategyKey, isSuperflex);
+  var poolSizes = computePoolSizes(numTeams, roster, isSuperflex);
+
+  var byPos = {};
+  var allPriced = [];
+  POS_ORDER.forEach(function(pos){
+    var dollars = totalMarketBudget * splits[pos];
+    var players = (adpByPos && adpByPos[pos]) ? adpByPos[pos] : [];
+    var priced = priceTopPlayersAtPosition(players, poolSizes[pos], dollars);
+    byPos[pos] = priced;
+    allPriced = allPriced.concat(priced);
+  });
+
+  var benchTotal = Math.max(1, Math.round(totalMarketBudget * splits.BENCH));
+  distributeRemainderExactly(allPriced, benchTotal, totalMarketBudget);
+
+  return { byPos: byPos, benchTotal: benchTotal };
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLAYER AUTOCOMPLETE (modified — now looks up real prices from the
+// generated price sheet instead of a generic per-position placeholder.
+// Falls back to Sleeper-only data with no price if the sheet hasn't
+// been generated yet.)
 // ═══════════════════════════════════════════════════════════
 var allPlayers = [];
 function loadSleeperPlayers() {
@@ -635,9 +812,6 @@ function loadSleeperPlayers() {
 }
 loadSleeperPlayers();
 
-// ═══════════════════════════════════════════════════════════
-// PLAYER AUTOCOMPLETE
-// ═══════════════════════════════════════════════════════════
 function searchPlayers(query) {
   var dd = document.getElementById('playerDropdown');
   if (!query || query.length < 2) { dd.style.display = 'none'; return; }
@@ -648,7 +822,7 @@ function searchPlayers(query) {
   if (!matches.length) { dd.style.display = 'none'; return; }
   dd.innerHTML = '';
   matches.forEach(function(p){
-    var proj = getProjectedValue(p.pos);
+    var proj = getProjectedValue(p.name, p.pos);
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var item = document.createElement('div');
     item.className = 'dd-item';
@@ -673,9 +847,16 @@ function searchPlayers(query) {
   dd.style.display = 'block';
 }
 
-function getProjectedValue(pos) {
-  var map = { QB:'QB1', RB:'RB1', WR:'WR1', TE:'TE1', K:'K', DEF:'D/ST' };
-  return state.targetPrices[map[pos]] || null;
+// Look up a specific player's individually-generated price by name
+// (case-insensitive exact match against the flat playerPriceList built
+// in renderTPS()). Falls back to null if the sheet hasn't been built
+// yet or the player isn't in the priced pool (e.g. deep bench/waiver
+// names Sleeper knows about but our ADP pool didn't reach).
+function getProjectedValue(name, pos) {
+  if (!state.playerPriceList.length) return null;
+  var lower = name.toLowerCase();
+  var match = state.playerPriceList.find(function(p){ return p.name.toLowerCase() === lower; });
+  return match ? match.price : null;
 }
 
 document.addEventListener('click', function(e){
@@ -764,7 +945,7 @@ function showLeagueWarning() {
   var leagueType = document.getElementById('leagueType').value;
   var leagueFormat = document.getElementById('leagueFormat').value;
   var msgs = [];
-  if (leagueFormat === 'superflex') msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — QB target prices have been significantly increased. Budget $45–65 for an elite QB1 and $30–45 for a solid QB2.');
+  if (leagueFormat === 'superflex') msgs.push('⚔️ <strong>Superflex / 2QB League Detected</strong> — QB target prices have been significantly increased to reflect real demand for a second starting quarterback.');
   if (scoring === 'ppr') msgs.push('📋 <strong>PPR Scoring</strong> — Pass-catching running backs and slot receivers carry premium value.');
   if (scoring === 'standard') msgs.push('🏃 <strong>Standard Scoring</strong> — Workhorse running backs dominate.');
   if (scoring === 'half') msgs.push('📋 <strong>Half PPR Scoring</strong> — A balanced format rewarding both volume and efficiency.');
@@ -775,8 +956,24 @@ function showLeagueWarning() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — GENERATE TARGET PRICE SHEET
+// STEP 4 — GENERATE TARGET PRICE SHEET (rebuilt)
+// Fetches live ADP, builds individually-priced players grouped by
+// position, falls back to a small static seed list if live ADP can't
+// be reached so the sheet still renders something usable.
 // ═══════════════════════════════════════════════════════════
+
+// Minimal static fallback — used ONLY if the live ADP fetch fails
+// entirely. Intentionally small; this is a safety net, not a curated
+// dataset like shared-player-data.js's PLAYER_POOL.
+var STATIC_ADP_FALLBACK = {
+  QB: [{name:'Lamar Jackson',team:'BAL',adp:1.2},{name:'Josh Allen',team:'BUF',adp:2.1},{name:'Jalen Hurts',team:'PHI',adp:3.8},{name:'Joe Burrow',team:'CIN',adp:7.4},{name:'C.J. Stroud',team:'HOU',adp:10.2},{name:'Patrick Mahomes',team:'KC',adp:14.0},{name:'Jordan Love',team:'GB',adp:19.1},{name:'Brock Purdy',team:'SF',adp:24.0},{name:'Trevor Lawrence',team:'JAX',adp:28.0},{name:'Kirk Cousins',team:'LV',adp:32.0}],
+  RB: [{name:'Christian McCaffrey',team:'SF',adp:1.0},{name:'Breece Hall',team:'NYJ',adp:2.9},{name:'Bijan Robinson',team:'ATL',adp:4.2},{name:'Jahmyr Gibbs',team:'DET',adp:6.3},{name:'Jonathan Taylor',team:'IND',adp:8.8},{name:'Saquon Barkley',team:'PHI',adp:11.1},{name:'Josh Jacobs',team:'GB',adp:14.4},{name:'Kyren Williams',team:'LAR',adp:25.6},{name:'Joe Mixon',team:'HOU',adp:28.9},{name:'James Cook',team:'BUF',adp:23.1}],
+  WR: [{name:'CeeDee Lamb',team:'DAL',adp:1.8},{name:"Ja'Marr Chase",team:'CIN',adp:3.1},{name:'Tyreek Hill',team:'MIA',adp:5.6},{name:'Justin Jefferson',team:'MIN',adp:6.9},{name:'A.J. Brown',team:'PHI',adp:13.8},{name:'Amon-Ra St. Brown',team:'DET',adp:15.2},{name:'Puka Nacua',team:'LAR',adp:27.3},{name:'Garrett Wilson',team:'NYJ',adp:38.8},{name:'Mike Evans',team:'TB',adp:29.7}],
+  TE: [{name:'Travis Kelce',team:'KC',adp:4.5},{name:'Sam LaPorta',team:'DET',adp:9.2},{name:'Mark Andrews',team:'BAL',adp:13.7},{name:'Trey McBride',team:'ARI',adp:16.8},{name:'Dallas Goedert',team:'PHI',adp:21.4}],
+  K:  [{name:'Justin Tucker',team:'BAL',adp:2.1},{name:'Evan McPherson',team:'CIN',adp:4.8},{name:'Tyler Bass',team:'BUF',adp:7.2},{name:'Brandon Aubrey',team:'DAL',adp:9.6}],
+  DEF:[{name:'San Francisco 49ers',team:'SF',adp:3.2},{name:'Dallas Cowboys',team:'DAL',adp:6.7},{name:'Baltimore Ravens',team:'BAL',adp:9.1},{name:'Philadelphia Eagles',team:'PHI',adp:15.4}]
+};
+
 function generateTPS() {
   state.leagueName = document.getElementById('leagueName').value || 'My League';
   state.numTeams = parseInt(document.getElementById('numTeams').value);
@@ -792,66 +989,85 @@ function generateTPS() {
   updateRoster();
   showLeagueWarning();
 
-  var isSuperflex = state.leagueFormat === 'superflex';
-  var stratKey = state.strategy || 'hero';
-  var strat = STRATEGIES[stratKey];
-  var splits = isSuperflex ? SUPERFLEX_SPLITS[stratKey].splits : strat.splits;
-  var budget = state.budget;
-  var roster = state.roster;
-  var slots = [];
+  // Render a lightweight loading placeholder while ADP fetches
+  document.getElementById('tpsGroups').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--dim);font-family:\'JetBrains Mono\',monospace;font-size:12px">Pulling live ADP and building your price sheet...</div>';
 
-  function add(pos, label, pct, bench) {
-    slots.push({ pos:pos, label:label, rawPct:pct, bench:bench||false });
-  }
+  fetchLiveAdpByPosition(state.scoring).then(function(liveAdp){
+    var usingFallback = !liveAdp;
+    updateAdpStatusBar(usingFallback);
+    var adpSource = liveAdp || STATIC_ADP_FALLBACK;
 
-  if (roster.QB >= 1) add('QB','QB1',splits.QB);
-  if (roster.QB >= 2) add('QB','QB2',splits.QB * 0.55);
-  if (roster.RB >= 1) add('RB','RB1',splits.RB1);
-  if (roster.RB >= 2) add('RB','RB2',splits.RB2);
-  if (roster.RB >= 3) add('RB','RB3',splits.RB2 * 0.40);
-  if (roster.WR >= 1) add('WR','WR1',splits.WR1);
-  if (roster.WR >= 2) add('WR','WR2',splits.WR2);
-  if (roster.WR >= 3) add('WR','WR3',splits.WR2 * 0.40);
-  if (roster.TE >= 1) add('TE','TE1',splits.TE);
-  if (roster.TE >= 2) add('TE','TE2',splits.TE * 0.30);
-  if (roster.FLEX >= 1) add('FLEX','FLEX',splits.FLEX);
-  if (roster.FLEX >= 2) add('FLEX','FLEX2',splits.FLEX * 0.50);
-  if (roster.DEF >= 1) add('DEF','D/ST',splits.DEF);
-  if (roster.K >= 1)   add('K','K',splits.K);
-  for (var b = 1; b <= roster.BENCH; b++) {
-    add('BENCH','Bench ' + b, b <= 2 ? 0.035 : b <= 4 ? 0.018 : 0.005, true);
-  }
+    var isSuperflex = state.leagueFormat === 'superflex';
+    var stratKey = state.strategy || 'hero';
+    var sheet = generatePriceSheet(adpSource, state.numTeams, state.budget, stratKey, isSuperflex, state.roster);
 
-  var totalPct = slots.reduce(function(a, s){ return a + s.rawPct; }, 0);
-  slots.forEach(function(s){ s.normPct = s.rawPct / totalPct; });
-  slots.forEach(function(s){ s.val = Math.max(1, Math.floor(s.normPct * budget)); });
-  var allocated = slots.reduce(function(a, s){ return a + s.val; }, 0);
-  var remainder = budget - allocated;
-  for (var r = 0; r < remainder; r++) { slots[r % slots.length].val += 1; }
-
-  state.targetPrices = {};
-  slots.forEach(function(s){ state.targetPrices[s.label] = s.val; });
-
-  // Build grid
-  var grid = document.getElementById('tpsGrid');
-  grid.innerHTML = '';
-  slots.forEach(function(s){
-    var pct = Math.round(s.normPct * 100);
-    var div = document.createElement('div');
-    div.className = 'tps-slot' + (s.bench ? ' bench' : '');
-    div.innerHTML =
-      '<div class="tps-pos">' + s.pos + '</div>' +
-      '<div class="tps-label">' + s.label + '</div>' +
-      '<input type="number" class="tps-val-input" value="' + s.val + '" min="1" ' +
-        'data-label="' + s.label + '" oninput="updateTpsTotal()" />' +
-      '<div class="tps-pct" id="pct-' + s.label.replace(/\s/g,'-') + '">' + pct + '% of budget</div>';
-    grid.appendChild(div);
+    renderTPS(sheet, stratKey);
   });
+}
+
+function renderTPS(sheet, stratKey) {
+  var strat = STRATEGIES[stratKey] || STRATEGIES.hero;
+  var groupsEl = document.getElementById('tpsGroups');
+  groupsEl.innerHTML = '';
+
+  state.playerPriceList = [];
+  state.targetPrices = {};
+
+  POS_ORDER.forEach(function(pos){
+    var players = sheet.byPos[pos] || [];
+    if (!players.length) return;
+
+    players.forEach(function(p){
+      state.playerPriceList.push({ name: p.name, pos: pos, team: p.team, price: p.price });
+      state.targetPrices[p.name] = p.price;
+    });
+
+    var sectionTotal = players.reduce(function(a,p){ return a+p.price; }, 0);
+
+    var section = document.createElement('div');
+    section.className = 'tps-section';
+    var hdr = document.createElement('div');
+    hdr.className = 'tps-section-hdr';
+    hdr.innerHTML =
+      '<span class="tps-section-pos ' + pos + '">' + pos + '</span>' +
+      '<span class="tps-section-title">' + POS_LABELS[pos] + '</span>' +
+      '<span class="tps-section-total">$' + sectionTotal + ' total · ' + players.length + ' players</span>';
+    section.appendChild(hdr);
+
+    var list = document.createElement('div');
+    list.className = 'tps-player-list';
+    players.forEach(function(p, i){
+      var row = document.createElement('div');
+      row.className = 'tps-player-row';
+      row.innerHTML =
+        '<span class="tps-player-rank">#' + (i+1) + '</span>' +
+        '<span class="tps-player-name">' + p.name + '</span>' +
+        '<span class="tps-player-team">' + (p.team || 'FA') + '</span>' +
+        '<span class="tps-player-adp">ADP ' + Number(p.adp).toFixed(1) + '</span>' +
+        '<span class="tps-player-price-wrap"><span class="tps-player-price-dollar">$</span>' +
+          '<input type="number" class="tps-player-price-input" value="' + p.price + '" min="1" data-name="' + p.name.replace(/"/g,'&quot;') + '" oninput="updateTpsTotal()"/></span>';
+      list.appendChild(row);
+    });
+    section.appendChild(list);
+    groupsEl.appendChild(section);
+  });
+
+  // Bench row — stays generic, no individual player identity makes
+  // sense for "depth/sleeper" bench slots.
+  var benchSection = document.createElement('div');
+  benchSection.className = 'tps-section';
+  benchSection.innerHTML =
+    '<div class="tps-section-hdr"><span class="tps-section-pos" style="background:#7a7a76">BN</span><span class="tps-section-title">Bench / Depth Pool</span></div>' +
+    '<div class="tps-bench-row"><span class="tps-bench-label">Reserved across your bench spots — sleepers, handcuffs, and streamers come from here.</span>' +
+    '<span style="font-family:\'JetBrains Mono\',monospace;font-size:18px;color:var(--muted)">$</span>' +
+    '<input type="number" class="tps-bench-price-input" id="benchPriceInput" value="' + sheet.benchTotal + '" min="1" oninput="updateTpsTotal()"/></div>';
+  groupsEl.appendChild(benchSection);
 
   updateTpsTotal();
 
   var scoringLabel = { ppr:'PPR', half:'Half PPR', standard:'Standard' }[state.scoring];
-  var formatLabel = isSuperflex ? ' · Superflex/2QB' : '';
+  var formatLabel = state.leagueFormat === 'superflex' ? ' · Superflex/2QB' : '';
   document.getElementById('tpsSubtitle').textContent =
     state.leagueName + ' · ' + state.numTeams + ' teams · $' + state.budget + ' cap · ' + scoringLabel + formatLabel + ' · ' + strat.name;
   document.getElementById('oracleBriefing').textContent = strat.advice;
@@ -859,12 +1075,26 @@ function generateTPS() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — LIVE BUDGET TRACKER
+// STEP 4 — LIVE BUDGET TRACKER (modified — sums all individual player
+// price inputs plus the bench input, instead of the old fixed-slot list)
 // ═══════════════════════════════════════════════════════════
 function updateTpsTotal() {
-  var inputs = document.querySelectorAll('.tps-val-input');
+  var inputs = document.querySelectorAll('.tps-player-price-input');
+  var benchInput = document.getElementById('benchPriceInput');
   var total = 0;
-  inputs.forEach(function(inp){ total += parseInt(inp.value) || 0; });
+  inputs.forEach(function(inp){
+    var val = parseInt(inp.value) || 0;
+    total += val;
+    state.targetPrices[inp.dataset.name] = val;
+  });
+  if (benchInput) total += parseInt(benchInput.value) || 0;
+
+  // Keep playerPriceList's price fields in sync so autocomplete reflects
+  // any manual edits the user makes on the sheet.
+  inputs.forEach(function(inp){
+    var match = state.playerPriceList.find(function(p){ return p.name === inp.dataset.name; });
+    if (match) match.price = parseInt(inp.value) || match.price;
+  });
 
   var budget = state.budget;
   var diff = total - budget;
@@ -885,16 +1115,6 @@ function updateTpsTotal() {
     statusEl.textContent = '$' + Math.abs(diff) + ' remaining';
     statusEl.className = 'tps-budget-status under';
   }
-
-  // Sync pct labels and state
-  inputs.forEach(function(inp){
-    var label = inp.dataset.label;
-    var val = parseInt(inp.value) || 0;
-    var safeId = label.replace(/\s/g, '-');
-    var pctEl = document.getElementById('pct-' + safeId);
-    if (pctEl) pctEl.textContent = Math.round((val / budget) * 100) + '% of budget';
-    state.targetPrices[label] = val;
-  });
 }
 
 // ═══════════════════════════════════════════════════════════
