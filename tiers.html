@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,7 +34,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .auction-link-btn{padding:9px 18px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Cinzel',serif;font-size:12px;border-radius:var(--r);cursor:pointer;letter-spacing:0.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s}
 .auction-link-btn:hover{border-color:var(--gold);color:var(--gold)}
 
-/* ── SMART CONNECTOR BANNER ── */
+.adp-status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 24px;display:none;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+.adp-status-bar.show{display:flex}
+.adp-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.adp-dot.live{background:var(--green);animation:adppulse 2s infinite}
+.adp-dot.error{background:var(--red)}
+@keyframes adppulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
 .connector-banner{border-bottom:1px solid rgba(184,146,26,0.25);padding:12px 24px;display:none}
 .connector-banner.show{display:block}
 .connector-banner.from-war-room{background:rgba(184,146,26,0.08)}
@@ -116,7 +123,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .reset-btn{padding:8px 18px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Lora',serif;font-size:13px;border-radius:var(--r);cursor:pointer;transition:all 0.15s}
 .reset-btn:hover{border-color:rgba(138,32,32,0.4);color:var(--red)}
 .save-note{font-size:11px;color:var(--dim);font-style:italic}
-/* ── HOW TO USE HELP PANEL ── */
 .help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
 .help-toggle{width:100%;background:transparent;border:none;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left;transition:background 0.15s}
 .help-toggle:hover{background:rgba(184,146,26,0.05)}
@@ -204,7 +210,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 
-<!-- SMART CONNECTOR BANNER — populated by JS based on localStorage -->
+<div class="adp-status-bar" id="adpStatusBar">
+  <span><span class="adp-dot" id="adpStatusDot"></span><span id="adpStatusText">—</span></span>
+</div>
+
 <div class="connector-banner" id="connectorBanner">
   <div class="connector-inner">
     <span class="connector-icon" id="connectorIcon">⚔️</span>
@@ -227,7 +236,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 <div class="main">
 
-  <!-- HOW TO USE HELP PANEL -->
   <div class="help-panel">
     <button class="help-toggle" onclick="toggleHelp()">
       📖 How to Use the Oracle Tier List — A Beginner's Guide
@@ -331,7 +339,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
       <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
     </div>
     <div class="loading-title">The Oracle is consulting the ancient scrolls...</div>
-    <div class="loading-sub" id="loadingSub">Pulling ADP data from the Sleeper database</div>
+    <div class="loading-sub" id="loadingSub">Pulling live ADP from Tank01</div>
   </div>
 
   <div class="oracle-box" id="oracleBriefing" style="display:none">
@@ -374,8 +382,6 @@ var TIER_NAMES = {
   4:'Streamers & Sleepers', 5:'Lottery Tickets'
 };
 
-// ── STRATEGY CONFIG ──────────────────────────────────────────────────────────
-// Maps strategy key → primary position tab + connector message generator
 var STRATEGY_CONFIG = {
   rb: {
     primaryPos: 'RB',
@@ -425,7 +431,48 @@ var TIER_BREAKS = {
 };
 var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
 
-// ── READ localStorage ON LOAD ────────────────────────────────────────────────
+// ── LIVE ADP OVERLAY (added) ─────────────────────────────────────────────────
+async function fetchLiveAdpMap(scoring) {
+  try {
+    var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
+    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam);
+    var data = await res.json();
+    if (!data.players || !Array.isArray(data.players)) return null;
+    var map = {};
+    data.players.forEach(function (p) {
+      if (!p.name) return;
+      map[normalizePlayerName(p.name)] = p.adp;
+    });
+    return map;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyLiveAdp(players, adpMap) {
+  if (!adpMap) return players;
+  return players.map(function (p) {
+    var liveAdp = adpMap[normalizePlayerName(p.name)];
+    if (liveAdp === undefined || liveAdp === null) return p;
+    var copy = {};
+    for (var k in p) copy[k] = p[k];
+    copy.adp = liveAdp;
+    return copy;
+  });
+}
+
+function updateAdpStatusBar(usingFallback) {
+  var bar = document.getElementById('adpStatusBar');
+  var dot = document.getElementById('adpStatusDot');
+  var text = document.getElementById('adpStatusText');
+  if (!bar || !dot || !text) return;
+  bar.classList.add('show');
+  dot.className = 'adp-dot ' + (usingFallback ? 'error' : 'live');
+  text.textContent = usingFallback
+    ? 'Live ADP unavailable — showing static rankings'
+    : '2026 Live ADP · ' + new Date().toLocaleTimeString();
+}
+
 function toggleHelp() {
   var body = document.getElementById('helpBody');
   var chevron = document.getElementById('helpChevron');
@@ -441,7 +488,6 @@ function readSavedStrategy() {
   } catch(e) { return null; }
 }
 
-// ── BUILD SMART CONNECTOR BANNER ─────────────────────────────────────────────
 function buildConnectorBanner(stratData, tiersData) {
   var banner  = document.getElementById('connectorBanner');
   var icon    = document.getElementById('connectorIcon');
@@ -449,7 +495,6 @@ function buildConnectorBanner(stratData, tiersData) {
   var textEl  = document.getElementById('connectorText');
 
   if (!stratData) {
-    // Generic banner — no War Room session detected
     banner.classList.add('show', 'generic');
     icon.textContent = '⚔️';
     source.textContent = 'Tier List · Price Sheet Integration';
@@ -469,7 +514,6 @@ function buildConnectorBanner(stratData, tiersData) {
   textEl.innerHTML = cfg.bannerFn(t1players, stratData.scoring);
 }
 
-// ── MARK TARGET POSITION TAB WITH STAR ───────────────────────────────────────
 function markStrategyTab(stratData) {
   if (!stratData) return;
   var cfg = STRATEGY_CONFIG[stratData.strategy];
@@ -478,7 +522,6 @@ function markStrategyTab(stratData) {
   if (tab) tab.classList.add('strategy-target');
 }
 
-// ── MARK TIER BLOCKS THAT ARE TARGET TIERS ───────────────────────────────────
 function markTargetTiers(stratData, pos) {
   if (!stratData) return;
   var cfg = STRATEGY_CONFIG[stratData.strategy];
@@ -497,7 +540,6 @@ function markTargetTiers(stratData, pos) {
   });
 }
 
-// ── GENERATE TIERS ───────────────────────────────────────────────────────────
 function generateTiers() {
   var scoring = document.getElementById('settingScoring').value;
   var format  = document.getElementById('settingFormat').value;
@@ -507,7 +549,8 @@ function generateTiers() {
   document.getElementById('generateBtn').disabled = true;
 
   var msgs = [
-    'Pulling ADP data from the Sleeper database',
+    'Pulling live ADP from Tank01',
+    'Cross-checking team data with Sleeper',
     'Applying scoring format adjustments',
     'Consulting 38 seasons of wisdom',
     'Carving the final tier breaks'
@@ -518,21 +561,22 @@ function generateTiers() {
     document.getElementById('loadingSub').textContent = msgs[msgIdx];
   }, 700);
 
-  // Live team correction against Sleeper's roster data, plus a floor on
-  // the loading screen's display time so the messages above are readable
-  // even when the fetch resolves quickly. Falls back to PLAYER_POOL's
-  // static team values if Sleeper can't be reached.
   var teamMapPromise = fetchSleeperTeamMap();
+  var adpMapPromise = fetchLiveAdpMap(scoring);
   var minDelayPromise = new Promise(function(resolve){ setTimeout(resolve, 2400); });
 
-  Promise.all([teamMapPromise, minDelayPromise]).then(function(results){
+  Promise.all([teamMapPromise, adpMapPromise, minDelayPromise]).then(function(results){
     var sleeperTeamMap = results[0];
+    var liveAdpMap = results[1];
     clearInterval(msgInt);
+
+    updateAdpStatusBar(!liveAdpMap);
 
     tiers = {};
     POS_LIST.forEach(function(pos){
       var pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
       if (pos !== 'DEF') pool = applyLiveTeams(pool, sleeperTeamMap);
+      pool = applyLiveAdp(pool, liveAdpMap);
 
       if (scoring === 'ppr') {
         pool.forEach(function(p){
@@ -548,7 +592,6 @@ function generateTiers() {
 
       pool.sort(function(a,b){ return a.adp - b.adp; });
 
-      // Deduplicate by name
       var seen = {};
       pool = pool.filter(function(p){
         if (seen[p.name]) return false;
@@ -587,13 +630,11 @@ function generateTiers() {
 
     generated = true;
 
-    // Build connector banner now that tiers are ready
     buildConnectorBanner(savedStrategy, tiers);
     markStrategyTab(savedStrategy);
 
     POS_LIST.forEach(function(pos){ renderPos(pos); });
 
-    // Auto-activate primary position tab if strategy loaded
     var startPos = 'QB';
     if (savedStrategy) {
       var cfg = STRATEGY_CONFIG[savedStrategy.strategy];
@@ -601,12 +642,10 @@ function generateTiers() {
     }
     showPos(startPos);
 
-    // Mark target tier blocks for the active position
     markTargetTiers(savedStrategy, startPos);
   });
 }
 
-// ── RENDER ONE POSITION ───────────────────────────────────────────────────────
 function renderPos(pos) {
   var container = document.getElementById('tier' + pos);
   container.innerHTML = '';
@@ -638,14 +677,6 @@ function renderPos(pos) {
   }
 }
 
-// ── PLAYER CARD + DRAG (mouse + touch via Pointer Events) ────────────────────
-// Native HTML5 drag-and-drop (dragstart/dragover/drop) only fires from a
-// mouse gesture — touch browsers (Samsung Internet, mobile Chrome/Safari)
-// never fire those events from a finger drag. That's why grabbing a card
-// and moving it never actually re-filed it into the new tier on mobile:
-// the drop handler simply never ran. Pointer Events (pointerdown/move/up)
-// fire identically for mouse AND touch, so dragging is now built on those
-// instead, with no native HTML5 DnD involved at all.
 var dragState = null;
 
 function makeCard(player, pos) {
@@ -664,7 +695,7 @@ function makeCard(player, pos) {
 }
 
 function startDrag(e, card, player, pos) {
-  if (e.button !== undefined && e.button !== 0) return; // left-click only; touch has no .button
+  if (e.button !== undefined && e.button !== 0) return;
   e.preventDefault();
 
   var rect = card.getBoundingClientRect();
@@ -686,7 +717,6 @@ function onDragMove(e) {
   if (!dragState) return;
   var dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
 
-  // Small threshold so a plain tap never gets treated as a drag.
   if (!dragState.moved && (Math.abs(dx) + Math.abs(dy)) < 4) return;
 
   if (!dragState.moved) {
@@ -701,8 +731,6 @@ function onDragMove(e) {
   dragState.card.style.left = (e.clientX - dragState.offsetX) + 'px';
   dragState.card.style.top  = (e.clientY - dragState.offsetY) + 'px';
 
-  // Hide the dragged card itself for a moment so elementFromPoint can see
-  // what's actually underneath the finger/cursor, not the card being moved.
   dragState.card.style.display = 'none';
   var under = document.elementFromPoint(e.clientX, e.clientY);
   dragState.card.style.display = '';
@@ -742,7 +770,7 @@ function onDragEnd(e) {
 
   dragState = null;
 
-  if (!moved || !zone) return; // a tap, or dropped outside any valid tier — leave it where it was
+  if (!moved || !zone) return;
 
   var targetTier = parseInt(zone.dataset.tier, 10);
   movePlayerToTier(pos, player.name, targetTier);
@@ -769,7 +797,6 @@ function movePlayerToTier(pos, name, targetTier) {
   markTargetTiers(savedStrategy, pos);
 }
 
-// ── SHOW POSITION TAB ─────────────────────────────────────────────────────────
 function showPos(pos) {
   currentPos = pos;
   POS_LIST.forEach(function(p){
@@ -779,7 +806,6 @@ function showPos(pos) {
   if (generated) markTargetTiers(savedStrategy, pos);
 }
 
-// ── RESET ─────────────────────────────────────────────────────────────────────
 function resetTiers() {
   if (!generated) return;
   if (!confirm('Reset all tiers to Oracle defaults?')) return;
@@ -788,10 +814,8 @@ function resetTiers() {
   markTargetTiers(savedStrategy, currentPos);
 }
 
-// ── INIT — read strategy state on page load ───────────────────────────────────
 savedStrategy = readSavedStrategy();
 
-// If strategy exists, pre-fill the settings dropdowns to match
 if (savedStrategy) {
   var scoringMap = {ppr:'ppr', half:'half', standard:'standard'};
   var formatMap  = {standard:'standard', superflex:'superflex'};
@@ -805,7 +829,6 @@ if (savedStrategy) {
   if (formatMap[savedStrategy.format])   fEl.value = formatMap[savedStrategy.format];
   if (budgetMap[String(savedStrategy.budget)]) bEl.value = String(savedStrategy.budget);
 
-  // Update empty state messaging
   var cfg = STRATEGY_CONFIG[savedStrategy.strategy];
   if (cfg) {
     document.querySelector('.empty-title').textContent = 'War Room strategy detected — ready to generate';
