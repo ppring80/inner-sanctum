@@ -1183,13 +1183,30 @@ function updateTrackerStats() {
   var mySpent = log.filter(function(p){ return p.team === myTeam; }).reduce(function(a, p){ return a + p.price; }, 0);
   var myLeft = state.budget - mySpent;
   var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
-  var totalRosterSpots = Object.values(state.roster).reduce(function(a, v){ return a + v; }, 0);
-  var expectedAvg = totalMarketBudget / (state.numTeams * totalRosterSpots);
-  var inflation = log.length > 0 ? Math.round(((totalSpent / log.length) / expectedAvg) * 100 - 100) : 0;
+
+  // Inflation (rebuilt — see Session 11 notes). The old formula compared
+  // average price paid against (totalBudget / totalRosterSpots), which
+  // includes near-$0 bench spots in the average and made early picks of
+  // real starters look wildly "inflated" (e.g. +185% after just 3 picks
+  // of legitimate starting-caliber players) even when those picks were
+  // close to or under their projected price. The real question inflation
+  // should answer is "is the room paying more or less than the sheet
+  // projected" — so this now averages each pick's (paid ÷ projected)
+  // ratio instead. Picks with no projection (e.g. a manually-typed name
+  // that didn't match the price sheet) are excluded from the average
+  // rather than treated as 0%, so they don't skew the result.
+  var withProjection = log.filter(function(p){ return p.projected && p.projected > 0; });
+  var inflation = 0;
+  if (withProjection.length) {
+    var avgRatio = withProjection.reduce(function(a, p){ return a + (p.price / p.projected); }, 0) / withProjection.length;
+    inflation = Math.round((avgRatio - 1) * 100);
+  }
 
   document.getElementById('playersDrafted').textContent = log.length;
   document.getElementById('avgPricePaid').textContent = log.length > 0 ? '$' + avg : '—';
   document.getElementById('inflationVal').textContent = (inflation >= 0 ? '+' : '') + inflation + '%';
+  var inflEl = document.getElementById('inflationVal');
+  inflEl.className = 'stat-val ' + (inflation > 15 ? 'danger' : inflation > 0 ? 'warn' : 'good');
 
   var budgetEl = document.getElementById('myBudgetLeft');
   budgetEl.textContent = '$' + myLeft;
