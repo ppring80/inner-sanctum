@@ -158,6 +158,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tps-player-row{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background 0.15s}
 .tps-player-row:last-child{border-bottom:none}
 .tps-player-row:hover{background:#f8f6f0}
+.tps-player-row.targeted{background:rgba(184,146,26,0.06)}
+.tps-target-check{font-size:16px;color:var(--gold);cursor:pointer;width:20px;flex-shrink:0;text-align:center;user-select:none;transition:transform 0.1s}
+.tps-target-check:hover{transform:scale(1.2)}
 .tps-player-rank{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:24px;flex-shrink:0}
 .tps-player-name{flex:1;font-size:13px;color:var(--ink)}
 .tps-player-team{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:36px;flex-shrink:0}
@@ -491,7 +494,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 
   <div class="tps-edit-note no-print">
-    ✏️ <strong>Prices are fully customizable.</strong> Click any dollar amount to edit it directly. The budget tracker below updates live — adjust until your total matches your cap exactly. Each price reflects that specific player's <em>real market ADP</em>, weighted by your chosen strategy.
+    ⭐ <strong>Click the star next to any player to mark them as one of your actual targets.</strong> Every player on this sheet is priced using real market ADP — but the budget tracker below only counts players you've starred (plus your bench share), so it reflects <em>your</em> plan against <em>your</em> cap, not the full league's worth of players. We've pre-starred a starting set based on your roster — adjust freely. Click any price to override it.
   </div>
 
   <div id="tpsGroups"></div>
@@ -611,6 +614,8 @@ var state = {
   strategy: null,
   targetPrices: {},      // flat name -> price map, built fresh each generateTPS() call
   playerPriceList: [],   // flat array of {name,pos,team,adp,price} for autocomplete lookups
+  targetedPlayers: {},   // name -> true for players the user has marked as their actual plan
+  myBenchShare: 0,
   draftLog: []
 };
 
@@ -1006,6 +1011,33 @@ function generateTPS() {
   });
 }
 
+// Picks a sensible starting set of "your targets" so the budget tracker
+// isn't empty by default. Roughly top-N by price per position, sized to
+// your roster's starter counts (+1 buffer on RB/WR for flex/handcuff
+// overlap). You can click any row to add/remove from your actual plan —
+// this is just a reasonable starting point, not a recommendation to
+// follow literally.
+function autoTargetCounts(roster) {
+  return {
+    QB: roster.QB || 0,
+    RB: (roster.RB || 0) + 1,
+    WR: (roster.WR || 0) + 1,
+    TE: roster.TE || 0,
+    K: roster.K || 0,
+    DEF: roster.DEF || 0
+  };
+}
+
+function pickAutoTargets(byPos, roster) {
+  var counts = autoTargetCounts(roster);
+  var targeted = {};
+  Object.keys(counts).forEach(function(pos){
+    var players = byPos[pos] || [];
+    players.slice(0, counts[pos]).forEach(function(p){ targeted[p.name] = true; });
+  });
+  return targeted;
+}
+
 function renderTPS(sheet, stratKey) {
   var strat = STRATEGIES[stratKey] || STRATEGIES.hero;
   var groupsEl = document.getElementById('tpsGroups');
@@ -1013,6 +1045,7 @@ function renderTPS(sheet, stratKey) {
 
   state.playerPriceList = [];
   state.targetPrices = {};
+  state.targetedPlayers = pickAutoTargets(sheet.byPos, state.roster);
 
   POS_ORDER.forEach(function(pos){
     var players = sheet.byPos[pos] || [];
@@ -1032,15 +1065,18 @@ function renderTPS(sheet, stratKey) {
     hdr.innerHTML =
       '<span class="tps-section-pos ' + pos + '">' + pos + '</span>' +
       '<span class="tps-section-title">' + POS_LABELS[pos] + '</span>' +
-      '<span class="tps-section-total">$' + sectionTotal + ' total · ' + players.length + ' players</span>';
+      '<span class="tps-section-total">$' + sectionTotal + ' full-market total · ' + players.length + ' players</span>';
     section.appendChild(hdr);
 
     var list = document.createElement('div');
     list.className = 'tps-player-list';
     players.forEach(function(p, i){
+      var isTargeted = !!state.targetedPlayers[p.name];
       var row = document.createElement('div');
-      row.className = 'tps-player-row';
+      row.className = 'tps-player-row' + (isTargeted ? ' targeted' : '');
+      row.dataset.name = p.name;
       row.innerHTML =
+        '<span class="tps-target-check" onclick="toggleTarget(\'' + p.name.replace(/'/g,"\\'") + '\', this)" title="Click to mark as your target">' + (isTargeted ? '★' : '☆') + '</span>' +
         '<span class="tps-player-rank">#' + (i+1) + '</span>' +
         '<span class="tps-player-name">' + p.name + '</span>' +
         '<span class="tps-player-team">' + (p.team || 'FA') + '</span>' +
@@ -1053,15 +1089,21 @@ function renderTPS(sheet, stratKey) {
     groupsEl.appendChild(section);
   });
 
-  // Bench row — stays generic, no individual player identity makes
-  // sense for "depth/sleeper" bench slots.
+  // Bench row — shows YOUR per-team share of the bench pool, not the
+  // full market-wide bench total. (Bug fix, Session 11: this previously
+  // displayed sheet.benchTotal directly, which is the sum across ALL
+  // teams' bench spots combined — e.g. $140 for a 10-team league when
+  // your own bench share is really $140/10 = $14. Same conversion the
+  // budget-tracking total below now applies consistently.)
+  var myBenchShare = Math.max(1, Math.round(sheet.benchTotal / state.numTeams));
+  state.myBenchShare = myBenchShare;
   var benchSection = document.createElement('div');
   benchSection.className = 'tps-section';
   benchSection.innerHTML =
     '<div class="tps-section-hdr"><span class="tps-section-pos" style="background:#7a7a76">BN</span><span class="tps-section-title">Bench / Depth Pool</span></div>' +
-    '<div class="tps-bench-row"><span class="tps-bench-label">Reserved across your bench spots — sleepers, handcuffs, and streamers come from here.</span>' +
+    '<div class="tps-bench-row"><span class="tps-bench-label">Your share of the bench budget — sleepers, handcuffs, and streamers come from here. (Full market bench pool across all ' + state.numTeams + ' teams: $' + sheet.benchTotal + '.)</span>' +
     '<span style="font-family:\'JetBrains Mono\',monospace;font-size:18px;color:var(--muted)">$</span>' +
-    '<input type="number" class="tps-bench-price-input" id="benchPriceInput" value="' + sheet.benchTotal + '" min="1" oninput="updateTpsTotal()"/></div>';
+    '<input type="number" class="tps-bench-price-input" id="benchPriceInput" value="' + myBenchShare + '" min="1" oninput="updateTpsTotal()"/></div>';
   groupsEl.appendChild(benchSection);
 
   updateTpsTotal();
@@ -1074,29 +1116,45 @@ function renderTPS(sheet, stratKey) {
   document.getElementById('trashTake').textContent = strat.trash;
 }
 
+// Click a star to add/remove a player from YOUR target list. This is
+// what the budget tracker total is actually based on — not the full
+// market-wide list of every rosterable player at every position.
+function toggleTarget(name, starEl) {
+  var nowTargeted = !state.targetedPlayers[name];
+  state.targetedPlayers[name] = nowTargeted;
+  starEl.textContent = nowTargeted ? '★' : '☆';
+  var row = starEl.closest('.tps-player-row');
+  if (row) row.classList.toggle('targeted', nowTargeted);
+  updateTpsTotal();
+}
+
 // ═══════════════════════════════════════════════════════════
 // STEP 4 — LIVE BUDGET TRACKER (modified — sums all individual player
 // price inputs plus the bench input, instead of the old fixed-slot list)
 // ═══════════════════════════════════════════════════════════
 function updateTpsTotal() {
+  // Total now reflects only the players YOU'VE targeted (★), plus your
+  // bench share — not every player on the full market-wide sheet. Fixed
+  // in Session 11: the sheet necessarily prices the WHOLE rosterable
+  // market (40+ RBs, 40+ WRs, etc.) so individual prices look realistic,
+  // but you only roster ~13 of those 150+ players. Comparing a sum of
+  // all 150+ prices against your single $200 cap was guaranteed to look
+  // wildly over budget no matter what (e.g. $2000 vs $200) — that wasn't
+  // a real signal, just a unit mismatch.
   var inputs = document.querySelectorAll('.tps-player-price-input');
   var benchInput = document.getElementById('benchPriceInput');
   var total = 0;
+
   inputs.forEach(function(inp){
     var val = parseInt(inp.value) || 0;
-    total += val;
     state.targetPrices[inp.dataset.name] = val;
+    var match = state.playerPriceList.find(function(p){ return p.name === inp.dataset.name; });
+    if (match) match.price = val;
+    if (state.targetedPlayers[inp.dataset.name]) total += val;
   });
   if (benchInput) total += parseInt(benchInput.value) || 0;
 
-  // Keep playerPriceList's price fields in sync so autocomplete reflects
-  // any manual edits the user makes on the sheet.
-  inputs.forEach(function(inp){
-    var match = state.playerPriceList.find(function(p){ return p.name === inp.dataset.name; });
-    if (match) match.price = parseInt(inp.value) || match.price;
-  });
-
-  var budget = state.budget;
+  var budget = state.budget; // YOUR single-team budget, not totalMarketBudget
   var diff = total - budget;
 
   var totalEl = document.getElementById('tpsTotal');
@@ -1106,7 +1164,7 @@ function updateTpsTotal() {
   totalEl.className = 'tps-total-val' + (diff > 0 ? ' over' : diff === 0 ? ' exact' : '');
 
   if (diff > 0) {
-    statusEl.textContent = '$' + diff + ' over budget';
+    statusEl.textContent = '$' + diff + ' over your budget';
     statusEl.className = 'tps-budget-status over';
   } else if (diff === 0) {
     statusEl.textContent = '✓ Exactly on budget';
