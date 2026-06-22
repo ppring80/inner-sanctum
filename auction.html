@@ -253,6 +253,24 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   .league-warning{border-color:#999!important;background:#fff!important}
   .league-warning-label{color:#000!important}
   .tps-edit-note{display:none}
+
+  /* ── Step 5, Live Draft Tracker — added ──────────────────────────────
+     The live-session widgets (stat cards, inflation bar, pick-entry form)
+     aren't a record of anything — they're input/live-status UI, so they
+     hide on print same as the rest of this file's interactive elements.
+     What actually IS worth printing: the draft log table (who got picked,
+     for how much, by whom) and the team budget cards — that's the real
+     paper record someone would want mid-draft or after. */
+  .tracker-stats,.inflation-bar{display:none!important}
+  .draft-log{display:block!important} /* JS only shows this once a pick exists; force visible so an empty draft still prints a usable blank log header rather than nothing */
+  .log-table th{color:#000;background:#eee;border-bottom:2px solid #000}
+  .log-table td{color:#111;border-bottom:1px solid #ccc}
+  .log-table td.mono{color:#000}
+  .pos-pill{background:#fff!important;color:#000!important;border:1px solid #000!important}
+  .team-card{background:#f9f9f9;border:1px solid #ddd;break-inside:avoid}
+  .team-budget-val{color:#000}
+  .team-track{display:none} /* a colored progress bar doesn't render meaningfully on paper; the $ figures above it already say the same thing in text */
+  .teams-grid{break-inside:avoid}
 }
 
 @media(max-width:600px){
@@ -591,6 +609,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
   <div class="btn-row" style="margin-top:20px">
     <button class="btn btn-outline" onclick="goStep(4)">← Back to Price Sheet</button>
+    <button class="btn btn-outline no-print" onclick="window.print()">🖨 Print Draft Log</button>
     <button class="btn btn-danger" onclick="resetDraft()">Reset Draft</button>
   </div>
 </div>
