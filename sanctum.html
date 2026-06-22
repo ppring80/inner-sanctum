@@ -574,7 +574,7 @@ textarea::placeholder { color: #3a3028; }
     <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
     <span class="top-sub">Choose your counsel wisely</span>
-    <div class="tier-note">🎁 Free tier: 10 questions every 3 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
+    <div class="tier-note">🎁 Free tier: 10 questions every 24 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
 
   <!-- SLEEPER CONNECT -->
@@ -622,7 +622,7 @@ textarea::placeholder { color: #3a3028; }
       <div class="howto-item"><span class="howto-icon">🔮</span><span><strong>Pick a persona</strong> — Oracle, Trash Lord, and Analyst all give real advice in a different voice. Switching tabs starts a separate conversation with that persona; they don't see what you asked the others.</span></div>
       <div class="howto-item"><span class="howto-icon">🏈</span><span><strong>Connect Sleeper</strong> (optional) to auto-fill your actual roster and lineup format below, and get advice based on your real team instead of generic tips.</span></div>
       <div class="howto-item"><span class="howto-icon">⚡</span><span><strong>Weekly Lineup Advisor</strong> — enter your starters (or let Sleeper fill them in), set your roster format if it wasn't auto-detected, then ask your persona for a full lineup verdict.</span></div>
-      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions every 3 hours, across all personas combined. The count is saved on your device, so reloading or closing the page won't reset it early — it unlocks again automatically once the window passes. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
+      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions every 24 hours, across all personas combined. The count is saved on your device, so reloading or closing the page won't reset it early — it unlocks again automatically once the window passes. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
     </div>
   </div>
 
@@ -884,12 +884,78 @@ var busy = false;
 // a-day reset instead of every few hours.
 // ═══════════════════════════════════════
 var QUESTION_LIMIT = 10;
-var RESET_WINDOW_HOURS = 3;
+var RESET_WINDOW_HOURS = 24;
 var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
 var QUESTION_STORAGE_KEY = 'sanctum_question_window';
 var isAcolyte = false; // Set to true for paying members (future: Patreon auth)
 var questionCount = 0;
 var windowStart = null;
+
+// ═══════════════════════════════════════
+// ACOLYTE DAILY CAP (added)
+// isAcolyte bypasses the free-tier limit above entirely, which meant
+// paying members had NO ceiling at all on Claude API usage — fine for
+// a normal user (~15 questions/day costs cents), but a real exposure
+// for a runaway script or an abused/shared login, since nothing would
+// stop it short of #114's spend alert noticing after the fact. This
+// adds a separate, much more generous cap (150/day, shared across all
+// three personas, rolling 24hr window) that no genuine user should
+// ever hit, but which puts a real dollar ceiling under the worst case.
+// Same localStorage pattern as the free-tier window above, just a
+// parallel key/counter so the two limits never interfere with each
+// other if isAcolyte is ever toggled mid-session.
+// ═══════════════════════════════════════
+var ACOLYTE_DAILY_LIMIT = 150;
+var ACOLYTE_WINDOW_MS = 24 * 60 * 60 * 1000;
+var ACOLYTE_STORAGE_KEY = 'sanctum_acolyte_window';
+var acolyteCount = 0;
+var acolyteWindowStart = null;
+
+function loadAcolyteWindow() {
+  try {
+    var raw = localStorage.getItem(ACOLYTE_STORAGE_KEY);
+    if (!raw) { startNewAcolyteWindow(); return; }
+    var data = JSON.parse(raw);
+    if (!data || typeof data.windowStart !== 'number' || (Date.now() - data.windowStart) >= ACOLYTE_WINDOW_MS) {
+      startNewAcolyteWindow();
+    } else {
+      acolyteCount = data.count || 0;
+      acolyteWindowStart = data.windowStart;
+    }
+  } catch (e) {
+    acolyteCount = 0;
+    acolyteWindowStart = Date.now();
+  }
+}
+
+function startNewAcolyteWindow() {
+  acolyteCount = 0;
+  acolyteWindowStart = Date.now();
+  saveAcolyteWindow();
+}
+
+function saveAcolyteWindow() {
+  try {
+    localStorage.setItem(ACOLYTE_STORAGE_KEY, JSON.stringify({ count: acolyteCount, windowStart: acolyteWindowStart }));
+  } catch (e) {
+    // Storage unavailable — same fail-open behavior as the free-tier
+    // window; the cap just won't persist across reloads for this user.
+  }
+}
+
+function msUntilAcolyteReset() {
+  if (acolyteWindowStart == null) return 0;
+  return Math.max(0, ACOLYTE_WINDOW_MS - (Date.now() - acolyteWindowStart));
+}
+
+function formatAcolyteResetCountdown() {
+  var totalMinutes = Math.ceil(msUntilAcolyteReset() / 60000);
+  var hrs = Math.floor(totalMinutes / 60);
+  var mins = totalMinutes % 60;
+  if (hrs <= 0) return mins + ' minute' + (mins === 1 ? '' : 's');
+  if (mins === 0) return hrs + ' hour' + (hrs === 1 ? '' : 's');
+  return hrs + 'h ' + mins + 'm';
+}
 
 // Reads the current window from localStorage, starting a fresh one
 // if none exists yet or if the stored window has already expired.
@@ -1584,12 +1650,26 @@ function ask(txt) {
       showUpgradeModal();
       return;
     }
+  } else {
+    // Acolyte daily cap check (added) — see constants above. Not a
+    // paywall message since they're already paying; a distinct,
+    // friendly fair-use notice instead.
+    loadAcolyteWindow();
+    if (acolyteCount >= ACOLYTE_DAILY_LIMIT) {
+      showAcolyteCapModal();
+      return;
+    }
   }
 
   inp.value = ""; inp.style.height = "auto";
   busy = true;
-  questionCount++;
-  saveQuestionWindow();
+  if (isAcolyte) {
+    acolyteCount++;
+    saveAcolyteWindow();
+  } else {
+    questionCount++;
+    saveQuestionWindow();
+  }
   hist[ap].push({ role: "user", content: q });
   draw();
 
@@ -1607,9 +1687,11 @@ function ask(txt) {
     hist[ap].push({ role: "assistant", content: reply });
     busy = false; draw(); speak(reply);
 
-    // Show upgrade prompt after question 10 response renders
+    // Show upgrade/cap prompt after the final allowed response renders
     if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
       setTimeout(showUpgradeModal, 1200);
+    } else if (isAcolyte && acolyteCount >= ACOLYTE_DAILY_LIMIT) {
+      setTimeout(showAcolyteCapModal, 1200);
     }
   };
   xhr.onerror = function() {
@@ -1637,6 +1719,22 @@ function closeUpgradeModal() {
   document.getElementById('upgradeModal').style.display = 'none';
 }
 
+// Acolyte fair-use cap modal (added) — distinct from the free-tier
+// upgrade modal since these are paying members; this is a fair-use
+// notice, not a sales pitch.
+function showAcolyteCapModal() {
+  var note = document.getElementById('acolyteCapResetNote');
+  if (note) {
+    note.textContent = '🕐 Resets in about ' + formatAcolyteResetCountdown() + '.';
+  }
+  var m = document.getElementById('acolyteCapModal');
+  m.style.display = 'flex';
+}
+
+function closeAcolyteCapModal() {
+  document.getElementById('acolyteCapModal').style.display = 'none';
+}
+
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
@@ -1657,6 +1755,7 @@ buildLineupSlots();
 updateFilledCount();
 loadPlayerList();
 loadQuestionWindow();
+loadAcolyteWindow();
 </script>
   <!-- UPGRADE MODAL -->
 <div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
@@ -1668,7 +1767,19 @@ loadQuestionWindow();
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" style="display:block;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-family:Georgia,serif;font-size:15px;font-weight:bold;padding:14px 20px;border-radius:10px;text-decoration:none;margin-bottom:12px;letter-spacing:1px;">⚔️ Become a Founding Acolyte — $7.99/mo</a>
     <button onclick="closeUpgradeModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9a8a7a;font-family:Georgia,serif;font-size:13px;padding:10px 20px;cursor:pointer;width:100%;">Maybe Later</button>
     <div id="upgradeResetNote" style="font-size:12px;color:#c9a84c;margin-top:14px;letter-spacing:0.5px;"></div>
-    <div style="font-size:10px;color:#9a8a7a;margin-top:6px;letter-spacing:2px;">FIRST 100 MEMBERS · $9.99/MO AFTER · FREE QUESTIONS RESET EVERY 3 HOURS</div>
+    <div style="font-size:10px;color:#9a8a7a;margin-top:6px;letter-spacing:2px;">FIRST 100 MEMBERS · $9.99/MO AFTER · FREE QUESTIONS RESET EVERY 24 HOURS</div>
+  </div>
+</div>
+
+  <!-- ACOLYTE FAIR-USE CAP MODAL (added) -->
+<div id="acolyteCapModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:linear-gradient(160deg,#1a0f08,#221208);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.15);">
+    <div style="font-size:40px;margin-bottom:12px;">🌙</div>
+    <div style="font-size:11px;letter-spacing:4px;color:#c9a84c;text-transform:uppercase;margin-bottom:10px;">Even The Oracle Rests</div>
+    <div style="font-size:20px;color:#f0e0b0;margin-bottom:12px;font-weight:bold;">You've reached today's question limit</div>
+    <div style="font-size:14px;color:#8a7860;line-height:1.7;margin-bottom:24px;">As a Founding Acolyte you get 150 questions a day across all three personas — generous enough that real fantasy managers never bump into it. This limit just protects against runaway usage. Your access continues as normal once it resets.</div>
+    <button onclick="closeAcolyteCapModal()" style="background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;border:none;font-family:Georgia,serif;font-size:14px;font-weight:bold;padding:12px 20px;border-radius:10px;cursor:pointer;width:100%;letter-spacing:1px;">Understood</button>
+    <div id="acolyteCapResetNote" style="font-size:12px;color:#c9a84c;margin-top:14px;letter-spacing:0.5px;"></div>
   </div>
 </div>
 </body>
