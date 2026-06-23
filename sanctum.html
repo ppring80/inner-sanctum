@@ -589,7 +589,19 @@ textarea::placeholder { color: #3a3028; }
      passcode as auction.html/tiers.html (ORACLE-125) and same
      sessionStorage-based unlock pattern. NOT real auth — see those
      files' build notes. Swap for real Patreon-based auth per #105/#105a
-     before this becomes a long-term mechanism. -->
+     before this becomes a long-term mechanism.
+
+     #105a TESTER ALLOWLIST (added): a second, separate passcode
+     (ALLOWLIST_PASSCODE) is checked alongside the normal Acolyte
+     passcode. Either one unlocks the same sessionStorage flag, so an
+     allowlisted tester is indistinguishable from a real Acolyte once
+     in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
+     can be rotated (see Passcode Rotation Runbook) without locking
+     out testers, and vice versa. Matches the same allowlist passcode
+     used in auction.html/tiers.html, so one tester passcode works
+     across all three gated pages. This is still not real auth — swap
+     both passcodes for real Patreon-based auth per #105/#105a before
+     this becomes permanent. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔮</div>
@@ -605,10 +617,15 @@ textarea::placeholder { color: #3a3028; }
 </div>
 <script>
 // ═══ ACOLYTE GATE LOGIC (added) ═══
-// Plain-text constant, intentionally — same launch-week friction gate
+// Plain-text constants, intentionally — same launch-week friction gate
 // as auction.html/tiers.html, not real auth. Matches that passcode
 // exactly so Pat and testers use one passcode across all three pages.
 var GATE_PASSCODE = 'ORACLE-125';
+// #105a tester allowlist passcode — same value used in
+// auction.html/tiers.html so one tester passcode covers all three
+// gated pages. Separate constant from GATE_PASSCODE so rotating
+// ORACLE-125 later never locks out Pat, his son, or other testers.
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 var GATE_SKIPPED_KEY = 'sanctum_gate_skipped';
 
@@ -641,7 +658,8 @@ function skipGate() {
 function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
-  if (input.value.trim().toUpperCase() === GATE_PASSCODE) {
+  var entered = input.value.trim().toUpperCase();
+  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
     unlockGate();
   } else {
     err.classList.add('show');
