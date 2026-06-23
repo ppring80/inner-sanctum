@@ -1,0 +1,10 @@
+{
+  "name": "inner-sanctum",
+  "version": "1.0.0",
+  "description": "The Inner Sanctum — Fantasy Football AI Companion. Netlify Functions dependency manifest. Required for chat.js (@anthropic-ai/sdk) and chat.js + spend-dashboard.js (@netlify/blobs, added for checklist #114 spend logging).",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.2",
+    "@netlify/blobs": "^10.7.9"
+  }
+}
