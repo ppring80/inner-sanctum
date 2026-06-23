@@ -77,9 +77,6 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .tpick.selected .tname::after{content:' ✓';color:var(--green)}
 .pick-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--green);text-transform:uppercase}
 
-/* ── BURNED — the signature element. Used teams are not just  ── */
-/* ── greyed out, they're sealed shut, same fire motif as the   ── */
-/* ── Trash Lord's bomb-pick warnings elsewhere on the site.     ── */
 .tpick.used{cursor:not-allowed;background:var(--char);color:#a89186}
 .tpick.used .tname{color:#c4a896;text-decoration:line-through;text-decoration-color:#7a4030}
 .tpick.used .tpct{color:#7a6358}
@@ -89,7 +86,6 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 
 .no-odds{color:var(--text3);font-style:italic;font-size:12px;padding:2px 0}
 
-/* ── Sidebar ── */
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
 .panel-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 14px;font-family:'Cinzel',serif;font-size:13px;color:var(--text)}
 .panel-body{padding:12px 14px}
@@ -133,6 +129,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
     <a href="/draft" class="hdr-btn">📋 Draft</a>
     <a href="/auction" class="hdr-btn">⚔️ Auction</a>
     <a href="/tiers" class="hdr-btn">🏆 Tier List</a>
+    <a href="/weekly" class="hdr-btn">📅 Weekly Rankings</a>
     <a href="/sanctum" class="hdr-btn">← Sanctum</a>
   </div>
 </div>
@@ -189,9 +186,6 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 </div>
 
 <script>
-// ═══════════════════════════════════════
-// 2026 BYE WEEKS — same source as draft.html, kept in sync
-// ═══════════════════════════════════════
 var BYE={
   BUF:7,MIA:6,NE:11,NYJ:13,
   BAL:13,CIN:6,CLE:11,PIT:9,
@@ -204,11 +198,6 @@ var BYE={
 };
 var ALL_TEAMS=Object.keys(BYE);
 
-// ═══════════════════════════════════════
-// NFL WEEK CALCULATOR — mirrors chat.js / survivor-odds.js so
-// the default week is consistent everywhere on the site.
-// UPDATE seasonStart each year.
-// ═══════════════════════════════════════
 function getCurrentNFLWeek(){
   var seasonStart=new Date('2026-09-09');
   var now=new Date();
@@ -217,15 +206,10 @@ function getCurrentNFLWeek(){
   return Math.max(1,Math.min(18,Math.floor(diffDays/7)+1));
 }
 
-// ═══════════════════════════════════════
-// STATE
-// picks: {"1":"TB","2":"KC",...} — week number -> team picked
-// Versioned by season so old picks don't carry over next year.
-// ═══════════════════════════════════════
-var STORAGE_KEY='survivorPicks2026';  // UPDATE EACH SEASON
+var STORAGE_KEY='survivorPicks2026';
 var picks=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
 var curWeek=getCurrentNFLWeek();
-var weekData={}; // cache of fetched weeks: {1: [...games], 2: [...]}
+var weekData={};
 
 function savePicks(){localStorage.setItem(STORAGE_KEY,JSON.stringify(picks))}
 function usedTeams(excludeWeek){
@@ -241,9 +225,6 @@ function setStatus(s,t){document.getElementById('sdot').className='dot '+s;docum
 function showNotice(t){var n=document.getElementById('notice');n.textContent=t;n.classList.add('on')}
 function hideNotice(){document.getElementById('notice').classList.remove('on')}
 
-// ═══════════════════════════════════════
-// WEEK TABS
-// ═══════════════════════════════════════
 function renderWeekTabs(){
   var wrap=document.getElementById('weekTabs');
   wrap.innerHTML='';
@@ -263,9 +244,6 @@ function goWeek(w){
   loadWeek(w);
 }
 
-// ═══════════════════════════════════════
-// LOAD WEEK DATA
-// ═══════════════════════════════════════
 async function loadWeek(w){
   document.getElementById('weekTitle').textContent='Week '+w;
   hideNotice();
@@ -294,16 +272,11 @@ async function loadWeek(w){
   }
 }
 
-// ═══════════════════════════════════════
-// RENDER WEEK
-// ═══════════════════════════════════════
 function renderWeek(w){
   var games=weekData[w]||[];
   var main=document.getElementById('main');
   var used=usedTeams(w);
 
-  // Sort: if real odds exist, best-favorite-first. Otherwise
-  // chronological — there's no "best pick" signal yet.
   var hasOdds=games.some(function(g){return g.homeWinPct!=null});
   var sorted=games.slice().sort(function(a,b){
     if(hasOdds){
@@ -320,7 +293,6 @@ function renderWeek(w){
     hideNotice();
   }
 
-  // Dynamic Trash Lord line: call out this week's biggest chalk pick
   if(hasOdds&&sorted.length){
     var top=sorted[0];
     var topTeam=top.awayWinPct>top.homeWinPct?top.away:top.home;
@@ -365,8 +337,6 @@ function renderWeek(w){
     main.appendChild(card);
   });
 
-  // Wire up click handlers (event delegation would also work, but
-  // this stays consistent with draft.html's inline-onclick style)
   main.querySelectorAll('[data-pick-team]').forEach(function(el){
     el.addEventListener('click',function(){
       var team=el.getAttribute('data-pick-team');
@@ -404,12 +374,9 @@ function formatGameDate(yyyymmdd){
   return months[parseInt(m)-1]+' '+parseInt(d);
 }
 
-// ═══════════════════════════════════════
-// MAKE / CHANGE A PICK
-// ═══════════════════════════════════════
 function makePick(w,team){
   if(picks[w]===team){
-    delete picks[w]; // click your own pick again to undo it
+    delete picks[w];
   }else{
     picks[w]=team;
   }
@@ -418,9 +385,6 @@ function makePick(w,team){
   renderWeek(w);
 }
 
-// ═══════════════════════════════════════
-// SIDEBAR
-// ═══════════════════════════════════════
 function renderSidebar(){
   var used=usedTeams(null);
   document.getElementById('remainCount').textContent=(32-used.size);
@@ -460,9 +424,6 @@ function clearPick(w){
   else renderSidebar();
 }
 
-// ═══════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════
 renderWeekTabs();
 loadWeek(curWeek);
 </script>
