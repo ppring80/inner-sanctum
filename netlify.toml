@@ -23,3 +23,35 @@
   for = "/favicon.svg"
   [headers.values]
     Content-Type = "image/svg+xml"
+
+# ── CACHE CONTROL (added) ──────────────────────────────────────────
+# Added after a real bug: rapid back-to-back testing of weekly.html
+# served a stale cached copy with old "Ask [Persona]" links pointing
+# at the wrong player, even after the page had been updated. A hard
+# reload fixed it that time, but a real customer wouldn't know to do
+# that. These rules tell the browser to always re-validate with the
+# server before using a cached copy of these pages, rather than
+# trusting an old copy silently. Applied to all the dynamic, frequently-
+# iterated app pages (not just weekly.html, which caused the actual
+# incident) since auction.html/tiers.html/sanctum.html share the same
+# theoretical exposure to this failure mode even though it hasn't
+# been observed on those specifically. Static assets (favicon, CSS via
+# CDN, etc.) are NOT covered here and don't need to be — this is only
+# for pages whose content changes between deploys and where a stale
+# copy could mislead a user, the same risk this bug demonstrated.
+[[headers]]
+  for = "/weekly"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+[[headers]]
+  for = "/sanctum"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+[[headers]]
+  for = "/auction"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+[[headers]]
+  for = "/tiers"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
