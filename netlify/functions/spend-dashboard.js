@@ -1,4 +1,4 @@
-const { getStore } = require("@netlify/blobs");
+const { getStore, connectLambda } = require("@netlify/blobs");
 
 // ═══════════════════════════════════════
 // SPEND DASHBOARD (added — checklist #114)
@@ -117,6 +117,10 @@ function renderDashboard(days) {
 }
 
 exports.handler = async (event) => {
+  // Required for Netlify Blobs to work in this function's runtime mode —
+  // see the matching note in chat.js. Must come before getStore() below.
+  connectLambda(event);
+
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
