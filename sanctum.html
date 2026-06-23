@@ -1865,6 +1865,37 @@ updateFilledCount();
 loadPlayerList();
 loadQuestionWindow();
 loadAcolyteWindow();
+
+// ═══════════════════════════════════════
+// HANDOFF FROM WEEKLY RANKINGS PAGE (added)
+// weekly.html's "Ask [Persona]" links pass ?persona=oracle&q=... so a
+// click there lands here with the right persona tab already selected
+// and the question already asked, rather than dropping the user on a
+// blank chat. Both params must be present and persona must be a real
+// key in P{} — otherwise this is a no-op and the page behaves exactly
+// as it always has for a normal visit. Runs once on page load only;
+// does not re-fire on subsequent navigation within the SPA-style tab
+// switches, since those don't reload the page or touch the URL.
+// ═══════════════════════════════════════
+(function handleIncomingAskParams() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var incomingPersona = params.get('persona');
+    var incomingQuestion = params.get('q');
+    if (!incomingPersona || !incomingQuestion) return;
+    if (!P[incomingPersona]) return; // unknown persona key — ignore rather than guess
+
+    go(incomingPersona);
+    // Small delay so go()'s DOM updates (tab styling, placeholder text)
+    // finish rendering before ask() starts drawing chat history into
+    // the same elements — avoids a visible flash/race on first paint.
+    setTimeout(function(){ ask(incomingQuestion); }, 150);
+  } catch (e) {
+    // Malformed URL or unsupported URLSearchParams — fail silently,
+    // same fail-open philosophy as the rest of this file's storage
+    // and parsing guards. Worst case: a normal blank Sanctum load.
+  }
+})();
 </script>
   <!-- UPGRADE MODAL -->
 <div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
