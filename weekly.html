@@ -104,6 +104,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .verdict-tag.flex{background:rgba(200,120,10,0.15);color:var(--amber)}
 .verdict-tag.sit{background:rgba(138,32,32,0.15);color:var(--red)}
 .cell-proj{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--ink);text-align:right}
+.th-ask{text-align:center !important;cursor:default !important}
+.cell-ask{text-align:center}
+.ask-link{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-family:'Cinzel',serif;font-size:11px;text-decoration:none;white-space:nowrap;transition:all 0.15s}
+.ask-link:hover{border-color:var(--border2);color:var(--ink)}
+.ask-link.oracle{border-color:rgba(201,168,76,0.4);color:#9a7d1f}
+.ask-link.oracle:hover{background:rgba(201,168,76,0.08)}
+.ask-link.trash{border-color:rgba(255,68,68,0.4);color:#c4392f}
+.ask-link.trash:hover{background:rgba(255,68,68,0.06)}
+.ask-link.analyst{border-color:rgba(100,181,246,0.4);color:#1565c0}
+.ask-link.analyst:hover{background:rgba(100,181,246,0.06)}
 
 .empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
 .empty-state-icon{font-size:36px;margin-bottom:12px;opacity:0.4}
@@ -186,6 +196,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
         <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
         <th>Verdict</th>
         <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
+        <th class="th-ask">Ask</th>
       </tr>
     </thead>
     <tbody id="rankTableBody"></tbody>
@@ -409,6 +420,23 @@ function getFilteredSorted() {
   return rows;
 }
 
+var PERSONA_META = {
+  oracle: { label: 'Oracle', emoji:'🔮' },
+  trash: { label: 'Trash Lord', emoji:'🔥' },
+  analyst: { label: 'Analyst', emoji:'📊' }
+};
+
+// Builds the handoff link to Sanctum — passes which persona was active
+// here and a sensible pre-filled question, so the conversation picks up
+// roughly where this page left off instead of starting from a blank
+// chat. Sanctum needs a small addition (read these two query params on
+// load, auto-select the persona tab, and call ask() once) to actually
+// consume this — see sanctum.html changes shipped alongside this file.
+function buildAskUrl(player, persona) {
+  var q = 'Tell me more about ' + player.name + ' this week — should I start him?';
+  return '/sanctum?persona=' + encodeURIComponent(persona) + '&q=' + encodeURIComponent(q);
+}
+
 function renderTable() {
   var rows = getFilteredSorted();
   var fmt = getScoringFormat();
@@ -427,6 +455,7 @@ function renderTable() {
     var verdictText = p.verdicts[state.persona] || '';
     var proj = p.proj[fmt];
     var call = p.call[fmt];
+    var pmeta = PERSONA_META[state.persona];
     return (
       '<tr class="' + (isMine ? 'is-mine' : '') + '">' +
         '<td><div class="cell-player">' +
@@ -438,6 +467,7 @@ function renderTable() {
         '<td><span class="injury-pill ' + p.injury + '">' + injuryLabel(p.injury) + '</span></td>' +
         '<td><div class="cell-verdict">' + callTag(call) + verdictText + '</div></td>' +
         '<td class="cell-proj">' + (proj > 0 ? proj.toFixed(1) : '—') + '</td>' +
+        '<td class="cell-ask"><a class="ask-link ' + state.persona + '" href="' + buildAskUrl(p, state.persona) + '">' + pmeta.emoji + ' Ask</a></td>' +
       '</tr>'
     );
   }).join('');
