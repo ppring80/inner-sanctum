@@ -555,9 +555,109 @@ textarea::placeholder { color: #3a3028; }
   0%,100% { opacity:.3; transform:translateY(0); }
   50%      { opacity:1;  transform:translateY(-4px); }
 }
+
+/* ── ACOLYTE ACCESS GATE (added) ── */
+.gate-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a0f08,#221208 40%,#261018);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate-card{background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.35);border-radius:16px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.5)}
+.gate-icon{font-size:38px;margin-bottom:10px}
+.gate-title{font-size:19px;font-weight:bold;color:#f0e0b0;margin-bottom:8px;letter-spacing:1px;font-family:Georgia,serif}
+.gate-sub{font-size:13px;color:#a08a5a;line-height:1.6;margin-bottom:20px;font-family:Georgia,serif}
+.gate-input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.3);color:#f0e0b0;font-family:'Courier New',monospace;font-size:15px;letter-spacing:2px;text-align:center;padding:12px 14px;border-radius:8px;margin-bottom:12px}
+.gate-input:focus{outline:none;border-color:#c9a84c}
+.gate-btn{width:100%;padding:12px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:Georgia,serif;font-size:14px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;margin-bottom:14px;transition:opacity 0.15s}
+.gate-btn:hover{opacity:0.88}
+.gate-error{display:none;font-family:Georgia,serif;font-size:12px;color:#ff5252;margin-bottom:10px}
+.gate-error.show{display:block}
+.gate-link{display:block;font-family:Georgia,serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
+.gate-link:hover{opacity:1}
+.gate-skip{display:block;margin-top:14px;font-family:Georgia,serif;font-size:11px;color:#5a4a30;text-decoration:underline;cursor:pointer;background:none;border:none}
+.gate-skip:hover{color:#8a7860}
 </style>
 </head>
 <body>
+
+<!-- ═══ ACOLYTE ACCESS GATE (added) ═══
+     Unlike auction.html/tiers.html (100% paid-only tools), Sanctum has
+     a real free tier underneath — so this gate is OPTIONAL/skippable,
+     not a hard block. Entering the correct passcode persists an unlock
+     flag to sessionStorage; the main script below reads that flag at
+     the exact line where `isAcolyte` is declared (search "Set to true
+     for paying members" further down) so there is only ONE place that
+     ever sets isAcolyte's real value — this script does not assign it
+     directly, since that would run before the main script's own
+     declaration and get silently overwritten back to false. Same
+     passcode as auction.html/tiers.html (ORACLE-125) and same
+     sessionStorage-based unlock pattern. NOT real auth — see those
+     files' build notes. Swap for real Patreon-based auth per #105/#105a
+     before this becomes a long-term mechanism. -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <div class="gate-icon">🔮</div>
+    <div class="gate-title">Founding Acolyte Access</div>
+    <div class="gate-sub">Enter your passcode for unlimited questions across all three personas. Or skip below to use the free Apprentice tier.</div>
+    <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
+    <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
+    <button class="gate-skip" onclick="skipGate()">Continue as free Apprentice →</button>
+  </div>
+</div>
+<script>
+// ═══ ACOLYTE GATE LOGIC (added) ═══
+// Plain-text constant, intentionally — same launch-week friction gate
+// as auction.html/tiers.html, not real auth. Matches that passcode
+// exactly so Pat and testers use one passcode across all three pages.
+var GATE_PASSCODE = 'ORACLE-125';
+var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
+var GATE_SKIPPED_KEY = 'sanctum_gate_skipped';
+
+function checkGateUnlocked() {
+  try {
+    return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function checkGateSkipped() {
+  try {
+    return sessionStorage.getItem(GATE_SKIPPED_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function unlockGate() {
+  try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+}
+
+function skipGate() {
+  try { sessionStorage.setItem(GATE_SKIPPED_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+}
+
+function checkGatePasscode() {
+  var input = document.getElementById('gateInput');
+  var err = document.getElementById('gateError');
+  if (input.value.trim().toUpperCase() === GATE_PASSCODE) {
+    unlockGate();
+  } else {
+    err.classList.add('show');
+    input.value = '';
+    input.focus();
+  }
+}
+
+(function initGate() {
+  if (checkGateUnlocked() || checkGateSkipped()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+  }
+})();
+</script>
+<!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
+
 <div class="wrap">
 
   <!-- NAV -->
@@ -887,7 +987,16 @@ var QUESTION_LIMIT = 10;
 var RESET_WINDOW_HOURS = 24;
 var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
 var QUESTION_STORAGE_KEY = 'sanctum_question_window';
-var isAcolyte = false; // Set to true for paying members (future: Patreon auth)
+// isAcolyte reads the gate's unlock flag (set by checkGatePasscode()
+// above, persisted to sessionStorage) — this is the ONLY place
+// isAcolyte's real value is set. Falls back to false if storage is
+// blocked (private browsing) or the gate was never unlocked, same
+// fail-closed behavior as the gate's own checkGateUnlocked(). Once
+// real Patreon auth exists (#105/#105a), this is the line to replace.
+var isAcolyte = (function() {
+  try { return sessionStorage.getItem('sanctum_acolyte_unlock') === 'true'; }
+  catch (e) { return false; }
+})();
 var questionCount = 0;
 var windowStart = null;
 
