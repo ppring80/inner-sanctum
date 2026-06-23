@@ -168,6 +168,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
     <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
     <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+    <button class="pos-filter-btn" data-pos="FLEX" onclick="setPosFilter('FLEX')">FLEX</button>
+    <button class="pos-filter-btn" data-pos="SFLEX" onclick="setPosFilter('SFLEX')">Superflex</button>
     <button class="pos-filter-btn" data-pos="K" onclick="setPosFilter('K')">K</button>
     <button class="pos-filter-btn" data-pos="DEF" onclick="setPosFilter('DEF')">DEF</button>
   </div>
@@ -220,6 +222,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 // ═══════════════════════════════════════════════════════════
 
 var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
+
+// Same convention as sanctum.html's slotSearch() and auction.html's
+// flex logic — FLEX and Superflex aren't real positions, they're
+// roster-slot types that map to a SET of real positions. Filtering
+// by them means OR-ing those real positions together, not matching
+// a literal "FLEX" position value (which doesn't exist in the data).
+var FLEX_ELIGIBLE = {
+  FLEX: ['RB', 'WR', 'TE'],
+  SFLEX: ['QB', 'RB', 'WR', 'TE']
+};
 
 // Same verdict (start/flex/sit + reasoning facts) across all three
 // personas per player — only phrasing differs. This mirrors the
@@ -367,7 +379,14 @@ function getFilteredSorted() {
   var q = document.getElementById('searchInput').value.trim().toLowerCase();
   var fmt = getScoringFormat();
   var rows = MOCK_RANKINGS.filter(function(p){
-    if (state.posFilter !== 'ALL' && p.pos !== state.posFilter) return false;
+    if (state.posFilter !== 'ALL') {
+      var eligible = FLEX_ELIGIBLE[state.posFilter];
+      if (eligible) {
+        if (eligible.indexOf(p.pos) === -1) return false;
+      } else if (p.pos !== state.posFilter) {
+        return false;
+      }
+    }
     if (state.myRosterOnly && state.myRosterNames.indexOf(p.name) === -1) return false;
     if (q && !p.name.toLowerCase().includes(q) && !p.team.toLowerCase().includes(q)) return false;
     return true;
