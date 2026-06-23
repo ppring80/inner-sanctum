@@ -147,6 +147,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <button class="persona-btn analyst" id="pbtn-analyst" onclick="setPersona('analyst')"><span class="pe">📊</span> Analyst</button>
   </div>
   <div class="week-select-wrap">
+    <span class="toggle-label">Scoring</span>
+    <select class="week-select" id="scoringSelect" onchange="renderTable()">
+      <option value="ppr">PPR</option>
+      <option value="half">Half PPR</option>
+      <option value="standard">Standard</option>
+    </select>
     <span class="toggle-label">Week</span>
     <select class="week-select" id="weekSelect" onchange="renderTable()">
       <option value="1">Week 1 (preview)</option>
@@ -220,57 +226,78 @@ var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
 // locked v1 decision: personas agree on the call, disagree only in
 // voice. (True per-persona disagreement is a deliberately deferred
 // v2 idea — see checklist #120.)
+//
+// SCORING FORMAT (added): proj and call are now PER-FORMAT objects
+// (ppr/half/standard), not single flat values — reception-dependent
+// players (pass-catching RBs, possession WRs, receiving TEs) can
+// swing between START/FLEX/SIT depending on format, same dependency
+// that already drives the Tier List and Auction pricing engine.
+// Players whose value doesn't meaningfully change by format (e.g.
+// a QB, a kicker, a defense) just repeat the same numbers across all
+// three — written out per-format anyway so the data shape stays
+// consistent and the real weekly-data job (when built) only needs to
+// populate one shape, not branch on "does this player care about PPR."
 var MOCK_RANKINGS = [
-  { name:'Patrick Mahomes', pos:'QB', team:'KC', opp:'BUF', injury:'healthy', proj:24.8, call:'start',
+  { name:'Patrick Mahomes', pos:'QB', team:'KC', opp:'BUF', injury:'healthy',
+    proj:{ppr:24.8, half:24.8, standard:24.8}, call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"The signal caller faces no obstacle the stars cannot illuminate — start him with the confidence of 38 seasons behind you.",
       trash:"It's Mahomes against a banged-up secondary. Even YOUR lineup decisions can't mess this one up. START HIM.",
       analyst:"4,200+ proj pass yds pace, opponent allows 24.1 fantasy pts/gm to QBs (8th-most). Clear start." } },
-  { name:'Christian McCaffrey', pos:'RB', team:'SF', opp:'SEA', injury:'questionable', proj:18.2, call:'flex',
+  { name:'Christian McCaffrey', pos:'RB', team:'SF', opp:'SEA', injury:'questionable',
+    proj:{ppr:20.6, half:19.4, standard:18.2}, call:{ppr:'start', half:'flex', standard:'flex'},
     verdicts:{
-      oracle:"The body is willing but the spirits are uncertain — a flex play, not a guarantee, until the injury report clears.",
-      trash:"Questionable tag has me side-eyeing this one HARD. He's talented but check Sunday morning before you lock him in.",
-      analyst:"Limited in Friday practice. 67% snap share last healthy game. Monitor status; flex-level confidence pending final report." } },
-  { name:"Ja'Marr Chase", pos:'WR', team:'CIN', opp:'PIT', injury:'healthy', proj:19.4, call:'start',
+      oracle:"In PPR leagues his hands alone are worth the risk — elsewhere, a flex play until the injury report clears.",
+      trash:"PPR? He's basically a WR with this catch volume, start him. Standard? Questionable tag has me side-eyeing this one.",
+      analyst:"6.2 targets/gm (PPR-relevant), 67% snap share last healthy game. PPR: start-caliber floor. Standard: flex pending injury report." } },
+  { name:"Ja'Marr Chase", pos:'WR', team:'CIN', opp:'PIT', injury:'healthy',
+    proj:{ppr:19.4, half:17.1, standard:14.8}, call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
-      oracle:"Against this secondary, the receiver's path to glory is foretold — start with conviction.",
-      trash:"Pittsburgh's corners have given up the 3rd-most fantasy points to WRs. Chase is about to feast. START.",
-      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start." } },
-  { name:'Travis Kelce', pos:'TE', team:'KC', opp:'BUF', injury:'healthy', proj:13.1, call:'start',
+      oracle:"Against this secondary, the receiver's path to glory is foretold in any format — start with conviction.",
+      trash:"Pittsburgh's corners have given up the 3rd-most fantasy points to WRs. Chase is about to feast, any scoring system.",
+      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start across all formats." } },
+  { name:'Travis Kelce', pos:'TE', team:'KC', opp:'BUF', injury:'healthy',
+    proj:{ppr:15.8, half:14.4, standard:13.1}, call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
-      oracle:"Even as seasons pass, the tight end's bond with his quarterback remains unbroken — a steady start.",
-      trash:"Kelce's still getting targets like it's 2019. Start him and stop overthinking it.",
-      analyst:"22% target share in red zone, consistent floor. Start." } },
-  { name:'Justin Tucker', pos:'K', team:'BAL', opp:'CLE', injury:'healthy', proj:8.4, call:'flex',
+      oracle:"Even as seasons pass, the tight end's bond with his quarterback remains unbroken — a steady start, any format.",
+      trash:"Kelce's still getting targets like it's 2019. Start him and stop overthinking it, PPR or not.",
+      analyst:"22% target share in red zone, consistent floor regardless of format. Start." } },
+  { name:'Justin Tucker', pos:'K', team:'BAL', opp:'CLE', injury:'healthy',
+    proj:{ppr:8.4, half:8.4, standard:8.4}, call:{ppr:'flex', half:'flex', standard:'flex'},
     verdicts:{
-      oracle:"Even the most reliable leg faces uncertainty in the wind — a fine streamer, nothing more.",
-      trash:"It's a kicker. Calm down. Streamable, not a priority.",
-      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play." } },
-  { name:'San Francisco 49ers', pos:'DEF', team:'SF', opp:'SEA', injury:'healthy', proj:9.2, call:'start',
+      oracle:"Even the most reliable leg faces uncertainty in the wind — a fine streamer, nothing more, no matter the format.",
+      trash:"It's a kicker. Scoring format doesn't matter. Calm down. Streamable, not a priority.",
+      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play, format-agnostic." } },
+  { name:'San Francisco 49ers', pos:'DEF', team:'SF', opp:'SEA', injury:'healthy',
+    proj:{ppr:9.2, half:9.2, standard:9.2}, call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
-      oracle:"The defense stands as a wall against a wounded offense — start with confidence.",
-      trash:"Seattle's offensive line is falling apart. This defense is about to feast. START.",
+      oracle:"The defense stands as a wall against a wounded offense — start with confidence, format aside.",
+      trash:"Seattle's offensive line is falling apart. This defense is about to feast, no matter how you score it.",
       analyst:"Opponent allows 2.1 sacks/gm allowed, high pressure-rate matchup. Strong start." } },
-  { name:'Tua Tagovailoa', pos:'QB', team:'MIA', opp:'NYJ', injury:'doubtful', proj:11.5, call:'sit',
+  { name:'Tua Tagovailoa', pos:'QB', team:'MIA', opp:'NYJ', injury:'doubtful',
+    proj:{ppr:11.5, half:11.5, standard:11.5}, call:{ppr:'sit', half:'sit', standard:'sit'},
     verdicts:{
       oracle:"The path is shrouded in doubt this week — better to seek wisdom elsewhere until the fog clears.",
       trash:"Doubtful tag plus a tough Jets D? Bench him and don't think twice.",
       analyst:"Doubtful per Friday report, opponent allows 16.2 fantasy pts/gm to QBs (4th-fewest). Sit." } },
-  { name:'Breece Hall', pos:'RB', team:'NYJ', opp:'MIA', injury:'healthy', proj:16.8, call:'start',
+  { name:'Breece Hall', pos:'RB', team:'NYJ', opp:'MIA', injury:'healthy',
+    proj:{ppr:19.6, half:18.2, standard:16.8}, call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
-      oracle:"The path opens wide for the swift — a clear start against a defense that cannot contain him.",
-      trash:"Miami's run D is Swiss cheese. Breece is about to run wild. START.",
-      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start." } },
-  { name:'Mike Evans', pos:'WR', team:'TB', opp:'NO', injury:'healthy', proj:14.6, call:'flex',
+      oracle:"The path opens wide for the swift — a clear start against a defense that cannot contain him, in any format.",
+      trash:"Miami's run D is Swiss cheese. Breece is about to run wild, PPR or standard, doesn't matter. START.",
+      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start regardless of scoring." } },
+  { name:'Mike Evans', pos:'WR', team:'TB', opp:'NO', injury:'healthy',
+    proj:{ppr:14.6, half:12.8, standard:10.9}, call:{ppr:'flex', half:'flex', standard:'sit'},
     verdicts:{
-      oracle:"A solid offering, though not the night the legends are written about — a flex, not a centerpiece.",
-      trash:"Decent matchup, nothing special. He's a flex play, don't overhype it.",
-      analyst:"19% target share, average matchup grade. Solid flex floor." } },
-  { name:'George Kittle', pos:'TE', team:'SF', opp:'SEA', injury:'out', proj:0, call:'sit',
+      oracle:"A solid offering in PPR, though in standard formats the path dims — know your league before you commit.",
+      trash:"PPR, he's a fine flex. Standard? His catch volume doesn't pay off — bench-able in deeper leagues.",
+      analyst:"19% target share but middling yards-after-catch. PPR: flex floor. Standard: matchup-dependent sit candidate." } },
+  { name:'George Kittle', pos:'TE', team:'SF', opp:'SEA', injury:'out',
+    proj:{ppr:0, half:0, standard:0}, call:{ppr:'sit', half:'sit', standard:'sit'},
     verdicts:{
-      oracle:"The path is closed this week, seeker — find another route to glory.",
-      trash:"He's OUT. As in, not playing. Bench him, this isn't complicated.",
-      analyst:"Ruled out per Friday injury report. Do not start." } }
+      oracle:"The path is closed this week, seeker — find another route to glory, in any format.",
+      trash:"He's OUT. As in, not playing. Bench him, this isn't complicated, no matter how your league scores.",
+      analyst:"Ruled out per Friday injury report. Do not start, any format." } }
 ];
 
 var state = {
@@ -331,8 +358,14 @@ function setSort(key) {
   renderTable();
 }
 
+function getScoringFormat() {
+  var el = document.getElementById('scoringSelect');
+  return el ? el.value : 'ppr';
+}
+
 function getFilteredSorted() {
   var q = document.getElementById('searchInput').value.trim().toLowerCase();
+  var fmt = getScoringFormat();
   var rows = MOCK_RANKINGS.filter(function(p){
     if (state.posFilter !== 'ALL' && p.pos !== state.posFilter) return false;
     if (state.myRosterOnly && state.myRosterNames.indexOf(p.name) === -1) return false;
@@ -347,7 +380,7 @@ function getFilteredSorted() {
       case 'pos': av = POS_ORDER.indexOf(a.pos); bv = POS_ORDER.indexOf(b.pos); break;
       case 'opp': av = a.opp; bv = b.opp; break;
       case 'injury': av = a.injury; bv = b.injury; break;
-      case 'proj': default: av = a.proj; bv = b.proj; break;
+      case 'proj': default: av = a.proj[fmt]; bv = b.proj[fmt]; break;
     }
     if (av < bv) return state.sortDir === 'asc' ? -1 : 1;
     if (av > bv) return state.sortDir === 'asc' ? 1 : -1;
@@ -359,6 +392,7 @@ function getFilteredSorted() {
 
 function renderTable() {
   var rows = getFilteredSorted();
+  var fmt = getScoringFormat();
   var tbody = document.getElementById('rankTableBody');
   var empty = document.getElementById('emptyState');
 
@@ -372,6 +406,8 @@ function renderTable() {
   tbody.innerHTML = rows.map(function(p){
     var isMine = state.myRosterNames.indexOf(p.name) !== -1;
     var verdictText = p.verdicts[state.persona] || '';
+    var proj = p.proj[fmt];
+    var call = p.call[fmt];
     return (
       '<tr class="' + (isMine ? 'is-mine' : '') + '">' +
         '<td><div class="cell-player">' +
@@ -381,8 +417,8 @@ function renderTable() {
         '<td><span class="pos-pill ' + p.pos + '">' + p.pos + '</span> <span class="cell-team">' + p.team + '</span></td>' +
         '<td><span class="cell-opp"><span class="vs">vs</span>' + p.opp + '</span></td>' +
         '<td><span class="injury-pill ' + p.injury + '">' + injuryLabel(p.injury) + '</span></td>' +
-        '<td><div class="cell-verdict">' + callTag(p.call) + verdictText + '</div></td>' +
-        '<td class="cell-proj">' + (p.proj > 0 ? p.proj.toFixed(1) : '—') + '</td>' +
+        '<td><div class="cell-verdict">' + callTag(call) + verdictText + '</div></td>' +
+        '<td class="cell-proj">' + (proj > 0 ? proj.toFixed(1) : '—') + '</td>' +
       '</tr>'
     );
   }).join('');
