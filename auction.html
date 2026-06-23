@@ -1112,6 +1112,19 @@ function generateTPS() {
 // overlap). You can click any row to add/remove from your actual plan —
 // this is just a reasonable starting point, not a recommendation to
 // follow literally.
+//
+// BUDGET-AWARE (fixed — Session 12): previously this picked top-N by
+// position count with zero regard for price, which meant a format like
+// Superflex (where roster.QB becomes 2, and Superflex pricing inflates
+// QB cost via SUPERFLEX_BUMP) could auto-target two $90+ QBs before
+// even reaching RB/WR — blowing well past budget by default, on the
+// very first thing a new user sees. Found live: QB Heavy/Superflex
+// showed $255 against a $200 budget, $55 over, with zero user action.
+// Now takes the actual per-player prices and the bench share into
+// account, and stops adding picks once the running total would exceed
+// the user's real available budget (budget minus bench share) — same
+// roster-count priorities as before (mandatory starters first, then
+// the RB/WR +1 buffer), but budget-capped rather than count-only.
 function autoTargetCounts(roster) {
   return {
     QB: roster.QB || 0,
@@ -1123,12 +1136,30 @@ function autoTargetCounts(roster) {
   };
 }
 
-function pickAutoTargets(byPos, roster) {
+function pickAutoTargets(byPos, roster, availableBudget) {
   var counts = autoTargetCounts(roster);
   var targeted = {};
-  Object.keys(counts).forEach(function(pos){
+  var runningTotal = 0;
+
+  // POS_ORDER (QB, RB, WR, TE, K, DEF) doubles as priority order here —
+  // mandatory starters at premium positions get first claim on budget,
+  // same intent as the original count-only version, just budget-checked
+  // before each addition rather than added unconditionally.
+  POS_ORDER.forEach(function(pos){
     var players = byPos[pos] || [];
-    players.slice(0, counts[pos]).forEach(function(p){ targeted[p.name] = true; });
+    var n = counts[pos] || 0;
+    for (var i = 0; i < n && i < players.length; i++) {
+      var price = players[i].price || 0;
+      if (runningTotal + price > availableBudget) {
+        // Stop adding picks at THIS position once the next one would
+        // bust the budget — leaves cheaper, later targets at other
+        // positions still eligible to be picked up below, rather than
+        // bailing out of the whole function on the first overage.
+        break;
+      }
+      targeted[players[i].name] = true;
+      runningTotal += price;
+    }
   });
   return targeted;
 }
@@ -1140,7 +1171,16 @@ function renderTPS(sheet, stratKey) {
 
   state.playerPriceList = [];
   state.targetPrices = {};
-  state.targetedPlayers = pickAutoTargets(sheet.byPos, state.roster);
+
+  // Bench share computed here (moved up from below) so the auto-target
+  // picker can subtract it from the budget BEFORE choosing targets,
+  // rather than discovering the bench cost after targets are already
+  // locked in. Same math as before, just sequenced earlier.
+  var myBenchShare = Math.max(1, Math.round(sheet.benchTotal / state.numTeams));
+  state.myBenchShare = myBenchShare;
+  var availableForTargets = Math.max(0, state.budget - myBenchShare);
+
+  state.targetedPlayers = pickAutoTargets(sheet.byPos, state.roster, availableForTargets);
 
   POS_ORDER.forEach(function(pos){
     var players = sheet.byPos[pos] || [];
@@ -1189,9 +1229,11 @@ function renderTPS(sheet, stratKey) {
   // displayed sheet.benchTotal directly, which is the sum across ALL
   // teams' bench spots combined — e.g. $140 for a 10-team league when
   // your own bench share is really $140/10 = $14. Same conversion the
-  // budget-tracking total below now applies consistently.)
-  var myBenchShare = Math.max(1, Math.round(sheet.benchTotal / state.numTeams));
-  state.myBenchShare = myBenchShare;
+  // budget-tracking total below now applies consistently. myBenchShare
+  // itself is now computed earlier in this function, before
+  // pickAutoTargets() runs — see Session 12 notes above — so this
+  // section just renders the value already in scope rather than
+  // recomputing it.)
   var benchSection = document.createElement('div');
   benchSection.className = 'tps-section';
   benchSection.innerHTML =
