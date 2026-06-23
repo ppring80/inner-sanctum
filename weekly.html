@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Rankings — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f2f1ef;
+  --bg2:#e8e7e4;
+  --surface:#ffffff;
+  --border:#d4d2ce;
+  --border2:#b8b5b0;
+  --gold:#b8921a;
+  --amber:#c8780a;
+  --glow:#f5c842;
+  --ink:#1c1c1a;
+  --muted:#4a4a46;
+  --dim:#7a7a76;
+  --green:#2e7d32;
+  --red:#8a2020;
+  --blue:#1565c0;
+  --r:6px;
+}
+
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+/* ── HEADER (matches auction.html/tiers.html exactly) ── */
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* ── OFFSEASON / PREVIEW NOTICE ── */
+.preview-banner{background:rgba(184,146,26,0.08);border-bottom:1px solid rgba(184,146,26,0.25);padding:10px 24px;text-align:center}
+.preview-banner-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px}
+.preview-banner-text strong{color:var(--gold)}
+
+/* ── PERSONA TOGGLE ── */
+.toggle-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.toggle-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.persona-toggle{display:flex;gap:8px}
+.persona-btn{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:20px;border:2px solid var(--border);background:var(--surface);color:var(--muted);font-family:'Cinzel',serif;font-size:13px;cursor:pointer;transition:all 0.2s}
+.persona-btn:hover{border-color:var(--border2)}
+.persona-btn .pe{font-size:15px}
+.persona-btn.active.oracle{border-color:#c9a84c;background:rgba(201,168,76,0.1);color:#9a7d1f}
+.persona-btn.active.trash{border-color:#ff4444;background:rgba(255,68,68,0.08);color:#c4392f}
+.persona-btn.active.analyst{border-color:#64b5f6;background:rgba(100,181,246,0.08);color:#1565c0}
+.week-select-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.week-select{background:var(--surface);border:1px solid var(--border);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:13px;padding:7px 12px;border-radius:var(--r);cursor:pointer}
+
+/* ── SEARCH / FILTER ── */
+.filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.search-input{flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border);color:var(--ink);font-family:'Lora',serif;font-size:14px;padding:9px 14px;border-radius:var(--r)}
+.search-input:focus{outline:none;border-color:var(--gold)}
+.pos-filter-group{display:flex;gap:6px;flex-wrap:wrap}
+.pos-filter-btn{padding:7px 13px;border-radius:16px;border:1px solid var(--border);background:var(--bg2);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.5px;cursor:pointer;transition:all 0.15s}
+.pos-filter-btn:hover{border-color:var(--border2)}
+.pos-filter-btn.active{background:var(--gold);color:#0a0600;border-color:var(--gold)}
+.my-roster-toggle{padding:7px 14px;border-radius:16px;border:1px solid rgba(21,101,192,0.3);background:rgba(21,101,192,0.06);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap}
+.my-roster-toggle.active{background:var(--blue);color:#fff}
+
+/* ── TABLE ── */
+.table-wrap{max-width:1100px;margin:0 auto;padding:20px 24px 60px}
+.rank-table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.rank-table thead th{background:var(--bg2);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+.rank-table thead th:hover{color:var(--ink)}
+.rank-table thead th .sort-arrow{font-size:9px;margin-left:4px;opacity:0.4}
+.rank-table thead th.sorted .sort-arrow{opacity:1;color:var(--gold)}
+.rank-table tbody tr{border-bottom:1px solid var(--border)}
+.rank-table tbody tr:last-child{border-bottom:none}
+.rank-table tbody tr:hover{background:#faf8f2}
+.rank-table tbody tr.is-mine{background:rgba(21,101,192,0.04)}
+.rank-table td{padding:12px 14px;font-size:13px;color:var(--ink);vertical-align:middle}
+.cell-player{display:flex;align-items:center;gap:8px}
+.cell-name{font-weight:600}
+.cell-mine-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.pos-pill{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:3px 7px;border-radius:3px;letter-spacing:0.5px}
+.pos-pill.QB{background:rgba(21,101,192,0.12);color:#1565c0}
+.pos-pill.RB{background:rgba(46,125,50,0.12);color:#2e7d32}
+.pos-pill.WR{background:rgba(184,146,26,0.12);color:var(--gold)}
+.pos-pill.TE{background:rgba(200,120,10,0.12);color:var(--amber)}
+.pos-pill.K{background:rgba(120,100,60,0.12);color:var(--muted)}
+.pos-pill.DEF{background:rgba(138,32,32,0.12);color:var(--red)}
+.cell-team{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
+.cell-opp{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)}
+.cell-opp .vs{color:var(--dim);margin-right:3px}
+.injury-pill{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 8px;border-radius:3px;letter-spacing:0.3px}
+.injury-pill.healthy{background:rgba(46,125,50,0.1);color:var(--green)}
+.injury-pill.questionable{background:rgba(200,120,10,0.12);color:var(--amber)}
+.injury-pill.doubtful{background:rgba(138,32,32,0.1);color:var(--red)}
+.injury-pill.out{background:rgba(138,32,32,0.18);color:var(--red);font-weight:700}
+.cell-verdict{max-width:340px;font-size:13px;line-height:1.55;transition:opacity 0.15s}
+.cell-verdict.fading{opacity:0.15}
+.verdict-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:2px 7px;border-radius:3px;margin-right:7px;vertical-align:middle}
+.verdict-tag.start{background:rgba(46,125,50,0.15);color:var(--green)}
+.verdict-tag.flex{background:rgba(200,120,10,0.15);color:var(--amber)}
+.verdict-tag.sit{background:rgba(138,32,32,0.15);color:var(--red)}
+.cell-proj{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--ink);text-align:right}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty-state-icon{font-size:36px;margin-bottom:12px;opacity:0.4}
+
+@media(max-width:760px){
+  .table-wrap{padding:14px 12px 40px}
+  .cell-opp,.injury-pill{font-size:10px}
+  .rank-table td,.rank-table th{padding:9px 8px}
+  .cell-verdict{max-width:180px;font-size:12px}
+  .week-select-wrap{margin-left:0;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">📅 Weekly Rankings</h1>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
+    <a href="/tiers" class="nav-link">🏆 Tier List</a>
+    <a href="/survivor" class="nav-link">☠️ Survivor</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<!-- ═══ PREVIEW/MOCK DATA NOTICE (remove once real weekly job is live) ═══ -->
+<div class="preview-banner" id="previewBanner">
+  <span class="preview-banner-text">🔧 <strong>Preview build</strong> — showing sample data ahead of the season. Real weekly matchups, injury status, and live verdicts activate once Week 1 data exists.</span>
+</div>
+
+<div class="toggle-bar">
+  <span class="toggle-label">Verdict Voice</span>
+  <div class="persona-toggle">
+    <button class="persona-btn oracle active" id="pbtn-oracle" onclick="setPersona('oracle')"><span class="pe">🔮</span> Oracle</button>
+    <button class="persona-btn trash" id="pbtn-trash" onclick="setPersona('trash')"><span class="pe">🔥</span> Trash Lord</button>
+    <button class="persona-btn analyst" id="pbtn-analyst" onclick="setPersona('analyst')"><span class="pe">📊</span> Analyst</button>
+  </div>
+  <div class="week-select-wrap">
+    <span class="toggle-label">Week</span>
+    <select class="week-select" id="weekSelect" onchange="renderTable()">
+      <option value="1">Week 1 (preview)</option>
+    </select>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <input type="text" class="search-input" id="searchInput" placeholder="Search players or teams..." oninput="renderTable()"/>
+  <div class="pos-filter-group" id="posFilterGroup">
+    <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
+    <button class="pos-filter-btn" data-pos="QB" onclick="setPosFilter('QB')">QB</button>
+    <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
+    <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
+    <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+    <button class="pos-filter-btn" data-pos="K" onclick="setPosFilter('K')">K</button>
+    <button class="pos-filter-btn" data-pos="DEF" onclick="setPosFilter('DEF')">DEF</button>
+  </div>
+  <button class="my-roster-toggle" id="myRosterToggle" onclick="toggleMyRoster()">🏈 My Roster Only</button>
+</div>
+
+<div class="table-wrap">
+  <table class="rank-table">
+    <thead>
+      <tr>
+        <th onclick="setSort('name')" id="th-name">Player <span class="sort-arrow">▼</span></th>
+        <th onclick="setSort('pos')" id="th-pos">Pos <span class="sort-arrow">▼</span></th>
+        <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
+        <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
+        <th>Verdict</th>
+        <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
+      </tr>
+    </thead>
+    <tbody id="rankTableBody"></tbody>
+  </table>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <div class="empty-state-icon">🔍</div>
+    <div>No players match your search or filters.</div>
+  </div>
+</div>
+
+<!-- shared-player-data.js intentionally NOT loaded here yet — this preview
+     build's "My Roster Only" filter has no real roster to filter against
+     (state.myRosterNames is empty). Once this page connects to a real
+     Sleeper-synced roster (same pattern as sanctum.html's connectSleeper()),
+     that's the point to load shared-player-data.js / wire up the actual
+     roster fetch, not before. -->
+<script>
+// ═══════════════════════════════════════════════════════════
+// WEEKLY RANKINGS — PREVIEW BUILD (checklist #119)
+//
+// ARCHITECTURE NOTE: in production, this page reads three cached
+// JSON datasets from Netlify Blobs (one per persona — same verdict
+// per player, different voice/phrasing only, per the locked v1 spec),
+// regenerated once per week by a scheduled Netlify Function. That
+// scheduled job does NOT exist yet — building it is gated on real
+// in-season Tank01 matchup data existing, which it doesn't until
+// the season is underway. This file currently uses MOCK_RANKINGS
+// below as a stand-in so the full UI (table, sort, filter, persona
+// toggle, search) is real and testable now, without waiting on data
+// that can't exist yet. Swap MOCK_RANKINGS for a real fetch() against
+// the cached Blobs endpoint when that job is built — the rendering
+// code below should not need to change, since it already treats the
+// data as if it came from an external source.
+// ═══════════════════════════════════════════════════════════
+
+var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
+
+// Same verdict (start/flex/sit + reasoning facts) across all three
+// personas per player — only phrasing differs. This mirrors the
+// locked v1 decision: personas agree on the call, disagree only in
+// voice. (True per-persona disagreement is a deliberately deferred
+// v2 idea — see checklist #120.)
+var MOCK_RANKINGS = [
+  { name:'Patrick Mahomes', pos:'QB', team:'KC', opp:'BUF', injury:'healthy', proj:24.8, call:'start',
+    verdicts:{
+      oracle:"The signal caller faces no obstacle the stars cannot illuminate — start him with the confidence of 38 seasons behind you.",
+      trash:"It's Mahomes against a banged-up secondary. Even YOUR lineup decisions can't mess this one up. START HIM.",
+      analyst:"4,200+ proj pass yds pace, opponent allows 24.1 fantasy pts/gm to QBs (8th-most). Clear start." } },
+  { name:'Christian McCaffrey', pos:'RB', team:'SF', opp:'SEA', injury:'questionable', proj:18.2, call:'flex',
+    verdicts:{
+      oracle:"The body is willing but the spirits are uncertain — a flex play, not a guarantee, until the injury report clears.",
+      trash:"Questionable tag has me side-eyeing this one HARD. He's talented but check Sunday morning before you lock him in.",
+      analyst:"Limited in Friday practice. 67% snap share last healthy game. Monitor status; flex-level confidence pending final report." } },
+  { name:"Ja'Marr Chase", pos:'WR', team:'CIN', opp:'PIT', injury:'healthy', proj:19.4, call:'start',
+    verdicts:{
+      oracle:"Against this secondary, the receiver's path to glory is foretold — start with conviction.",
+      trash:"Pittsburgh's corners have given up the 3rd-most fantasy points to WRs. Chase is about to feast. START.",
+      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start." } },
+  { name:'Travis Kelce', pos:'TE', team:'KC', opp:'BUF', injury:'healthy', proj:13.1, call:'start',
+    verdicts:{
+      oracle:"Even as seasons pass, the tight end's bond with his quarterback remains unbroken — a steady start.",
+      trash:"Kelce's still getting targets like it's 2019. Start him and stop overthinking it.",
+      analyst:"22% target share in red zone, consistent floor. Start." } },
+  { name:'Justin Tucker', pos:'K', team:'BAL', opp:'CLE', injury:'healthy', proj:8.4, call:'flex',
+    verdicts:{
+      oracle:"Even the most reliable leg faces uncertainty in the wind — a fine streamer, nothing more.",
+      trash:"It's a kicker. Calm down. Streamable, not a priority.",
+      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play." } },
+  { name:'San Francisco 49ers', pos:'DEF', team:'SF', opp:'SEA', injury:'healthy', proj:9.2, call:'start',
+    verdicts:{
+      oracle:"The defense stands as a wall against a wounded offense — start with confidence.",
+      trash:"Seattle's offensive line is falling apart. This defense is about to feast. START.",
+      analyst:"Opponent allows 2.1 sacks/gm allowed, high pressure-rate matchup. Strong start." } },
+  { name:'Tua Tagovailoa', pos:'QB', team:'MIA', opp:'NYJ', injury:'doubtful', proj:11.5, call:'sit',
+    verdicts:{
+      oracle:"The path is shrouded in doubt this week — better to seek wisdom elsewhere until the fog clears.",
+      trash:"Doubtful tag plus a tough Jets D? Bench him and don't think twice.",
+      analyst:"Doubtful per Friday report, opponent allows 16.2 fantasy pts/gm to QBs (4th-fewest). Sit." } },
+  { name:'Breece Hall', pos:'RB', team:'NYJ', opp:'MIA', injury:'healthy', proj:16.8, call:'start',
+    verdicts:{
+      oracle:"The path opens wide for the swift — a clear start against a defense that cannot contain him.",
+      trash:"Miami's run D is Swiss cheese. Breece is about to run wild. START.",
+      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start." } },
+  { name:'Mike Evans', pos:'WR', team:'TB', opp:'NO', injury:'healthy', proj:14.6, call:'flex',
+    verdicts:{
+      oracle:"A solid offering, though not the night the legends are written about — a flex, not a centerpiece.",
+      trash:"Decent matchup, nothing special. He's a flex play, don't overhype it.",
+      analyst:"19% target share, average matchup grade. Solid flex floor." } },
+  { name:'George Kittle', pos:'TE', team:'SF', opp:'SEA', injury:'out', proj:0, call:'sit',
+    verdicts:{
+      oracle:"The path is closed this week, seeker — find another route to glory.",
+      trash:"He's OUT. As in, not playing. Bench him, this isn't complicated.",
+      analyst:"Ruled out per Friday injury report. Do not start." } }
+];
+
+var state = {
+  persona: 'oracle',
+  posFilter: 'ALL',
+  myRosterOnly: false,
+  sortKey: 'proj',
+  sortDir: 'desc',
+  myRosterNames: []  // populated from Sleeper sync elsewhere on the platform, when connected — empty in preview build
+};
+
+function injuryLabel(code) {
+  return { healthy:'Healthy', questionable:'Questionable', doubtful:'Doubtful', out:'Out' }[code] || code;
+}
+
+function callTag(call) {
+  var labels = { start:'START', flex:'FLEX', sit:'SIT' };
+  return '<span class="verdict-tag ' + call + '">' + labels[call] + '</span>';
+}
+
+function setPersona(p) {
+  state.persona = p;
+  document.querySelectorAll('.persona-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('pbtn-' + p).classList.add('active');
+
+  // Brief fade on the verdict column when switching voices — the one
+  // signature interaction this page introduces: same data, different
+  // lens, made visible rather than an instant silent swap.
+  document.querySelectorAll('.cell-verdict').forEach(function(el){ el.classList.add('fading'); });
+  setTimeout(function(){
+    renderTable();
+    document.querySelectorAll('.cell-verdict').forEach(function(el){ el.classList.remove('fading'); });
+  }, 150);
+}
+
+function setPosFilter(pos) {
+  state.posFilter = pos;
+  document.querySelectorAll('.pos-filter-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.pos === pos); });
+  renderTable();
+}
+
+function toggleMyRoster() {
+  state.myRosterOnly = !state.myRosterOnly;
+  document.getElementById('myRosterToggle').classList.toggle('active', state.myRosterOnly);
+  renderTable();
+}
+
+function setSort(key) {
+  if (state.sortKey === key) {
+    state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sortKey = key;
+    state.sortDir = 'asc';
+  }
+  document.querySelectorAll('.rank-table thead th').forEach(function(th){ th.classList.remove('sorted'); });
+  var th = document.getElementById('th-' + key);
+  if (th) th.classList.add('sorted');
+  renderTable();
+}
+
+function getFilteredSorted() {
+  var q = document.getElementById('searchInput').value.trim().toLowerCase();
+  var rows = MOCK_RANKINGS.filter(function(p){
+    if (state.posFilter !== 'ALL' && p.pos !== state.posFilter) return false;
+    if (state.myRosterOnly && state.myRosterNames.indexOf(p.name) === -1) return false;
+    if (q && !p.name.toLowerCase().includes(q) && !p.team.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  rows.sort(function(a, b){
+    var av, bv;
+    switch (state.sortKey) {
+      case 'name': av = a.name; bv = b.name; break;
+      case 'pos': av = POS_ORDER.indexOf(a.pos); bv = POS_ORDER.indexOf(b.pos); break;
+      case 'opp': av = a.opp; bv = b.opp; break;
+      case 'injury': av = a.injury; bv = b.injury; break;
+      case 'proj': default: av = a.proj; bv = b.proj; break;
+    }
+    if (av < bv) return state.sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return state.sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return rows;
+}
+
+function renderTable() {
+  var rows = getFilteredSorted();
+  var tbody = document.getElementById('rankTableBody');
+  var empty = document.getElementById('emptyState');
+
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = rows.map(function(p){
+    var isMine = state.myRosterNames.indexOf(p.name) !== -1;
+    var verdictText = p.verdicts[state.persona] || '';
+    return (
+      '<tr class="' + (isMine ? 'is-mine' : '') + '">' +
+        '<td><div class="cell-player">' +
+          (isMine ? '<span class="cell-mine-dot" title="On your roster"></span>' : '') +
+          '<span class="cell-name">' + p.name + '</span>' +
+        '</div></td>' +
+        '<td><span class="pos-pill ' + p.pos + '">' + p.pos + '</span> <span class="cell-team">' + p.team + '</span></td>' +
+        '<td><span class="cell-opp"><span class="vs">vs</span>' + p.opp + '</span></td>' +
+        '<td><span class="injury-pill ' + p.injury + '">' + injuryLabel(p.injury) + '</span></td>' +
+        '<td><div class="cell-verdict">' + callTag(p.call) + verdictText + '</div></td>' +
+        '<td class="cell-proj">' + (p.proj > 0 ? p.proj.toFixed(1) : '—') + '</td>' +
+      '</tr>'
+    );
+  }).join('');
+}
+
+document.getElementById('th-proj').classList.add('sorted');
+renderTable();
+</script>
+</body>
+</html>
