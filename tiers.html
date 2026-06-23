@@ -186,7 +186,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
      real security — anyone reading page source can find the passcode.
      This is a friction gate to stop casual drive-by access before
      launch, not a substitute for the eventual Patreon-backed check.
-     See Pre-Deployment Checklist #105/#105a. -->
+     See Pre-Deployment Checklist #105/#105a.
+
+     #105a TESTER ALLOWLIST (added): a second, separate passcode
+     (ALLOWLIST_PASSCODE) is checked alongside the normal Acolyte
+     passcode. Either one unlocks the same sessionStorage flag, so an
+     allowlisted tester is indistinguishable from a real Acolyte once
+     in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
+     can be rotated (see Passcode Rotation Runbook) without locking
+     out testers, and vice versa. This is still not real auth — same
+     caveats as the rest of this gate. Swap both passcodes for real
+     Patreon-based auth per #105/#105a before this becomes permanent. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -201,10 +211,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </div>
 <script>
 // ═══ ACOLYTE GATE LOGIC (added) ═══
-// Plain-text constant, intentionally. This is a launch-week friction
+// Plain-text constants, intentionally. This is a launch-week friction
 // gate, not real auth. Swap for real Patreon-based session check per
 // #105/#105a before this becomes a long-term mechanism.
 var GATE_PASSCODE = 'ORACLE-125';
+// #105a tester allowlist passcode — separate from GATE_PASSCODE so
+// rotating one never affects the other. Currently for Pat + his son;
+// expand to named outside testers or real comped Patreon accounts
+// per #105a as the launch gets closer.
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
 function checkGateUnlocked() {
@@ -223,7 +238,8 @@ function unlockGate() {
 function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
-  if (input.value.trim().toUpperCase() === GATE_PASSCODE) {
+  var entered = input.value.trim().toUpperCase();
+  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
     unlockGate();
   } else {
     err.classList.add('show');
