@@ -1,6 +1,6 @@
 
 const Anthropic = require("@anthropic-ai/sdk");
-const { getStore } = require("@netlify/blobs");
+const { getStore, connectLambda } = require("@netlify/blobs");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -203,6 +203,16 @@ async function getLiveNFLContext() {
 // MAIN HANDLER
 // ═══════════════════════════════════════
 exports.handler = async (event) => {
+
+  // Required for Netlify Blobs to work in this function's runtime mode
+  // (Lambda compatibility mode — this file uses the classic
+  // exports.handler signature rather than the newer native format).
+  // Without this, getStore() throws MissingBlobsEnvironmentError even
+  // in a real production deploy, not just local dev. Must be called
+  // before any getStore()/logSpend() call below. See checklist #114
+  // build notes — this was the actual fix after the dependency-manifest
+  // fix (package.json) got the build itself passing.
+  connectLambda(event);
 
   // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
