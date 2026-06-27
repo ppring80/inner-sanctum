@@ -467,7 +467,9 @@ var DEMO_LEAGUE = {
   numTeams: 10,
   budget: 200,
   scoring: 'ppr',
-  leagueFormat: 'standard'
+  leagueType: 'redraft',
+  leagueFormat: 'standard',
+  platform: 'sleeper'
 };
 
 var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
@@ -503,13 +505,17 @@ function lockInputsToDemoLeague() {
   var teamsEl = document.getElementById('numTeams');
   var budgetEl = document.getElementById('budget');
   var scoringEl = document.getElementById('scoring');
+  var typeEl = document.getElementById('leagueType');
   var formatEl = document.getElementById('leagueFormat');
+  var platformEl = document.getElementById('platform');
 
   if (nameEl) { nameEl.value = DEMO_LEAGUE.leagueName; nameEl.disabled = true; }
   if (teamsEl) { teamsEl.value = String(DEMO_LEAGUE.numTeams); teamsEl.disabled = true; if (typeof buildTeamInputs === 'function') buildTeamInputs(); }
   if (budgetEl) { budgetEl.value = String(DEMO_LEAGUE.budget); budgetEl.disabled = true; }
   if (scoringEl) { scoringEl.value = DEMO_LEAGUE.scoring; scoringEl.disabled = true; }
+  if (typeEl) { typeEl.value = DEMO_LEAGUE.leagueType; typeEl.disabled = true; }
   if (formatEl) { formatEl.value = DEMO_LEAGUE.leagueFormat; formatEl.disabled = true; }
+  if (platformEl) { platformEl.value = DEMO_LEAGUE.platform; platformEl.disabled = true; }
 }
 
 // Persistent banner shown across Steps 1–4 while in preview mode.
