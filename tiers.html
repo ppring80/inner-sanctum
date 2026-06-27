@@ -179,13 +179,19 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (added) ═══
-     Temporary passcode gate ahead of real Patreon-based auth. Checks
-     sessionStorage on load; if not unlocked, this overlay covers the
-     whole page so the tool underneath is not visible or usable. NOT
-     real security — anyone reading page source can find the passcode.
-     This is a friction gate to stop casual drive-by access before
-     launch, not a substitute for the eventual Patreon-backed check.
+<!-- ═══ ACOLYTE ACCESS GATE (modified — now checks OAuth session first) ═══
+     GATE ORDER, now actually implemented per the original architecture
+     decision: (1) valid signed sanctum_session cookie granting
+     fullAccess → unlock immediately, no passcode needed; (2) else,
+     correct passcode → unlock (dev/test override, unchanged); (3) else
+     → show the gate and wait for passcode entry.
+
+     Checks sessionStorage AND a server-verified OAuth session on load;
+     if neither grants access, this overlay covers the whole page so
+     the tool underneath is not visible or usable. The passcode path
+     is NOT real security — anyone reading page source can find the
+     passcode. It remains a friction gate / dev-test override
+     alongside the real Patreon-backed check, not a replacement for it.
      See Pre-Deployment Checklist #105/#105a.
 
      #105a TESTER ALLOWLIST (added): a second, separate passcode
@@ -194,9 +200,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
      allowlisted tester is indistinguishable from a real Acolyte once
      in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
      can be rotated (see Passcode Rotation Runbook) without locking
-     out testers, and vice versa. This is still not real auth — same
-     caveats as the rest of this gate. Swap both passcodes for real
-     Patreon-based auth per #105/#105a before this becomes permanent. -->
+     out testers, and vice versa.
+
+     THIS PAGE CHECKS fullAccess (NOT auctionAccess) — see
+     verify-session.js and oauth-callback.js. The Oracle Tier List is
+     an Acolyte/Season Pass feature only. Draft Day Pass holders get
+     auctionAccess:true but fullAccess:false, so they are correctly
+     kept out of this page — Draft Day Pass is Auction War Room only. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -210,15 +220,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (added) ═══
-// Plain-text constants, intentionally. This is a launch-week friction
-// gate, not real auth. Swap for real Patreon-based session check per
-// #105/#105a before this becomes a long-term mechanism.
+// ═══ ACOLYTE GATE LOGIC (modified — now checks OAuth session first) ═══
+//
+// WHY A FETCH CALL IS NEEDED: oauth-callback.js sets sanctum_session as
+// an HttpOnly cookie, so this page's JS cannot read it directly via
+// document.cookie. verify-session.js is a small Netlify Function that
+// reads the cookie server-side (where HttpOnly doesn't apply), verifies
+// its signature, and returns just {fullAccess, auctionAccess} — this
+// page never sees the raw cookie or the signing secret.
 var GATE_PASSCODE = 'ORACLE-125';
-// #105a tester allowlist passcode — separate from GATE_PASSCODE so
-// rotating one never affects the other. Currently for Pat + his son;
-// expand to named outside testers or real comped Patreon accounts
-// per #105a as the launch gets closer.
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
@@ -248,10 +258,34 @@ function checkGatePasscode() {
   }
 }
 
+// Calls verify-session.js and unlocks if fullAccess is true. Never
+// throws — any failure (network error, non-200, malformed response)
+// is treated the same as "no access," which simply means the existing
+// passcode gate stays up exactly as it does today.
+function checkOAuthSession() {
+  return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.fullAccess === true) {
+        unlockGate();
+        return true;
+      }
+      return false;
+    })
+    .catch(function () {
+      return false; // network/parse error — fall through to passcode gate, unchanged
+    });
+}
+
 (function initGate() {
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
+    return;
   }
+  checkOAuthSession();
 })();
 </script>
 <!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
