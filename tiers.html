@@ -175,16 +175,37 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .gate-error.show{display:block}
 .gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
 .gate-link:hover{opacity:1}
+
+/* ── PREVIEW MODE (added) ──────────────────────────────────────────────
+   Same pattern as auction.html's preview mode — see that file's
+   PREVIEW MODE comment block for full rationale. Simpler here: Tier
+   List has no personal league inputs to lock (no league name, no
+   budget tied to your real league) — it only takes scoring/format
+   settings, which aren't identifying. So preview here just means
+   "fully unlock the real tool," no demo-data faking required. */
+.gate-btn-secondary{width:100%;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
+.gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
+.gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
+.gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
+.preview-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
+.preview-banner strong{color:#f5c842}
+.preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+.preview-banner a:hover{opacity:0.85}
+@media(max-width:600px){.preview-banner{font-size:12px;padding:8px 14px}}
 </style>
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (modified — now checks OAuth session first) ═══
+<!-- ═══ ACOLYTE ACCESS GATE (modified — now offers a sample-data preview path) ═══
      GATE ORDER, now actually implemented per the original architecture
      decision: (1) valid signed sanctum_session cookie granting
      fullAccess → unlock immediately, no passcode needed; (2) else,
      correct passcode → unlock (dev/test override, unchanged); (3) else
-     → show the gate and wait for passcode entry.
+     → show the gate and wait for passcode entry, OR a visitor can enter
+     PREVIEW MODE — full real access, no fixed/fake data needed since
+     this page takes no personal league inputs (see auction.html's
+     PREVIEW MODE block for why that page's preview needs a locked demo
+     league and this one doesn't).
 
      Checks sessionStorage AND a server-verified OAuth session on load;
      if neither grants access, this overlay covers the whole page so
@@ -211,16 +232,18 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
     <div class="gate-title">Acolyte Feature</div>
-    <div class="gate-sub">The Oracle Tier List is reserved for Founding Acolytes. Enter your passcode to continue.</div>
+    <div class="gate-sub">The Oracle Tier List is reserved for Founding Acolytes. Enter your passcode to continue, or preview with sample data below.</div>
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <div class="gate-divider">OR</div>
+    <button class="gate-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (modified — now checks OAuth session first) ═══
+// ═══ ACOLYTE GATE LOGIC (modified — now offers a sample-data preview path) ═══
 //
 // WHY A FETCH CALL IS NEEDED: oauth-callback.js sets sanctum_session as
 // an HttpOnly cookie, so this page's JS cannot read it directly via
@@ -280,9 +303,56 @@ function checkOAuthSession() {
     });
 }
 
+// ═══ PREVIEW MODE (added) ═══════════════════════════════════════════
+// See auction.html's PREVIEW MODE comment block for the full rationale
+// behind why this exists. Simpler here than on auction.html: Tier List
+// has no personal/identifying inputs (no league name, no real budget)
+// to lock to a fixed demo — it only takes scoring format and league
+// format settings. So entering preview here just means "fully unlock,"
+// same as a real Acolyte, with a persistent banner reminding the
+// visitor they're in preview and a path to become a real Acolyte.
+// Tracked with its OWN sessionStorage flag (sanctum_preview_mode),
+// kept separate from GATE_STORAGE_KEY, so this page and auction.html
+// can independently know "is this visitor in preview" vs "are they
+// really, fully unlocked" without conflating the two.
+var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
+
+function isPreviewMode() {
+  try {
+    return sessionStorage.getItem(PREVIEW_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function enterPreviewMode() {
+  try { sessionStorage.setItem(PREVIEW_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+  showPreviewBanner();
+}
+
+// Persistent banner — same pattern as auction.html, injected once at
+// the top of <body> so it's visible regardless of which position tab
+// or generated state the visitor is looking at.
+function showPreviewBanner() {
+  if (document.getElementById('previewBanner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'previewBanner';
+  banner.className = 'preview-banner';
+  banner.innerHTML =
+    '👁 <strong>You&rsquo;re viewing a sample preview</strong> — full Tier List, no real league required. ' +
+    '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">⚔️ Become a Founding Acolyte</a> to unlock everything.';
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
 (function initGate() {
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
+    return;
+  }
+  if (isPreviewMode()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    showPreviewBanner();
     return;
   }
   checkOAuthSession();
