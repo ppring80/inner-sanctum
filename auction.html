@@ -294,16 +294,48 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .gate-error.show{display:block}
 .gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
 .gate-link:hover{opacity:1}
+
+/* ── PREVIEW MODE (added) ──────────────────────────────────────────────
+   gate-btn-secondary: a visually distinct, lower-emphasis sibling to
+   gate-btn — preview is a real path but intentionally not styled to
+   compete with "Unlock" for attention, since passcode/real access is
+   still the primary path for anyone who already has one. */
+.gate-btn-secondary{width:100%;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
+.gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
+.gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
+.gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
+
+/* preview-banner: persistent strip across Steps 1–4 while in preview
+   mode. Fixed to the top of the viewport (not inline in a panel) so it
+   stays visible across step navigation without being duplicated into
+   every panel's markup — same rationale as the gate overlay being a
+   single shared element rather than per-panel. */
+.preview-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
+.preview-banner strong{color:#f5c842}
+.preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+.preview-banner a:hover{opacity:0.85}
+@media(max-width:600px){.preview-banner{font-size:12px;padding:8px 14px}}
 </style>
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (modified — now checks OAuth session first) ═══
+<!-- ═══ ACOLYTE ACCESS GATE (modified — now offers a sample-data preview path) ═══
      GATE ORDER, now actually implemented per the original architecture
      decision: (1) valid signed sanctum_session cookie granting
      auctionAccess → unlock immediately, no passcode needed; (2) else,
      correct passcode → unlock (dev/test override, unchanged); (3) else
-     → show the gate and wait for passcode entry.
+     → show the gate and wait for passcode entry, OR a visitor can enter
+     PREVIEW MODE with a fixed demo league (added — see PREVIEW MODE
+     block in the script below for full rationale).
+
+     PREVIEW MODE, IN BRIEF: per the preview-access decision, visitors
+     should be able to use the real tool with sample data before paying,
+     not just read about it. Preview unlocks Steps 1–4 (League Setup
+     through Target Price Sheet) against a FIXED demo league — League
+     Setup's inputs are disabled, not just pre-filled, so preview can't
+     become a free path to a real personalized price sheet. Step 5 (Live
+     Draft Tracker) stays gated; see blockStep5Preview() and the
+     modified goStep() below.
 
      Checks sessionStorage AND a server-verified OAuth session on load;
      if neither grants access, this overlay covers the whole page so
@@ -329,16 +361,18 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
     <div class="gate-title">Acolyte Feature</div>
-    <div class="gate-sub">The Auction War Room is reserved for Founding Acolytes. Enter your passcode to continue.</div>
+    <div class="gate-sub" id="gateSub">The Auction War Room is reserved for Founding Acolytes. Enter your passcode to continue, or preview with sample data below.</div>
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <div class="gate-divider">OR</div>
+    <button class="gate-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (modified — now checks OAuth session first) ═══
+// ═══ ACOLYTE GATE LOGIC (modified — now offers a sample-data preview path) ═══
 //
 // WHY A FETCH CALL IS NEEDED: oauth-callback.js sets sanctum_session as
 // an HttpOnly cookie, so this page's JS cannot read it directly via
@@ -398,13 +432,141 @@ function checkOAuthSession() {
     });
 }
 
+// ═══ PREVIEW MODE (added) ═══════════════════════════════════════════
+//
+// WHY THIS EXISTS: per the preview-access decision, visitors should be
+// able to actually USE the tool with sample data before paying — not
+// just read about it. This gate previously had only two paths:
+// passcode-unlock or leave. This adds a third: preview with a FIXED
+// demo league, no passcode needed.
+//
+// SCOPE, DELIBERATELY LIMITED ("sample slice, nothing too deep"):
+// Steps 1–4 (League Setup → Roster → Strategy → Target Price Sheet)
+// are fully functional in preview, using real live ADP — just locked
+// to one fixed demo league so a visitor can't quietly use this as a
+// free real tool for their own league. Step 5 (Live Draft Tracker)
+// stays gated; that step is a live-draft utility, not something that
+// sells the tool by itself, and it's the deepest "real use" surface
+// (logging real picks, tracking real budgets) — so it's excluded from
+// preview rather than trying to fake a partial version of it.
+//
+// THE DEMO LEAGUE IS FIXED, NOT A DEFAULT: this is not just pre-filled
+// values someone could edit — the relevant League Setup inputs are
+// disabled while in preview mode (see lockInputsToDemoLeague below),
+// so preview can never become a free path to a real, personalized
+// price sheet for someone's actual league.
+//
+// THIS BLOCK IS INTENTIONALLY SELF-CONTAINED: kept separate from the
+// pricing engine / tracker logic elsewhere in this file on purpose —
+// this page is still actively changing, so this is written to be easy
+// to find and remove/adjust on its own without needing to re-thread
+// preview-awareness through code that has nothing to do with previewing.
+
+var DEMO_LEAGUE = {
+  leagueName: 'The Brotherhood',
+  numTeams: 10,
+  budget: 200,
+  scoring: 'ppr',
+  leagueFormat: 'standard'
+};
+
+var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
+
+function isPreviewMode() {
+  try {
+    return sessionStorage.getItem(PREVIEW_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function enterPreviewMode() {
+  try { sessionStorage.setItem(PREVIEW_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+  lockInputsToDemoLeague();
+  showPreviewBanner();
+}
+
+// Forces League Setup's inputs to the fixed demo league and disables
+// them, so a preview visitor sees a real, working tool but cannot
+// repurpose it for their own league without unlocking for real.
+// Intentionally does NOT touch Roster Construction (Step 2) — roster
+// slot counts aren't personal/identifying league data the way a league
+// name or budget is, and locking every input in the tool would make
+// the preview feel broken rather than like a genuine sample.
+// Called both immediately on entering preview AND from buildTeamInputs'
+// caller path below, since changing numTeams rebuilds the team-name
+// input grid (see buildTeamInputs() later in this file) — calling it
+// here ensures that rebuilt grid still reflects the locked team count.
+function lockInputsToDemoLeague() {
+  var nameEl = document.getElementById('leagueName');
+  var teamsEl = document.getElementById('numTeams');
+  var budgetEl = document.getElementById('budget');
+  var scoringEl = document.getElementById('scoring');
+  var formatEl = document.getElementById('leagueFormat');
+
+  if (nameEl) { nameEl.value = DEMO_LEAGUE.leagueName; nameEl.disabled = true; }
+  if (teamsEl) { teamsEl.value = String(DEMO_LEAGUE.numTeams); teamsEl.disabled = true; if (typeof buildTeamInputs === 'function') buildTeamInputs(); }
+  if (budgetEl) { budgetEl.value = String(DEMO_LEAGUE.budget); budgetEl.disabled = true; }
+  if (scoringEl) { scoringEl.value = DEMO_LEAGUE.scoring; scoringEl.disabled = true; }
+  if (formatEl) { formatEl.value = DEMO_LEAGUE.leagueFormat; formatEl.disabled = true; }
+}
+
+// Persistent banner shown across Steps 1–4 while in preview mode.
+// Injected once into the page body rather than per-panel, so it stays
+// visible across step navigation without needing to be duplicated in
+// every panel's markup.
+function showPreviewBanner() {
+  if (document.getElementById('previewBanner')) return; // already shown
+  var banner = document.createElement('div');
+  banner.id = 'previewBanner';
+  banner.className = 'preview-banner';
+  banner.innerHTML =
+    '👁 <strong>You&rsquo;re viewing a sample league</strong> — real ADP, fixed demo settings. ' +
+    '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">⚔️ Become a Founding Acolyte</a> to build your own.';
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
+// Step 5 (Live Draft Tracker) stays gated in preview mode. Rather than
+// building a second, degraded version of the tracker, attempting to
+// reach Step 5 while in preview re-shows the gate overlay with a
+// preview-specific message, leaving the passcode/real-unlock/preview
+// paths all still intact and usable from there. goStep() (defined
+// later in this file) calls this before allowing navigation to step 5.
+function blockStep5Preview() {
+  var overlay = document.getElementById('gateOverlay');
+  var sub = document.getElementById('gateSub');
+  if (sub) sub.textContent = 'The Live Draft Tracker is reserved for Founding Acolytes — preview covers League Setup through the Target Price Sheet.';
+  overlay.style.display = 'flex';
+}
+
 (function initGate() {
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
     return;
   }
+  if (isPreviewMode()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    // lockInputsToDemoLeague() runs after DOM is ready, not here —
+    // League Setup's inputs don't exist yet at this point in page load
+    // (this IIFE runs before the rest of body markup is parsed), so
+    // re-entering preview on a later page load locks inputs once the
+    // DOMContentLoaded handler below fires instead.
+    showPreviewBanner();
+    return;
+  }
   checkOAuthSession();
 })();
+
+// Re-applies the demo-league lock on every fresh page load if the
+// visitor is already in preview mode from a prior step navigation
+// within the same session (sessionStorage persists across page loads
+// within a tab, but the DOM does not — each step's panel is part of
+// the same single-page document, so this mainly matters on a hard
+// refresh while mid-preview).
+document.addEventListener('DOMContentLoaded', function () {
+  if (isPreviewMode()) lockInputsToDemoLeague();
+});
 </script>
 <!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
 
@@ -1019,6 +1181,16 @@ document.addEventListener('click', function(e){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
 function goStep(n) {
+  // PREVIEW MODE GUARD (added): Step 5 is the one part of the tool
+  // intentionally excluded from preview ("sample slice, nothing too
+  // deep" — see PREVIEW MODE block near the gate, above). Checked
+  // first, before any panel/tab state changes, so a blocked attempt
+  // leaves the page exactly where it was rather than partially
+  // navigating and then bouncing back.
+  if (n === 5 && typeof isPreviewMode === 'function' && isPreviewMode()) {
+    blockStep5Preview();
+    return;
+  }
   if (n === 4) generateTPS();
   if (n === 5) initTracker();
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
