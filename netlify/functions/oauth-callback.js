@@ -19,7 +19,7 @@ const https = require("https");
 // structure. See session notes for the full reasoning if this ever
 // needs revisiting (e.g. if Patreon's billing options change, or the
 // account becomes eligible for charge-upfront/annual billing later).
-const ACOLYTE_TIER_IDS = [];
+const ACOLYTE_TIER_IDS = ["28845597"]; // Founding Acolyte — confirmed via Patreon tier edit URL (patreon.com/membership/28845597), 2026-06-27
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const COOKIE_NAME = "sanctum_session";
