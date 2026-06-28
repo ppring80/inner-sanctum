@@ -19,6 +19,35 @@
   from = "/sanctum.html"
   to = "/sanctum"
   status = 308
+
+# PATREON OAUTH CALLBACK REDIRECT (added)
+# PATREON_REDIRECT_URI (Netlify env var, and the redirect URI
+# registered in Patreon's own developer app settings) points at
+# https://theinnersanctum.xyz/oauth/callback -- a friendly path that
+# doesn't correspond to any real file or page. This rule is what
+# makes that path actually work: it quietly proxies to the real
+# Netlify Function at /.netlify/functions/oauth-callback, which does
+# the actual token exchange and sets the session cookie.
+#
+# Without this rule, Patreon would redirect a real logged-in user
+# back to a URL that 404s -- the OAuth flow would complete on
+# Patreon's side (the user really did authorize and really did get a
+# code), but the site would never receive or use that code, so no
+# session would ever get created. Discovered missing 2026-06-27 while
+# debugging why a real test subscription's login never unlocked
+# anything -- this redirect rule's absence was the root cause, not
+# anything wrong with oauth-callback.js itself.
+#
+# status = 200 (a rewrite/proxy), NOT a 3xx redirect -- the browser's
+# address bar should keep showing /oauth/callback (matching exactly
+# what's registered with Patreon) while Netlify serves the function's
+# response from underneath, rather than visibly bouncing the user to
+# a different-looking URL.
+[[redirects]]
+  from = "/oauth/callback"
+  to = "/.netlify/functions/oauth-callback"
+  status = 200
+
 [[headers]]
   for = "/favicon.svg"
   [headers.values]
