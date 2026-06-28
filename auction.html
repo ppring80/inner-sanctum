@@ -322,7 +322,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 <!-- ═══ ACOLYTE ACCESS GATE (modified — now offers a sample-data preview path) ═══
      GATE ORDER, now actually implemented per the original architecture
      decision: (1) valid signed sanctum_session cookie granting
-     auctionAccess → unlock immediately, no passcode needed; (2) else,
+     fullAccess → unlock immediately, no passcode needed; (2) else,
      correct passcode → unlock (dev/test override, unchanged); (3) else
      → show the gate and wait for passcode entry, OR a visitor can enter
      PREVIEW MODE with a fixed demo league (added — see PREVIEW MODE
@@ -353,10 +353,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
      can be rotated (see Passcode Rotation Runbook) without locking
      out testers, and vice versa.
 
-     THIS PAGE CHECKS auctionAccess (not fullAccess) — see
-     verify-session.js and oauth-callback.js. Auction War Room is
-     unlocked by Founding Acolyte, an active Season Pass, OR a Draft
-     Day Pass — all three set auctionAccess:true. -->
+     THIS PAGE CHECKS fullAccess — same single flag every other
+     gated page checks. Per the 2026-06-27 tier collapse, there is now
+     only one paid tier (Founding Acolyte); Draft Day Pass and Season
+     Pass were retired as separate products since Patreon offered no
+     way to make them genuinely one-time, removing their reason to
+     exist apart from Acolyte. See verify-session.js and
+     oauth-callback.js for the simplified single-tier logic. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -378,7 +381,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 // an HttpOnly cookie, so this page's JS cannot read it directly via
 // document.cookie. verify-session.js is a small Netlify Function that
 // reads the cookie server-side (where HttpOnly doesn't apply), verifies
-// its signature, and returns just {fullAccess, auctionAccess} — this
+// its signature, and returns just {fullAccess} — this
 // page never sees the raw cookie or the signing secret.
 var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
@@ -410,7 +413,7 @@ function checkGatePasscode() {
   }
 }
 
-// Calls verify-session.js and unlocks if auctionAccess is true. Never
+// Calls verify-session.js and unlocks if fullAccess is true. Never
 // throws — any failure (network error, non-200, malformed response)
 // is treated the same as "no access," which simply means the existing
 // passcode gate stays up exactly as it does today.
@@ -421,7 +424,7 @@ function checkOAuthSession() {
       return res.json();
     })
     .then(function (data) {
-      if (data && data.auctionAccess === true) {
+      if (data && data.fullAccess === true) {
         unlockGate();
         return true;
       }
