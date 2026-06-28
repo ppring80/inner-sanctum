@@ -611,12 +611,13 @@ textarea::placeholder { color: #3a3028; }
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
     <button class="gate-skip" onclick="skipGate()">Continue as free Apprentice →</button>
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (added) ═══
+// ═══ ACOLYTE GATE LOGIC (modified — now also checks OAuth session) ═══
 // Plain-text constants, intentionally — same launch-week friction gate
 // as auction.html/tiers.html, not real auth. Matches that passcode
 // exactly so Pat and testers use one passcode across all three pages.
@@ -668,10 +669,39 @@ function checkGatePasscode() {
   }
 }
 
+// Calls verify-session.js and unlocks (same as a correct passcode)
+// if fullAccess is true. Added 2026-06-27 alongside the Login with
+// Patreon link above — previously this gate had no path at all to
+// recognize a real OAuth-authenticated Acolyte; it only ever checked
+// the passcode/skip sessionStorage flags. This mirrors the identical
+// pattern already used on auction.html/tiers.html. Never throws — any
+// failure (network error, non-200, malformed response) leaves the
+// gate exactly as it already was, so passcode/skip continue to work
+// unaffected either way.
+function checkOAuthSession() {
+  return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.fullAccess === true) {
+        unlockGate(); // also sets GATE_STORAGE_KEY — see isAcolyte note below for why this matters beyond just hiding the overlay
+        return true;
+      }
+      return false;
+    })
+    .catch(function () {
+      return false;
+    });
+}
+
 (function initGate() {
   if (checkGateUnlocked() || checkGateSkipped()) {
     document.getElementById('gateOverlay').style.display = 'none';
+    return;
   }
+  checkOAuthSession();
 })();
 </script>
 <!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
@@ -1006,16 +1036,41 @@ var QUESTION_LIMIT = 10;
 var RESET_WINDOW_HOURS = 24;
 var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
 var QUESTION_STORAGE_KEY = 'sanctum_question_window';
-// isAcolyte reads the gate's unlock flag (set by checkGatePasscode()
-// above, persisted to sessionStorage) — this is the ONLY place
-// isAcolyte's real value is set. Falls back to false if storage is
-// blocked (private browsing) or the gate was never unlocked, same
-// fail-closed behavior as the gate's own checkGateUnlocked(). Once
-// real Patreon auth exists (#105/#105a), this is the line to replace.
+// isAcolyte starts from the gate's unlock flag (set by
+// checkGatePasscode() in the gate's own script above, persisted to
+// sessionStorage) — same fail-closed behavior as before if storage is
+// blocked (private browsing) or the gate was never unlocked.
+//
+// UPGRADED 2026-06-27: isAcolyte is now a plain mutable var instead of
+// a frozen IIFE result, because checkOAuthSession() (in the gate's
+// script above) can confirm a REAL Patreon-authenticated Acolyte
+// session asynchronously, slightly after this line first runs — and
+// when it does, it calls unlockGate(), which sets the exact same
+// sessionStorage key this line reads. That alone doesn't update this
+// already-evaluated variable, though, which is why
+// refreshIsAcolyteFromGate() exists below: it re-reads the same flag
+// on demand, called right before every place isAcolyte's value
+// actually matters (see ask() further down), so a real OAuth login
+// that completes after page load is correctly picked up before the
+// user's first real question — not just on a future page reload.
+// This NEVER downgrades isAcolyte from true back to false; it only
+// ever upgrades it, so an already-passcode-unlocked session is never
+// affected by this in any way.
 var isAcolyte = (function() {
   try { return sessionStorage.getItem('sanctum_acolyte_unlock') === 'true'; }
   catch (e) { return false; }
 })();
+
+function refreshIsAcolyteFromGate() {
+  if (isAcolyte) return; // already true — nothing to upgrade, and never downgrade
+  try {
+    if (sessionStorage.getItem('sanctum_acolyte_unlock') === 'true') {
+      isAcolyte = true;
+    }
+  } catch (e) {
+    // storage blocked — isAcolyte stays whatever it already was
+  }
+}
 var questionCount = 0;
 var windowStart = null;
 
@@ -1768,6 +1823,13 @@ function ask(txt) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
+
+  // Re-sync isAcolyte from the gate's flag first — picks up a real
+  // OAuth login that completed asynchronously after this page first
+  // loaded (see refreshIsAcolyteFromGate's definition above for why
+  // this is needed). Never downgrades, only upgrades, so this is safe
+  // to call unconditionally on every question asked.
+  refreshIsAcolyteFromGate();
 
   // Question limit check (free tier only). Re-sync from localStorage
   // first — handles both a fresh page load and the window having
