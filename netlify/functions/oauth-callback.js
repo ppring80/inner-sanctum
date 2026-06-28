@@ -1,3 +1,4 @@
+
 const crypto = require("crypto");
 const https = require("https");
 
@@ -130,9 +131,21 @@ async function exchangeCodeForToken(code) {
 }
 
 async function fetchIdentity(accessToken) {
+  // FIXED 2026-06-27: currently_entitled_tiers is a RELATIONSHIP on the
+  // member resource, not a flat field — it must be requested via the
+  // nested `include=memberships.currently_entitled_tiers` path, not
+  // via fields[member]=...,currently_entitled_tiers (the previous,
+  // incorrect version of this call). Confirmed against Patreon's own
+  // patreon-wordpress plugin source and a third-party .NET client,
+  // both of which use this exact `memberships.currently_entitled_tiers`
+  // include path as the working pattern. The old version would have
+  // silently returned an empty tiers relationship for every user,
+  // even a real, fully-paid Acolyte — extractEntitledTierIds() below
+  // reads member.relationships.currently_entitled_tiers.data, which
+  // only ever gets populated via this corrected include path.
   return httpsRequest({
     hostname: "www.patreon.com",
-    path: `/api/oauth2/v2/identity?include=memberships&fields%5Buser%5D=email&fields%5Bmember%5D=patron_status,currently_entitled_tiers`,
+    path: `/api/oauth2/v2/identity?include=memberships.currently_entitled_tiers&fields%5Bmember%5D=patron_status`,
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
