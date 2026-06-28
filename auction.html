@@ -1043,6 +1043,41 @@ function updateAdpStatusBar(usingFallback) {
 // — one elite RB1 anchor, deliberately light RB2, heavier WR pivot —
 // don't match RB Heavy (loads BOTH RB slots) or Balanced (even
 // spread). Pat specified Hero RB's exact percentages directly.
+//
+// K/DEF FLAT-$1 FLOOR + WR HEAVY REWEIGHT (added 2026-06-28, session 2):
+// Per Pat's explicit instruction, two related changes layered onto
+// this same table:
+//   (1) K and DEF are now treated as bench-floor-style $1 slots for
+//       EVERY strategy column (previously they were a flat 1% of
+//       budget for every strategy — a real dollar amount, not a $1
+//       floor — so this is a genuine behavior change, not a no-op).
+//       The leftover percentage this frees up (each column's old 1%
+//       minus what $1 now represents as a % of that league's budget)
+//       is rolled into RB1/RB2/WR1/WR2 PROPORTIONALLY to each of
+//       those four slots' OWN existing percentage in that same
+//       column — i.e. a bigger slot (like RB Heavy's RB1 at 28%) gets
+//       a proportionally bigger slice of the freed-up money than a
+//       smaller one (like WR Heavy's WR2 at 24%), rather than splitting
+//       the leftover evenly across all four regardless of size. This
+//       reuses the exact same "convert % to floored $, bank the
+//       leftover, redistribute it" pattern the BENCH_FLOOR mechanism
+//       below already uses — see resolveKDefFloorLeftover().
+//   (2) WR Heavy's column specifically also gets a direct, fixed
+//       reweight on top of the above: WR1 -2pp, WR2 -4pp, RB1 +2pp,
+//       RB2 +2pp, FLEX +2pp (a net-zero shift, applied directly to
+//       the baseline numbers below before either the K/DEF floor or
+//       any of the leftover-distribution machinery runs).
+// These two changes are independent and stack: WR Heavy's column
+// first gets its direct reweight baked into the table below, THEN
+// (like every other strategy) goes through the K/DEF-floor leftover
+// pass at table-build time. See applyKDefFloorAndRedistribute() for
+// the mechanics and resolveKDefFloorLeftover() for why this needed a
+// new helper rather than reusing resolveBenchFloorLeftover() verbatim
+// (that function is hardcoded to bench-slot semantics and to folding
+// leftover into FAVORED_POSITIONS; this is a fixed RB1/RB2/WR1/WR2
+// target list regardless of strategy, which FAVORED_POSITIONS does
+// not represent for every column — e.g. QB Heavy's favored position
+// is QB, not RB/WR at all).
 // ═══════════════════════════════════════════════════════════
 const BASELINE_SLOTS = [
   // { pos, slotIndex } — slotIndex distinguishes RB1 vs RB2, etc.
@@ -1061,13 +1096,24 @@ const BASELINE_SLOTS = [
   // instruction not to change the strategy selection UI — Hero RB and
   // Custom both needed real backing columns rather than being silently
   // dropped or reusing an existing column that didn't match.
+  //
+  // WR HEAVY REWEIGHT (2026-06-28, session 2): the 'wr' column's QB/TE
+  // values below are UNCHANGED. Only RB1, RB2, WR1, WR2, and FLEX move
+  // (the rows those values live on), applied directly to the numbers
+  // that were here before this session's edit:
+  //   WR1: 0.26 -> 0.24 (-2pp)   WR2: 0.24 -> 0.20 (-4pp)
+  //   RB1: 0.16 -> 0.18 (+2pp)   RB2: 0.06 -> 0.08 (+2pp)
+  //   FLEX: 0.07 -> 0.09 (+2pp)
+  // Net change across these 5 rows: -2-4+2+2+2 = 0pp — column still
+  // sums to 100% after this edit, BEFORE the separate K/DEF-floor pass
+  // (which operates on every column, including this one, afterward).
   { pos: 'QB', slotIndex: 1, pct: { rb: 0.02, wr: 0.02, qb: 0.12, te: 0.03, balanced: 0.06, hero: 0.06 } },
-  { pos: 'RB', slotIndex: 1, pct: { rb: 0.28, wr: 0.16, qb: 0.20, te: 0.20, balanced: 0.22, hero: 0.30 } },
-  { pos: 'RB', slotIndex: 2, pct: { rb: 0.22, wr: 0.06, qb: 0.14, te: 0.12, balanced: 0.12, hero: 0.10 } },
-  { pos: 'WR', slotIndex: 1, pct: { rb: 0.14, wr: 0.26, qb: 0.16, te: 0.15, balanced: 0.19, hero: 0.18 } },
-  { pos: 'WR', slotIndex: 2, pct: { rb: 0.08, wr: 0.24, qb: 0.12, te: 0.13, balanced: 0.12, hero: 0.11 } },
+  { pos: 'RB', slotIndex: 1, pct: { rb: 0.28, wr: 0.18, qb: 0.20, te: 0.20, balanced: 0.22, hero: 0.30 } },
+  { pos: 'RB', slotIndex: 2, pct: { rb: 0.22, wr: 0.08, qb: 0.14, te: 0.12, balanced: 0.12, hero: 0.10 } },
+  { pos: 'WR', slotIndex: 1, pct: { rb: 0.14, wr: 0.24, qb: 0.16, te: 0.15, balanced: 0.19, hero: 0.18 } },
+  { pos: 'WR', slotIndex: 2, pct: { rb: 0.08, wr: 0.20, qb: 0.12, te: 0.13, balanced: 0.12, hero: 0.11 } },
   { pos: 'TE', slotIndex: 1, pct: { rb: 0.03, wr: 0.03, qb: 0.03, te: 0.14, balanced: 0.06, hero: 0.05 } },
-  { pos: 'FLEX', slotIndex: 1, pct: { rb: 0.07, wr: 0.07, qb: 0.07, te: 0.07, balanced: 0.07, hero: 0.06 } },
+  { pos: 'FLEX', slotIndex: 1, pct: { rb: 0.07, wr: 0.09, qb: 0.07, te: 0.07, balanced: 0.07, hero: 0.06 } },
   { pos: 'K', slotIndex: 1, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
   { pos: 'DEF', slotIndex: 1, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
   { pos: 'BENCH', slotIndex: 1, pct: { rb: 0.05, wr: 0.05, qb: 0.05, te: 0.05, balanced: 0.05, hero: 0.04 } },
@@ -1081,6 +1127,14 @@ const BASELINE_SLOTS = [
 // Strategy key -> which position(s) absorb roll-up/leftover money.
 // Balanced splits evenly between RB and WR (Pat's explicit call) — all
 // single-position strategies send 100% of roll-up to their one position.
+// UNCHANGED by the K/DEF-floor work — this still governs MISSING-SLOT
+// leftover (a league that has no Kicker slot at all, roster.K === 0)
+// and BENCH-floor leftover, exactly as before. The NEW K/DEF-FLAT-$1
+// leftover (every league, since K/DEF now always floor to $1
+// regardless of roster shape) uses a separate, fixed RB1/RB2/WR1/WR2
+// target list instead — see resolveKDefFloorLeftover() below — since
+// FAVORED_POSITIONS doesn't have a sensible per-column answer for
+// "RB and WR specifically" (e.g. QB Heavy's favored position is QB).
 const FAVORED_POSITIONS = {
   rb: [{ pos: 'RB', share: 1.0 }],
   wr: [{ pos: 'WR', share: 1.0 }],
@@ -1092,6 +1146,30 @@ const FAVORED_POSITIONS = {
 
 const BENCH_FLOOR_COUNT = 4; // last N bench slots are always flat $1, regardless of total bench count
 const BENCH_FLOOR_DOLLARS = 1;
+
+// K/DEF FLAT-$1 FLOOR (added 2026-06-28, session 2) — applies to EVERY
+// strategy column, regardless of roster shape, whenever a K or DEF
+// slot exists in the roster at all. Distinct from BENCH_FLOOR_DOLLARS
+// only in that it's a separate constant for clarity at the call site —
+// both happen to be $1 today, but K/DEF's floor is a deliberate
+// pricing-philosophy choice (kickers/defenses are low-signal, late-
+// round streamers per the app's own Oracle copy — see Pre-Deployment
+// Checklist #107/#101) rather than the bench-floor mechanism's "last
+// few roster spots are barely worth budgeting for" rationale. Kept as
+// its own named constant so a future change to one doesn't silently
+// also change the other.
+const KDEF_FLOOR_DOLLARS = 1;
+
+// The fixed list of slots eligible to receive K/DEF-floor leftover,
+// per Pat's explicit instruction ("RB and WR only," not TE). Order
+// doesn't matter for the proportional-split math below, but kept in
+// roster-shape order (RB1, RB2, WR1, WR2) for readability.
+const KDEF_LEFTOVER_TARGET_SLOTS = [
+  { pos: 'RB', slotIndex: 1 },
+  { pos: 'RB', slotIndex: 2 },
+  { pos: 'WR', slotIndex: 1 },
+  { pos: 'WR', slotIndex: 2 },
+];
 
 // Superflex QB override — ONLY applies when 2-QB/Superflex is selected.
 // Fixed totals, not derived from the baseline table at all: QB as a
@@ -1149,8 +1227,8 @@ function buildRawSlotsForRoster(strategy, roster) {
   }
 
   // FLEX: per the locked rule, only the FIRST flex slot gets the
-  // baseline's fresh 7% here. Additional flex slots are funded later
-  // via the roll-up pool, not a duplicate 7% each — so they're added
+  // baseline's fresh 7%/9% here. Additional flex slots are funded later
+  // via the roll-up pool, not a duplicate amount each — so they're added
   // here as $0-pct placeholders for applyRollUp() to fill in.
   for (let i = 1; i <= (roster.FLEX || 0); i++) {
     if (i === 1) {
@@ -1164,6 +1242,11 @@ function buildRawSlotsForRoster(strategy, roster) {
   // their baseline % becomes leftover for applyRollUp() to redistribute
   // — achieved simply by never pushing a slot for them at all, and
   // tracking the freed percentage separately (see buildSlotTable).
+  // NOTE: this is the MISSING-slot case (roster.K === 0), still handled
+  // exactly as before via computeMissingSlotLeftoverPct()/
+  // FAVORED_POSITIONS. The K/DEF-FLOOR case (the slot exists but is
+  // priced at a flat $1) is a SEPARATE pass — applyKDefFloorAndRedistribute()
+  // — that runs later for whichever K/DEF slots DO get pushed here.
   if (roster.K && roster.K > 0) {
     for (let i = 1; i <= roster.K; i++) {
       slots.push({ pos: 'K', slotIndex: i, pct: { ...BASELINE_SLOTS[7].pct } });
@@ -1192,6 +1275,10 @@ function buildRawSlotsForRoster(strategy, roster) {
 // excluded from the roster (roster.K === 0 or roster.DEF === 0), using
 // the BASELINE rates for whichever strategy is active — this is the
 // leftover pool that rolls into the favored position(s).
+// UNCHANGED — still the MISSING-slot case only (no K/DEF slot at all
+// in this league's roster). See applyKDefFloorAndRedistribute() for
+// the separate, new floor-case leftover, which applies whenever K/DEF
+// DO exist in the roster.
 function computeMissingSlotLeftoverPct(strategy, roster) {
   let leftover = 0;
   if (!roster.K || roster.K === 0) leftover += BASELINE_SLOTS[7].pct[strategy];
@@ -1223,6 +1310,23 @@ function markBenchFloorSlots(slots) {
   });
 }
 
+// K/DEF FLOOR (added 2026-06-28, session 2) — mirrors markBenchFloorSlots'
+// job, but for K/DEF: flags any K or DEF slot that exists in this
+// roster as floored, so the dollar-conversion step (dollarsForSlots)
+// later gives it a flat KDEF_FLOOR_DOLLARS regardless of its computed
+// pct. Separate function (not folded into markBenchFloorSlots) since
+// K/DEF floor applies unconditionally whenever the slot exists at all
+// — there's no "last N of however many" counting logic needed here,
+// unlike bench's "last 4 of however many bench slots exist" rule.
+function markKDefFloorSlots(slots) {
+  return slots.map(s => {
+    if (s.pos === 'K' || s.pos === 'DEF') {
+      return { ...s, isKDefFloor: true };
+    }
+    return s;
+  });
+}
+
 // Distributes a leftover percentage into the strategy's favored
 // position(s), per FAVORED_POSITIONS. Mutates a working copy and
 // returns it. If a favored position has multiple slots (e.g. RB1+RB2
@@ -1232,6 +1336,12 @@ function markBenchFloorSlots(slots) {
 // splitting evenly within a position is the only construction
 // consistent with every other "split evenly" rule already locked in
 // (Balanced's RB/WR split, the FLEX/bench-floor leftover split).
+//
+// UNCHANGED by the K/DEF-floor work — still used for MISSING-slot
+// leftover and BENCH-floor leftover only, exactly as before. K/DEF-
+// FLOOR leftover (the new behavior) uses distributeKDefLeftoverProportionally()
+// below instead, since that leftover always targets a fixed RB1/RB2/
+// WR1/WR2 list rather than each strategy's own favored position(s).
 function distributeLeftoverToFavoredPositions(slots, strategy, leftoverPct) {
   if (leftoverPct <= 0) return slots;
   const favored = FAVORED_POSITIONS[strategy];
@@ -1242,6 +1352,102 @@ function distributeLeftoverToFavoredPositions(slots, strategy, leftoverPct) {
     const perSlot = (leftoverPct * share) / matchingSlots.length;
     matchingSlots.forEach(s => { s.pct[strategy] += perSlot; });
   });
+  return result;
+}
+
+// K/DEF LEFTOVER, PROPORTIONAL TO RB1/RB2/WR1/WR2 (added 2026-06-28,
+// session 2). Per Pat's explicit instruction: K/DEF-floor leftover
+// goes ONLY to RB1, RB2, WR1, WR2 (never TE, never other positions),
+// and each of those four slots' SHARE of the leftover is proportional
+// to that slot's OWN current percentage in this column — i.e. a slot
+// that's already a bigger piece of the budget gets a proportionally
+// bigger piece of the leftover too, not an equal split and not "all to
+// one favored position." This mirrors how resolveBenchFloorLeftover
+// computes its own leftover amount (table-rate minus floored-dollar-
+// equivalent), but distributes across a FIXED slot list instead of
+// FAVORED_POSITIONS, since FAVORED_POSITIONS doesn't have a sensible
+// "RB and WR specifically, every strategy" entry — most strategies'
+// favored position is a single position (QB Heavy -> QB, RB Heavy ->
+// RB only, etc.), which would silently exclude WR (or RB) entirely.
+//
+// totalLeftoverPct: the combined % freed up by flooring whichever K/
+// DEF slots exist in this roster (computed by the caller, since "how
+// much leftover" depends on how many K/DEF slots there are and what
+// the floor-dollar-to-% conversion looks like for THIS league's
+// budget — see resolveKDefFloorLeftover below for that calculation).
+function distributeKDefLeftoverProportionally(slots, strategy, totalLeftoverPct) {
+  if (totalLeftoverPct <= 0) return slots;
+  const result = cloneSlots(slots);
+  const targets = KDEF_LEFTOVER_TARGET_SLOTS
+    .map(t => result.find(s => s.pos === t.pos && s.slotIndex === t.slotIndex))
+    .filter(Boolean); // a slot might not exist for this roster (e.g. roster.RB === 1, no RB2) — skip silently rather than throw
+
+  const targetsTotalPct = targets.reduce((a, s) => a + s.pct[strategy], 0);
+  if (targetsTotalPct <= 0 || !targets.length) return result; // nothing to be proportional TO — leave leftover undistributed rather than divide by zero
+
+  targets.forEach(s => {
+    const share = s.pct[strategy] / targetsTotalPct;
+    s.pct[strategy] += totalLeftoverPct * share;
+  });
+  return result;
+}
+
+// Computes the % leftover freed up by flooring this roster's K/DEF
+// slots to KDEF_FLOOR_DOLLARS, mirroring resolveBenchFloorLeftover's
+// own "table rate minus floored-dollar-equivalent" math, but scoped to
+// K/DEF specifically and returning ONLY the leftover percentage (the
+// slot-mutation side — setting each K/DEF slot's own pct down to just
+// enough to cover its $1 floor — is handled separately at dollar-
+// conversion time in dollarsForSlots, same convention as bench floor:
+// the slot's pct field is bookkeeping for leftover math, not the real
+// final price once isKDefFloor/isBenchFloor is set).
+//
+// budgetPerTeam: ONE team's budget (e.g. $200) — same convention as
+// every other dollar-conversion helper in this file; see
+// resolveBenchFloorLeftover's header comment for why this engine never
+// multiplies by numTeams.
+function computeKDefFloorLeftoverPct(slots, strategy, budgetPerTeam) {
+  const kDefSlots = slots.filter(s => s.pos === 'K' || s.pos === 'DEF');
+  const floorPctAsDollarShare = KDEF_FLOOR_DOLLARS / budgetPerTeam;
+  let totalLeftover = 0;
+  kDefSlots.forEach(s => {
+    const originalPct = s.pct[strategy];
+    // Same negative-leftover guard as resolveBenchFloorLeftover: in a
+    // pathological tiny-budget league, the $1 floor could cost MORE
+    // than the table's original %, which would mean a negative
+    // leftover (taking money away from RB/WR to afford the floor) —
+    // clamped to 0 rather than allowed, since the floor is a minimum
+    // spend, not a forced reallocation in that edge case.
+    const leftover = Math.max(0, originalPct - floorPctAsDollarShare);
+    totalLeftover += leftover;
+  });
+  return totalLeftover;
+}
+
+// Full K/DEF-floor pass: marks K/DEF slots as floored, computes the
+// leftover their flooring frees up, sets each K/DEF slot's own pct
+// down to just enough to cover its $1 floor (so it doesn't ALSO keep
+// its original higher pct once isKDefFloor takes over at dollar-
+// conversion time — same "shrink the floored slot's own pct to the
+// floor-equivalent, bank the difference as leftover" pattern bench-
+// floor already uses), then distributes that leftover proportionally
+// across RB1/RB2/WR1/WR2. Returns the fully-resolved slots, ready for
+// whatever comes next in the pipeline (Superflex override, etc.).
+function applyKDefFloorAndRedistribute(slots, strategy, budgetPerTeam) {
+  let result = markKDefFloorSlots(slots);
+  const leftoverPct = computeKDefFloorLeftoverPct(result, strategy, budgetPerTeam);
+
+  const floorPctAsDollarShare = KDEF_FLOOR_DOLLARS / budgetPerTeam;
+  result = result.map(s => {
+    if (s.isKDefFloor) {
+      const newPct = { ...s.pct };
+      newPct[strategy] = floorPctAsDollarShare;
+      return { ...s, pct: newPct };
+    }
+    return s;
+  });
+
+  result = distributeKDefLeftoverProportionally(result, strategy, leftoverPct);
   return result;
 }
 
@@ -1333,18 +1539,24 @@ function resolveBenchFloorLeftover(slots, strategy, budgetPerTeam) {
 }
 
 // Full pipeline: baseline -> roster shape -> missing-slot leftover ->
-// bench-floor leftover -> Superflex override (if applicable) -> all
-// leftover rolled into favored position(s). Returns final resolved
-// slots with pct[strategy] ready for dollar conversion.
+// bench-floor leftover -> K/DEF-floor leftover -> Superflex override
+// (if applicable) -> all leftover rolled into favored position(s) or,
+// for K/DEF-floor leftover specifically, into RB1/RB2/WR1/WR2
+// proportionally. Returns final resolved slots with pct[strategy]
+// ready for dollar conversion.
 //
 // budgetPerTeam is ONE team's budget (e.g. $200) — see
 // resolveBenchFloorLeftover's comment above for why this engine never
-// multiplies by numTeams anywhere. Order matters: Superflex is applied
-// LAST, after all other leftover has already rolled into RB/WR/etc.,
-// because Superflex's own RB/WR shrink needs to act on the FINAL
-// post-rollup RB/WR totals, not the raw baseline ones — otherwise
-// Superflex could shrink RB/WR below zero in a roster that was already
-// lean on K/DEF leftover stacking on top of the Superflex shrink.
+// multiplies by numTeams anywhere. Order matters: K/DEF-floor is
+// applied AFTER missing-slot and bench-floor leftover have already
+// rolled in (so K/DEF's own leftover calculation reflects the final,
+// already-adjusted RB/WR percentages, not the raw baseline ones), and
+// Superflex is applied LAST of all, after every other leftover pass,
+// for the same reason it was already last before this session's
+// changes — Superflex's RB/WR shrink needs to act on the FINAL
+// post-rollup RB/WR totals, otherwise it could shrink RB/WR below zero
+// in a roster that was already lean on leftover stacking on top of the
+// Superflex shrink.
 function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
   let slots = buildRawSlotsForRoster(strategy, roster);
   slots = markBenchFloorSlots(slots);
@@ -1367,6 +1579,16 @@ function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
   const totalLeftover = missingSlotLeftover + benchLeftover;
   slots = distributeLeftoverToFavoredPositions(slots, strategy, totalLeftover);
 
+  // K/DEF FLOOR PASS (added 2026-06-28, session 2) — applies whenever
+  // this roster actually has K and/or DEF slots (the missing-slot case
+  // above already handled leagues with NO K/DEF at all; this handles
+  // leagues that DO have them, flooring each to $1 and routing the
+  // freed-up money to RB1/RB2/WR1/WR2 proportionally). Placed after
+  // missing-slot/bench-floor leftover has already rolled in, so this
+  // pass's own leftover calculation reflects the truly-final RB/WR
+  // percentages before Superflex (if any) runs next.
+  slots = applyKDefFloorAndRedistribute(slots, strategy, budgetPerTeam);
+
   if (isSuperflex) {
     slots = applySuperflexOverride(slots, strategy);
   }
@@ -1384,6 +1606,13 @@ function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
 // budget — dollarsForSlots' remainder-distribution step corrects that
 // drift back to an exact total, same safety net the old per-player
 // engine already relied on.
+//
+// K/DEF-floor and bench-floor slots are NEVER varied (same as before
+// this session's changes for bench; now also true for K/DEF) — both
+// floor types sit at or below the 10% threshold by construction (a
+// $1-equivalent % of any realistic budget is far under 10%), so this
+// function's existing threshold check already excludes them without
+// needing a new explicit isKDefFloor/isBenchFloor check here.
 function applyVariation(slots, strategy, rng = Math.random) {
   const VARIATION_THRESHOLD_PCT = 0.10;
   const MIN_VARIATION = 0.01;
@@ -1407,18 +1636,23 @@ function applyVariation(slots, strategy, rng = Math.random) {
 // Converts final resolved (and possibly varied) percentages into actual
 // dollar amounts FOR ONE TEAM'S BUDGET (budgetPerTeam — e.g. $200, NOT
 // numTeams * budget; see buildFinalSlotTable's comment above for why
-// this engine never pools across teams). Bench-floor slots get a hard
-// $1 regardless of their computed pct (the pct was only ever a
-// bookkeeping placeholder for leftover calculation, never the real
-// price for that slot). All other slots get round(pct * budgetPerTeam).
-// Remainder is distributed across non-floored slots (largest first) to
-// land on the EXACT per-team budget — same convention as the original
-// per-player engine's remainder-distribution step, just scoped to one
-// team's budget instead of the league-wide pool.
+// this engine never pools across teams). Bench-floor AND K/DEF-floor
+// slots both get a hard $1 regardless of their computed pct (the pct
+// was only ever a bookkeeping placeholder for leftover calculation,
+// never the real price for either floor type). All other slots get
+// round(pct * budgetPerTeam). Remainder is distributed across non-
+// floored slots (largest first) to land on the EXACT per-team budget —
+// same convention as the original per-player engine's remainder-
+// distribution step, just scoped to one team's budget instead of the
+// league-wide pool, and now excluding BOTH floor types from receiving
+// remainder adjustment (previously only bench-floor was excluded).
 function dollarsForSlots(slots, strategy, budgetPerTeam) {
   const priced = slots.map(s => {
     if (s.isBenchFloor) {
       return { ...s, dollars: BENCH_FLOOR_DOLLARS };
+    }
+    if (s.isKDefFloor) {
+      return { ...s, dollars: KDEF_FLOOR_DOLLARS };
     }
     return { ...s, dollars: Math.max(1, Math.round(s.pct[strategy] * budgetPerTeam)) };
   });
@@ -1427,8 +1661,8 @@ function dollarsForSlots(slots, strategy, budgetPerTeam) {
   let diff = budgetPerTeam - currentTotal;
   if (diff === 0) return priced;
 
-  const adjustable = priced.filter(s => !s.isBenchFloor).sort((a, b) => b.dollars - a.dollars);
-  if (!adjustable.length) return priced; // nothing adjustable (pathological all-bench-floor case) — leave as-is
+  const adjustable = priced.filter(s => !s.isBenchFloor && !s.isKDefFloor).sort((a, b) => b.dollars - a.dollars);
+  if (!adjustable.length) return priced; // nothing adjustable (pathological all-floor case) — leave as-is
 
   const step = diff > 0 ? 1 : -1;
   let remaining = Math.abs(diff);
@@ -1475,6 +1709,16 @@ function dollarsForSlots(slots, strategy, budgetPerTeam) {
 // defensible single fixed stand-in available for "what a real room of
 // many different individual strategies collectively does," without
 // actually simulating 11 other managers individually.
+//
+// NOTE (session 2): the K/DEF flat-$1-floor change above also applies
+// to the 'balanced' column buildPlayerPriceLookup() anchors to here —
+// K and DEF curves stay excluded from CURVE_POSITIONS regardless (see
+// below), so this mapper's K/DEF pricing was already using
+// userPricedSlots' flat per-slot $ directly rather than a curve; that
+// flat $ is now KDEF_FLOOR_DOLLARS ($1) instead of the old ~1%-of-
+// budget amount, which is the intended, correct outcome of this
+// session's change flowing through automatically — no separate edit
+// needed in this mapper itself.
 //
 // CURVE SHAPE: waypoint interpolation (exponential/geometric decay
 // between known points), NOT a single global power-law scale — the
@@ -1634,7 +1878,11 @@ function buildAllPositionCurves(numTeams, roster, balancedPricedSlots) {
 // excluded from curve treatment entirely and were never part of the
 // "shouldn't move with strategy" problem — their flat price already
 // matches Step 4's sheet 1:1, which is correct, desired behavior for
-// them specifically.
+// them specifically. As of this session, that flat price is
+// KDEF_FLOOR_DOLLARS ($1) for every strategy, so K/DEF now show
+// identically here regardless of which strategy the user picked —
+// which is consistent with the rest of this asymmetry note, just at a
+// fixed value now instead of a strategy-varying one.
 function priceForPlayer(position, positionRank, numTeams, roster, userPricedSlots, curves) {
   if (!CURVE_POSITIONS.includes(position)) {
     const startingSlotCount = roster[position] || 0;
@@ -1989,16 +2237,16 @@ function renderTPS(pricedSlots, stratKey) {
     slotsForPos.forEach(function(s){
       var slotLabel = slotsForPos.length > 1 ? (SLOT_POS_LABELS[pos] + ' ' + s.slotIndex) : SLOT_POS_LABELS[pos];
       var row = document.createElement('div');
-      row.className = 'tps-slot-row' + (s.isBenchFloor ? ' floor' : '');
+      row.className = 'tps-slot-row' + ((s.isBenchFloor || s.isKDefFloor) ? ' floor' : '');
       row.dataset.pos = pos;
       row.dataset.slotIndex = s.slotIndex;
       row.innerHTML =
         '<span class="tps-slot-name">' + slotLabel + '</span>' +
-        (s.isBenchFloor ? '<span class="tps-slot-floor-note">min spend</span>' : '') +
+        ((s.isBenchFloor || s.isKDefFloor) ? '<span class="tps-slot-floor-note">min spend</span>' : '') +
         '<span class="tps-slot-price-wrap"><span class="tps-slot-price-dollar">$</span>' +
           '<input type="number" class="tps-slot-price-input" value="' + s.dollars + '" min="1" ' +
           'data-pos="' + pos + '" data-slot-index="' + s.slotIndex + '" oninput="updateTpsTotal()"' +
-          (s.isBenchFloor ? ' title="Minimum bench spend — adjustable, but kept low by design"' : '') + '/></span>';
+          ((s.isBenchFloor || s.isKDefFloor) ? ' title="Minimum spend — adjustable, but kept low by design"' : '') + '/></span>';
       list.appendChild(row);
     });
     section.appendChild(list);
