@@ -152,28 +152,32 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tps-section-pos{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
 .tps-section-pos.QB{background:#1565c0}.tps-section-pos.RB{background:#2e7d32}.tps-section-pos.WR{background:#b8921a}
 .tps-section-pos.TE{background:#c8780a}.tps-section-pos.K{background:#7a7a76}.tps-section-pos.DEF{background:#8a2020}
+.tps-section-pos.FLEX{background:#6a1b9a}.tps-section-pos.BENCH{background:#7a7a76}
 .tps-section-title{font-family:'Cinzel',serif;font-size:13px;color:var(--ink)}
 .tps-section-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-left:auto}
-.tps-player-list{display:flex;flex-direction:column}
-.tps-player-row{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background 0.15s}
-.tps-player-row:last-child{border-bottom:none}
-.tps-player-row:hover{background:#f8f6f0}
-.tps-player-row.targeted{background:rgba(184,146,26,0.06)}
-.tps-target-check{font-size:16px;color:var(--gold);cursor:pointer;width:20px;flex-shrink:0;text-align:center;user-select:none;transition:transform 0.1s}
-.tps-target-check:hover{transform:scale(1.2)}
-.tps-player-rank{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:24px;flex-shrink:0}
-.tps-player-name{flex:1;font-size:13px;color:var(--ink)}
-.tps-player-team{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:36px;flex-shrink:0}
-.tps-player-adp{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);width:52px;flex-shrink:0;text-align:right}
-.tps-player-price-wrap{display:flex;align-items:center;gap:2px;width:64px;flex-shrink:0;justify-content:flex-end}
-.tps-player-price-dollar{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--gold)}
-.tps-player-price-input{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--gold);background:transparent;border:none;border-bottom:1px solid rgba(184,146,26,0.25);width:42px;padding:1px 0;cursor:text;transition:border-color 0.2s;text-align:right;-moz-appearance:textfield}
-.tps-player-price-input::-webkit-outer-spin-button,.tps-player-price-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.tps-player-price-input:focus{outline:none;border-bottom-color:var(--gold)}
-.tps-bench-row{padding:14px 16px;background:var(--surface);display:flex;align-items:center;gap:12px}
-.tps-bench-label{font-size:13px;color:var(--muted);flex:1}
-.tps-bench-price-input{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:1px solid rgba(122,122,118,0.25);width:60px;padding:1px 0;text-align:right}
-.tps-bench-price-input:focus{outline:none;border-bottom-color:var(--gold)}
+
+/* SLOT ROWS (v2 — replaces the old per-player tps-player-* rows above).
+   No star/target-check column (every slot counts, nothing to toggle),
+   no ADP/team columns (no player identity on this sheet at all) — just
+   a slot label and an editable $ amount. Bench-floor slots (the last 4
+   bench rows, always a flat $1) get a small ".floor" visual treatment
+   and a "min spend" tag, so it's clear at a glance why those few rows
+   look different from the rest of the sheet rather than looking like
+   an error. */
+.tps-slot-list{display:flex;flex-direction:column}
+.tps-slot-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background 0.15s}
+.tps-slot-row:last-child{border-bottom:none}
+.tps-slot-row:hover{background:#f8f6f0}
+.tps-slot-row.floor{background:rgba(122,122,118,0.04)}
+.tps-slot-name{flex:1;font-size:14px;color:var(--ink);font-family:'Cinzel',serif}
+.tps-slot-floor-note{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 7px;flex-shrink:0}
+.tps-slot-price-wrap{display:flex;align-items:center;gap:2px;width:72px;flex-shrink:0;justify-content:flex-end}
+.tps-slot-price-dollar{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--gold)}
+.tps-slot-price-input{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--gold);background:transparent;border:none;border-bottom:1px solid rgba(184,146,26,0.25);width:52px;padding:1px 0;cursor:text;transition:border-color 0.2s;text-align:right;-moz-appearance:textfield}
+.tps-slot-price-input::-webkit-outer-spin-button,.tps-slot-price-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tps-slot-price-input:focus{outline:none;border-bottom-color:var(--gold)}
+.tps-slot-row.floor .tps-slot-price-input{color:var(--dim);border-bottom-color:rgba(122,122,118,0.25)}
+.tps-slot-row.floor .tps-slot-price-dollar{color:var(--dim)}
 
 .tps-edit-note{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6}
 .tps-edit-note strong{color:var(--gold)}
@@ -243,8 +247,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 @media print{
   .hdr,.steps,.btn-row,.pick-entry,.no-print,.trash-box,.adp-status-bar{display:none!important}
   body{background:#fff;color:#111}
-  .tps-player-row{background:#f9f9f9;border:1px solid #ddd}
-  .tps-player-price-input{color:#000;border-bottom:none;font-size:15px}
+  .tps-slot-row{background:#f9f9f9;border:1px solid #ddd}
+  .tps-slot-price-input{color:#000;border-bottom:none;font-size:15px}
   .tps-total-val{color:#000!important}
   .tps-budget-status{color:#000!important}
   .panel-title{color:#111}
@@ -277,7 +281,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   .pick-grid{grid-template-columns:1fr 1fr}
   .hdr{padding:14px 16px}
   .panel{padding:20px 16px}
-  .tps-player-adp{display:none}
 }
 
 /* ── ACOLYTE ACCESS GATE (added) ── */
@@ -780,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function () {
     </button>
     <div class="help-body" id="helpBody">
       <div class="help-section-title">What these numbers mean</div>
-      <div class="help-rule"><span>📌</span><span>Every player shown is priced individually based on <strong>real, live ADP data</strong> — not a generic position slot. The price is your <strong>maximum recommended spend</strong> for that specific player.</span></div>
+      <div class="help-rule"><span>📌</span><span>Every number is a <strong>roster slot target</strong> — "RB1," "WR2," "Bench 3" — not a named player. Pair this sheet with the <strong>Oracle Tier List</strong> to know which players to actually target at each price.</span></div>
       <div class="help-rule"><span>⚖️</span><span>The numbers are calculated so your <strong>total always equals your exact budget</strong> — not a penny over.</span></div>
       <div class="help-rule"><span>✏️</span><span><strong>Click any price to customize it.</strong> The budget tracker updates live so you always know where you stand.</span></div>
       <div class="help-rule"><span>📊</span><span>They reflect where the market <strong>should</strong> price players — not where it <strong>will</strong>. The draft decides that.</span></div>
@@ -809,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 
   <div class="tps-edit-note no-print">
-    ⭐ <strong>Click the star next to any player to mark them as one of your actual targets.</strong> Every player on this sheet is priced using real market ADP — but the budget tracker below only counts players you've starred (plus your bench share), so it reflects <em>your</em> plan against <em>your</em> cap, not the full league's worth of players. We've pre-starred a starting set based on your roster — adjust freely. Click any price to override it.
+    💰 <strong>Each row is a roster slot, not a player.</strong> Your total always lands exactly on budget by design — adjust any price if your own read of the market differs, and the total above updates live. Pair this sheet with the <strong>Oracle Tier List</strong> to know which players to actually target at each slot's price.
   </div>
 
   <div id="tpsGroups"></div>
@@ -928,10 +931,8 @@ var state = {
   teamNames: [],
   roster: { QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6 },
   strategy: null,
-  targetPrices: {},      // flat name -> price map, built fresh each generateTPS() call
-  playerPriceList: [],   // flat array of {name,pos,team,adp,price} for autocomplete lookups
-  targetedPlayers: {},   // name -> true for players the user has marked as their actual plan
-  myBenchShare: 0,
+  pricedSlots: [],        // current slot table from the engine: [{pos,slotIndex,dollars,isBenchFloor}, ...]
+  playerPriceLookup: {},  // lowercase player name -> $ , built by buildPlayerPriceLookup() for Step 5's search
   draftLog: []
 };
 
@@ -948,9 +949,16 @@ var POS_LABELS = {QB:'Quarterbacks', RB:'Running Backs', WR:'Wide Receivers', TE
 
 // ═══════════════════════════════════════════════════════════
 // STRATEGY DATA — advice/commentary text unchanged from before.
-// Pricing now comes from POSITION_SPLITS below, not these splits objects,
-// but the splits objects are kept here for the trash-talk/advice key
-// lookups elsewhere in the file (unchanged behavior).
+// Pricing now comes from the slot-based engine above (BASELINE_SLOTS),
+// keyed by strategy — these objects exist purely for the Oracle/Trash
+// Lord advice text lookups elsewhere in the file (unchanged behavior).
+// NOTE: this page's strategy keys (rb/wr/qb/hero/custom) are mapped to
+// the engine's strategy keys (rb/wr/qb/hero/balanced) at the call site
+// in generateTPS() — 'custom' here means 'balanced' to the engine; kept
+// as two different words on purpose since "Custom" is the user-facing
+// label/intent (a deliberately even, no-strong-lean allocation) while
+// "balanced" is just the engine's internal column name for that same
+// percentage set.
 // ═══════════════════════════════════════════════════════════
 var STRATEGIES = {
   rb:     {name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie."},
@@ -961,37 +969,18 @@ var STRATEGIES = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// POSITION-LEVEL BUDGET SPLITS (added — replaces old slot-based %s)
-// Each strategy's percentages sum to exactly 1.0 across all positions
-// including BENCH. Tested in isolation before being wired in here.
-// Superflex applies SUPERFLEX_BUMP as a multiplier then renormalizes,
-// so QB share increases while everything else shrinks proportionally
-// and the grand total still sums to 1.0.
-// ═══════════════════════════════════════════════════════════
-var POSITION_SPLITS = {
-  rb:     {QB:0.10, RB:0.42, WR:0.27, TE:0.10, DEF:0.02, K:0.02, BENCH:0.07},
-  wr:     {QB:0.10, RB:0.25, WR:0.42, TE:0.10, DEF:0.02, K:0.02, BENCH:0.09},
-  qb:     {QB:0.22, RB:0.30, WR:0.27, TE:0.09, DEF:0.02, K:0.02, BENCH:0.08},
-  hero:   {QB:0.10, RB:0.32, WR:0.35, TE:0.10, DEF:0.02, K:0.02, BENCH:0.09},
-  custom: {QB:0.13, RB:0.31, WR:0.31, TE:0.11, DEF:0.02, K:0.02, BENCH:0.10}
-};
-var SUPERFLEX_BUMP = {QB:3.3, RB:0.85, WR:0.85, TE:0.9, DEF:1, K:1, BENCH:0.9};
-
-function getPositionSplits(strategyKey, isSuperflex) {
-  var base = POSITION_SPLITS[strategyKey] || POSITION_SPLITS.custom;
-  if (!isSuperflex) return base;
-  var bumped = {};
-  var total = 0;
-  Object.keys(base).forEach(function(pos){
-    bumped[pos] = base[pos] * (SUPERFLEX_BUMP[pos] || 1);
-    total += bumped[pos];
-  });
-  Object.keys(bumped).forEach(function(pos){ bumped[pos] = bumped[pos] / total; });
-  return bumped;
-}
-
-// ═══════════════════════════════════════════════════════════
 // LIVE ADP FETCH (added — same Netlify proxy draft.html/tiers.html use)
+//
+// RESTORED 2026-06-28: this function and updateAdpStatusBar() below it
+// were accidentally deleted during the slot-engine rebuild — they were
+// adjacent to the old per-player pricing engine that WAS meant to be
+// removed, but they are NOT part of that engine; they're the live-ADP
+// data fetch the new engine's player-to-slot mapper still depends on
+// (see buildPlayerPriceLookup's call site in generateTPS() below).
+// Caught via direct end-to-end testing of the integrated page script,
+// not just the standalone engine modules — a reminder that testing
+// the pieces in isolation doesn't catch an accidental deletion at the
+// integration boundary.
 // ═══════════════════════════════════════════════════════════
 var liveAdpByPos = null; // null until fetched; { QB:[{name,team,adp}], RB:[...], ... }
 
@@ -1028,84 +1017,551 @@ function updateAdpStatusBar(usingFallback) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// PRICING ENGINE (added — tested in isolation before integration)
-// Converts a sorted-by-ADP player list into individual dollar prices
-// using a diminishing-returns curve, scaled to an exact dollar total.
+// SLOT-BASED TARGET PRICE ENGINE (v2 — rebuilt 2026-06-28)
+//
+// REPLACES the individual-player-pricing engine that lived here before
+// (POSITION_SPLITS/SUPERFLEX_BUMP/getPositionSplits/rankToValue/
+// priceTopPlayersAtPosition/distributeRemainderExactly/
+// computePoolSizes/generatePriceSheet — all removed). Per Pat's
+// explicit product direction: the Target Price Sheet now shows dollar
+// targets per ROSTER SLOT (e.g. "RB1: $59"), never per named player.
+// Player identification happens on the separate Tier List instead;
+// this page's Step 5 search still needs a per-PLAYER $ reference
+// though (so e.g. Bijan Robinson shows a sane number, not a deflated
+// generic average) — that's what priceForPlayer()/
+// buildPlayerPriceLookup() near the bottom of this block are for; they
+// map a player's ADP rank within their position to the slot price
+// that rank corresponds to, scaled to league size.
+//
+// STRATEGY KEY MAPPING (locked 2026-06-28): this page's 5 strategy
+// cards (RB Heavy/WR Heavy/QB Heavy/Hero RB/Custom) stay EXACTLY as
+// they already are on the page — Pat explicitly did not want the
+// strategy selection UI changed. They map to this engine's strategy
+// keys as: rb→RB Heavy, wr→WR Heavy, qb→QB Heavy, hero→Hero RB,
+// balanced→Custom. Hero RB needed a brand-new column (not one of
+// Pat's original 5 percentage-table columns) since its real mechanics
+// — one elite RB1 anchor, deliberately light RB2, heavier WR pivot —
+// don't match RB Heavy (loads BOTH RB slots) or Balanced (even
+// spread). Pat specified Hero RB's exact percentages directly.
 // ═══════════════════════════════════════════════════════════
-function rankToValue(rank, poolSize) {
-  var x = poolSize - rank + 1;
-  return Math.pow(x, 1.15);
+const BASELINE_SLOTS = [
+  // { pos, slotIndex } — slotIndex distinguishes RB1 vs RB2, etc.
+  // percents keyed by strategy: rb, wr, qb, te, balanced, hero
+  //
+  // 'hero' (Hero RB) added 2026-06-28 — NOT one of Pat's original 5
+  // table columns. Hero RB is mechanically distinct from RB Heavy: one
+  // elite RB1 anchor (heavy spend) then a deliberate pivot to WR,
+  // rather than RB Heavy's "load up on BOTH RB slots" approach — so it
+  // doesn't fit cleanly into any of the original 5 columns. Pat
+  // specified these exact percentages directly (confirmed summing to
+  // 100%): QB 6%, RB1 30%, RB2 10%, WR1 18%, WR2 11%, TE 5%, Flex 6%,
+  // K 1%, D 1%, Bench 4/3/2/1/1/1%. This preserves the existing
+  // 5-strategy-card UI (RB Heavy/WR Heavy/QB Heavy/Hero RB/Custom)
+  // exactly as it already exists on the page, per Pat's explicit
+  // instruction not to change the strategy selection UI — Hero RB and
+  // Custom both needed real backing columns rather than being silently
+  // dropped or reusing an existing column that didn't match.
+  { pos: 'QB', slotIndex: 1, pct: { rb: 0.02, wr: 0.02, qb: 0.12, te: 0.03, balanced: 0.06, hero: 0.06 } },
+  { pos: 'RB', slotIndex: 1, pct: { rb: 0.28, wr: 0.16, qb: 0.20, te: 0.20, balanced: 0.22, hero: 0.30 } },
+  { pos: 'RB', slotIndex: 2, pct: { rb: 0.22, wr: 0.06, qb: 0.14, te: 0.12, balanced: 0.12, hero: 0.10 } },
+  { pos: 'WR', slotIndex: 1, pct: { rb: 0.14, wr: 0.26, qb: 0.16, te: 0.15, balanced: 0.19, hero: 0.18 } },
+  { pos: 'WR', slotIndex: 2, pct: { rb: 0.08, wr: 0.24, qb: 0.12, te: 0.13, balanced: 0.12, hero: 0.11 } },
+  { pos: 'TE', slotIndex: 1, pct: { rb: 0.03, wr: 0.03, qb: 0.03, te: 0.14, balanced: 0.06, hero: 0.05 } },
+  { pos: 'FLEX', slotIndex: 1, pct: { rb: 0.07, wr: 0.07, qb: 0.07, te: 0.07, balanced: 0.07, hero: 0.06 } },
+  { pos: 'K', slotIndex: 1, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
+  { pos: 'DEF', slotIndex: 1, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
+  { pos: 'BENCH', slotIndex: 1, pct: { rb: 0.05, wr: 0.05, qb: 0.05, te: 0.05, balanced: 0.05, hero: 0.04 } },
+  { pos: 'BENCH', slotIndex: 2, pct: { rb: 0.04, wr: 0.04, qb: 0.04, te: 0.04, balanced: 0.04, hero: 0.03 } },
+  { pos: 'BENCH', slotIndex: 3, pct: { rb: 0.02, wr: 0.02, qb: 0.02, te: 0.02, balanced: 0.02, hero: 0.02 } },
+  { pos: 'BENCH', slotIndex: 4, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
+  { pos: 'BENCH', slotIndex: 5, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
+  { pos: 'BENCH', slotIndex: 6, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
+];
+
+// Strategy key -> which position(s) absorb roll-up/leftover money.
+// Balanced splits evenly between RB and WR (Pat's explicit call) — all
+// single-position strategies send 100% of roll-up to their one position.
+const FAVORED_POSITIONS = {
+  rb: [{ pos: 'RB', share: 1.0 }],
+  wr: [{ pos: 'WR', share: 1.0 }],
+  qb: [{ pos: 'QB', share: 1.0 }],
+  te: [{ pos: 'TE', share: 1.0 }],
+  balanced: [{ pos: 'RB', share: 0.5 }, { pos: 'WR', share: 0.5 }],
+  hero: [{ pos: 'RB', share: 0.5 }, { pos: 'WR', share: 0.5 }],
+};
+
+const BENCH_FLOOR_COUNT = 4; // last N bench slots are always flat $1, regardless of total bench count
+const BENCH_FLOOR_DOLLARS = 1;
+
+// Superflex QB override — ONLY applies when 2-QB/Superflex is selected.
+// Fixed totals, not derived from the baseline table at all: QB as a
+// whole position becomes 35% of total budget (22% QB1 / 13% QB2). The
+// gap between this fixed 35% and whatever QB's normal allocation would
+// have been is pulled proportionally from RB and WR (their relative
+// ratio to EACH OTHER is preserved — both just shrink together).
+const SUPERFLEX_QB_TOTAL_PCT = 0.35;
+const SUPERFLEX_QB1_PCT = 0.22;
+const SUPERFLEX_QB2_PCT = 0.13; // = SUPERFLEX_QB_TOTAL_PCT - SUPERFLEX_QB1_PCT
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function cloneSlots(slots) {
+  return slots.map(s => ({ ...s, pct: { ...s.pct } }));
 }
 
-function priceTopPlayersAtPosition(players, poolSize, totalDollarsForPosition) {
-  var pool = players.slice(0, Math.min(poolSize, players.length));
-  if (!pool.length) return [];
-  var rawValues = pool.map(function(p, i){ return rankToValue(i + 1, pool.length); });
-  var totalRaw = rawValues.reduce(function(a,v){ return a+v; }, 0);
-  return pool.map(function(p, i){
-    var share = totalRaw > 0 ? rawValues[i] / totalRaw : 0;
-    return {
-      name: p.name, team: p.team || 'FA', adp: p.adp,
-      price: Math.max(1, Math.round(share * totalDollarsForPosition))
-    };
-  });
+function sumPct(slots, strategy) {
+  return slots.reduce((a, s) => a + s.pct[strategy], 0);
 }
 
-// Distributes any rounding remainder so the grand total matches the
-// budget exactly — same guarantee the original slot-based sheet made.
-function distributeRemainderExactly(allPricedPlayers, benchTotal, targetTotal) {
-  var currentTotal = allPricedPlayers.reduce(function(a,p){return a+p.price;}, 0) + benchTotal;
-  var diff = targetTotal - currentTotal;
-  if (diff === 0 || !allPricedPlayers.length) return;
-  var sorted = allPricedPlayers.slice().sort(function(a,b){ return b.price - a.price; });
-  var step = diff > 0 ? 1 : -1;
-  var remaining = Math.abs(diff);
-  var i = 0;
-  while (remaining > 0) {
-    var target = sorted[i % sorted.length];
-    if (target.price + step >= 1) target.price += step;
-    i++;
-    remaining--;
-    if (i > 5000) break; // safety valve, should never trigger
+// Builds the starting point: baseline rows filtered/expanded to match
+// the league's actual roster (which positions exist, how many of each).
+// This does NOT yet apply bench-floor, roll-up, or Superflex — those
+// are separate, ordered passes below, each easier to test in isolation.
+function buildRawSlotsForRoster(strategy, roster) {
+  const slots = [];
+
+  // QB: always at least 1 (no league plays with zero QBs). Superflex's
+  // 2nd QB slot is handled entirely by applySuperflexOverride() later,
+  // NOT here — keeping this function strategy/format-agnostic for the
+  // baseline shape.
+  slots.push({ ...BASELINE_SLOTS[0] }); // QB1
+
+  // RB: use roster.RB count (1-4 typical), reusing baseline RB1/RB2 rows
+  // for the first two, and for any 3rd+ RB slot, reuse RB2's percentage
+  // (the baseline table only defines 2 RB rows — a 3rd RB starter is a
+  // genuine edge case, not explicitly specced, so it inherits RB2's
+  // rate rather than inventing a new number).
+  for (let i = 1; i <= (roster.RB || 0); i++) {
+    const base = i === 1 ? BASELINE_SLOTS[1] : BASELINE_SLOTS[2];
+    slots.push({ pos: 'RB', slotIndex: i, pct: { ...base.pct } });
   }
+
+  // WR: same pattern as RB.
+  for (let i = 1; i <= (roster.WR || 0); i++) {
+    const base = i === 1 ? BASELINE_SLOTS[3] : BASELINE_SLOTS[4];
+    slots.push({ pos: 'WR', slotIndex: i, pct: { ...base.pct } });
+  }
+
+  // TE: baseline only defines 1 TE row; additional TE starters (rare)
+  // reuse that same rate.
+  for (let i = 1; i <= (roster.TE || 0); i++) {
+    slots.push({ pos: 'TE', slotIndex: i, pct: { ...BASELINE_SLOTS[5].pct } });
+  }
+
+  // FLEX: per the locked rule, only the FIRST flex slot gets the
+  // baseline's fresh 7% here. Additional flex slots are funded later
+  // via the roll-up pool, not a duplicate 7% each — so they're added
+  // here as $0-pct placeholders for applyRollUp() to fill in.
+  for (let i = 1; i <= (roster.FLEX || 0); i++) {
+    if (i === 1) {
+      slots.push({ pos: 'FLEX', slotIndex: 1, pct: { ...BASELINE_SLOTS[6].pct } });
+    } else {
+      slots.push({ pos: 'FLEX', slotIndex: i, pct: { rb: 0, wr: 0, qb: 0, te: 0, balanced: 0, hero: 0 }, fundedByRollup: true });
+    }
+  }
+
+  // K / DEF: included only if the league actually uses them. If absent,
+  // their baseline % becomes leftover for applyRollUp() to redistribute
+  // — achieved simply by never pushing a slot for them at all, and
+  // tracking the freed percentage separately (see buildSlotTable).
+  if (roster.K && roster.K > 0) {
+    for (let i = 1; i <= roster.K; i++) {
+      slots.push({ pos: 'K', slotIndex: i, pct: { ...BASELINE_SLOTS[7].pct } });
+    }
+  }
+  if (roster.DEF && roster.DEF > 0) {
+    for (let i = 1; i <= roster.DEF; i++) {
+      slots.push({ pos: 'DEF', slotIndex: i, pct: { ...BASELINE_SLOTS[8].pct } });
+    }
+  }
+
+  // BENCH: up to 6 slots reuse the baseline's 6 defined rates in order;
+  // beyond 6, additional bench slots reuse row 6's rate (1%) as a
+  // starting point before the bench-floor pass converts the LAST 4
+  // overall to a flat $1 regardless of this starting percentage.
+  const benchCount = roster.BENCH || 0;
+  for (let i = 1; i <= benchCount; i++) {
+    const baseRow = BASELINE_SLOTS[8 + Math.min(i, 6)]; // rows 9..14 are bench rows 1..6 (0-indexed 9-14)
+    slots.push({ pos: 'BENCH', slotIndex: i, pct: { ...baseRow.pct } });
+  }
+
+  return slots;
 }
 
-// Pool size per position: how many rosterable players actually matter,
-// scaled to league size and roster construction. Pools are intentionally
-// generous (a few extra beyond strict starters) so the sheet covers
-// realistic handcuff/streaming/bench targets, not just locked-in starters.
-function computePoolSizes(numTeams, roster, isSuperflex) {
-  var qbSlots = roster.QB + (isSuperflex ? 1 : 0);
-  return {
-    QB:  Math.max(numTeams * qbSlots + 6, 12),
-    RB:  Math.max(numTeams * (roster.RB + 1) + 10, 20),
-    WR:  Math.max(numTeams * (roster.WR + 1) + 10, 20),
-    TE:  Math.max(Math.round(numTeams * (roster.TE + 0.4)) + 6, 10),
-    DEF: numTeams,
-    K:   numTeams
-  };
+// Computes how much percentage is "missing" because K and/or DEF were
+// excluded from the roster (roster.K === 0 or roster.DEF === 0), using
+// the BASELINE rates for whichever strategy is active — this is the
+// leftover pool that rolls into the favored position(s).
+function computeMissingSlotLeftoverPct(strategy, roster) {
+  let leftover = 0;
+  if (!roster.K || roster.K === 0) leftover += BASELINE_SLOTS[7].pct[strategy];
+  if (!roster.DEF || roster.DEF === 0) leftover += BASELINE_SLOTS[8].pct[strategy];
+  return leftover;
 }
 
-// Builds the full price sheet: returns {byPos: {QB:[...], RB:[...], ...}, benchTotal, grandTotal}
-function generatePriceSheet(adpByPos, numTeams, budget, strategyKey, isSuperflex, roster) {
-  var totalMarketBudget = numTeams * budget;
-  var splits = getPositionSplits(strategyKey, isSuperflex);
-  var poolSizes = computePoolSizes(numTeams, roster, isSuperflex);
+// Applies the bench floor: identifies the LAST 4 bench slots (by
+// count, however many bench slots actually exist) and floors them to a
+// fixed dollar amount later (not a percentage at this stage — bench
+// floor slots are flagged here, converted to actual $1 in the final
+// dollar-conversion step, since percentages alone can't represent "a
+// flat $1 regardless of total budget"). Returns the leftover PERCENTAGE
+// freed by flooring (i.e. what those slots' bench-table rate would have
+// been, minus what $1 actually represents as a % of the total pool) —
+// this is computed properly in buildSlotTable() once the total dollar
+// pool is known, since "$1 as a %" depends on league size and budget.
+function markBenchFloorSlots(slots) {
+  const benchSlots = slots.filter(s => s.pos === 'BENCH');
+  const floorCount = Math.min(BENCH_FLOOR_COUNT, benchSlots.length);
+  // Last N bench slots by slotIndex (descending) get floored.
+  const sortedDesc = [...benchSlots].sort((a, b) => b.slotIndex - a.slotIndex);
+  const floored = new Set(sortedDesc.slice(0, floorCount).map(s => s.slotIndex));
+  return slots.map(s => {
+    if (s.pos === 'BENCH' && floored.has(s.slotIndex)) {
+      return { ...s, isBenchFloor: true };
+    }
+    return s;
+  });
+}
 
-  var byPos = {};
-  var allPriced = [];
-  POS_ORDER.forEach(function(pos){
-    var dollars = totalMarketBudget * splits[pos];
-    var players = (adpByPos && adpByPos[pos]) ? adpByPos[pos] : [];
-    var priced = priceTopPlayersAtPosition(players, poolSizes[pos], dollars);
-    byPos[pos] = priced;
-    allPriced = allPriced.concat(priced);
+// Distributes a leftover percentage into the strategy's favored
+// position(s), per FAVORED_POSITIONS. Mutates a working copy and
+// returns it. If a favored position has multiple slots (e.g. RB1+RB2
+// both exist), the leftover for that position's share is split evenly
+// across that position's own slots — this wasn't explicitly specced
+// for the "more than one slot of the favored position" case, but
+// splitting evenly within a position is the only construction
+// consistent with every other "split evenly" rule already locked in
+// (Balanced's RB/WR split, the FLEX/bench-floor leftover split).
+function distributeLeftoverToFavoredPositions(slots, strategy, leftoverPct) {
+  if (leftoverPct <= 0) return slots;
+  const favored = FAVORED_POSITIONS[strategy];
+  const result = cloneSlots(slots);
+  favored.forEach(({ pos, share }) => {
+    const matchingSlots = result.filter(s => s.pos === pos);
+    if (!matchingSlots.length) return; // shouldn't happen given current roster shapes, but fail safe rather than throw
+    const perSlot = (leftoverPct * share) / matchingSlots.length;
+    matchingSlots.forEach(s => { s.pct[strategy] += perSlot; });
+  });
+  return result;
+}
+
+// Applies the Superflex override. ONLY called when isSuperflex is true.
+// Adds a 2nd QB slot at SUPERFLEX_QB2_PCT, sets QB1 to
+// SUPERFLEX_QB1_PCT (overriding whatever the strategy/baseline had),
+// and shrinks RB+WR proportionally (preserving their relative ratio to
+// each other) to make room for the total increase.
+function applySuperflexOverride(slots, strategy) {
+  const result = cloneSlots(slots);
+  const qb1 = result.find(s => s.pos === 'QB' && s.slotIndex === 1);
+  const existingQbPct = qb1 ? qb1.pct[strategy] : 0;
+
+  const targetTotalQbPct = SUPERFLEX_QB_TOTAL_PCT;
+  const additionalNeeded = targetTotalQbPct - existingQbPct; // QB2 doesn't exist yet, so existing total IS just QB1's pct
+
+  if (qb1) qb1.pct[strategy] = SUPERFLEX_QB1_PCT;
+
+  // Add QB2 if not already present (idempotent — calling this twice
+  // shouldn't double-add).
+  if (!result.find(s => s.pos === 'QB' && s.slotIndex === 2)) {
+    const qb2Pct = {};
+    Object.keys(qb1 ? qb1.pct : { rb: 0, wr: 0, qb: 0, te: 0, balanced: 0, hero: 0 }).forEach(k => { qb2Pct[k] = 0; });
+    qb2Pct[strategy] = SUPERFLEX_QB2_PCT;
+    result.push({ pos: 'QB', slotIndex: 2, pct: qb2Pct });
+  } else {
+    const qb2 = result.find(s => s.pos === 'QB' && s.slotIndex === 2);
+    qb2.pct[strategy] = SUPERFLEX_QB2_PCT;
+  }
+
+  // Shrink RB+WR proportionally to cover additionalNeeded. "Proportional,
+  // preserving their relative ratio to each other" means: compute their
+  // combined current total, then scale BOTH down by the same factor so
+  // RB:WR ratio is unchanged, removing exactly additionalNeeded in total.
+  const rbWrSlots = result.filter(s => s.pos === 'RB' || s.pos === 'WR');
+  const rbWrTotal = rbWrSlots.reduce((a, s) => a + s.pct[strategy], 0);
+  if (rbWrTotal > 0 && additionalNeeded > 0) {
+    const scaleFactor = (rbWrTotal - additionalNeeded) / rbWrTotal;
+    rbWrSlots.forEach(s => { s.pct[strategy] *= scaleFactor; });
+  }
+
+  return result;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// DOLLAR CONVERSION + VARIATION (v2 slot engine, part 2)
+// ═══════════════════════════════════════════════════════════════════════
+
+
+// Converts the bench-floor slots' percentage-based leftover into the
+// roll-up pool, expressed as a percentage of ONE TEAM's budget (needed
+// since "$1" only translates to a % once a single team's real dollar
+// budget is known).
+//
+// IMPORTANT: budgetPerTeam is ONE team's auction budget (e.g. $200),
+// NOT numTeams * budget. Every slot price on this page describes what
+// YOUR team should pay for YOUR roster — there is no league-wide
+// pooling step anywhere in this engine, unlike the old per-player
+// engine (which priced an entire league-wide pool of rosterable
+// players, then divided by numTeams to get back to a single team's
+// share — see auction.html's pre-rebuild generatePriceSheet()/
+// myBenchShare for that older convention). This engine skips that
+// detour entirely: percentages apply directly to one team's budget.
+function resolveBenchFloorLeftover(slots, strategy, budgetPerTeam) {
+  const benchFloorPctAsDollarShare = BENCH_FLOOR_DOLLARS / budgetPerTeam;
+  let totalLeftoverPct = 0;
+  const resolved = slots.map(s => {
+    if (s.isBenchFloor) {
+      const originalPct = s.pct[strategy];
+      const flooredPctEquivalent = benchFloorPctAsDollarShare;
+      // Leftover is whatever the table WOULD have allocated minus what
+      // the $1 floor actually represents as a % of one team's budget.
+      // Can be negative in a pathological tiny-budget case (the $1
+      // floor costs MORE than the table's %) — clamped to 0 in that
+      // case, since a negative leftover would mean "take money away
+      // from RB/WR to afford the bench floor," which was never the
+      // intent; the floor is a minimum spend, not a strict
+      // reallocation in that edge case.
+      const leftover = Math.max(0, originalPct - flooredPctEquivalent);
+      totalLeftoverPct += leftover;
+      const newPct = { ...s.pct };
+      newPct[strategy] = flooredPctEquivalent; // slot's own pct becomes just enough to cover its $1 floor
+      return { ...s, pct: newPct };
+    }
+    return s;
+  });
+  return { resolvedSlots: resolved, totalLeftoverPct };
+}
+
+// Full pipeline: baseline -> roster shape -> missing-slot leftover ->
+// bench-floor leftover -> Superflex override (if applicable) -> all
+// leftover rolled into favored position(s). Returns final resolved
+// slots with pct[strategy] ready for dollar conversion.
+//
+// budgetPerTeam is ONE team's budget (e.g. $200) — see
+// resolveBenchFloorLeftover's comment above for why this engine never
+// multiplies by numTeams anywhere. Order matters: Superflex is applied
+// LAST, after all other leftover has already rolled into RB/WR/etc.,
+// because Superflex's own RB/WR shrink needs to act on the FINAL
+// post-rollup RB/WR totals, not the raw baseline ones — otherwise
+// Superflex could shrink RB/WR below zero in a roster that was already
+// lean on K/DEF leftover stacking on top of the Superflex shrink.
+function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
+  let slots = buildRawSlotsForRoster(strategy, roster);
+  slots = markBenchFloorSlots(slots);
+
+  const missingSlotLeftover = computeMissingSlotLeftoverPct(strategy, roster);
+  const { resolvedSlots, totalLeftoverPct: benchLeftover } = resolveBenchFloorLeftover(slots, strategy, budgetPerTeam);
+  slots = resolvedSlots;
+
+  // Flex slots beyond the first were initialized to 0% with
+  // fundedByRollup:true — fold their "needed" amount into the leftover
+  // pool too, by definition: a flex slot funded entirely by roll-up
+  // means it has no baseline allocation of its own, so it doesn't
+  // ADD to leftover, it just sits at 0% until distributeLeftover...
+  // gives it a share IF flex is ever added to FAVORED_POSITIONS. Since
+  // flex is not currently a favored position for any strategy, extra
+  // flex slots realistically stay near $0 unless a future strategy
+  // adds flex as a favored target — documented here so this isn't a
+  // silent gap if someone wonders why FLEX2 looks underfunded later.
+
+  const totalLeftover = missingSlotLeftover + benchLeftover;
+  slots = distributeLeftoverToFavoredPositions(slots, strategy, totalLeftover);
+
+  if (isSuperflex) {
+    slots = applySuperflexOverride(slots, strategy);
+  }
+
+  return slots;
+}
+
+// ── Variation ────────────────────────────────────────────────────────────
+// Applies ±1-3% RELATIVE variation (i.e. a slot at 28% becomes
+// somewhere in [28% * 0.97, 28% * 1.03], not 28%±3 percentage points)
+// to any slot whose percentage exceeds 10%. Slots at or below 10% are
+// left exactly as resolved, per the locked rule. Variation is applied
+// independently per slot (each slot gets its own random roll), which
+// means the grand total will drift slightly off the league's exact
+// budget — dollarsForSlots' remainder-distribution step corrects that
+// drift back to an exact total, same safety net the old per-player
+// engine already relied on.
+function applyVariation(slots, strategy, rng = Math.random) {
+  const VARIATION_THRESHOLD_PCT = 0.10;
+  const MIN_VARIATION = 0.01;
+  const MAX_VARIATION = 0.03;
+
+  return slots.map(s => {
+    const pct = s.pct[strategy];
+    if (pct <= VARIATION_THRESHOLD_PCT) {
+      return { ...s, pct: { ...s.pct } }; // unchanged, still cloned for immutability
+    }
+    const variationMagnitude = MIN_VARIATION + rng() * (MAX_VARIATION - MIN_VARIATION);
+    const direction = rng() < 0.5 ? -1 : 1;
+    const factor = 1 + direction * variationMagnitude;
+    const newPct = { ...s.pct };
+    newPct[strategy] = pct * factor;
+    return { ...s, pct: newPct };
+  });
+}
+
+// ── Dollar conversion ────────────────────────────────────────────────────
+// Converts final resolved (and possibly varied) percentages into actual
+// dollar amounts FOR ONE TEAM'S BUDGET (budgetPerTeam — e.g. $200, NOT
+// numTeams * budget; see buildFinalSlotTable's comment above for why
+// this engine never pools across teams). Bench-floor slots get a hard
+// $1 regardless of their computed pct (the pct was only ever a
+// bookkeeping placeholder for leftover calculation, never the real
+// price for that slot). All other slots get round(pct * budgetPerTeam).
+// Remainder is distributed across non-floored slots (largest first) to
+// land on the EXACT per-team budget — same convention as the original
+// per-player engine's remainder-distribution step, just scoped to one
+// team's budget instead of the league-wide pool.
+function dollarsForSlots(slots, strategy, budgetPerTeam) {
+  const priced = slots.map(s => {
+    if (s.isBenchFloor) {
+      return { ...s, dollars: BENCH_FLOOR_DOLLARS };
+    }
+    return { ...s, dollars: Math.max(1, Math.round(s.pct[strategy] * budgetPerTeam)) };
   });
 
-  var benchTotal = Math.max(1, Math.round(totalMarketBudget * splits.BENCH));
-  distributeRemainderExactly(allPriced, benchTotal, totalMarketBudget);
+  const currentTotal = priced.reduce((a, s) => a + s.dollars, 0);
+  let diff = budgetPerTeam - currentTotal;
+  if (diff === 0) return priced;
 
-  return { byPos: byPos, benchTotal: benchTotal };
+  const adjustable = priced.filter(s => !s.isBenchFloor).sort((a, b) => b.dollars - a.dollars);
+  if (!adjustable.length) return priced; // nothing adjustable (pathological all-bench-floor case) — leave as-is
+
+  const step = diff > 0 ? 1 : -1;
+  let remaining = Math.abs(diff);
+  let i = 0;
+  while (remaining > 0) {
+    const target = adjustable[i % adjustable.length];
+    if (target.dollars + step >= 1) {
+      target.dollars += step;
+      remaining--;
+    }
+    i++;
+    if (i > 10000) break; // safety valve, should never trigger
+  }
+
+  return priced;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLAYER-TO-SLOT MAPPER (v2 slot engine, part 3)
+//
+// JOB: answer "which slot's price applies to player X" — this is what
+// powers Step 5's player search showing a sane $ next to a searched
+// name (e.g. Bijan Robinson should show an RB1-tier price, not some
+// generic averaged number), now that the Target Price Sheet itself
+// shows no player names at all (see slot_engine_core.js/pipeline.js).
+//
+// RULE (locked 2026-06-27): a player's rank BY POSITION via live ADP
+// determines their slot, scaled to league size. For N teams and S
+// starting slots at a position: ADP positional ranks 1..N -> slot 1's
+// price, N+1..2N -> slot 2's price, etc. Ranks beyond the last starting
+// slot's range fall through to FLEX pricing if the position is
+// flex-eligible, otherwise to bench pricing.
+// ═══════════════════════════════════════════════════════════════════════
+
+const FLEX_ELIGIBLE_POSITIONS = ['RB', 'WR', 'TE'];
+
+// Builds the rank-range -> slot mapping for ONE position, given how
+// many teams are in the league and how many starting slots of that
+// position exist. Returns an array of { slotIndex, rankStart, rankEnd }
+// — rankStart/rankEnd are 1-indexed, inclusive, matching how ADP ranks
+// are naturally expressed (rank 1 = consensus #1 player at that spot).
+//
+// Example: 10 teams, 2 RB starting slots -> [
+//   { slotIndex: 1, rankStart: 1,  rankEnd: 10 },
+//   { slotIndex: 2, rankStart: 11, rankEnd: 20 },
+// ]
+function buildRankRangesForPosition(numTeams, startingSlotCount) {
+  const ranges = [];
+  for (let slotIndex = 1; slotIndex <= startingSlotCount; slotIndex++) {
+    ranges.push({
+      slotIndex,
+      rankStart: (slotIndex - 1) * numTeams + 1,
+      rankEnd: slotIndex * numTeams,
+    });
+  }
+  return ranges;
+}
+
+// Given a player's 1-indexed rank WITHIN their position (e.g. "the
+// #2 RB by ADP" -> positionRank = 2) and that position's rank ranges
+// (from buildRankRangesForPosition), returns the matching slotIndex, or
+// null if the rank falls beyond all defined starting-slot ranges (i.e.
+// this player should fall through to FLEX/bench instead).
+function findSlotIndexForRank(positionRank, rankRanges) {
+  for (const range of rankRanges) {
+    if (positionRank >= range.rankStart && positionRank <= range.rankEnd) {
+      return range.slotIndex;
+    }
+  }
+  return null; // beyond all starting slots for this position
+}
+
+// Full resolution: given a player's position and positional ADP rank,
+// plus the league's roster shape and final priced slot table (from
+// dollarsForSlots), returns the $ amount to show for that player.
+//
+// FLEX fallback: if the player's rank falls beyond their own
+// position's starting slots, AND their position is flex-eligible
+// (RB/WR/TE), AND a FLEX slot exists in the roster, they get the
+// FLEX slot's price instead of bench. Only if neither applies do they
+// fall to bench pricing (the cheapest, most generic placeholder for
+// "not rostered as a starter under realistic assumptions").
+//
+// K and DEF are NOT flex-eligible per FLEX_ELIGIBLE_POSITIONS, so a K
+// or DEF player beyond their position's single starting slot falls
+// straight to bench, never FLEX — matches real roster construction
+// rules (you can't start a 2nd kicker in a FLEX spot).
+function priceForPlayer(position, positionRank, numTeams, roster, pricedSlots) {
+  const startingSlotCount = roster[position] || 0;
+  const rankRanges = buildRankRangesForPosition(numTeams, startingSlotCount);
+  const slotIndex = findSlotIndexForRank(positionRank, rankRanges);
+
+  if (slotIndex !== null) {
+    const slot = pricedSlots.find(s => s.pos === position && s.slotIndex === slotIndex);
+    if (slot) return slot.dollars;
+  }
+
+  // Beyond starting slots for this position — try FLEX next.
+  if (FLEX_ELIGIBLE_POSITIONS.includes(position)) {
+    const flexSlot = pricedSlots.find(s => s.pos === 'FLEX' && s.slotIndex === 1);
+    if (flexSlot) return flexSlot.dollars;
+  }
+
+  // Fall through to the cheapest bench slot (last/highest slotIndex —
+  // bench slots are ordered most-valuable-first in the engine, so the
+  // LAST bench slot is the cheapest/most-generic one, the right
+  // fallback for "probably not even draftable as a real bench stash").
+  const benchSlots = pricedSlots.filter(s => s.pos === 'BENCH');
+  if (benchSlots.length) {
+    const cheapestBench = benchSlots.reduce((min, s) => (s.dollars < min.dollars ? s : min), benchSlots[0]);
+    return cheapestBench.dollars;
+  }
+
+  return 1; // absolute last-resort floor — should be unreachable given bench always exists in realistic rosters
+}
+
+// Convenience: builds a full name -> $ lookup map for an entire ADP
+// player pool in one pass, rather than calling priceForPlayer()
+// per-search-keystroke. adpPlayersByPosition: { QB: [{name, adp}, ...
+// already sorted by adp ascending], RB: [...], ... } — same shape
+// fetchLiveAdpByPosition() in auction.html already produces.
+function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, pricedSlots) {
+  const lookup = {};
+  Object.keys(adpPlayersByPosition).forEach(position => {
+    const players = adpPlayersByPosition[position];
+    players.forEach((player, index) => {
+      const positionRank = index + 1; // 1-indexed rank within this position, since the array is already ADP-sorted
+      const price = priceForPlayer(position, positionRank, numTeams, roster, pricedSlots);
+      lookup[player.name.toLowerCase()] = price;
+    });
+  });
+  return lookup;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1168,16 +1624,19 @@ function searchPlayers(query) {
   dd.style.display = 'block';
 }
 
-// Look up a specific player's individually-generated price by name
-// (case-insensitive exact match against the flat playerPriceList built
-// in renderTPS()). Falls back to null if the sheet hasn't been built
-// yet or the player isn't in the priced pool (e.g. deep bench/waiver
-// names Sleeper knows about but our ADP pool didn't reach).
 function getProjectedValue(name, pos) {
-  if (!state.playerPriceList.length) return null;
-  var lower = name.toLowerCase();
-  var match = state.playerPriceList.find(function(p){ return p.name.toLowerCase() === lower; });
-  return match ? match.price : null;
+  // Looks up the player-to-slot mapper's pre-computed price (see
+  // buildPlayerPriceLookup() in generateTPS()) — this is what makes a
+  // searched player like "Bijan Robinson" show a realistic, sane $
+  // figure in Step 5 even though the Target Price Sheet itself (Step
+  // 4) no longer shows any player names at all. Falls back to null if
+  // the sheet hasn't been generated yet (lookup is empty) or this
+  // specific player isn't in the live ADP pool the lookup was built
+  // from — same fallback behavior as before.
+  var lookup = state.playerPriceLookup;
+  if (!lookup || !Object.keys(lookup).length) return null;
+  var price = lookup[name.toLowerCase()];
+  return (typeof price === 'number') ? price : null;
 }
 
 document.addEventListener('click', function(e){
@@ -1331,148 +1790,83 @@ function generateTPS() {
 
     var isSuperflex = state.leagueFormat === 'superflex';
     var stratKey = state.strategy || 'hero';
-    var sheet = generatePriceSheet(adpSource, state.numTeams, state.budget, stratKey, isSuperflex, state.roster);
 
-    renderTPS(sheet, stratKey);
+    // This page's strategy keys (rb/wr/qb/hero/custom) map to the
+    // engine's keys (rb/wr/qb/hero/balanced) — 'custom' is the only one
+    // that differs. See the STRATEGIES comment above for why these are
+    // deliberately different words for the engine vs. the UI.
+    var engineStratKey = stratKey === 'custom' ? 'balanced' : stratKey;
+
+    // ── NEW SLOT-BASED ENGINE (2026-06-28) ──────────────────────────
+    // Builds the per-slot $ table for the Target Price Sheet (no
+    // player names — see the engine's header comment above for the
+    // full rationale), then applies the +/-1-3% variation (only to
+    // slots over 10%) and converts to final dollar amounts for THIS
+    // team's budget specifically (never the league-wide pool).
+    var finalSlots = buildFinalSlotTable(engineStratKey, state.roster, isSuperflex, state.budget);
+    var variedSlots = applyVariation(finalSlots, engineStratKey, Math.random);
+    var pricedSlots = dollarsForSlots(variedSlots, engineStratKey, state.budget);
+
+    // ── PLAYER-TO-SLOT MAPPER, for Step 5's search (unchanged job, new
+    // mechanism) — builds a name->$ lookup so searching "Bijan
+    // Robinson" in Step 5 still shows a sane individual price, even
+    // though the price SHEET itself (rendered below) shows no names.
+    state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots);
+
+    renderTPS(pricedSlots, stratKey);
   });
 }
 
-// Picks a sensible starting set of "your targets" so the budget tracker
-// isn't empty by default. Roughly top-N by price per position, sized to
-// your roster's starter counts (+1 buffer on RB/WR for flex/handcuff
-// overlap). You can click any row to add/remove from your actual plan —
-// this is just a reasonable starting point, not a recommendation to
-// follow literally.
-//
-// BUDGET-AWARE (fixed — Session 12): previously this picked top-N by
-// position count with zero regard for price, which meant a format like
-// Superflex (where roster.QB becomes 2, and Superflex pricing inflates
-// QB cost via SUPERFLEX_BUMP) could auto-target two $90+ QBs before
-// even reaching RB/WR — blowing well past budget by default, on the
-// very first thing a new user sees. Found live: QB Heavy/Superflex
-// showed $255 against a $200 budget, $55 over, with zero user action.
-// Now takes the actual per-player prices and the bench share into
-// account, and stops adding picks once the running total would exceed
-// the user's real available budget (budget minus bench share) — same
-// roster-count priorities as before (mandatory starters first, then
-// the RB/WR +1 buffer), but budget-capped rather than count-only.
-function autoTargetCounts(roster) {
-  return {
-    QB: roster.QB || 0,
-    RB: (roster.RB || 0) + 1,
-    WR: (roster.WR || 0) + 1,
-    TE: roster.TE || 0,
-    K: roster.K || 0,
-    DEF: roster.DEF || 0
-  };
-}
-
-function pickAutoTargets(byPos, roster, availableBudget) {
-  var counts = autoTargetCounts(roster);
-  var targeted = {};
-  var runningTotal = 0;
-
-  // POS_ORDER (QB, RB, WR, TE, K, DEF) doubles as priority order here —
-  // mandatory starters at premium positions get first claim on budget,
-  // same intent as the original count-only version, just budget-checked
-  // before each addition rather than added unconditionally.
-  POS_ORDER.forEach(function(pos){
-    var players = byPos[pos] || [];
-    var n = counts[pos] || 0;
-    for (var i = 0; i < n && i < players.length; i++) {
-      var price = players[i].price || 0;
-      if (runningTotal + price > availableBudget) {
-        // Stop adding picks at THIS position once the next one would
-        // bust the budget — leaves cheaper, later targets at other
-        // positions still eligible to be picked up below, rather than
-        // bailing out of the whole function on the first overage.
-        break;
-      }
-      targeted[players[i].name] = true;
-      runningTotal += price;
-    }
-  });
-  return targeted;
-}
-
-function renderTPS(sheet, stratKey) {
+function renderTPS(pricedSlots, stratKey) {
   var strat = STRATEGIES[stratKey] || STRATEGIES.hero;
   var groupsEl = document.getElementById('tpsGroups');
   groupsEl.innerHTML = '';
 
-  state.playerPriceList = [];
-  state.targetPrices = {};
+  // SLOT_DISPLAY_ORDER: render order for the position-grouped sections.
+  // FLEX/K/DEF/BENCH aren't in POS_ORDER (that array is for the old
+  // per-player ADP fetch's position keys), so a dedicated order is
+  // defined here matching the baseline table's own row order.
+  var SLOT_DISPLAY_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BENCH'];
+  var SLOT_POS_LABELS = { QB:'Quarterback', RB:'Running Back', WR:'Wide Receiver', TE:'Tight End', FLEX:'Flex', K:'Kicker', DEF:'Defense', BENCH:'Bench' };
 
-  // Bench share computed here (moved up from below) so the auto-target
-  // picker can subtract it from the budget BEFORE choosing targets,
-  // rather than discovering the bench cost after targets are already
-  // locked in. Same math as before, just sequenced earlier.
-  var myBenchShare = Math.max(1, Math.round(sheet.benchTotal / state.numTeams));
-  state.myBenchShare = myBenchShare;
-  var availableForTargets = Math.max(0, state.budget - myBenchShare);
+  state.pricedSlots = pricedSlots; // kept on state so updateTpsTotal() can re-read current input values against this
 
-  state.targetedPlayers = pickAutoTargets(sheet.byPos, state.roster, availableForTargets);
+  SLOT_DISPLAY_ORDER.forEach(function(pos){
+    var slotsForPos = pricedSlots.filter(function(s){ return s.pos === pos; }).sort(function(a,b){ return a.slotIndex - b.slotIndex; });
+    if (!slotsForPos.length) return; // position doesn't exist in this roster (e.g. no Kicker) — section simply doesn't render
 
-  POS_ORDER.forEach(function(pos){
-    var players = sheet.byPos[pos] || [];
-    if (!players.length) return;
-
-    players.forEach(function(p){
-      state.playerPriceList.push({ name: p.name, pos: pos, team: p.team, price: p.price });
-      state.targetPrices[p.name] = p.price;
-    });
-
-    var sectionTotal = players.reduce(function(a,p){ return a+p.price; }, 0);
+    var sectionTotal = slotsForPos.reduce(function(a,s){ return a+s.dollars; }, 0);
 
     var section = document.createElement('div');
     section.className = 'tps-section';
     var hdr = document.createElement('div');
     hdr.className = 'tps-section-hdr';
     hdr.innerHTML =
-      '<span class="tps-section-pos ' + pos + '">' + pos + '</span>' +
-      '<span class="tps-section-title">' + POS_LABELS[pos] + '</span>' +
-      '<span class="tps-section-total">$' + sectionTotal + ' full-market total · ' + players.length + ' players</span>';
+      '<span class="tps-section-pos ' + pos + '">' + (pos === 'BENCH' ? 'BN' : pos) + '</span>' +
+      '<span class="tps-section-title">' + SLOT_POS_LABELS[pos] + (slotsForPos.length > 1 ? 's' : '') + '</span>' +
+      '<span class="tps-section-total">$' + sectionTotal + ' total · ' + slotsForPos.length + ' slot' + (slotsForPos.length > 1 ? 's' : '') + '</span>';
     section.appendChild(hdr);
 
     var list = document.createElement('div');
-    list.className = 'tps-player-list';
-    players.forEach(function(p, i){
-      var isTargeted = !!state.targetedPlayers[p.name];
+    list.className = 'tps-slot-list';
+    slotsForPos.forEach(function(s){
+      var slotLabel = slotsForPos.length > 1 ? (SLOT_POS_LABELS[pos] + ' ' + s.slotIndex) : SLOT_POS_LABELS[pos];
       var row = document.createElement('div');
-      row.className = 'tps-player-row' + (isTargeted ? ' targeted' : '');
-      row.dataset.name = p.name;
+      row.className = 'tps-slot-row' + (s.isBenchFloor ? ' floor' : '');
+      row.dataset.pos = pos;
+      row.dataset.slotIndex = s.slotIndex;
       row.innerHTML =
-        '<span class="tps-target-check" onclick="toggleTarget(\'' + p.name.replace(/'/g,"\\'") + '\', this)" title="Click to mark as your target">' + (isTargeted ? '★' : '☆') + '</span>' +
-        '<span class="tps-player-rank">#' + (i+1) + '</span>' +
-        '<span class="tps-player-name">' + p.name + '</span>' +
-        '<span class="tps-player-team">' + (p.team || 'FA') + '</span>' +
-        '<span class="tps-player-adp">ADP ' + Number(p.adp).toFixed(1) + '</span>' +
-        '<span class="tps-player-price-wrap"><span class="tps-player-price-dollar">$</span>' +
-          '<input type="number" class="tps-player-price-input" value="' + p.price + '" min="1" data-name="' + p.name.replace(/"/g,'&quot;') + '" oninput="updateTpsTotal()"/></span>';
+        '<span class="tps-slot-name">' + slotLabel + '</span>' +
+        (s.isBenchFloor ? '<span class="tps-slot-floor-note">min spend</span>' : '') +
+        '<span class="tps-slot-price-wrap"><span class="tps-slot-price-dollar">$</span>' +
+          '<input type="number" class="tps-slot-price-input" value="' + s.dollars + '" min="1" ' +
+          'data-pos="' + pos + '" data-slot-index="' + s.slotIndex + '" oninput="updateTpsTotal()"' +
+          (s.isBenchFloor ? ' title="Minimum bench spend — adjustable, but kept low by design"' : '') + '/></span>';
       list.appendChild(row);
     });
     section.appendChild(list);
     groupsEl.appendChild(section);
   });
-
-  // Bench row — shows YOUR per-team share of the bench pool, not the
-  // full market-wide bench total. (Bug fix, Session 11: this previously
-  // displayed sheet.benchTotal directly, which is the sum across ALL
-  // teams' bench spots combined — e.g. $140 for a 10-team league when
-  // your own bench share is really $140/10 = $14. Same conversion the
-  // budget-tracking total below now applies consistently. myBenchShare
-  // itself is now computed earlier in this function, before
-  // pickAutoTargets() runs — see Session 12 notes above — so this
-  // section just renders the value already in scope rather than
-  // recomputing it.)
-  var benchSection = document.createElement('div');
-  benchSection.className = 'tps-section';
-  benchSection.innerHTML =
-    '<div class="tps-section-hdr"><span class="tps-section-pos" style="background:#7a7a76">BN</span><span class="tps-section-title">Bench / Depth Pool</span></div>' +
-    '<div class="tps-bench-row"><span class="tps-bench-label">Your share of the bench budget — sleepers, handcuffs, and streamers come from here. (Full market bench pool across all ' + state.numTeams + ' teams: $' + sheet.benchTotal + '.)</span>' +
-    '<span style="font-family:\'JetBrains Mono\',monospace;font-size:18px;color:var(--muted)">$</span>' +
-    '<input type="number" class="tps-bench-price-input" id="benchPriceInput" value="' + myBenchShare + '" min="1" oninput="updateTpsTotal()"/></div>';
-  groupsEl.appendChild(benchSection);
 
   updateTpsTotal();
 
@@ -1484,45 +1878,34 @@ function renderTPS(sheet, stratKey) {
   document.getElementById('trashTake').textContent = strat.trash;
 }
 
-// Click a star to add/remove a player from YOUR target list. This is
-// what the budget tracker total is actually based on — not the full
-// market-wide list of every rosterable player at every position.
-function toggleTarget(name, starEl) {
-  var nowTargeted = !state.targetedPlayers[name];
-  state.targetedPlayers[name] = nowTargeted;
-  starEl.textContent = nowTargeted ? '★' : '☆';
-  var row = starEl.closest('.tps-player-row');
-  if (row) row.classList.toggle('targeted', nowTargeted);
-  updateTpsTotal();
-}
-
 // ═══════════════════════════════════════════════════════════
 // STEP 4 — LIVE BUDGET TRACKER (modified — sums all individual player
 // price inputs plus the bench input, instead of the old fixed-slot list)
 // ═══════════════════════════════════════════════════════════
 function updateTpsTotal() {
-  // Total now reflects only the players YOU'VE targeted (★), plus your
-  // bench share — not every player on the full market-wide sheet. Fixed
-  // in Session 11: the sheet necessarily prices the WHOLE rosterable
-  // market (40+ RBs, 40+ WRs, etc.) so individual prices look realistic,
-  // but you only roster ~13 of those 150+ players. Comparing a sum of
-  // all 150+ prices against your single $200 cap was guaranteed to look
-  // wildly over budget no matter what (e.g. $2000 vs $200) — that wasn't
-  // a real signal, just a unit mismatch.
-  var inputs = document.querySelectorAll('.tps-player-price-input');
-  var benchInput = document.getElementById('benchPriceInput');
+  // Total now sums EVERY slot row's current $ value — no star/target
+  // filtering needed anymore (that whole mechanic is gone). The slot
+  // sheet covers your exact roster construction by definition (one
+  // row per actual roster slot, no market-wide player pool to filter
+  // down from), so summing every visible row IS summing your real
+  // plan — unlike the old per-player sheet, which had to filter down
+  // from 150+ priced players to just the ~13 you'd actually roster.
+  var inputs = document.querySelectorAll('.tps-slot-price-input');
   var total = 0;
 
   inputs.forEach(function(inp){
     var val = parseInt(inp.value) || 0;
-    state.targetPrices[inp.dataset.name] = val;
-    var match = state.playerPriceList.find(function(p){ return p.name === inp.dataset.name; });
-    if (match) match.price = val;
-    if (state.targetedPlayers[inp.dataset.name]) total += val;
+    total += val;
+    // Keep state.pricedSlots in sync with manual edits, so anything
+    // that reads it later (e.g. a future print/export) reflects the
+    // user's actual overrides, not just the engine's original output.
+    var pos = inp.dataset.pos;
+    var slotIndex = parseInt(inp.dataset.slotIndex, 10);
+    var match = state.pricedSlots && state.pricedSlots.find(function(s){ return s.pos === pos && s.slotIndex === slotIndex; });
+    if (match) match.dollars = val;
   });
-  if (benchInput) total += parseInt(benchInput.value) || 0;
 
-  var budget = state.budget; // YOUR single-team budget, not totalMarketBudget
+  var budget = state.budget;
   var diff = total - budget;
 
   var totalEl = document.getElementById('tpsTotal');
