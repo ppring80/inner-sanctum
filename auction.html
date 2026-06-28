@@ -1448,121 +1448,244 @@ function dollarsForSlots(slots, strategy, budgetPerTeam) {
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// PLAYER-TO-SLOT MAPPER (v2 slot engine, part 3)
+// PLAYER-TO-SLOT MAPPER (v4 — rewritten 2026-06-28, take 2)
 //
-// JOB: answer "which slot's price applies to player X" — this is what
-// powers Step 5's player search showing a sane $ next to a searched
-// name (e.g. Bijan Robinson should show an RB1-tier price, not some
-// generic averaged number), now that the Target Price Sheet itself
-// shows no player names at all (see slot_engine_core.js/pipeline.js).
+// JOB: answer "what $ should I show for player X" — powers Step 5's
+// player search. The Target Price Sheet (Step 4) is UNCHANGED by this
+// file — it still shows one flat $ per slot, no player names, exactly
+// as before, driven by whatever strategy the user picked. This file
+// ONLY affects the per-player lookup used by Step 5's search.
 //
-// RULE (locked 2026-06-27): a player's rank BY POSITION via live ADP
-// determines their slot, scaled to league size. For N teams and S
-// starting slots at a position: ADP positional ranks 1..N -> slot 1's
-// price, N+1..2N -> slot 2's price, etc. Ranks beyond the last starting
-// slot's range fall through to FLEX pricing if the position is
-// flex-eligible, otherwise to bench pricing.
+// CRITICAL PRINCIPLE, LOCKED 2026-06-28: a player's real auction market
+// value must NOT depend on which strategy the CURRENT user happens to
+// have selected for their own Step 4 sheet. Draft strategy is a
+// personal, individual choice about how one manager wants to build
+// their roster — it has no bearing on what the other 11 managers in a
+// real auction room will actually pay for a given player. The first
+// attempt at this curve (since reverted) anchored directly to whatever
+// strategy was selected, which produced absurd results: under WR
+// Heavy, an elite RB1 like Jahmyr Gibbs priced at HALF of what the
+// flat per-slot system already had him at, simply because WR Heavy
+// personally deprioritizes RB — even though nothing about the real
+// market changes just because one user picked a different strategy.
+//
+// FIX: player pricing always derives from the BALANCED strategy's
+// percentages, regardless of what the user picked for their own sheet.
+// Balanced represents a neutral, no-strong-lean allocation — the most
+// defensible single fixed stand-in available for "what a real room of
+// many different individual strategies collectively does," without
+// actually simulating 11 other managers individually.
+//
+// CURVE SHAPE: waypoint interpolation (exponential/geometric decay
+// between known points), NOT a single global power-law scale — the
+// power-law approach was tried and abandoned because it conflated
+// PER-RANK dollar targets with POOL totals (multiplying a per-rank
+// target by a rank count, which inflated the intended total by 12x in
+// testing). Waypoints are the real, already-computed Balanced-strategy
+// dollar values at the boundary of each tier: rank 1 (best player, a
+// premium above the first tier's average) -> end of 1st starting slot
+// tier -> end of 2nd starting slot tier (if any) -> end of FLEX tier
+// (flex-eligible positions only) -> end of bench-depth tier -> tapers
+// the rest of the way to the $1 floor (also smoothed per Pat's
+// instruction — no hard cliff at the bottom either).
 // ═══════════════════════════════════════════════════════════════════════
 
 const FLEX_ELIGIBLE_POSITIONS = ['RB', 'WR', 'TE'];
+const CURVE_POSITIONS = ['QB', 'RB', 'WR', 'TE']; // K/DEF deliberately excluded — stay flat
+const RANK1_PREMIUM_MULTIPLIER = 1.3; // rank 1's value = 1.3x the first tier's average, a defensible "best player" premium
+const FLOOR_TAPER_RANKS_MULTIPLIER = 1; // final taper-to-$1 segment spans 1x numTeams more ranks beyond bench-depth
 
-// Builds the rank-range -> slot mapping for ONE position, given how
-// many teams are in the league and how many starting slots of that
-// position exist. Returns an array of { slotIndex, rankStart, rankEnd }
-// — rankStart/rankEnd are 1-indexed, inclusive, matching how ADP ranks
-// are naturally expressed (rank 1 = consensus #1 player at that spot).
-//
-// Example: 10 teams, 2 RB starting slots -> [
-//   { slotIndex: 1, rankStart: 1,  rankEnd: 10 },
-//   { slotIndex: 2, rankStart: 11, rankEnd: 20 },
-// ]
-function buildRankRangesForPosition(numTeams, startingSlotCount) {
-  const ranges = [];
-  for (let slotIndex = 1; slotIndex <= startingSlotCount; slotIndex++) {
-    ranges.push({
-      slotIndex,
-      rankStart: (slotIndex - 1) * numTeams + 1,
-      rankEnd: slotIndex * numTeams,
-    });
+// Enforces monotonic non-increase across an ordered list of (rank,
+// value) waypoints. Some position/anchor combinations produce a
+// waypoint that's HIGHER than the previous one even under Balanced —
+// e.g. TE's own starting-slot value ($12) can be genuinely lower than
+// the shared FLEX slot's value ($14), since TE is a structurally
+// lower-priority position than the flex spot it feeds into. Without
+// this pass, the curve would have to rise between those two ranks,
+// which makes no sense for a "best to worst" player ranking. Caps any
+// waypoint at the previous waypoint's value rather than letting it
+// exceed it — guarantees a clean decline regardless of which
+// position/anchor combination is involved, not just a fix for the one
+// TE/FLEX case that exposed this.
+function enforceMonotonicWaypoints(waypoints) {
+  const result = [waypoints[0]];
+  for (let i = 1; i < waypoints.length; i++) {
+    const [rank, value] = waypoints[i];
+    const prevValue = result[result.length - 1][1];
+    result.push([rank, Math.min(value, prevValue)]);
   }
-  return ranges;
+  return result;
 }
 
-// Given a player's 1-indexed rank WITHIN their position (e.g. "the
-// #2 RB by ADP" -> positionRank = 2) and that position's rank ranges
-// (from buildRankRangesForPosition), returns the matching slotIndex, or
-// null if the rank falls beyond all defined starting-slot ranges (i.e.
-// this player should fall through to FLEX/bench instead).
-function findSlotIndexForRank(positionRank, rankRanges) {
-  for (const range of rankRanges) {
-    if (positionRank >= range.rankStart && positionRank <= range.rankEnd) {
-      return range.slotIndex;
+// Exponential (geometric) interpolation between two (rank, value)
+// waypoints — smoothly declining, no linear "straight line" artifacts,
+// matching how real fantasy player value actually falls off (steep
+// drop near the top, flattening out lower down).
+function interpolateBetweenWaypoints(rank, waypoints) {
+  if (!waypoints.length) return 1;
+  if (rank <= waypoints[0][0]) return waypoints[0][1];
+  if (rank >= waypoints[waypoints.length - 1][0]) return waypoints[waypoints.length - 1][1];
+
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const [r1, v1] = waypoints[i];
+    const [r2, v2] = waypoints[i + 1];
+    if (rank >= r1 && rank <= r2) {
+      if (r2 === r1) return v1;
+      const frac = (rank - r1) / (r2 - r1);
+      if (v1 <= 0) return v2; // guard against a zero/negative waypoint breaking the geometric formula
+      return v1 * Math.pow(v2 / v1, frac);
     }
   }
-  return null; // beyond all starting slots for this position
+  return waypoints[waypoints.length - 1][1];
 }
 
-// Full resolution: given a player's position and positional ADP rank,
-// plus the league's roster shape and final priced slot table (from
-// dollarsForSlots), returns the $ amount to show for that player.
-//
-// FLEX fallback: if the player's rank falls beyond their own
-// position's starting slots, AND their position is flex-eligible
-// (RB/WR/TE), AND a FLEX slot exists in the roster, they get the
-// FLEX slot's price instead of bench. Only if neither applies do they
-// fall to bench pricing (the cheapest, most generic placeholder for
-// "not rostered as a starter under realistic assumptions").
-//
-// K and DEF are NOT flex-eligible per FLEX_ELIGIBLE_POSITIONS, so a K
-// or DEF player beyond their position's single starting slot falls
-// straight to bench, never FLEX — matches real roster construction
-// rules (you can't start a 2nd kicker in a FLEX spot).
-function priceForPlayer(position, positionRank, numTeams, roster, pricedSlots) {
-  const startingSlotCount = roster[position] || 0;
-  const rankRanges = buildRankRangesForPosition(numTeams, startingSlotCount);
-  const slotIndex = findSlotIndexForRank(positionRank, rankRanges);
+// Builds the ordered list of (rank, dollarValue) waypoints for ONE
+// position, using the BALANCED strategy's real priced slots as the
+// dollar anchors (never the user's currently-selected strategy — see
+// header comment for why). numTeams scales how many ranks each tier
+// spans (one tier-slot's worth of ranks per team, same convention as
+// the original design).
+function buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlots) {
+  const startingSlots = balancedPricedSlots
+    .filter(s => s.pos === position)
+    .sort((a, b) => a.slotIndex - b.slotIndex);
 
-  if (slotIndex !== null) {
-    const slot = pricedSlots.find(s => s.pos === position && s.slotIndex === slotIndex);
-    if (slot) return slot.dollars;
-  }
+  if (!startingSlots.length) return [];
 
-  // Beyond starting slots for this position — try FLEX next.
+  const waypoints = [];
+  let rankCursor = 0;
+
+  // Starting-slot tiers, one waypoint per slot (RB1's end-of-tier rank
+  // and value, then RB2's, etc.) — each tier spans numTeams ranks.
+  startingSlots.forEach((slot, i) => {
+    rankCursor += numTeams;
+    waypoints.push([rankCursor, slot.dollars]);
+  });
+
+  // Rank 1's value gets a premium above the FIRST tier's value, added
+  // as the very first waypoint — interpolation between rank 1 and the
+  // first tier's end-rank then tapers DOWN to that tier's real value,
+  // rather than rank 1 just being flat at the tier average like every
+  // other rank in it.
+  waypoints.unshift([1, startingSlots[0].dollars * RANK1_PREMIUM_MULTIPLIER]);
+
+  // FLEX-tier waypoint — only for flex-eligible positions, using the
+  // real shared FLEX slot's value. Spans another numTeams ranks.
   if (FLEX_ELIGIBLE_POSITIONS.includes(position)) {
-    const flexSlot = pricedSlots.find(s => s.pos === 'FLEX' && s.slotIndex === 1);
-    if (flexSlot) return flexSlot.dollars;
+    const flexSlot = balancedPricedSlots.find(s => s.pos === 'FLEX' && s.slotIndex === 1);
+    if (flexSlot) {
+      rankCursor += numTeams;
+      waypoints.push([rankCursor, flexSlot.dollars]);
+    }
   }
 
-  // Fall through to the cheapest bench slot (last/highest slotIndex —
-  // bench slots are ordered most-valuable-first in the engine, so the
-  // LAST bench slot is the cheapest/most-generic one, the right
-  // fallback for "probably not even draftable as a real bench stash").
+  // Bench-tier waypoint — average of the NON-floored bench slots (the
+  // $1-floor bench slots are a fixed minimum, not a meaningful price
+  // point to taper toward). Spans another numTeams ranks.
+  const nonFlooredBench = balancedPricedSlots.filter(s => s.pos === 'BENCH' && !s.isBenchFloor);
+  const benchAvg = nonFlooredBench.length
+    ? nonFlooredBench.reduce((a, s) => a + s.dollars, 0) / nonFlooredBench.length
+    : 1;
+  rankCursor += numTeams;
+  waypoints.push([rankCursor, benchAvg]);
+
+  // Final taper segment: smoothly continues from the bench-tier
+  // waypoint down to the $1 floor, rather than a hard cliff — added
+  // per Pat's explicit instruction that even the bottom of the curve
+  // should taper, not cut off sharply.
+  rankCursor += numTeams * FLOOR_TAPER_RANKS_MULTIPLIER;
+  waypoints.push([rankCursor, 1]);
+
+  return enforceMonotonicWaypoints(waypoints);
+}
+
+// Builds curves (one full array of per-rank $ values) for every
+// CURVE_POSITIONS position at once, anchored to the BALANCED strategy's
+// priced slots — NOT whatever strategy the user currently has
+// selected. Callers pass in the user's actual roster shape (slot
+// counts are real and shared across strategies) but the DOLLAR anchors
+// always come from a freshly-computed Balanced-strategy price sheet.
+function buildAllPositionCurves(numTeams, roster, balancedPricedSlots) {
+  const curves = {};
+  CURVE_POSITIONS.forEach(position => {
+    const waypoints = buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlots);
+    if (!waypoints.length) {
+      curves[position] = [];
+      return;
+    }
+    const maxRank = waypoints[waypoints.length - 1][0];
+    const curve = [];
+    for (let rank = 1; rank <= maxRank; rank++) {
+      curve.push(Math.max(1, Math.round(interpolateBetweenWaypoints(rank, waypoints))));
+    }
+    curves[position] = curve;
+  });
+  return curves;
+}
+
+// Full resolution for ONE player: given their position and ADP rank
+// WITHIN that position, plus the pre-built curves and the user's OWN
+// (strategy-dependent) priced slot table (only used for K/DEF, which
+// stay flat and strategy-aware same as Step 4's sheet), returns the $
+// to show for them.
+//
+// NOTE the asymmetry, which is intentional: K/DEF still read from
+// userPricedSlots (the user's own selected strategy) because they're
+// excluded from curve treatment entirely and were never part of the
+// "shouldn't move with strategy" problem — their flat price already
+// matches Step 4's sheet 1:1, which is correct, desired behavior for
+// them specifically.
+function priceForPlayer(position, positionRank, numTeams, roster, userPricedSlots, curves) {
+  if (!CURVE_POSITIONS.includes(position)) {
+    const startingSlotCount = roster[position] || 0;
+    if (positionRank <= startingSlotCount * numTeams) {
+      const slotIndex = Math.floor((positionRank - 1) / numTeams) + 1;
+      const slot = userPricedSlots.find(s => s.pos === position && s.slotIndex === slotIndex);
+      if (slot) return slot.dollars;
+    }
+    return cheapestBenchFloorPrice(userPricedSlots);
+  }
+
+  const curve = curves && curves[position];
+  if (curve && curve.length && positionRank >= 1 && positionRank <= curve.length) {
+    return curve[positionRank - 1];
+  }
+
+  return cheapestBenchFloorPrice(userPricedSlots);
+}
+
+function cheapestBenchFloorPrice(pricedSlots) {
   const benchSlots = pricedSlots.filter(s => s.pos === 'BENCH');
   if (benchSlots.length) {
-    const cheapestBench = benchSlots.reduce((min, s) => (s.dollars < min.dollars ? s : min), benchSlots[0]);
-    return cheapestBench.dollars;
+    return benchSlots.reduce((min, s) => (s.dollars < min.dollars ? s : min), benchSlots[0]).dollars;
   }
-
-  return 1; // absolute last-resort floor — should be unreachable given bench always exists in realistic rosters
+  return 1;
 }
 
 // Convenience: builds a full name -> $ lookup map for an entire ADP
-// player pool in one pass, rather than calling priceForPlayer()
-// per-search-keystroke. adpPlayersByPosition: { QB: [{name, adp}, ...
-// already sorted by adp ascending], RB: [...], ... } — same shape
+// player pool in one pass. adpPlayersByPosition: { QB: [{name, adp},
+// ... already sorted by adp ascending], RB: [...], ... } — same shape
 // fetchLiveAdpByPosition() in auction.html already produces.
-function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, pricedSlots) {
+//
+// balancedPricedSlots: a SEPARATE price sheet computed with strategy
+// forced to 'balanced', regardless of what the user actually selected
+// — callers (generateTPS() in auction.html) are responsible for
+// computing this alongside their own strategy's sheet. See this file's
+// header comment for why two separate price sheets are needed here.
+function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPricedSlots, balancedPricedSlots) {
+  const curves = buildAllPositionCurves(numTeams, roster, balancedPricedSlots);
   const lookup = {};
   Object.keys(adpPlayersByPosition).forEach(position => {
     const players = adpPlayersByPosition[position];
     players.forEach((player, index) => {
       const positionRank = index + 1; // 1-indexed rank within this position, since the array is already ADP-sorted
-      const price = priceForPlayer(position, positionRank, numTeams, roster, pricedSlots);
+      const price = priceForPlayer(position, positionRank, numTeams, roster, userPricedSlots, curves);
       lookup[player.name.toLowerCase()] = price;
     });
   });
   return lookup;
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // PLAYER AUTOCOMPLETE (modified — now looks up real prices from the
@@ -1807,11 +1930,25 @@ function generateTPS() {
     var variedSlots = applyVariation(finalSlots, engineStratKey, Math.random);
     var pricedSlots = dollarsForSlots(variedSlots, engineStratKey, state.budget);
 
-    // ── PLAYER-TO-SLOT MAPPER, for Step 5's search (unchanged job, new
-    // mechanism) — builds a name->$ lookup so searching "Bijan
-    // Robinson" in Step 5 still shows a sane individual price, even
-    // though the price SHEET itself (rendered below) shows no names.
-    state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots);
+    // ── PLAYER-TO-SLOT MAPPER, for Step 5's search — REWRITTEN
+    // 2026-06-28 (v4). A real bug was found via live testing: a
+    // player's price was derived from whatever strategy the user
+    // currently had selected, which meant an elite RB like Jahmyr
+    // Gibbs priced at HALF his real value just because the user picked
+    // WR Heavy that session — even though a player's real auction
+    // market value cannot depend on one user's personal draft strategy
+    // (the other 11 managers in a real room are running their own,
+    // unrelated strategies). FIX: player pricing is now ALWAYS anchored
+    // to a separate, freshly-computed BALANCED-strategy sheet — a
+    // neutral, no-strong-lean stand-in for "the room," entirely
+    // independent of whatever stratKey/engineStratKey the user actually
+    // selected above. Note isSuperflex still applies to this sheet too
+    // (Superflex genuinely does change real market value, since it
+    // changes what every team in the league needs at QB — that's not a
+    // personal-strategy effect, it's a true league-format effect).
+    var balancedSlots = buildFinalSlotTable('balanced', state.roster, isSuperflex, state.budget);
+    var balancedPricedSlots = dollarsForSlots(balancedSlots, 'balanced', state.budget);
+    state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots, balancedPricedSlots);
 
     renderTPS(pricedSlots, stratKey);
   });
