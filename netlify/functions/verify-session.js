@@ -124,7 +124,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ fullAccess: false, auctionAccess: false }),
+      body: JSON.stringify({ fullAccess: false }),
     };
   }
 
@@ -141,7 +141,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ fullAccess: false, auctionAccess: false }),
+      body: JSON.stringify({ fullAccess: false }),
     };
   }
 
@@ -154,7 +154,6 @@ exports.handler = async (event) => {
     headers: CORS_HEADERS,
     body: JSON.stringify({
       fullAccess: payload.fullAccess === true,
-      auctionAccess: payload.auctionAccess === true,
     }),
   };
 };
