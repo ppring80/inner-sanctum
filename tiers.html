@@ -223,11 +223,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
      can be rotated (see Passcode Rotation Runbook) without locking
      out testers, and vice versa.
 
-     THIS PAGE CHECKS fullAccess (NOT auctionAccess) — see
-     verify-session.js and oauth-callback.js. The Oracle Tier List is
-     an Acolyte/Season Pass feature only. Draft Day Pass holders get
-     auctionAccess:true but fullAccess:false, so they are correctly
-     kept out of this page — Draft Day Pass is Auction War Room only. -->
+     THIS PAGE CHECKS fullAccess — same single flag every other
+     gated page checks. Per the 2026-06-27 tier collapse, there is now
+     only one paid tier (Founding Acolyte); Draft Day Pass and Season
+     Pass were retired as separate products since Patreon offered no
+     way to make them genuinely one-time. See verify-session.js and
+     oauth-callback.js for the simplified single-tier logic. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -249,7 +250,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 // an HttpOnly cookie, so this page's JS cannot read it directly via
 // document.cookie. verify-session.js is a small Netlify Function that
 // reads the cookie server-side (where HttpOnly doesn't apply), verifies
-// its signature, and returns just {fullAccess, auctionAccess} — this
+// its signature, and returns just {fullAccess} — this
 // page never sees the raw cookie or the signing secret.
 var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
