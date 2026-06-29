@@ -337,20 +337,36 @@ function computePowerRankings(league) {
 // for this lookup logic, not a rewrite of how commentary is selected
 // or displayed.
 // ═══════════════════════════════════════════════════════════
+// FIXED 2026-06-28: original rank<=3 branch caught ranks 2 AND 3 with the
+// exact same templated line (only the team name differed), so consecutive
+// teams in the top tier read as identical commentary. Caught via live
+// end-to-end testing in production (rank #2 and #3 both showed "is solidly
+// good, not gonna lie...") -- not caught by eyeballing the code, since the
+// bug only becomes visible once two real teams actually land in that branch
+// side by side. Fix: form-trend (formDelta) is now checked BEFORE the
+// generic rank-tier fallback for every rank, not just outside top-3, so a
+// team's trajectory (heating up / cooling off) gets first say in its
+// commentary regardless of rank -- this naturally differentiates teams that
+// share a rank tier but have different trends (exactly the #2 vs #3 case
+// here: Enforcers trending up, Throwers steady). Rank-only fallback text is
+// also now split into rank===2 / rank===3 specifically (not one shared
+// <=3 branch) so even two flat-trend teams in the top tier won't repeat.
 function oracleCommentary(team, rank, allTeams) {
   if (rank === 1) return `${team.name} sits atop the standings, and the numbers agree with the eye test — a record this strong, built on scoring this far above the field, is no mirage.`;
-  if (rank <= 3) return `The signs favor ${team.name}. Their record speaks of consistency, though I sense room yet to climb.`;
-  if (team.formDelta > 8) return `${team.name} stirs. Their recent weeks outpace their season's average — a team finding its true form just as it matters most.`;
-  if (team.formDelta < -8) return `I see turbulence ahead for ${team.name}. Their recent output has fallen from what once was — the standings may not yet reflect what's coming.`;
+  if (team.formDelta > 8) return `${team.name} stirs. Their recent weeks outpace their season's average — a team finding its true form just as it matters most, and currently ranked #${rank}.`;
+  if (team.formDelta < -8) return `I see turbulence ahead for ${team.name}. Their recent output has fallen from what once was — the #${rank} ranking may not hold if this continues.`;
+  if (rank === 2) return `${team.name} stands second, a step behind the leader but well clear of the pack below. The gap is real, but not insurmountable.`;
+  if (rank === 3) return `${team.name} holds the third seat with quiet consistency. Theirs is not the loudest record, but it is a dependable one.`;
   if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. The record is unkind, and I find little in the numbers to suggest an imminent turn.`;
   return `${team.name} occupies the middle of the table — neither blessed nor cursed, simply waiting for the moment that defines their season.`;
 }
 
 function trashCommentary(team, rank, allTeams) {
   if (rank === 1) return `${team.name} is RUNNING this league right now. ${team.wins}-${team.losses} and scoring like they've got something to prove. Nobody's catching this.`;
-  if (rank <= 3) return `${team.name} is solidly good, not gonna lie. Doesn't mean they're #1, but I wouldn't want to play them.`;
-  if (team.formDelta > 8) return `WATCH OUT for ${team.name}. They were mid all season and now they're suddenly cooking. Classic late-season surge, somebody's getting bodied.`;
-  if (team.formDelta < -8) return `${team.name} peaked weeks ago and everybody knows it except them. The record's gonna catch up to reality real soon.`;
+  if (team.formDelta > 8) return `WATCH OUT for ${team.name}. They were mid all season and now they're suddenly cooking. Classic late-season surge — currently #${rank}, but climbing.`;
+  if (team.formDelta < -8) return `${team.name} peaked weeks ago and everybody knows it except them. That #${rank} ranking is living on borrowed time.`;
+  if (rank === 2) return `${team.name} is the clear #2. Not catching the top spot this week, but everybody else in this league should be scared of them.`;
+  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal. Respectable. Boring, but respectable.`;
   if (rank >= allTeams.length - 1) return `${team.name} is bad. Like, genuinely struggling. ${team.wins}-${team.losses} doesn't lie. Might be time to start thinking about next year.`;
   return `${team.name} is just... there. Not good, not terrible, the definition of "fine." Nobody's scared, nobody's worried.`;
 }
