@@ -468,9 +468,25 @@ function render(){
   // matching players in a single flat list.
   if(curSearch){renderSearch();return;}
 
+  // ── FIXED 2026-06-29: "ALL" used to mean "6 separate
+  // position-grouped sections stacked QB->RB->WR->TE->K->DEF, each
+  // independently sorted by that position's own ADP" — NOT a true
+  // merged board. That meant e.g. every QB showed before every RB
+  // regardless of real draft value, which doesn't reflect how an
+  // actual draft unfolds. Per Pat's explicit instruction, "All" now
+  // renders ONE flat list merged across every position and sorted by
+  // real global ADP — so the natural mixed order shows through (e.g.
+  // 4 RBs, then the top WR, then 2 more RBs, etc.), matching how a
+  // real draft actually plays out. Position-specific tabs (QB/RB/WR/
+  // TE/K/DEF) are COMPLETELY UNCHANGED — they still render as
+  // position-grouped sections with tier dividers and Oracle/Trash
+  // Lord wisdom boxes exactly as before; this only changes what "ALL"
+  // means. See renderAll() below for the new merged-list logic.
+  if(curPos==='ALL'){renderAll();return;}
+
   var main=document.getElementById('main');
   var show=parseInt(document.getElementById('showSel').value);
-  var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
+  var positions=[curPos];
   var posNames={QB:'Quarterbacks',RB:'Running Backs',WR:'Wide Receivers',TE:'Tight Ends',K:'Kickers',DEF:'Team Defenses'};
   main.innerHTML='';
 
@@ -549,6 +565,128 @@ function render(){
     main.appendChild(sec);
   });
 
+  updateDBar();
+}
+
+// ═══════════════════════════════════════
+// RENDER — "ALL" MERGED BOARD (new, 2026-06-29)
+//
+// Replaces the old "ALL = 6 stacked position sections" behavior.
+// Merges every position's pool into ONE array, sorts by raw global
+// ADP value (the actual fix Pat asked for — a true draft-order board
+// where positions interleave naturally based on real ADP, e.g. RB,
+// RB, RB, WR, RB, TE, WR... rather than every QB before every RB),
+// then renders as a single flat table/grid, same row/card markup as
+// renderSearch() already uses (which performs this exact kind of
+// merge-and-flatten for an unrelated reason — search across
+// positions — so this reuses that proven pattern rather than
+// inventing a new one).
+//
+// SCOPE OF WHAT'S DROPPED IN THIS VIEW SPECIFICALLY: tier dividers
+// and the Oracle/Trash Lord wisdom boxes are POSITION-RELATIVE
+// concepts (a "Tier 1 RB" has no equivalent meaning in a merged
+// list spanning all positions) — they're correctly omitted here, but
+// remain fully intact and unchanged on every individual position tab
+// (QB/RB/WR/TE/K/DEF), where they still make sense. A position badge
+// column (matching renderSearch()'s existing pattern) replaces them
+// here so the position of each player is still visible at a glance.
+//
+// "Top N" (15/30/50/All) now applies to the MERGED, globally-sorted
+// list as a whole — i.e. "Top 30" on the All tab means the 30 best
+// players league-wide by ADP, not 30 per position. This is the
+// natural reading of "All" + "Top N" together once All is a true
+// merged board, and matches how the existing showSel dropdown already
+// behaves on individual position tabs (Top 30 RBs, not Top 30
+// overall) — same dropdown, same general semantics, just scoped to
+// the now-correctly-merged pool.
+// ═══════════════════════════════════════
+function renderAll(){
+  var main=document.getElementById('main');
+  var show=parseInt(document.getElementById('showSel').value);
+
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){
+      merged.push(p); // p already carries {name,team,adp,pos,key} from loadAll()/loadFallback()
+    });
+  });
+  merged.sort(function(a,b){return a.adp-b.adp});
+
+  var limit=show===999?merged.length:show;
+  var players=merged.slice(0,limit);
+
+  main.innerHTML='';
+
+  var sec=document.createElement('div');
+  sec.className='pos-sec';
+
+  sec.innerHTML='<div class="pos-hdr"><span class="ptitle">All Positions — True Draft Order</span><span class="pcount">'+players.length+' of '+merged.length+'</span></div>';
+
+  if(curView==='list'){
+    var wrap=document.createElement('div');wrap.style.overflowX='auto';
+    var tbl=document.createElement('table');tbl.className='ptable';
+    tbl.innerHTML='<thead><tr><th>OVR</th><th>Pos</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th></th></tr></thead>';
+    var tbody=document.createElement('tbody');
+
+    players.forEach(function(p,i){
+      var pr=i+1; // global rank within the merged board, NOT position-rank
+      // Tier/stream-score still need a POSITION-RELATIVE rank to mean
+      // anything (tier cuts are defined per-position in TIER_CUTS) —
+      // computed here from this player's own position array rather
+      // than the merged list's index, so e.g. a WR ranked #3 overall
+      // still correctly shows as WR3-tier, not "tier for rank 3 of
+      // any position."
+      var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
+      if(posRankForTiers<1)posRankForTiers=pr;
+      var dk=!!drafted[p.key];
+      var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
+      var bye=BYE[p.team]||'—';
+      var adpStr=p.adp<900?p.adp.toFixed(1):'—';
+      var ovrStr=p.adp<900?Math.round(p.adp):'—';
+
+      var injHtml=inj2?'<span class="ibadge '+inj2.cls+'">'+inj2.icon+' '+inj2.label+(inj2.part?' · '+inj2.part:'')+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+      var safeName=p.name.replace(/'/g,'&#39;');
+      var tr=document.createElement('tr');
+      tr.className='prow'+(dk?' drafted':'');
+      tr.id='row-'+p.key;
+      tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=p.pos;
+      tr.innerHTML=
+        '<td class="r-ovr">'+ovrStr+'</td>'+
+        '<td><span class="pbadge '+p.pos+'" style="font-size:9px;padding:2px 6px">'+p.pos+'</span></td>'+
+        '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
+        '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
+        '<td class="bye-td">'+bye+'</td>'+
+        '<td class="adp-td">'+adpStr+'</td>'+
+        '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
+        '<td class="inj-td">'+injHtml+'</td>'+
+        '<td><button class="act-btn draft-btn" onclick="tDraft(\''+p.key+'\',this,\'row\')">'+( dk?'✗ Drafted':'+ Draft')+'</button></td>'+
+        '<td><button class="act-btn" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')">Compare</button></td>';
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
+  }else{
+    var grid=document.createElement('div');grid.className='cgrid';
+    players.forEach(function(p,i){
+      var pr=i+1;
+      var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
+      if(posRankForTiers<1)posRankForTiers=pr;
+      var dk=!!drafted[p.key];var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
+      var bye=BYE[p.team]||'—';
+      var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex">'+inj2.icon+' '+inj2.label+'</div>':'';
+      var card=document.createElement('div');
+      card.className='pcard'+(dk?' drafted':'');card.id='card-'+p.key;
+      card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
+      card.innerHTML=
+        '<div class="crank">#'+pr+'</div>'+
+        '<div class="cname">'+p.name+'</div>'+
+        '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span></div>'+
+        injH+'<button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>';
+      grid.appendChild(card);
+    });
+    sec.appendChild(grid);
+  }
+
+  main.appendChild(sec);
   updateDBar();
 }
 
