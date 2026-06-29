@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -476,18 +475,54 @@ function oracleMatchup(teamA, teamB) {
 // matchup commentary gets a second beat of detail, not just a longer
 // single sentence. Each branch still derives its extra material from
 // real numbers (rank gap, point totals) rather than generic filler.
+// FIXED 2026-06-29: the "blowout" bucket (gap >= 0.2) was ONE fixed
+// template with no internal variation at all -- caught live when two
+// real mock matchups (Gridiron/Pigskin and Thunderbolt/Fumble) both
+// landed in this bucket and rendered as near-identical paragraphs,
+// just with names/numbers swapped. Same root issue as the rankings
+// commentary duplicate bug fixed yesterday, but this is a DIFFERENT
+// function (trashMatchup, not trashCommentary) that wasn't covered by
+// yesterday's verification -- a real gap in that testing pass, not a
+// coincidence of the mock data. Fix: each bucket now has 3 distinct
+// phrasings, selected by a deterministic signal already present in
+// the matchup data itself (rankGap mod 3) rather than Math.random() --
+// deterministic means the same matchup always reads the same way on
+// every page load/persona-switch, which avoids an inconsistent feel,
+// while still spreading multiple same-bucket matchups across
+// different actual sentences. All three buckets still work real
+// per-matchup numbers into whichever phrasing is selected, same
+// discipline as every other fix in this file.
 function trashMatchup(teamA, teamB) {
   const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
   const underdog = favorite === teamA ? teamB : teamA;
   const gap = Math.abs(teamA.powerScore - teamB.powerScore);
   const rankGap = Math.abs(teamA.rank - teamB.rank);
+  const variant = rankGap % 3; // deterministic 0/1/2 picker, stable per matchup
+
   if (gap < 0.08) {
-    return `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up. This is the kind of game that gets decided by one bad bench decision on a Sunday morning, and somebody's about to learn that the hard way.`;
+    const coinFlipVariants = [
+      `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up. This is the kind of game that gets decided by one bad bench decision on a Sunday morning, and somebody's about to learn that the hard way.`,
+      `Nobody should feel confident about ${teamA.name} vs ${teamB.name}. ${teamA.seasonAvg.toFixed(0)} a week, ${teamB.seasonAvg.toFixed(0)} a week — there's nothing separating these two teams except whoever remembers to check their lineup before kickoff. Pure chaos game.`,
+      `${teamA.name} and ${teamB.name} are basically the same team wearing different jerseys — ${teamA.seasonAvg.toFixed(0)} vs ${teamB.seasonAvg.toFixed(0)}, a rounding error apart. This one's going to come down to whoever's bench player has the better Sunday, not skill.`
+    ];
+    return coinFlipVariants[variant];
   }
+
   if (gap < 0.2) {
-    return `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it. The gap on paper is real — ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.seasonAvg.toFixed(0)} — but "on paper" has never once stopped an upset in this league.`;
+    const closeVariants = [
+      `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it. The gap on paper is real — ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.seasonAvg.toFixed(0)} — but "on paper" has never once stopped an upset in this league.`,
+      `On paper, ${favorite.name} takes this — ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)}. But "on paper" is exactly the kind of phrase that ages badly in this league, and ${underdog.name} has a real shot at making this one ugly.`,
+      `${favorite.name} is the favorite here, ${favorite.seasonAvg.toFixed(0)} a week vs ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — a real edge, but not a big one. Close enough that one big play from ${underdog.name} flips the whole script.`
+    ];
+    return closeVariants[variant];
   }
-  return `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday. A ${rankGap}-spot gap in the standings doesn't happen by accident, and this is exactly the kind of week where the gap gets wider, not closer.`;
+
+  const blowoutVariants = [
+    `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday. A ${rankGap}-spot gap in the standings doesn't happen by accident, and this is exactly the kind of week where the gap gets wider, not closer.`,
+    `Let's be honest about ${favorite.name} vs ${underdog.name}: ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.seasonAvg.toFixed(0)} isn't a fair fight, it's a mercy rule waiting to happen. ${rankGap} spots apart in the standings for a reason — ${underdog.name} shows up here as a formality.`,
+    `${underdog.name} walking into a buzzsaw this week. ${favorite.name} is putting up ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)}, and a ${rankGap}-spot gap that big in the standings means this one's over before it starts. Sorry in advance.`
+  ];
+  return blowoutVariants[variant];
 }
 
 // ═══════════════════════════════════════════════════════════
