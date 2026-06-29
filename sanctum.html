@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -723,7 +722,7 @@ function checkOAuthSession() {
     <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
     <span class="top-sub">Choose your counsel wisely</span>
-    <div class="tier-note">🎁 Free tier: 10 questions every 24 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
+    <div class="tier-note">🎁 Free tier: 3 questions every 24 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
 
   <!-- SLEEPER CONNECT -->
@@ -771,7 +770,7 @@ function checkOAuthSession() {
       <div class="howto-item"><span class="howto-icon">🔮</span><span><strong>Pick a persona</strong> — Oracle, Trash Lord, and Analyst all give real advice in a different voice. Switching tabs starts a separate conversation with that persona; they don't see what you asked the others.</span></div>
       <div class="howto-item"><span class="howto-icon">🏈</span><span><strong>Connect Sleeper</strong> (optional) to auto-fill your actual roster and lineup format below, and get advice based on your real team instead of generic tips.</span></div>
       <div class="howto-item"><span class="howto-icon">⚡</span><span><strong>Weekly Lineup Advisor</strong> — enter your starters (or let Sleeper fill them in), set your roster format if it wasn't auto-detected, then ask your persona for a full lineup verdict.</span></div>
-      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 10 questions every 24 hours, across all personas combined. The count is saved on your device, so reloading or closing the page won't reset it early — it unlocks again automatically once the window passes. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
+      <div class="howto-item"><span class="howto-icon">🎁</span><span><strong>Free tier:</strong> 3 questions every 24 hours, across all personas combined. The count is saved on your device, so reloading or closing the page won't reset it early — it unlocks again automatically once the window passes. <button class="tier-note-link" onclick="showUpgradeModal()">See Acolyte perks</button></span></div>
     </div>
   </div>
 
@@ -1031,8 +1030,17 @@ var busy = false;
 // actually resets RESET_WINDOW_HOURS after the first question in
 // the current window. Change RESET_WINDOW_HOURS to 24 for a once-
 // a-day reset instead of every few hours.
+//
+// CHANGED 2026-06-29: free-tier limit lowered from 10 to 3 per Pat's
+// explicit instruction. Every other reference to the old "10
+// questions" figure in this file's copy (the tier-note line under the
+// page title, the How This Works panel, and the upgrade modal's
+// headline) was updated to match — see those spots further down. The
+// upgrade modal's footer disclaimer text ("FREE QUESTIONS RESET EVERY
+// 24 HOURS") doesn't mention the number itself, so it didn't need a
+// change.
 // ═══════════════════════════════════════
-var QUESTION_LIMIT = 10;
+var QUESTION_LIMIT = 3;
 var RESET_WINDOW_HOURS = 24;
 var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
 var QUESTION_STORAGE_KEY = 'sanctum_question_window';
@@ -1952,8 +1960,8 @@ loadAcolyteWindow();
   <div style="background:linear-gradient(160deg,#1a0f08,#221208);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.15);">
     <div style="font-size:40px;margin-bottom:12px;">🔮</div>
     <div style="font-size:11px;letter-spacing:4px;color:#c9a84c;text-transform:uppercase;margin-bottom:10px;">Your Wisdom Is Spent</div>
-    <div style="font-size:20px;color:#f0e0b0;margin-bottom:12px;font-weight:bold;">You've reached your 10-question limit</div>
-    <div style="font-size:14px;color:#8a7860;line-height:1.7;margin-bottom:24px;">Free Apprentices receive 10 questions every 24 hours. Upgrade to <strong style="color:#c9a84c;">Founding Acolyte</strong> for unlimited access to all three personas, the Auction War Room, and Sleeper integration.</div>
+    <div style="font-size:20px;color:#f0e0b0;margin-bottom:12px;font-weight:bold;">You've reached your 3-question limit</div>
+    <div style="font-size:14px;color:#8a7860;line-height:1.7;margin-bottom:24px;">Free Apprentices receive 3 questions every 24 hours. Upgrade to <strong style="color:#c9a84c;">Founding Acolyte</strong> for unlimited access to all three personas, the Auction War Room, and Sleeper integration.</div>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" style="display:block;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#000;font-family:Georgia,serif;font-size:15px;font-weight:bold;padding:14px 20px;border-radius:10px;text-decoration:none;margin-bottom:12px;letter-spacing:1px;">⚔️ Become a Founding Acolyte — $7.99/mo</a>
     <button onclick="closeUpgradeModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9a8a7a;font-family:Georgia,serif;font-size:13px;padding:10px 20px;cursor:pointer;width:100%;">Maybe Later</button>
     <div id="upgradeResetNote" style="font-size:12px;color:#c9a84c;margin-top:14px;letter-spacing:0.5px;"></div>
