@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>League Power Rankings — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f2f1ef;
+  --bg2:#e8e7e4;
+  --surface:#ffffff;
+  --border:#d4d2ce;
+  --border2:#b8b5b0;
+  --gold:#b8921a;
+  --amber:#c8780a;
+  --glow:#f5c842;
+  --ink:#1c1c1a;
+  --muted:#4a4a46;
+  --dim:#7a7a76;
+  --green:#2e7d32;
+  --red:#8a2020;
+  --blue:#1565c0;
+  --purple:#6a1b9a;
+  --r:6px;
+}
+
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+/* ── HEADER (matches auction.html) ── */
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* ── MOCK DATA BANNER (new — same role as preview-banner in auction.html) ── */
+.mock-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
+.mock-banner strong{color:#f5c842}
+
+.panel{padding:28px 24px;max-width:1040px;margin:0 auto}
+.panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px;color:var(--ink)}
+.panel-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+
+/* ── CONNECT GATE (mirrors auction.html's gate-overlay structure, but inline rather than full-screen since this page's whole purpose is the connect step) ── */
+.connect-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:40px 32px;max-width:460px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.4);margin:0 auto}
+.connect-icon{font-size:40px;margin-bottom:12px}
+.connect-title{font-family:'Cinzel',serif;font-size:19px;font-weight:600;color:#f2f1ef;margin-bottom:10px;letter-spacing:1px}
+.connect-sub{font-family:'Lora',Georgia,serif;font-size:13px;color:#a08a5a;line-height:1.7;margin-bottom:24px}
+.platform-row{display:flex;gap:10px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.platform-btn{flex:1;min-width:130px;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(201,168,76,0.25);border-radius:10px;cursor:pointer;transition:all 0.15s;text-align:center}
+.platform-btn:hover{background:rgba(201,168,76,0.1);border-color:#c9a84c}
+.platform-btn.selected{background:rgba(201,168,76,0.15);border-color:#c9a84c}
+.platform-name{font-family:'Cinzel',serif;font-size:13px;color:#f2f1ef;letter-spacing:0.5px}
+.platform-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#7a6a45;margin-top:4px}
+.connect-btn{width:100%;padding:14px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:'Cinzel',serif;font-size:14px;font-weight:600;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;transition:opacity 0.15s}
+.connect-btn:hover{opacity:0.88}
+.connect-btn:disabled{opacity:0.35;cursor:not-allowed}
+.connect-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a4a2a;margin-top:16px;letter-spacing:0.5px}
+
+/* ── RESULTS STATE (hidden until "connected") ── */
+.results{display:none}
+.results.active{display:block}
+.connect-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh}
+.connect-wrap.hidden{display:none}
+
+/* ── LEAGUE META BAR ── */
+.league-meta{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.league-meta-name{font-family:'Cinzel',serif;font-size:15px;color:var(--ink)}
+.league-meta-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
+.attribution{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:0.5px}
+
+/* ── PERSONA SWITCHER ── */
+.persona-switcher{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.persona-pill{padding:9px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-family:'Cinzel',serif;font-size:12px;color:var(--muted);transition:all 0.15s;display:flex;align-items:center;gap:6px}
+.persona-pill:hover{border-color:var(--border2)}
+.persona-pill.active{border-color:var(--gold);background:rgba(184,146,26,0.08);color:var(--ink)}
+
+/* ── RANKINGS TABLE ── */
+.rank-section{margin-bottom:28px}
+.rank-list{display:flex;flex-direction:column;gap:10px}
+.rank-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:start;transition:border-color 0.15s}
+.rank-card:hover{border-color:var(--border2)}
+.rank-num{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:var(--gold);text-align:center;line-height:1}
+.rank-num.top{color:var(--amber)}
+.rank-main{min-width:0}
+.rank-team-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+.rank-team-name{font-family:'Cinzel',serif;font-size:16px;color:var(--ink)}
+.rank-record{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)}
+.rank-trend{font-size:11px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:3px;font-weight:600}
+.rank-trend.up{background:rgba(46,125,50,0.12);color:var(--green)}
+.rank-trend.down{background:rgba(138,32,32,0.12);color:var(--red)}
+.rank-trend.flat{background:rgba(122,122,118,0.12);color:var(--dim)}
+.rank-commentary{font-style:italic;font-size:13px;color:var(--muted);line-height:1.6}
+.rank-stats{text-align:right;flex-shrink:0}
+.rank-stat-val{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--ink);font-weight:600}
+.rank-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.rank-move{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);margin-top:6px}
+
+/* ── FORMULA DISCLOSURE (mirrors auction.html's help-panel pattern) ── */
+.help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:24px;overflow:hidden}
+.help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
+.help-toggle:hover{background:rgba(184,146,26,0.04)}
+.help-icon{font-size:16px;transition:transform 0.3s}
+.help-icon.open{transform:rotate(180deg)}
+.help-body{display:none;padding:0 16px 16px}
+.help-body.open{display:block}
+.formula-bar{display:flex;height:28px;border-radius:6px;overflow:hidden;margin:12px 0;border:1px solid var(--border)}
+.formula-seg{display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;font-weight:600}
+.formula-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+.formula-legend-item{display:flex;align-items:center;gap:6px}
+.formula-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── MATCHUP PREVIEWS ── */
+.matchup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.matchup-teams{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px}
+.matchup-team{text-align:center;flex:1}
+.matchup-team-name{font-family:'Cinzel',serif;font-size:15px;color:var(--ink)}
+.matchup-team-rank{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-top:2px}
+.matchup-vs{font-family:'Cinzel',serif;font-size:12px;color:var(--dim);letter-spacing:1px}
+.matchup-divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+
+.oracle-box{background:rgba(184,146,26,0.05);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;margin-bottom:0}
+.oracle-box-label{font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:5px}
+.oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.65}
+.trash-box{background:rgba(138,32,32,0.04);border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0;padding:12px 14px}
+.trash-box-label{font-size:9px;letter-spacing:2px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:5px}
+.trash-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.65}
+.analyst-box{background:rgba(21,101,192,0.04);border-left:3px solid var(--blue);border-radius:0 var(--r) var(--r) 0;padding:12px 14px}
+.analyst-box-label{font-size:9px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:5px}
+.analyst-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.65}
+
+@media(max-width:640px){
+  .rank-card{grid-template-columns:36px 1fr;}
+  .rank-stats{grid-column:1 / -1;text-align:left;display:flex;gap:16px;margin-top:6px}
+  .platform-row{flex-direction:column}
+  .matchup-teams{flex-direction:column;gap:6px}
+  .matchup-vs{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="mock-banner">
+  🧪 <strong>Framework preview — mock league data.</strong> This page demonstrates the Power Rankings layout, scoring formula, and persona commentary ahead of real Yahoo Fantasy integration (pending API approval).
+</div>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">📊 League Power Rankings</h1>
+  </div>
+  <div class="hdr-right">
+    <span class="lock-badge">🔒 Acolyte Feature</span>
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/auction" class="nav-link">⚔️ Auction</a>
+    <a href="/tiers" class="nav-link">🏆 Tier List</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<!-- ═══ CONNECT STATE ═══ -->
+<div class="panel connect-wrap" id="connectWrap">
+  <div class="connect-card">
+    <div class="connect-icon">🔗</div>
+    <div class="connect-title">Link Your League</div>
+    <div class="connect-sub">Connect your fantasy league and The Oracle, The Trash Lord, and The Analyst will break down your standings, your trajectory, and this week's matchups — using your real teams, your real records.</div>
+    <div class="platform-row">
+      <div class="platform-btn selected" id="platform-yahoo" onclick="selectPlatform('yahoo')">
+        <div class="platform-name">Yahoo</div>
+        <div class="platform-status" id="platform-yahoo-status">Pending API access</div>
+      </div>
+      <div class="platform-btn" id="platform-sleeper" onclick="selectPlatform('sleeper')">
+        <div class="platform-name">Sleeper</div>
+        <div class="platform-status">Live</div>
+      </div>
+      <div class="platform-btn" id="platform-espn" onclick="selectPlatform('espn')" style="opacity:0.5;cursor:default" title="Not yet built">
+        <div class="platform-name">ESPN</div>
+        <div class="platform-status">Planned</div>
+      </div>
+    </div>
+    <button class="connect-btn" onclick="connectMock()">Connect with Yahoo (Demo)</button>
+    <div class="connect-note">DEMO MODE — loads sample league data, no real Yahoo account required yet</div>
+  </div>
+</div>
+
+<!-- ═══ RESULTS STATE ═══ -->
+<div class="panel results" id="results">
+
+  <div class="league-meta">
+    <div>
+      <div class="league-meta-name" id="leagueName">The Brotherhood</div>
+      <div class="league-meta-tag" id="leagueMeta">10 teams · PPR · Week 11 · Yahoo Fantasy</div>
+    </div>
+    <div class="attribution">Fantasy data provided by Yahoo Fantasy</div>
+  </div>
+
+  <div class="persona-switcher">
+    <div class="persona-pill active" id="persona-oracle" onclick="selectPersona('oracle')">🔮 The Oracle</div>
+    <div class="persona-pill" id="persona-trash" onclick="selectPersona('trash')">🔥 The Trash Lord</div>
+    <div class="persona-pill" id="persona-analyst" onclick="selectPersona('analyst')">📐 The Analyst</div>
+  </div>
+
+  <div class="help-panel">
+    <button class="help-toggle" id="helpToggle" onclick="toggleHelp()">
+      📐 How Power Rankings Are Calculated
+      <span class="help-icon" id="helpIcon">▼</span>
+    </button>
+    <div class="help-body" id="helpBody">
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:10px">Each team's Power Score blends three signals — not just where you sit in the standings, but how you got there and where you're headed.</p>
+      <div class="formula-bar">
+        <div class="formula-seg" style="width:45%;background:var(--gold)">45% Record</div>
+        <div class="formula-seg" style="width:35%;background:var(--amber)">35% Scoring</div>
+        <div class="formula-seg" style="width:20%;background:var(--purple)">20% Form</div>
+      </div>
+      <div class="formula-legend">
+        <div class="formula-legend-item"><span class="formula-dot" style="background:var(--gold)"></span>Win/loss record — the most direct signal of team quality</div>
+        <div class="formula-legend-item"><span class="formula-dot" style="background:var(--amber)"></span>Points scored vs. league average — separates real dominance from lucky wins</div>
+        <div class="formula-legend-item"><span class="formula-dot" style="background:var(--purple)"></span>Last 3 weeks vs. season average — catches teams heating up or cooling off</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rank-section">
+    <p class="panel-sub" style="margin-bottom:14px">Updated through this week's games. Click a persona above to see their take on every team.</p>
+    <div class="rank-list" id="rankList"></div>
+  </div>
+
+  <div class="panel-title" style="margin-top:8px">This Week's Matchups</div>
+  <p class="panel-sub">Persona-voiced previews for every game on the slate.</p>
+  <div id="matchupList"></div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// MOCK LEAGUE DATA
+// Stands in for real Yahoo Fantasy API data. Shape intentionally
+// mirrors what a real integration would need: team name, weekly
+// scores (for trend calc), wins/losses, and this week's matchup
+// pairing. Swapping to live Yahoo data later means replacing this
+// block with a real fetch — everything downstream (formula, persona
+// commentary, rendering) stays the same.
+// ═══════════════════════════════════════════════════════════
+const LEAGUE = {
+  name: 'The Brotherhood',
+  numTeams: 10,
+  scoring: 'PPR',
+  week: 11,
+  platform: 'Yahoo Fantasy',
+  teams: [
+    { name: 'Gridiron Gladiators',   wins: 9, losses: 1, weeklyScores: [142,118,135,129,151,140,122,138,149,160] },
+    { name: 'Thunderbolt Throwers',  wins: 8, losses: 2, weeklyScores: [128,134,140,119,122,131,145,138,128,121] },
+    { name: 'Endzone Enforcers',     wins: 7, losses: 3, weeklyScores: [110,125,118,140,132,128,119,134,142,138] },
+    { name: 'Hail Mary Heroes',      wins: 6, losses: 4, weeklyScores: [120,108,131,125,118,140,135,98,112,129] },
+    { name: 'Blitzkrieg Bandits',    wins: 6, losses: 4, weeklyScores: [99,115,140,128,135,120,110,142,118,131] },
+    { name: 'Red Zone Raiders',      wins: 5, losses: 5, weeklyScores: [118,122,108,131,115,98,128,120,135,110] },
+    { name: 'Pigskin Pirates',       wins: 5, losses: 5, weeklyScores: [105,118,99,128,110,131,118,108,122,115] },
+    { name: 'Fumble Force',          wins: 4, losses: 6, weeklyScores: [110,98,115,108,122,105,118,99,108,112] },
+    { name: 'Sack Attack Squad',     wins: 3, losses: 7, weeklyScores: [95,108,99,118,102,95,108,90,99,105] },
+    { name: 'Punt Return Posse',     wins: 1, losses: 9, weeklyScores: [88,95,82,99,90,85,92,88,79,95] },
+  ],
+  matchups: [
+    { teamA: 'Gridiron Gladiators', teamB: 'Pigskin Pirates' },
+    { teamA: 'Thunderbolt Throwers', teamB: 'Fumble Force' },
+    { teamA: 'Endzone Enforcers', teamB: 'Blitzkrieg Bandits' },
+    { teamA: 'Hail Mary Heroes', teamB: 'Red Zone Raiders' },
+    { teamA: 'Sack Attack Squad', teamB: 'Punt Return Posse' },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// POWER RANKING FORMULA — LOCKED 2026-06-28
+// 45% record, 35% points-vs-league-average, 20% recent-3-week form.
+// Each component is normalized to a 0-1 scale within the league
+// before weighting, so the blend is fair regardless of the league's
+// actual scoring environment (a low-scoring league and a high-scoring
+// league should both spread 0-1 the same way).
+// ═══════════════════════════════════════════════════════════
+function computePowerRankings(league) {
+  const teams = league.teams;
+  const maxGames = Math.max(...teams.map(t => t.wins + t.losses));
+
+  const seasonAvgs = teams.map(t => t.weeklyScores.reduce((a,b)=>a+b,0) / t.weeklyScores.length);
+  const leagueAvg = seasonAvgs.reduce((a,b)=>a+b,0) / seasonAvgs.length;
+
+  const recordScores = teams.map(t => (t.wins + t.losses) > 0 ? t.wins / (t.wins + t.losses) : 0);
+  const maxRecord = Math.max(...recordScores), minRecord = Math.min(...recordScores);
+
+  const scoringScores = seasonAvgs.map(avg => avg - leagueAvg);
+  const maxScoring = Math.max(...scoringScores), minScoring = Math.min(...scoringScores);
+
+  const formScores = teams.map((t, i) => {
+    const last3 = t.weeklyScores.slice(-3);
+    const last3Avg = last3.reduce((a,b)=>a+b,0) / last3.length;
+    return last3Avg - seasonAvgs[i];
+  });
+  const maxForm = Math.max(...formScores), minForm = Math.min(...formScores);
+
+  function normalize(val, min, max) {
+    if (max === min) return 0.5;
+    return (val - min) / (max - min);
+  }
+
+  const results = teams.map((t, i) => {
+    const recordNorm = normalize(recordScores[i], minRecord, maxRecord);
+    const scoringNorm = normalize(scoringScores[i], minScoring, maxScoring);
+    const formNorm = normalize(formScores[i], minForm, maxForm);
+    const powerScore = (recordNorm * 0.45) + (scoringNorm * 0.35) + (formNorm * 0.20);
+    return {
+      ...t,
+      seasonAvg: seasonAvgs[i],
+      vsLeagueAvg: scoringScores[i],
+      last3Avg: t.weeklyScores.slice(-3).reduce((a,b)=>a+b,0) / 3,
+      formDelta: formScores[i],
+      powerScore
+    };
+  });
+
+  results.sort((a, b) => b.powerScore - a.powerScore);
+  results.forEach((r, i) => r.rank = i + 1);
+  return results;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERSONA COMMENTARY
+// Each persona gets its own voice function, fed the same ranked-team
+// data. Keeping these as pure functions of (team, rank, allTeams)
+// means swapping in real Claude-generated commentary later (per the
+// existing Weekly Rankings caching pattern) is a drop-in replacement
+// for this lookup logic, not a rewrite of how commentary is selected
+// or displayed.
+// ═══════════════════════════════════════════════════════════
+function oracleCommentary(team, rank, allTeams) {
+  if (rank === 1) return `${team.name} sits atop the standings, and the numbers agree with the eye test — a record this strong, built on scoring this far above the field, is no mirage.`;
+  if (rank <= 3) return `The signs favor ${team.name}. Their record speaks of consistency, though I sense room yet to climb.`;
+  if (team.formDelta > 8) return `${team.name} stirs. Their recent weeks outpace their season's average — a team finding its true form just as it matters most.`;
+  if (team.formDelta < -8) return `I see turbulence ahead for ${team.name}. Their recent output has fallen from what once was — the standings may not yet reflect what's coming.`;
+  if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. The record is unkind, and I find little in the numbers to suggest an imminent turn.`;
+  return `${team.name} occupies the middle of the table — neither blessed nor cursed, simply waiting for the moment that defines their season.`;
+}
+
+function trashCommentary(team, rank, allTeams) {
+  if (rank === 1) return `${team.name} is RUNNING this league right now. ${team.wins}-${team.losses} and scoring like they've got something to prove. Nobody's catching this.`;
+  if (rank <= 3) return `${team.name} is solidly good, not gonna lie. Doesn't mean they're #1, but I wouldn't want to play them.`;
+  if (team.formDelta > 8) return `WATCH OUT for ${team.name}. They were mid all season and now they're suddenly cooking. Classic late-season surge, somebody's getting bodied.`;
+  if (team.formDelta < -8) return `${team.name} peaked weeks ago and everybody knows it except them. The record's gonna catch up to reality real soon.`;
+  if (rank >= allTeams.length - 1) return `${team.name} is bad. Like, genuinely struggling. ${team.wins}-${team.losses} doesn't lie. Might be time to start thinking about next year.`;
+  return `${team.name} is just... there. Not good, not terrible, the definition of "fine." Nobody's scared, nobody's worried.`;
+}
+
+function analystCommentary(team, rank, allTeams) {
+  const diff = team.vsLeagueAvg >= 0 ? '+' : '';
+  return `Rank ${rank} of ${allTeams.length}. Record: ${team.wins}-${team.losses}. Season average ${team.seasonAvg.toFixed(1)} pts (${diff}${team.vsLeagueAvg.toFixed(1)} vs. league average). Last 3 weeks: ${team.last3Avg.toFixed(1)} pts (${team.formDelta >= 0 ? '+' : ''}${team.formDelta.toFixed(1)} vs. own season average).`;
+}
+
+function getCommentary(persona, team, rank, allTeams) {
+  if (persona === 'trash') return trashCommentary(team, rank, allTeams);
+  if (persona === 'analyst') return analystCommentary(team, rank, allTeams);
+  return oracleCommentary(team, rank, allTeams);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MATCHUP PREVIEWS — each gets all three persona takes, all rendered
+// at once (unlike rankings, which switch based on the selected
+// persona pill) since a matchup preview benefits from hearing every
+// voice on the same game, the way the existing Target Price Sheet
+// shows both Oracle AND Trash Lord boxes simultaneously.
+// ═══════════════════════════════════════════════════════════
+function oracleMatchup(teamA, teamB) {
+  const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
+  const underdog = favorite === teamA ? teamB : teamA;
+  return `The numbers favor ${favorite.name}, though ${underdog.name} has shown they do not yield easily. I would not call this settled until the final whistle.`;
+}
+function trashMatchup(teamA, teamB) {
+  const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
+  const underdog = favorite === teamA ? teamB : teamA;
+  return `${favorite.name} should win this. Should. ${underdog.name} has been known to ruin a good prediction, so don't bet the house.`;
+}
+function analystMatchup(teamA, teamB) {
+  const gap = Math.abs(teamA.powerScore - teamB.powerScore);
+  const closeness = gap < 0.1 ? 'a close matchup on paper' : gap < 0.25 ? 'a moderate gap in projected strength' : 'a clear projected advantage for one side';
+  return `Power Score gap: ${gap.toFixed(2)} — ${closeness}. ${teamA.name}: ${teamA.seasonAvg.toFixed(1)} avg pts. ${teamB.name}: ${teamB.seasonAvg.toFixed(1)} avg pts.`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE + RENDERING
+// ═══════════════════════════════════════════════════════════
+let state = { connected: false, persona: 'oracle', rankings: [] };
+
+function selectPlatform(p) {
+  if (p === 'espn') return; // not built yet, button is visually disabled
+  document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('platform-' + p).classList.add('selected');
+}
+
+function connectMock() {
+  state.rankings = computePowerRankings(LEAGUE);
+  state.connected = true;
+  document.getElementById('connectWrap').classList.add('hidden');
+  document.getElementById('results').classList.add('active');
+  document.getElementById('leagueName').textContent = LEAGUE.name;
+  document.getElementById('leagueMeta').textContent =
+    LEAGUE.numTeams + ' teams · ' + LEAGUE.scoring + ' · Week ' + LEAGUE.week + ' · ' + LEAGUE.platform;
+  renderRankings();
+  renderMatchups();
+}
+
+function selectPersona(p) {
+  state.persona = p;
+  document.querySelectorAll('.persona-pill').forEach(el => el.classList.remove('active'));
+  document.getElementById('persona-' + p).classList.add('active');
+  renderRankings();
+}
+
+function renderRankings() {
+  const list = document.getElementById('rankList');
+  list.innerHTML = '';
+  state.rankings.forEach(team => {
+    const trendClass = team.formDelta > 4 ? 'up' : team.formDelta < -4 ? 'down' : 'flat';
+    const trendIcon = trendClass === 'up' ? '▲' : trendClass === 'down' ? '▼' : '●';
+    const trendLabel = trendClass === 'up' ? 'Trending Up' : trendClass === 'down' ? 'Trending Down' : 'Steady';
+    const card = document.createElement('div');
+    card.className = 'rank-card';
+    card.innerHTML =
+      '<div class="rank-num' + (team.rank <= 3 ? ' top' : '') + '">' + team.rank + '</div>' +
+      '<div class="rank-main">' +
+        '<div class="rank-team-row">' +
+          '<span class="rank-team-name">' + team.name + '</span>' +
+          '<span class="rank-record">' + team.wins + '-' + team.losses + '</span>' +
+          '<span class="rank-trend ' + trendClass + '">' + trendIcon + ' ' + trendLabel + '</span>' +
+        '</div>' +
+        '<div class="rank-commentary">' + getCommentary(state.persona, team, team.rank, state.rankings) + '</div>' +
+      '</div>' +
+      '<div class="rank-stats">' +
+        '<div class="rank-stat-val">' + team.seasonAvg.toFixed(1) + '</div>' +
+        '<div class="rank-stat-label">avg pts/wk</div>' +
+      '</div>';
+    list.appendChild(card);
+  });
+}
+
+function renderMatchups() {
+  const list = document.getElementById('matchupList');
+  list.innerHTML = '';
+  const byName = {};
+  state.rankings.forEach(t => byName[t.name] = t);
+
+  LEAGUE.matchups.forEach(m => {
+    const teamA = byName[m.teamA], teamB = byName[m.teamB];
+    const card = document.createElement('div');
+    card.className = 'matchup-card';
+    card.innerHTML =
+      '<div class="matchup-teams">' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + teamA.name + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + teamA.wins + '-' + teamA.losses + '</div></div>' +
+        '<div class="matchup-vs">VS</div>' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + teamB.wins + '-' + teamB.losses + '</div></div>' +
+      '</div>' +
+      '<hr class="matchup-divider">' +
+      '<div class="oracle-box"><div class="oracle-box-label">🔮 The Oracle</div><div class="oracle-box-text">' + oracleMatchup(teamA, teamB) + '</div></div>' +
+      '<div style="height:8px"></div>' +
+      '<div class="trash-box"><div class="trash-box-label">🔥 The Trash Lord</div><div class="trash-box-text">' + trashMatchup(teamA, teamB) + '</div></div>' +
+      '<div style="height:8px"></div>' +
+      '<div class="analyst-box"><div class="analyst-box-label">📐 The Analyst</div><div class="analyst-box-text">' + analystMatchup(teamA, teamB) + '</div></div>';
+    list.appendChild(card);
+  });
+}
+
+function toggleHelp() {
+  document.getElementById('helpToggle').classList.toggle('open');
+  document.getElementById('helpIcon').classList.toggle('open');
+  document.getElementById('helpBody').classList.toggle('open');
+}
+</script>
+</body>
+</html>
