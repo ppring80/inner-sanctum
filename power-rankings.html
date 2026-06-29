@@ -102,6 +102,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .rank-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-top:2px}
 .rank-move{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);margin-top:6px}
 
+/* ── VOICE PLAY BUTTON (new — reuses tts.js, same Netlify Function and
+   voice IDs already proven in production on sanctum.html) ── */
+.voice-btn-card{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:all 0.15s;margin-top:2px}
+.voice-btn-card:hover{border-color:var(--gold);background:rgba(184,146,26,0.08)}
+.voice-btn-card.loading{animation:voiceCardPulse 1.1s ease-in-out infinite;border-color:var(--gold)}
+.voice-btn-card.playing{border-color:var(--green);background:rgba(46,125,50,0.08)}
+@keyframes voiceCardPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
 /* ── FORMULA DISCLOSURE (mirrors auction.html's help-panel pattern) ── */
 .help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:24px;overflow:hidden}
 .help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
@@ -357,8 +365,19 @@ function oracleCommentary(team, rank, allTeams) {
   if (team.formDelta < -8) return `I see turbulence ahead for ${team.name}. Their recent output has fallen from what once was — the #${rank} ranking may not hold if this continues.`;
   if (rank === 2) return `${team.name} stands second, a step behind the leader but well clear of the pack below. The gap is real, but not insurmountable.`;
   if (rank === 3) return `${team.name} holds the third seat with quiet consistency. Theirs is not the loudest record, but it is a dependable one.`;
-  if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. The record is unkind, and I find little in the numbers to suggest an imminent turn.`;
-  return `${team.name} occupies the middle of the table — neither blessed nor cursed, simply waiting for the moment that defines their season.`;
+  if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. ${team.wins}-${team.losses} is unkind, and I find little in the numbers to suggest an imminent turn.`;
+  // FIXED 2026-06-28 (third pass): the second fix technically produced
+  // distinct strings for every middle-tier team, but they were still
+  // the same template with numbers swapped in — felt repetitive even
+  // though no two were byte-identical. This pass adds a THIRD framing
+  // dimension (mild form direction, using a lower threshold than the
+  // +/-8 "real trend" branches above) so middle-tier teams split into
+  // more genuinely different sentences rather than one mold with
+  // different numbers plugged in.
+  if (team.formDelta > 2) return `${team.name} sits at #${rank}, ${team.wins}-${team.losses} on the season, averaging ${team.last3Avg.toFixed(0)} points over their last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Nothing dramatic yet, but I sense the early stirrings of momentum.`;
+  if (team.formDelta < -2) return `${team.name} holds #${rank} for now at ${team.wins}-${team.losses}, though their last three weeks have averaged ${team.last3Avg.toFixed(0)} against a season mark of ${team.seasonAvg.toFixed(0)}. The foundation is steady, but I would not call their recent play inspired.`;
+  const aboveOrBelowAvg = team.vsLeagueAvg >= 0 ? 'a touch above' : 'a touch below';
+  return `${team.name} sits at #${rank}, a ${team.wins}-${team.losses} record with scoring ${aboveOrBelowAvg} the league average. Neither blessed nor cursed — this is a team still writing its story.`;
 }
 
 function trashCommentary(team, rank, allTeams) {
@@ -368,7 +387,12 @@ function trashCommentary(team, rank, allTeams) {
   if (rank === 2) return `${team.name} is the clear #2. Not catching the top spot this week, but everybody else in this league should be scared of them.`;
   if (rank === 3) return `${team.name} sitting at #3 like it's no big deal. Respectable. Boring, but respectable.`;
   if (rank >= allTeams.length - 1) return `${team.name} is bad. Like, genuinely struggling. ${team.wins}-${team.losses} doesn't lie. Might be time to start thinking about next year.`;
-  return `${team.name} is just... there. Not good, not terrible, the definition of "fine." Nobody's scared, nobody's worried.`;
+  if (team.formDelta > 2) return `${team.name} is #${rank} at ${team.wins}-${team.losses} — last 3 weeks averaging ${team.last3Avg.toFixed(0)}, season average's only ${team.seasonAvg.toFixed(0)}. They're heating up and nobody's watching.`;
+  if (team.formDelta < -2) return `${team.name} is #${rank} but coasting at ${team.last3Avg.toFixed(0)} points the last 3 weeks, down from a ${team.seasonAvg.toFixed(0)} season average. Record's fine, vibes are not.`;
+  // Same fix as oracleCommentary's fallback above — now stat-driven
+  // per team instead of one shared "definition of fine" line.
+  const scoringTake = team.vsLeagueAvg >= 0 ? 'scoring fine, nothing special' : 'scoring BELOW the league average, which is not a flex';
+  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared, nobody's worried.`;
 }
 
 function analystCommentary(team, rank, allTeams) {
@@ -429,11 +453,137 @@ function connectMock() {
 }
 
 function selectPersona(p) {
+  stopCurrentAudio(); // text is about to change underneath any playing audio
   state.persona = p;
   document.querySelectorAll('.persona-pill').forEach(el => el.classList.remove('active'));
   document.getElementById('persona-' + p).classList.add('active');
   renderRankings();
 }
+
+// ═══════════════════════════════════════════════════════════
+// VOICE PLAYBACK — reuses tts.js, the SAME Netlify Function and
+// SAME ElevenLabs voice IDs already proven working in production on
+// sanctum.html. No new backend code needed: that function already
+// maps persona -> voice ID and returns MP3 audio for any { text,
+// persona } payload, which is exactly this page's shape too.
+//
+// Mirrors sanctum.html's speak() implementation pattern exactly
+// (XMLHttpRequest with responseType:'arraybuffer', not fetch+blob)
+// since that's the proven-working approach for this function's
+// base64-encoded binary response — not reinventing a new pattern.
+//
+// DESIGN, LOCKED 2026-06-28 (after walking back an initial auto-play
+// idea): no page-wide or persona-wide auto-play. Each team card gets
+// its own small play button; clicking it speaks ONLY that team's
+// current commentary, in whichever persona is currently selected.
+// Only one thing plays at a time — starting a new one stops whatever
+// was already playing — and switching personas (which changes the
+// underlying text) also stops anything mid-playback, since it would
+// otherwise be reading text that's about to disappear.
+//
+// SESSION CACHING: keyed by `persona:teamName`, holding the already-
+// fetched audio Blob URL. Replaying the same team+persona combo this
+// session reuses the cached audio instead of re-calling ElevenLabs —
+// purely in-memory, resets on page reload, adds no real complexity
+// (one object, checked before the fetch) while meaningfully reducing
+// repeat-click cost.
+// ═══════════════════════════════════════════════════════════
+var currentAudio = null;
+var currentPlayingButton = null;
+var audioCache = {}; // "persona:teamName" -> Blob URL
+
+function stopCurrentAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  if (currentPlayingButton) {
+    currentPlayingButton.classList.remove('loading', 'playing');
+    currentPlayingButton.textContent = '🔊';
+    currentPlayingButton = null;
+  }
+}
+
+function playTeamCommentary(team, persona, buttonEl) {
+  var cacheKey = persona + ':' + team.name;
+
+  // If this exact button is already playing, treat a second click as
+  // stop, not restart.
+  if (currentPlayingButton === buttonEl && currentAudio) {
+    stopCurrentAudio();
+    return;
+  }
+
+  stopCurrentAudio(); // only one thing plays at a time, ever
+  currentPlayingButton = buttonEl;
+
+  var text = getCommentary(persona, team, team.rank, state.rankings);
+
+  if (audioCache[cacheKey]) {
+    playFromUrl(audioCache[cacheKey], buttonEl);
+    return;
+  }
+
+  buttonEl.classList.add('loading');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/.netlify/functions/tts');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.responseType = 'arraybuffer';
+
+  xhr.onload = function () {
+    buttonEl.classList.remove('loading');
+    if (xhr.status !== 200) {
+      console.log('TTS request failed:', xhr.status);
+      if (currentPlayingButton === buttonEl) currentPlayingButton = null;
+      return;
+    }
+    try {
+      var blob = new Blob([xhr.response], { type: 'audio/mpeg' });
+      var url = URL.createObjectURL(blob);
+      audioCache[cacheKey] = url; // cache for replay this session
+      playFromUrl(url, buttonEl);
+    } catch (e) {
+      console.log('TTS playback error:', e.message);
+      if (currentPlayingButton === buttonEl) currentPlayingButton = null;
+    }
+  };
+
+  xhr.onerror = function () {
+    buttonEl.classList.remove('loading');
+    console.log('TTS request network error');
+    if (currentPlayingButton === buttonEl) currentPlayingButton = null;
+  };
+
+  // persona keys here (oracle/trash/analyst) already match tts.js's
+  // VOICE_IDS keys exactly — same persona vocabulary as sanctum.html,
+  // no mapping/translation layer needed.
+  xhr.send(JSON.stringify({ text: text, persona: persona }));
+}
+
+function playFromUrl(url, buttonEl) {
+  var audio = new Audio(url);
+  currentAudio = audio;
+  buttonEl.classList.add('playing');
+  buttonEl.textContent = '⏸';
+
+  audio.addEventListener('ended', function () {
+    if (currentAudio === audio) {
+      currentAudio = null;
+      buttonEl.classList.remove('playing');
+      buttonEl.textContent = '🔊';
+      if (currentPlayingButton === buttonEl) currentPlayingButton = null;
+    }
+  });
+
+  audio.play().catch(function (err) {
+    console.log('Audio playback blocked:', err.message);
+    buttonEl.classList.remove('playing', 'loading');
+    buttonEl.textContent = '🔊';
+    if (currentPlayingButton === buttonEl) currentPlayingButton = null;
+  });
+}
+
 
 function renderRankings() {
   const list = document.getElementById('rankList');
@@ -457,7 +607,18 @@ function renderRankings() {
       '<div class="rank-stats">' +
         '<div class="rank-stat-val">' + team.seasonAvg.toFixed(1) + '</div>' +
         '<div class="rank-stat-label">avg pts/wk</div>' +
+        '<button class="voice-btn-card" title="Hear this in ' + state.persona + '\'s voice">🔊</button>' +
       '</div>';
+    // Wired via addEventListener (not inline onclick) so the click
+    // handler can close over this specific `team` object and the
+    // CURRENT state.persona at click-time, rather than re-parsing
+    // team name back out of the DOM — simpler and avoids any escaping
+    // issues with team names containing quotes/apostrophes.
+    const voiceBtn = card.querySelector('.voice-btn-card');
+    voiceBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      playTeamCommentary(team, state.persona, voiceBtn);
+    });
     list.appendChild(card);
   });
 }
