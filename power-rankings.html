@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -143,6 +145,21 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .analyst-box-label{font-size:9px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:5px}
 .analyst-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.65}
 
+/* ── MATCHUP HERO/SIDEKICK SIZING (new — 70/30 Trash Lord/Oracle,
+   Analyst removed from this section entirely, per Pat's explicit
+   2026-06-28 decision). Trash Lord's box is visually the larger,
+   bolder "hero" — bigger padding, bigger label, a voice button.
+   Oracle's box is deliberately smaller/quieter, no border-accent
+   bar at all, reading more like a caption than a full callout box,
+   so the size difference alone communicates which one is the main
+   event without needing separate explanatory text. ── */
+.trash-box-hero{background:rgba(138,32,32,0.05);border-left:4px solid var(--red);border-radius:0 var(--r) var(--r) 0;padding:16px 18px}
+.trash-box-hero-label{font-size:11px;letter-spacing:2px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+.trash-box-hero-text{font-style:italic;font-size:15px;color:var(--ink);line-height:1.7;font-weight:500}
+.oracle-box-sidekick{padding:8px 4px 0;margin-top:4px}
+.oracle-box-sidekick-label{font-size:8px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:3px}
+.oracle-box-sidekick-text{font-style:italic;font-size:12px;color:var(--dim);line-height:1.55}
+
 @media(max-width:640px){
   .rank-card{grid-template-columns:36px 1fr;}
   .rank-stats{grid-column:1 / -1;text-align:left;display:flex;gap:16px;margin-top:6px}
@@ -210,9 +227,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 
   <div class="persona-switcher">
-    <div class="persona-pill active" id="persona-oracle" onclick="selectPersona('oracle')">🔮 The Oracle</div>
-    <div class="persona-pill" id="persona-trash" onclick="selectPersona('trash')">🔥 The Trash Lord</div>
-    <div class="persona-pill" id="persona-analyst" onclick="selectPersona('analyst')">📐 The Analyst</div>
+    <div class="persona-pill active" id="persona-trash" onclick="selectPersona('trash')">🔥 The Trash Lord</div>
+    <div class="persona-pill" id="persona-oracle" onclick="selectPersona('oracle')">🔮 The Oracle</div>
   </div>
 
   <div class="help-panel">
@@ -380,19 +396,29 @@ function oracleCommentary(team, rank, allTeams) {
   return `${team.name} sits at #${rank}, a ${team.wins}-${team.losses} record with scoring ${aboveOrBelowAvg} the league average. Neither blessed nor cursed — this is a team still writing its story.`;
 }
 
+// UPGRADED 2026-06-28: Trash Lord's lines rewritten longer and saucier
+// per Pat's explicit direction — these are meant to work as standalone,
+// shareable social-media quotes (e.g. an Instagram screenshot), not
+// just supporting commentary next to two other personas. IMPORTANT:
+// any such social content must come from THIS mock demo league only,
+// per Pat's explicit instruction — never a real user's actual team
+// name or league data. Each branch still works real per-team numbers
+// into the line (not just the team name swapped into a fixed
+// template) — same discipline as the earlier duplicate-commentary fix
+// in this file, just with more room to work with now.
 function trashCommentary(team, rank, allTeams) {
-  if (rank === 1) return `${team.name} is RUNNING this league right now. ${team.wins}-${team.losses} and scoring like they've got something to prove. Nobody's catching this.`;
-  if (team.formDelta > 8) return `WATCH OUT for ${team.name}. They were mid all season and now they're suddenly cooking. Classic late-season surge — currently #${rank}, but climbing.`;
-  if (team.formDelta < -8) return `${team.name} peaked weeks ago and everybody knows it except them. That #${rank} ranking is living on borrowed time.`;
-  if (rank === 2) return `${team.name} is the clear #2. Not catching the top spot this week, but everybody else in this league should be scared of them.`;
-  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal. Respectable. Boring, but respectable.`;
-  if (rank >= allTeams.length - 1) return `${team.name} is bad. Like, genuinely struggling. ${team.wins}-${team.losses} doesn't lie. Might be time to start thinking about next year.`;
-  if (team.formDelta > 2) return `${team.name} is #${rank} at ${team.wins}-${team.losses} — last 3 weeks averaging ${team.last3Avg.toFixed(0)}, season average's only ${team.seasonAvg.toFixed(0)}. They're heating up and nobody's watching.`;
-  if (team.formDelta < -2) return `${team.name} is #${rank} but coasting at ${team.last3Avg.toFixed(0)} points the last 3 weeks, down from a ${team.seasonAvg.toFixed(0)} season average. Record's fine, vibes are not.`;
+  if (rank === 1) return `${team.name} sits at ${team.wins}-${team.losses} averaging ${team.seasonAvg.toFixed(0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense.`;
+  if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${team.last3Avg.toFixed(0)} points a game the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent.`;
+  if (team.formDelta < -8) return `${team.name} peaked in week 3 and has been quietly dying ever since — ${team.last3Avg.toFixed(0)} points the last three weeks, down from ${team.seasonAvg.toFixed(0)} on the season. That #${rank} ranking is a fossil. The standings just haven't gotten the memo yet.`;
+  if (rank === 2) return `${team.name} is the clear #2 at ${team.wins}-${team.losses}, which is a nice way of saying "best of the rest." Not catching the top spot this week. Maybe not ever. Everybody else, though? Be very afraid.`;
+  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal, ${team.wins}-${team.losses} and perfectly respectable. Respectable is a polite word for "forgettable." Nobody's writing a documentary about #3.`;
+  if (rank >= allTeams.length - 1) return `${team.name} is ${team.wins}-${team.losses} and I genuinely don't know what to tell you. The numbers don't lie, the standings don't lie, and frankly neither will I: it might be time to start drafting a eulogy for this season.`;
+  if (team.formDelta > 2) return `${team.name} sitting at #${rank} at ${team.wins}-${team.losses}, but check this: ${team.last3Avg.toFixed(0)} points the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral.`;
+  if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${team.wins}-${team.losses}, but the last three weeks have only averaged ${team.last3Avg.toFixed(0)} against a ${team.seasonAvg.toFixed(0)} season mark. The record says fine. The trend says start sweating.`;
   // Same fix as oracleCommentary's fallback above — now stat-driven
   // per team instead of one shared "definition of fine" line.
-  const scoringTake = team.vsLeagueAvg >= 0 ? 'scoring fine, nothing special' : 'scoring BELOW the league average, which is not a flex';
-  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared, nobody's worried.`;
+  const scoringTake = team.vsLeagueAvg >= 0 ? `scoring ${team.vsLeagueAvg.toFixed(0)} points above the league average, which is something at least` : `scoring ${Math.abs(team.vsLeagueAvg).toFixed(0)} points BELOW the league average, which is not the flex they think it is`;
+  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture.`;
 }
 
 function analystCommentary(team, rank, allTeams) {
@@ -418,21 +444,30 @@ function oracleMatchup(teamA, teamB) {
   const underdog = favorite === teamA ? teamB : teamA;
   return `The numbers favor ${favorite.name}, though ${underdog.name} has shown they do not yield easily. I would not call this settled until the final whistle.`;
 }
+// UPGRADED 2026-06-28: longer, saucier, shareable-quote quality, per
+// Pat's explicit direction that this section's Trash Lord content is
+// social-media material — same mock-league-only rule as the rankings
+// section above. Works real numbers (powerScore gap, season averages)
+// into the line so two different matchups don't read as the same
+// template with names swapped, the same discipline used everywhere
+// else Trash Lord's commentary was touched tonight.
 function trashMatchup(teamA, teamB) {
   const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
   const underdog = favorite === teamA ? teamB : teamA;
-  return `${favorite.name} should win this. Should. ${underdog.name} has been known to ruin a good prediction, so don't bet the house.`;
-}
-function analystMatchup(teamA, teamB) {
   const gap = Math.abs(teamA.powerScore - teamB.powerScore);
-  const closeness = gap < 0.1 ? 'a close matchup on paper' : gap < 0.25 ? 'a moderate gap in projected strength' : 'a clear projected advantage for one side';
-  return `Power Score gap: ${gap.toFixed(2)} — ${closeness}. ${teamA.name}: ${teamA.seasonAvg.toFixed(1)} avg pts. ${teamB.name}: ${teamB.seasonAvg.toFixed(1)} avg pts.`;
+  if (gap < 0.08) {
+    return `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up.`;
+  }
+  if (gap < 0.2) {
+    return `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it.`;
+  }
+  return `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday.`;
 }
 
 // ═══════════════════════════════════════════════════════════
 // STATE + RENDERING
 // ═══════════════════════════════════════════════════════════
-let state = { connected: false, persona: 'oracle', rankings: [] };
+let state = { connected: false, persona: 'trash', rankings: [] };
 
 function selectPlatform(p) {
   if (p === 'espn') return; // not built yet, button is visually disabled
@@ -504,7 +539,7 @@ function stopCurrentAudio() {
   }
 }
 
-function playTeamCommentary(team, persona, buttonEl) {
+function playTeamCommentary(team, persona, buttonEl, textOverride) {
   var cacheKey = persona + ':' + team.name;
 
   // If this exact button is already playing, treat a second click as
@@ -517,7 +552,13 @@ function playTeamCommentary(team, persona, buttonEl) {
   stopCurrentAudio(); // only one thing plays at a time, ever
   currentPlayingButton = buttonEl;
 
-  var text = getCommentary(persona, team, team.rank, state.rankings);
+  // textOverride lets a caller supply already-computed text directly
+  // (added for the Matchup Previews section, where commentary is
+  // about a PAIR of teams, not one team with a rank — getCommentary's
+  // (persona, team, rank, allTeams) signature doesn't fit that shape).
+  // Rankings-section calls omit this and fall through to the original
+  // per-team lookup, unchanged.
+  var text = textOverride || getCommentary(persona, team, team.rank, state.rankings);
 
   if (audioCache[cacheKey]) {
     playFromUrl(audioCache[cacheKey], buttonEl);
@@ -588,6 +629,15 @@ function playFromUrl(url, buttonEl) {
 function renderRankings() {
   const list = document.getElementById('rankList');
   list.innerHTML = '';
+  // LOCKED 2026-06-28: voice playback in this section is Trash Lord
+  // ONLY, not Oracle — per Pat's explicit decision to start narrow
+  // ("let's start with 1 and see how it shakes out") rather than give
+  // every persona a voice button immediately. Oracle's tab still
+  // renders text-only commentary with no button at all, matching the
+  // same hero/sidekick asymmetry built into the Matchup Previews
+  // section below, so the two sections feel consistent with each
+  // other rather than following two different rules.
+  const showVoiceButton = state.persona === 'trash';
   state.rankings.forEach(team => {
     const trendClass = team.formDelta > 4 ? 'up' : team.formDelta < -4 ? 'down' : 'flat';
     const trendIcon = trendClass === 'up' ? '▲' : trendClass === 'down' ? '▼' : '●';
@@ -607,18 +657,20 @@ function renderRankings() {
       '<div class="rank-stats">' +
         '<div class="rank-stat-val">' + team.seasonAvg.toFixed(1) + '</div>' +
         '<div class="rank-stat-label">avg pts/wk</div>' +
-        '<button class="voice-btn-card" title="Hear this in ' + state.persona + '\'s voice">🔊</button>' +
+        (showVoiceButton ? '<button class="voice-btn-card" title="Hear the Trash Lord roast this">🔊</button>' : '') +
       '</div>';
-    // Wired via addEventListener (not inline onclick) so the click
-    // handler can close over this specific `team` object and the
-    // CURRENT state.persona at click-time, rather than re-parsing
-    // team name back out of the DOM — simpler and avoids any escaping
-    // issues with team names containing quotes/apostrophes.
-    const voiceBtn = card.querySelector('.voice-btn-card');
-    voiceBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      playTeamCommentary(team, state.persona, voiceBtn);
-    });
+    if (showVoiceButton) {
+      // Wired via addEventListener (not inline onclick) so the click
+      // handler can close over this specific `team` object and the
+      // CURRENT state.persona at click-time, rather than re-parsing
+      // team name back out of the DOM — simpler and avoids any
+      // escaping issues with team names containing quotes/apostrophes.
+      const voiceBtn = card.querySelector('.voice-btn-card');
+      voiceBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        playTeamCommentary(team, state.persona, voiceBtn);
+      });
+    }
     list.appendChild(card);
   });
 }
@@ -633,6 +685,8 @@ function renderMatchups() {
     const teamA = byName[m.teamA], teamB = byName[m.teamB];
     const card = document.createElement('div');
     card.className = 'matchup-card';
+    const trashText = trashMatchup(teamA, teamB);
+    const oracleText = oracleMatchup(teamA, teamB);
     card.innerHTML =
       '<div class="matchup-teams">' +
         '<div class="matchup-team"><div class="matchup-team-name">' + teamA.name + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + teamA.wins + '-' + teamA.losses + '</div></div>' +
@@ -640,11 +694,48 @@ function renderMatchups() {
         '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + teamB.wins + '-' + teamB.losses + '</div></div>' +
       '</div>' +
       '<hr class="matchup-divider">' +
-      '<div class="oracle-box"><div class="oracle-box-label">🔮 The Oracle</div><div class="oracle-box-text">' + oracleMatchup(teamA, teamB) + '</div></div>' +
-      '<div style="height:8px"></div>' +
-      '<div class="trash-box"><div class="trash-box-label">🔥 The Trash Lord</div><div class="trash-box-text">' + trashMatchup(teamA, teamB) + '</div></div>' +
-      '<div style="height:8px"></div>' +
-      '<div class="analyst-box"><div class="analyst-box-label">📐 The Analyst</div><div class="analyst-box-text">' + analystMatchup(teamA, teamB) + '</div></div>';
+      // TRASH LORD — hero block, 70% of the visual weight, voiced.
+      // LOCKED 2026-06-28: this is the section's main event, per Pat's
+      // explicit direction — bigger box, bigger text, real-stat-driven
+      // saucy commentary, and a voice button reusing the same proven
+      // tts.js/playTeamCommentary pattern from the rankings section.
+      '<div class="trash-box-hero">' +
+        '<div class="trash-box-hero-label"><span>🔥 The Trash Lord</span></div>' +
+        '<div class="trash-box-hero-text">' + trashText + '</div>' +
+      '</div>' +
+      // ORACLE — sidekick block, ~30%, text-only, deliberately quiet
+      // (no border accent, smaller text) so it reads as a secondary
+      // counterpoint rather than competing with the hero block above.
+      // Analyst is REMOVED from this section entirely per Pat's
+      // explicit decision — not present, not hidden, just gone.
+      '<div class="oracle-box-sidekick">' +
+        '<div class="oracle-box-sidekick-label">🔮 The Oracle</div>' +
+        '<div class="oracle-box-sidekick-text">' + oracleText + '</div>' +
+      '</div>';
+
+    // Voice button is created separately (not via innerHTML string
+    // concatenation) and appended into the hero label row, so its
+    // click handler can close over teamA/teamB/trashText directly —
+    // same reasoning as the rankings section's voice button: avoids
+    // re-parsing anything back out of the DOM, and avoids any HTML-
+    // escaping concerns from team names landing inside an attribute.
+    const heroLabel = card.querySelector('.trash-box-hero-label');
+    const voiceBtn = document.createElement('button');
+    voiceBtn.className = 'voice-btn-card';
+    voiceBtn.title = 'Hear the Trash Lord call this matchup';
+    voiceBtn.textContent = '🔊';
+    voiceBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      // Matchup commentary isn't per-TEAM the way rankings commentary
+      // is, so it doesn't fit playTeamCommentary's (team, persona)
+      // signature directly — built as a lightweight synthetic "team"
+      // object instead. Cache key uses both team names so two
+      // different matchups never collide even if their generated
+      // text happened to match.
+      playTeamCommentary({ name: teamA.name + '-vs-' + teamB.name }, 'trash', voiceBtn, trashText);
+    });
+    heroLabel.appendChild(voiceBtn);
+
     list.appendChild(card);
   });
 }
