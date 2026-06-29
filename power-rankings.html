@@ -406,19 +406,40 @@ function oracleCommentary(team, rank, allTeams) {
 // into the line (not just the team name swapped into a fixed
 // template) — same discipline as the earlier duplicate-commentary fix
 // in this file, just with more room to work with now.
+// EXTENDED 2026-06-29: Pat's explicit morning request — power rankings
+// and matchups get noticeably MORE roast detail than Sanctum's capped
+// 2-sentence/40-word Trash Lord (that cap is a deliberate, separate
+// product decision for the live chat experience — "drive-by insult,
+// not a monologue" — and stays untouched). This page's Trash Lord is
+// built for screenshot/social-share content from the start, so a
+// longer, more detailed paragraph is the correct shape here, not a
+// violation of the Sanctum discipline. Each branch below adds a SECOND
+// beat of real, stat-grounded detail on top of last night's line,
+// rather than just padding with filler — same "work the actual numbers
+// in" rule as everywhere else in this file.
 function trashCommentary(team, rank, allTeams) {
-  if (rank === 1) return `${team.name} sits at ${team.wins}-${team.losses} averaging ${team.seasonAvg.toFixed(0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense.`;
-  if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${team.last3Avg.toFixed(0)} points a game the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent.`;
-  if (team.formDelta < -8) return `${team.name} peaked in week 3 and has been quietly dying ever since — ${team.last3Avg.toFixed(0)} points the last three weeks, down from ${team.seasonAvg.toFixed(0)} on the season. That #${rank} ranking is a fossil. The standings just haven't gotten the memo yet.`;
-  if (rank === 2) return `${team.name} is the clear #2 at ${team.wins}-${team.losses}, which is a nice way of saying "best of the rest." Not catching the top spot this week. Maybe not ever. Everybody else, though? Be very afraid.`;
-  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal, ${team.wins}-${team.losses} and perfectly respectable. Respectable is a polite word for "forgettable." Nobody's writing a documentary about #3.`;
-  if (rank >= allTeams.length - 1) return `${team.name} is ${team.wins}-${team.losses} and I genuinely don't know what to tell you. The numbers don't lie, the standings don't lie, and frankly neither will I: it might be time to start drafting a eulogy for this season.`;
-  if (team.formDelta > 2) return `${team.name} sitting at #${rank} at ${team.wins}-${team.losses}, but check this: ${team.last3Avg.toFixed(0)} points the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral.`;
-  if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${team.wins}-${team.losses}, but the last three weeks have only averaged ${team.last3Avg.toFixed(0)} against a ${team.seasonAvg.toFixed(0)} season mark. The record says fine. The trend says start sweating.`;
+  if (rank === 1) return `${team.name} sits at ${team.wins}-${team.losses} averaging ${team.seasonAvg.toFixed(0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense. The next closest team is putting up ${allTeams[1] ? allTeams[1].seasonAvg.toFixed(0) : '—'} a week — not a typo, just a different tax bracket of football.`;
+  if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${team.last3Avg.toFixed(0)} points a game the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent. Whoever drafted them is currently insufferable in the league chat, and honestly? Earned it.`;
+  if (team.formDelta < -8) return `${team.name} peaked in week 3 and has been quietly dying ever since — ${team.last3Avg.toFixed(0)} points the last three weeks, down from ${team.seasonAvg.toFixed(0)} on the season. That #${rank} ranking is a fossil. The standings just haven't gotten the memo yet. Somewhere a waiver wire move from week 4 is aging like milk left in a hot car.`;
+  if (rank === 2) return `${team.name} is the clear #2 at ${team.wins}-${team.losses}, which is a nice way of saying "best of the rest." Not catching the top spot this week. Maybe not ever. Everybody else, though? Be very afraid — at ${team.seasonAvg.toFixed(0)} points a week, they're still out here ending seasons for the bottom half of this league without breaking a sweat.`;
+  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal, ${team.wins}-${team.losses} and perfectly respectable. Respectable is a polite word for "forgettable." Nobody's writing a documentary about #3. ${team.seasonAvg.toFixed(0)} points a week is a fine, solid, completely unremarkable number — the football equivalent of a firm handshake.`;
+  if (rank >= allTeams.length - 1) {
+    const deficitVsAvg = Math.abs(team.vsLeagueAvg).toFixed(0);
+    return `${team.name} is ${team.wins}-${team.losses} and I genuinely don't know what to tell you. The numbers don't lie, the standings don't lie, and frankly neither will I: it might be time to start drafting a eulogy for this season. ${team.seasonAvg.toFixed(0)} points a week is ${deficitVsAvg} below where this league's average sits — that's not a rough patch, that's a ${deficitVsAvg}-point hole this roster needs to climb out of, starting yesterday.`;
+  }
+  if (team.formDelta > 2) {
+    const teamAbove = allTeams.find(t => t.rank === rank - 1);
+    const gapToClimb = teamAbove ? Math.abs(teamAbove.seasonAvg - team.seasonAvg).toFixed(0) : null;
+    const climbLine = teamAbove
+      ? `Close that ${gapToClimb}-point gap on #${rank - 1} and this team is no longer a secret.`
+      : `Keep sleeping on this team — by next month it'll be too late to say you saw it coming.`;
+    return `${team.name} sitting at #${rank} at ${team.wins}-${team.losses}, but check this: ${team.last3Avg.toFixed(0)} points the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral. ${climbLine}`;
+  }
+  if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${team.wins}-${team.losses}, but the last three weeks have only averaged ${team.last3Avg.toFixed(0)} against a ${team.seasonAvg.toFixed(0)} season mark. The record says fine. The trend says start sweating. Whatever got them here isn't showing up anymore, and "fine for now" is exactly how a season quietly falls apart.`;
   // Same fix as oracleCommentary's fallback above — now stat-driven
   // per team instead of one shared "definition of fine" line.
   const scoringTake = team.vsLeagueAvg >= 0 ? `scoring ${team.vsLeagueAvg.toFixed(0)} points above the league average, which is something at least` : `scoring ${Math.abs(team.vsLeagueAvg).toFixed(0)} points BELOW the league average, which is not the flex they think it is`;
-  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture.`;
+  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture — present every week, never the topic of conversation, perfectly load-bearing and completely unmemorable.`;
 }
 
 function analystCommentary(team, rank, allTeams) {
@@ -451,17 +472,22 @@ function oracleMatchup(teamA, teamB) {
 // into the line so two different matchups don't read as the same
 // template with names swapped, the same discipline used everywhere
 // else Trash Lord's commentary was touched tonight.
+// EXTENDED 2026-06-29: same morning request as trashCommentary above —
+// matchup commentary gets a second beat of detail, not just a longer
+// single sentence. Each branch still derives its extra material from
+// real numbers (rank gap, point totals) rather than generic filler.
 function trashMatchup(teamA, teamB) {
   const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
   const underdog = favorite === teamA ? teamB : teamA;
   const gap = Math.abs(teamA.powerScore - teamB.powerScore);
+  const rankGap = Math.abs(teamA.rank - teamB.rank);
   if (gap < 0.08) {
-    return `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up.`;
+    return `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up. This is the kind of game that gets decided by one bad bench decision on a Sunday morning, and somebody's about to learn that the hard way.`;
   }
   if (gap < 0.2) {
-    return `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it.`;
+    return `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it. The gap on paper is real — ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.seasonAvg.toFixed(0)} — but "on paper" has never once stopped an upset in this league.`;
   }
-  return `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday.`;
+  return `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday. A ${rankGap}-spot gap in the standings doesn't happen by accident, and this is exactly the kind of week where the gap gets wider, not closer.`;
 }
 
 // ═══════════════════════════════════════════════════════════
