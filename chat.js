@@ -1,3 +1,4 @@
+
 const Anthropic = require("@anthropic-ai/sdk");
 
 // ═══════════════════════════════════════
@@ -176,18 +177,53 @@ exports.handler = async (event) => {
       console.log("Tank01 context fetch failed:", e.message);
     }
 
-    // Inject live data into the system prompt.
-    // CRITICAL: Depth chart data is the single source of truth for team assignments.
-    const enhancedSystem = liveDataContext
-      ? `${system}\n\n═══════════════════════════════════\nLIVE NFL DATA — AUTHORITATIVE SOURCE:\n\nCRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.\n\n${liveDataContext}\n═══════════════════════════════════\nAlways reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today.`
-      : system;
+    // ── Build system prompt as content blocks for prompt caching ──────────
+    //
+    // Block 1 (CACHED): The static persona system prompt passed in from the
+    // frontend. This never changes between requests for the same persona, so
+    // Anthropic caches it after the first call and bills subsequent requests
+    // at ~10% of normal input token cost. cache_control: ephemeral gives a
+    // 5-minute TTL that resets on every hit — in practice, active sessions
+    // keep this cached continuously.
+    //
+    // Block 2 (NOT CACHED): Live Tank01 data — different every call since it
+    // reflects current injuries, news, ADP, and depth charts. Caching this
+    // would defeat the purpose of fetching it live.
+    //
+    // If Tank01 returned nothing, we send only the cached block (no empty
+    // second block) to avoid sending a content block with an empty string.
+    // ─────────────────────────────────────────────────────────────────────
+
+    const systemBlocks = [
+      {
+        type: "text",
+        text: system,
+        cache_control: { type: "ephemeral" }
+      }
+    ];
+
+    if (liveDataContext) {
+      systemBlocks.push({
+        type: "text",
+        text: [
+          "═══════════════════════════════════",
+          "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
+          "",
+          "CRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.",
+          "",
+          liveDataContext,
+          "═══════════════════════════════════",
+          "Always reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today."
+        ].join("\n")
+      });
+    }
 
     // Call Claude API
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
       model,
       max_tokens,
-      system: enhancedSystem,
+      system: systemBlocks,
       messages
     });
 
