@@ -1134,6 +1134,48 @@ function saveAcolyteWindow() {
   }
 }
 
+// ═══════════════════════════════════════
+// CROSS-TAB SYNC (added)
+// Both question-limit counters above (free-tier QUESTION_STORAGE_KEY
+// and Acolyte ACOLYTE_STORAGE_KEY) are read into in-memory vars at
+// page load and re-synced at the top of ask() — but if multiple tabs
+// are open to this page at once, each tab's in-memory copy can go
+// stale between saves, letting an extra question slip through before
+// that tab's next ask() happens to catch up (last-write-wins race).
+//
+// The browser's native 'storage' event fires in every OTHER open tab
+// (never the tab that made the write) the instant localStorage
+// changes. Listening for it here means every open tab adopts the
+// latest count in real time, closing the race window completely
+// instead of waiting for that tab's own next ask() call to reload it.
+//
+// Fails open by design: any parse error or unexpected key is ignored
+// silently, same as every other storage read in this file — a sync
+// failure should never block or break the chat itself.
+window.addEventListener('storage', function(e) {
+  if (e.key === QUESTION_STORAGE_KEY) {
+    try {
+      var data = e.newValue ? JSON.parse(e.newValue) : null;
+      if (data && typeof data.count === 'number' && typeof data.windowStart === 'number') {
+        questionCount = data.count;
+        windowStart = data.windowStart;
+      }
+    } catch (err) {
+      // Malformed value from another tab — ignore, next loadQuestionWindow() call will recover.
+    }
+  } else if (e.key === ACOLYTE_STORAGE_KEY) {
+    try {
+      var adata = e.newValue ? JSON.parse(e.newValue) : null;
+      if (adata && typeof adata.count === 'number' && typeof adata.windowStart === 'number') {
+        acolyteCount = adata.count;
+        acolyteWindowStart = adata.windowStart;
+      }
+    } catch (err) {
+      // Malformed value from another tab — ignore, next loadAcolyteWindow() call will recover.
+    }
+  }
+});
+
 function msUntilAcolyteReset() {
   if (acolyteWindowStart == null) return 0;
   return Math.max(0, ACOLYTE_WINDOW_MS - (Date.now() - acolyteWindowStart));
