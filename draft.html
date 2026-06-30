@@ -599,6 +599,20 @@ function render(){
 // behaves on individual position tabs (Top 30 RBs, not Top 30
 // overall) — same dropdown, same general semantics, just scoped to
 // the now-correctly-merged pool.
+//
+// FIXED 2026-06-29 (same day, later): the OVR column was showing
+// Math.round(p.adp) — the rounded ADP VALUE itself — instead of the
+// player's actual position in this sorted, merged list. That made the
+// "rank" column visibly start at 2 (Ja'Marr Chase, ADP 1.6, rounds to
+// 2) and produced duplicate ranks for close ADP values (Bijan
+// Robinson at 3.0 and Puka Nacua at 3.1 both rounded to 3). Found via
+// Pat's live testing. OVR now correctly uses `pr` (i+1, the player's
+// true sequential position in the merged, globally-sorted list) —
+// the exact same variable already used correctly for tier/stream-
+// score math two lines below, just not previously wired into the
+// display string. ADP itself is UNCHANGED and still shown separately
+// in its own column (adpStr) exactly as before — this only fixes what
+// OVR displays, not the underlying ADP data or sort order.
 // ═══════════════════════════════════════
 function renderAll(){
   var main=document.getElementById('main');
@@ -642,7 +656,12 @@ function renderAll(){
       var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var adpStr=p.adp<900?p.adp.toFixed(1):'—';
-      var ovrStr=p.adp<900?Math.round(p.adp):'—';
+      // FIXED 2026-06-29: was Math.round(p.adp) (the rounded ADP value
+      // itself, causing the list to visibly start at "2" and produce
+      // duplicate ranks for close ADP values) — now correctly uses
+      // `pr`, the player's true sequential position in this merged,
+      // globally-sorted list (1, 2, 3, 4... with no gaps or repeats).
+      var ovrStr=pr;
 
       var injHtml=inj2?'<span class="ibadge '+inj2.cls+'">'+inj2.icon+' '+inj2.label+(inj2.part?' · '+inj2.part:'')+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
       var safeName=p.name.replace(/'/g,'&#39;');
