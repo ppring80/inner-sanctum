@@ -6,6 +6,15 @@ const { getStore, connectLambda } = require("@netlify/blobs");
 // and renders a small HTML page: today's total, a 7-day table, and a
 // visual marker against the $50/day threshold discussed for #114.
 //
+// UPDATED 2026-07-01 (checklist #178): added a Lifetime spend card
+// alongside Today, computed by listing every `daily:*` blob ever
+// written by chat.js and summing them — not a running counter kept
+// separately, so there's nothing new for chat.js to maintain and no
+// risk of the lifetime figure drifting out of sync with the daily
+// entries it's built from. Netlify Blobs' list() auto-paginates
+// (up to 1,000 entries per page, fetched automatically), so this
+// scales comfortably well past a full season's worth of daily keys.
+//
 // ACCESS: this endpoint has no login. It's reachable by anyone who
 // knows the URL (theinnersanctum.xyz/.netlify/functions/spend-dashboard),
 // same security model as the Acolyte passcode gate — obscurity, not
@@ -19,6 +28,7 @@ const { getStore, connectLambda } = require("@netlify/blobs");
 // ═══════════════════════════════════════
 const DAILY_THRESHOLD = 50.00;
 const SPEND_STORE_NAME = "claude-spend"; // must match chat.js exactly
+const DAILY_KEY_PREFIX = "daily:";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +47,60 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function renderDashboard(days) {
+// Pulls every daily entry ever logged, by listing all `daily:*` keys
+// in the store and fetching each one's JSON value. Returns
+// { total: number, requestCount: number, byPersona: {}, sinceDate: string|null,
+//   daysLogged: number, ok: boolean }. `ok` is false only if the list()
+// call itself fails (e.g. a transient Blobs error) — individual day
+// fetch failures are skipped silently rather than failing the whole
+// lifetime total, same tolerance the 7-day loop already has below.
+async function fetchLifetimeStats(store) {
+  const result = {
+    total: 0,
+    requestCount: 0,
+    byPersona: {},
+    sinceDate: null,
+    daysLogged: 0,
+    ok: true
+  };
+
+  let blobs;
+  try {
+    const listing = await store.list({ prefix: DAILY_KEY_PREFIX });
+    blobs = listing.blobs || [];
+  } catch (e) {
+    console.log("Lifetime list() failed:", e.message);
+    result.ok = false;
+    return result;
+  }
+
+  for (const blob of blobs) {
+    let day = null;
+    try {
+      day = await store.get(blob.key, { type: "json" });
+    } catch (e) {
+      continue; // skip unreadable entries rather than failing the whole total
+    }
+    if (!day) continue;
+
+    result.total += day.totalCost || 0;
+    result.requestCount += day.requestCount || 0;
+    result.daysLogged += 1;
+
+    const dateStr = blob.key.slice(DAILY_KEY_PREFIX.length);
+    if (!result.sinceDate || dateStr < result.sinceDate) {
+      result.sinceDate = dateStr;
+    }
+
+    for (const [persona, cost] of Object.entries(day.byPersona || {})) {
+      result.byPersona[persona] = (result.byPersona[persona] || 0) + cost;
+    }
+  }
+
+  return result;
+}
+
+function renderDashboard(days, lifetime) {
   const today = days[0];
   const todayTotal = today ? today.totalCost : 0;
   const overThreshold = todayTotal >= DAILY_THRESHOLD;
@@ -60,6 +123,20 @@ function renderDashboard(days) {
 
   const weekTotal = days.reduce((sum, d) => sum + (d ? d.totalCost : 0), 0);
 
+  const lifetimePersonaBreakdown = Object.entries(lifetime.byPersona || {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([p, c]) => `${escapeHtml(p)}: $${c.toFixed(4)}`)
+    .join(" · ");
+
+  const lifetimeCardBody = !lifetime.ok
+    ? `<div style="font-size:13px;color:#7a6a3a;">Unavailable right now — listing failed. Today's total above is still accurate; try refreshing.</div>`
+    : `
+    <div class="today-val" style="color:#c9a84c;">$${lifetime.total.toFixed(4)}</div>
+    <div class="threshold-note" style="margin-bottom:4px;">${lifetime.requestCount.toLocaleString()} requests across ${lifetime.daysLogged} logged day${lifetime.daysLogged === 1 ? "" : "s"}</div>
+    <div class="threshold-note">${lifetime.sinceDate ? `Since ${escapeHtml(lifetime.sinceDate)}` : "No data yet"}</div>
+    ${lifetimePersonaBreakdown ? `<div style="font-size:11px;color:#7a6a3a;margin-top:10px;">${lifetimePersonaBreakdown}</div>` : ""}
+  `;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,7 +151,11 @@ function renderDashboard(days) {
   .wrap{max-width:680px;margin:0 auto}
   h1{font-family:'Cinzel',serif;font-size:22px;color:#f0e0b0;margin-bottom:4px;letter-spacing:1px}
   .sub{font-size:12px;color:#8a7860;margin-bottom:28px;letter-spacing:1px}
-  .today-card{background:rgba(0,0,0,0.35);border:1px solid ${overThreshold ? "rgba(255,82,82,0.5)" : "rgba(201,168,76,0.3)"};border-radius:14px;padding:24px;margin-bottom:24px}
+  .card-row{display:flex;gap:16px;margin-bottom:24px}
+  .card-row > div{flex:1;min-width:0}
+  @media (max-width:520px){.card-row{flex-direction:column}}
+  .today-card{background:rgba(0,0,0,0.35);border:1px solid ${overThreshold ? "rgba(255,82,82,0.5)" : "rgba(201,168,76,0.3)"};border-radius:14px;padding:24px}
+  .lifetime-card{background:rgba(0,0,0,0.35);border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:24px}
   .today-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7a6a3a;margin-bottom:8px}
   .today-val{font-size:36px;font-weight:600;color:${overThreshold ? "#ff6666" : "#c9a84c"};margin-bottom:14px}
   .bar-track{background:rgba(255,255,255,0.06);border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px}
@@ -92,11 +173,17 @@ function renderDashboard(days) {
   <h1>🔮 Claude API Spend</h1>
   <div class="sub">The Inner Sanctum · all personas, chat.js only · UTC days</div>
 
-  <div class="today-card">
-    <div class="today-label">Today (${escapeHtml(dateKeyUTC(0))})</div>
-    <div class="today-val">$${todayTotal.toFixed(4)}</div>
-    <div class="bar-track"><div class="bar-fill"></div></div>
-    <div class="threshold-note">${pctOfThreshold}% of $${DAILY_THRESHOLD.toFixed(2)}/day threshold${overThreshold ? " — THRESHOLD CROSSED" : ""}</div>
+  <div class="card-row">
+    <div class="today-card">
+      <div class="today-label">Today (${escapeHtml(dateKeyUTC(0))})</div>
+      <div class="today-val">$${todayTotal.toFixed(4)}</div>
+      <div class="bar-track"><div class="bar-fill"></div></div>
+      <div class="threshold-note">${pctOfThreshold}% of $${DAILY_THRESHOLD.toFixed(2)}/day threshold${overThreshold ? " — THRESHOLD CROSSED" : ""}</div>
+    </div>
+    <div class="lifetime-card">
+      <div class="today-label">Lifetime</div>
+      ${lifetimeCardBody}
+    </div>
   </div>
 
   <table>
@@ -107,7 +194,9 @@ function renderDashboard(days) {
 
   <div class="footnote">
     Logged from real Anthropic usage.input_tokens/output_tokens on every chat.js response — not an estimate.
-    Sonnet 4.6 @ $3/M input, $15/M output. No email alert wired yet (manual-check only, per checklist #114) —
+    Sonnet 4.6 @ $3/M input, $15/M output. Lifetime total is computed live on each page load by listing and
+    summing every daily entry in the store — not a separately-maintained counter, so it can never drift out
+    of sync with the table below. No email alert wired yet (manual-check only, per checklist #114) —
     revisit once this data's been observed for a few real days. This page has no login; treat the URL as
     semi-private. Days with no traffic simply won't appear below.
   </div>
@@ -134,7 +223,7 @@ exports.handler = async (event) => {
     // the week total via the `d ? d.totalCost : 0` guard above.
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const key = `daily:${dateKeyUTC(i)}`;
+      const key = `${DAILY_KEY_PREFIX}${dateKeyUTC(i)}`;
       let day = null;
       try {
         day = await store.get(key, { type: "json" });
@@ -144,10 +233,12 @@ exports.handler = async (event) => {
       days.push(day);
     }
 
+    const lifetime = await fetchLifetimeStats(store);
+
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: renderDashboard(days)
+      body: renderDashboard(days, lifetime)
     };
   } catch (err) {
     console.log("Dashboard handler error:", err.message);
