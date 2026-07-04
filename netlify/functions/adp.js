@@ -62,19 +62,31 @@ const CORS_HEADERS = {
 // This isn't a parsing bug on our end; Tank01 simply doesn't have ADP
 // data for these three. MISSING_DEF_FALLBACK below splices in static
 // values for just these three so draft.html always shows all 32 teams
-// even on the live-data path. Values copied from PLAYER_POOL.DEF in
-// shared-player-data.js as of June 2026 — if those ADP estimates ever
-// get revised there, update this block too. (Deliberately kept here in
-// adp.js rather than read from shared-player-data.js, since this is a
-// server-side function and that file is browser-side; see Session 11
-// notes for why duplicating 3 rows was chosen over a cross-runtime
-// shared-data scheme.)
+// even on the live-data path.
+//
+// VALUES UPDATED July 3, 2026 (Session 12): the original June 2026
+// placeholder values were copied straight from PLAYER_POOL.DEF's
+// then-current numbers just to fill the coverage gap — they were never
+// meant to be authoritative and happened to rank Jets/Cardinals/Raiders
+// #1-3 overall among all 32 defenses, which is backwards from reality
+// and was caught during a pre-launch human eyeball test on Draft
+// Command Center. Corrected against current consensus DST rankings
+// (CBS Sports consensus, cross-checked against FantasyPros and Athlon,
+// all agreeing these 3 sit in the bottom 6 of 32 teams for 2026):
+// Raiders ~27th, Jets ~30th, Cardinals ~31st of 32. New ADP values
+// place them past the tail end of Tank01's live-covered range so they
+// read as true late-draft/waiver-tier defenses, matching real-world
+// expectations. If these estimates are ever revised again, update the
+// mirrored PLAYER_POOL.DEF entries in shared-player-data.js too — kept
+// duplicated here (not read from that file) since this is a server-side
+// function and that file is browser-side; see Session 11 notes for why
+// duplicating 3 rows was chosen over a cross-runtime shared-data scheme.
 // ═══════════════════════════════════════
 
 const MISSING_DEF_FALLBACK = [
-  { name: "Arizona Cardinals", position: "DEF", team: "ARI", adp: 88.7 },
-  { name: "Las Vegas Raiders", position: "DEF", team: "LV", adp: 106.8 },
-  { name: "New York Jets", position: "DEF", team: "NYJ", adp: 37.8 }
+  { name: "Las Vegas Raiders", position: "DEF", team: "LV", adp: 212.4 },
+  { name: "New York Jets", position: "DEF", team: "NYJ", adp: 228.6 },
+  { name: "Arizona Cardinals", position: "DEF", team: "ARI", adp: 241.9 }
 ];
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
