@@ -32,6 +32,15 @@ const CORS_HEADERS = {
 // two rate constants below — this is the ONLY place cost math happens,
 // so a price change is a one-line fix here, not a hunt through the file.
 //
+// NOTE 2026-07-04: this rate should be revisited once #165's caching
+// fix below is actually confirmed live (see cache_read_input_tokens /
+// cache_creation_input_tokens in Anthropic Console usage) — cached
+// input tokens bill at a different effective rate than fresh input
+// tokens, and this cost model doesn't yet distinguish between them.
+// Not fixed in this pass since it wasn't the bug being chased, but
+// flagged so today's dollar figures don't get treated as more
+// precise than they currently are once caching is genuinely active.
+//
 // Failure handling: logging NEVER blocks or breaks the actual chat
 // response. Every Blobs call here is wrapped so a Blobs outage or
 // quota issue degrades to "spend just isn't logged for this request"
@@ -247,18 +256,66 @@ exports.handler = async (event) => {
       console.log("Tank01 context fetch failed:", e.message);
     }
 
-    // Inject live data into the system prompt.
-    // CRITICAL: Depth chart data is the single source of truth for team assignments.
-    const enhancedSystem = liveDataContext
-      ? `${system}\n\n═══════════════════════════════════\nLIVE NFL DATA — AUTHORITATIVE SOURCE:\n\nCRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.\n\n${liveDataContext}\n═══════════════════════════════════\nAlways reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today.`
-      : system;
+    // ── Build system prompt as content blocks for prompt caching ──────────
+    // FIXED 2026-07-04 (checklist #165, re-fixed — see #188): this
+    // caching structure was originally believed shipped 2026-06-30, but
+    // Anthropic Console confirmed "Prompt caching: Not enabled" / "—
+    // tokens reused" on this account, meaning it was NEVER actually live
+    // in this file. Root cause: the June 30 edit was accidentally made
+    // to a stray duplicate chat.js sitting at the repo ROOT (outside
+    // netlify/functions/, so Netlify never deploys or runs it) instead
+    // of this real, deployed file — this file still had the old
+    // single-string `enhancedSystem` approach with no cache_control at
+    // all. Root-level duplicate has been deleted (see #188) to prevent
+    // this exact confusion from recurring.
+    //
+    // Block 1 (CACHED): the static persona system prompt passed in from
+    // the frontend. This never changes between requests for the same
+    // persona, so Anthropic caches it after the first call and bills
+    // subsequent requests at ~10% of normal input token cost.
+    // cache_control: ephemeral gives a 5-minute TTL that resets on
+    // every hit — in practice, active sessions keep this cached
+    // continuously.
+    //
+    // Block 2 (NOT CACHED): live Tank01 data — different every call
+    // since it reflects current injuries, news, ADP, and depth charts.
+    // Caching this would defeat the purpose of fetching it live.
+    //
+    // If Tank01 returned nothing, we send only the cached block (no
+    // empty second block) to avoid sending a content block with an
+    // empty string.
+    // ───────────────────────────────────────────────────────────────
+
+    const systemBlocks = [
+      {
+        type: "text",
+        text: system,
+        cache_control: { type: "ephemeral" }
+      }
+    ];
+
+    if (liveDataContext) {
+      systemBlocks.push({
+        type: "text",
+        text: [
+          "═══════════════════════════════════",
+          "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
+          "",
+          "CRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.",
+          "",
+          liveDataContext,
+          "═══════════════════════════════════",
+          "Always reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today."
+        ].join("\n")
+      });
+    }
 
     // Call Claude API
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
       model,
       max_tokens,
-      system: enhancedSystem,
+      system: systemBlocks,
       messages
     });
 
