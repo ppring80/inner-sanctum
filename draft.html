@@ -493,7 +493,17 @@ function render(){
   positions.forEach(function(pos){
     var all=adpByPos[pos]||[];
     var maxP=POS_MAX[pos]||50;
-    var limit=show===999?maxP:Math.min(show,maxP);
+    // FIXED 2026-07-03 (#186): DEF and K pools top out at 32 teams total,
+    // so the Top N selector's "Top 30" default was silently hiding the
+    // 2 lowest-ADP teams with no indication anything was missing — this
+    // is exactly what made Jets/Raiders appear to "fall off" the DEF
+    // ranking after #183's ADP correction moved them to the bottom of
+    // the pool. Unlike RB/WR (150-deep pools, where trimming to a Top N
+    // genuinely reduces clutter), a 32-team pool is already short enough
+    // that nothing should ever be hidden from it — so DEF/K ignore the
+    // showSel dropdown entirely and always render every team/kicker
+    // Tank01 (or the fallback pool) returns, up to POS_MAX.
+    var limit=(pos==='DEF'||pos==='K')?maxP:(show===999?maxP:Math.min(show,maxP));
     var players=all.slice(0,limit);
     if(!players.length)return;
 
@@ -832,6 +842,14 @@ function goPos(pos){
   curPos=pos;
   document.querySelectorAll('.pos-tab').forEach(function(t){t.classList.remove('active')});
   document.querySelector('.pos-tab.'+pos).classList.add('active');
+  // #186: Top N is inert on DEF/K (always full 32-team pool) — disable
+  // it with an explanatory tooltip rather than leaving a control that
+  // silently does nothing, which is what made Jets/Raiders look like
+  // they'd vanished after #183's ADP correction.
+  var showSel=document.getElementById('showSel');
+  var defKInert=(pos==='DEF'||pos==='K');
+  showSel.disabled=defKInert;
+  showSel.title=defKInert?'DEF and K always show the full team/kicker pool':'';
   render();
 }
 
