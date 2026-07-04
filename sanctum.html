@@ -575,32 +575,6 @@ textarea::placeholder { color: #3a3028; }
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (added) ═══
-     Unlike auction.html/tiers.html (100% paid-only tools), Sanctum has
-     a real free tier underneath — so this gate is OPTIONAL/skippable,
-     not a hard block. Entering the correct passcode persists an unlock
-     flag to sessionStorage; the main script below reads that flag at
-     the exact line where `isAcolyte` is declared (search "Set to true
-     for paying members" further down) so there is only ONE place that
-     ever sets isAcolyte's real value — this script does not assign it
-     directly, since that would run before the main script's own
-     declaration and get silently overwritten back to false. Same
-     passcode as auction.html/tiers.html (ORACLE-125) and same
-     sessionStorage-based unlock pattern. NOT real auth — see those
-     files' build notes. Swap for real Patreon-based auth per #105/#105a
-     before this becomes a long-term mechanism.
-
-     #105a TESTER ALLOWLIST (added): a second, separate passcode
-     (ALLOWLIST_PASSCODE) is checked alongside the normal Acolyte
-     passcode. Either one unlocks the same sessionStorage flag, so an
-     allowlisted tester is indistinguishable from a real Acolyte once
-     in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
-     can be rotated (see Passcode Rotation Runbook) without locking
-     out testers, and vice versa. Matches the same allowlist passcode
-     used in auction.html/tiers.html, so one tester passcode works
-     across all three gated pages. This is still not real auth — swap
-     both passcodes for real Patreon-based auth per #105/#105a before
-     this becomes permanent. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔮</div>
@@ -616,15 +590,7 @@ textarea::placeholder { color: #3a3028; }
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (modified — now also checks OAuth session) ═══
-// Plain-text constants, intentionally — same launch-week friction gate
-// as auction.html/tiers.html, not real auth. Matches that passcode
-// exactly so Pat and testers use one passcode across all three pages.
 var GATE_PASSCODE = 'ORACLE-125';
-// #105a tester allowlist passcode — same value used in
-// auction.html/tiers.html so one tester passcode covers all three
-// gated pages. Separate constant from GATE_PASSCODE so rotating
-// ORACLE-125 later never locks out Pat, his son, or other testers.
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 var GATE_SKIPPED_KEY = 'sanctum_gate_skipped';
@@ -668,15 +634,6 @@ function checkGatePasscode() {
   }
 }
 
-// Calls verify-session.js and unlocks (same as a correct passcode)
-// if fullAccess is true. Added 2026-06-27 alongside the Login with
-// Patreon link above — previously this gate had no path at all to
-// recognize a real OAuth-authenticated Acolyte; it only ever checked
-// the passcode/skip sessionStorage flags. This mirrors the identical
-// pattern already used on auction.html/tiers.html. Never throws — any
-// failure (network error, non-200, malformed response) leaves the
-// gate exactly as it already was, so passcode/skip continue to work
-// unaffected either way.
 function checkOAuthSession() {
   return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
     .then(function (res) {
@@ -685,7 +642,7 @@ function checkOAuthSession() {
     })
     .then(function (data) {
       if (data && data.fullAccess === true) {
-        unlockGate(); // also sets GATE_STORAGE_KEY — see isAcolyte note below for why this matters beyond just hiding the overlay
+        unlockGate();
         return true;
       }
       return false;
@@ -703,11 +660,9 @@ function checkOAuthSession() {
   checkOAuthSession();
 })();
 </script>
-<!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
 
 <div class="wrap">
 
-  <!-- NAV -->
   <div class="nav">
     <a href="/">🏠 Home</a>
     <a href="/draft">📋 Draft Cheat Sheet</a>
@@ -717,7 +672,6 @@ function checkOAuthSession() {
     <a href="/survivor">☠️ Survivor</a>
   </div>
 
-  <!-- TOP -->
   <div class="top">
     <div class="top-eyebrow">Fantasy Football AI</div>
     <h1>The Inner Sanctum</h1>
@@ -725,7 +679,6 @@ function checkOAuthSession() {
     <div class="tier-note">🎁 Free tier: 3 questions every 24 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
 
-  <!-- SLEEPER CONNECT -->
   <div class="sleeper-bar">
     <div class="sleeper-inner">
       <span class="sleeper-label">🏈 Sleeper</span>
@@ -735,13 +688,11 @@ function checkOAuthSession() {
     </div>
   </div>
 
-  <!-- ROSTER BANNER -->
   <div class="roster-banner" id="rosterBanner">
     <strong>🏈 Roster loaded</strong> — all personas now know your team
     <div class="roster-players" id="rosterPills"></div>
   </div>
 
-  <!-- TABS -->
   <div class="tabs">
     <button class="tab on-oracle" id="t-oracle" onclick="go('oracle')">
       <div class="tab-icon">🔮</div>
@@ -760,7 +711,6 @@ function checkOAuthSession() {
     </button>
   </div>
 
-  <!-- HOW THIS WORKS -->
   <div class="howto-wrap">
     <div class="howto-toggle" onclick="toggleHowTo()">
       <span>❓ How This Works</span>
@@ -774,14 +724,10 @@ function checkOAuthSession() {
     </div>
   </div>
 
-  <!-- VOICE -->
   <div class="voice-wrap">
     <button id="voiceBtn" onclick="toggleVoice()" class="voice-btn">🔊 Voice On</button>
   </div>
 
-  <!-- ═══════════════════════════════════════
-       LINEUP ADVISOR
-  ═══════════════════════════════════════ -->
   <div class="lineup-advisor">
 
     <div class="lineup-header" onclick="toggleLineup()">
@@ -800,7 +746,6 @@ function checkOAuthSession() {
 
     <div class="lineup-body" id="lineupBody">
 
-      <!-- WEEK BAR -->
       <div class="lineup-week-bar">
         <span class="lineup-week-label">📅 NFL Week</span>
         <select class="lineup-week-select" id="lineupWeek">
@@ -818,7 +763,6 @@ function checkOAuthSession() {
         <span style="font-size:13px;color:#a08a5a;font-family:'Courier New',monospace" id="lineupFilledCount">0 / 10 starters</span>
       </div>
 
-      <!-- ROSTER FORMAT -->
       <div class="lineup-config-bar" id="lineupConfigBar">
         <span class="lineup-config-label">🧩 Roster Format</span>
         <select class="lineup-config-select" id="rosterFormatSelect" onchange="onFormatSelectChange()">
@@ -834,7 +778,6 @@ function checkOAuthSession() {
         </span>
       </div>
 
-      <!-- CUSTOM ROSTER FORMAT PANEL -->
       <div class="lineup-custom-panel" id="lineupCustomPanel">
         <div class="lineup-custom-grid">
           <div class="lineup-custom-field"><label>QB</label><input type="number" id="cfg-QB" min="0" max="4" value="1"></div>
@@ -851,12 +794,9 @@ function checkOAuthSession() {
         <button class="lineup-custom-apply" onclick="applyCustomFormat()">Apply Format</button>
       </div>
 
-      <!-- STARTER SLOTS -->
       <div class="lineup-slots" id="lineupSlots">
-        <!-- Built by JS -->
       </div>
 
-      <!-- BENCH TOGGLE -->
       <div class="lineup-bench-toggle" onclick="toggleBench()">
         <span id="benchToggleIcon">▶</span> Add Bench Players (optional)
       </div>
@@ -864,7 +804,6 @@ function checkOAuthSession() {
         <div class="lineup-bench-grid" id="benchSlots"></div>
       </div>
 
-      <!-- ACTION ROW -->
       <div class="lineup-action">
         <button class="lineup-get-btn oracle-btn" id="lineupBtn" onclick="getLineupAdvice()">
           🔮 Ask The Oracle for Lineup Advice
@@ -872,10 +811,9 @@ function checkOAuthSession() {
         <button class="lineup-clear-btn" onclick="clearLineup()">Clear</button>
       </div>
 
-    </div><!-- /lineup-body -->
-  </div><!-- /lineup-advisor -->
+    </div>
+  </div>
 
-  <!-- MSGS -->
   <div class="msgs" id="msgs">
     <div class="greet">
       <div class="av av-oracle" id="gav">🔮</div>
@@ -890,7 +828,6 @@ function checkOAuthSession() {
     </div>
   </div>
 
-  <!-- INPUT -->
   <div class="bot-area">
     <div class="inp-box oracle" id="ibox">
       <textarea id="inp" rows="1" placeholder="Ask the Oracle for wisdom..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
@@ -901,25 +838,15 @@ function checkOAuthSession() {
 </div>
 
 <script>
-// ═══════════════════════════════════════
-// CORE STATE
-// ═══════════════════════════════════════
 var rosterContext = '';
 var sleeperConnected = false;
-var sleeperRosterPlayers = []; // [{name, pos, team}]
+var sleeperRosterPlayers = [];
 var allSleeperPlayers = [];
 var lineupOpen = true;
 var benchOpen = false;
 
-// Player statuses that mean "currently a real, rosterable NFL
-// player." Anything outside this list (Retired, Inactive, Cut,
-// Practice Squad with no active deal, etc.) is excluded so the
-// autocomplete never surfaces retired or non-rostered players.
 var ROSTERABLE_STATUSES = ['Active', 'Injured Reserve', 'PUP', 'NFI'];
 
-// Full team names for building defense display names — see
-// TEAM_NAMES note below buildRosterablePlayerList for why this
-// is needed at all.
 var TEAM_NAMES = {
   ARI: 'Arizona Cardinals', ATL: 'Atlanta Falcons', BAL: 'Baltimore Ravens', BUF: 'Buffalo Bills',
   CAR: 'Carolina Panthers', CHI: 'Chicago Bears', CIN: 'Cincinnati Bengals', CLE: 'Cleveland Browns',
@@ -931,15 +858,6 @@ var TEAM_NAMES = {
   SF: 'San Francisco 49ers', TB: 'Tampa Bay Buccaneers', TEN: 'Tennessee Titans', WAS: 'Washington Commanders'
 };
 
-// ═══════════════════════════════════════
-// ROSTER FORMAT / CONFIGURATION
-// Starter slots used to be a fixed 10-slot array, which only
-// matched one specific league shape (1QB/2RB/3WR/1TE/1FLEX/1K/1DEF).
-// This builds the slot list dynamically from a position-count
-// config instead, so Superflex, 2-QB, no-kicker, etc. all work —
-// either picked manually or auto-detected from a connected
-// Sleeper league's actual roster_positions.
-// ═══════════════════════════════════════
 var POS_META = {
   QB:      { label: 'Quarterback',             badge: 'badge-QB',   short: 'QB' },
   RB:      { label: 'Running Back',            badge: 'badge-RB',   short: 'RB' },
@@ -960,10 +878,6 @@ var ROSTER_PRESETS = {
   nokicker:  { QB: 1, RB: 2, WR: 3, TE: 1, FLEX: 2, RECFLEX: 0, SFLEX: 0, K: 0, DEF: 1, BENCH: 6 }
 };
 
-// Sleeper's league.roster_positions codes -> our internal position
-// keys. Anything not in this map (IDP slots like DL/LB/DB/IDP_FLEX,
-// or a SUPER_FLEX-style alias we don't recognize) is counted but not
-// built as a typeable slot — Sanctum tracks offense + K + DEF only.
 var SLEEPER_POS_MAP = {
   QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', FLEX: 'FLEX',
   WR_TE: 'RECFLEX', REC_FLEX: 'RECFLEX', SUPER_FLEX: 'SFLEX',
@@ -1006,7 +920,7 @@ var P = {
     ph: "Ask the Oracle for wisdom...", em: "🔮"
   },
   trash: {
-    sys: "You are The Trash Lord, the ultimate fantasy football trash talker. Be snarky, hilarious, and savage but never truly mean or offensive. Use ALL CAPS for emphasis on key points. Give real, accurate fantasy advice wrapped in trash talk. HARD LIMIT: maximum 2 sentences, maximum 40 words, no exceptions, even for the offseason disclaimer or a roast — this is a drive-by insult, not a monologue, so land the joke and STOP. CRITICAL RULE: NEVER fabricate stats, injury reports, game results, or rankings. If you do not have real verified data, roast the situation or the offseason in ONE short line instead — never invent numbers or facts. NEVER recommend external sites like FantasyPros, ESPN, NFL.com, or Underdog for rankings, ADP, or draft prep — that's an insult to this platform, which already has a Draft Cheat Sheet and Tier List built for exactly that; clown the user into using those instead. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final savage answer directly.",
+    sys: "You are The Trash Lord — the resident league villain of The Inner Sanctum, the guy who's been in your group chat since 2019 talking way too much smack for someone who finished 9th in points-for last year. You didn't get good at fantasy football; you got GREAT at making fun of people who are bad at it, which turns out to be the more marketable skill. Your comedic instinct: you roast the DECISION, never the person — nothing about intelligence, appearance, or life outside football, just brutally honest reads on lineup choices, panic trades, and waiver-wire cowardice. You love a callback ('that guy who benched a top-5 back for a bye-week fill-in' energy), you treat mediocre rosters like condemned buildings, and you have zero patience for excuses — 'my kicker let me down' is not a defense, it's a confession. You're loud and a little unhinged, but never cruel — a great roast makes the whole room laugh, including the person getting roasted, once they stop being mad about it. EXAMPLE VOICE (tone reference only, never reuse these lines verbatim): 'Starting a rookie WR over a proven vet in Week 1 is the kind of confidence that gets people voted off the island. Bold. Wrong, but bold.' / 'You're 2-6 and still talking about your sleeper picks like this is a heist movie and not a crime scene.' Be snarky, hilarious, and savage but never truly mean or offensive. Use ALL CAPS for emphasis on key points. Give real, accurate fantasy advice wrapped in trash talk. HARD LIMIT: maximum 2 sentences, maximum 40 words, no exceptions, even for the offseason disclaimer or a roast — this is a drive-by insult, not a monologue, so land the joke and STOP. CRITICAL RULE: NEVER fabricate stats, injury reports, game results, or rankings. If you do not have real verified data, roast the situation or the offseason in ONE short line instead — never invent numbers or facts. NEVER recommend external sites like FantasyPros, ESPN, NFL.com, or Underdog for rankings, ADP, or draft prep — that's an insult to this platform, which already has a Draft Cheat Sheet and Tier List built for exactly that; clown the user into using those instead. CRITICAL: Never show your thinking process, research steps, or internal reasoning. Deliver only your final savage answer directly.",
     greet: "Oh you actually showed up? Bold move from someone who probably started a bye week player last week. Let us hear your sad little fantasy problem.",
     ph: "Brace yourself for the truth...", em: "🔥"
   },
@@ -1021,81 +935,27 @@ var ap = "oracle";
 var voiceOn = true;
 var hist = { oracle: [], trash: [], analyst: [] };
 var busy = false;
-  // ═══════════════════════════════════════
-// QUESTION LIMIT (Free tier)
-// Previously `questionCount` was a plain in-memory var, reset to 0
-// by definition every time this script re-ran on page load — that
-// was the reload bug. It's now persisted in localStorage alongside
-// a window-start timestamp, so the limit survives reloads and only
-// actually resets RESET_WINDOW_HOURS after the first question in
-// the current window. Change RESET_WINDOW_HOURS to 24 for a once-
-// a-day reset instead of every few hours.
-//
-// CHANGED 2026-06-29: free-tier limit lowered from 10 to 3 per Pat's
-// explicit instruction. Every other reference to the old "10
-// questions" figure in this file's copy (the tier-note line under the
-// page title, the How This Works panel, and the upgrade modal's
-// headline) was updated to match — see those spots further down. The
-// upgrade modal's footer disclaimer text ("FREE QUESTIONS RESET EVERY
-// 24 HOURS") doesn't mention the number itself, so it didn't need a
-// change.
-// ═══════════════════════════════════════
 var QUESTION_LIMIT = 3;
 var RESET_WINDOW_HOURS = 24;
 var RESET_WINDOW_MS = RESET_WINDOW_HOURS * 60 * 60 * 1000;
 var QUESTION_STORAGE_KEY = 'sanctum_question_window';
-// isAcolyte starts from the gate's unlock flag (set by
-// checkGatePasscode() in the gate's own script above, persisted to
-// sessionStorage) — same fail-closed behavior as before if storage is
-// blocked (private browsing) or the gate was never unlocked.
-//
-// UPGRADED 2026-06-27: isAcolyte is now a plain mutable var instead of
-// a frozen IIFE result, because checkOAuthSession() (in the gate's
-// script above) can confirm a REAL Patreon-authenticated Acolyte
-// session asynchronously, slightly after this line first runs — and
-// when it does, it calls unlockGate(), which sets the exact same
-// sessionStorage key this line reads. That alone doesn't update this
-// already-evaluated variable, though, which is why
-// refreshIsAcolyteFromGate() exists below: it re-reads the same flag
-// on demand, called right before every place isAcolyte's value
-// actually matters (see ask() further down), so a real OAuth login
-// that completes after page load is correctly picked up before the
-// user's first real question — not just on a future page reload.
-// This NEVER downgrades isAcolyte from true back to false; it only
-// ever upgrades it, so an already-passcode-unlocked session is never
-// affected by this in any way.
 var isAcolyte = (function() {
   try { return sessionStorage.getItem('sanctum_acolyte_unlock') === 'true'; }
   catch (e) { return false; }
 })();
 
 function refreshIsAcolyteFromGate() {
-  if (isAcolyte) return; // already true — nothing to upgrade, and never downgrade
+  if (isAcolyte) return;
   try {
     if (sessionStorage.getItem('sanctum_acolyte_unlock') === 'true') {
       isAcolyte = true;
     }
   } catch (e) {
-    // storage blocked — isAcolyte stays whatever it already was
   }
 }
 var questionCount = 0;
 var windowStart = null;
 
-// ═══════════════════════════════════════
-// ACOLYTE DAILY CAP (added)
-// isAcolyte bypasses the free-tier limit above entirely, which meant
-// paying members had NO ceiling at all on Claude API usage — fine for
-// a normal user (~15 questions/day costs cents), but a real exposure
-// for a runaway script or an abused/shared login, since nothing would
-// stop it short of #114's spend alert noticing after the fact. This
-// adds a separate, much more generous cap (150/day, shared across all
-// three personas, rolling 24hr window) that no genuine user should
-// ever hit, but which puts a real dollar ceiling under the worst case.
-// Same localStorage pattern as the free-tier window above, just a
-// parallel key/counter so the two limits never interfere with each
-// other if isAcolyte is ever toggled mid-session.
-// ═══════════════════════════════════════
 var ACOLYTE_DAILY_LIMIT = 150;
 var ACOLYTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 var ACOLYTE_STORAGE_KEY = 'sanctum_acolyte_window';
@@ -1129,29 +989,9 @@ function saveAcolyteWindow() {
   try {
     localStorage.setItem(ACOLYTE_STORAGE_KEY, JSON.stringify({ count: acolyteCount, windowStart: acolyteWindowStart }));
   } catch (e) {
-    // Storage unavailable — same fail-open behavior as the free-tier
-    // window; the cap just won't persist across reloads for this user.
   }
 }
 
-// ═══════════════════════════════════════
-// CROSS-TAB SYNC (added)
-// Both question-limit counters above (free-tier QUESTION_STORAGE_KEY
-// and Acolyte ACOLYTE_STORAGE_KEY) are read into in-memory vars at
-// page load and re-synced at the top of ask() — but if multiple tabs
-// are open to this page at once, each tab's in-memory copy can go
-// stale between saves, letting an extra question slip through before
-// that tab's next ask() happens to catch up (last-write-wins race).
-//
-// The browser's native 'storage' event fires in every OTHER open tab
-// (never the tab that made the write) the instant localStorage
-// changes. Listening for it here means every open tab adopts the
-// latest count in real time, closing the race window completely
-// instead of waiting for that tab's own next ask() call to reload it.
-//
-// Fails open by design: any parse error or unexpected key is ignored
-// silently, same as every other storage read in this file — a sync
-// failure should never block or break the chat itself.
 window.addEventListener('storage', function(e) {
   if (e.key === QUESTION_STORAGE_KEY) {
     try {
@@ -1161,7 +1001,6 @@ window.addEventListener('storage', function(e) {
         windowStart = data.windowStart;
       }
     } catch (err) {
-      // Malformed value from another tab — ignore, next loadQuestionWindow() call will recover.
     }
   } else if (e.key === ACOLYTE_STORAGE_KEY) {
     try {
@@ -1171,7 +1010,6 @@ window.addEventListener('storage', function(e) {
         acolyteWindowStart = adata.windowStart;
       }
     } catch (err) {
-      // Malformed value from another tab — ignore, next loadAcolyteWindow() call will recover.
     }
   }
 });
@@ -1190,12 +1028,6 @@ function formatAcolyteResetCountdown() {
   return hrs + 'h ' + mins + 'm';
 }
 
-// Reads the current window from localStorage, starting a fresh one
-// if none exists yet or if the stored window has already expired.
-// Called on page load AND right before every question is asked, so
-// two tabs open at once (or a window expiring mid-visit) both stay
-// in sync with what's actually been persisted rather than trusting
-// a possibly-stale in-memory value from whenever the page loaded.
 function loadQuestionWindow() {
   try {
     var raw = localStorage.getItem(QUESTION_STORAGE_KEY);
@@ -1208,8 +1040,6 @@ function loadQuestionWindow() {
       windowStart = data.windowStart;
     }
   } catch (e) {
-    // Storage blocked or corrupt (private browsing, etc.) — fail open
-    // to a fresh in-memory-only window rather than breaking the chat.
     questionCount = 0;
     windowStart = Date.now();
   }
@@ -1225,8 +1055,6 @@ function saveQuestionWindow() {
   try {
     localStorage.setItem(QUESTION_STORAGE_KEY, JSON.stringify({ count: questionCount, windowStart: windowStart }));
   } catch (e) {
-    // Storage unavailable — the limit just won't persist across
-    // reloads for this particular user; chat itself still works.
   }
 }
 
@@ -1244,9 +1072,6 @@ function formatResetCountdown() {
   return hrs + 'h ' + mins + 'm';
 }
 
-// ═══════════════════════════════════════
-// LINEUP ADVISOR — BUILD SLOTS
-// ═══════════════════════════════════════
 function buildLineupSlots() {
   var grid = document.getElementById('lineupSlots');
   grid.innerHTML = '';
@@ -1284,9 +1109,6 @@ function createSlotEl(slot, isBench) {
   return div;
 }
 
-// ═══════════════════════════════════════
-// ROSTER FORMAT — APPLY / SWITCH
-// ═══════════════════════════════════════
 function applyRosterCounts(counts, source) {
   STARTER_SLOTS = buildSlotsFromCounts(counts);
   BENCH_SLOTS = buildBenchSlotsFromCount(counts.BENCH != null ? counts.BENCH : 6);
@@ -1334,11 +1156,6 @@ function formatCountsLabel(counts) {
   return parts.join('·');
 }
 
-// Called once a Sleeper league connects successfully — replaces the
-// manual format dropdown with a "synced" readout reflecting the
-// league's actual roster_positions, since that's the real source of
-// truth rather than asking the user to re-declare what they already
-// told Sleeper when they set up their league.
 function applySleeperRosterFormat(rosterPositions) {
   var result = rosterConfigFromSleeper(rosterPositions);
   applyRosterCounts(result.counts, 'sleeper');
@@ -1359,9 +1176,6 @@ function revealManualFormat() {
   document.getElementById('rosterFormatSelect').style.display = 'inline-block';
 }
 
-// ═══════════════════════════════════════
-// PLAYER SEARCH & AUTOCOMPLETE
-// ═══════════════════════════════════════
 function slotSearch(input) {
   var q = input.value.trim().toLowerCase();
   var slotId = input.dataset.slotid;
@@ -1373,10 +1187,7 @@ function slotSearch(input) {
 
   if (q.length < 2) { dd.style.display = 'none'; return; }
 
-  // Filter from Sleeper player list — prefer roster players if connected
   var pool = allSleeperPlayers.length > 0 ? allSleeperPlayers : [];
-  // Which actual positions are eligible to fill each slot type. Plain
-  // position slots (QB/RB/WR/TE/K/DEF) just match themselves.
   var FLEX_ELIGIBLE = { FLEX: ['RB', 'WR', 'TE'], RECFLEX: ['WR', 'TE'], SFLEX: ['QB', 'RB', 'WR', 'TE'] };
   var matches = pool.filter(function(p) {
     var q2 = q;
@@ -1441,9 +1252,6 @@ function clearLineup() {
   updateFilledCount();
 }
 
-// ═══════════════════════════════════════
-// AUTO-FILL FROM SLEEPER ROSTER
-// ═══════════════════════════════════════
 function autoFillFromSleeper() {
   if (!sleeperRosterPlayers.length) return;
   var byPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
@@ -1451,9 +1259,6 @@ function autoFillFromSleeper() {
     if (byPos[p.pos]) byPos[p.pos].push(p);
   });
 
-  // How many of each position have already been assigned to a starter
-  // slot, so multi-slot positions (RB1/RB2, QB1/QB2 in a 2-QB league,
-  // etc.) each get a distinct player instead of all showing the same one.
   var used = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
 
   function nextFrom(eligiblePositions) {
@@ -1479,8 +1284,6 @@ function autoFillFromSleeper() {
     if (el && player) { el.value = player.name; el.classList.add('filled'); }
   });
 
-  // Bench — whatever roster players didn't get used as a starter above,
-  // in original roster order.
   var usedCopy = { QB: used.QB, RB: used.RB, WR: used.WR, TE: used.TE, K: used.K, DEF: used.DEF };
   var assignedNames = {};
   Object.keys(byPos).forEach(function(pos) {
@@ -1496,9 +1299,6 @@ function autoFillFromSleeper() {
   updateFilledCount();
 }
 
-// ═══════════════════════════════════════
-// GET LINEUP ADVICE
-// ═══════════════════════════════════════
 function getLineupAdvice() {
   var starters = [];
   STARTER_SLOTS.forEach(function(s) {
@@ -1528,9 +1328,6 @@ function getLineupAdvice() {
   ask(prompt);
 }
 
-// ═══════════════════════════════════════
-// TOGGLE LINEUP PANEL
-// ═══════════════════════════════════════
 function toggleLineup() {
   lineupOpen = !lineupOpen;
   document.getElementById('lineupBody').style.display = lineupOpen ? 'block' : 'none';
@@ -1550,23 +1347,6 @@ function toggleHowTo() {
   document.getElementById('howtoChevron').classList.toggle('open', howtoOpen);
 }
 
-// ═══════════════════════════════════════
-// PLAYER LIST FILTERING (shared logic)
-// ═══════════════════════════════════════
-// Builds a clean, rosterable-only player list from Sleeper's raw
-// player database. Excludes retired players, cut players, and
-// anyone without a current NFL team — Sleeper's database keeps
-// every player who has EVER had a roster spot, so this filter is
-// required to avoid surfacing names like long-retired veterans
-// in the lineup search.
-//
-// Team defenses are a special case in Sleeper's data: each one's
-// player_id IS the team's abbreviation (e.g. "SF"), and full_name/
-// first_name/last_name are all null — there's no real "player" to
-// name. That's why DEF search was returning nothing: the old
-// `!p.full_name` check silently dropped every defense before the
-// position whitelist even ran. sleeperPlayerName() below builds a
-// real display name ("San Francisco 49ers") from the team code.
 function sleeperPlayerName(p) {
   if (p.position === 'DEF') return TEAM_NAMES[p.team] || p.team || 'Defense';
   return p.full_name || null;
@@ -1576,9 +1356,6 @@ function buildRosterablePlayerList(rawPlayers) {
   var list = [];
   Object.values(rawPlayers).forEach(function(p) {
     if (p.position === 'DEF') {
-      // Defenses have no meaningful `status` in Sleeper's data either
-      // (it's null, not "Active") — a team defense is rosterable as
-      // long as the team exists, so it skips the status check below.
       if (!p.team) return;
       list.push({ name: sleeperPlayerName(p), pos: 'DEF', team: p.team });
       return;
@@ -1586,16 +1363,13 @@ function buildRosterablePlayerList(rawPlayers) {
     if (!p.full_name) return;
     if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
     if (!ROSTERABLE_STATUSES.includes(p.status)) return;
-    if (!p.team) return; // no current team = not a startable option
+    if (!p.team) return;
     list.push({ name: p.full_name, pos: p.position, team: p.team });
   });
   list.sort(function(a, b) { return a.name.localeCompare(b.name); });
   return list;
 }
 
-// ═══════════════════════════════════════
-// SLEEPER CONNECT
-// ═══════════════════════════════════════
 async function connectSleeper() {
   var username = document.getElementById('sleeperUser').value.trim();
   if (!username) return;
@@ -1624,7 +1398,6 @@ async function connectSleeper() {
     var playersDb = await fetch('https://api.sleeper.app/v1/players/nfl');
     var allPlayers = await playersDb.json();
 
-    // Build full player list for autocomplete — rosterable players only
     allSleeperPlayers = buildRosterablePlayerList(allPlayers);
 
     var myRoster = rosters.find(function(r) { return r.owner_id === user.user_id; });
@@ -1671,7 +1444,6 @@ async function connectSleeper() {
   }
 }
 
-// Also load player list independently for non-Sleeper users
 function loadPlayerList() {
   fetch('https://api.sleeper.app/v1/players/nfl')
     .then(function(r) { return r.json(); })
@@ -1692,9 +1464,6 @@ function getSystemPrompt(persona) {
   return (sleeperConnected && P[persona].sysWithRoster) ? P[persona].sysWithRoster : P[persona].sys;
 }
 
-// ═══════════════════════════════════════
-// PERSONA SWITCH
-// ═══════════════════════════════════════
 function go(p) {
   ap = p;
   document.getElementById("t-oracle").className = "tab" + (p === "oracle" ? " on-oracle" : "");
@@ -1708,7 +1477,6 @@ function go(p) {
   document.getElementById("gtxt").textContent = P[p].greet;
   document.getElementById("gtxt").className = "greet-txt " + p;
 
-  // Update lineup button
   var btn = document.getElementById('lineupBtn');
   var labels = {
     oracle:  '🔮 Ask The Oracle for Lineup Advice',
@@ -1721,9 +1489,6 @@ function go(p) {
   draw();
 }
 
-// ═══════════════════════════════════════
-// CHAT RENDER
-// ═══════════════════════════════════════
 function draw() {
   var m = document.getElementById("msgs");
   var h = hist[ap];
@@ -1759,25 +1524,9 @@ function draw() {
   m.scrollTop = m.scrollHeight;
 }
 
-// ═══════════════════════════════════════
-// VOICE
-// Calls the tts.js Netlify function, which proxies to
-// ElevenLabs and returns MP3 audio. Replaces the previous
-// browser speechSynthesis implementation — same on/off
-// behavior and same call site (invoked from ask()'s xhr.onload),
-// but real persona voices instead of OS-default voices.
-// ═══════════════════════════════════════
 var currentAudio = null;
 var audioUnlocked = false;
 
-// Browsers block audio.play() unless it happens inside a direct
-// user gesture (a click). The chat's first spoken response fires
-// from a network callback, not a click, so it gets silently
-// blocked on a user's very first message — discovered when
-// toggling Voice Off/On "fixed" it, since that toggle IS a click.
-// This unlocks playback permission once, on the first real click
-// anywhere on the page, so every later automatic speak() call
-// works without requiring that manual toggle dance.
 function unlockAudioOnce() {
   if (audioUnlocked) return;
   audioUnlocked = true;
@@ -1791,20 +1540,11 @@ document.addEventListener("click", unlockAudioOnce, { once: true });
 function speak(reply) {
   if (!voiceOn) return;
 
-  // Stop any audio already playing before starting new audio —
-  // mirrors the old window.speechSynthesis.cancel() behavior so
-  // overlapping responses don't talk over each other.
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
   }
 
-  // The TTS round-trip (this request + ElevenLabs generation)
-  // typically takes several seconds, arriving well after the
-  // text response already rendered. A pulsing voice button signals
-  // that audio is on its way rather than leaving the wait silent
-  // and unexplained. Cleared on every exit path below so it can
-  // never get stuck mid-pulse.
   var voiceBtn = document.getElementById("voiceBtn");
   if (voiceBtn) voiceBtn.classList.add("loading");
   function clearLoading() {
@@ -1818,9 +1558,6 @@ function speak(reply) {
 
   xhr.onload = function() {
     clearLoading();
-    // Voice is an enhancement, not core functionality — any
-    // failure here (rate limit, bad key, network issue) should
-    // fail silently rather than interrupt or break the chat.
     if (xhr.status !== 200) {
       console.log("TTS request failed:", xhr.status);
       return;
@@ -1834,9 +1571,6 @@ function speak(reply) {
         URL.revokeObjectURL(url);
         if (currentAudio === audio) currentAudio = null;
       });
-      // Should rarely fire now that unlockAudioOnce() has run on
-      // the user's first click, but still swallow silently as a
-      // backstop — text is already on screen either way.
       audio.play().catch(function(err) {
         console.log("Audio playback blocked:", err.message);
       });
@@ -1866,24 +1600,13 @@ function toggleVoice() {
   btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)";
 }
 
-// ═══════════════════════════════════════
-// ASK / SEND MESSAGE
-// ═══════════════════════════════════════
 function ask(txt) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
 
-  // Re-sync isAcolyte from the gate's flag first — picks up a real
-  // OAuth login that completed asynchronously after this page first
-  // loaded (see refreshIsAcolyteFromGate's definition above for why
-  // this is needed). Never downgrades, only upgrades, so this is safe
-  // to call unconditionally on every question asked.
   refreshIsAcolyteFromGate();
 
-  // Question limit check (free tier only). Re-sync from localStorage
-  // first — handles both a fresh page load and the window having
-  // expired naturally while this tab sat open.
   if (!isAcolyte) {
     loadQuestionWindow();
     if (questionCount >= QUESTION_LIMIT) {
@@ -1891,9 +1614,6 @@ function ask(txt) {
       return;
     }
   } else {
-    // Acolyte daily cap check (added) — see constants above. Not a
-    // paywall message since they're already paying; a distinct,
-    // friendly fair-use notice instead.
     loadAcolyteWindow();
     if (acolyteCount >= ACOLYTE_DAILY_LIMIT) {
       showAcolyteCapModal();
@@ -1927,7 +1647,6 @@ function ask(txt) {
     hist[ap].push({ role: "assistant", content: reply });
     busy = false; draw(); speak(reply);
 
-    // Show upgrade/cap prompt after the final allowed response renders
     if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
       setTimeout(showUpgradeModal, 1200);
     } else if (isAcolyte && acolyteCount >= ACOLYTE_DAILY_LIMIT) {
@@ -1959,9 +1678,6 @@ function closeUpgradeModal() {
   document.getElementById('upgradeModal').style.display = 'none';
 }
 
-// Acolyte fair-use cap modal (added) — distinct from the free-tier
-// upgrade modal since these are paying members; this is a fair-use
-// notice, not a sales pitch.
 function showAcolyteCapModal() {
   var note = document.getElementById('acolyteCapResetNote');
   if (note) {
@@ -1975,14 +1691,10 @@ function closeAcolyteCapModal() {
   document.getElementById('acolyteCapModal').style.display = 'none';
 }
 
-// ═══════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════
 document.getElementById('sleeperUser').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') connectSleeper();
 });
 
-// Close dropdowns on outside click
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.lineup-slot-wrap')) {
     document.querySelectorAll('.slot-dropdown').forEach(function(dd) {
@@ -1997,8 +1709,7 @@ loadPlayerList();
 loadQuestionWindow();
 loadAcolyteWindow();
 </script>
-  <!-- UPGRADE MODAL -->
-<div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
+  <div id="upgradeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:linear-gradient(160deg,#1a0f08,#221208);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.15);">
     <div style="font-size:40px;margin-bottom:12px;">🔮</div>
     <div style="font-size:11px;letter-spacing:4px;color:#c9a84c;text-transform:uppercase;margin-bottom:10px;">Your Wisdom Is Spent</div>
@@ -2011,8 +1722,7 @@ loadAcolyteWindow();
   </div>
 </div>
 
-  <!-- ACOLYTE FAIR-USE CAP MODAL (added) -->
-<div id="acolyteCapModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
+  <div id="acolyteCapModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:linear-gradient(160deg,#1a0f08,#221208);border:1px solid rgba(201,168,76,0.4);border-radius:16px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,0.15);">
     <div style="font-size:40px;margin-bottom:12px;">🌙</div>
     <div style="font-size:11px;letter-spacing:4px;color:#c9a84c;text-transform:uppercase;margin-bottom:10px;">Even The Oracle Rests</div>
