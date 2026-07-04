@@ -329,6 +329,18 @@ exports.handler = async (event) => {
     // for "which persona drove today's spend" at a glance.
     try {
       const usage = response.usage || {};
+      // TEMPORARY — checklist #188 verification, remove once caching is
+      // confirmed working via 2 real back-to-back test questions to the
+      // same persona. Shows the real cache_creation_input_tokens (cache
+      // WRITE, expected on the 1st question) and cache_read_input_tokens
+      // (cache READ, expected on the 2nd+ question to the same persona
+      // within the 5-minute TTL) directly in Netlify's function logs.
+      console.log("CACHE CHECK:", JSON.stringify({
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        cache_read_input_tokens: usage.cache_read_input_tokens
+      }));
       const personaLabel =
         /Oracle/i.test(system) ? "oracle" :
         /Trash Lord/i.test(system) ? "trash" :
