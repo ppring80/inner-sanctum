@@ -16,6 +16,16 @@
 // Russell Wilson were removed — Carr is retired, Wilson is not on a
 // roster). Team abbreviations standardized to JAX / WAS (matches
 // Sleeper's own convention).
+//
+// DEF ADP UPDATE (July 3, 2026 — Session 12): Arizona Cardinals, Las
+// Vegas Raiders, and New York Jets ADP values corrected. These are the
+// same 3 teams adp.js's MISSING_DEF_FALLBACK covers (Tank01 has no live
+// ADP data for them), and the two lists must stay in sync. Original
+// values had these three ranked #1-3 overall among all defenses, which
+// contradicted every current consensus DST ranking (CBS Sports,
+// FantasyPros, Athlon all place them in the bottom 6 of 32 for 2026).
+// New values reflect that bottom tier instead. If either list is
+// revised again, update the other to match.
 // ═══════════════════════════════════════════════════════════════════════
 
 var PLAYER_POOL = {
@@ -168,16 +178,16 @@ DEF:[
   {name:'Philadelphia Eagles',team:'PHI',adp:15.4},{name:'Buffalo Bills',team:'BUF',adp:18.9},
   {name:'Kansas City Chiefs',team:'KC',adp:22.3},{name:'Cleveland Browns',team:'CLE',adp:26.8},
   {name:'Pittsburgh Steelers',team:'PIT',adp:30.5},{name:'Miami Dolphins',team:'MIA',adp:34.1},
-  {name:'New York Jets',team:'NYJ',adp:37.8},{name:'Cincinnati Bengals',team:'CIN',adp:41.4},
+  {name:'New York Jets',team:'NYJ',adp:228.6},{name:'Cincinnati Bengals',team:'CIN',adp:41.4},
   {name:'Minnesota Vikings',team:'MIN',adp:45.0},{name:'Green Bay Packers',team:'GB',adp:48.7},
   {name:'Los Angeles Rams',team:'LAR',adp:52.3},{name:'Jacksonville Jaguars',team:'JAX',adp:56.0},
   {name:'Denver Broncos',team:'DEN',adp:59.6},{name:'Seattle Seahawks',team:'SEA',adp:63.2},
   {name:'Detroit Lions',team:'DET',adp:66.9},{name:'Tampa Bay Buccaneers',team:'TB',adp:70.5},
   {name:'Indianapolis Colts',team:'IND',adp:74.1},{name:'New Orleans Saints',team:'NO',adp:77.8},
   {name:'Houston Texans',team:'HOU',adp:81.4},{name:'Los Angeles Chargers',team:'LAC',adp:85.0},
-  {name:'Arizona Cardinals',team:'ARI',adp:88.7},{name:'Atlanta Falcons',team:'ATL',adp:92.3},
+  {name:'Arizona Cardinals',team:'ARI',adp:241.9},{name:'Atlanta Falcons',team:'ATL',adp:92.3},
   {name:'Washington Commanders',team:'WAS',adp:95.9},{name:'Tennessee Titans',team:'TEN',adp:99.6},
-  {name:'Chicago Bears',team:'CHI',adp:103.2},{name:'Las Vegas Raiders',team:'LV',adp:106.8},
+  {name:'Chicago Bears',team:'CHI',adp:103.2},{name:'Las Vegas Raiders',team:'LV',adp:212.4},
   {name:'Carolina Panthers',team:'CAR',adp:110.5},{name:'New York Giants',team:'NYG',adp:114.1}
 ]
 };
