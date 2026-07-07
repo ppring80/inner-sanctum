@@ -234,8 +234,21 @@ exports.handler = async (event) => {
   }
 
   // ── Origin check ──────────────────────────────────────────
+  // FIXED (July 2026 #49 site review): this previously used
+  // `ALLOWED_ORIGINS.some(o => origin.startsWith(o))`, which is a
+  // substring-prefix check, not an exact-match check. That meant a
+  // lookalike domain like https://theinnersanctum.xyz.evil-domain.com
+  // would also pass — its origin string literally starts with
+  // "https://theinnersanctum.xyz", even though it's a completely
+  // different, attacker-controlled site. Anyone hosting a page at
+  // such a domain could call this function directly, generating real
+  // Anthropic API spend on this account, bypassing the client-side
+  // question-limit logic entirely (that logic lives in sanctum.html's
+  // JS, not here — this endpoint had no other gate). Switched to an
+  // exact match against the ALLOWED_ORIGINS list, confirmed clean in
+  // Netlify (no trailing slash, no stray whitespace) as of this fix.
   const origin = event.headers.origin || event.headers.Origin || "";
-  const originAllowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  const originAllowed = ALLOWED_ORIGINS.includes(origin);
   if (!originAllowed) {
     console.log(`Blocked request from origin: ${origin}`);
     return {
