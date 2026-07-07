@@ -186,12 +186,22 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 </div>
 
 <script>
+// FIXED (July 2026 #49 site review): this object previously used WSH
+// for Washington, while every other file on the site (draft.html's
+// BYE/TEAM_NAMES, shared-player-data.js, etc.) uses WAS. ALL_TEAMS is
+// derived directly from this object's keys, and the bye-week detector
+// below flags any team in ALL_TEAMS that doesn't appear in a given
+// week's game list as "on a bye" — so with the wrong code, Washington
+// would never match a real game entry (which uses WAS, per Tank01/the
+// odds function's convention) and would incorrectly show as on a bye
+// every single week of the season, not just their real bye week.
+// Changed WSH -> WAS to match the site-wide convention.
 var BYE={
   BUF:7,MIA:6,NE:11,NYJ:13,
   BAL:13,CIN:6,CLE:11,PIT:9,
   HOU:8,IND:13,JAX:7,TEN:9,
   DEN:10,KC:5,LV:13,LAC:7,
-  DAL:14,NYG:8,PHI:10,WSH:7,
+  DAL:14,NYG:8,PHI:10,WAS:7,
   CHI:10,DET:6,GB:11,MIN:6,
   ATL:11,CAR:5,NO:8,TB:10,
   ARI:14,LAR:11,SF:8,SEA:11
