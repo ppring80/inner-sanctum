@@ -147,7 +147,18 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
      anyone reading page source can find the passcode. This is a
      friction gate to stop casual drive-by access before launch, not a
      substitute for the eventual Patreon-backed check. See Pre-
-     Deployment Checklist #105/#105a. -->
+     Deployment Checklist #105/#105a.
+
+     #105a TESTER ALLOWLIST (fixed July 2026 #49 site review): this
+     page was missing the ALLOWLIST_PASSCODE (SANCTUM-TEST) check that
+     auction.html, tiers.html, and sanctum.html all already have —
+     checkGatePasscode() here only ever compared against GATE_PASSCODE.
+     That meant an allowlisted tester using SANCTUM-TEST to QA the rest
+     of the site would hit a real, unexplained lockout specifically on
+     this page while every other gated page worked fine for them. Now
+     checks both passcodes, same as every other gated page, so a
+     tester is indistinguishable from a real Acolyte across the whole
+     site, not just three-quarters of it. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -161,11 +172,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (added) ═══
-// Plain-text constant, intentionally. Same passcode as auction.html/
-// tiers.html — not real auth. Swap for real Patreon-based session
-// check per #105/#105a before this becomes a long-term mechanism.
+// ═══ ACOLYTE GATE LOGIC (fixed — now checks the tester allowlist too) ═══
+// Plain-text constants, intentionally. Same passcodes as auction.html/
+// tiers.html/sanctum.html — not real auth. Swap for real Patreon-based
+// session check per #105/#105a before this becomes a long-term mechanism.
 var GATE_PASSCODE = 'ORACLE-125';
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
 function checkGateUnlocked() {
@@ -184,7 +196,8 @@ function unlockGate() {
 function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
-  if (input.value.trim().toUpperCase() === GATE_PASSCODE) {
+  var entered = input.value.trim().toUpperCase();
+  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
     unlockGate();
   } else {
     err.classList.add('show');
