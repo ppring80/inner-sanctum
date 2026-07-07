@@ -848,7 +848,17 @@ function generateTiers() {
 function renderPos(pos) {
   var container = document.getElementById('tier' + pos);
   container.innerHTML = '';
-  var maxTier = (pos === 'K' || pos === 'DEF') ? 4 : 5;
+  // FIXED (July 2026 #49 site review): this was previously capped at 4
+  // for K/DEF ("var maxTier = (pos === 'K' || pos === 'DEF') ? 4 : 5"),
+  // while TIER_BREAKS/the tier-assignment loop above always computes a
+  // real Tier 5 for every position (ranks past breaks[3]). That meant
+  // the bottom ~8 kickers and ~8 defenses were priced into Tier 5 but
+  // then silently never rendered on any tab — no error, no visible gap,
+  // they just vanished. Same class of bug as #183/#186 (Jets/Cardinals/
+  // Raiders DEF rankings disappearing from Draft Command Center). Now
+  // every position renders all 5 tiers, matching how tiers are actually
+  // computed above.
+  var maxTier = 5;
 
   for (var t = 1; t <= maxTier; t++) {
     var players = tiers[pos][t] || [];
