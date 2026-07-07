@@ -46,6 +46,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .adp-dot.error{background:var(--red)}
 @keyframes adppulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
+/* ── AUTH RESULT BANNER (added — July 2026 #49 site review) ── */
+.auth-banner{max-width:960px;margin:10px auto 0;padding:10px 16px;border-radius:var(--r);font-size:13px;display:none}
+.auth-banner.show{display:block}
+.auth-banner.success{background:rgba(46,125,50,0.08);border:1px solid rgba(46,125,50,0.25);color:var(--green)}
+.auth-banner.error{background:rgba(138,32,32,0.08);border:1px solid rgba(138,32,32,0.25);color:var(--red)}
+
 /* ── STEP TABS ── */
 .steps{display:flex;align-items:center;padding:0 24px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;gap:0}
 .step-tab{padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;transition:color 0.15s;user-select:none}
@@ -374,7 +380,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
     <div class="gate-divider">OR</div>
     <button class="gate-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
-    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fauction" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
@@ -437,6 +443,41 @@ function checkOAuthSession() {
     .catch(function () {
       return false; // network/parse error — fall through to passcode gate, unchanged
     });
+}
+
+// ═══ AUTH RESULT HANDLING (added — July 2026 #49 site review) ═══
+// oauth-callback.js now returns the user to the page they actually
+// started their Patreon login from (via the &state= param on the
+// login link above), appending ?auth_error=... or ?auth=success to
+// the URL. Previously nothing on this page read these params — a
+// failed login silently dumped the user back on a blank gate, and a
+// successful one gave no visible confirmation beyond the gate quietly
+// disappearing (handled separately by checkOAuthSession() above).
+function handleAuthResultParams() {
+  var params = new URLSearchParams(window.location.search);
+  var authError = params.get('auth_error');
+  var authSuccess = params.get('auth');
+  if (!authError && !authSuccess) return;
+
+  var banner = document.getElementById('authBanner');
+  if (banner) {
+    if (authError) {
+      var messages = {
+        missing_code: 'Login was cancelled or the link expired — please try again.',
+        token_exchange_failed: 'Could not complete login with Patreon — please try again.',
+        identity_fetch_failed: 'Could not verify your Patreon membership — please try again.',
+        server_misconfigured: 'Login is temporarily unavailable — please try your passcode instead.'
+      };
+      banner.textContent = '⚠️ ' + (messages[authError] || 'Login failed — please try again.');
+      banner.className = 'auth-banner error show';
+    } else if (authSuccess === 'success') {
+      banner.textContent = '✓ Logged in as a Founding Acolyte.';
+      banner.className = 'auth-banner success show';
+    }
+  }
+
+  var cleanUrl = window.location.pathname;
+  window.history.replaceState({}, document.title, cleanUrl);
 }
 
 // ═══ PREVIEW MODE (added) ═══════════════════════════════════════════
@@ -554,6 +595,7 @@ function blockStep5Preview() {
 }
 
 (function initGate() {
+  handleAuthResultParams();
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
     return;
@@ -597,6 +639,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <a href="/sanctum" class="nav-link">← Sanctum</a>
   </div>
 </div>
+
+<div class="auth-banner" id="authBanner"></div>
 
 <div class="adp-status-bar" id="adpStatusBar">
   <span><span class="adp-dot" id="adpStatusDot"></span><span id="adpStatusText">—</span></span>
