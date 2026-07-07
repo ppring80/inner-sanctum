@@ -531,6 +531,12 @@ body {
 .roster-players { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .roster-pill { background: rgba(100,181,246,0.1); border: 1px solid rgba(100,181,246,0.2); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: #90caf9; }
 
+/* AUTH RESULT BANNER (added — July 2026 #49 site review) */
+.auth-banner { margin: 4px 20px; padding: 10px 14px; border-radius: 8px; font-size: 12px; display: none; }
+.auth-banner.show { display: block; }
+.auth-banner.success { background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.25); color: #81c784; }
+.auth-banner.error { background: rgba(255,82,82,0.08); border: 1px solid rgba(255,82,82,0.25); color: #ff8a80; }
+
 /* INPUT AREA */
 .bot-area { padding: 10px 20px 20px; border-top: 1px solid rgba(255,255,255,0.06); position: sticky; bottom: 0; background: linear-gradient(160deg, #1a0f08 0%, #221208 40%, #261018 100%); z-index: 10; }
 .inp-box { display: flex; gap: 10px; align-items: flex-end; background: rgba(0,0,0,0.35); border-radius: 14px; padding: 10px 12px; }
@@ -579,12 +585,12 @@ textarea::placeholder { color: #3a3028; }
   <div class="gate-card">
     <div class="gate-icon">🔮</div>
     <div class="gate-title">Founding Acolyte Access</div>
-    <div class="gate-sub">Enter your passcode for unlimited questions across all three personas. Or skip below to use the free Apprentice tier.</div>
+    <div class="gate-sub" id="gateSub">Enter your passcode for unlimited questions across all three personas. Or skip below to use the free Apprentice tier.</div>
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
-    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fsanctum" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
     <button class="gate-skip" onclick="skipGate()">Continue as free Apprentice →</button>
   </div>
@@ -652,7 +658,51 @@ function checkOAuthSession() {
     });
 }
 
+// ═══ AUTH RESULT HANDLING (added — July 2026 #49 site review) ═══
+// oauth-callback.js now returns the user to the page they actually
+// started their Patreon login from (via the &state= param on the
+// login link above), appending ?auth_error=... or ?auth=success to
+// the URL. Previously, nothing on any gated page ever read these
+// params — a failed login just silently dumped the user back on a
+// blank gate with zero explanation, and a successful one gave no
+// visible confirmation beyond the gate quietly disappearing (which
+// checkOAuthSession() already handles above, independent of this).
+//
+// This reads those params once on page load, shows a real message via
+// the auth-banner element, and then strips the params from the URL
+// with history.replaceState so a page refresh or shared link doesn't
+// keep re-showing a stale result.
+function handleAuthResultParams() {
+  var params = new URLSearchParams(window.location.search);
+  var authError = params.get('auth_error');
+  var authSuccess = params.get('auth');
+  if (!authError && !authSuccess) return;
+
+  var banner = document.getElementById('authBanner');
+  if (banner) {
+    if (authError) {
+      var messages = {
+        missing_code: 'Login was cancelled or the link expired — please try again.',
+        token_exchange_failed: 'Could not complete login with Patreon — please try again.',
+        identity_fetch_failed: 'Could not verify your Patreon membership — please try again.',
+        server_misconfigured: 'Login is temporarily unavailable — please try your passcode instead.'
+      };
+      banner.textContent = '⚠️ ' + (messages[authError] || 'Login failed — please try again.');
+      banner.className = 'auth-banner error show';
+    } else if (authSuccess === 'success') {
+      banner.textContent = '✓ Logged in as a Founding Acolyte.';
+      banner.className = 'auth-banner success show';
+    }
+  }
+
+  // Clean the query params off the URL so refreshing or sharing the
+  // link doesn't keep re-showing this one-time result.
+  var cleanUrl = window.location.pathname;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
+
 (function initGate() {
+  handleAuthResultParams();
   if (checkGateUnlocked() || checkGateSkipped()) {
     document.getElementById('gateOverlay').style.display = 'none';
     return;
@@ -678,6 +728,8 @@ function checkOAuthSession() {
     <span class="top-sub">Choose your counsel wisely</span>
     <div class="tier-note">🎁 Free tier: 3 questions every 24 hours · <button class="tier-note-link" onclick="showUpgradeModal()">see Acolyte perks</button></div>
   </div>
+
+  <div class="auth-banner" id="authBanner"></div>
 
   <div class="sleeper-bar">
     <div class="sleeper-inner">
@@ -1370,6 +1422,14 @@ function buildRosterablePlayerList(rawPlayers) {
   return list;
 }
 
+// FIXED (July 2026 #49 site review): the Sleeper leagues lookup below
+// was still asking for the 2025 season (falling back to 2024) even
+// though every other season-year reference on the site (chat.js's
+// getCurrentNFLWeek(), draft.html's Tank01 ADP call, survivor.html's
+// season start date) correctly uses 2026. Anyone who had already set
+// up their 2026 Sleeper league — common well before the season starts
+// — would have gotten "No leagues found" despite a valid current-season
+// league existing. Updated to 2026, with 2025 as the fallback.
 async function connectSleeper() {
   var username = document.getElementById('sleeperUser').value.trim();
   if (!username) return;
@@ -1384,10 +1444,10 @@ async function connectSleeper() {
     if (!userRes.ok) throw new Error('User not found');
     var user = await userRes.json();
     if (!user || !user.user_id) throw new Error('User not found');
-    var leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2025');
+    var leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2026');
     var leagues = await leaguesRes.json();
     if (!leagues || leagues.length === 0) {
-      leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2024');
+      leaguesRes = await fetch('https://api.sleeper.app/v1/user/' + user.user_id + '/leagues/nfl/2025');
       leagues = await leaguesRes.json();
     }
     if (!leagues || leagues.length === 0) throw new Error('No leagues found');
