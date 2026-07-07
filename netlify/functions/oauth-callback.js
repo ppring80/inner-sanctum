@@ -25,6 +25,51 @@ const ACOLYTE_TIER_IDS = ["28845597"]; // Founding Acolyte — confirmed via Pat
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const COOKIE_NAME = "sanctum_session";
 
+// ── RETURN PATH HANDLING (added — July 2026 #49 site review) ────────────
+// PROBLEM FOUND: every redirect in this file previously hardcoded
+// "/sanctum.html" as the destination, regardless of which gated page the
+// user actually started their Patreon login from (auction.html, tiers.html,
+// and sanctum.html all present the same "Login with Patreon" link). A
+// user who clicked login from the Auction War Room would authenticate
+// successfully and then land on Sanctum instead — functionally correct
+// (their session cookie is set site-wide) but a confusing, silent
+// detour away from what they were doing.
+//
+// SEPARATELY: the ?auth_error=... / ?auth=success query params this file
+// already appended were never actually read by any front-end JS — dead
+// parameters that told the user nothing. Fixed alongside this on the
+// front-end pages themselves (see sanctum.html/auction.html/tiers.html's
+// gate scripts) — this file's job is just to make sure the RIGHT page
+// gets these params, now that something on the other end reads them.
+//
+// HOW IT WORKS: the Patreon "Login with Patreon" authorize link on each
+// gated page now includes &state=<page-path> (e.g. state=/auction).
+// Patreon's OAuth spec requires it to echo whatever `state` value was
+// sent in the authorize request back unchanged in the callback — so
+// this function reads event.queryStringParameters.state on the way back
+// and uses it as the redirect destination instead of a hardcoded page.
+//
+// SECURITY NOTE: `state` is NEVER trusted as a literal redirect target
+// — it's validated against a fixed allowlist of real gated pages before
+// use. Without this, a maliciously crafted callback URL with an
+// attacker-controlled `state` value could turn this endpoint into an
+// open redirect. Anything not on the allowlist (missing, tampered, or
+// simply a page that doesn't have this login flow) falls back to
+// "/sanctum", the safe default this file always used before.
+//
+// Also fixes a smaller inconsistency: this file was redirecting to
+// "/sanctum.html" while the site's own nav links and routing everywhere
+// else use clean paths ("/sanctum", "/auction", "/tiers" — see any
+// page's header nav). Switched to match that convention.
+const ALLOWED_RETURN_PATHS = ["/sanctum", "/auction", "/tiers"];
+
+function sanitizeReturnPath(state) {
+  if (typeof state === "string" && ALLOWED_RETURN_PATHS.includes(state)) {
+    return state;
+  }
+  return "/sanctum"; // safe default — same page every redirect used to hardcode
+}
+
 // ── Cookie signing (HMAC-SHA256, base64url payload + signature) ─────────
 function base64urlEncode(str) {
   return Buffer.from(str)
@@ -198,39 +243,46 @@ function buildSessionPayload(entitledTierIds, now) {
 
 // ── Handler ───────────────────────────────────────────────────────────
 exports.handler = async (event) => {
-  const redirectTo = (path, extraHeaders = {}) => ({
+  // returnPath is resolved ONCE at the top from whatever `state` Patreon
+  // echoed back (or "/sanctum" if absent/invalid/tampered) — every
+  // redirect below, success or failure, uses this same resolved path
+  // instead of a hardcoded destination.
+  const rawState = event.queryStringParameters && event.queryStringParameters.state;
+  const returnPath = sanitizeReturnPath(rawState);
+
+  const redirectTo = (query, extraHeaders = {}) => ({
     statusCode: 302,
-    headers: { Location: path, ...extraHeaders },
+    headers: { Location: `${returnPath}${query}`, ...extraHeaders },
   });
 
   const code = event.queryStringParameters && event.queryStringParameters.code;
   if (!code) {
-    return redirectTo("/sanctum.html?auth_error=missing_code");
+    return redirectTo("?auth_error=missing_code");
   }
 
   let tokenResp;
   try {
     tokenResp = await exchangeCodeForToken(code);
   } catch {
-    return redirectTo("/sanctum.html?auth_error=token_exchange_failed");
+    return redirectTo("?auth_error=token_exchange_failed");
   }
 
   if (!tokenResp.json || !tokenResp.json.access_token) {
-    return redirectTo("/sanctum.html?auth_error=token_exchange_failed");
+    return redirectTo("?auth_error=token_exchange_failed");
   }
 
   let identityResp;
   try {
     identityResp = await fetchIdentity(tokenResp.json.access_token);
   } catch {
-    return redirectTo("/sanctum.html?auth_error=identity_fetch_failed");
+    return redirectTo("?auth_error=identity_fetch_failed");
   }
 
   const entitledTierIds = extractEntitledTierIds(identityResp.json);
 
   const secret = process.env.COOKIE_SIGNING_SECRET;
   if (!secret) {
-    return redirectTo("/sanctum.html?auth_error=server_misconfigured");
+    return redirectTo("?auth_error=server_misconfigured");
   }
 
   const payload = buildSessionPayload(entitledTierIds, new Date());
@@ -240,7 +292,7 @@ exports.handler = async (event) => {
     SESSION_DURATION_MS / 1000
   )}; HttpOnly; Secure; SameSite=Lax`;
 
-  return redirectTo("/sanctum.html?auth=success", {
+  return redirectTo("?auth=success", {
     "Set-Cookie": cookieHeader,
   });
 };
@@ -255,4 +307,5 @@ module.exports._test = {
   buildSessionPayload,
   base64urlEncode,
   base64urlDecode,
+  sanitizeReturnPath,
 };
