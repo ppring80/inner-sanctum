@@ -41,6 +41,15 @@ const CORS_HEADERS = {
 // flagged so today's dollar figures don't get treated as more
 // precise than they currently are once caching is genuinely active.
 //
+// NOTE 2026-07-11: model was upgraded from claude-sonnet-4-6 to
+// claude-sonnet-5 (see sanctum.html) to fix stale player-knowledge
+// issues (#215/checklist). Sonnet 5 has different per-token pricing
+// than Sonnet 4.6 — the two rate constants below have NOT yet been
+// re-verified against Sonnet 5's actual current rate as part of this
+// pass. Re-check Anthropic's pricing page before trusting spend
+// dashboard dollar figures as precise going forward; today's fix was
+// scoped to the staleness bug only.
+//
 // Failure handling: logging NEVER blocks or breaks the actual chat
 // response. Every Blobs call here is wrapped so a Blobs outage or
 // quota issue degrades to "spend just isn't logged for this request"
@@ -297,6 +306,23 @@ exports.handler = async (event) => {
     // If Tank01 returned nothing, we send only the cached block (no
     // empty second block) to avoid sending a content block with an
     // empty string.
+    //
+    // BROADENED 2026-07-11 (checklist #215 — stale player-knowledge
+    // fix): the CRITICAL INSTRUCTION below previously only told the
+    // model to defer to live data for TEAM ASSIGNMENTS. In testing,
+    // personas were confidently stating outdated facts that live data
+    // never contradicted because live data never explicitly said so —
+    // e.g. calling a now-multi-season starter a "rookie who has never
+    // started," or citing a resolved injury (like an old Achilles
+    // injury) as current, because the injury report only lists players
+    // WHO ARE currently hurt, it never affirms who ISN'T. The
+    // instruction now explicitly covers injury status and experience
+    // level, not just team, and tells the model to stay general rather
+    // than state a specific stale fact when unsure. This is a targeted
+    // fix for the specific symptom reported, not a guarantee against
+    // all possible stale facts — background details Tank01 doesn't
+    // supply at all (e.g. exact season/games-started counts) are still
+    // subject to the model's own knowledge and judgment.
     // ───────────────────────────────────────────────────────────────
 
     const systemBlocks = [
@@ -314,7 +340,7 @@ exports.handler = async (event) => {
           "═══════════════════════════════════",
           "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
           "",
-          "CRITICAL INSTRUCTION: The roster and depth chart data below is the single source of truth for all player team assignments. This data reflects trades, free agency signings, and roster moves that occurred after your training cutoff. You MUST use this data instead of your training knowledge when answering any question about which team a player is on. Never state a player's team from memory if it conflicts with the depth chart data below.",
+          "CRITICAL INSTRUCTION: The data below (news, injuries, ADP, and depth charts) is the single source of truth for CURRENT player status — team assignments, injury status, and career stage. It reflects trades, free agency moves, injuries, and recoveries that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant: (1) team assignment — never state a player's team from memory if it conflicts with the depth chart below; (2) injury status — if a player is NOT listed in the injury report below, treat them as healthy and do not reference an old injury from memory; (3) experience level — a player is not a 'rookie' or 'first-year player' just because your training data captured them as a draft prospect; if you're unsure how many seasons a player has played, don't make a specific claim about it. If you're not confident a specific detail is current, keep your answer more general rather than stating something that could be outdated.",
           "",
           liveDataContext,
           "═══════════════════════════════════",
