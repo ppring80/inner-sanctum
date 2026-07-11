@@ -1717,8 +1717,19 @@ function ask(txt) {
     hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
     busy = false; draw();
   };
+  // UPDATED 2026-07-11 (checklist #215): model upgraded from
+  // claude-sonnet-4-6 to claude-sonnet-5. Root cause of the stale
+  // player-knowledge bug Pat found (Jaxson Dart called a "rookie who
+  // has never started," Aaron Rodgers cited as coming off an Achilles
+  // injury — both roughly 1.5 years out of date) was traced to two
+  // things: (1) this model string was pinned to an older-generation
+  // Sonnet snapshot with an earlier reliable knowledge cutoff, and
+  // (2) chat.js's live-data override instruction only explicitly
+  // covered team assignments, not injury status or experience level.
+  // Both are fixed together — see chat.js's broadened CRITICAL
+  // INSTRUCTION for the second half of this fix.
   xhr.send(JSON.stringify({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5",
     max_tokens: 1000,
     system: getSystemPrompt(ap),
     messages: hist[ap]
