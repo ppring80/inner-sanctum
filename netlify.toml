@@ -3,6 +3,21 @@
   functions = "netlify/functions"
 [context.production]
   environment = { SECRETS_SCAN_ENABLED = "false" }
+
+# PLAYER DATA REFRESH SCHEDULE (added — checklist #215)
+# Runs refresh-player-data.js once a day at 00:00 UTC. That function
+# loops all 32 NFL teams' rosters in parallel and caches each player's
+# exp (rookie/veteran status) and injury designation to Netlify Blobs,
+# which chat.js then reads on every Sanctum request instead of hitting
+# Tank01 live (32 calls per chat message would be too slow and too
+# expensive). See refresh-player-data.js for the full rationale.
+#
+# @daily = 00:00 UTC every day. If exp/injury data ever needs to be
+# fresher than a once-a-day refresh, change this to "0 */6 * * *"
+# (every 6 hours) -- no other code changes needed.
+[functions."refresh-player-data"]
+  schedule = "@daily"
+
 [[redirects]]
   from = "/landing"
   to = "/"
@@ -19,7 +34,6 @@
   from = "/sanctum.html"
   to = "/sanctum"
   status = 308
-
 # PATREON OAUTH CALLBACK REDIRECT (added)
 # PATREON_REDIRECT_URI (Netlify env var, and the redirect URI
 # registered in Patreon's own developer app settings) points at
@@ -47,12 +61,10 @@
   from = "/oauth/callback"
   to = "/.netlify/functions/oauth-callback"
   status = 200
-
 [[headers]]
   for = "/favicon.svg"
   [headers.values]
     Content-Type = "image/svg+xml"
-
 # CACHE CONTROL (added)
 # Added after a real bug: rapid back-to-back testing of weekly.html
 # served a stale cached copy with old "Ask [Persona]" links pointing
