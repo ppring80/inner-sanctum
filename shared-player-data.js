@@ -26,6 +26,44 @@
 // FantasyPros, Athlon all place them in the bottom 6 of 32 for 2026).
 // New values reflect that bottom tier instead. If either list is
 // revised again, update the other to match.
+//
+// UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026 (checklist follow-up
+// to #122/#123's stale-data audit, item #135):
+//
+// WHY: as of July 11 2026, Sanctum (chat.js) reads live team/injury
+// data from Tank01's roster cache (built daily by
+// refresh-player-data.js), while draft.html/tiers.html/auction.html
+// all read live team/injury data from Sleeper's API directly, via
+// fetchSleeperTeamMap() below. These are two independent live
+// providers with no cross-check between them — nothing guarantees
+// they agree at any given moment, even though both are "live" and
+// both are usually correct. This is the same STRUCTURAL shape as the
+// WAS/WSH and JAX/WSH mismatches this project has already hit
+// multiple times (see checklist #96/#98/#100/#101) — those were bugs
+// WITHIN one source; this was a gap BETWEEN two sources.
+//
+// FIX: fetchTank01PlayerMap() below reads the SAME cache chat.js
+// already uses (exposed to the browser via the new
+// /.netlify/functions/player-data.js endpoint), keyed and normalized
+// the same way fetchSleeperTeamMap() already is, so it's a drop-in
+// alternative — callers can swap which fetch function they call
+// without changing applyLiveTeams() or anything else downstream.
+//
+// THIS DOES NOT TOUCH THE FALLBACK POOL ABOVE OR ITS PURPOSE: per
+// Pat's explicit direction, PLAYER_POOL exists specifically to give a
+// good experience when NO live source is reachable, not to be
+// replaced by one. fetchTank01PlayerMap() is just a second option for
+// which LIVE source a page calls when live data IS reachable — the
+// fallback-of-last-resort behavior below is unchanged either way.
+//
+// fetchSleeperTeamMap() AND applyLiveTeams() BELOW ARE UNCHANGED —
+// left exactly as they were, so nothing that currently depends on
+// them breaks. applyLiveTeams() only ever reads a `.team` key off
+// whatever map it's handed, so it works identically regardless of
+// which fetch function produced that map — no changes needed there
+// for team-correction to start using the unified source, just a swap
+// of which fetch function feeds it, done page-by-page as each page is
+// migrated (see Pre-Deployment Checklist for migration status).
 // ═══════════════════════════════════════════════════════════════════════
 
 var PLAYER_POOL = {
@@ -241,9 +279,82 @@ function applyLiveTeams(players, teamMap) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// TANK01 UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026
+// (see file header comment above for the full "why")
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Fetch the Tank01 player-data cache (via player-data.js) and build
+// a name -> {team, exp, injury} map, keyed with the SAME
+// normalizePlayerName() used everywhere else in this file, so this is
+// a drop-in alternative source for anything currently calling
+// fetchSleeperTeamMap(). Returns null on any failure — same fail-safe
+// contract as fetchSleeperTeamMap(), so existing calling code's
+// "if (!teamMap) keep whatever we already had" pattern works
+// unchanged regardless of which fetch function is used.
+//
+// SHAPE RETURNED, per normalized name:
+//   {
+//     team: "KC",                 // same 2-4 letter abbreviation convention as PLAYER_POOL/Sleeper
+//     exp: "9",                   // or "R" for rookie; may be undefined if Tank01 didn't have it
+//     injuryDesignation: "",      // e.g. "Questionable" — empty string means no current designation
+//     injuryDescription: ""       // e.g. "Ankle" — empty string when there's nothing to report
+//   }
+//
+// NOTE ON INJURY SHAPE: player-data.js's underlying cache always
+// includes the injury object with all four keys present (confirmed
+// live 2026-07-12), just empty strings when a player isn't currently
+// injured — so callers can check `injuryDesignation !== ''` rather
+// than needing to check whether the injury object exists at all.
+async function fetchTank01PlayerMap() {
+  try {
+    var res = await fetch('/.netlify/functions/player-data');
+    var data = await res.json();
+    if (!data || data.status !== 'Success' || !data.players) return null;
+    var map = {};
+    Object.values(data.players).forEach(function (p) {
+      if (!p.longName || !p.team) return;
+      map[normalizePlayerName(p.longName)] = {
+        team: p.team,
+        exp: p.exp,
+        injuryDesignation: (p.injury && p.injury.designation) || '',
+        injuryDescription: (p.injury && p.injury.description) || ''
+      };
+    });
+    return map;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Apply a Tank01 player map's TEAM field only, over a position's
+// player array — SAME return contract as applyLiveTeams() above
+// (new array, no mutation, unmatched players keep their existing
+// team), so this is interchangeable with applyLiveTeams() at the
+// call site. Kept as a SEPARATE function rather than overloading
+// applyLiveTeams() to accept either map shape, since
+// fetchSleeperTeamMap()'s map is a flat name->string, while
+// fetchTank01PlayerMap()'s map is name->object — silently accepting
+// both shapes in one function risks a subtle bug if a future edit
+// mixes them up; two clearly-named functions make the call site's
+// intent unambiguous instead.
+function applyLiveTeamsFromTank01(players, tank01Map) {
+  if (!tank01Map) return players;
+  return players.map(function (p) {
+    var entry = tank01Map[normalizePlayerName(p.name)];
+    if (!entry || !entry.team || entry.team === p.team) return p;
+    var copy = {};
+    for (var k in p) copy[k] = p[k];
+    copy.team = entry.team;
+    return copy;
+  });
+}
+
 // Expose globally for plain <script> includes (no module system in this
 // project's GitHub-web-editor workflow).
 window.PLAYER_POOL = PLAYER_POOL;
 window.normalizePlayerName = normalizePlayerName;
 window.fetchSleeperTeamMap = fetchSleeperTeamMap;
 window.applyLiveTeams = applyLiveTeams;
+window.fetchTank01PlayerMap = fetchTank01PlayerMap;
+window.applyLiveTeamsFromTank01 = applyLiveTeamsFromTank01;
