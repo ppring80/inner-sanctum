@@ -156,19 +156,17 @@ async function getLiveNFLContext() {
     console.log("Tank01 news fetch failed:", e.message);
   }
 
-  // 2. Injury data — REMOVED 2026-07-11 (checklist #215). Confirmed via
-  // RapidAPI's live endpoint list for Tank01's NFL API, and its full
-  // 365-day changelog, that there is no injuries endpoint of any kind
-  // for NFL — unlike Tank01's separate MLB API, which does have one
-  // (getMLBInjuriesByDate). The original getNFLInjuries call used here
-  // was hitting an endpoint that does not exist, returning a 404 on
-  // every single chat request since this was built, silently (caught
-  // by the try/catch below, only visible in Netlify function logs).
-  // Left removed rather than guessing at a replacement name — if
-  // Tank01 ever adds a real NFL injuries endpoint, re-add a fetch here
-  // following the same pattern as news/ADP/depth charts below. Until
-  // then, injury status relies entirely on the "don't state what
-  // you're not sure of" instruction in the CRITICAL INSTRUCTION block.
+  // 2. Injury data — no standalone endpoint. REMOVED 2026-07-11
+  // (checklist #215) after confirming via RapidAPI's live endpoint
+  // list and 365-day changelog that Tank01's NFL API has no
+  // getNFLInjuries-style endpoint (unlike their MLB API's
+  // getMLBInjuriesByDate) — the original call here was 404ing
+  // silently on every request since this was built.
+  //
+  // UPDATE, same day: injury data does exist after all — it's bundled
+  // per-player inside getNFLTeamRoster responses (see item 4 below),
+  // not in a standalone endpoint. Real injury status is restored via
+  // that route as of tonight.
 
   // 3. Current ADP data
   try {
@@ -184,9 +182,49 @@ async function getLiveNFLContext() {
     console.log("Tank01 ADP fetch failed:", e.message);
   }
 
-  // 4. NFL depth charts — authoritative source for current team assignments.
+  // 4. Player exp/injury lookup — reads the cache built by the
+  // refresh-player-data scheduled function (see that file). That
+  // function calls getNFLTeamRoster once per team (32 calls, done on
+  // a schedule) rather than this doing it live on every chat message,
+  // which would add several seconds of latency and burn through the
+  // daily API budget fast.
+  //
+  // ADDED 2026-07-11 (checklist #215, resolves last night's open
+  // item): confirmed via live diagnostic that getNFLTeamRoster
+  // returns "exp" ("R" for rookie, a number string like "4" for
+  // veterans) and a nested "injury" object per player — the exact
+  // data missing when the depth chart fix landed earlier tonight,
+  // and the actual fix for the Hampton/Skattebo/Dart/McMillan
+  // rookie-mislabel bug. This also restores real injury status, which
+  // was removed entirely last night after concluding (correctly, for
+  // a standalone injuries endpoint; incorrectly, as it turns out, for
+  // per-player injury data bundled into roster responses) that
+  // Tank01's NFL API had no injury data at all.
+  //
+  // If the cache is missing (e.g. before the scheduled function's
+  // first run) or unreadable, this fails non-fatally — the roster
+  // lines below just won't have exp/injury detail, same fallback
+  // behavior as every other Tank01 source in this function.
+  let playerLookup = {};
+  let playerDataAge = null;
+  try {
+    const store = getStore({ name: "player-data" });
+    const cached = await store.get("playerData", { type: "json" });
+    if (cached?.players) {
+      playerLookup = cached.players;
+      playerDataAge = cached.updatedAt;
+    }
+  } catch (e) {
+    console.log("Player data cache read failed:", e.message);
+  }
+
+  // 5. NFL depth charts — authoritative source for current team
+  // assignments AND (as of tonight) rookie/vet status and injury
+  // status, merged in per player from the cache built above.
   // Resolves player team changes from free agency and trades.
-  // Updated multiple times per day by Tank01.
+  // Depth charts themselves are updated multiple times per day by
+  // Tank01; the exp/injury overlay refreshes on the schedule set in
+  // netlify.toml for refresh-player-data (see that file).
   //
   // FIXED 2026-07-11 (checklist #215, real root cause): this parser
   // was written assuming depth.body was an OBJECT keyed directly by
@@ -205,19 +243,6 @@ async function getLiveNFLContext() {
   // rookie, Aaron Rodgers still shown on the Jets), not the earlier
   // slice-width or instruction-wording theories — those were real
   // improvements but were never the actual blocker.
-  //
-  // NOTE: confirmed via live example response that individual player
-  // entries only carry depthPosition, playerID, and longName — no
-  // injury status, no years-of-experience/rookie field. Tank01's NFL
-  // API does not expose either of those anywhere we've found (their
-  // NFL API also has no dedicated injuries endpoint at all, unlike
-  // their MLB API's getMLBInjuriesByDate — confirmed via their
-  // endpoint list and 365-day changelog, neither mentions one ever
-  // existing). So team assignment can now be corrected with real data
-  // below, but injury status and rookie/experience status still rely
-  // entirely on the "don't state what you're not sure of" instruction
-  // in the CRITICAL INSTRUCTION block, since there is no live data
-  // source for either at this time.
   try {
     const depth = await fetchTank01("getNFLDepthCharts");
     if (Array.isArray(depth?.body)) {
@@ -230,52 +255,30 @@ async function getLiveNFLContext() {
           const players = positions[pos];
           if (!Array.isArray(players)) return;
           players.slice(0, 4).forEach(p => {
-            if (p.longName) {
-              rosterLines.push(`${p.longName} (${pos}, ${team})`);
+            if (!p.longName) return;
+            const extra = playerLookup[p.playerID];
+            let tags = "";
+            if (extra) {
+              if (extra.exp === "R") {
+                tags += ", Rookie";
+              } else if (extra.exp) {
+                tags += `, Yr ${extra.exp}`;
+              }
+              if (extra.injury?.designation) {
+                tags += `, Injury: ${extra.injury.designation}${extra.injury.description ? " (" + extra.injury.description + ")" : ""}`;
+              }
             }
+            rosterLines.push(`${p.longName} (${pos}, ${team}${tags})`);
           });
         });
       });
       if (rosterLines.length > 0) {
-        contextParts.push(`CURRENT NFL ROSTERS (depth charts — updated daily):\n${rosterLines.join("\n")}`);
+        const ageNote = playerDataAge ? ` — exp/injury data as of ${playerDataAge}` : "";
+        contextParts.push(`CURRENT NFL ROSTERS (depth charts updated daily${ageNote}):\n${rosterLines.join("\n")}`);
       }
     }
   } catch (e) {
     console.log("Tank01 depth charts fetch failed:", e.message);
-  }
-
-  // ═══════════════════════════════════════
-  // TEMP DIAGNOSTIC #2 — checklist #215 follow-up, DELETE after use.
-  // Round 1 confirmed getNFLPlayerInfo returns "exp" ("R" for rookie,
-  // presumably a number for veterans) plus a nested "injury" object —
-  // but that's a ONE-CALL-PER-PLAYER endpoint, not viable to call
-  // live on every chat message (~1,700 players in the league).
-  // This checks whether getNFLTeamRoster (one call per TEAM, 32 calls
-  // total) already includes the same "exp" and "injury" fields per
-  // player, since Tank01's own docs describe roster responses as
-  // including "many other player attributes" beyond the bare minimum.
-  // If confirmed, the real fix is a scheduled function that loops all
-  // 32 teams once a day, caches the result in Netlify Blobs (same
-  // pattern as spend logging), and getLiveNFLContext() reads that
-  // cache instead of hitting Tank01 live per chat message — 32 calls/
-  // day instead of live calls per request, and instead of ~1,700
-  // calls if done per-player.
-  // Log-only, does not touch contextParts. To use: deploy, send one
-  // message in Sanctum, check Netlify → Functions → chat → logs for
-  // "TEAM ROSTER DIAGNOSTIC".
-  // ═══════════════════════════════════════
-  try {
-    const depthForDiag = await fetchTank01("getNFLDepthCharts");
-    const firstTeamAbv = depthForDiag?.body?.[0]?.teamAbv;
-    if (firstTeamAbv) {
-      const roster = await fetchTank01("getNFLTeamRoster", { teamAbv: firstTeamAbv });
-      const samplePlayer = roster?.body?.roster?.[0];
-      console.log("TEAM ROSTER DIAGNOSTIC (team " + firstTeamAbv + ", one sample player):", JSON.stringify(samplePlayer, null, 2));
-    } else {
-      console.log("TEAM ROSTER DIAGNOSTIC: could not find a sample teamAbv from depth chart");
-    }
-  } catch (e) {
-    console.log("TEAM ROSTER DIAGNOSTIC failed:", e.message);
   }
 
   return contextParts.join("\n\n");
@@ -371,22 +374,29 @@ exports.handler = async (event) => {
     // empty second block) to avoid sending a content block with an
     // empty string.
     //
-    // BROADENED 2026-07-11 (checklist #215 — stale player-knowledge
-    // fix): the CRITICAL INSTRUCTION below previously only told the
-    // model to defer to live data for TEAM ASSIGNMENTS. In testing,
-    // personas were confidently stating outdated facts that live data
-    // never contradicted because live data never explicitly said so —
-    // e.g. calling a now-multi-season starter a "rookie who has never
-    // started," or citing a resolved injury (like an old Achilles
-    // injury) as current, because the injury report only lists players
-    // WHO ARE currently hurt, it never affirms who ISN'T. The
-    // instruction now explicitly covers injury status and experience
-    // level, not just team, and tells the model to stay general rather
-    // than state a specific stale fact when unsure. This is a targeted
-    // fix for the specific symptom reported, not a guarantee against
-    // all possible stale facts — background details Tank01 doesn't
-    // supply at all (e.g. exact season/games-started counts) are still
-    // subject to the model's own knowledge and judgment.
+    // BROADENED 2026-07-11, REVISED SAME DAY (checklist #215 — stale
+    // player-knowledge fix, two passes):
+    //
+    // Pass 1 (earlier tonight): the CRITICAL INSTRUCTION only told the
+    // model to defer to live data for TEAM ASSIGNMENTS, and told it to
+    // hedge on experience/injury since no data source existed for
+    // either. In testing, this reduced but didn't eliminate the
+    // problem — Trash Lord still called 2025-draft-class players
+    // "rookies" in Week 1 2026 (Hampton, Skattebo, Dart, McMillan),
+    // since an instruction to hedge competes against the model's own
+    // strongly-held training-data belief and doesn't reliably win.
+    //
+    // Pass 2 (this revision): discovered getNFLTeamRoster actually
+    // returns real exp/injury data per player (see item 4 in
+    // getLiveNFLContext). The instruction no longer just tells the
+    // model to hedge — it points to real per-player tags ("Rookie",
+    // "Yr 4", "Injury: Questionable") now present in the roster lines
+    // themselves, which is a much stronger override than an
+    // instruction alone. Hedging language is kept ONLY for players who
+    // don't appear in the live data at all, where it's still true that
+    // no current info exists. Background details Tank01 doesn't supply
+    // at all (e.g. exact games-started counts) remain subject to the
+    // model's own knowledge and judgment.
     // ───────────────────────────────────────────────────────────────
 
     const systemBlocks = [
@@ -404,7 +414,7 @@ exports.handler = async (event) => {
           "═══════════════════════════════════",
           "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
           "",
-          "CRITICAL INSTRUCTION: The data below (news, ADP, and depth charts) is the single source of truth for CURRENT player status — specifically team assignments. It reflects trades, free agency moves, and roster changes that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant: never state a player's team from memory if it conflicts with the depth chart below. IMPORTANT — TWO THINGS THIS DATA DOES NOT COVER: (1) INJURY STATUS: there is no live injury data available at all right now. Do not state that a player is currently injured, recovering from an injury, or that a past injury is still affecting them, based on your training knowledge — injuries resolve, and your information could easily be a year or more out of date. If asked about a player's health, say you don't have current injury information rather than guessing from memory. (2) EXPERIENCE LEVEL: a player is not a 'rookie' or 'first-year player' just because your training data captured them as a draft prospect — players you remember as incoming rookies may now be entering their 2nd, 3rd, or later season. If you're unsure how many seasons a player has actually played, don't make a specific claim about it. ABSENCE IS NOT CONFIRMATION: the depth chart data below only includes a limited slice of each team's roster, not every player in the league. If a player is NOT mentioned anywhere in the live data below, that does NOT mean your training-data memory of their team is still accurate — it just means this particular data pull didn't include them. In that case, do not state a specific team from memory either, since it could easily be outdated. If you're not confident a specific detail is current, keep your answer more general rather than stating something that could be outdated.",
+          "CRITICAL INSTRUCTION: The data below (news, ADP, and depth charts) is the single source of truth for CURRENT player status — team assignments, and, where shown, experience level and injury status. It reflects trades, free agency moves, roster changes, and injury designations that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant. Specifically: (1) TEAM: never state a player's team from memory if it conflicts with the roster line below. (2) EXPERIENCE: each player line may include a tag like ', Rookie' or ', Yr 4' — that tag is the real current answer for whether they're a rookie or how many seasons they've played. A player you remember as an incoming draft prospect may now show 'Yr 2' or higher — trust the tag, not your training-data memory of their draft class. (3) INJURY: each player line may include a tag like ', Injury: Questionable (ankle)' — that is their real current designation. If a player's line below has NO injury tag, treat that as them currently having no reported injury designation, not as 'unknown' — this data is refreshed daily. ABSENCE FROM THE LIST ENTIRELY IS DIFFERENT FROM ABSENCE OF A TAG: the roster list below only includes a limited slice of each team (top players per position), not every player in the league. If a player is NOT mentioned ANYWHERE in the live data below, you don't have current team/experience/injury info for them at all from this data — don't state any of those three from training-data memory either, since it could easily be outdated; keep your answer more general instead. But if a player IS listed and simply has no injury tag, that absence does mean healthy/no designation, per point (3) above.",
           "",
           liveDataContext,
           "═══════════════════════════════════",
@@ -467,4 +477,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
