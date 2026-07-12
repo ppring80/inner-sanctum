@@ -157,19 +157,19 @@ async function getLiveNFLContext() {
     console.log("Tank01 news fetch failed:", e.message);
   }
 
-  // 2. Current injury report
-  try {
-    const injuries = await fetchTank01("getNFLInjuries");
-    if (injuries?.body?.length > 0) {
-      const injuryList = injuries.body
-        .slice(0, 15)
-        .map(p => `${p.longName || p.playerName} (${p.pos}, ${p.team}): ${p.injuryStatus || "Questionable"} — ${p.injuryDescription || "injury"}`)
-        .join("\n");
-      contextParts.push(`CURRENT NFL INJURY REPORT:\n${injuryList}`);
-    }
-  } catch (e) {
-    console.log("Tank01 injury fetch failed:", e.message);
-  }
+  // 2. Injury data — REMOVED 2026-07-11 (checklist #215). Confirmed via
+  // RapidAPI's live endpoint list for Tank01's NFL API, and its full
+  // 365-day changelog, that there is no injuries endpoint of any kind
+  // for NFL — unlike Tank01's separate MLB API, which does have one
+  // (getMLBInjuriesByDate). The original getNFLInjuries call used here
+  // was hitting an endpoint that does not exist, returning a 404 on
+  // every single chat request since this was built, silently (caught
+  // by the try/catch below, only visible in Netlify function logs).
+  // Left removed rather than guessing at a replacement name — if
+  // Tank01 ever adds a real NFL injuries endpoint, re-add a fetch here
+  // following the same pattern as news/ADP/depth charts below. Until
+  // then, injury status relies entirely on the "don't state what
+  // you're not sure of" instruction in the CRITICAL INSTRUCTION block.
 
   // 3. Current ADP data
   try {
@@ -188,20 +188,51 @@ async function getLiveNFLContext() {
   // 4. NFL depth charts — authoritative source for current team assignments.
   // Resolves player team changes from free agency and trades.
   // Updated multiple times per day by Tank01.
+  //
+  // FIXED 2026-07-11 (checklist #215, real root cause): this parser
+  // was written assuming depth.body was an OBJECT keyed directly by
+  // team, e.g. depth.body["ARI"].QB = [...]. Pat found via RapidAPI's
+  // live response inspector that the actual shape is completely
+  // different: depth.body is an ARRAY of 32 team objects, each with
+  // { depthChart: { QB: [...], RB: [...], ... }, teamAbv: "ARI",
+  // teamID: "1" } — the position arrays are nested ONE LEVEL DEEPER,
+  // inside depthChart, not directly on the team object. The old code's
+  // own safety check (Array.isArray(players)) silently skipped
+  // everything every single time, since at the level it was actually
+  // reading, it never found a real array — meaning depth chart data
+  // has likely NEVER once reached the model since this was built. This
+  // is almost certainly the true root cause of the stale
+  // rookie-status/team-assignment bug Pat found (Jaxson Dart called a
+  // rookie, Aaron Rodgers still shown on the Jets), not the earlier
+  // slice-width or instruction-wording theories — those were real
+  // improvements but were never the actual blocker.
+  //
+  // NOTE: confirmed via live example response that individual player
+  // entries only carry depthPosition, playerID, and longName — no
+  // injury status, no years-of-experience/rookie field. Tank01's NFL
+  // API does not expose either of those anywhere we've found (their
+  // NFL API also has no dedicated injuries endpoint at all, unlike
+  // their MLB API's getMLBInjuriesByDate — confirmed via their
+  // endpoint list and 365-day changelog, neither mentions one ever
+  // existing). So team assignment can now be corrected with real data
+  // below, but injury status and rookie/experience status still rely
+  // entirely on the "don't state what you're not sure of" instruction
+  // in the CRITICAL INSTRUCTION block, since there is no live data
+  // source for either at this time.
   try {
     const depth = await fetchTank01("getNFLDepthCharts");
-    if (depth?.body) {
+    if (Array.isArray(depth?.body)) {
       const rosterLines = [];
-      const teams = Object.keys(depth.body).slice(0, 32);
-      teams.forEach(team => {
-        const positions = depth.body[team];
+      depth.body.forEach(teamEntry => {
+        const team = teamEntry.teamAbv || teamEntry.teamID || "UNK";
+        const positions = teamEntry.depthChart;
         if (!positions) return;
         Object.keys(positions).forEach(pos => {
           const players = positions[pos];
           if (!Array.isArray(players)) return;
-          players.slice(0, 2).forEach(p => {
-            if (p.longName || p.playerName) {
-              rosterLines.push(`${p.longName || p.playerName} (${pos}, ${team})`);
+          players.slice(0, 4).forEach(p => {
+            if (p.longName) {
+              rosterLines.push(`${p.longName} (${pos}, ${team})`);
             }
           });
         });
@@ -300,7 +331,7 @@ exports.handler = async (event) => {
     // continuously.
     //
     // Block 2 (NOT CACHED): live Tank01 data — different every call
-    // since it reflects current injuries, news, ADP, and depth charts.
+    // since it reflects current news, ADP, and depth charts.
     // Caching this would defeat the purpose of fetching it live.
     //
     // If Tank01 returned nothing, we send only the cached block (no
@@ -340,7 +371,7 @@ exports.handler = async (event) => {
           "═══════════════════════════════════",
           "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
           "",
-          "CRITICAL INSTRUCTION: The data below (news, injuries, ADP, and depth charts) is the single source of truth for CURRENT player status — team assignments, injury status, and career stage. It reflects trades, free agency moves, injuries, and recoveries that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant: (1) team assignment — never state a player's team from memory if it conflicts with the depth chart below; (2) injury status — if a player is NOT listed in the injury report below, treat them as healthy and do not reference an old injury from memory; (3) experience level — a player is not a 'rookie' or 'first-year player' just because your training data captured them as a draft prospect; if you're unsure how many seasons a player has played, don't make a specific claim about it. If you're not confident a specific detail is current, keep your answer more general rather than stating something that could be outdated.",
+          "CRITICAL INSTRUCTION: The data below (news, ADP, and depth charts) is the single source of truth for CURRENT player status — specifically team assignments. It reflects trades, free agency moves, and roster changes that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant: never state a player's team from memory if it conflicts with the depth chart below. IMPORTANT — TWO THINGS THIS DATA DOES NOT COVER: (1) INJURY STATUS: there is no live injury data available at all right now. Do not state that a player is currently injured, recovering from an injury, or that a past injury is still affecting them, based on your training knowledge — injuries resolve, and your information could easily be a year or more out of date. If asked about a player's health, say you don't have current injury information rather than guessing from memory. (2) EXPERIENCE LEVEL: a player is not a 'rookie' or 'first-year player' just because your training data captured them as a draft prospect — players you remember as incoming rookies may now be entering their 2nd, 3rd, or later season. If you're unsure how many seasons a player has actually played, don't make a specific claim about it. ABSENCE IS NOT CONFIRMATION: the depth chart data below only includes a limited slice of each team's roster, not every player in the league. If a player is NOT mentioned anywhere in the live data below, that does NOT mean your training-data memory of their team is still accurate — it just means this particular data pull didn't include them. In that case, do not state a specific team from memory either, since it could easily be outdated. If you're not confident a specific detail is current, keep your answer more general rather than stating something that could be outdated.",
           "",
           liveDataContext,
           "═══════════════════════════════════",
