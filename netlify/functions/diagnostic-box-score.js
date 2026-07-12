@@ -1,6 +1,7 @@
 // netlify/functions/diagnostic-box-score.js
 //
-// ONE-TIME DIAGNOSTIC — not scheduled, run manually via Netlify UI ("Run now").
+// ONE-TIME DIAGNOSTIC — not scheduled, run manually via Netlify UI ("Run now")
+// or by hitting the deployed endpoint URL directly in a browser.
 // Purpose: settle two open questions before scoping Feature Ideas #131/#132:
 //   1. Does getNFLBoxScore work for historical/completed games, or only current season?
 //   2. Does it return only basic counting stats, or NGS-style data (air yards,
@@ -8,15 +9,24 @@
 //
 // Test target: Week 1 2025, Cowboys @ Eagles, gameID '20250904_DAL@PHI'
 //
+// HOST FIX (v2): first version used the wrong RapidAPI host
+// (tank01-fantasy-stats.p.rapidapi.com), which 404'd with "Endpoint
+// '/getNFLBoxScore' does not exist" — the key and connection were fine,
+// just the wrong product host. Corrected to match the host already
+// proven working in refresh-player-data.js:
+// tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com
+//
 // After running, check Netlify → Functions → diagnostic-box-score → logs for:
 //   "BOX SCORE DIAGNOSTIC — getNFLBoxScore(...)"  (full raw response)
 //   "BOX SCORE DIAGNOSTIC — single player sample"  (one isolated stat line)
+// The browser tab hitting the endpoint directly will also show the same
+// JSON as the HTTP response body.
 
-const TANK01_HOST = 'tank01-fantasy-stats.p.rapidapi.com';
+const TANK01_HOST = 'tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com';
 const TEST_GAME_ID = '20250904_DAL@PHI';
 
 exports.handler = async function (event, context) {
-  const apiKey = process.env.TANK01_API_KEY; // adjust name if yours differs (e.g. RAPIDAPI_KEY)
+  const apiKey = process.env.TANK01_API_KEY;
 
   if (!apiKey) {
     const msg = 'DIAGNOSTIC FAILED: TANK01_API_KEY environment variable not found.';
@@ -33,8 +43,9 @@ exports.handler = async function (event, context) {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-rapidapi-key': apiKey,
+        'Content-Type': 'application/json',
         'x-rapidapi-host': TANK01_HOST,
+        'x-rapidapi-key': apiKey,
       },
     });
 
@@ -62,8 +73,8 @@ exports.handler = async function (event, context) {
     );
 
     // Try to isolate a single player's stat line for easy inspection.
-    // Tank01's shape can vary by endpoint version, so we probe a few
-    // likely locations rather than assuming one structure.
+    // Tank01's shape can vary by endpoint, so we probe a few likely
+    // locations rather than assuming one structure.
     let samplePlayer = null;
     let sampleSource = 'not found';
 
