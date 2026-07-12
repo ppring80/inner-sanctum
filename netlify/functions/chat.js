@@ -245,6 +245,33 @@ async function getLiveNFLContext() {
     console.log("Tank01 depth charts fetch failed:", e.message);
   }
 
+  // ═══════════════════════════════════════
+  // TEMP DIAGNOSTIC — checklist #215 follow-up, DELETE after use.
+  // Grabs one real playerID already surfaced by the depth chart fetch
+  // above and dumps the FULL getNFLPlayerInfo response to Netlify
+  // function logs. Log-only — does not touch contextParts, so it
+  // cannot change what the model sees and cannot break the response
+  // if the call fails. To use: deploy, send one message in Sanctum,
+  // then check Netlify → Functions → chat → logs for the line
+  // "PLAYER INFO DIAGNOSTIC". Report back the field names you see for
+  // draft year / years of experience so the real fetch can be wired
+  // in and this whole block removed.
+  // ═══════════════════════════════════════
+  try {
+    const depthForDiag = await fetchTank01("getNFLDepthCharts");
+    const firstTeam = depthForDiag?.body?.[0];
+    const firstPos = firstTeam?.depthChart && Object.keys(firstTeam.depthChart)[0];
+    const samplePlayerID = firstPos && firstTeam.depthChart[firstPos]?.[0]?.playerID;
+    if (samplePlayerID) {
+      const info = await fetchTank01("getNFLPlayerInfo", { playerID: samplePlayerID });
+      console.log("PLAYER INFO DIAGNOSTIC (playerID " + samplePlayerID + "):", JSON.stringify(info, null, 2));
+    } else {
+      console.log("PLAYER INFO DIAGNOSTIC: could not find a sample playerID from depth chart");
+    }
+  } catch (e) {
+    console.log("PLAYER INFO DIAGNOSTIC failed:", e.message);
+  }
+
   return contextParts.join("\n\n");
 }
 
