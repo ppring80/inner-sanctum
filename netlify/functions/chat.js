@@ -26,10 +26,23 @@ const CORS_HEADERS = {
 // and appends a running daily total to Netlify Blobs. This is the
 // data source for spend-dashboard.js.
 //
-// Pricing: Sonnet 4.6 is $3/M input tokens, $15/M output tokens as of
-// this writing. If the model or its pricing ever changes, update the
-// two rate constants below — this is the ONLY place cost math happens,
-// so a price change is a one-line fix here, not a hunt through the file.
+// Pricing: Sonnet 5 introductory pricing is $2/M input tokens, $10/M
+// output tokens (confirmed against Anthropic's pricing page and
+// Sonnet 5's own launch announcement, 2026-07-11). If the model or
+// its pricing ever changes, update the two rate constants below —
+// this is the ONLY place cost math happens, so a price change is a
+// one-line fix here, not a hunt through the file.
+//
+// ⚠️ PRICE STEP-UP SCHEDULED: Sonnet 5's introductory pricing above
+// is only valid through August 31, 2026. On September 1, 2026,
+// standard pricing takes effect: $3/M input, $15/M output — a 50%
+// increase on both, even though the model string and rate card
+// "look" unchanged (those are the same numbers Sonnet 4.6 was priced
+// at). REMINDER: update INPUT_RATE_PER_TOKEN / OUTPUT_RATE_PER_TOKEN
+// below on or before Sept 1, 2026, or every dollar figure on the
+// spend dashboard silently understates real cost by 50% from that
+// date forward — the exact same class of staleness bug this July 11
+// fix was chasing, just pointed the other direction.
 //
 // NOTE 2026-07-04: this rate should be revisited once #165's caching
 // fix below is actually confirmed live (see cache_read_input_tokens /
@@ -40,14 +53,24 @@ const CORS_HEADERS = {
 // flagged so today's dollar figures don't get treated as more
 // precise than they currently are once caching is genuinely active.
 //
-// NOTE 2026-07-11: model was upgraded from claude-sonnet-4-6 to
-// claude-sonnet-5 (see sanctum.html) to fix stale player-knowledge
-// issues (#215/checklist). Sonnet 5 has different per-token pricing
-// than Sonnet 4.6 — the two rate constants below have NOT yet been
-// re-verified against Sonnet 5's actual current rate as part of this
-// pass. Re-check Anthropic's pricing page before trusting spend
-// dashboard dollar figures as precise going forward; today's fix was
-// scoped to the staleness bug only.
+// NOTE 2026-07-11, RESOLVED SAME DAY: model was upgraded from
+// claude-sonnet-4-6 to claude-sonnet-5 (see sanctum.html) to fix
+// stale player-knowledge issues (checklist #122/#123). The rate
+// constants below were left at Sonnet 4.6's $3/$15 rates at the time
+// of that upgrade — flagged then as unverified, now corrected above.
+// Real-world effect while unverified: the spend dashboard was
+// OVERSTATING true cost by roughly a third (billing at $3/$15 when
+// Sonnet 5 was actually being charged at $2/$10), discovered when a
+// $2.62 one-day total looked concerning enough to investigate — the
+// true figure for that day was closer to $1.75. The bulk of that
+// day's actual spike was real call volume from manually re-running
+// the new qa-fact-check.js tool ~5-6 times while debugging it (each
+// run fires 8 real calls to this production endpoint, logged exactly
+// like real user traffic) plus the new FULL CURRENT INJURY REPORT
+// context block adding real, uncached tokens to every single call —
+// not a pricing artifact. Both are expected to settle to a much
+// smaller baseline once qa-fact-check.js is only running on its
+// normal daily schedule instead of repeated manual triggers.
 //
 // Failure handling: logging NEVER blocks or breaks the actual chat
 // response. Every Blobs call here is wrapped so a Blobs outage or
@@ -57,8 +80,8 @@ const CORS_HEADERS = {
 // error here is still visible in Netlify's function logs for
 // debugging, while never propagating up to break the response.
 // ═══════════════════════════════════════
-const INPUT_RATE_PER_TOKEN = 3.00 / 1_000_000;
-const OUTPUT_RATE_PER_TOKEN = 15.00 / 1_000_000;
+const INPUT_RATE_PER_TOKEN = 2.00 / 1_000_000;
+const OUTPUT_RATE_PER_TOKEN = 10.00 / 1_000_000;
 const SPEND_STORE_NAME = "claude-spend";
 
 // Returns "YYYY-MM-DD" in UTC. Using UTC (not local time) so the daily
