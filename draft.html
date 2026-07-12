@@ -248,7 +248,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 </div>
 
 <div class="attr no-print">
-  ADP: <a href="https://fantasyfootballcalculator.com" target="_blank">FantasyFootballCalculator.com</a> &nbsp;·&nbsp; Injuries: <a href="https://sleeper.com" target="_blank">Sleeper</a>
+  ADP: <a href="https://fantasyfootballcalculator.com" target="_blank">FantasyFootballCalculator.com</a> &nbsp;·&nbsp; Team/Injury: <a href="https://tank01.com" target="_blank">Tank01</a>
 </div>
 
 <div class="cmp-bar no-print" id="cbar">
@@ -347,23 +347,69 @@ function showFallbackBanner(){var b=document.getElementById('fallbackBanner');if
 function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.remove('on')}
 
 // ═══════════════════════════════════════
+// BUILD INJURIES OBJECT FROM A TANK01 PLAYER MAP
+// UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026 (checklist item #135
+// follow-up). Walks every player currently in adpByPos and looks each
+// one up in the Tank01 map (keyed by normalizePlayerName, per
+// shared-player-data.js), populating THIS page's own `injuries` object
+// in the exact shape getInj() above already expects: injuries[key(name)]
+// = {status, part} — key() here is draft.html's own dash-slug ID
+// scheme, deliberately different from normalizePlayerName() (used only
+// for matching against Tank01/Sleeper), so this function is the
+// necessary bridge between the two naming schemes rather than
+// assuming they're interchangeable.
+//
+// tank01Map's injuryDesignation is used directly as `status` with no
+// translation table — confirmed live 2026-07-12 that Tank01's
+// designation values (e.g. "Questionable") already match the plain-
+// English strings getInj()'s status->style lookup expects (Out,
+// Doubtful, Questionable, IR, PUP). A player with an empty
+// injuryDesignation is not added to `injuries` at all, matching
+// getInj()'s existing "no entry = healthy" contract.
+function buildInjuriesFromTank01(tank01Map){
+  var result={};
+  if(!tank01Map)return result;
+  Object.keys(adpByPos).forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){
+      var entry=tank01Map[normalizePlayerName(p.name)];
+      if(entry&&entry.injuryDesignation){
+        result[key(p.name)]={status:entry.injuryDesignation,part:entry.injuryDescription||null};
+      }
+    });
+  });
+  return result;
+}
+
+// ═══════════════════════════════════════
 // LOAD DATA
 // ═══════════════════════════════════════
 async function loadAll(){
   var scoring=document.getElementById('scoringSel').value;
   var teams=document.getElementById('teamsSel').value;
-  setStatus('loading','Loading live ADP + injury data...');
+  setStatus('loading','Loading live ADP + team/injury data...');
   document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
 
   try{
     // ── Live ADP via Netlify proxy (server-side, avoids CORS) ──
+    // ── Team/injury via the unified Tank01 player-data cache ──
+    // UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026: previously fetched
+    // Sleeper's live player list directly for both team-correction and
+    // injury status, independently of what Sanctum (chat.js) uses for
+    // the same two facts. Now reads the SAME Tank01 cache chat.js
+    // already reads (via /.netlify/functions/player-data.js), so this
+    // page and Sanctum can no longer disagree about a player's current
+    // team or injury status when live data is reachable — see
+    // shared-player-data.js's file-header comment and Pre-Deployment
+    // Checklist item #135 for the full rationale. This does NOT
+    // change PLAYER_POOL/loadFallback() below at all — the fallback
+    // safety net for when NO live source is reachable is unchanged.
     var adpUrl='/.netlify/functions/adp?scoring='+scoring+'&teams='+teams+'&year=2026&count=300';
     var results=await Promise.all([
       fetch(adpUrl).then(function(r){return r.json()}),
-      fetch('https://api.sleeper.app/v1/players/nfl').then(function(r){return r.json()})
+      fetchTank01PlayerMap()
     ]);
     var adpData=results[0];
-    var sleeper=results[1];
+    var tank01Map=results[1];
 
     if(adpData.status==='Error'||!adpData.players){
       throw new Error(adpData.errors||'ADP proxy returned no players');
@@ -380,26 +426,16 @@ async function loadAll(){
     });
     Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
 
-    injuries={};
-    var sleeperTeamMap={};
-    Object.values(sleeper).forEach(function(p){
-      if(!p.full_name)return;
-      var k=key(p.full_name);
-      if(p.injury_status||p.status==='Injured Reserve'||p.status==='PUP'){
-        injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
-      }
-      if(p.team){
-        sleeperTeamMap[normalizePlayerName(p.full_name)]=p.team;
-      }
+    // ── Correct team labels against Tank01's live roster data ──
+    // The ADP proxy's own team field can lag a trade/signing just like
+    // a hand-typed fallback list can. Tank01's roster cache (refreshed
+    // daily) is now the single source both this page and Sanctum trust
+    // for current team assignment.
+    ['QB','RB','WR','TE','K'].forEach(function(pos){
+      if(adpByPos[pos])adpByPos[pos]=applyLiveTeamsFromTank01(adpByPos[pos],tank01Map);
     });
 
-    // ── Correct team labels against Sleeper's live roster data ──
-    // The ADP proxy's own team field can lag a trade/signing just like a
-    // hand-typed fallback list can. Sleeper's player list is the most
-    // current source we have, so it wins whenever it has a match.
-    ['QB','RB','WR','TE','K'].forEach(function(pos){
-      if(adpByPos[pos])adpByPos[pos]=applyLiveTeams(adpByPos[pos],sleeperTeamMap);
-    });
+    injuries=buildInjuriesFromTank01(tank01Map);
 
     ready=true;
     hideFallbackBanner();
@@ -425,27 +461,22 @@ function loadFallback(){
     adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=key(p.name); });
   });
 
-  // Sleeper injuries + live team correction — this works fine on mobile.
-  // Even on the fallback path, team labels are corrected live rather than
-  // frozen at whatever they were when this file was last hand-edited.
-  fetch('https://api.sleeper.app/v1/players/nfl')
-    .then(function(r){return r.json()})
-    .then(function(sleeper){
-      injuries={};
-      var sleeperTeamMap={};
-      Object.values(sleeper).forEach(function(p){
-        if(!p.full_name)return;
-        var k=key(p.full_name);
-        if(p.injury_status||p.status==='Injured Reserve'||p.status==='PUP'){
-          injuries[k]={status:p.injury_status||p.status,part:p.injury_body_part||null};
-        }
-        if(p.team){
-          sleeperTeamMap[normalizePlayerName(p.full_name)]=p.team;
-        }
-      });
+  // Team/injury correction — UNIFIED LIVE-DATA SOURCE — ADDED JULY 12
+  // 2026: even on the fallback ADP path (static player POOL, live ADP
+  // proxy unreachable), team and injury correction now come from the
+  // same Tank01 cache as everywhere else on this page, rather than a
+  // separate Sleeper fetch. If Tank01's cache is ALSO unreachable,
+  // fetchTank01PlayerMap() returns null (same fail-safe contract as
+  // the old Sleeper fetch), applyLiveTeamsFromTank01() is a no-op, and
+  // players simply keep PLAYER_POOL's own hardcoded team value — same
+  // graceful-degradation behavior as before, just one fewer independent
+  // live source in the chain.
+  fetchTank01PlayerMap()
+    .then(function(tank01Map){
       ['QB','RB','WR','TE','K'].forEach(function(pos){
-        if(adpByPos[pos])adpByPos[pos]=applyLiveTeams(adpByPos[pos],sleeperTeamMap);
+        if(adpByPos[pos])adpByPos[pos]=applyLiveTeamsFromTank01(adpByPos[pos],tank01Map);
       });
+      injuries=buildInjuriesFromTank01(tank01Map);
       render();
     })
     .catch(function(){
@@ -468,20 +499,6 @@ function render(){
   // matching players in a single flat list.
   if(curSearch){renderSearch();return;}
 
-  // ── FIXED 2026-06-29: "ALL" used to mean "6 separate
-  // position-grouped sections stacked QB->RB->WR->TE->K->DEF, each
-  // independently sorted by that position's own ADP" — NOT a true
-  // merged board. That meant e.g. every QB showed before every RB
-  // regardless of real draft value, which doesn't reflect how an
-  // actual draft unfolds. Per Pat's explicit instruction, "All" now
-  // renders ONE flat list merged across every position and sorted by
-  // real global ADP — so the natural mixed order shows through (e.g.
-  // 4 RBs, then the top WR, then 2 more RBs, etc.), matching how a
-  // real draft actually plays out. Position-specific tabs (QB/RB/WR/
-  // TE/K/DEF) are COMPLETELY UNCHANGED — they still render as
-  // position-grouped sections with tier dividers and Oracle/Trash
-  // Lord wisdom boxes exactly as before; this only changes what "ALL"
-  // means. See renderAll() below for the new merged-list logic.
   if(curPos==='ALL'){renderAll();return;}
 
   var main=document.getElementById('main');
@@ -493,16 +510,6 @@ function render(){
   positions.forEach(function(pos){
     var all=adpByPos[pos]||[];
     var maxP=POS_MAX[pos]||50;
-    // FIXED 2026-07-03 (#186): DEF and K pools top out at 32 teams total,
-    // so the Top N selector's "Top 30" default was silently hiding the
-    // 2 lowest-ADP teams with no indication anything was missing — this
-    // is exactly what made Jets/Raiders appear to "fall off" the DEF
-    // ranking after #183's ADP correction moved them to the bottom of
-    // the pool. Unlike RB/WR (150-deep pools, where trimming to a Top N
-    // genuinely reduces clutter), a 32-team pool is already short enough
-    // that nothing should ever be hidden from it — so DEF/K ignore the
-    // showSel dropdown entirely and always render every team/kicker
-    // Tank01 (or the fallback pool) returns, up to POS_MAX.
     var limit=(pos==='DEF'||pos==='K')?maxP:(show===999?maxP:Math.min(show,maxP));
     var players=all.slice(0,limit);
     if(!players.length)return;
@@ -579,50 +586,7 @@ function render(){
 }
 
 // ═══════════════════════════════════════
-// RENDER — "ALL" MERGED BOARD (new, 2026-06-29)
-//
-// Replaces the old "ALL = 6 stacked position sections" behavior.
-// Merges every position's pool into ONE array, sorts by raw global
-// ADP value (the actual fix Pat asked for — a true draft-order board
-// where positions interleave naturally based on real ADP, e.g. RB,
-// RB, RB, WR, RB, TE, WR... rather than every QB before every RB),
-// then renders as a single flat table/grid, same row/card markup as
-// renderSearch() already uses (which performs this exact kind of
-// merge-and-flatten for an unrelated reason — search across
-// positions — so this reuses that proven pattern rather than
-// inventing a new one).
-//
-// SCOPE OF WHAT'S DROPPED IN THIS VIEW SPECIFICALLY: tier dividers
-// and the Oracle/Trash Lord wisdom boxes are POSITION-RELATIVE
-// concepts (a "Tier 1 RB" has no equivalent meaning in a merged
-// list spanning all positions) — they're correctly omitted here, but
-// remain fully intact and unchanged on every individual position tab
-// (QB/RB/WR/TE/K/DEF), where they still make sense. A position badge
-// column (matching renderSearch()'s existing pattern) replaces them
-// here so the position of each player is still visible at a glance.
-//
-// "Top N" (15/30/50/All) now applies to the MERGED, globally-sorted
-// list as a whole — i.e. "Top 30" on the All tab means the 30 best
-// players league-wide by ADP, not 30 per position. This is the
-// natural reading of "All" + "Top N" together once All is a true
-// merged board, and matches how the existing showSel dropdown already
-// behaves on individual position tabs (Top 30 RBs, not Top 30
-// overall) — same dropdown, same general semantics, just scoped to
-// the now-correctly-merged pool.
-//
-// FIXED 2026-06-29 (same day, later): the OVR column was showing
-// Math.round(p.adp) — the rounded ADP VALUE itself — instead of the
-// player's actual position in this sorted, merged list. That made the
-// "rank" column visibly start at 2 (Ja'Marr Chase, ADP 1.6, rounds to
-// 2) and produced duplicate ranks for close ADP values (Bijan
-// Robinson at 3.0 and Puka Nacua at 3.1 both rounded to 3). Found via
-// Pat's live testing. OVR now correctly uses `pr` (i+1, the player's
-// true sequential position in the merged, globally-sorted list) —
-// the exact same variable already used correctly for tier/stream-
-// score math two lines below, just not previously wired into the
-// display string. ADP itself is UNCHANGED and still shown separately
-// in its own column (adpStr) exactly as before — this only fixes what
-// OVR displays, not the underlying ADP data or sort order.
+// RENDER — "ALL" MERGED BOARD
 // ═══════════════════════════════════════
 function renderAll(){
   var main=document.getElementById('main');
@@ -631,7 +595,7 @@ function renderAll(){
   var merged=[];
   ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
     (adpByPos[pos]||[]).forEach(function(p){
-      merged.push(p); // p already carries {name,team,adp,pos,key} from loadAll()/loadFallback()
+      merged.push(p);
     });
   });
   merged.sort(function(a,b){return a.adp-b.adp});
@@ -653,24 +617,13 @@ function renderAll(){
     var tbody=document.createElement('tbody');
 
     players.forEach(function(p,i){
-      var pr=i+1; // global rank within the merged board, NOT position-rank
-      // Tier/stream-score still need a POSITION-RELATIVE rank to mean
-      // anything (tier cuts are defined per-position in TIER_CUTS) —
-      // computed here from this player's own position array rather
-      // than the merged list's index, so e.g. a WR ranked #3 overall
-      // still correctly shows as WR3-tier, not "tier for rank 3 of
-      // any position."
+      var pr=i+1;
       var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
       if(posRankForTiers<1)posRankForTiers=pr;
       var dk=!!drafted[p.key];
       var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var adpStr=p.adp<900?p.adp.toFixed(1):'—';
-      // FIXED 2026-06-29: was Math.round(p.adp) (the rounded ADP value
-      // itself, causing the list to visibly start at "2" and produce
-      // duplicate ranks for close ADP values) — now correctly uses
-      // `pr`, the player's true sequential position in this merged,
-      // globally-sorted list (1, 2, 3, 4... with no gaps or repeats).
       var ovrStr=pr;
 
       var injHtml=inj2?'<span class="ibadge '+inj2.cls+'">'+inj2.icon+' '+inj2.label+(inj2.part?' · '+inj2.part:'')+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
@@ -721,17 +674,12 @@ function renderAll(){
 
 // ═══════════════════════════════════════
 // SEARCH RENDER — MOBILE PERFORMANCE FIX
-// When search is active, renders a single flat list
-// of matching players instead of all position sections.
-// This prevents the mobile browser from choking on
-// rendering hundreds of rows across 6 positions.
 // ═══════════════════════════════════════
 function renderSearch(){
   var main=document.getElementById('main');
   var q=curSearch.toLowerCase();
   var matches=[];
 
-  // Search across all positions (or just current position)
   var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
   positions.forEach(function(pos){
     var all=adpByPos[pos]||[];
@@ -742,7 +690,6 @@ function renderSearch(){
     });
   });
 
-  // Sort by ADP
   matches.sort(function(a,b){return a.p.adp-b.p.adp});
 
   main.innerHTML='';
@@ -804,7 +751,6 @@ function tDraft(k,btn,type){
   updateDBar();
 }
 
-// Draft toggle for search results
 function tDraftSearch(k,btn){
   drafted[k]=!drafted[k];localStorage.setItem('isd',JSON.stringify(drafted));
   var el=document.getElementById('srow-'+k);
@@ -842,10 +788,6 @@ function goPos(pos){
   curPos=pos;
   document.querySelectorAll('.pos-tab').forEach(function(t){t.classList.remove('active')});
   document.querySelector('.pos-tab.'+pos).classList.add('active');
-  // #186: Top N is inert on DEF/K (always full 32-team pool) — disable
-  // it with an explanatory tooltip rather than leaving a control that
-  // silently does nothing, which is what made Jets/Raiders look like
-  // they'd vanished after #183's ADP correction.
   var showSel=document.getElementById('showSel');
   var defKInert=(pos==='DEF'||pos==='K');
   showSel.disabled=defKInert;
@@ -855,7 +797,7 @@ function goPos(pos){
 
 function doSearch(q){
   curSearch=(q||'').toLowerCase().trim();
-  render(); // render() routes to renderSearch() when curSearch is set
+  render();
 }
 
 function goView(v){
@@ -865,10 +807,6 @@ function goView(v){
   render();
 }
 
-// Card view makes a poor printed cheat sheet — dense table is what
-// you actually want at the draft table, so the print button forces
-// list view first (if it isn't already) rather than relying on
-// someone to remember to switch views before printing.
 function printList(){
   if(curView!=='list')goView('list');
   window.print();
