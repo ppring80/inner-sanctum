@@ -350,6 +350,54 @@ function applyLiveTeamsFromTank01(players, tank01Map) {
   });
 }
 
+// ── Fetch the Tank01 player-data cache as a FULL LIST (not a lookup
+// map) — for pages that need to build a searchable player list (e.g.
+// Auction War Room's Step 5 draft-pick autocomplete), rather than
+// looking up one specific name at a time. This is a DIFFERENT return
+// shape from fetchTank01PlayerMap() above on purpose: that function
+// returns name->{team,exp,injury...} for O(1) single-player lookups
+// (team correction across a whole position array); this one returns
+// an ARRAY of every fantasy-relevant player, matching the shape
+// Sleeper's api.sleeper.app/v1/players/nfl endpoint used to provide
+// to loadSleeperPlayers()-style code, so it's a drop-in replacement
+// for that use case specifically.
+//
+// FILTERING: only fantasy-relevant positions are included — QB, RB,
+// WR, TE, and K (Tank01's own position code for kicker is "PK", not
+// "K" — normalized here to "K" to match the convention every other
+// live-data source on this site already uses, e.g. adp.js). Defenses
+// are NOT included, matching the existing behavior this replaces
+// (Sleeper-based player search never included team defenses either —
+// no regression here, same scope as before).
+//
+// Returns null on any failure — same fail-safe contract as
+// fetchTank01PlayerMap()/fetchSleeperTeamMap(), so callers can fall
+// back to an empty list or a cached copy exactly as before.
+var TANK01_SEARCHABLE_POSITIONS = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', PK: 'K' };
+async function fetchTank01PlayerList() {
+  try {
+    var res = await fetch('/.netlify/functions/player-data');
+    var data = await res.json();
+    if (!data || data.status !== 'Success' || !data.players) return null;
+    var list = [];
+    Object.values(data.players).forEach(function (p) {
+      var normPos = TANK01_SEARCHABLE_POSITIONS[p.pos];
+      if (!normPos || !p.longName) return;
+      list.push({
+        name: p.longName,
+        pos: normPos,
+        team: p.team || 'FA',
+        injuryDesignation: (p.injury && p.injury.designation) || '',
+        injuryDescription: (p.injury && p.injury.description) || ''
+      });
+    });
+    list.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    return list;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Expose globally for plain <script> includes (no module system in this
 // project's GitHub-web-editor workflow).
 window.PLAYER_POOL = PLAYER_POOL;
@@ -358,3 +406,4 @@ window.fetchSleeperTeamMap = fetchSleeperTeamMap;
 window.applyLiveTeams = applyLiveTeams;
 window.fetchTank01PlayerMap = fetchTank01PlayerMap;
 window.applyLiveTeamsFromTank01 = applyLiveTeamsFromTank01;
+window.fetchTank01PlayerList = fetchTank01PlayerList;
