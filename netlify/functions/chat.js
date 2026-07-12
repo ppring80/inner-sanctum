@@ -281,6 +281,40 @@ async function getLiveNFLContext() {
     console.log("Tank01 depth charts fetch failed:", e.message);
   }
 
+  // 6. FULL INJURY REPORT — added 2026-07-11 (checklist follow-up to
+  // #122/#123, found via the new automated QA fact-checker's first
+  // real runs). The depth chart list above only covers the top 4
+  // players per position per team, since that's what getNFLDepthCharts
+  // returns — meaning a backup guard, LB, or anyone outside a team's
+  // top options never appears there at all, EVEN THOUGH the player-data
+  // cache (built from getNFLTeamRoster, item 4 above) has real
+  // exp/injury data for essentially the whole 53-man roster, not just
+  // starters. Confirmed via the QA dashboard: the model was correctly
+  // declining ("I don't have current data") for players like a backup
+  // OL with a real Questionable/biceps designation or a backup LB who'd
+  // had actual shoulder surgery — the SAFE fallback working exactly as
+  // instructed, but still missing the real, known answer, since that
+  // answer never reached the model in the first place.
+  //
+  // Fix: build a SEPARATE list of every player in the full cache who
+  // has a real (non-empty) injury designation, regardless of whether
+  // they made the depth-chart cut. Injury counts are a small fraction
+  // of the full player pool at any given time, so this stays compact
+  // even though it draws from the entire ~2,700-player cache rather
+  // than the depth-chart slice.
+  if (playerLookup && Object.keys(playerLookup).length > 0) {
+    const injuryLines = [];
+    Object.values(playerLookup).forEach(p => {
+      const d = p.injury && p.injury.designation && p.injury.designation.trim();
+      if (d && p.longName) {
+        injuryLines.push(`${p.longName} (${p.pos || "?"}, ${p.team || "?"}): ${d}${p.injury.description ? " — " + p.injury.description : ""}`);
+      }
+    });
+    if (injuryLines.length > 0) {
+      contextParts.push(`FULL CURRENT INJURY REPORT (every player league-wide with a real designation, not limited to the roster list above):\n${injuryLines.join("\n")}`);
+    }
+  }
+
   return contextParts.join("\n\n");
 }
 
@@ -414,7 +448,7 @@ exports.handler = async (event) => {
           "═══════════════════════════════════",
           "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
           "",
-          "CRITICAL INSTRUCTION: The data below (news, ADP, and depth charts) is the single source of truth for CURRENT player status — team assignments, and, where shown, experience level and injury status. It reflects trades, free agency moves, roster changes, and injury designations that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant. Specifically: (1) TEAM: never state a player's team from memory if it conflicts with the roster line below. (2) EXPERIENCE: each player line may include a tag like ', Rookie' or ', Yr 4' — that tag is the real current answer for whether they're a rookie or how many seasons they've played. A player you remember as an incoming draft prospect may now show 'Yr 2' or higher — trust the tag, not your training-data memory of their draft class. (3) INJURY: each player line may include a tag like ', Injury: Questionable (ankle)' — that is their real current designation. If a player's line below has NO injury tag, treat that as them currently having no reported injury designation, not as 'unknown' — this data is refreshed daily. ABSENCE FROM THE LIST ENTIRELY IS DIFFERENT FROM ABSENCE OF A TAG: the roster list below only includes a limited slice of each team (top players per position), not every player in the league — bench, depth, and practice-squad players will routinely be missing from it even though they are real, currently rostered NFL players. If a player is NOT mentioned ANYWHERE in the live data below, you don't have current team/experience/injury info for them at all from this data — don't state any of those three from training-data memory either, since it could easily be outdated; keep your answer more general instead. CRITICAL — DO NOT DENY A PLAYER'S EXISTENCE: never state or imply that a player is not on a roster, not real, not in your data, or that the user has the wrong name or team, just because they're absent from this limited list — that absence is a coverage gap in THIS data pull, not evidence the player doesn't exist. If you don't recognize a name or can't find them below, say plainly that you don't have current information on that specific player and answer what you can in general terms — never frame missing data as the player being unreal or misidentified. But if a player IS listed and simply has no injury tag, that absence does mean healthy/no designation, per point (3) above.",
+          "CRITICAL INSTRUCTION: The data below (news, ADP, depth charts, and a full league-wide injury report) is the single source of truth for CURRENT player status — team assignments, and, where shown, experience level and injury status. It reflects trades, free agency moves, roster changes, and injury designations that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant. Specifically: (1) TEAM: never state a player's team from memory if it conflicts with the roster line below. (2) EXPERIENCE: each player line in the roster list may include a tag like ', Rookie' or ', Yr 4' — that tag is the real current answer for whether they're a rookie or how many seasons they've played. A player you remember as an incoming draft prospect may now show 'Yr 2' or higher — trust the tag, not your training-data memory of their draft class. The roster list only covers a limited slice of each team (top players per position) — if a player isn't listed there, you don't have current experience info for them and shouldn't state it from memory either. (3) INJURY — TWO SEPARATE SOURCES: the roster list's inline ', Injury: ...' tags cover only the players listed there. The FULL CURRENT INJURY REPORT section (when present) is DIFFERENT and covers the entire league, not just listed players — treat it as the complete, authoritative injury list. If a player appears in the FULL CURRENT INJURY REPORT, state that exact designation. If a player does NOT appear there, that means no current injury designation exists for them league-wide — you can state they have no reported injury concern with confidence, even if they're not in the roster list above. NEVER FABRICATE AN INJURY FOR ANY PLAYER — including players you mention only in passing or as context for someone else, not just the player the question is directly about; if a name isn't in the FULL CURRENT INJURY REPORT, don't invent or imply an injury for them. CRITICAL — DO NOT DENY A PLAYER'S EXISTENCE: never state or imply that a player is not on a roster, not real, not in your data, or that the user has the wrong name or team, just because they're absent from the roster list — that absence is a coverage gap in that specific list, not evidence the player doesn't exist. If you don't recognize a name or can't find them in the roster list, say plainly that you don't have current team/experience information on that specific player and answer what you can in general terms — never frame missing data as the player being unreal or misidentified. This does not apply to injury status, which is now fully covered by the FULL CURRENT INJURY REPORT per point (3).",
           "",
           liveDataContext,
           "═══════════════════════════════════",
