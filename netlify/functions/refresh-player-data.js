@@ -49,14 +49,18 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 // allSettled (not all) is deliberate: if 1-2 teams fail (rate limit,
 // transient network blip), we still want to cache the other 30
 // teams' data rather than losing the whole refresh over one bad call.
+//
+// TEAM LIST: fetched live from getNFLTeams below, NOT hardcoded.
+// First deploy of this file used a hardcoded 32-abbreviation array
+// built from general NFL knowledge, and "WAS" failed on the very
+// first live run — Tank01 almost certainly expects a different
+// abbreviation for Washington (many providers use "WSH" instead).
+// Tank01's own docs say explicitly: "Team abbreviations ... can be
+// found from /getNFLTeams endpoint" — this was the same
+// trust-memory-over-verify-live mistake flagged earlier tonight with
+// the depth chart parser, just smaller in scope. Fixed by fetching
+// the real list every run instead of assuming it.
 // ═══════════════════════════════════════
-
-const NFL_TEAMS = [
-  "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE", "DAL", "DEN",
-  "DET", "GB", "HOU", "IND", "JAX", "KC", "LAC", "LAR", "LV", "MIA",
-  "MIN", "NE", "NO", "NYG", "NYJ", "PHI", "PIT", "SEA", "SF", "TB",
-  "TEN", "WAS"
-];
 
 async function fetchTank01(endpoint, params = {}) {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
@@ -81,16 +85,33 @@ exports.handler = async (event) => {
   // getStore()/Blobs call in this runtime mode.
   connectLambda(event);
 
+  // Get the REAL team abbreviation list live, rather than trusting a
+  // hardcoded guess (see note above re: the WAS/WSH failure).
+  let teamAbvs = [];
+  try {
+    const teamsResp = await fetchTank01("getNFLTeams");
+    teamAbvs = (teamsResp?.body || [])
+      .map(t => t.teamAbv)
+      .filter(Boolean);
+  } catch (e) {
+    console.log("getNFLTeams fetch failed, cannot build team list:", e.message);
+  }
+
+  if (teamAbvs.length === 0) {
+    console.log("Player data refresh aborted: no team list available");
+    return { statusCode: 500 };
+  }
+
   const playerMap = {};
   let teamsSucceeded = 0;
   let teamsFailed = 0;
 
   const results = await Promise.allSettled(
-    NFL_TEAMS.map(teamAbv => fetchTank01("getNFLTeamRoster", { teamAbv }))
+    teamAbvs.map(teamAbv => fetchTank01("getNFLTeamRoster", { teamAbv }))
   );
 
   results.forEach((result, i) => {
-    const teamAbv = NFL_TEAMS[i];
+    const teamAbv = teamAbvs[i];
     if (result.status === "fulfilled") {
       const roster = result.value?.body?.roster;
       if (Array.isArray(roster)) {
@@ -126,7 +147,7 @@ exports.handler = async (event) => {
   });
 
   console.log(
-    `Player data refresh complete: ${Object.keys(playerMap).length} players cached from ${teamsSucceeded}/${NFL_TEAMS.length} teams` +
+    `Player data refresh complete: ${Object.keys(playerMap).length} players cached from ${teamsSucceeded}/${teamAbvs.length} teams` +
     (teamsFailed > 0 ? ` (${teamsFailed} team(s) failed — see logs above)` : "")
   );
 
