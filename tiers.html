@@ -674,7 +674,7 @@ var TIER_BREAKS = {
 };
 var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
 
-// ── LIVE ADP OVERLAY (added) ─────────────────────────────────────────────────
+// ── LIVE ADP OVERLAY (unchanged) ─────────────────────────────────────────────
 async function fetchLiveAdpMap(scoring) {
   try {
     var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
@@ -783,6 +783,30 @@ function markTargetTiers(stratData, pos) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// GENERATE TIERS — UNIFIED LIVE-DATA SOURCE — MODIFIED JULY 12 2026
+// (checklist follow-up to #122/#123's stale-data audit, item #135)
+//
+// WHY: this page previously called fetchSleeperTeamMap() to correct
+// team assignments against Sleeper's live roster data — an independent
+// live provider from the Tank01 cache Sanctum (chat.js) and Draft
+// Command Center now both read. Swapped to fetchTank01PlayerMap() so
+// Tier List agrees with the rest of the site on current team
+// assignment whenever live data is reachable, closing the same
+// structural gap Draft Command Center's migration closed earlier
+// tonight. See shared-player-data.js's file-header comment for the
+// full rationale.
+//
+// SCOPE, DELIBERATELY NARROW: this page has NO injury display
+// anywhere — the tier cards only ever show name/team/ADP — so unlike
+// Draft Command Center's migration, there is no injury-side change
+// needed here at all. This is a pure team-correction swap, nothing
+// else about this function's logic changes.
+//
+// applyLiveTeamsFromTank01() is a drop-in for applyLiveTeams() (same
+// return contract: new array, no mutation, unmatched players keep
+// their existing team) — see shared-player-data.js for both.
+// ═══════════════════════════════════════════════════════════════════════
 function generateTiers() {
   var scoring = document.getElementById('settingScoring').value;
   var format  = document.getElementById('settingFormat').value;
@@ -793,7 +817,7 @@ function generateTiers() {
 
   var msgs = [
     'Pulling live ADP from Tank01',
-    'Cross-checking team data with Sleeper',
+    'Cross-checking team data with Tank01',
     'Applying scoring format adjustments',
     'Consulting 38 seasons of wisdom',
     'Carving the final tier breaks'
@@ -804,12 +828,12 @@ function generateTiers() {
     document.getElementById('loadingSub').textContent = msgs[msgIdx];
   }, 700);
 
-  var teamMapPromise = fetchSleeperTeamMap();
+  var tank01MapPromise = fetchTank01PlayerMap();
   var adpMapPromise = fetchLiveAdpMap(scoring);
   var minDelayPromise = new Promise(function(resolve){ setTimeout(resolve, 2400); });
 
-  Promise.all([teamMapPromise, adpMapPromise, minDelayPromise]).then(function(results){
-    var sleeperTeamMap = results[0];
+  Promise.all([tank01MapPromise, adpMapPromise, minDelayPromise]).then(function(results){
+    var tank01Map = results[0];
     var liveAdpMap = results[1];
     clearInterval(msgInt);
 
@@ -818,7 +842,7 @@ function generateTiers() {
     tiers = {};
     POS_LIST.forEach(function(pos){
       var pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
-      if (pos !== 'DEF') pool = applyLiveTeams(pool, sleeperTeamMap);
+      if (pos !== 'DEF') pool = applyLiveTeamsFromTank01(pool, tank01Map);
       pool = applyLiveAdp(pool, liveAdpMap);
 
       if (scoring === 'ppr') {
@@ -892,16 +916,6 @@ function generateTiers() {
 function renderPos(pos) {
   var container = document.getElementById('tier' + pos);
   container.innerHTML = '';
-  // FIXED (July 2026 #49 site review): this was previously capped at 4
-  // for K/DEF ("var maxTier = (pos === 'K' || pos === 'DEF') ? 4 : 5"),
-  // while TIER_BREAKS/the tier-assignment loop above always computes a
-  // real Tier 5 for every position (ranks past breaks[3]). That meant
-  // the bottom ~8 kickers and ~8 defenses were priced into Tier 5 but
-  // then silently never rendered on any tab — no error, no visible gap,
-  // they just vanished. Same class of bug as #183/#186 (Jets/Cardinals/
-  // Raiders DEF rankings disappearing from Draft Command Center). Now
-  // every position renders all 5 tiers, matching how tiers are actually
-  // computed above.
   var maxTier = 5;
 
   for (var t = 1; t <= maxTier; t++) {
