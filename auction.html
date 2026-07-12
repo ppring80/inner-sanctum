@@ -162,14 +162,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tps-section-title{font-family:'Cinzel',serif;font-size:13px;color:var(--ink)}
 .tps-section-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-left:auto}
 
-/* SLOT ROWS (v2 — replaces the old per-player tps-player-* rows above).
-   No star/target-check column (every slot counts, nothing to toggle),
-   no ADP/team columns (no player identity on this sheet at all) — just
-   a slot label and an editable $ amount. Bench-floor slots (the last 4
-   bench rows, always a flat $1) get a small ".floor" visual treatment
-   and a "min spend" tag, so it's clear at a glance why those few rows
-   look different from the rest of the sheet rather than looking like
-   an error. */
 .tps-slot-list{display:flex;flex-direction:column}
 .tps-slot-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background 0.15s}
 .tps-slot-row:last-child{border-bottom:none}
@@ -227,6 +219,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .dd-team{color:#7a7a76;font-size:11px;margin-left:6px}
 .dd-pos{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 .dd-val{color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px}
+.dd-inj{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;margin-left:6px}
+.dd-inj.Out,.dd-inj.IR{background:rgba(220,53,69,0.18);color:#ff8a8a}
+.dd-inj.Doubtful{background:rgba(230,126,34,0.18);color:#ffb066}
+.dd-inj.Questionable,.dd-inj.PUP{background:rgba(245,192,20,0.18);color:#f5c842}
 
 /* ── DRAFT LOG ── */
 .draft-log{margin-top:16px;display:none}
@@ -264,22 +260,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   .league-warning-label{color:#000!important}
   .tps-edit-note{display:none}
 
-  /* ── Step 5, Live Draft Tracker — added ──────────────────────────────
-     The live-session widgets (stat cards, inflation bar, pick-entry form)
-     aren't a record of anything — they're input/live-status UI, so they
-     hide on print same as the rest of this file's interactive elements.
-     What actually IS worth printing: the draft log table (who got picked,
-     for how much, by whom) and the team budget cards — that's the real
-     paper record someone would want mid-draft or after. */
   .tracker-stats,.inflation-bar{display:none!important}
-  .draft-log{display:block!important} /* JS only shows this once a pick exists; force visible so an empty draft still prints a usable blank log header rather than nothing */
+  .draft-log{display:block!important}
   .log-table th{color:#000;background:#eee;border-bottom:2px solid #000}
   .log-table td{color:#111;border-bottom:1px solid #ccc}
   .log-table td.mono{color:#000}
   .pos-pill{background:#fff!important;color:#000!important;border:1px solid #000!important}
   .team-card{background:#f9f9f9;border:1px solid #ddd;break-inside:avoid}
   .team-budget-val{color:#000}
-  .team-track{display:none} /* a colored progress bar doesn't render meaningfully on paper; the $ figures above it already say the same thing in text */
+  .team-track{display:none}
   .teams-grid{break-inside:avoid}
 }
 
@@ -385,14 +374,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (modified — now offers a sample-data preview path) ═══
-//
-// WHY A FETCH CALL IS NEEDED: oauth-callback.js sets sanctum_session as
-// an HttpOnly cookie, so this page's JS cannot read it directly via
-// document.cookie. verify-session.js is a small Netlify Function that
-// reads the cookie server-side (where HttpOnly doesn't apply), verifies
-// its signature, and returns just {fullAccess} — this
-// page never sees the raw cookie or the signing secret.
 var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
@@ -401,7 +382,7 @@ function checkGateUnlocked() {
   try {
     return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true';
   } catch (e) {
-    return false; // storage blocked (private browsing) — fail closed, show gate
+    return false;
   }
 }
 
@@ -423,10 +404,6 @@ function checkGatePasscode() {
   }
 }
 
-// Calls verify-session.js and unlocks if fullAccess is true. Never
-// throws — any failure (network error, non-200, malformed response)
-// is treated the same as "no access," which simply means the existing
-// passcode gate stays up exactly as it does today.
 function checkOAuthSession() {
   return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
     .then(function (res) {
@@ -441,18 +418,10 @@ function checkOAuthSession() {
       return false;
     })
     .catch(function () {
-      return false; // network/parse error — fall through to passcode gate, unchanged
+      return false;
     });
 }
 
-// ═══ AUTH RESULT HANDLING (added — July 2026 #49 site review) ═══
-// oauth-callback.js now returns the user to the page they actually
-// started their Patreon login from (via the &state= param on the
-// login link above), appending ?auth_error=... or ?auth=success to
-// the URL. Previously nothing on this page read these params — a
-// failed login silently dumped the user back on a blank gate, and a
-// successful one gave no visible confirmation beyond the gate quietly
-// disappearing (handled separately by checkOAuthSession() above).
 function handleAuthResultParams() {
   var params = new URLSearchParams(window.location.search);
   var authError = params.get('auth_error');
@@ -479,36 +448,6 @@ function handleAuthResultParams() {
   var cleanUrl = window.location.pathname;
   window.history.replaceState({}, document.title, cleanUrl);
 }
-
-// ═══ PREVIEW MODE (added) ═══════════════════════════════════════════
-//
-// WHY THIS EXISTS: per the preview-access decision, visitors should be
-// able to actually USE the tool with sample data before paying — not
-// just read about it. This gate previously had only two paths:
-// passcode-unlock or leave. This adds a third: preview with a FIXED
-// demo league, no passcode needed.
-//
-// SCOPE, DELIBERATELY LIMITED ("sample slice, nothing too deep"):
-// Steps 1–4 (League Setup → Roster → Strategy → Target Price Sheet)
-// are fully functional in preview, using real live ADP — just locked
-// to one fixed demo league so a visitor can't quietly use this as a
-// free real tool for their own league. Step 5 (Live Draft Tracker)
-// stays gated; that step is a live-draft utility, not something that
-// sells the tool by itself, and it's the deepest "real use" surface
-// (logging real picks, tracking real budgets) — so it's excluded from
-// preview rather than trying to fake a partial version of it.
-//
-// THE DEMO LEAGUE IS FIXED, NOT A DEFAULT: this is not just pre-filled
-// values someone could edit — the relevant League Setup inputs are
-// disabled while in preview mode (see lockInputsToDemoLeague below),
-// so preview can never become a free path to a real, personalized
-// price sheet for someone's actual league.
-//
-// THIS BLOCK IS INTENTIONALLY SELF-CONTAINED: kept separate from the
-// pricing engine / tracker logic elsewhere in this file on purpose —
-// this page is still actively changing, so this is written to be easy
-// to find and remove/adjust on its own without needing to re-thread
-// preview-awareness through code that has nothing to do with previewing.
 
 var DEMO_LEAGUE = {
   leagueName: 'The Brotherhood',
@@ -537,17 +476,6 @@ function enterPreviewMode() {
   showPreviewBanner();
 }
 
-// Forces League Setup's inputs to the fixed demo league and disables
-// them, so a preview visitor sees a real, working tool but cannot
-// repurpose it for their own league without unlocking for real.
-// Intentionally does NOT touch Roster Construction (Step 2) — roster
-// slot counts aren't personal/identifying league data the way a league
-// name or budget is, and locking every input in the tool would make
-// the preview feel broken rather than like a genuine sample.
-// Called both immediately on entering preview AND from buildTeamInputs'
-// caller path below, since changing numTeams rebuilds the team-name
-// input grid (see buildTeamInputs() later in this file) — calling it
-// here ensures that rebuilt grid still reflects the locked team count.
 function lockInputsToDemoLeague() {
   var nameEl = document.getElementById('leagueName');
   var teamsEl = document.getElementById('numTeams');
@@ -566,12 +494,8 @@ function lockInputsToDemoLeague() {
   if (platformEl) { platformEl.value = DEMO_LEAGUE.platform; platformEl.disabled = true; }
 }
 
-// Persistent banner shown across Steps 1–4 while in preview mode.
-// Injected once into the page body rather than per-panel, so it stays
-// visible across step navigation without needing to be duplicated in
-// every panel's markup.
 function showPreviewBanner() {
-  if (document.getElementById('previewBanner')) return; // already shown
+  if (document.getElementById('previewBanner')) return;
   var banner = document.createElement('div');
   banner.id = 'previewBanner';
   banner.className = 'preview-banner';
@@ -581,12 +505,6 @@ function showPreviewBanner() {
   document.body.insertBefore(banner, document.body.firstChild);
 }
 
-// Step 5 (Live Draft Tracker) stays gated in preview mode. Rather than
-// building a second, degraded version of the tracker, attempting to
-// reach Step 5 while in preview re-shows the gate overlay with a
-// preview-specific message, leaving the passcode/real-unlock/preview
-// paths all still intact and usable from there. goStep() (defined
-// later in this file) calls this before allowing navigation to step 5.
 function blockStep5Preview() {
   var overlay = document.getElementById('gateOverlay');
   var sub = document.getElementById('gateSub');
@@ -602,23 +520,12 @@ function blockStep5Preview() {
   }
   if (isPreviewMode()) {
     document.getElementById('gateOverlay').style.display = 'none';
-    // lockInputsToDemoLeague() runs after DOM is ready, not here —
-    // League Setup's inputs don't exist yet at this point in page load
-    // (this IIFE runs before the rest of body markup is parsed), so
-    // re-entering preview on a later page load locks inputs once the
-    // DOMContentLoaded handler below fires instead.
     showPreviewBanner();
     return;
   }
   checkOAuthSession();
 })();
 
-// Re-applies the demo-league lock on every fresh page load if the
-// visitor is already in preview mode from a prior step navigation
-// within the same session (sessionStorage persists across page loads
-// within a tab, but the DOM does not — each step's panel is part of
-// the same single-page document, so this mainly matters on a hard
-// refresh while mid-preview).
 document.addEventListener('DOMContentLoaded', function () {
   if (isPreviewMode()) lockInputsToDemoLeague();
 });
@@ -975,8 +882,8 @@ var state = {
   teamNames: [],
   roster: { QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6 },
   strategy: null,
-  pricedSlots: [],        // current slot table from the engine: [{pos,slotIndex,dollars,isBenchFloor}, ...]
-  playerPriceLookup: {},  // lowercase player name -> $ , built by buildPlayerPriceLookup() for Step 5's search
+  pricedSlots: [],
+  playerPriceLookup: {},
   draftLog: []
 };
 
@@ -991,19 +898,6 @@ var POS_COLORS = {
 var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
 var POS_LABELS = {QB:'Quarterbacks', RB:'Running Backs', WR:'Wide Receivers', TE:'Tight Ends', K:'Kickers', DEF:'Defenses'};
 
-// ═══════════════════════════════════════════════════════════
-// STRATEGY DATA — advice/commentary text unchanged from before.
-// Pricing now comes from the slot-based engine above (BASELINE_SLOTS),
-// keyed by strategy — these objects exist purely for the Oracle/Trash
-// Lord advice text lookups elsewhere in the file (unchanged behavior).
-// NOTE: this page's strategy keys (rb/wr/qb/hero/custom) are mapped to
-// the engine's strategy keys (rb/wr/qb/hero/balanced) at the call site
-// in generateTPS() — 'custom' here means 'balanced' to the engine; kept
-// as two different words on purpose since "Custom" is the user-facing
-// label/intent (a deliberately even, no-strong-lean allocation) while
-// "balanced" is just the engine's internal column name for that same
-// percentage set.
-// ═══════════════════════════════════════════════════════════
 var STRATEGIES = {
   rb:     {name:'RB Heavy',advice:'In 38 seasons I have seen the truth: elite running backs win championships. The scarcity of workhorse backs demands you act first and act decisively. Let your rivals battle for receivers while you secure the ground game — for in the trenches, empires are built.',trash:"RB Heavy? BOLD. Everyone else is gonna be crying about receiver committees while you're CASHING IN on your bell cow back. Just don't blow your whole budget in the first 10 minutes like a rookie."},
   wr:     {name:'WR Heavy',advice:'The era of the pass has arrived. Wide receivers offer consistency and durability that eludes the battered running back. Two elite pass-catchers at the top of your roster creates a floor that sustains through turbulent mid-season.',trash:"WR Heavy? Now we're talking POINTS. While everyone else watches their RB1 limp off in Week 3, your receivers are going OFF. Target share doesn't get injured. Fight me."},
@@ -1013,20 +907,9 @@ var STRATEGIES = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// LIVE ADP FETCH (added — same Netlify proxy draft.html/tiers.html use)
-//
-// RESTORED 2026-06-28: this function and updateAdpStatusBar() below it
-// were accidentally deleted during the slot-engine rebuild — they were
-// adjacent to the old per-player pricing engine that WAS meant to be
-// removed, but they are NOT part of that engine; they're the live-ADP
-// data fetch the new engine's player-to-slot mapper still depends on
-// (see buildPlayerPriceLookup's call site in generateTPS() below).
-// Caught via direct end-to-end testing of the integrated page script,
-// not just the standalone engine modules — a reminder that testing
-// the pieces in isolation doesn't catch an accidental deletion at the
-// integration boundary.
+// LIVE ADP FETCH (unchanged from before)
 // ═══════════════════════════════════════════════════════════
-var liveAdpByPos = null; // null until fetched; { QB:[{name,team,adp}], RB:[...], ... }
+var liveAdpByPos = null;
 
 async function fetchLiveAdpByPosition(scoring) {
   try {
@@ -1061,96 +944,11 @@ function updateAdpStatusBar(usingFallback) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SLOT-BASED TARGET PRICE ENGINE (v2 — rebuilt 2026-06-28)
-//
-// REPLACES the individual-player-pricing engine that lived here before
-// (POSITION_SPLITS/SUPERFLEX_BUMP/getPositionSplits/rankToValue/
-// priceTopPlayersAtPosition/distributeRemainderExactly/
-// computePoolSizes/generatePriceSheet — all removed). Per Pat's
-// explicit product direction: the Target Price Sheet now shows dollar
-// targets per ROSTER SLOT (e.g. "RB1: $59"), never per named player.
-// Player identification happens on the separate Tier List instead;
-// this page's Step 5 search still needs a per-PLAYER $ reference
-// though (so e.g. Bijan Robinson shows a sane number, not a deflated
-// generic average) — that's what priceForPlayer()/
-// buildPlayerPriceLookup() near the bottom of this block are for; they
-// map a player's ADP rank within their position to the slot price
-// that rank corresponds to, scaled to league size.
-//
-// STRATEGY KEY MAPPING (locked 2026-06-28): this page's 5 strategy
-// cards (RB Heavy/WR Heavy/QB Heavy/Hero RB/Custom) stay EXACTLY as
-// they already are on the page — Pat explicitly did not want the
-// strategy selection UI changed. They map to this engine's strategy
-// keys as: rb→RB Heavy, wr→WR Heavy, qb→QB Heavy, hero→Hero RB,
-// balanced→Custom. Hero RB needed a brand-new column (not one of
-// Pat's original 5 percentage-table columns) since its real mechanics
-// — one elite RB1 anchor, deliberately light RB2, heavier WR pivot —
-// don't match RB Heavy (loads BOTH RB slots) or Balanced (even
-// spread). Pat specified Hero RB's exact percentages directly.
-//
-// K/DEF FLAT-$1 FLOOR + WR HEAVY REWEIGHT (added 2026-06-28, session 2):
-// Per Pat's explicit instruction, two related changes layered onto
-// this same table:
-//   (1) K and DEF are now treated as bench-floor-style $1 slots for
-//       EVERY strategy column (previously they were a flat 1% of
-//       budget for every strategy — a real dollar amount, not a $1
-//       floor — so this is a genuine behavior change, not a no-op).
-//       The leftover percentage this frees up (each column's old 1%
-//       minus what $1 now represents as a % of that league's budget)
-//       is rolled into RB1/RB2/WR1/WR2 PROPORTIONALLY to each of
-//       those four slots' OWN existing percentage in that same
-//       column — i.e. a bigger slot (like RB Heavy's RB1 at 28%) gets
-//       a proportionally bigger slice of the freed-up money than a
-//       smaller one (like WR Heavy's WR2 at 24%), rather than splitting
-//       the leftover evenly across all four regardless of size. This
-//       reuses the exact same "convert % to floored $, bank the
-//       leftover, redistribute it" pattern the BENCH_FLOOR mechanism
-//       below already uses — see resolveKDefFloorLeftover().
-//   (2) WR Heavy's column specifically also gets a direct, fixed
-//       reweight on top of the above: WR1 -2pp, WR2 -4pp, RB1 +2pp,
-//       RB2 +2pp, FLEX +2pp (a net-zero shift, applied directly to
-//       the baseline numbers below before either the K/DEF floor or
-//       any of the leftover-distribution machinery runs).
-// These two changes are independent and stack: WR Heavy's column
-// first gets its direct reweight baked into the table below, THEN
-// (like every other strategy) goes through the K/DEF-floor leftover
-// pass at table-build time. See applyKDefFloorAndRedistribute() for
-// the mechanics and resolveKDefFloorLeftover() for why this needed a
-// new helper rather than reusing resolveBenchFloorLeftover() verbatim
-// (that function is hardcoded to bench-slot semantics and to folding
-// leftover into FAVORED_POSITIONS; this is a fixed RB1/RB2/WR1/WR2
-// target list regardless of strategy, which FAVORED_POSITIONS does
-// not represent for every column — e.g. QB Heavy's favored position
-// is QB, not RB/WR at all).
+// SLOT-BASED TARGET PRICE ENGINE — UNCHANGED FROM BEFORE
+// (pricing engine logic is completely separate from the player-data
+// source migration below; no edits anywhere in this block)
 // ═══════════════════════════════════════════════════════════
 const BASELINE_SLOTS = [
-  // { pos, slotIndex } — slotIndex distinguishes RB1 vs RB2, etc.
-  // percents keyed by strategy: rb, wr, qb, te, balanced, hero
-  //
-  // 'hero' (Hero RB) added 2026-06-28 — NOT one of Pat's original 5
-  // table columns. Hero RB is mechanically distinct from RB Heavy: one
-  // elite RB1 anchor (heavy spend) then a deliberate pivot to WR,
-  // rather than RB Heavy's "load up on BOTH RB slots" approach — so it
-  // doesn't fit cleanly into any of the original 5 columns. Pat
-  // specified these exact percentages directly (confirmed summing to
-  // 100%): QB 6%, RB1 30%, RB2 10%, WR1 18%, WR2 11%, TE 5%, Flex 6%,
-  // K 1%, D 1%, Bench 4/3/2/1/1/1%. This preserves the existing
-  // 5-strategy-card UI (RB Heavy/WR Heavy/QB Heavy/Hero RB/Custom)
-  // exactly as it already exists on the page, per Pat's explicit
-  // instruction not to change the strategy selection UI — Hero RB and
-  // Custom both needed real backing columns rather than being silently
-  // dropped or reusing an existing column that didn't match.
-  //
-  // WR HEAVY REWEIGHT (2026-06-28, session 2): the 'wr' column's QB/TE
-  // values below are UNCHANGED. Only RB1, RB2, WR1, WR2, and FLEX move
-  // (the rows those values live on), applied directly to the numbers
-  // that were here before this session's edit:
-  //   WR1: 0.26 -> 0.24 (-2pp)   WR2: 0.24 -> 0.20 (-4pp)
-  //   RB1: 0.16 -> 0.18 (+2pp)   RB2: 0.06 -> 0.08 (+2pp)
-  //   FLEX: 0.07 -> 0.09 (+2pp)
-  // Net change across these 5 rows: -2-4+2+2+2 = 0pp — column still
-  // sums to 100% after this edit, BEFORE the separate K/DEF-floor pass
-  // (which operates on every column, including this one, afterward).
   { pos: 'QB', slotIndex: 1, pct: { rb: 0.02, wr: 0.02, qb: 0.12, te: 0.03, balanced: 0.06, hero: 0.06 } },
   { pos: 'RB', slotIndex: 1, pct: { rb: 0.28, wr: 0.18, qb: 0.20, te: 0.20, balanced: 0.22, hero: 0.30 } },
   { pos: 'RB', slotIndex: 2, pct: { rb: 0.22, wr: 0.08, qb: 0.14, te: 0.12, balanced: 0.12, hero: 0.10 } },
@@ -1168,17 +966,6 @@ const BASELINE_SLOTS = [
   { pos: 'BENCH', slotIndex: 6, pct: { rb: 0.01, wr: 0.01, qb: 0.01, te: 0.01, balanced: 0.01, hero: 0.01 } },
 ];
 
-// Strategy key -> which position(s) absorb roll-up/leftover money.
-// Balanced splits evenly between RB and WR (Pat's explicit call) — all
-// single-position strategies send 100% of roll-up to their one position.
-// UNCHANGED by the K/DEF-floor work — this still governs MISSING-SLOT
-// leftover (a league that has no Kicker slot at all, roster.K === 0)
-// and BENCH-floor leftover, exactly as before. The NEW K/DEF-FLAT-$1
-// leftover (every league, since K/DEF now always floor to $1
-// regardless of roster shape) uses a separate, fixed RB1/RB2/WR1/WR2
-// target list instead — see resolveKDefFloorLeftover() below — since
-// FAVORED_POSITIONS doesn't have a sensible per-column answer for
-// "RB and WR specifically" (e.g. QB Heavy's favored position is QB).
 const FAVORED_POSITIONS = {
   rb: [{ pos: 'RB', share: 1.0 }],
   wr: [{ pos: 'WR', share: 1.0 }],
@@ -1188,26 +975,10 @@ const FAVORED_POSITIONS = {
   hero: [{ pos: 'RB', share: 0.5 }, { pos: 'WR', share: 0.5 }],
 };
 
-const BENCH_FLOOR_COUNT = 4; // last N bench slots are always flat $1, regardless of total bench count
+const BENCH_FLOOR_COUNT = 4;
 const BENCH_FLOOR_DOLLARS = 1;
-
-// K/DEF FLAT-$1 FLOOR (added 2026-06-28, session 2) — applies to EVERY
-// strategy column, regardless of roster shape, whenever a K or DEF
-// slot exists in the roster at all. Distinct from BENCH_FLOOR_DOLLARS
-// only in that it's a separate constant for clarity at the call site —
-// both happen to be $1 today, but K/DEF's floor is a deliberate
-// pricing-philosophy choice (kickers/defenses are low-signal, late-
-// round streamers per the app's own Oracle copy — see Pre-Deployment
-// Checklist #107/#101) rather than the bench-floor mechanism's "last
-// few roster spots are barely worth budgeting for" rationale. Kept as
-// its own named constant so a future change to one doesn't silently
-// also change the other.
 const KDEF_FLOOR_DOLLARS = 1;
 
-// The fixed list of slots eligible to receive K/DEF-floor leftover,
-// per Pat's explicit instruction ("RB and WR only," not TE). Order
-// doesn't matter for the proportional-split math below, but kept in
-// roster-shape order (RB1, RB2, WR1, WR2) for readability.
 const KDEF_LEFTOVER_TARGET_SLOTS = [
   { pos: 'RB', slotIndex: 1 },
   { pos: 'RB', slotIndex: 2 },
@@ -1215,17 +986,9 @@ const KDEF_LEFTOVER_TARGET_SLOTS = [
   { pos: 'WR', slotIndex: 2 },
 ];
 
-// Superflex QB override — ONLY applies when 2-QB/Superflex is selected.
-// Fixed totals, not derived from the baseline table at all: QB as a
-// whole position becomes 35% of total budget (22% QB1 / 13% QB2). The
-// gap between this fixed 35% and whatever QB's normal allocation would
-// have been is pulled proportionally from RB and WR (their relative
-// ratio to EACH OTHER is preserved — both just shrink together).
 const SUPERFLEX_QB_TOTAL_PCT = 0.35;
 const SUPERFLEX_QB1_PCT = 0.22;
-const SUPERFLEX_QB2_PCT = 0.13; // = SUPERFLEX_QB_TOTAL_PCT - SUPERFLEX_QB1_PCT
-
-// ── Helpers ──────────────────────────────────────────────────────────────
+const SUPERFLEX_QB2_PCT = 0.13;
 
 function cloneSlots(slots) {
   return slots.map(s => ({ ...s, pct: { ...s.pct } }));
@@ -1235,45 +998,25 @@ function sumPct(slots, strategy) {
   return slots.reduce((a, s) => a + s.pct[strategy], 0);
 }
 
-// Builds the starting point: baseline rows filtered/expanded to match
-// the league's actual roster (which positions exist, how many of each).
-// This does NOT yet apply bench-floor, roll-up, or Superflex — those
-// are separate, ordered passes below, each easier to test in isolation.
 function buildRawSlotsForRoster(strategy, roster) {
   const slots = [];
 
-  // QB: always at least 1 (no league plays with zero QBs). Superflex's
-  // 2nd QB slot is handled entirely by applySuperflexOverride() later,
-  // NOT here — keeping this function strategy/format-agnostic for the
-  // baseline shape.
-  slots.push({ ...BASELINE_SLOTS[0] }); // QB1
+  slots.push({ ...BASELINE_SLOTS[0] });
 
-  // RB: use roster.RB count (1-4 typical), reusing baseline RB1/RB2 rows
-  // for the first two, and for any 3rd+ RB slot, reuse RB2's percentage
-  // (the baseline table only defines 2 RB rows — a 3rd RB starter is a
-  // genuine edge case, not explicitly specced, so it inherits RB2's
-  // rate rather than inventing a new number).
   for (let i = 1; i <= (roster.RB || 0); i++) {
     const base = i === 1 ? BASELINE_SLOTS[1] : BASELINE_SLOTS[2];
     slots.push({ pos: 'RB', slotIndex: i, pct: { ...base.pct } });
   }
 
-  // WR: same pattern as RB.
   for (let i = 1; i <= (roster.WR || 0); i++) {
     const base = i === 1 ? BASELINE_SLOTS[3] : BASELINE_SLOTS[4];
     slots.push({ pos: 'WR', slotIndex: i, pct: { ...base.pct } });
   }
 
-  // TE: baseline only defines 1 TE row; additional TE starters (rare)
-  // reuse that same rate.
   for (let i = 1; i <= (roster.TE || 0); i++) {
     slots.push({ pos: 'TE', slotIndex: i, pct: { ...BASELINE_SLOTS[5].pct } });
   }
 
-  // FLEX: per the locked rule, only the FIRST flex slot gets the
-  // baseline's fresh 7%/9% here. Additional flex slots are funded later
-  // via the roll-up pool, not a duplicate amount each — so they're added
-  // here as $0-pct placeholders for applyRollUp() to fill in.
   for (let i = 1; i <= (roster.FLEX || 0); i++) {
     if (i === 1) {
       slots.push({ pos: 'FLEX', slotIndex: 1, pct: { ...BASELINE_SLOTS[6].pct } });
@@ -1282,15 +1025,6 @@ function buildRawSlotsForRoster(strategy, roster) {
     }
   }
 
-  // K / DEF: included only if the league actually uses them. If absent,
-  // their baseline % becomes leftover for applyRollUp() to redistribute
-  // — achieved simply by never pushing a slot for them at all, and
-  // tracking the freed percentage separately (see buildSlotTable).
-  // NOTE: this is the MISSING-slot case (roster.K === 0), still handled
-  // exactly as before via computeMissingSlotLeftoverPct()/
-  // FAVORED_POSITIONS. The K/DEF-FLOOR case (the slot exists but is
-  // priced at a flat $1) is a SEPARATE pass — applyKDefFloorAndRedistribute()
-  // — that runs later for whichever K/DEF slots DO get pushed here.
   if (roster.K && roster.K > 0) {
     for (let i = 1; i <= roster.K; i++) {
       slots.push({ pos: 'K', slotIndex: i, pct: { ...BASELINE_SLOTS[7].pct } });
@@ -1302,27 +1036,15 @@ function buildRawSlotsForRoster(strategy, roster) {
     }
   }
 
-  // BENCH: up to 6 slots reuse the baseline's 6 defined rates in order;
-  // beyond 6, additional bench slots reuse row 6's rate (1%) as a
-  // starting point before the bench-floor pass converts the LAST 4
-  // overall to a flat $1 regardless of this starting percentage.
   const benchCount = roster.BENCH || 0;
   for (let i = 1; i <= benchCount; i++) {
-    const baseRow = BASELINE_SLOTS[8 + Math.min(i, 6)]; // rows 9..14 are bench rows 1..6 (0-indexed 9-14)
+    const baseRow = BASELINE_SLOTS[8 + Math.min(i, 6)];
     slots.push({ pos: 'BENCH', slotIndex: i, pct: { ...baseRow.pct } });
   }
 
   return slots;
 }
 
-// Computes how much percentage is "missing" because K and/or DEF were
-// excluded from the roster (roster.K === 0 or roster.DEF === 0), using
-// the BASELINE rates for whichever strategy is active — this is the
-// leftover pool that rolls into the favored position(s).
-// UNCHANGED — still the MISSING-slot case only (no K/DEF slot at all
-// in this league's roster). See applyKDefFloorAndRedistribute() for
-// the separate, new floor-case leftover, which applies whenever K/DEF
-// DO exist in the roster.
 function computeMissingSlotLeftoverPct(strategy, roster) {
   let leftover = 0;
   if (!roster.K || roster.K === 0) leftover += BASELINE_SLOTS[7].pct[strategy];
@@ -1330,20 +1052,9 @@ function computeMissingSlotLeftoverPct(strategy, roster) {
   return leftover;
 }
 
-// Applies the bench floor: identifies the LAST 4 bench slots (by
-// count, however many bench slots actually exist) and floors them to a
-// fixed dollar amount later (not a percentage at this stage — bench
-// floor slots are flagged here, converted to actual $1 in the final
-// dollar-conversion step, since percentages alone can't represent "a
-// flat $1 regardless of total budget"). Returns the leftover PERCENTAGE
-// freed by flooring (i.e. what those slots' bench-table rate would have
-// been, minus what $1 actually represents as a % of the total pool) —
-// this is computed properly in buildSlotTable() once the total dollar
-// pool is known, since "$1 as a %" depends on league size and budget.
 function markBenchFloorSlots(slots) {
   const benchSlots = slots.filter(s => s.pos === 'BENCH');
   const floorCount = Math.min(BENCH_FLOOR_COUNT, benchSlots.length);
-  // Last N bench slots by slotIndex (descending) get floored.
   const sortedDesc = [...benchSlots].sort((a, b) => b.slotIndex - a.slotIndex);
   const floored = new Set(sortedDesc.slice(0, floorCount).map(s => s.slotIndex));
   return slots.map(s => {
@@ -1354,14 +1065,6 @@ function markBenchFloorSlots(slots) {
   });
 }
 
-// K/DEF FLOOR (added 2026-06-28, session 2) — mirrors markBenchFloorSlots'
-// job, but for K/DEF: flags any K or DEF slot that exists in this
-// roster as floored, so the dollar-conversion step (dollarsForSlots)
-// later gives it a flat KDEF_FLOOR_DOLLARS regardless of its computed
-// pct. Separate function (not folded into markBenchFloorSlots) since
-// K/DEF floor applies unconditionally whenever the slot exists at all
-// — there's no "last N of however many" counting logic needed here,
-// unlike bench's "last 4 of however many bench slots exist" rule.
 function markKDefFloorSlots(slots) {
   return slots.map(s => {
     if (s.pos === 'K' || s.pos === 'DEF') {
@@ -1371,63 +1074,28 @@ function markKDefFloorSlots(slots) {
   });
 }
 
-// Distributes a leftover percentage into the strategy's favored
-// position(s), per FAVORED_POSITIONS. Mutates a working copy and
-// returns it. If a favored position has multiple slots (e.g. RB1+RB2
-// both exist), the leftover for that position's share is split evenly
-// across that position's own slots — this wasn't explicitly specced
-// for the "more than one slot of the favored position" case, but
-// splitting evenly within a position is the only construction
-// consistent with every other "split evenly" rule already locked in
-// (Balanced's RB/WR split, the FLEX/bench-floor leftover split).
-//
-// UNCHANGED by the K/DEF-floor work — still used for MISSING-slot
-// leftover and BENCH-floor leftover only, exactly as before. K/DEF-
-// FLOOR leftover (the new behavior) uses distributeKDefLeftoverProportionally()
-// below instead, since that leftover always targets a fixed RB1/RB2/
-// WR1/WR2 list rather than each strategy's own favored position(s).
 function distributeLeftoverToFavoredPositions(slots, strategy, leftoverPct) {
   if (leftoverPct <= 0) return slots;
   const favored = FAVORED_POSITIONS[strategy];
   const result = cloneSlots(slots);
   favored.forEach(({ pos, share }) => {
     const matchingSlots = result.filter(s => s.pos === pos);
-    if (!matchingSlots.length) return; // shouldn't happen given current roster shapes, but fail safe rather than throw
+    if (!matchingSlots.length) return;
     const perSlot = (leftoverPct * share) / matchingSlots.length;
     matchingSlots.forEach(s => { s.pct[strategy] += perSlot; });
   });
   return result;
 }
 
-// K/DEF LEFTOVER, PROPORTIONAL TO RB1/RB2/WR1/WR2 (added 2026-06-28,
-// session 2). Per Pat's explicit instruction: K/DEF-floor leftover
-// goes ONLY to RB1, RB2, WR1, WR2 (never TE, never other positions),
-// and each of those four slots' SHARE of the leftover is proportional
-// to that slot's OWN current percentage in this column — i.e. a slot
-// that's already a bigger piece of the budget gets a proportionally
-// bigger piece of the leftover too, not an equal split and not "all to
-// one favored position." This mirrors how resolveBenchFloorLeftover
-// computes its own leftover amount (table-rate minus floored-dollar-
-// equivalent), but distributes across a FIXED slot list instead of
-// FAVORED_POSITIONS, since FAVORED_POSITIONS doesn't have a sensible
-// "RB and WR specifically, every strategy" entry — most strategies'
-// favored position is a single position (QB Heavy -> QB, RB Heavy ->
-// RB only, etc.), which would silently exclude WR (or RB) entirely.
-//
-// totalLeftoverPct: the combined % freed up by flooring whichever K/
-// DEF slots exist in this roster (computed by the caller, since "how
-// much leftover" depends on how many K/DEF slots there are and what
-// the floor-dollar-to-% conversion looks like for THIS league's
-// budget — see resolveKDefFloorLeftover below for that calculation).
 function distributeKDefLeftoverProportionally(slots, strategy, totalLeftoverPct) {
   if (totalLeftoverPct <= 0) return slots;
   const result = cloneSlots(slots);
   const targets = KDEF_LEFTOVER_TARGET_SLOTS
     .map(t => result.find(s => s.pos === t.pos && s.slotIndex === t.slotIndex))
-    .filter(Boolean); // a slot might not exist for this roster (e.g. roster.RB === 1, no RB2) — skip silently rather than throw
+    .filter(Boolean);
 
   const targetsTotalPct = targets.reduce((a, s) => a + s.pct[strategy], 0);
-  if (targetsTotalPct <= 0 || !targets.length) return result; // nothing to be proportional TO — leave leftover undistributed rather than divide by zero
+  if (targetsTotalPct <= 0 || !targets.length) return result;
 
   targets.forEach(s => {
     const share = s.pct[strategy] / targetsTotalPct;
@@ -1436,47 +1104,18 @@ function distributeKDefLeftoverProportionally(slots, strategy, totalLeftoverPct)
   return result;
 }
 
-// Computes the % leftover freed up by flooring this roster's K/DEF
-// slots to KDEF_FLOOR_DOLLARS, mirroring resolveBenchFloorLeftover's
-// own "table rate minus floored-dollar-equivalent" math, but scoped to
-// K/DEF specifically and returning ONLY the leftover percentage (the
-// slot-mutation side — setting each K/DEF slot's own pct down to just
-// enough to cover its $1 floor — is handled separately at dollar-
-// conversion time in dollarsForSlots, same convention as bench floor:
-// the slot's pct field is bookkeeping for leftover math, not the real
-// final price once isKDefFloor/isBenchFloor is set).
-//
-// budgetPerTeam: ONE team's budget (e.g. $200) — same convention as
-// every other dollar-conversion helper in this file; see
-// resolveBenchFloorLeftover's header comment for why this engine never
-// multiplies by numTeams.
 function computeKDefFloorLeftoverPct(slots, strategy, budgetPerTeam) {
   const kDefSlots = slots.filter(s => s.pos === 'K' || s.pos === 'DEF');
   const floorPctAsDollarShare = KDEF_FLOOR_DOLLARS / budgetPerTeam;
   let totalLeftover = 0;
   kDefSlots.forEach(s => {
     const originalPct = s.pct[strategy];
-    // Same negative-leftover guard as resolveBenchFloorLeftover: in a
-    // pathological tiny-budget league, the $1 floor could cost MORE
-    // than the table's original %, which would mean a negative
-    // leftover (taking money away from RB/WR to afford the floor) —
-    // clamped to 0 rather than allowed, since the floor is a minimum
-    // spend, not a forced reallocation in that edge case.
     const leftover = Math.max(0, originalPct - floorPctAsDollarShare);
     totalLeftover += leftover;
   });
   return totalLeftover;
 }
 
-// Full K/DEF-floor pass: marks K/DEF slots as floored, computes the
-// leftover their flooring frees up, sets each K/DEF slot's own pct
-// down to just enough to cover its $1 floor (so it doesn't ALSO keep
-// its original higher pct once isKDefFloor takes over at dollar-
-// conversion time — same "shrink the floored slot's own pct to the
-// floor-equivalent, bank the difference as leftover" pattern bench-
-// floor already uses), then distributes that leftover proportionally
-// across RB1/RB2/WR1/WR2. Returns the fully-resolved slots, ready for
-// whatever comes next in the pipeline (Superflex override, etc.).
 function applyKDefFloorAndRedistribute(slots, strategy, budgetPerTeam) {
   let result = markKDefFloorSlots(slots);
   const leftoverPct = computeKDefFloorLeftoverPct(result, strategy, budgetPerTeam);
@@ -1495,23 +1134,16 @@ function applyKDefFloorAndRedistribute(slots, strategy, budgetPerTeam) {
   return result;
 }
 
-// Applies the Superflex override. ONLY called when isSuperflex is true.
-// Adds a 2nd QB slot at SUPERFLEX_QB2_PCT, sets QB1 to
-// SUPERFLEX_QB1_PCT (overriding whatever the strategy/baseline had),
-// and shrinks RB+WR proportionally (preserving their relative ratio to
-// each other) to make room for the total increase.
 function applySuperflexOverride(slots, strategy) {
   const result = cloneSlots(slots);
   const qb1 = result.find(s => s.pos === 'QB' && s.slotIndex === 1);
   const existingQbPct = qb1 ? qb1.pct[strategy] : 0;
 
   const targetTotalQbPct = SUPERFLEX_QB_TOTAL_PCT;
-  const additionalNeeded = targetTotalQbPct - existingQbPct; // QB2 doesn't exist yet, so existing total IS just QB1's pct
+  const additionalNeeded = targetTotalQbPct - existingQbPct;
 
   if (qb1) qb1.pct[strategy] = SUPERFLEX_QB1_PCT;
 
-  // Add QB2 if not already present (idempotent — calling this twice
-  // shouldn't double-add).
   if (!result.find(s => s.pos === 'QB' && s.slotIndex === 2)) {
     const qb2Pct = {};
     Object.keys(qb1 ? qb1.pct : { rb: 0, wr: 0, qb: 0, te: 0, balanced: 0, hero: 0 }).forEach(k => { qb2Pct[k] = 0; });
@@ -1522,10 +1154,6 @@ function applySuperflexOverride(slots, strategy) {
     qb2.pct[strategy] = SUPERFLEX_QB2_PCT;
   }
 
-  // Shrink RB+WR proportionally to cover additionalNeeded. "Proportional,
-  // preserving their relative ratio to each other" means: compute their
-  // combined current total, then scale BOTH down by the same factor so
-  // RB:WR ratio is unchanged, removing exactly additionalNeeded in total.
   const rbWrSlots = result.filter(s => s.pos === 'RB' || s.pos === 'WR');
   const rbWrTotal = rbWrSlots.reduce((a, s) => a + s.pct[strategy], 0);
   if (rbWrTotal > 0 && additionalNeeded > 0) {
@@ -1536,26 +1164,6 @@ function applySuperflexOverride(slots, strategy) {
   return result;
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// DOLLAR CONVERSION + VARIATION (v2 slot engine, part 2)
-// ═══════════════════════════════════════════════════════════════════════
-
-
-// Converts the bench-floor slots' percentage-based leftover into the
-// roll-up pool, expressed as a percentage of ONE TEAM's budget (needed
-// since "$1" only translates to a % once a single team's real dollar
-// budget is known).
-//
-// IMPORTANT: budgetPerTeam is ONE team's auction budget (e.g. $200),
-// NOT numTeams * budget. Every slot price on this page describes what
-// YOUR team should pay for YOUR roster — there is no league-wide
-// pooling step anywhere in this engine, unlike the old per-player
-// engine (which priced an entire league-wide pool of rosterable
-// players, then divided by numTeams to get back to a single team's
-// share — see auction.html's pre-rebuild generatePriceSheet()/
-// myBenchShare for that older convention). This engine skips that
-// detour entirely: percentages apply directly to one team's budget.
 function resolveBenchFloorLeftover(slots, strategy, budgetPerTeam) {
   const benchFloorPctAsDollarShare = BENCH_FLOOR_DOLLARS / budgetPerTeam;
   let totalLeftoverPct = 0;
@@ -1563,18 +1171,10 @@ function resolveBenchFloorLeftover(slots, strategy, budgetPerTeam) {
     if (s.isBenchFloor) {
       const originalPct = s.pct[strategy];
       const flooredPctEquivalent = benchFloorPctAsDollarShare;
-      // Leftover is whatever the table WOULD have allocated minus what
-      // the $1 floor actually represents as a % of one team's budget.
-      // Can be negative in a pathological tiny-budget case (the $1
-      // floor costs MORE than the table's %) — clamped to 0 in that
-      // case, since a negative leftover would mean "take money away
-      // from RB/WR to afford the bench floor," which was never the
-      // intent; the floor is a minimum spend, not a strict
-      // reallocation in that edge case.
       const leftover = Math.max(0, originalPct - flooredPctEquivalent);
       totalLeftoverPct += leftover;
       const newPct = { ...s.pct };
-      newPct[strategy] = flooredPctEquivalent; // slot's own pct becomes just enough to cover its $1 floor
+      newPct[strategy] = flooredPctEquivalent;
       return { ...s, pct: newPct };
     }
     return s;
@@ -1582,25 +1182,6 @@ function resolveBenchFloorLeftover(slots, strategy, budgetPerTeam) {
   return { resolvedSlots: resolved, totalLeftoverPct };
 }
 
-// Full pipeline: baseline -> roster shape -> missing-slot leftover ->
-// bench-floor leftover -> K/DEF-floor leftover -> Superflex override
-// (if applicable) -> all leftover rolled into favored position(s) or,
-// for K/DEF-floor leftover specifically, into RB1/RB2/WR1/WR2
-// proportionally. Returns final resolved slots with pct[strategy]
-// ready for dollar conversion.
-//
-// budgetPerTeam is ONE team's budget (e.g. $200) — see
-// resolveBenchFloorLeftover's comment above for why this engine never
-// multiplies by numTeams anywhere. Order matters: K/DEF-floor is
-// applied AFTER missing-slot and bench-floor leftover have already
-// rolled in (so K/DEF's own leftover calculation reflects the final,
-// already-adjusted RB/WR percentages, not the raw baseline ones), and
-// Superflex is applied LAST of all, after every other leftover pass,
-// for the same reason it was already last before this session's
-// changes — Superflex's RB/WR shrink needs to act on the FINAL
-// post-rollup RB/WR totals, otherwise it could shrink RB/WR below zero
-// in a roster that was already lean on leftover stacking on top of the
-// Superflex shrink.
 function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
   let slots = buildRawSlotsForRoster(strategy, roster);
   slots = markBenchFloorSlots(slots);
@@ -1609,28 +1190,9 @@ function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
   const { resolvedSlots, totalLeftoverPct: benchLeftover } = resolveBenchFloorLeftover(slots, strategy, budgetPerTeam);
   slots = resolvedSlots;
 
-  // Flex slots beyond the first were initialized to 0% with
-  // fundedByRollup:true — fold their "needed" amount into the leftover
-  // pool too, by definition: a flex slot funded entirely by roll-up
-  // means it has no baseline allocation of its own, so it doesn't
-  // ADD to leftover, it just sits at 0% until distributeLeftover...
-  // gives it a share IF flex is ever added to FAVORED_POSITIONS. Since
-  // flex is not currently a favored position for any strategy, extra
-  // flex slots realistically stay near $0 unless a future strategy
-  // adds flex as a favored target — documented here so this isn't a
-  // silent gap if someone wonders why FLEX2 looks underfunded later.
-
   const totalLeftover = missingSlotLeftover + benchLeftover;
   slots = distributeLeftoverToFavoredPositions(slots, strategy, totalLeftover);
 
-  // K/DEF FLOOR PASS (added 2026-06-28, session 2) — applies whenever
-  // this roster actually has K and/or DEF slots (the missing-slot case
-  // above already handled leagues with NO K/DEF at all; this handles
-  // leagues that DO have them, flooring each to $1 and routing the
-  // freed-up money to RB1/RB2/WR1/WR2 proportionally). Placed after
-  // missing-slot/bench-floor leftover has already rolled in, so this
-  // pass's own leftover calculation reflects the truly-final RB/WR
-  // percentages before Superflex (if any) runs next.
   slots = applyKDefFloorAndRedistribute(slots, strategy, budgetPerTeam);
 
   if (isSuperflex) {
@@ -1640,23 +1202,6 @@ function buildFinalSlotTable(strategy, roster, isSuperflex, budgetPerTeam) {
   return slots;
 }
 
-// ── Variation ────────────────────────────────────────────────────────────
-// Applies ±1-3% RELATIVE variation (i.e. a slot at 28% becomes
-// somewhere in [28% * 0.97, 28% * 1.03], not 28%±3 percentage points)
-// to any slot whose percentage exceeds 10%. Slots at or below 10% are
-// left exactly as resolved, per the locked rule. Variation is applied
-// independently per slot (each slot gets its own random roll), which
-// means the grand total will drift slightly off the league's exact
-// budget — dollarsForSlots' remainder-distribution step corrects that
-// drift back to an exact total, same safety net the old per-player
-// engine already relied on.
-//
-// K/DEF-floor and bench-floor slots are NEVER varied (same as before
-// this session's changes for bench; now also true for K/DEF) — both
-// floor types sit at or below the 10% threshold by construction (a
-// $1-equivalent % of any realistic budget is far under 10%), so this
-// function's existing threshold check already excludes them without
-// needing a new explicit isKDefFloor/isBenchFloor check here.
 function applyVariation(slots, strategy, rng = Math.random) {
   const VARIATION_THRESHOLD_PCT = 0.10;
   const MIN_VARIATION = 0.01;
@@ -1665,7 +1210,7 @@ function applyVariation(slots, strategy, rng = Math.random) {
   return slots.map(s => {
     const pct = s.pct[strategy];
     if (pct <= VARIATION_THRESHOLD_PCT) {
-      return { ...s, pct: { ...s.pct } }; // unchanged, still cloned for immutability
+      return { ...s, pct: { ...s.pct } };
     }
     const variationMagnitude = MIN_VARIATION + rng() * (MAX_VARIATION - MIN_VARIATION);
     const direction = rng() < 0.5 ? -1 : 1;
@@ -1676,20 +1221,6 @@ function applyVariation(slots, strategy, rng = Math.random) {
   });
 }
 
-// ── Dollar conversion ────────────────────────────────────────────────────
-// Converts final resolved (and possibly varied) percentages into actual
-// dollar amounts FOR ONE TEAM'S BUDGET (budgetPerTeam — e.g. $200, NOT
-// numTeams * budget; see buildFinalSlotTable's comment above for why
-// this engine never pools across teams). Bench-floor AND K/DEF-floor
-// slots both get a hard $1 regardless of their computed pct (the pct
-// was only ever a bookkeeping placeholder for leftover calculation,
-// never the real price for either floor type). All other slots get
-// round(pct * budgetPerTeam). Remainder is distributed across non-
-// floored slots (largest first) to land on the EXACT per-team budget —
-// same convention as the original per-player engine's remainder-
-// distribution step, just scoped to one team's budget instead of the
-// league-wide pool, and now excluding BOTH floor types from receiving
-// remainder adjustment (previously only bench-floor was excluded).
 function dollarsForSlots(slots, strategy, budgetPerTeam) {
   const priced = slots.map(s => {
     if (s.isBenchFloor) {
@@ -1706,7 +1237,7 @@ function dollarsForSlots(slots, strategy, budgetPerTeam) {
   if (diff === 0) return priced;
 
   const adjustable = priced.filter(s => !s.isBenchFloor && !s.isKDefFloor).sort((a, b) => b.dollars - a.dollars);
-  if (!adjustable.length) return priced; // nothing adjustable (pathological all-floor case) — leave as-is
+  if (!adjustable.length) return priced;
 
   const step = diff > 0 ? 1 : -1;
   let remaining = Math.abs(diff);
@@ -1718,83 +1249,17 @@ function dollarsForSlots(slots, strategy, budgetPerTeam) {
       remaining--;
     }
     i++;
-    if (i > 10000) break; // safety valve, should never trigger
+    if (i > 10000) break;
   }
 
   return priced;
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// PLAYER-TO-SLOT MAPPER (v4 — rewritten 2026-06-28, take 2)
-//
-// JOB: answer "what $ should I show for player X" — powers Step 5's
-// player search. The Target Price Sheet (Step 4) is UNCHANGED by this
-// file — it still shows one flat $ per slot, no player names, exactly
-// as before, driven by whatever strategy the user picked. This file
-// ONLY affects the per-player lookup used by Step 5's search.
-//
-// CRITICAL PRINCIPLE, LOCKED 2026-06-28: a player's real auction market
-// value must NOT depend on which strategy the CURRENT user happens to
-// have selected for their own Step 4 sheet. Draft strategy is a
-// personal, individual choice about how one manager wants to build
-// their roster — it has no bearing on what the other 11 managers in a
-// real auction room will actually pay for a given player. The first
-// attempt at this curve (since reverted) anchored directly to whatever
-// strategy was selected, which produced absurd results: under WR
-// Heavy, an elite RB1 like Jahmyr Gibbs priced at HALF of what the
-// flat per-slot system already had him at, simply because WR Heavy
-// personally deprioritizes RB — even though nothing about the real
-// market changes just because one user picked a different strategy.
-//
-// FIX: player pricing always derives from the BALANCED strategy's
-// percentages, regardless of what the user picked for their own sheet.
-// Balanced represents a neutral, no-strong-lean allocation — the most
-// defensible single fixed stand-in available for "what a real room of
-// many different individual strategies collectively does," without
-// actually simulating 11 other managers individually.
-//
-// NOTE (session 2): the K/DEF flat-$1-floor change above also applies
-// to the 'balanced' column buildPlayerPriceLookup() anchors to here —
-// K and DEF curves stay excluded from CURVE_POSITIONS regardless (see
-// below), so this mapper's K/DEF pricing was already using
-// userPricedSlots' flat per-slot $ directly rather than a curve; that
-// flat $ is now KDEF_FLOOR_DOLLARS ($1) instead of the old ~1%-of-
-// budget amount, which is the intended, correct outcome of this
-// session's change flowing through automatically — no separate edit
-// needed in this mapper itself.
-//
-// CURVE SHAPE: waypoint interpolation (exponential/geometric decay
-// between known points), NOT a single global power-law scale — the
-// power-law approach was tried and abandoned because it conflated
-// PER-RANK dollar targets with POOL totals (multiplying a per-rank
-// target by a rank count, which inflated the intended total by 12x in
-// testing). Waypoints are the real, already-computed Balanced-strategy
-// dollar values at the boundary of each tier: rank 1 (best player, a
-// premium above the first tier's average) -> end of 1st starting slot
-// tier -> end of 2nd starting slot tier (if any) -> end of FLEX tier
-// (flex-eligible positions only) -> end of bench-depth tier -> tapers
-// the rest of the way to the $1 floor (also smoothed per Pat's
-// instruction — no hard cliff at the bottom either).
-// ═══════════════════════════════════════════════════════════════════════
-
 const FLEX_ELIGIBLE_POSITIONS = ['RB', 'WR', 'TE'];
-const CURVE_POSITIONS = ['QB', 'RB', 'WR', 'TE']; // K/DEF deliberately excluded — stay flat
-const RANK1_PREMIUM_MULTIPLIER = 1.3; // rank 1's value = 1.3x the first tier's average, a defensible "best player" premium
-const FLOOR_TAPER_RANKS_MULTIPLIER = 1; // final taper-to-$1 segment spans 1x numTeams more ranks beyond bench-depth
+const CURVE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+const RANK1_PREMIUM_MULTIPLIER = 1.3;
+const FLOOR_TAPER_RANKS_MULTIPLIER = 1;
 
-// Enforces monotonic non-increase across an ordered list of (rank,
-// value) waypoints. Some position/anchor combinations produce a
-// waypoint that's HIGHER than the previous one even under Balanced —
-// e.g. TE's own starting-slot value ($12) can be genuinely lower than
-// the shared FLEX slot's value ($14), since TE is a structurally
-// lower-priority position than the flex spot it feeds into. Without
-// this pass, the curve would have to rise between those two ranks,
-// which makes no sense for a "best to worst" player ranking. Caps any
-// waypoint at the previous waypoint's value rather than letting it
-// exceed it — guarantees a clean decline regardless of which
-// position/anchor combination is involved, not just a fix for the one
-// TE/FLEX case that exposed this.
 function enforceMonotonicWaypoints(waypoints) {
   const result = [waypoints[0]];
   for (let i = 1; i < waypoints.length; i++) {
@@ -1805,10 +1270,6 @@ function enforceMonotonicWaypoints(waypoints) {
   return result;
 }
 
-// Exponential (geometric) interpolation between two (rank, value)
-// waypoints — smoothly declining, no linear "straight line" artifacts,
-// matching how real fantasy player value actually falls off (steep
-// drop near the top, flattening out lower down).
 function interpolateBetweenWaypoints(rank, waypoints) {
   if (!waypoints.length) return 1;
   if (rank <= waypoints[0][0]) return waypoints[0][1];
@@ -1820,19 +1281,13 @@ function interpolateBetweenWaypoints(rank, waypoints) {
     if (rank >= r1 && rank <= r2) {
       if (r2 === r1) return v1;
       const frac = (rank - r1) / (r2 - r1);
-      if (v1 <= 0) return v2; // guard against a zero/negative waypoint breaking the geometric formula
+      if (v1 <= 0) return v2;
       return v1 * Math.pow(v2 / v1, frac);
     }
   }
   return waypoints[waypoints.length - 1][1];
 }
 
-// Builds the ordered list of (rank, dollarValue) waypoints for ONE
-// position, using the BALANCED strategy's real priced slots as the
-// dollar anchors (never the user's currently-selected strategy — see
-// header comment for why). numTeams scales how many ranks each tier
-// spans (one tier-slot's worth of ranks per team, same convention as
-// the original design).
 function buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlots) {
   const startingSlots = balancedPricedSlots
     .filter(s => s.pos === position)
@@ -1843,22 +1298,13 @@ function buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlo
   const waypoints = [];
   let rankCursor = 0;
 
-  // Starting-slot tiers, one waypoint per slot (RB1's end-of-tier rank
-  // and value, then RB2's, etc.) — each tier spans numTeams ranks.
   startingSlots.forEach((slot, i) => {
     rankCursor += numTeams;
     waypoints.push([rankCursor, slot.dollars]);
   });
 
-  // Rank 1's value gets a premium above the FIRST tier's value, added
-  // as the very first waypoint — interpolation between rank 1 and the
-  // first tier's end-rank then tapers DOWN to that tier's real value,
-  // rather than rank 1 just being flat at the tier average like every
-  // other rank in it.
   waypoints.unshift([1, startingSlots[0].dollars * RANK1_PREMIUM_MULTIPLIER]);
 
-  // FLEX-tier waypoint — only for flex-eligible positions, using the
-  // real shared FLEX slot's value. Spans another numTeams ranks.
   if (FLEX_ELIGIBLE_POSITIONS.includes(position)) {
     const flexSlot = balancedPricedSlots.find(s => s.pos === 'FLEX' && s.slotIndex === 1);
     if (flexSlot) {
@@ -1867,9 +1313,6 @@ function buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlo
     }
   }
 
-  // Bench-tier waypoint — average of the NON-floored bench slots (the
-  // $1-floor bench slots are a fixed minimum, not a meaningful price
-  // point to taper toward). Spans another numTeams ranks.
   const nonFlooredBench = balancedPricedSlots.filter(s => s.pos === 'BENCH' && !s.isBenchFloor);
   const benchAvg = nonFlooredBench.length
     ? nonFlooredBench.reduce((a, s) => a + s.dollars, 0) / nonFlooredBench.length
@@ -1877,22 +1320,12 @@ function buildWaypointsForPosition(position, numTeams, roster, balancedPricedSlo
   rankCursor += numTeams;
   waypoints.push([rankCursor, benchAvg]);
 
-  // Final taper segment: smoothly continues from the bench-tier
-  // waypoint down to the $1 floor, rather than a hard cliff — added
-  // per Pat's explicit instruction that even the bottom of the curve
-  // should taper, not cut off sharply.
   rankCursor += numTeams * FLOOR_TAPER_RANKS_MULTIPLIER;
   waypoints.push([rankCursor, 1]);
 
   return enforceMonotonicWaypoints(waypoints);
 }
 
-// Builds curves (one full array of per-rank $ values) for every
-// CURVE_POSITIONS position at once, anchored to the BALANCED strategy's
-// priced slots — NOT whatever strategy the user currently has
-// selected. Callers pass in the user's actual roster shape (slot
-// counts are real and shared across strategies) but the DOLLAR anchors
-// always come from a freshly-computed Balanced-strategy price sheet.
 function buildAllPositionCurves(numTeams, roster, balancedPricedSlots) {
   const curves = {};
   CURVE_POSITIONS.forEach(position => {
@@ -1911,22 +1344,6 @@ function buildAllPositionCurves(numTeams, roster, balancedPricedSlots) {
   return curves;
 }
 
-// Full resolution for ONE player: given their position and ADP rank
-// WITHIN that position, plus the pre-built curves and the user's OWN
-// (strategy-dependent) priced slot table (only used for K/DEF, which
-// stay flat and strategy-aware same as Step 4's sheet), returns the $
-// to show for them.
-//
-// NOTE the asymmetry, which is intentional: K/DEF still read from
-// userPricedSlots (the user's own selected strategy) because they're
-// excluded from curve treatment entirely and were never part of the
-// "shouldn't move with strategy" problem — their flat price already
-// matches Step 4's sheet 1:1, which is correct, desired behavior for
-// them specifically. As of this session, that flat price is
-// KDEF_FLOOR_DOLLARS ($1) for every strategy, so K/DEF now show
-// identically here regardless of which strategy the user picked —
-// which is consistent with the rest of this asymmetry note, just at a
-// fixed value now instead of a strategy-varying one.
 function priceForPlayer(position, positionRank, numTeams, roster, userPricedSlots, curves) {
   if (!CURVE_POSITIONS.includes(position)) {
     const startingSlotCount = roster[position] || 0;
@@ -1954,23 +1371,13 @@ function cheapestBenchFloorPrice(pricedSlots) {
   return 1;
 }
 
-// Convenience: builds a full name -> $ lookup map for an entire ADP
-// player pool in one pass. adpPlayersByPosition: { QB: [{name, adp},
-// ... already sorted by adp ascending], RB: [...], ... } — same shape
-// fetchLiveAdpByPosition() in auction.html already produces.
-//
-// balancedPricedSlots: a SEPARATE price sheet computed with strategy
-// forced to 'balanced', regardless of what the user actually selected
-// — callers (generateTPS() in auction.html) are responsible for
-// computing this alongside their own strategy's sheet. See this file's
-// header comment for why two separate price sheets are needed here.
 function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPricedSlots, balancedPricedSlots) {
   const curves = buildAllPositionCurves(numTeams, roster, balancedPricedSlots);
   const lookup = {};
   Object.keys(adpPlayersByPosition).forEach(position => {
     const players = adpPlayersByPosition[position];
     players.forEach((player, index) => {
-      const positionRank = index + 1; // 1-indexed rank within this position, since the array is already ADP-sorted
+      const positionRank = index + 1;
       const price = priceForPlayer(position, positionRank, numTeams, roster, userPricedSlots, curves);
       lookup[player.name.toLowerCase()] = price;
     });
@@ -1980,29 +1387,57 @@ function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPric
 
 
 // ═══════════════════════════════════════════════════════════
-// PLAYER AUTOCOMPLETE (modified — now looks up real prices from the
-// generated price sheet instead of a generic per-position placeholder.
-// Falls back to Sleeper-only data with no price if the sheet hasn't
-// been generated yet.)
+// PLAYER AUTOCOMPLETE — UNIFIED LIVE-DATA SOURCE — MODIFIED JULY 12
+// 2026 (checklist follow-up to #122/#123's stale-data audit, item
+// #135; Draft Command Center and Tier List already migrated this
+// same session).
+//
+// WHY: this was the last of the three player-facing pages still
+// reading team data from a live source OTHER than the Tank01 cache
+// chat.js/refresh-player-data.js already build daily. loadSleeperPlayers()
+// previously fetched Sleeper's live player list directly, independent
+// of what Sanctum, Draft Command Center, and Tier List all now agree
+// on for the same players' current teams. This is the highest-stakes
+// of the three migrations per Pat's explicit direction — the Target
+// Price Sheet + Live Draft Tracker combination is the platform's core
+// differentiator, and Step 5's autocomplete is what a manager is
+// actively relying on mid-draft, in real time, with real money on the
+// table. Getting a player's current team wrong here is the worst
+// possible place on the site for that class of bug to surface.
+//
+// WHAT CHANGED: loadSleeperPlayers() replaced with loadTank01Players(),
+// which calls the new fetchTank01PlayerList() (shared-player-data.js)
+// instead of fetching Sleeper directly. Same fantasy-relevant-position
+// filtering as before (QB/RB/WR/TE/K — DEF was never included in this
+// search, no change there). Returns the exact same {name, pos, team}
+// shape searchPlayers()/getProjectedValue() already consume, PLUS two
+// new fields (injuryDesignation, injuryDescription) that didn't exist
+// in the old Sleeper-sourced list at all — surfaced as a compact
+// inline badge in the dropdown (see searchPlayers() below) so a
+// manager can see at a glance if a player they're about to log is
+// currently banged up, without leaving the live draft flow. Kept
+// intentionally compact (a short badge, not the full description) —
+// same lesson learned earlier this session on Draft Command Center's
+// injury display: this is a fast-scanning search dropdown during a
+// live draft, not a place for a paragraph of news text.
+//
+// FRESHNESS: this cache refreshes once daily via refresh-player-data.js
+// (@daily schedule) and this page fetches it fresh on every page
+// load — so every new draft session starts with same-day data. No
+// polling/websocket infrastructure added; this matches the freshness
+// model every other page on the site already uses and avoids adding
+// new architecture this session that the rest of the site doesn't
+// share.
 // ═══════════════════════════════════════════════════════════
 var allPlayers = [];
-function loadSleeperPlayers() {
-  fetch('https://api.sleeper.app/v1/players/nfl')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      allPlayers = [];
-      Object.values(data).forEach(function(p){
-        if (!p.full_name) return;
-        if (!['Active','Free Agent','Injured Reserve','PUP','NFI'].includes(p.status)) return;
-        if (p.status === 'Inactive' || p.status === 'Retired') return;
-        if (!['QB','RB','WR','TE','K'].includes(p.position)) return;
-        allPlayers.push({ name: p.full_name, pos: p.position, team: p.team || 'FA' });
-      });
-      allPlayers.sort(function(a, b){ return a.name.localeCompare(b.name); });
+function loadTank01Players() {
+  fetchTank01PlayerList()
+    .then(function(list){
+      allPlayers = list || [];
     })
-    .catch(function(){ console.log('Sleeper API unavailable'); });
+    .catch(function(){ console.log('Tank01 player-data unavailable'); });
 }
-loadSleeperPlayers();
+loadTank01Players();
 
 function searchPlayers(query) {
   var dd = document.getElementById('playerDropdown');
@@ -2016,12 +1451,14 @@ function searchPlayers(query) {
   matches.forEach(function(p){
     var proj = getProjectedValue(p.name, p.pos);
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
+    var injBadge = p.injuryDesignation ? '<span class="dd-inj ' + p.injuryDesignation + '">' + p.injuryDesignation + '</span>' : '';
     var item = document.createElement('div');
     item.className = 'dd-item';
     item.innerHTML =
       '<div style="display:flex;align-items:center;gap:8px">' +
         '<span class="dd-name">' + p.name + '</span>' +
         '<span class="dd-team">' + p.team + '</span>' +
+        injBadge +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:8px">' +
         '<span class="dd-pos" style="' + posStyle + '">' + p.pos + '</span>' +
@@ -2040,14 +1477,6 @@ function searchPlayers(query) {
 }
 
 function getProjectedValue(name, pos) {
-  // Looks up the player-to-slot mapper's pre-computed price (see
-  // buildPlayerPriceLookup() in generateTPS()) — this is what makes a
-  // searched player like "Bijan Robinson" show a realistic, sane $
-  // figure in Step 5 even though the Target Price Sheet itself (Step
-  // 4) no longer shows any player names at all. Falls back to null if
-  // the sheet hasn't been generated yet (lookup is empty) or this
-  // specific player isn't in the live ADP pool the lookup was built
-  // from — same fallback behavior as before.
   var lookup = state.playerPriceLookup;
   if (!lookup || !Object.keys(lookup).length) return null;
   var price = lookup[name.toLowerCase()];
@@ -2065,12 +1494,6 @@ document.addEventListener('click', function(e){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
 function goStep(n) {
-  // PREVIEW MODE GUARD (added): Step 5 is the one part of the tool
-  // intentionally excluded from preview ("sample slice, nothing too
-  // deep" — see PREVIEW MODE block near the gate, above). Checked
-  // first, before any panel/tab state changes, so a blocked attempt
-  // leaves the page exactly where it was rather than partially
-  // navigating and then bouncing back.
   if (n === 5 && typeof isPreviewMode === 'function' && isPreviewMode()) {
     blockStep5Preview();
     return;
@@ -2161,15 +1584,8 @@ function showLeagueWarning() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — GENERATE TARGET PRICE SHEET (rebuilt)
-// Fetches live ADP, builds individually-priced players grouped by
-// position, falls back to a small static seed list if live ADP can't
-// be reached so the sheet still renders something usable.
+// STEP 4 — GENERATE TARGET PRICE SHEET (unchanged from before)
 // ═══════════════════════════════════════════════════════════
-
-// Minimal static fallback — used ONLY if the live ADP fetch fails
-// entirely. Intentionally small; this is a safety net, not a curated
-// dataset like shared-player-data.js's PLAYER_POOL.
 var STATIC_ADP_FALLBACK = {
   QB: [{name:'Lamar Jackson',team:'BAL',adp:1.2},{name:'Josh Allen',team:'BUF',adp:2.1},{name:'Jalen Hurts',team:'PHI',adp:3.8},{name:'Joe Burrow',team:'CIN',adp:7.4},{name:'C.J. Stroud',team:'HOU',adp:10.2},{name:'Patrick Mahomes',team:'KC',adp:14.0},{name:'Jordan Love',team:'GB',adp:19.1},{name:'Brock Purdy',team:'SF',adp:24.0},{name:'Trevor Lawrence',team:'JAX',adp:28.0},{name:'Kirk Cousins',team:'LV',adp:32.0}],
   RB: [{name:'Christian McCaffrey',team:'SF',adp:1.0},{name:'Breece Hall',team:'NYJ',adp:2.9},{name:'Bijan Robinson',team:'ATL',adp:4.2},{name:'Jahmyr Gibbs',team:'DET',adp:6.3},{name:'Jonathan Taylor',team:'IND',adp:8.8},{name:'Saquon Barkley',team:'PHI',adp:11.1},{name:'Josh Jacobs',team:'GB',adp:14.4},{name:'Kyren Williams',team:'LAR',adp:25.6},{name:'Joe Mixon',team:'HOU',adp:28.9},{name:'James Cook',team:'BUF',adp:23.1}],
@@ -2194,7 +1610,6 @@ function generateTPS() {
   updateRoster();
   showLeagueWarning();
 
-  // Render a lightweight loading placeholder while ADP fetches
   document.getElementById('tpsGroups').innerHTML =
     '<div style="text-align:center;padding:40px;color:var(--dim);font-family:\'JetBrains Mono\',monospace;font-size:12px">Pulling live ADP and building your price sheet...</div>';
 
@@ -2206,38 +1621,12 @@ function generateTPS() {
     var isSuperflex = state.leagueFormat === 'superflex';
     var stratKey = state.strategy || 'hero';
 
-    // This page's strategy keys (rb/wr/qb/hero/custom) map to the
-    // engine's keys (rb/wr/qb/hero/balanced) — 'custom' is the only one
-    // that differs. See the STRATEGIES comment above for why these are
-    // deliberately different words for the engine vs. the UI.
     var engineStratKey = stratKey === 'custom' ? 'balanced' : stratKey;
 
-    // ── NEW SLOT-BASED ENGINE (2026-06-28) ──────────────────────────
-    // Builds the per-slot $ table for the Target Price Sheet (no
-    // player names — see the engine's header comment above for the
-    // full rationale), then applies the +/-1-3% variation (only to
-    // slots over 10%) and converts to final dollar amounts for THIS
-    // team's budget specifically (never the league-wide pool).
     var finalSlots = buildFinalSlotTable(engineStratKey, state.roster, isSuperflex, state.budget);
     var variedSlots = applyVariation(finalSlots, engineStratKey, Math.random);
     var pricedSlots = dollarsForSlots(variedSlots, engineStratKey, state.budget);
 
-    // ── PLAYER-TO-SLOT MAPPER, for Step 5's search — REWRITTEN
-    // 2026-06-28 (v4). A real bug was found via live testing: a
-    // player's price was derived from whatever strategy the user
-    // currently had selected, which meant an elite RB like Jahmyr
-    // Gibbs priced at HALF his real value just because the user picked
-    // WR Heavy that session — even though a player's real auction
-    // market value cannot depend on one user's personal draft strategy
-    // (the other 11 managers in a real room are running their own,
-    // unrelated strategies). FIX: player pricing is now ALWAYS anchored
-    // to a separate, freshly-computed BALANCED-strategy sheet — a
-    // neutral, no-strong-lean stand-in for "the room," entirely
-    // independent of whatever stratKey/engineStratKey the user actually
-    // selected above. Note isSuperflex still applies to this sheet too
-    // (Superflex genuinely does change real market value, since it
-    // changes what every team in the league needs at QB — that's not a
-    // personal-strategy effect, it's a true league-format effect).
     var balancedSlots = buildFinalSlotTable('balanced', state.roster, isSuperflex, state.budget);
     var balancedPricedSlots = dollarsForSlots(balancedSlots, 'balanced', state.budget);
     state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots, balancedPricedSlots);
@@ -2251,18 +1640,14 @@ function renderTPS(pricedSlots, stratKey) {
   var groupsEl = document.getElementById('tpsGroups');
   groupsEl.innerHTML = '';
 
-  // SLOT_DISPLAY_ORDER: render order for the position-grouped sections.
-  // FLEX/K/DEF/BENCH aren't in POS_ORDER (that array is for the old
-  // per-player ADP fetch's position keys), so a dedicated order is
-  // defined here matching the baseline table's own row order.
   var SLOT_DISPLAY_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BENCH'];
   var SLOT_POS_LABELS = { QB:'Quarterback', RB:'Running Back', WR:'Wide Receiver', TE:'Tight End', FLEX:'Flex', K:'Kicker', DEF:'Defense', BENCH:'Bench' };
 
-  state.pricedSlots = pricedSlots; // kept on state so updateTpsTotal() can re-read current input values against this
+  state.pricedSlots = pricedSlots;
 
   SLOT_DISPLAY_ORDER.forEach(function(pos){
     var slotsForPos = pricedSlots.filter(function(s){ return s.pos === pos; }).sort(function(a,b){ return a.slotIndex - b.slotIndex; });
-    if (!slotsForPos.length) return; // position doesn't exist in this roster (e.g. no Kicker) — section simply doesn't render
+    if (!slotsForPos.length) return;
 
     var sectionTotal = slotsForPos.reduce(function(a,s){ return a+s.dollars; }, 0);
 
@@ -2308,26 +1693,15 @@ function renderTPS(pricedSlots, stratKey) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — LIVE BUDGET TRACKER (modified — sums all individual player
-// price inputs plus the bench input, instead of the old fixed-slot list)
+// STEP 4 — LIVE BUDGET TRACKER (unchanged)
 // ═══════════════════════════════════════════════════════════
 function updateTpsTotal() {
-  // Total now sums EVERY slot row's current $ value — no star/target
-  // filtering needed anymore (that whole mechanic is gone). The slot
-  // sheet covers your exact roster construction by definition (one
-  // row per actual roster slot, no market-wide player pool to filter
-  // down from), so summing every visible row IS summing your real
-  // plan — unlike the old per-player sheet, which had to filter down
-  // from 150+ priced players to just the ~13 you'd actually roster.
   var inputs = document.querySelectorAll('.tps-slot-price-input');
   var total = 0;
 
   inputs.forEach(function(inp){
     var val = parseInt(inp.value) || 0;
     total += val;
-    // Keep state.pricedSlots in sync with manual edits, so anything
-    // that reads it later (e.g. a future print/export) reflects the
-    // user's actual overrides, not just the engine's original output.
     var pos = inp.dataset.pos;
     var slotIndex = parseInt(inp.dataset.slotIndex, 10);
     var match = state.pricedSlots && state.pricedSlots.find(function(s){ return s.pos === pos && s.slotIndex === slotIndex; });
@@ -2422,17 +1796,6 @@ function updateTrackerStats() {
   var myLeft = state.budget - mySpent;
   var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
 
-  // Inflation (rebuilt — see Session 11 notes). The old formula compared
-  // average price paid against (totalBudget / totalRosterSpots), which
-  // includes near-$0 bench spots in the average and made early picks of
-  // real starters look wildly "inflated" (e.g. +185% after just 3 picks
-  // of legitimate starting-caliber players) even when those picks were
-  // close to or under their projected price. The real question inflation
-  // should answer is "is the room paying more or less than the sheet
-  // projected" — so this now averages each pick's (paid ÷ projected)
-  // ratio instead. Picks with no projection (e.g. a manually-typed name
-  // that didn't match the price sheet) are excluded from the average
-  // rather than treated as 0%, so they don't skew the result.
   var withProjection = log.filter(function(p){ return p.projected && p.projected > 0; });
   var inflation = 0;
   if (withProjection.length) {
