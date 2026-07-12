@@ -18,6 +18,14 @@
 [functions."refresh-player-data"]
   schedule = "@daily"
 
+# AUTOMATED FACT-CHECK SCHEDULE (added)
+# Runs qa-fact-check.js daily at 00:30 UTC — deliberately 30 minutes
+# AFTER refresh-player-data's 00:00 UTC run (above), so the
+# player-data cache it samples from is guaranteed fresh for the day
+# rather than racing it. See qa-fact-check.js for full rationale.
+[functions."qa-fact-check"]
+  schedule = "30 0 * * *"
+
 [[redirects]]
   from = "/landing"
   to = "/"
