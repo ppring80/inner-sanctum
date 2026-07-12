@@ -1,4 +1,3 @@
-
 const Anthropic = require("@anthropic-ai/sdk");
 const { getStore, connectLambda } = require("@netlify/blobs");
 
@@ -246,30 +245,37 @@ async function getLiveNFLContext() {
   }
 
   // ═══════════════════════════════════════
-  // TEMP DIAGNOSTIC — checklist #215 follow-up, DELETE after use.
-  // Grabs one real playerID already surfaced by the depth chart fetch
-  // above and dumps the FULL getNFLPlayerInfo response to Netlify
-  // function logs. Log-only — does not touch contextParts, so it
-  // cannot change what the model sees and cannot break the response
-  // if the call fails. To use: deploy, send one message in Sanctum,
-  // then check Netlify → Functions → chat → logs for the line
-  // "PLAYER INFO DIAGNOSTIC". Report back the field names you see for
-  // draft year / years of experience so the real fetch can be wired
-  // in and this whole block removed.
+  // TEMP DIAGNOSTIC #2 — checklist #215 follow-up, DELETE after use.
+  // Round 1 confirmed getNFLPlayerInfo returns "exp" ("R" for rookie,
+  // presumably a number for veterans) plus a nested "injury" object —
+  // but that's a ONE-CALL-PER-PLAYER endpoint, not viable to call
+  // live on every chat message (~1,700 players in the league).
+  // This checks whether getNFLTeamRoster (one call per TEAM, 32 calls
+  // total) already includes the same "exp" and "injury" fields per
+  // player, since Tank01's own docs describe roster responses as
+  // including "many other player attributes" beyond the bare minimum.
+  // If confirmed, the real fix is a scheduled function that loops all
+  // 32 teams once a day, caches the result in Netlify Blobs (same
+  // pattern as spend logging), and getLiveNFLContext() reads that
+  // cache instead of hitting Tank01 live per chat message — 32 calls/
+  // day instead of live calls per request, and instead of ~1,700
+  // calls if done per-player.
+  // Log-only, does not touch contextParts. To use: deploy, send one
+  // message in Sanctum, check Netlify → Functions → chat → logs for
+  // "TEAM ROSTER DIAGNOSTIC".
   // ═══════════════════════════════════════
   try {
     const depthForDiag = await fetchTank01("getNFLDepthCharts");
-    const firstTeam = depthForDiag?.body?.[0];
-    const firstPos = firstTeam?.depthChart && Object.keys(firstTeam.depthChart)[0];
-    const samplePlayerID = firstPos && firstTeam.depthChart[firstPos]?.[0]?.playerID;
-    if (samplePlayerID) {
-      const info = await fetchTank01("getNFLPlayerInfo", { playerID: samplePlayerID });
-      console.log("PLAYER INFO DIAGNOSTIC (playerID " + samplePlayerID + "):", JSON.stringify(info, null, 2));
+    const firstTeamAbv = depthForDiag?.body?.[0]?.teamAbv;
+    if (firstTeamAbv) {
+      const roster = await fetchTank01("getNFLTeamRoster", { teamAbv: firstTeamAbv });
+      const samplePlayer = roster?.body?.roster?.[0];
+      console.log("TEAM ROSTER DIAGNOSTIC (team " + firstTeamAbv + ", one sample player):", JSON.stringify(samplePlayer, null, 2));
     } else {
-      console.log("PLAYER INFO DIAGNOSTIC: could not find a sample playerID from depth chart");
+      console.log("TEAM ROSTER DIAGNOSTIC: could not find a sample teamAbv from depth chart");
     }
   } catch (e) {
-    console.log("PLAYER INFO DIAGNOSTIC failed:", e.message);
+    console.log("TEAM ROSTER DIAGNOSTIC failed:", e.message);
   }
 
   return contextParts.join("\n\n");
@@ -461,3 +467,4 @@ exports.handler = async (event) => {
     };
   }
 };
+
