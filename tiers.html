@@ -674,34 +674,60 @@ var TIER_BREAKS = {
 };
 var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
 
-// ── LIVE ADP OVERLAY (unchanged) ─────────────────────────────────────────────
-async function fetchLiveAdpMap(scoring) {
+// ── LIVE ADP — POSITION-GROUPED FETCH — REWRITTEN JULY 12 2026 (checklist
+// follow-up, same evening as #135/#136's unified live-data-source work)
+//
+// REAL BUG FOUND: Pat noticed Omarion Hampton and Cam Skattebo (both real,
+// rostered 2025-draft-class RBs) were missing from the Tier List entirely,
+// despite showing up correctly on Draft Command Center. Root cause was
+// TWO stacked problems, not one:
+//
+// (1) This function (formerly fetchLiveAdpMap) only ever built a flat
+//     name->adp lookup and threw away every player's position/team from
+//     the live feed. generateTiers() then used that lookup ONLY to
+//     overwrite the .adp field on players ALREADY present in the static
+//     PLAYER_POOL fallback list (applyLiveAdp, removed below) — it could
+//     never ADD a player who wasn't already hand-typed into PLAYER_POOL.
+//     Any player missing from that static list was permanently invisible
+//     on this page, no matter how live or accurate the real ADP feed was.
+//     Draft Command Center never had this problem because it builds its
+//     ENTIRE player list directly from the live feed — the static pool
+//     there is a true last-resort fallback, not the ceiling of what can
+//     ever render.
+//
+// (2) This function's fetch also didn't request enough depth — no
+//     count/teams/year params at all, unlike Draft Command Center's
+//     identical live-ADP call (adp.js?...&teams=12&year=2026&count=300).
+//     Whatever smaller default the proxy falls back to without those
+//     params likely wasn't deep enough to include moderate-ADP rookies
+//     even if problem (1) were fixed alone.
+//
+// FIX: this function now returns a POSITION-GROUPED object —
+// { QB:[{name,team,adp}], RB:[...], ... } — built directly from the live
+// feed, same shape and same explicit count=300/teams=12/year=2026 params
+// Draft Command Center already uses successfully. generateTiers() below
+// now builds each position's pool FROM this live data first (matching
+// Draft Command Center's own approach), falling back to the static
+// PLAYER_POOL only if the live fetch fails ENTIRELY (network error, bad
+// response) — not merely "a specific player happens to be missing from
+// the static list," which was the actual bug.
+async function fetchLiveAdpByPosition(scoring) {
   try {
     var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
-    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam);
+    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam + '&teams=12&year=2026&count=300');
     var data = await res.json();
-    if (!data.players || !Array.isArray(data.players)) return null;
-    var map = {};
+    if (data.status === 'Error' || !data.players || !Array.isArray(data.players)) return null;
+    var byPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
     data.players.forEach(function (p) {
-      if (!p.name) return;
-      map[normalizePlayerName(p.name)] = p.adp;
+      if (!p.name || !p.position) return;
+      var pos = p.position === 'PK' ? 'K' : p.position; // same PK->K normalization every other live-ADP page already uses
+      if (!byPos[pos]) return;
+      byPos[pos].push({ name: p.name, team: p.team || 'FA', adp: parseFloat(p.adp) || 999 });
     });
-    return map;
+    return byPos;
   } catch (e) {
     return null;
   }
-}
-
-function applyLiveAdp(players, adpMap) {
-  if (!adpMap) return players;
-  return players.map(function (p) {
-    var liveAdp = adpMap[normalizePlayerName(p.name)];
-    if (liveAdp === undefined || liveAdp === null) return p;
-    var copy = {};
-    for (var k in p) copy[k] = p[k];
-    copy.adp = liveAdp;
-    return copy;
-  });
 }
 
 function updateAdpStatusBar(usingFallback) {
@@ -785,27 +811,24 @@ function markTargetTiers(stratData, pos) {
 
 // ═══════════════════════════════════════════════════════════════════════
 // GENERATE TIERS — UNIFIED LIVE-DATA SOURCE — MODIFIED JULY 12 2026
-// (checklist follow-up to #122/#123's stale-data audit, item #135)
+// (checklist #135/#136), THEN REBUILT SAME EVENING to fix the
+// missing-rookie bug (Omarion Hampton, Cam Skattebo, etc. — see
+// fetchLiveAdpByPosition's header comment above for full root cause).
 //
-// WHY: this page previously called fetchSleeperTeamMap() to correct
-// team assignments against Sleeper's live roster data — an independent
-// live provider from the Tank01 cache Sanctum (chat.js) and Draft
-// Command Center now both read. Swapped to fetchTank01PlayerMap() so
-// Tier List agrees with the rest of the site on current team
-// assignment whenever live data is reachable, closing the same
-// structural gap Draft Command Center's migration closed earlier
-// tonight. See shared-player-data.js's file-header comment for the
-// full rationale.
+// POOL CONSTRUCTION, real fix: each position's pool now comes from the
+// LIVE ADP feed FIRST (liveAdpByPos[pos], built above) — the same real
+// player universe Draft Command Center already renders from — falling
+// back to the static PLAYER_POOL only when the live fetch fails
+// entirely. This replaces the old "always start from the static list,
+// merely overlay live .adp onto matching names" approach, which is what
+// made this page permanently blind to any player not already hand-typed
+// into PLAYER_POOL, regardless of how current the live feed was.
 //
-// SCOPE, DELIBERATELY NARROW: this page has NO injury display
-// anywhere — the tier cards only ever show name/team/ADP — so unlike
-// Draft Command Center's migration, there is no injury-side change
-// needed here at all. This is a pure team-correction swap, nothing
-// else about this function's logic changes.
-//
-// applyLiveTeamsFromTank01() is a drop-in for applyLiveTeams() (same
-// return contract: new array, no mutation, unmatched players keep
-// their existing team) — see shared-player-data.js for both.
+// TEAM CORRECTION unchanged from the #135/#136 work earlier tonight:
+// fetchTank01PlayerMap() + applyLiveTeamsFromTank01() still run on top
+// of whichever pool (live-built or fallback) was selected above, so team
+// assignment stays correct either way — this rebuild only changes WHICH
+// PLAYERS exist in the pool, not how their team gets corrected.
 // ═══════════════════════════════════════════════════════════════════════
 function generateTiers() {
   var scoring = document.getElementById('settingScoring').value;
@@ -829,21 +852,31 @@ function generateTiers() {
   }, 700);
 
   var tank01MapPromise = fetchTank01PlayerMap();
-  var adpMapPromise = fetchLiveAdpMap(scoring);
+  var liveAdpByPosPromise = fetchLiveAdpByPosition(scoring);
   var minDelayPromise = new Promise(function(resolve){ setTimeout(resolve, 2400); });
 
-  Promise.all([tank01MapPromise, adpMapPromise, minDelayPromise]).then(function(results){
+  Promise.all([tank01MapPromise, liveAdpByPosPromise, minDelayPromise]).then(function(results){
     var tank01Map = results[0];
-    var liveAdpMap = results[1];
+    var liveAdpByPos = results[1];
     clearInterval(msgInt);
 
-    updateAdpStatusBar(!liveAdpMap);
+    var usingFallback = !liveAdpByPos;
+    updateAdpStatusBar(usingFallback);
 
     tiers = {};
     POS_LIST.forEach(function(pos){
-      var pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
+      var pool;
+      if (liveAdpByPos && liveAdpByPos[pos] && liveAdpByPos[pos].length) {
+        // Real player universe direct from the live feed — includes any
+        // rookie/breakout player the ADP proxy knows about, not just
+        // whoever happened to be hand-typed into PLAYER_POOL.
+        pool = JSON.parse(JSON.stringify(liveAdpByPos[pos]));
+      } else {
+        // Live ADP fetch failed ENTIRELY (network error, bad response) —
+        // genuine last-resort fallback, unchanged from before.
+        pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
+      }
       if (pos !== 'DEF') pool = applyLiveTeamsFromTank01(pool, tank01Map);
-      pool = applyLiveAdp(pool, liveAdpMap);
 
       if (scoring === 'ppr') {
         pool.forEach(function(p){
