@@ -222,40 +222,58 @@ exports.handler = async (event) => {
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const results = [];
 
-  for (let i = 0; i < samples.length; i++) {
-    const { category, player } = samples[i];
-    const persona = PERSONA_NAMES[i % PERSONA_NAMES.length];
+  // PARALLELIZED — first live run of this function measured 42.9s
+  // with a sequential for-loop (8 samples x ~5s each: one chat.js
+  // call + one judge call per sample). That's well past the 30s hard
+  // limit scheduled functions have (see refresh-player-data.js's own
+  // comment on this same constraint) — it happened to succeed when
+  // triggered manually via "Run now" in this test, but there's no
+  // guarantee a real scheduled invocation gets the same leniency, and
+  // this was the exact mistake refresh-player-data.js was deliberately
+  // written to avoid. Fixed the same way: Promise.allSettled runs
+  // every sample's full pipeline (chat call + judge call) concurrently
+  // instead of one at a time — network-bound work, not CPU-bound, so
+  // wall time should now track the slowest single sample rather than
+  // the sum of all of them.
+  async function runSample(sample, persona) {
+    const { category, player } = sample;
     const question = buildQuestion(category, player);
     const groundTruth = groundTruthText(player);
-
     try {
       const responseText = await callChatEndpoint(persona, question);
       const verdict = await judgeResponse(client, groundTruth, persona, question, responseText);
-      results.push({
-        playerID: player.playerID,
-        name: player.longName,
-        category,
-        persona,
-        question,
-        groundTruth,
-        response: responseText,
-        verdict
-      });
+      return {
+        playerID: player.playerID, name: player.longName, category, persona,
+        question, groundTruth, response: responseText, verdict
+      };
     } catch (e) {
-      results.push({
-        playerID: player.playerID,
-        name: player.longName,
-        category,
-        persona,
-        question,
-        groundTruth,
-        response: null,
+      return {
+        playerID: player.playerID, name: player.longName, category, persona,
+        question, groundTruth, response: null,
         verdict: { pass: null, reasoning: `Test run failed: ${e.message}`, runError: true }
-      });
+      };
     }
   }
+
+  const settled = await Promise.allSettled(
+    samples.map((sample, i) => runSample(sample, PERSONA_NAMES[i % PERSONA_NAMES.length]))
+  );
+  // Every branch inside runSample() already catches its own errors and
+  // returns a normal result object, so a rejection here would mean
+  // something outside that (unexpected) — still handle it defensively
+  // rather than letting one bad promise drop a whole sample silently.
+  const results = settled.map((s, i) => {
+    if (s.status === "fulfilled") return s.value;
+    const { category, player } = samples[i];
+    return {
+      playerID: player.playerID, name: player.longName, category,
+      persona: PERSONA_NAMES[i % PERSONA_NAMES.length],
+      question: buildQuestion(category, player), groundTruth: groundTruthText(player),
+      response: null,
+      verdict: { pass: null, reasoning: `Unexpected rejection: ${s.reason?.message}`, runError: true }
+    };
+  });
 
   const passCount = results.filter(r => r.verdict.pass === true).length;
   const failCount = results.filter(r => r.verdict.pass === false).length;
