@@ -907,20 +907,46 @@ var STRATEGIES = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// LIVE ADP FETCH (unchanged from before)
+// LIVE ADP FETCH — FIXED JULY 12 2026 (same-evening follow-up to the
+// Tier List missing-rookie fix — see that page's fetchLiveAdpByPosition
+// header comment for the full root-cause writeup, which applies
+// identically here)
+//
+// TWO REAL BUGS FOUND AND FIXED, same pattern as Tier List's:
+// (1) This fetch had no count/teams/year params, unlike Draft Command
+//     Center's identical-purpose call — likely pulling a much shallower
+//     response from the proxy than intended, silently truncating the
+//     player universe the pricing engine's curves (buildAllPositionCurves
+//     below) get built from. Added the same explicit
+//     teams=12&year=2026&count=300 params Draft Command Center already
+//     uses successfully.
+// (2) SEPARATE bug, unique to this function: `byPos[p.position]` was
+//     checked directly with no PK->K normalization — every other
+//     live-ADP consumer on the site (Draft Command Center, Tier List)
+//     explicitly converts Tank01's "PK" position code to "K" before
+//     using it. Without that conversion, every kicker in the live feed
+//     was silently dropped here (byPos has a "K" key, never a "PK" key,
+//     so p.position==='PK' always failed the byPos[p.position] truthy
+//     check and those players were skipped entirely) — meaning Auction's
+//     kicker pricing has likely ALWAYS been built from the small static
+//     STATIC_ADP_FALLBACK.K list further down this file, never the live
+//     feed, regardless of whether live ADP was reachable. Fixed with the
+//     same normalization line used elsewhere.
 // ═══════════════════════════════════════════════════════════
 var liveAdpByPos = null;
 
 async function fetchLiveAdpByPosition(scoring) {
   try {
     var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
-    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam);
+    var res = await fetch('/.netlify/functions/adp?scoring=' + scoringParam + '&teams=12&year=2026&count=300');
     var data = await res.json();
-    if (!data.players || !Array.isArray(data.players)) return null;
+    if (data.status === 'Error' || !data.players || !Array.isArray(data.players)) return null;
     var byPos = {QB:[], RB:[], WR:[], TE:[], K:[], DEF:[]};
     data.players.forEach(function(p){
-      if (!p.name || !p.position || !byPos[p.position]) return;
-      byPos[p.position].push({ name: p.name, team: p.team || null, adp: p.adp });
+      if (!p.name || !p.position) return;
+      var pos = p.position === 'PK' ? 'K' : p.position; // PK->K normalization — was missing entirely before this fix
+      if (!byPos[pos]) return;
+      byPos[pos].push({ name: p.name, team: p.team || 'FA', adp: parseFloat(p.adp) || 999 });
     });
     Object.keys(byPos).forEach(function(pos){
       byPos[pos].sort(function(a,b){ return a.adp - b.adp; });
