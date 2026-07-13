@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,6 +105,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .tool-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 10px;border-radius:20px;letter-spacing:1px;font-weight:600}
 .tool-badge.free{background:#e8f5e9;color:var(--green);border:1px solid #a5d6a7}
 .tool-badge.acolyte{background:var(--gold-pale);color:var(--gold);border:1px solid var(--gold-lt)}
+.tool-badge.preview{background:#eceae6;color:var(--text3);border:1px dashed var(--border2)}
+.tool-card.preview-card{opacity:0.92}
 .tool-link{display:inline-flex;align-items:center;gap:6px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-top:16px;text-decoration:none}
 .tool-link:hover{color:var(--gold-lt)}
 
@@ -396,6 +397,19 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
         </div>
         <span class="tool-link">View Weekly Rankings →</span>
       </a>
+      <a href="/power-rankings" class="tool-card preview-card">
+        <span class="tool-icon">📊</span>
+        <div class="tool-name">League Power Rankings</div>
+        <span class="tool-badge preview">Coming Soon — Preview</span>
+        <p class="tool-desc">Connect your real league and get weekly power rankings and matchup previews, voiced by the Oracle and the Trash Lord — built around your actual teams, records, and trajectory, not generic projections.</p>
+        <div class="tool-features">
+          <div class="tool-feature">Weighted power score — record, scoring, and recent form</div>
+          <div class="tool-feature">Trash Lord matchup roasts, built for sharing</div>
+          <div class="tool-feature">Multi-platform — Yahoo, Sleeper, ESPN</div>
+          <div class="tool-feature">Preview live now with sample league data</div>
+        </div>
+        <span class="tool-link">See the Preview →</span>
+      </a>
     </div>
   </div>
 </section>
@@ -491,6 +505,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
     <a href="/tiers" class="footer-link">Tier List</a>
     <a href="/survivor" class="footer-link">Survivor Pool</a>
     <a href="/weekly" class="footer-link">Weekly Rankings</a>
+    <a href="/power-rankings" class="footer-link">Power Rankings (Preview)</a>
     <a href="#story" class="footer-link">Our Story</a>
     <a href="#feedback" class="footer-link">Contact</a>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" rel="noopener" class="footer-link">Patreon</a>
@@ -500,3 +515,4 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 
 </body>
 </html>
+
