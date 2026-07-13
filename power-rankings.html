@@ -183,8 +183,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <span class="lock-badge">🔒 Acolyte Feature</span>
     <a href="/" class="nav-link">🏠 Home</a>
     <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/compare" class="nav-link">🆚 Compare</a>
     <a href="/auction" class="nav-link">⚔️ Auction</a>
     <a href="/tiers" class="nav-link">🏆 Tier List</a>
+    <a href="/weekly" class="nav-link">📅 Weekly Rankings</a>
+    <a href="/survivor" class="nav-link">☠️ Survivor</a>
     <a href="/sanctum" class="nav-link">← Sanctum</a>
   </div>
 </div>
@@ -360,20 +363,6 @@ function computePowerRankings(league) {
 // for this lookup logic, not a rewrite of how commentary is selected
 // or displayed.
 // ═══════════════════════════════════════════════════════════
-// FIXED 2026-06-28: original rank<=3 branch caught ranks 2 AND 3 with the
-// exact same templated line (only the team name differed), so consecutive
-// teams in the top tier read as identical commentary. Caught via live
-// end-to-end testing in production (rank #2 and #3 both showed "is solidly
-// good, not gonna lie...") -- not caught by eyeballing the code, since the
-// bug only becomes visible once two real teams actually land in that branch
-// side by side. Fix: form-trend (formDelta) is now checked BEFORE the
-// generic rank-tier fallback for every rank, not just outside top-3, so a
-// team's trajectory (heating up / cooling off) gets first say in its
-// commentary regardless of rank -- this naturally differentiates teams that
-// share a rank tier but have different trends (exactly the #2 vs #3 case
-// here: Enforcers trending up, Throwers steady). Rank-only fallback text is
-// also now split into rank===2 / rank===3 specifically (not one shared
-// <=3 branch) so even two flat-trend teams in the top tier won't repeat.
 function oracleCommentary(team, rank, allTeams) {
   if (rank === 1) return `${team.name} sits atop the standings, and the numbers agree with the eye test — a record this strong, built on scoring this far above the field, is no mirage.`;
   if (team.formDelta > 8) return `${team.name} stirs. Their recent weeks outpace their season's average — a team finding its true form just as it matters most, and currently ranked #${rank}.`;
@@ -381,41 +370,12 @@ function oracleCommentary(team, rank, allTeams) {
   if (rank === 2) return `${team.name} stands second, a step behind the leader but well clear of the pack below. The gap is real, but not insurmountable.`;
   if (rank === 3) return `${team.name} holds the third seat with quiet consistency. Theirs is not the loudest record, but it is a dependable one.`;
   if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. ${team.wins}-${team.losses} is unkind, and I find little in the numbers to suggest an imminent turn.`;
-  // FIXED 2026-06-28 (third pass): the second fix technically produced
-  // distinct strings for every middle-tier team, but they were still
-  // the same template with numbers swapped in — felt repetitive even
-  // though no two were byte-identical. This pass adds a THIRD framing
-  // dimension (mild form direction, using a lower threshold than the
-  // +/-8 "real trend" branches above) so middle-tier teams split into
-  // more genuinely different sentences rather than one mold with
-  // different numbers plugged in.
   if (team.formDelta > 2) return `${team.name} sits at #${rank}, ${team.wins}-${team.losses} on the season, averaging ${team.last3Avg.toFixed(0)} points over their last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Nothing dramatic yet, but I sense the early stirrings of momentum.`;
   if (team.formDelta < -2) return `${team.name} holds #${rank} for now at ${team.wins}-${team.losses}, though their last three weeks have averaged ${team.last3Avg.toFixed(0)} against a season mark of ${team.seasonAvg.toFixed(0)}. The foundation is steady, but I would not call their recent play inspired.`;
   const aboveOrBelowAvg = team.vsLeagueAvg >= 0 ? 'a touch above' : 'a touch below';
   return `${team.name} sits at #${rank}, a ${team.wins}-${team.losses} record with scoring ${aboveOrBelowAvg} the league average. Neither blessed nor cursed — this is a team still writing its story.`;
 }
 
-// UPGRADED 2026-06-28: Trash Lord's lines rewritten longer and saucier
-// per Pat's explicit direction — these are meant to work as standalone,
-// shareable social-media quotes (e.g. an Instagram screenshot), not
-// just supporting commentary next to two other personas. IMPORTANT:
-// any such social content must come from THIS mock demo league only,
-// per Pat's explicit instruction — never a real user's actual team
-// name or league data. Each branch still works real per-team numbers
-// into the line (not just the team name swapped into a fixed
-// template) — same discipline as the earlier duplicate-commentary fix
-// in this file, just with more room to work with now.
-// EXTENDED 2026-06-29: Pat's explicit morning request — power rankings
-// and matchups get noticeably MORE roast detail than Sanctum's capped
-// 2-sentence/40-word Trash Lord (that cap is a deliberate, separate
-// product decision for the live chat experience — "drive-by insult,
-// not a monologue" — and stays untouched). This page's Trash Lord is
-// built for screenshot/social-share content from the start, so a
-// longer, more detailed paragraph is the correct shape here, not a
-// violation of the Sanctum discipline. Each branch below adds a SECOND
-// beat of real, stat-grounded detail on top of last night's line,
-// rather than just padding with filler — same "work the actual numbers
-// in" rule as everywhere else in this file.
 function trashCommentary(team, rank, allTeams) {
   if (rank === 1) return `${team.name} sits at ${team.wins}-${team.losses} averaging ${team.seasonAvg.toFixed(0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense. The next closest team is putting up ${allTeams[1] ? allTeams[1].seasonAvg.toFixed(0) : '—'} a week — not a typo, just a different tax bracket of football.`;
   if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${team.last3Avg.toFixed(0)} points a game the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent. Whoever drafted them is currently insufferable in the league chat, and honestly? Earned it.`;
@@ -435,8 +395,6 @@ function trashCommentary(team, rank, allTeams) {
     return `${team.name} sitting at #${rank} at ${team.wins}-${team.losses}, but check this: ${team.last3Avg.toFixed(0)} points the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral. ${climbLine}`;
   }
   if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${team.wins}-${team.losses}, but the last three weeks have only averaged ${team.last3Avg.toFixed(0)} against a ${team.seasonAvg.toFixed(0)} season mark. The record says fine. The trend says start sweating. Whatever got them here isn't showing up anymore, and "fine for now" is exactly how a season quietly falls apart.`;
-  // Same fix as oracleCommentary's fallback above — now stat-driven
-  // per team instead of one shared "definition of fine" line.
   const scoringTake = team.vsLeagueAvg >= 0 ? `scoring ${team.vsLeagueAvg.toFixed(0)} points above the league average, which is something at least` : `scoring ${Math.abs(team.vsLeagueAvg).toFixed(0)} points BELOW the league average, which is not the flex they think it is`;
   return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture — present every week, never the topic of conversation, perfectly load-bearing and completely unmemorable.`;
 }
@@ -452,46 +410,12 @@ function getCommentary(persona, team, rank, allTeams) {
   return oracleCommentary(team, rank, allTeams);
 }
 
-// ═══════════════════════════════════════════════════════════
-// MATCHUP PREVIEWS — each gets all three persona takes, all rendered
-// at once (unlike rankings, which switch based on the selected
-// persona pill) since a matchup preview benefits from hearing every
-// voice on the same game, the way the existing Target Price Sheet
-// shows both Oracle AND Trash Lord boxes simultaneously.
-// ═══════════════════════════════════════════════════════════
 function oracleMatchup(teamA, teamB) {
   const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
   const underdog = favorite === teamA ? teamB : teamA;
   return `The numbers favor ${favorite.name}, though ${underdog.name} has shown they do not yield easily. I would not call this settled until the final whistle.`;
 }
-// UPGRADED 2026-06-28: longer, saucier, shareable-quote quality, per
-// Pat's explicit direction that this section's Trash Lord content is
-// social-media material — same mock-league-only rule as the rankings
-// section above. Works real numbers (powerScore gap, season averages)
-// into the line so two different matchups don't read as the same
-// template with names swapped, the same discipline used everywhere
-// else Trash Lord's commentary was touched tonight.
-// EXTENDED 2026-06-29: same morning request as trashCommentary above —
-// matchup commentary gets a second beat of detail, not just a longer
-// single sentence. Each branch still derives its extra material from
-// real numbers (rank gap, point totals) rather than generic filler.
-// FIXED 2026-06-29: the "blowout" bucket (gap >= 0.2) was ONE fixed
-// template with no internal variation at all -- caught live when two
-// real mock matchups (Gridiron/Pigskin and Thunderbolt/Fumble) both
-// landed in this bucket and rendered as near-identical paragraphs,
-// just with names/numbers swapped. Same root issue as the rankings
-// commentary duplicate bug fixed yesterday, but this is a DIFFERENT
-// function (trashMatchup, not trashCommentary) that wasn't covered by
-// yesterday's verification -- a real gap in that testing pass, not a
-// coincidence of the mock data. Fix: each bucket now has 3 distinct
-// phrasings, selected by a deterministic signal already present in
-// the matchup data itself (rankGap mod 3) rather than Math.random() --
-// deterministic means the same matchup always reads the same way on
-// every page load/persona-switch, which avoids an inconsistent feel,
-// while still spreading multiple same-bucket matchups across
-// different actual sentences. All three buckets still work real
-// per-matchup numbers into whichever phrasing is selected, same
-// discipline as every other fix in this file.
+
 function trashMatchup(teamA, teamB) {
   const favorite = teamA.powerScore > teamB.powerScore ? teamA : teamB;
   const underdog = favorite === teamA ? teamB : teamA;
@@ -556,34 +480,6 @@ function selectPersona(p) {
   renderRankings();
 }
 
-// ═══════════════════════════════════════════════════════════
-// VOICE PLAYBACK — reuses tts.js, the SAME Netlify Function and
-// SAME ElevenLabs voice IDs already proven working in production on
-// sanctum.html. No new backend code needed: that function already
-// maps persona -> voice ID and returns MP3 audio for any { text,
-// persona } payload, which is exactly this page's shape too.
-//
-// Mirrors sanctum.html's speak() implementation pattern exactly
-// (XMLHttpRequest with responseType:'arraybuffer', not fetch+blob)
-// since that's the proven-working approach for this function's
-// base64-encoded binary response — not reinventing a new pattern.
-//
-// DESIGN, LOCKED 2026-06-28 (after walking back an initial auto-play
-// idea): no page-wide or persona-wide auto-play. Each team card gets
-// its own small play button; clicking it speaks ONLY that team's
-// current commentary, in whichever persona is currently selected.
-// Only one thing plays at a time — starting a new one stops whatever
-// was already playing — and switching personas (which changes the
-// underlying text) also stops anything mid-playback, since it would
-// otherwise be reading text that's about to disappear.
-//
-// SESSION CACHING: keyed by `persona:teamName`, holding the already-
-// fetched audio Blob URL. Replaying the same team+persona combo this
-// session reuses the cached audio instead of re-calling ElevenLabs —
-// purely in-memory, resets on page reload, adds no real complexity
-// (one object, checked before the fetch) while meaningfully reducing
-// repeat-click cost.
-// ═══════════════════════════════════════════════════════════
 var currentAudio = null;
 var currentPlayingButton = null;
 var audioCache = {}; // "persona:teamName" -> Blob URL
@@ -603,8 +499,6 @@ function stopCurrentAudio() {
 function playTeamCommentary(team, persona, buttonEl, textOverride) {
   var cacheKey = persona + ':' + team.name;
 
-  // If this exact button is already playing, treat a second click as
-  // stop, not restart.
   if (currentPlayingButton === buttonEl && currentAudio) {
     stopCurrentAudio();
     return;
@@ -613,12 +507,6 @@ function playTeamCommentary(team, persona, buttonEl, textOverride) {
   stopCurrentAudio(); // only one thing plays at a time, ever
   currentPlayingButton = buttonEl;
 
-  // textOverride lets a caller supply already-computed text directly
-  // (added for the Matchup Previews section, where commentary is
-  // about a PAIR of teams, not one team with a rank — getCommentary's
-  // (persona, team, rank, allTeams) signature doesn't fit that shape).
-  // Rankings-section calls omit this and fall through to the original
-  // per-team lookup, unchanged.
   var text = textOverride || getCommentary(persona, team, team.rank, state.rankings);
 
   if (audioCache[cacheKey]) {
@@ -657,9 +545,6 @@ function playTeamCommentary(team, persona, buttonEl, textOverride) {
     if (currentPlayingButton === buttonEl) currentPlayingButton = null;
   };
 
-  // persona keys here (oracle/trash/analyst) already match tts.js's
-  // VOICE_IDS keys exactly — same persona vocabulary as sanctum.html,
-  // no mapping/translation layer needed.
   xhr.send(JSON.stringify({ text: text, persona: persona }));
 }
 
@@ -690,14 +575,6 @@ function playFromUrl(url, buttonEl) {
 function renderRankings() {
   const list = document.getElementById('rankList');
   list.innerHTML = '';
-  // LOCKED 2026-06-28: voice playback in this section is Trash Lord
-  // ONLY, not Oracle — per Pat's explicit decision to start narrow
-  // ("let's start with 1 and see how it shakes out") rather than give
-  // every persona a voice button immediately. Oracle's tab still
-  // renders text-only commentary with no button at all, matching the
-  // same hero/sidekick asymmetry built into the Matchup Previews
-  // section below, so the two sections feel consistent with each
-  // other rather than following two different rules.
   const showVoiceButton = state.persona === 'trash';
   state.rankings.forEach(team => {
     const trendClass = team.formDelta > 4 ? 'up' : team.formDelta < -4 ? 'down' : 'flat';
@@ -721,11 +598,6 @@ function renderRankings() {
         (showVoiceButton ? '<button class="voice-btn-card" title="Hear the Trash Lord roast this">🔊</button>' : '') +
       '</div>';
     if (showVoiceButton) {
-      // Wired via addEventListener (not inline onclick) so the click
-      // handler can close over this specific `team` object and the
-      // CURRENT state.persona at click-time, rather than re-parsing
-      // team name back out of the DOM — simpler and avoids any
-      // escaping issues with team names containing quotes/apostrophes.
       const voiceBtn = card.querySelector('.voice-btn-card');
       voiceBtn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -755,31 +627,15 @@ function renderMatchups() {
         '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + teamB.wins + '-' + teamB.losses + '</div></div>' +
       '</div>' +
       '<hr class="matchup-divider">' +
-      // TRASH LORD — hero block, 70% of the visual weight, voiced.
-      // LOCKED 2026-06-28: this is the section's main event, per Pat's
-      // explicit direction — bigger box, bigger text, real-stat-driven
-      // saucy commentary, and a voice button reusing the same proven
-      // tts.js/playTeamCommentary pattern from the rankings section.
       '<div class="trash-box-hero">' +
         '<div class="trash-box-hero-label"><span>🔥 The Trash Lord</span></div>' +
         '<div class="trash-box-hero-text">' + trashText + '</div>' +
       '</div>' +
-      // ORACLE — sidekick block, ~30%, text-only, deliberately quiet
-      // (no border accent, smaller text) so it reads as a secondary
-      // counterpoint rather than competing with the hero block above.
-      // Analyst is REMOVED from this section entirely per Pat's
-      // explicit decision — not present, not hidden, just gone.
       '<div class="oracle-box-sidekick">' +
         '<div class="oracle-box-sidekick-label">🔮 The Oracle</div>' +
         '<div class="oracle-box-sidekick-text">' + oracleText + '</div>' +
       '</div>';
 
-    // Voice button is created separately (not via innerHTML string
-    // concatenation) and appended into the hero label row, so its
-    // click handler can close over teamA/teamB/trashText directly —
-    // same reasoning as the rankings section's voice button: avoids
-    // re-parsing anything back out of the DOM, and avoids any HTML-
-    // escaping concerns from team names landing inside an attribute.
     const heroLabel = card.querySelector('.trash-box-hero-label');
     const voiceBtn = document.createElement('button');
     voiceBtn.className = 'voice-btn-card';
@@ -787,12 +643,6 @@ function renderMatchups() {
     voiceBtn.textContent = '🔊';
     voiceBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      // Matchup commentary isn't per-TEAM the way rankings commentary
-      // is, so it doesn't fit playTeamCommentary's (team, persona)
-      // signature directly — built as a lightweight synthetic "team"
-      // object instead. Cache key uses both team names so two
-      // different matchups never collide even if their generated
-      // text happened to match.
       playTeamCommentary({ name: teamA.name + '-vs-' + teamB.name }, 'trash', voiceBtn, trashText);
     });
     heroLabel.appendChild(voiceBtn);
