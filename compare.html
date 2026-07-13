@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Head-to-Head Compare — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ef;--bg2:#e8e7e4;--surface:#ffffff;--border:#d4d2ce;--border2:#b8b5b0;
+  --gold:#b8921a;--amber:#c8780a;--glow:#f5c842;--ink:#1c1c1a;--muted:#4a4a46;
+  --dim:#7a7a76;--green:#2e7d32;--red:#8a2020;--blue:#1565c0;--r:6px;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+
+.adp-status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 24px;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+.adp-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.adp-dot.live{background:var(--green);animation:adppulse 2s infinite}
+.adp-dot.loading{background:var(--amber);animation:adppulse 0.8s infinite}
+.adp-dot.error{background:var(--red)}
+@keyframes adppulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.main{max-width:820px;margin:0 auto;padding:28px 24px}
+
+.intro{text-align:center;margin-bottom:24px}
+.intro-icon{font-size:36px;margin-bottom:10px}
+.intro-title{font-family:'Cinzel',serif;font-size:20px;color:var(--ink);margin-bottom:6px}
+.intro-sub{font-size:13px;color:var(--dim);line-height:1.7;max-width:520px;margin:0 auto}
+
+.picker-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start;margin-bottom:24px}
+@media(max-width:600px){.picker-row{grid-template-columns:1fr;gap:12px}}
+.picker-vs{display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:15px;color:var(--gold);padding-top:18px}
+@media(max-width:600px){.picker-vs{padding-top:0}}
+
+.picker{position:relative}
+.picker-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block}
+.picker-input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--ink);font-family:'Lora',serif;font-size:15px;padding:11px 14px;border-radius:var(--r);transition:border-color 0.15s}
+.picker-input:focus{outline:none;border-color:var(--gold)}
+.picker-input::placeholder{color:#9a9a96}
+
+.picker-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid rgba(201,168,76,0.4);border-radius:var(--r);max-height:240px;overflow-y:auto;z-index:99;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.picker-dd-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;transition:background 0.1s}
+.picker-dd-item:hover{background:rgba(201,168,76,0.1)}
+.picker-dd-item:last-child{border-bottom:none}
+.picker-dd-name{color:#f2f1ef;font-size:13px}
+.picker-dd-team{color:#7a7a76;font-size:11px;margin-left:6px}
+.picker-dd-pos{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.picker-dd-pos.QB{background:rgba(21,101,192,0.2);color:#64b5f6}
+.picker-dd-pos.RB{background:rgba(46,125,50,0.2);color:#81c784}
+.picker-dd-pos.WR{background:rgba(184,146,26,0.2);color:#f5c842}
+.picker-dd-pos.TE{background:rgba(200,120,10,0.2);color:#ffb74d}
+.picker-dd-pos.K{background:rgba(120,100,60,0.2);color:#bcaaa4}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty-icon{font-size:40px;margin-bottom:14px;opacity:0.4}
+.empty-title{font-family:'Cinzel',serif;font-size:16px;color:var(--muted);margin-bottom:6px}
+.empty-sub{font-size:13px;line-height:1.7}
+
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:600px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.cmp-card-hdr{padding:16px 18px;background:var(--bg2);border-bottom:1px solid var(--border);text-align:center}
+.cmp-card-name{font-family:'Cinzel',serif;font-size:17px;color:var(--ink);margin-bottom:6px}
+.cmp-card-meta{display:flex;justify-content:center;gap:8px;align-items:center}
+.cmp-pos-badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
+.cmp-pos-badge.QB{background:#1565c0}.cmp-pos-badge.RB{background:#2e7d32}.cmp-pos-badge.WR{background:#b8921a}
+.cmp-pos-badge.TE{background:#c8780a}.cmp-pos-badge.K{background:#7a7a76}
+.cmp-card-team{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim)}
+.cmp-card-rows{padding:4px 0}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--border);font-size:13px}
+.cmp-row:last-child{border-bottom:none}
+.cmp-row-label{color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.cmp-row-val{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--ink)}
+.cmp-row-val.better{color:var(--green)}
+.cmp-row-val.worse{color:var(--red)}
+.cmp-ibadge{display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px;cursor:default}
+.cmp-ibadge.Out,.cmp-ibadge.IR{background:#fce4ec;color:#c0392b;border:1px solid #ef9a9a}
+.cmp-ibadge.Doubtful{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
+.cmp-ibadge.Questionable,.cmp-ibadge.PUP{background:#fffde7;color:#f57f17;border:1px solid #fff176}
+.cmp-healthy{color:var(--green);font-family:'JetBrains Mono',monospace;font-size:12px}
+
+.oracle-verdict{background:#fffbf0;border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:16px 18px;margin-bottom:20px}
+.oracle-verdict-lbl{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.oracle-verdict-txt{font-style:italic;font-size:14px;color:#5a4a1a;line-height:1.7}
+
+.action-row{text-align:center}
+.clear-btn{padding:9px 20px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Lora',serif;font-size:13px;border-radius:var(--r);cursor:pointer;transition:all 0.15s}
+.clear-btn:hover{border-color:rgba(138,32,32,0.4);color:var(--red)}
+
+.attr{text-align:center;font-size:10px;color:var(--dim);padding:16px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border);margin-top:24px}
+.attr a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">⚔️ Head-to-Head Compare</h1>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
+    <a href="/tiers" class="nav-link">🏆 Tier List</a>
+    <a href="/weekly" class="nav-link">📅 Weekly Rankings</a>
+    <a href="/survivor" class="nav-link">☠️ Survivor</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<div class="adp-status-bar" id="statusBar">
+  <span><span class="adp-dot loading" id="statusDot"></span><span id="statusText">Loading live player data...</span></span>
+</div>
+
+<div class="main">
+
+  <div class="intro">
+    <div class="intro-icon">🔮</div>
+    <div class="intro-title">Who wins the pick?</div>
+    <div class="intro-sub">Search any two players and see them side by side — ADP, team, bye week, experience, and current injury status — pulled from the same live data every other Sanctum tool uses.</div>
+  </div>
+
+  <div class="picker-row">
+    <div class="picker">
+      <label class="picker-label">Player A</label>
+      <input type="text" class="picker-input" id="pickerA" placeholder="Search a player..." autocomplete="off"
+        oninput="pickerSearch('A', this.value)" onfocus="pickerSearch('A', this.value)"/>
+      <div class="picker-dropdown" id="ddA"></div>
+    </div>
+    <div class="picker-vs">VS</div>
+    <div class="picker">
+      <label class="picker-label">Player B</label>
+      <input type="text" class="picker-input" id="pickerB" placeholder="Search a player..." autocomplete="off"
+        oninput="pickerSearch('B', this.value)" onfocus="pickerSearch('B', this.value)"/>
+      <div class="picker-dropdown" id="ddB"></div>
+    </div>
+  </div>
+
+  <div id="resultArea">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">⚖️</div>
+      <div class="empty-title">Select two players to compare</div>
+      <div class="empty-sub">Search by name or team above — once both are selected, the Oracle will weigh in.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="attr">
+  ADP: <a href="https://fantasyfootballcalculator.com" target="_blank">FantasyFootballCalculator.com</a> &nbsp;·&nbsp; Team/Injury: <a href="https://tank01.com" target="_blank">Tank01</a>
+</div>
+
+<script src="/shared-player-data.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// HEAD-TO-HEAD COMPARE — NEW PAGE, BUILT JULY 13 2026 (checklist #130)
+//
+// SCOPE, DELIBERATE: this ships with data already live and cached
+// tonight — team, position, ADP, experience (rookie/Yr N), and current
+// injury status. It deliberately does NOT include target share / snap
+// share — that requires a new scheduled cache off Tank01's box-score
+// endpoint, which is #131's job (the Risers & Fallers feature), not
+// this one. Once that pipeline exists, adding those fields here is a
+// natural fast-follow rather than something to scope-creep into
+// tonight's build.
+//
+// DATA SOURCES: reuses infrastructure already proven live tonight —
+// fetchTank01PlayerMap() (shared-player-data.js) for team/exp/injury,
+// plus a direct live-ADP fetch (same count=300&teams=12&year=2026
+// depth params already proven correct on Draft Command Center/Tier
+// List/Auction, after tonight's #137 depth-bug fix). No new backend
+// endpoints needed — this page is pure frontend, built entirely on
+// existing live sources.
+// ═══════════════════════════════════════════════════════════════════════
+
+var BYE = {
+  BUF:7,MIA:6,NE:11,NYJ:13,
+  BAL:13,CIN:6,CLE:11,PIT:9,
+  HOU:8,IND:13,JAX:7,TEN:9,
+  DEN:10,KC:5,LV:13,LAC:7,
+  DAL:14,NYG:8,PHI:10,WAS:7,
+  CHI:10,DET:6,GB:11,MIN:6,
+  ATL:11,CAR:5,NO:8,TB:10,
+  ARI:14,LAR:11,SF:8,SEA:11
+};
+
+var combinedPlayers = []; // {name, pos, team, adp, exp, injuryDesignation, injuryDescription}
+var selected = { A: null, B: null };
+var dataReady = false;
+
+function escAttr(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+async function fetchLiveAdpFlat() {
+  try {
+    var res = await fetch('/.netlify/functions/adp?scoring=ppr&teams=12&year=2026&count=300');
+    var data = await res.json();
+    if (data.status === 'Error' || !data.players || !Array.isArray(data.players)) return null;
+    var map = {};
+    data.players.forEach(function(p){
+      if (!p.name) return;
+      map[normalizePlayerName(p.name)] = parseFloat(p.adp) || 999;
+    });
+    return map;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'adp-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+async function loadData() {
+  setStatus('loading', 'Loading live player data...');
+  try {
+    var results = await Promise.all([fetchTank01PlayerList(), fetchLiveAdpFlat()]);
+    var tank01List = results[0];
+    var adpMap = results[1];
+
+    if (!tank01List) {
+      setStatus('error', 'Live player data unavailable — try refreshing');
+      return;
+    }
+
+    combinedPlayers = tank01List.map(function(p){
+      var adp = adpMap ? adpMap[normalizePlayerName(p.name)] : undefined;
+      return {
+        name: p.name,
+        pos: p.pos,
+        team: p.team,
+        adp: (adp !== undefined && adp !== null) ? adp : 999,
+        exp: null, // filled in below from the full player-data cache, which fetchTank01PlayerList doesn't expose directly
+        injuryDesignation: p.injuryDesignation,
+        injuryDescription: p.injuryDescription
+      };
+    });
+
+    // fetchTank01PlayerList() doesn't carry `exp` (it wasn't needed for
+    // the autocomplete use case it was originally built for) — pull it
+    // separately from the same underlying cache via player-data.js
+    // directly, then merge in by normalized name.
+    try {
+      var raw = await fetch('/.netlify/functions/player-data');
+      var rawData = await raw.json();
+      if (rawData && rawData.status === 'Success' && rawData.players) {
+        var expByName = {};
+        Object.values(rawData.players).forEach(function(p){
+          if (p.longName) expByName[normalizePlayerName(p.longName)] = p.exp;
+        });
+        combinedPlayers.forEach(function(p){
+          var e = expByName[normalizePlayerName(p.name)];
+          if (e !== undefined) p.exp = e;
+        });
+      }
+    } catch (e) {
+      // exp is a nice-to-have — if this second fetch fails, the compare
+      // still works fine without it, just omits that one row.
+    }
+
+    combinedPlayers.sort(function(a,b){ return a.name.localeCompare(b.name); });
+    dataReady = true;
+    setStatus('live', combinedPlayers.length + ' players loaded · ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    setStatus('error', 'Live player data unavailable — try refreshing');
+  }
+}
+
+function pickerSearch(slot, query) {
+  var dd = document.getElementById('dd' + slot);
+  if (!dataReady || !query || query.trim().length < 2) { dd.style.display = 'none'; return; }
+  var q = query.trim().toLowerCase();
+  var matches = combinedPlayers.filter(function(p){
+    return p.name.toLowerCase().includes(q) || (p.team && p.team.toLowerCase().includes(q));
+  }).slice(0, 10);
+
+  if (!matches.length) { dd.style.display = 'none'; return; }
+
+  dd.innerHTML = '';
+  matches.forEach(function(p){
+    var item = document.createElement('div');
+    item.className = 'picker-dd-item';
+    item.innerHTML =
+      '<span><span class="picker-dd-name">' + p.name + '</span><span class="picker-dd-team">' + p.team + '</span></span>' +
+      '<span class="picker-dd-pos ' + p.pos + '">' + p.pos + '</span>';
+    item.onmousedown = function(e){
+      e.preventDefault();
+      document.getElementById('picker' + slot).value = p.name;
+      selected[slot] = p;
+      dd.style.display = 'none';
+      renderComparison();
+    };
+    dd.appendChild(item);
+  });
+  dd.style.display = 'block';
+}
+
+document.addEventListener('click', function(e){
+  if (!e.target.closest('.picker')) {
+    document.querySelectorAll('.picker-dropdown').forEach(function(d){ d.style.display = 'none'; });
+  }
+});
+
+function expLabel(exp) {
+  if (exp === null || exp === undefined || exp === '') return '—';
+  if (exp === 'R') return 'Rookie';
+  return 'Year ' + exp;
+}
+
+function injuryHtml(p) {
+  if (!p.injuryDesignation) return '<span class="cmp-healthy">✓ Healthy</span>';
+  var title = p.injuryDescription ? ' title="' + escAttr(p.injuryDescription) + '"' : '';
+  return '<span class="cmp-ibadge ' + p.injuryDesignation + '"' + title + '>' + p.injuryDesignation + '</span>';
+}
+
+function cmpClass(valA, valB, lowerIsBetter) {
+  if (valA === valB) return ['', ''];
+  var aBetter = lowerIsBetter ? valA < valB : valA > valB;
+  return [aBetter ? 'better' : 'worse', aBetter ? 'worse' : 'better'];
+}
+
+function renderComparison() {
+  var area = document.getElementById('resultArea');
+  var a = selected.A, b = selected.B;
+
+  if (!a || !b) {
+    area.innerHTML = '<div class="empty-state" id="emptyState"><div class="empty-icon">⚖️</div><div class="empty-title">Select two players to compare</div><div class="empty-sub">Search by name or team above — once both are selected, the Oracle will weigh in.</div></div>';
+    return;
+  }
+
+  var byeA = BYE[a.team] || '—';
+  var byeB = BYE[b.team] || '—';
+  var adpCls = cmpClass(a.adp, b.adp, true); // lower ADP is better
+
+  function card(p, bye, adpClass) {
+    var adpStr = p.adp < 900 ? p.adp.toFixed(1) : '—';
+    return '<div class="cmp-card">' +
+      '<div class="cmp-card-hdr">' +
+        '<div class="cmp-card-name">' + p.name + '</div>' +
+        '<div class="cmp-card-meta"><span class="cmp-pos-badge ' + p.pos + '">' + p.pos + '</span><span class="cmp-card-team">' + p.team + '</span></div>' +
+      '</div>' +
+      '<div class="cmp-card-rows">' +
+        '<div class="cmp-row"><span class="cmp-row-label">ADP</span><span class="cmp-row-val ' + adpClass + '">' + adpStr + '</span></div>' +
+        '<div class="cmp-row"><span class="cmp-row-label">Bye Week</span><span class="cmp-row-val">' + bye + '</span></div>' +
+        '<div class="cmp-row"><span class="cmp-row-label">Experience</span><span class="cmp-row-val">' + expLabel(p.exp) + '</span></div>' +
+        '<div class="cmp-row"><span class="cmp-row-label">Status</span>' + injuryHtml(p) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  var verdict;
+  if (a.adp < 900 && b.adp < 900) {
+    var winner = a.adp < b.adp ? a : b;
+    var loser = a.adp < b.adp ? b : a;
+    var gap = Math.abs(a.adp - b.adp).toFixed(1);
+    verdict = 'In 38 seasons the spirits favor ' + winner.name + ' — the market\'s ' + gap + '-pick gap reflects real consensus wisdom. ' +
+      (loser.injuryDesignation ? loser.name + '\'s current ' + loser.injuryDesignation + ' status only widens that gap for now.' : 'Still, ' + loser.name + ' on ' + loser.team + ' warrants monitoring before you commit.');
+  } else {
+    verdict = 'The scrolls hold no current ADP for one of these seekers — trust your own read of team and role until the market catches up.';
+  }
+
+  area.innerHTML =
+    '<div class="cmp-grid">' + card(a, byeA, adpCls[0]) + card(b, byeB, adpCls[1]) + '</div>' +
+    '<div class="oracle-verdict"><div class="oracle-verdict-lbl">🔮 Oracle Verdict</div><div class="oracle-verdict-txt">' + verdict + '</div></div>' +
+    '<div class="action-row"><button class="clear-btn" onclick="clearCompare()">Clear & Start Over</button></div>';
+}
+
+function clearCompare() {
+  selected = { A: null, B: null };
+  document.getElementById('pickerA').value = '';
+  document.getElementById('pickerB').value = '';
+  renderComparison();
+}
+
+loadData();
+</script>
+</body>
+</html>
