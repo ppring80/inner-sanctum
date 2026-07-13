@@ -104,3 +104,16 @@
   for = "/tiers"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+# Added same session as compare.html's build (checklist #130) — this is
+# the same category of page as auction/tiers/sanctum/weekly (fetches
+# live data on every load), so it gets the same stale-cache protection
+# from day one rather than waiting to hit the exact bug weekly.html
+# already demonstrated before adding it here too. No redirect rule
+# needed for /compare itself — Netlify's default clean-URL resolution
+# already serves compare.html at /compare automatically, the same way
+# /draft, /tiers, /auction, /weekly, and /survivor all work today with
+# no explicit redirect entries for any of them either.
+[[headers]]
+  for = "/compare"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
