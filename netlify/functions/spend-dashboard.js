@@ -25,6 +25,21 @@ const { getStore, connectLambda } = require("@netlify/blobs");
 // NOT an email alert — per the #114 discussion, alerting was
 // deliberately deferred until the logging itself is proven accurate
 // over a few real days. This page is the manual-check half of #114.
+//
+// FIXED 2026-07-13: the footer text at the bottom of this page still
+// hardcoded "Sonnet 4.6 @ $3/M input, $15/M output" — a stale
+// description string left over from before chat.js's rate constants
+// were corrected on 2026-07-11 (checklist #215/#122). IMPORTANT: this
+// was a COSMETIC-ONLY bug, not a calculation bug — this dashboard has
+// no rate constants of its own anywhere in this file and never
+// recalculates cost; it only reads and sums the totalCost value
+// chat.js already computed and stored per request. So every dollar
+// figure on this page was already correct throughout, using
+// chat.js's real (fixed) rate — only the descriptive label text below
+// was wrong, which could otherwise mislead someone reading it into
+// thinking a different rate was actually being billed. Updated to
+// describe Sonnet 5's real current rate, plus the same forward-looking
+// Sept 1 2026 price-step reminder chat.js's own comment already flags.
 // ═══════════════════════════════════════
 const DAILY_THRESHOLD = 50.00;
 const SPEND_STORE_NAME = "claude-spend"; // must match chat.js exactly
@@ -194,7 +209,9 @@ function renderDashboard(days, lifetime) {
 
   <div class="footnote">
     Logged from real Anthropic usage.input_tokens/output_tokens on every chat.js response — not an estimate.
-    Sonnet 4.6 @ $3/M input, $15/M output. Lifetime total is computed live on each page load by listing and
+    Sonnet 5 @ $2/M input, $10/M output (introductory pricing through Aug 31, 2026 — steps up to $3/M input,
+    $15/M output standard rate after that; see chat.js's rate-constant comment for the update reminder).
+    Lifetime total is computed live on each page load by listing and
     summing every daily entry in the store — not a separately-maintained counter, so it can never drift out
     of sync with the table below. No email alert wired yet (manual-check only, per checklist #114) —
     revisit once this data's been observed for a few real days. This page has no login; treat the URL as
