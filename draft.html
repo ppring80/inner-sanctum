@@ -182,6 +182,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
     <a href="/" class="hdr-btn">🏠 Home</a>
 <a href="/compare" class="hdr-btn">🆚 Compare</a>
 <a href="/power-rankings" class="hdr-btn">📊 Power Rankings</a>
+<a href="/risers-fallers" class="hdr-btn">📈 Risers & Fallers</a>
 <a href="/auction" class="hdr-btn">⚔️ Auction</a>
 <a href="/tiers" class="hdr-btn">🏆 Tier List</a>
 <a href="/weekly" class="hdr-btn">📅 Weekly Rankings</a>
@@ -352,24 +353,7 @@ function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if
 
 // ═══════════════════════════════════════
 // BUILD INJURIES OBJECT FROM A TANK01 PLAYER MAP
-// UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026 (checklist item #135
-// follow-up). Walks every player currently in adpByPos and looks each
-// one up in the Tank01 map (keyed by normalizePlayerName, per
-// shared-player-data.js), populating THIS page's own `injuries` object
-// in the exact shape getInj() above already expects: injuries[key(name)]
-// = {status, part} — key() here is draft.html's own dash-slug ID
-// scheme, deliberately different from normalizePlayerName() (used only
-// for matching against Tank01/Sleeper), so this function is the
-// necessary bridge between the two naming schemes rather than
-// assuming they're interchangeable.
-//
-// tank01Map's injuryDesignation is used directly as `status` with no
-// translation table — confirmed live 2026-07-12 that Tank01's
-// designation values (e.g. "Questionable") already match the plain-
-// English strings getInj()'s status->style lookup expects (Out,
-// Doubtful, Questionable, IR, PUP). A player with an empty
-// injuryDesignation is not added to `injuries` at all, matching
-// getInj()'s existing "no entry = healthy" contract.
+// ═══════════════════════════════════════
 function buildInjuriesFromTank01(tank01Map){
   var result={};
   if(!tank01Map)return result;
@@ -394,19 +378,6 @@ async function loadAll(){
   document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
 
   try{
-    // ── Live ADP via Netlify proxy (server-side, avoids CORS) ──
-    // ── Team/injury via the unified Tank01 player-data cache ──
-    // UNIFIED LIVE-DATA SOURCE — ADDED JULY 12 2026: previously fetched
-    // Sleeper's live player list directly for both team-correction and
-    // injury status, independently of what Sanctum (chat.js) uses for
-    // the same two facts. Now reads the SAME Tank01 cache chat.js
-    // already reads (via /.netlify/functions/player-data.js), so this
-    // page and Sanctum can no longer disagree about a player's current
-    // team or injury status when live data is reachable — see
-    // shared-player-data.js's file-header comment and Pre-Deployment
-    // Checklist item #135 for the full rationale. This does NOT
-    // change PLAYER_POOL/loadFallback() below at all — the fallback
-    // safety net for when NO live source is reachable is unchanged.
     var adpUrl='/.netlify/functions/adp?scoring='+scoring+'&teams='+teams+'&year=2026&count=300';
     var results=await Promise.all([
       fetch(adpUrl).then(function(r){return r.json()}),
@@ -430,11 +401,6 @@ async function loadAll(){
     });
     Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
 
-    // ── Correct team labels against Tank01's live roster data ──
-    // The ADP proxy's own team field can lag a trade/signing just like
-    // a hand-typed fallback list can. Tank01's roster cache (refreshed
-    // daily) is now the single source both this page and Sanctum trust
-    // for current team assignment.
     ['QB','RB','WR','TE','K'].forEach(function(pos){
       if(adpByPos[pos])adpByPos[pos]=applyLiveTeamsFromTank01(adpByPos[pos],tank01Map);
     });
@@ -455,9 +421,6 @@ async function loadAll(){
 
 // ═══════════════════════════════════════
 // FALLBACK DATA
-// Player pool now lives in /shared-player-data.js (window.PLAYER_POOL),
-// shared with the Oracle Tier List so the two pages can't drift apart
-// again. See backlog #97.
 // ═══════════════════════════════════════
 function loadFallback(){
   adpByPos=JSON.parse(JSON.stringify(window.PLAYER_POOL));
@@ -465,16 +428,6 @@ function loadFallback(){
     adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=key(p.name); });
   });
 
-  // Team/injury correction — UNIFIED LIVE-DATA SOURCE — ADDED JULY 12
-  // 2026: even on the fallback ADP path (static player POOL, live ADP
-  // proxy unreachable), team and injury correction now come from the
-  // same Tank01 cache as everywhere else on this page, rather than a
-  // separate Sleeper fetch. If Tank01's cache is ALSO unreachable,
-  // fetchTank01PlayerMap() returns null (same fail-safe contract as
-  // the old Sleeper fetch), applyLiveTeamsFromTank01() is a no-op, and
-  // players simply keep PLAYER_POOL's own hardcoded team value — same
-  // graceful-degradation behavior as before, just one fewer independent
-  // live source in the chain.
   fetchTank01PlayerMap()
     .then(function(tank01Map){
       ['QB','RB','WR','TE','K'].forEach(function(pos){
@@ -496,13 +449,7 @@ function loadFallback(){
 // ═══════════════════════════════════════
 function render(){
   if(!ready)return;
-
-  // ── If search is active, use fast search render instead ──
-  // This is the mobile performance fix: instead of rendering
-  // hundreds of rows across all positions, we render only
-  // matching players in a single flat list.
   if(curSearch){renderSearch();return;}
-
   if(curPos==='ALL'){renderAll();return;}
 
   var main=document.getElementById('main');
