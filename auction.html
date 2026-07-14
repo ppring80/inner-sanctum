@@ -293,21 +293,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
 .gate-link:hover{opacity:1}
 
-/* ── PREVIEW MODE (added) ──────────────────────────────────────────────
-   gate-btn-secondary: a visually distinct, lower-emphasis sibling to
-   gate-btn — preview is a real path but intentionally not styled to
-   compete with "Unlock" for attention, since passcode/real access is
-   still the primary path for anyone who already has one. */
+/* ── PREVIEW MODE (added) ── */
 .gate-btn-secondary{width:100%;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
 .gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
 .gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
 .gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
 
-/* preview-banner: persistent strip across Steps 1–4 while in preview
-   mode. Fixed to the top of the viewport (not inline in a panel) so it
-   stays visible across step navigation without being duplicated into
-   every panel's markup — same rationale as the gate overlay being a
-   single shared element rather than per-panel. */
 .preview-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
 .preview-banner strong{color:#f5c842}
 .preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
@@ -317,47 +308,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (modified — now offers a sample-data preview path) ═══
-     GATE ORDER, now actually implemented per the original architecture
-     decision: (1) valid signed sanctum_session cookie granting
-     fullAccess → unlock immediately, no passcode needed; (2) else,
-     correct passcode → unlock (dev/test override, unchanged); (3) else
-     → show the gate and wait for passcode entry, OR a visitor can enter
-     PREVIEW MODE with a fixed demo league (added — see PREVIEW MODE
-     block in the script below for full rationale).
-
-     PREVIEW MODE, IN BRIEF: per the preview-access decision, visitors
-     should be able to use the real tool with sample data before paying,
-     not just read about it. Preview unlocks Steps 1–4 (League Setup
-     through Target Price Sheet) against a FIXED demo league — League
-     Setup's inputs are disabled, not just pre-filled, so preview can't
-     become a free path to a real personalized price sheet. Step 5 (Live
-     Draft Tracker) stays gated; see blockStep5Preview() and the
-     modified goStep() below.
-
-     Checks sessionStorage AND a server-verified OAuth session on load;
-     if neither grants access, this overlay covers the whole page so
-     the tool underneath is not visible or usable. The passcode path
-     is NOT real security — anyone reading page source can find the
-     passcode. It remains a friction gate / dev-test override
-     alongside the real Patreon-backed check, not a replacement for it.
-     See Pre-Deployment Checklist #105/#105a.
-
-     #105a TESTER ALLOWLIST (added): a second, separate passcode
-     (ALLOWLIST_PASSCODE) is checked alongside the normal Acolyte
-     passcode. Either one unlocks the same sessionStorage flag, so an
-     allowlisted tester is indistinguishable from a real Acolyte once
-     in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
-     can be rotated (see Passcode Rotation Runbook) without locking
-     out testers, and vice versa.
-
-     THIS PAGE CHECKS fullAccess — same single flag every other
-     gated page checks. Per the 2026-06-27 tier collapse, there is now
-     only one paid tier (Founding Acolyte); Draft Day Pass and Season
-     Pass were retired as separate products since Patreon offered no
-     way to make them genuinely one-time, removing their reason to
-     exist apart from Acolyte. See verify-session.js and
-     oauth-callback.js for the simplified single-tier logic. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -543,6 +493,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <a href="/draft" class="nav-link">📋 Draft Sheet</a>
 <a href="/compare" class="nav-link">🆚 Compare</a>
 <a href="/power-rankings" class="nav-link">📊 Power Rankings</a>
+<a href="/risers-fallers" class="nav-link">📈 Risers & Fallers</a>
 <a href="/tiers" class="nav-link">🏆 Tier List</a>
 <a href="/survivor" class="nav-link">☠️ Survivor</a>
 <a href="/sanctum" class="nav-link">← Sanctum</a>
@@ -909,31 +860,7 @@ var STRATEGIES = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// LIVE ADP FETCH — FIXED JULY 12 2026 (same-evening follow-up to the
-// Tier List missing-rookie fix — see that page's fetchLiveAdpByPosition
-// header comment for the full root-cause writeup, which applies
-// identically here)
-//
-// TWO REAL BUGS FOUND AND FIXED, same pattern as Tier List's:
-// (1) This fetch had no count/teams/year params, unlike Draft Command
-//     Center's identical-purpose call — likely pulling a much shallower
-//     response from the proxy than intended, silently truncating the
-//     player universe the pricing engine's curves (buildAllPositionCurves
-//     below) get built from. Added the same explicit
-//     teams=12&year=2026&count=300 params Draft Command Center already
-//     uses successfully.
-// (2) SEPARATE bug, unique to this function: `byPos[p.position]` was
-//     checked directly with no PK->K normalization — every other
-//     live-ADP consumer on the site (Draft Command Center, Tier List)
-//     explicitly converts Tank01's "PK" position code to "K" before
-//     using it. Without that conversion, every kicker in the live feed
-//     was silently dropped here (byPos has a "K" key, never a "PK" key,
-//     so p.position==='PK' always failed the byPos[p.position] truthy
-//     check and those players were skipped entirely) — meaning Auction's
-//     kicker pricing has likely ALWAYS been built from the small static
-//     STATIC_ADP_FALLBACK.K list further down this file, never the live
-//     feed, regardless of whether live ADP was reachable. Fixed with the
-//     same normalization line used elsewhere.
+// LIVE ADP FETCH
 // ═══════════════════════════════════════════════════════════
 var liveAdpByPos = null;
 
@@ -946,7 +873,7 @@ async function fetchLiveAdpByPosition(scoring) {
     var byPos = {QB:[], RB:[], WR:[], TE:[], K:[], DEF:[]};
     data.players.forEach(function(p){
       if (!p.name || !p.position) return;
-      var pos = p.position === 'PK' ? 'K' : p.position; // PK->K normalization — was missing entirely before this fix
+      var pos = p.position === 'PK' ? 'K' : p.position;
       if (!byPos[pos]) return;
       byPos[pos].push({ name: p.name, team: p.team || 'FA', adp: parseFloat(p.adp) || 999 });
     });
@@ -972,9 +899,7 @@ function updateAdpStatusBar(usingFallback) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SLOT-BASED TARGET PRICE ENGINE — UNCHANGED FROM BEFORE
-// (pricing engine logic is completely separate from the player-data
-// source migration below; no edits anywhere in this block)
+// SLOT-BASED TARGET PRICE ENGINE
 // ═══════════════════════════════════════════════════════════
 const BASELINE_SLOTS = [
   { pos: 'QB', slotIndex: 1, pct: { rb: 0.02, wr: 0.02, qb: 0.12, te: 0.03, balanced: 0.06, hero: 0.06 } },
@@ -1415,47 +1340,7 @@ function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPric
 
 
 // ═══════════════════════════════════════════════════════════
-// PLAYER AUTOCOMPLETE — UNIFIED LIVE-DATA SOURCE — MODIFIED JULY 12
-// 2026 (checklist follow-up to #122/#123's stale-data audit, item
-// #135; Draft Command Center and Tier List already migrated this
-// same session).
-//
-// WHY: this was the last of the three player-facing pages still
-// reading team data from a live source OTHER than the Tank01 cache
-// chat.js/refresh-player-data.js already build daily. loadSleeperPlayers()
-// previously fetched Sleeper's live player list directly, independent
-// of what Sanctum, Draft Command Center, and Tier List all now agree
-// on for the same players' current teams. This is the highest-stakes
-// of the three migrations per Pat's explicit direction — the Target
-// Price Sheet + Live Draft Tracker combination is the platform's core
-// differentiator, and Step 5's autocomplete is what a manager is
-// actively relying on mid-draft, in real time, with real money on the
-// table. Getting a player's current team wrong here is the worst
-// possible place on the site for that class of bug to surface.
-//
-// WHAT CHANGED: loadSleeperPlayers() replaced with loadTank01Players(),
-// which calls the new fetchTank01PlayerList() (shared-player-data.js)
-// instead of fetching Sleeper directly. Same fantasy-relevant-position
-// filtering as before (QB/RB/WR/TE/K — DEF was never included in this
-// search, no change there). Returns the exact same {name, pos, team}
-// shape searchPlayers()/getProjectedValue() already consume, PLUS two
-// new fields (injuryDesignation, injuryDescription) that didn't exist
-// in the old Sleeper-sourced list at all — surfaced as a compact
-// inline badge in the dropdown (see searchPlayers() below) so a
-// manager can see at a glance if a player they're about to log is
-// currently banged up, without leaving the live draft flow. Kept
-// intentionally compact (a short badge, not the full description) —
-// same lesson learned earlier this session on Draft Command Center's
-// injury display: this is a fast-scanning search dropdown during a
-// live draft, not a place for a paragraph of news text.
-//
-// FRESHNESS: this cache refreshes once daily via refresh-player-data.js
-// (@daily schedule) and this page fetches it fresh on every page
-// load — so every new draft session starts with same-day data. No
-// polling/websocket infrastructure added; this matches the freshness
-// model every other page on the site already uses and avoids adding
-// new architecture this session that the rest of the site doesn't
-// share.
+// PLAYER AUTOCOMPLETE
 // ═══════════════════════════════════════════════════════════
 var allPlayers = [];
 function loadTank01Players() {
@@ -1612,7 +1497,7 @@ function showLeagueWarning() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — GENERATE TARGET PRICE SHEET (unchanged from before)
+// STEP 4 — GENERATE TARGET PRICE SHEET
 // ═══════════════════════════════════════════════════════════
 var STATIC_ADP_FALLBACK = {
   QB: [{name:'Lamar Jackson',team:'BAL',adp:1.2},{name:'Josh Allen',team:'BUF',adp:2.1},{name:'Jalen Hurts',team:'PHI',adp:3.8},{name:'Joe Burrow',team:'CIN',adp:7.4},{name:'C.J. Stroud',team:'HOU',adp:10.2},{name:'Patrick Mahomes',team:'KC',adp:14.0},{name:'Jordan Love',team:'GB',adp:19.1},{name:'Brock Purdy',team:'SF',adp:24.0},{name:'Trevor Lawrence',team:'JAX',adp:28.0},{name:'Kirk Cousins',team:'LV',adp:32.0}],
@@ -1721,7 +1606,7 @@ function renderTPS(pricedSlots, stratKey) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// STEP 4 — LIVE BUDGET TRACKER (unchanged)
+// STEP 4 — LIVE BUDGET TRACKER
 // ═══════════════════════════════════════════════════════════
 function updateTpsTotal() {
   var inputs = document.querySelectorAll('.tps-slot-price-input');
