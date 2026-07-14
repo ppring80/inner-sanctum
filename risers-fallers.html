@@ -38,6 +38,25 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .intro-sub{font-size:13px;color:var(--dim);line-height:1.7;max-width:560px;margin:0 auto}
 .week-badge{display:inline-block;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--gold);background:rgba(184,146,26,0.08);border:1px solid rgba(184,146,26,0.25);padding:4px 12px;border-radius:20px}
 
+/* ── HOW TO USE THIS PAGE (added) — same collapsible help-panel
+   pattern as auction.html's "How to Use Your Target Price Sheet" and
+   power-rankings.html's "How Power Rankings Are Calculated". This page
+   needs it more than either of those: "target share delta" and "snap
+   share trend" are not self-explanatory to a casual visitor the way a
+   price sheet or a win/loss record already is, and this panel is also
+   doing double duty as the page's sales pitch to a non-Acolyte reading
+   it above the paywall card. ── */
+.help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:24px;overflow:hidden}
+.help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
+.help-toggle:hover{background:rgba(184,146,26,0.04)}
+.help-icon{font-size:16px;transition:transform 0.3s}
+.help-icon.open{transform:rotate(180deg)}
+.help-body{display:none;padding:0 16px 16px}
+.help-body.open{display:block}
+.help-section-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin:14px 0 8px}
+.help-rule{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:13px;color:var(--muted);line-height:1.6}
+.help-callout{background:rgba(184,146,26,0.07);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:12px 14px;margin:12px 0;font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
+
 /* ── FREE TEASER (always visible, no gate) ── */
 .teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
 @media(max-width:600px){.teaser-grid{grid-template-columns:1fr}}
@@ -145,6 +164,30 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <div class="week-badge" id="weekBadge">—</div>
   </div>
 
+  <!-- ═══ HOW TO USE THIS PAGE (added) ═══ -->
+  <div class="help-panel">
+    <button class="help-toggle" id="helpToggle" onclick="toggleHelp()">
+      🔮 How to Use This Page — and What It's Actually Worth to You
+      <span class="help-icon" id="helpIcon">▼</span>
+    </button>
+    <div class="help-body" id="helpBody">
+      <div class="help-section-title">What these numbers mean</div>
+      <div class="help-rule"><span>🎯</span><span><strong>Target share</strong> is the percent of his team's throws that went to that one player. It's the single best early signal of whether a player's role is actually growing — well before it shows up in touchdowns or points.</span></div>
+      <div class="help-rule"><span>👟</span><span><strong>Snap share</strong> is the percent of offensive plays a player was on the field for. Shown alongside target share as context — rising snaps with flat targets usually means blocking/decoy work, not real opportunity.</span></div>
+      <div class="help-rule"><span>📊</span><span>Every player here had a real, meaningful number of targets in at least one of the two weeks compared — noise players (a single garbage-time catch, a punter's snap count) are filtered out before ranking, so what you see is signal, not statistical fluff.</span></div>
+      <div class="help-section-title">Why this is worth paying attention to</div>
+      <div class="help-rule"><span>⏱️</span><span>Box scores tell you what already happened. Target share <strong>trend</strong> tells you what's about to keep happening — a receiver's role rarely reverses itself in a single week.</span></div>
+      <div class="help-rule"><span>💰</span><span>This is the exact data an early waiver claim or a buy-low trade is built on — by the time a riser shows up in weekly rankings or a national article, half your league has already added him.</span></div>
+      <div class="help-section-title">How to actually use it</div>
+      <div class="help-rule"><span>🟢</span><span><strong>Risers you don't own:</strong> priority waiver claim or FAAB bid this week, before the role change becomes obvious to everyone else.</span></div>
+      <div class="help-rule"><span>🟢</span><span><strong>Risers you already own:</strong> confidence to start them over a "name brand" player who's actually seeing fewer looks.</span></div>
+      <div class="help-rule"><span>🔴</span><span><strong>Fallers you own:</strong> a signal to sell high before the market catches on, or at minimum to bench them for a rising alternative.</span></div>
+      <div class="help-rule"><span>🔴</span><span><strong>Fallers on other rosters:</strong> a buy-low trade target — their price is about to drop further once their owner notices too.</span></div>
+      <div class="help-callout">🔮 <em>"A single big game is a headline. Two straight weeks of rising target share is a trend — and in 38 seasons, I have never seen a trend reverse itself in the very week you finally decide to act on it."</em></div>
+      <div class="help-rule"><span>⚠️</span><span>One caveat: early in the season, two weeks of data is still a small sample. Treat these as strong leads worth acting on, not guarantees — pair them with the Oracle chat or Weekly Rankings before making a big trade off one week's swing.</span></div>
+    </div>
+  </div>
+
   <!-- ═══ FREE TEASER — always visible, no gate. Real single headline
        mover in each direction, meant to be screenshot-shareable
        (Reddit/social) without giving away the full paid lists below. ═══ -->
@@ -222,6 +265,17 @@ function pct(n) { return (n * 100).toFixed(1) + '%'; }
 function setStatus(state, text) {
   document.getElementById('statusDot').className = 'status-dot ' + state;
   document.getElementById('statusText').textContent = text;
+}
+
+// ═══ HOW TO USE THIS PAGE — collapsible toggle (added) ═══
+// Same toggle pattern as auction.html's help-panel — closed by
+// default so a returning visitor isn't forced past a wall of text
+// every time, but easy to reopen since it's the page's only
+// explanation of what target share / snap share actually mean.
+function toggleHelp() {
+  document.getElementById('helpToggle').classList.toggle('open');
+  document.getElementById('helpIcon').classList.toggle('open');
+  document.getElementById('helpBody').classList.toggle('open');
 }
 
 function renderTeaser(data) {
