@@ -1,3 +1,4 @@
+
 const { connectLambda, getStore } = require("@netlify/blobs");
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -29,62 +30,69 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 //    math needed for snap share. targets is a RAW COUNT, not a
 //    share — target share must be computed here by summing every
 //    player's targets on the same teamID within the same gameID,
-//    then dividing each player's targets by that team total. This
-//    file does that grouping/summing step explicitly (see
-//    computeTeamTargetTotals below) rather than assuming Tank01
-//    provides a pre-computed share, since it does not.
+//    then dividing each player's targets by that team total.
 //
-// POSITION DATA: getNFLBoxScore's playerStats entries do NOT include
-// a position field (confirmed — Dallas Goedert's real sample entry
-// has no "pos" key, just team/snapCounts/Receiving/name/ID). Position
-// is cross-referenced from the existing "player-data" Blobs cache
-// (built daily by refresh-player-data.js from getNFLTeamRoster, which
-// DOES include pos), keyed by the same playerID Tank01 uses
-// consistently across its own endpoints. If a playerID isn't in that
-// cache (e.g. cache hasn't run yet, or a rare ID mismatch), that
-// player is simply excluded from this week's riser/faller list rather
-// than guessing their position — same fail-soft pattern used
-// throughout this codebase (chat.js's getLiveNFLContext, etc.).
+// POSITION DATA: cross-referenced from the existing "player-data"
+// Blobs cache (built daily by refresh-player-data.js from
+// getNFLTeamRoster, which DOES include pos), keyed by the same
+// playerID Tank01 uses consistently across its own endpoints. A
+// player missing from that cache is excluded rather than guessing
+// their position.
 //
-// SCHEDULE: weekly, not daily — target/snap share only meaningfully
-// changes once a full week of games has completed, unlike
-// refresh-player-data's daily roster/injury refresh. Add to
-// netlify.toml:
+// ═══════════════════════════════════════════════════════════════════
+// RANKING FIX — 2026-07-14, same-day revision after first real test
+// run against 2025 Week 1->2 data surfaced a real problem:
 //
-//   [functions."refresh-risers-fallers"]
-//     schedule = "0 12 * * 3"
+// ORIGINAL LOGIC (first version): classified ANY player as a
+// riser/faller if EITHER their target share delta OR their snap
+// share delta crossed the threshold, and sorted by whichever of the
+// two deltas was larger in magnitude.
 //
-// (Wednesday noon UTC — every week's games, including Monday Night
-// Football, are final by then. Adjust if MNF ever runs later in a
-// given week, e.g. an international game slate.)
+// WHY THAT WAS WRONG, with real evidence from the test run: the #1
+// "riser" was Tyler Johnson (NYJ) — his target share actually FELL
+// (9.5% -> 4.8%) and his target count dropped 2->1, but he ranked #1
+// anyway because his SNAP share jumped 52%->96%, almost certainly
+// mop-up-duty/special-teams snaps in a blowout, not a real
+// fantasy-relevant usage trend. Several other top "risers" had the
+// same shape: 1 total target, snap share swinging wildly, target
+// share barely moving or even dropping. Snap share on a tiny number
+// of targets is noise, not signal, for a feature whose whole point
+// is surfacing real usage trends.
 //
-// MANUAL TEST MODE: hitting this function's URL directly with
-// ?week=X&season=Y query params overrides the auto-computed current
-// week — this is how to test against real, completed 2025 games
-// before the 2026 season provides real Week 2+ data. Example:
-//   /.netlify/functions/refresh-risers-fallers?week=2&season=2025
-//
-// 30-SECOND SCHEDULED FUNCTION LIMIT: a full week is ~13-16 games.
-// Box score fetches for both the current AND previous week (needed
-// to compute a delta) means up to ~32 Tank01 calls in one run.
-// Promise.allSettled fires each week's games in parallel (same
-// pattern as refresh-player-data.js's 32-team parallel fetch) so
-// wall time tracks the slowest single call, not the sum of all of
-// them. If real-world timing ever approaches the 30s cap as the
-// season progresses, the two weeks' fetches could be split into two
-// separate scheduled runs — not done here since parallel-within-a-
-// week plus sequential-between-weeks hasn't been measured against
-// the real cap yet with actual data volume.
-// ═══════════════════════════════════════════════════════════════════════
+// FIX: two changes, both below.
+//   (a) MIN_TARGET_FLOOR — a player must have at least this many
+//       targets in AT LEAST ONE of the two weeks being compared to
+//       be considered at all. Filters out the 0-1-target noise cases
+//       entirely, before ranking logic ever runs.
+//   (b) Classification and sorting now use TARGET SHARE DELTA ONLY.
+//       Snap share delta is still computed and still shown on every
+//       entry (real, useful context — e.g. confirms a target-share
+//       riser is also seeing real expanded playing time, or flags
+//       when it isn't), but it no longer independently crowns
+//       someone a riser/faller on its own. Target share is the
+//       metric fantasy players actually mean by "trending up" —
+//       snap share alone, especially on low-target players, isn't a
+//       reliable proxy for that.
+// ═══════════════════════════════════════════════════════════════
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
-// Threshold for what counts as a meaningful riser/faller, in
-// PERCENTAGE POINTS of share (not relative %). E.g. 0.10 means a
-// player who went from 15% to 26% target share (+11 points) qualifies
-// as a riser; 15% to 22% (+7 points) does not. Tunable without
-// touching any other logic in this file.
-const RISER_FALLER_THRESHOLD = 0.10;
+// Target share threshold, in PERCENTAGE POINTS (not relative %). E.g.
+// 0.10 means a player who went from 15% to 26% target share (+11
+// points) qualifies as a riser; 15% to 22% (+7 points) does not.
+const TARGET_SHARE_THRESHOLD = 0.10;
+
+// Minimum targets required in at least ONE of the two weeks compared,
+// before a player is considered for riser/faller status at all. Filters
+// out the "went from 1 target to 1 target but their target SHARE
+// number bounced around because their team barely threw the ball"
+// class of noise. 3 was chosen as a reasonable floor — enough to
+// represent a real, if secondary, role in the passing game, while
+// still catching real breakout stories (e.g. a player going from a
+// non-factor 1-2 targets to a real 6-9 target role would clear this
+// floor via their NEW week's count even if their OLD week's count
+// didn't). Tunable without touching any other logic in this file.
+const MIN_TARGET_FLOOR = 3;
 
 async function fetchTank01(endpoint, params = {}) {
   const queryString = new URLSearchParams(params).toString();
@@ -105,8 +113,7 @@ async function fetchTank01(endpoint, params = {}) {
 
 // ── Current NFL week calculator — SAME convention as chat.js's
 // getCurrentNFLWeek(), duplicated here rather than shared across the
-// runtime boundary (this project's established pattern — see adp.js's
-// duplicated MISSING_DEF_FALLBACK comment for why). UPDATE
+// runtime boundary (this project's established pattern). UPDATE
 // seasonStart each year.
 function getCurrentNFLWeek() {
   const seasonStart = new Date("2026-09-09");
@@ -117,10 +124,7 @@ function getCurrentNFLWeek() {
 }
 
 // ── Fetch the list of gameIDs for a given week/season, completed
-// games only. gameStatusCode "2" = Completed (confirmed via Tank01's
-// own published Game Status Code guide) — mid-week manual runs during
-// a live week will simply exclude any not-yet-played games rather
-// than erroring, same fail-soft convention as everywhere else here.
+// games only. gameStatusCode "2" = Completed.
 async function fetchGameIDsForWeek(week, season) {
   try {
     const resp = await fetchTank01("getNFLGamesForWeek", { week: String(week), season: String(season) });
@@ -136,9 +140,7 @@ async function fetchGameIDsForWeek(week, season) {
 }
 
 // ── Fetch box scores for a list of gameIDs in parallel, return a
-// flat array of every player stat line across all of them, tagged
-// with which gameID/teamID they belong to (already present on each
-// entry per the confirmed shape, kept here for clarity at call sites).
+// flat array of every player stat line across all of them.
 async function fetchPlayerStatsForGames(gameIDs) {
   const results = await Promise.allSettled(
     gameIDs.map(gameID => fetchTank01("getNFLBoxScore", { gameID }))
@@ -161,14 +163,11 @@ async function fetchPlayerStatsForGames(gameIDs) {
   return allPlayers;
 }
 
-// ── Sum targets by teamID within a single week's player pool, so
-// each player's individual target share can be computed as
+// ── Sum targets by teamID+gameID within a single week's player pool,
+// so each player's individual target share can be computed as
 // targets / teamTotalTargets for THEIR OWN team's game that week.
-// Grouped by "teamID + gameID" (not just teamID) in case a bye-week
-// edge case or data quirk ever put the same teamID in two entries in
-// one batch — keeps the denominator scoped to the correct single game.
 function computeTeamTargetTotals(players) {
-  const totals = {}; // key: `${teamID}_${gameID}` -> summed targets
+  const totals = {};
   players.forEach(p => {
     if (!p.Receiving || !p.teamID || !p.gameID) return;
     const targets = parseInt(p.Receiving.targets, 10) || 0;
@@ -178,12 +177,9 @@ function computeTeamTargetTotals(players) {
   return totals;
 }
 
-// ── Build a per-player summary map for one week: playerID -> {
-//   longName, team, targets, targetSharePct, offSnapPct
-// }. Only includes players with a Receiving stat line — this
-// feature is scoped to pass-catchers (WR/RB/TE), matching the
-// original #131 scope (target share / snap share trends), not
-// QBs/defense/kickers.
+// ── Build a per-player summary map for one week. Only includes
+// players with a Receiving stat line — this feature is scoped to
+// pass-catchers (WR/RB/TE), not QBs/defense/kickers.
 function buildWeekSummary(players) {
   const teamTargetTotals = computeTeamTargetTotals(players);
   const summary = {};
@@ -224,11 +220,6 @@ exports.handler = async (event) => {
 
   console.log(`Risers & Fallers: computing week ${previousWeek} -> week ${currentWeek}, season ${season}`);
 
-  // Fetch both weeks' game lists, then both weeks' player stats — in
-  // parallel across games WITHIN each week (see fetchPlayerStatsForGames),
-  // but the two weeks themselves are fetched sequentially below since
-  // that keeps total in-flight requests bounded and easier to reason
-  // about within the 30s cap; revisit if timing ever becomes tight.
   const [currentGameIDs, previousGameIDs] = await Promise.all([
     fetchGameIDsForWeek(currentWeek, season),
     fetchGameIDsForWeek(previousWeek, season)
@@ -248,9 +239,6 @@ exports.handler = async (event) => {
   const currentSummary = buildWeekSummary(currentPlayers);
   const previousSummary = buildWeekSummary(previousPlayers);
 
-  // ── Cross-reference position from the existing player-data cache
-  // (built daily by refresh-player-data.js). Players not found there
-  // are excluded rather than guessing position — see file header.
   let positionLookup = {};
   try {
     const store = getStore({ name: "player-data" });
@@ -264,6 +252,7 @@ exports.handler = async (event) => {
   const deltas = {};
   const risers = [];
   const fallers = [];
+  let filteredByFloor = 0;
 
   Object.keys(currentSummary).forEach(playerID => {
     const curr = currentSummary[playerID];
@@ -272,6 +261,15 @@ exports.handler = async (event) => {
 
     const posInfo = positionLookup[playerID];
     if (!posInfo || !posInfo.pos) return; // can't confirm this is a WR/RB/TE — exclude rather than assume
+
+    // MIN_TARGET_FLOOR: require real target volume in at least one of
+    // the two weeks before this player is even considered. See file
+    // header for the real evidence (Tyler Johnson, etc.) that
+    // motivated this filter.
+    if (Math.max(curr.targets, prev.targets) < MIN_TARGET_FLOOR) {
+      filteredByFloor++;
+      return;
+    }
 
     const targetShareDelta = curr.targetSharePct - prev.targetSharePct;
     const snapShareDelta = curr.offSnapPct - prev.offSnapPct;
@@ -284,32 +282,38 @@ exports.handler = async (event) => {
       current: { targetSharePct: curr.targetSharePct, offSnapPct: curr.offSnapPct, targets: curr.targets },
       previous: { targetSharePct: prev.targetSharePct, offSnapPct: prev.offSnapPct, targets: prev.targets },
       targetShareDelta,
-      snapShareDelta
+      snapShareDelta // kept as context on every entry, no longer a classification trigger — see RANKING FIX note above
     };
 
     deltas[playerID] = entry;
 
-    if (targetShareDelta >= RISER_FALLER_THRESHOLD || snapShareDelta >= RISER_FALLER_THRESHOLD) {
+    // Classification and ranking now driven by TARGET SHARE ALONE.
+    // Snap share is real, useful context shown on the entry (a target
+    // share riser whose snap share also jumped is a stronger story
+    // than one whose snap share didn't move at all) but no longer
+    // independently qualifies someone as a riser/faller — see file
+    // header for why.
+    if (targetShareDelta >= TARGET_SHARE_THRESHOLD) {
       risers.push(entry);
-    } else if (targetShareDelta <= -RISER_FALLER_THRESHOLD || snapShareDelta <= -RISER_FALLER_THRESHOLD) {
+    } else if (targetShareDelta <= -TARGET_SHARE_THRESHOLD) {
       fallers.push(entry);
     }
   });
 
-  // Sort risers/fallers by the larger of their two deltas, descending
-  // magnitude, so the frontend can just take the top N without
-  // re-sorting itself.
-  const biggestMove = e => Math.max(Math.abs(e.targetShareDelta), Math.abs(e.snapShareDelta));
-  risers.sort((a, b) => biggestMove(b) - biggestMove(a));
-  fallers.sort((a, b) => biggestMove(b) - biggestMove(a));
+  // Sort by target share delta magnitude alone — biggest real target
+  // share swings first, in both directions.
+  risers.sort((a, b) => b.targetShareDelta - a.targetShareDelta);
+  fallers.sort((a, b) => a.targetShareDelta - b.targetShareDelta);
 
   const result = {
     computedAt: new Date().toISOString(),
     season,
     currentWeek,
     previousWeek,
-    threshold: RISER_FALLER_THRESHOLD,
+    threshold: TARGET_SHARE_THRESHOLD,
+    minTargetFloor: MIN_TARGET_FLOOR,
     playerCount: Object.keys(deltas).length,
+    filteredByFloor,
     risers,
     fallers,
     allDeltas: deltas
@@ -318,9 +322,9 @@ exports.handler = async (event) => {
   try {
     const store = getStore({ name: "risers-fallers" });
     await store.setJSON(`week:${season}:${currentWeek}`, result);
-    await store.setJSON("latest", result); // convenient single key for the frontend to always read "most recent"
+    await store.setJSON("latest", result);
     console.log(
-      `Risers & Fallers cached: week ${previousWeek}->${currentWeek}, ${Object.keys(deltas).length} players compared, ${risers.length} risers, ${fallers.length} fallers`
+      `Risers & Fallers cached: week ${previousWeek}->${currentWeek}, ${Object.keys(deltas).length} players compared (${filteredByFloor} filtered by target floor), ${risers.length} risers, ${fallers.length} fallers`
     );
   } catch (e) {
     console.log("Failed to write risers-fallers cache:", e.message);
@@ -333,6 +337,7 @@ exports.handler = async (event) => {
       currentWeek,
       previousWeek,
       playerCount: result.playerCount,
+      filteredByFloor,
       risersCount: risers.length,
       fallersCount: fallers.length
     })
