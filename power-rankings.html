@@ -40,7 +40,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .nav-link:hover{opacity:1;color:#f5c842}
 .lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
 
-/* ── MOCK DATA BANNER (new — same role as preview-banner in auction.html) ── */
+/* ── MOCK DATA BANNER ── */
 .mock-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
 .mock-banner strong{color:#f5c842}
 
@@ -48,7 +48,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px;color:var(--ink)}
 .panel-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
 
-/* ── CONNECT GATE (mirrors auction.html's gate-overlay structure, but inline rather than full-screen since this page's whole purpose is the connect step) ── */
+/* ── CONNECT GATE ── */
 .connect-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:40px 32px;max-width:460px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.4);margin:0 auto}
 .connect-icon{font-size:40px;margin-bottom:12px}
 .connect-title{font-family:'Cinzel',serif;font-size:19px;font-weight:600;color:#f2f1ef;margin-bottom:10px;letter-spacing:1px}
@@ -64,7 +64,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .connect-btn:disabled{opacity:0.35;cursor:not-allowed}
 .connect-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a4a2a;margin-top:16px;letter-spacing:0.5px}
 
-/* ── RESULTS STATE (hidden until "connected") ── */
+/* ── RESULTS STATE ── */
 .results{display:none}
 .results.active{display:block}
 .connect-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh}
@@ -103,15 +103,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .rank-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-top:2px}
 .rank-move{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);margin-top:6px}
 
-/* ── VOICE PLAY BUTTON (new — reuses tts.js, same Netlify Function and
-   voice IDs already proven in production on sanctum.html) ── */
+/* ── VOICE PLAY BUTTON ── */
 .voice-btn-card{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:all 0.15s;margin-top:2px}
 .voice-btn-card:hover{border-color:var(--gold);background:rgba(184,146,26,0.08)}
 .voice-btn-card.loading{animation:voiceCardPulse 1.1s ease-in-out infinite;border-color:var(--gold)}
 .voice-btn-card.playing{border-color:var(--green);background:rgba(46,125,50,0.08)}
 @keyframes voiceCardPulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
-/* ── FORMULA DISCLOSURE (mirrors auction.html's help-panel pattern) ── */
+/* ── FORMULA DISCLOSURE ── */
 .help-panel{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);margin-bottom:24px;overflow:hidden}
 .help-toggle{width:100%;background:transparent;border:none;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;text-align:left}
 .help-toggle:hover{background:rgba(184,146,26,0.04)}
@@ -144,14 +143,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .analyst-box-label{font-size:9px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:5px}
 .analyst-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.65}
 
-/* ── MATCHUP HERO/SIDEKICK SIZING (new — 70/30 Trash Lord/Oracle,
-   Analyst removed from this section entirely, per Pat's explicit
-   2026-06-28 decision). Trash Lord's box is visually the larger,
-   bolder "hero" — bigger padding, bigger label, a voice button.
-   Oracle's box is deliberately smaller/quieter, no border-accent
-   bar at all, reading more like a caption than a full callout box,
-   so the size difference alone communicates which one is the main
-   event without needing separate explanatory text. ── */
+/* ── MATCHUP HERO/SIDEKICK SIZING ── */
 .trash-box-hero{background:rgba(138,32,32,0.05);border-left:4px solid var(--red);border-radius:0 var(--r) var(--r) 0;padding:16px 18px}
 .trash-box-hero-label{font-size:11px;letter-spacing:2px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
 .trash-box-hero-text{font-style:italic;font-size:15px;color:var(--ink);line-height:1.7;font-weight:500}
@@ -184,6 +176,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <a href="/" class="nav-link">🏠 Home</a>
     <a href="/draft" class="nav-link">📋 Draft Sheet</a>
     <a href="/compare" class="nav-link">🆚 Compare</a>
+    <a href="/risers-fallers" class="nav-link">📈 Risers & Fallers</a>
     <a href="/auction" class="nav-link">⚔️ Auction</a>
     <a href="/tiers" class="nav-link">🏆 Tier List</a>
     <a href="/weekly" class="nav-link">📅 Weekly Rankings</a>
@@ -267,12 +260,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 <script>
 // ═══════════════════════════════════════════════════════════
 // MOCK LEAGUE DATA
-// Stands in for real Yahoo Fantasy API data. Shape intentionally
-// mirrors what a real integration would need: team name, weekly
-// scores (for trend calc), wins/losses, and this week's matchup
-// pairing. Swapping to live Yahoo data later means replacing this
-// block with a real fetch — everything downstream (formula, persona
-// commentary, rendering) stays the same.
 // ═══════════════════════════════════════════════════════════
 const LEAGUE = {
   name: 'The Brotherhood',
@@ -303,11 +290,6 @@ const LEAGUE = {
 
 // ═══════════════════════════════════════════════════════════
 // POWER RANKING FORMULA — LOCKED 2026-06-28
-// 45% record, 35% points-vs-league-average, 20% recent-3-week form.
-// Each component is normalized to a 0-1 scale within the league
-// before weighting, so the blend is fair regardless of the league's
-// actual scoring environment (a low-scoring league and a high-scoring
-// league should both spread 0-1 the same way).
 // ═══════════════════════════════════════════════════════════
 function computePowerRankings(league) {
   const teams = league.teams;
@@ -356,12 +338,6 @@ function computePowerRankings(league) {
 
 // ═══════════════════════════════════════════════════════════
 // PERSONA COMMENTARY
-// Each persona gets its own voice function, fed the same ranked-team
-// data. Keeping these as pure functions of (team, rank, allTeams)
-// means swapping in real Claude-generated commentary later (per the
-// existing Weekly Rankings caching pattern) is a drop-in replacement
-// for this lookup logic, not a rewrite of how commentary is selected
-// or displayed.
 // ═══════════════════════════════════════════════════════════
 function oracleCommentary(team, rank, allTeams) {
   if (rank === 1) return `${team.name} sits atop the standings, and the numbers agree with the eye test — a record this strong, built on scoring this far above the field, is no mirage.`;
@@ -421,7 +397,7 @@ function trashMatchup(teamA, teamB) {
   const underdog = favorite === teamA ? teamB : teamA;
   const gap = Math.abs(teamA.powerScore - teamB.powerScore);
   const rankGap = Math.abs(teamA.rank - teamB.rank);
-  const variant = rankGap % 3; // deterministic 0/1/2 picker, stable per matchup
+  const variant = rankGap % 3;
 
   if (gap < 0.08) {
     const coinFlipVariants = [
@@ -455,7 +431,7 @@ function trashMatchup(teamA, teamB) {
 let state = { connected: false, persona: 'trash', rankings: [] };
 
 function selectPlatform(p) {
-  if (p === 'espn') return; // not built yet, button is visually disabled
+  if (p === 'espn') return;
   document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('platform-' + p).classList.add('selected');
 }
@@ -473,7 +449,7 @@ function connectMock() {
 }
 
 function selectPersona(p) {
-  stopCurrentAudio(); // text is about to change underneath any playing audio
+  stopCurrentAudio();
   state.persona = p;
   document.querySelectorAll('.persona-pill').forEach(el => el.classList.remove('active'));
   document.getElementById('persona-' + p).classList.add('active');
@@ -482,7 +458,7 @@ function selectPersona(p) {
 
 var currentAudio = null;
 var currentPlayingButton = null;
-var audioCache = {}; // "persona:teamName" -> Blob URL
+var audioCache = {};
 
 function stopCurrentAudio() {
   if (currentAudio) {
@@ -504,7 +480,7 @@ function playTeamCommentary(team, persona, buttonEl, textOverride) {
     return;
   }
 
-  stopCurrentAudio(); // only one thing plays at a time, ever
+  stopCurrentAudio();
   currentPlayingButton = buttonEl;
 
   var text = textOverride || getCommentary(persona, team, team.rank, state.rankings);
@@ -531,7 +507,7 @@ function playTeamCommentary(team, persona, buttonEl, textOverride) {
     try {
       var blob = new Blob([xhr.response], { type: 'audio/mpeg' });
       var url = URL.createObjectURL(blob);
-      audioCache[cacheKey] = url; // cache for replay this session
+      audioCache[cacheKey] = url;
       playFromUrl(url, buttonEl);
     } catch (e) {
       console.log('TTS playback error:', e.message);
