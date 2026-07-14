@@ -116,12 +116,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   .week-select-wrap{margin-left:0;width:100%}
 }
 
-/* ── ACOLYTE ACCESS GATE (added) ──
-   Weekly Rankings is now an Acolyte/Season Pass tier feature (decision
-   made June 23 2026, matching FantasyPros precedent — their Start/Sit
-   Assistant tool is Premium-only too). Same passcode gate as auction.html
-   and tiers.html, ORACLE-125, same sessionStorage unlock pattern. NOT
-   real auth — see those files' build notes. */
+/* ── ACOLYTE ACCESS GATE (added) ── */
 .gate-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a1108,#0d0804);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
 .gate-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.5)}
 .gate-icon{font-size:38px;margin-bottom:10px}
@@ -139,26 +134,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </head>
 <body>
 
-<!-- ═══ ACOLYTE ACCESS GATE (added) ═══
-     Weekly Rankings is now an Acolyte/Season Pass tier feature, same
-     gating pattern as auction.html/tiers.html. Checks sessionStorage
-     on load; if not unlocked, this overlay covers the whole page so
-     the tool underneath is not visible or usable. NOT real security —
-     anyone reading page source can find the passcode. This is a
-     friction gate to stop casual drive-by access before launch, not a
-     substitute for the eventual Patreon-backed check. See Pre-
-     Deployment Checklist #105/#105a.
-
-     #105a TESTER ALLOWLIST (fixed July 2026 #49 site review): this
-     page was missing the ALLOWLIST_PASSCODE (SANCTUM-TEST) check that
-     auction.html, tiers.html, and sanctum.html all already have —
-     checkGatePasscode() here only ever compared against GATE_PASSCODE.
-     That meant an allowlisted tester using SANCTUM-TEST to QA the rest
-     of the site would hit a real, unexplained lockout specifically on
-     this page while every other gated page worked fine for them. Now
-     checks both passcodes, same as every other gated page, so a
-     tester is indistinguishable from a real Acolyte across the whole
-     site, not just three-quarters of it. -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
@@ -172,10 +147,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (fixed — now checks the tester allowlist too) ═══
-// Plain-text constants, intentionally. Same passcodes as auction.html/
-// tiers.html/sanctum.html — not real auth. Swap for real Patreon-based
-// session check per #105/#105a before this becomes a long-term mechanism.
 var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
@@ -184,7 +155,7 @@ function checkGateUnlocked() {
   try {
     return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true';
   } catch (e) {
-    return false; // storage blocked (private browsing) — fail closed, show gate
+    return false;
   }
 }
 
@@ -225,6 +196,7 @@ function checkGatePasscode() {
     <a href="/draft" class="nav-link">📋 Draft Sheet</a>
     <a href="/compare" class="nav-link">🆚 Compare</a>
     <a href="/power-rankings" class="nav-link">📊 Power Rankings</a>
+    <a href="/risers-fallers" class="nav-link">📈 Risers & Fallers</a>
     <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
     <a href="/tiers" class="nav-link">🏆 Tier List</a>
     <a href="/survivor" class="nav-link">☠️ Survivor</a>
@@ -294,59 +266,14 @@ function checkGatePasscode() {
   </div>
 </div>
 
-<!-- shared-player-data.js intentionally NOT loaded here yet — this preview
-     build's "My Roster Only" filter has no real roster to filter against
-     (state.myRosterNames is empty). Once this page connects to a real
-     Sleeper-synced roster (same pattern as sanctum.html's connectSleeper()),
-     that's the point to load shared-player-data.js / wire up the actual
-     roster fetch, not before. -->
 <script>
-// ═══════════════════════════════════════════════════════════
-// WEEKLY RANKINGS — PREVIEW BUILD (checklist #119)
-//
-// ARCHITECTURE NOTE: in production, this page reads three cached
-// JSON datasets from Netlify Blobs (one per persona — same verdict
-// per player, different voice/phrasing only, per the locked v1 spec),
-// regenerated once per week by a scheduled Netlify Function. That
-// scheduled job does NOT exist yet — building it is gated on real
-// in-season Tank01 matchup data existing, which it doesn't until
-// the season is underway. This file currently uses MOCK_RANKINGS
-// below as a stand-in so the full UI (table, sort, filter, persona
-// toggle, search) is real and testable now, without waiting on data
-// that can't exist yet. Swap MOCK_RANKINGS for a real fetch() against
-// the cached Blobs endpoint when that job is built — the rendering
-// code below should not need to change, since it already treats the
-// data as if it came from an external source.
-// ═══════════════════════════════════════════════════════════
-
 var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
 
-// Same convention as sanctum.html's slotSearch() and auction.html's
-// flex logic — FLEX and Superflex aren't real positions, they're
-// roster-slot types that map to a SET of real positions. Filtering
-// by them means OR-ing those real positions together, not matching
-// a literal "FLEX" position value (which doesn't exist in the data).
 var FLEX_ELIGIBLE = {
   FLEX: ['RB', 'WR', 'TE'],
   SFLEX: ['QB', 'RB', 'WR', 'TE']
 };
 
-// Same verdict (start/flex/sit + reasoning facts) across all three
-// personas per player — only phrasing differs. This mirrors the
-// locked v1 decision: personas agree on the call, disagree only in
-// voice. (True per-persona disagreement is a deliberately deferred
-// v2 idea — see checklist #120.)
-//
-// SCORING FORMAT (added): proj and call are now PER-FORMAT objects
-// (ppr/half/standard), not single flat values — reception-dependent
-// players (pass-catching RBs, possession WRs, receiving TEs) can
-// swing between START/FLEX/SIT depending on format, same dependency
-// that already drives the Tier List and Auction pricing engine.
-// Players whose value doesn't meaningfully change by format (e.g.
-// a QB, a kicker, a defense) just repeat the same numbers across all
-// three — written out per-format anyway so the data shape stays
-// consistent and the real weekly-data job (when built) only needs to
-// populate one shape, not branch on "does this player care about PPR."
 var MOCK_RANKINGS = [
   { name:'Patrick Mahomes', pos:'QB', team:'KC', opp:'BUF', injury:'healthy',
     proj:{ppr:24.8, half:24.8, standard:24.8}, call:{ppr:'start', half:'start', standard:'start'},
@@ -416,7 +343,7 @@ var state = {
   myRosterOnly: false,
   sortKey: 'proj',
   sortDir: 'desc',
-  myRosterNames: []  // populated from Sleeper sync elsewhere on the platform, when connected — empty in preview build
+  myRosterNames: []
 };
 
 function injuryLabel(code) {
