@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risers &amp; Fallers — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ef;--bg2:#e8e7e4;--surface:#ffffff;--border:#d4d2ce;--border2:#b8b5b0;
+  --gold:#b8921a;--amber:#c8780a;--glow:#f5c842;--ink:#1c1c1a;--muted:#4a4a46;
+  --dim:#7a7a76;--green:#2e7d32;--red:#8a2020;--blue:#1565c0;--r:6px;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:#c9a84c;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+.status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 24px;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.status-dot.live{background:var(--green);animation:pulse 2s infinite}
+.status-dot.loading{background:var(--amber);animation:pulse 0.8s infinite}
+.status-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.main{max-width:900px;margin:0 auto;padding:28px 24px}
+
+.intro{text-align:center;margin-bottom:24px}
+.intro-icon{font-size:36px;margin-bottom:10px}
+.intro-title{font-family:'Cinzel',serif;font-size:20px;color:var(--ink);margin-bottom:6px}
+.intro-sub{font-size:13px;color:var(--dim);line-height:1.7;max-width:560px;margin:0 auto}
+.week-badge{display:inline-block;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--gold);background:rgba(184,146,26,0.08);border:1px solid rgba(184,146,26,0.25);padding:4px 12px;border-radius:20px}
+
+/* ── FREE TEASER (always visible, no gate) ── */
+.teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+@media(max-width:600px){.teaser-grid{grid-template-columns:1fr}}
+.teaser-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
+.teaser-card.riser{border-left:3px solid var(--green)}
+.teaser-card.faller{border-left:3px solid var(--red)}
+.teaser-eyebrow{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.teaser-card.riser .teaser-eyebrow{color:var(--green)}
+.teaser-card.faller .teaser-eyebrow{color:var(--red)}
+.teaser-name{font-family:'Cinzel',serif;font-size:18px;color:var(--ink);margin-bottom:4px}
+.teaser-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-bottom:12px}
+.teaser-stat{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;margin-bottom:2px}
+.teaser-card.riser .teaser-stat{color:var(--green)}
+.teaser-card.faller .teaser-stat{color:var(--red)}
+.teaser-stat-label{font-size:11px;color:var(--dim)}
+.teaser-free-tag{position:absolute;top:16px;right:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--gold);background:rgba(184,146,26,0.1);border:1px solid rgba(184,146,26,0.25);padding:3px 8px;border-radius:3px}
+
+/* ── INLINE PAYWALL (NOT a full-screen overlay — teaser above stays
+   visible regardless of lock state; only the detailed lists below
+   are gated) ── */
+.paywall-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:32px;text-align:center;margin-bottom:24px}
+.paywall-icon{font-size:32px;margin-bottom:10px}
+.paywall-title{font-family:'Cinzel',serif;font-size:17px;font-weight:600;color:#f2f1ef;margin-bottom:8px;letter-spacing:0.5px}
+.paywall-sub{font-family:'Lora',Georgia,serif;font-size:13px;color:#a08a5a;line-height:1.6;margin-bottom:20px;max-width:440px;margin-left:auto;margin-right:auto}
+.paywall-input{width:100%;max-width:280px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.3);color:#f2f1ef;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:2px;text-align:center;padding:12px 14px;border-radius:8px;margin-bottom:12px}
+.paywall-input:focus{outline:none;border-color:#c9a84c}
+.paywall-btn{width:100%;max-width:280px;padding:12px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:'Cinzel',serif;font-size:14px;font-weight:600;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;margin-bottom:14px;transition:opacity 0.15s}
+.paywall-btn:hover{opacity:0.88}
+.paywall-error{display:none;font-family:'Lora',Georgia,serif;font-size:12px;color:#e57373;margin-bottom:10px}
+.paywall-error.show{display:block}
+.paywall-btn-secondary{width:100%;max-width:280px;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
+.paywall-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
+.paywall-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;max-width:280px;margin-left:auto;margin-right:auto}
+.paywall-divider::before,.paywall-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
+.paywall-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
+.paywall-link:hover{opacity:1}
+.preview-banner{background:linear-gradient(135deg,#3a2a0a,#1f1608);border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:12px 18px;text-align:center;line-height:1.5;margin-bottom:20px}
+.preview-banner strong{color:#f5c842}
+.preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+
+/* ── FULL LISTS (revealed once unlocked) ── */
+.lists-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.lists-grid{grid-template-columns:1fr}}
+.list-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.list-hdr{padding:14px 18px;border-bottom:1px solid var(--border)}
+.list-hdr.riser{background:rgba(46,125,50,0.06)}
+.list-hdr.faller{background:rgba(138,32,32,0.06)}
+.list-hdr-title{font-family:'Cinzel',serif;font-size:14px}
+.list-hdr.riser .list-hdr-title{color:var(--green)}
+.list-hdr.faller .list-hdr-title{color:var(--red)}
+.player-row{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:4px}
+.player-row:last-child{border-bottom:none}
+.player-row-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.player-name-block{display:flex;align-items:center;gap:8px}
+.pos-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px}
+.pos-badge.WR{background:rgba(184,146,26,0.15);color:var(--gold)}
+.pos-badge.RB{background:rgba(46,125,50,0.15);color:var(--green)}
+.pos-badge.TE{background:rgba(200,120,10,0.15);color:var(--amber)}
+.player-name{font-size:13px;color:var(--ink)}
+.player-team{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+.delta-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600}
+.delta-val.up{color:var(--green)}
+.delta-val.down{color:var(--red)}
+.player-row-detail{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty-icon{font-size:40px;margin-bottom:14px;opacity:0.4}
+.empty-title{font-family:'Cinzel',serif;font-size:16px;color:var(--muted);margin-bottom:6px}
+.empty-sub{font-size:13px;line-height:1.7}
+
+.attr{text-align:center;font-size:10px;color:var(--dim);padding:16px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border);margin-top:24px}
+.attr a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">📈 Risers &amp; Fallers</h1>
+  </div>
+  <div class="hdr-right">
+    <span class="lock-badge">🔒 Acolyte Feature</span>
+    <a href="/" class="nav-link">🏠 Home</a>
+    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
+    <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
+    <a href="/tiers" class="nav-link">🏆 Tier List</a>
+    <a href="/compare" class="nav-link">🆚 Compare</a>
+    <a href="/weekly" class="nav-link">📅 Weekly Rankings</a>
+    <a href="/survivor" class="nav-link">☠️ Survivor</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot loading" id="statusDot"></span><span id="statusText">Loading trend data...</span></span>
+</div>
+
+<div class="main">
+
+  <div class="intro">
+    <div class="intro-icon">📈</div>
+    <div class="intro-title">Who's trending, before your league notices</div>
+    <div class="intro-sub">Real week-over-week target share shifts, pulled straight from box scores — not projections, not hot takes. See who's actually earning more looks and who's losing their role.</div>
+    <div class="week-badge" id="weekBadge">—</div>
+  </div>
+
+  <!-- ═══ FREE TEASER — always visible, no gate. Real single headline
+       mover in each direction, meant to be screenshot-shareable
+       (Reddit/social) without giving away the full paid lists below. ═══ -->
+  <div class="teaser-grid" id="teaserGrid">
+    <div class="teaser-card riser">
+      <span class="teaser-free-tag">FREE</span>
+      <div class="teaser-eyebrow">📈 This Week's Biggest Riser</div>
+      <div class="teaser-name" id="teaserRiserName">—</div>
+      <div class="teaser-meta" id="teaserRiserMeta">—</div>
+      <div class="teaser-stat" id="teaserRiserStat">—</div>
+      <div class="teaser-stat-label">target share, week over week</div>
+    </div>
+    <div class="teaser-card faller">
+      <span class="teaser-free-tag">FREE</span>
+      <div class="teaser-eyebrow">📉 This Week's Biggest Faller</div>
+      <div class="teaser-name" id="teaserFallerName">—</div>
+      <div class="teaser-meta" id="teaserFallerMeta">—</div>
+      <div class="teaser-stat" id="teaserFallerStat">—</div>
+      <div class="teaser-stat-label">target share, week over week</div>
+    </div>
+  </div>
+
+  <!-- ═══ INLINE PAYWALL — same unlock mechanism as tiers.html
+       (passcode / OAuth session / preview mode), but rendered as an
+       in-page card rather than a full-screen overlay, so the free
+       teaser above always stays visible even when locked. ═══ -->
+  <div id="paywallArea">
+    <div class="paywall-card">
+      <div class="paywall-icon">🔒</div>
+      <div class="paywall-title">See the Full Top 15 Risers &amp; Fallers</div>
+      <div class="paywall-sub">The teaser above is free for everyone. Founding Acolytes get the complete weekly list — every real mover, with snap share context and full target share history.</div>
+      <input type="password" class="paywall-input" id="paywallInput" placeholder="Passcode" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){checkPaywallPasscode()}"/>
+      <button class="paywall-btn" onclick="checkPaywallPasscode()">Unlock Full List</button>
+      <div class="paywall-error" id="paywallError">Incorrect passcode. Try again.</div>
+      <button class="paywall-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
+      <div class="paywall-divider">OR</div>
+      <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Frisers-fallers" class="paywall-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
+      <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="paywall-link">⚔️ Become a Founding Acolyte</a>
+    </div>
+  </div>
+
+  <div id="fullListsArea" style="display:none">
+    <div class="lists-grid" id="listsGrid"></div>
+  </div>
+
+</div>
+
+<div class="attr">
+  Target share &amp; snap share: <a href="https://tank01.com" target="_blank">Tank01</a>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// RISERS & FALLERS — Feature #131 frontend
+// Free teaser (top 1 riser + top 1 faller, always visible) sitting
+// above an Acolyte-gated full top-15 list. Data comes from
+// get-risers-fallers.js, which reads whatever refresh-risers-fallers.js
+// most recently cached — see that function's own header comment for
+// the full pipeline (Tank01 box scores -> target share/snap share
+// deltas, target-share-driven ranking with a minimum target floor to
+// filter noise, confirmed against real 2025 data before this page was
+// built).
+// ═══════════════════════════════════════════════════════════════════════
+
+var GATE_PASSCODE = 'ORACLE-125';
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
+var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock'; // SAME key as tiers.html/auction.html — a real Acolyte unlock anywhere on the site unlocks this page too, no separate login needed
+var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode'; // SAME key as tiers.html — consistent "preview" concept sitewide
+
+var latestData = null;
+
+function pct(n) { return (n * 100).toFixed(1) + '%'; }
+
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+function renderTeaser(data) {
+  if (!data.risers.length && !data.fallers.length) return;
+
+  if (data.risers.length) {
+    var r = data.risers[0];
+    document.getElementById('teaserRiserName').textContent = r.longName;
+    document.getElementById('teaserRiserMeta').textContent = r.pos + ' · ' + r.team;
+    document.getElementById('teaserRiserStat').textContent =
+      pct(r.previous.targetSharePct) + ' → ' + pct(r.current.targetSharePct) + ' (+' + pct(r.targetShareDelta) + ')';
+  }
+  if (data.fallers.length) {
+    var f = data.fallers[0];
+    document.getElementById('teaserFallerName').textContent = f.longName;
+    document.getElementById('teaserFallerMeta').textContent = f.pos + ' · ' + f.team;
+    document.getElementById('teaserFallerStat').textContent =
+      pct(f.previous.targetSharePct) + ' → ' + pct(f.current.targetSharePct) + ' (' + pct(f.targetShareDelta) + ')';
+  }
+}
+
+function playerRow(entry, direction) {
+  var deltaClass = direction === 'riser' ? 'up' : 'down';
+  var deltaSign = direction === 'riser' ? '+' : '';
+  return '<div class="player-row">' +
+    '<div class="player-row-top">' +
+      '<div class="player-name-block">' +
+        '<span class="pos-badge ' + entry.pos + '">' + entry.pos + '</span>' +
+        '<span class="player-name">' + entry.longName + '</span>' +
+        '<span class="player-team">' + entry.team + '</span>' +
+      '</div>' +
+      '<span class="delta-val ' + deltaClass + '">' + deltaSign + pct(entry.targetShareDelta) + '</span>' +
+    '</div>' +
+    '<div class="player-row-detail">' +
+      'Target share: ' + pct(entry.previous.targetSharePct) + ' → ' + pct(entry.current.targetSharePct) +
+      ' &nbsp;·&nbsp; Snap share: ' + pct(entry.previous.offSnapPct) + ' → ' + pct(entry.current.offSnapPct) +
+      ' &nbsp;·&nbsp; Targets: ' + entry.previous.targets + ' → ' + entry.current.targets +
+    '</div>' +
+  '</div>';
+}
+
+function renderFullLists(data) {
+  var grid = document.getElementById('listsGrid');
+
+  if (!data.risers.length && !data.fallers.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📊</div><div class="empty-title">No trend data yet</div><div class="empty-sub">Risers &amp; Fallers needs at least two completed weeks of the season to compare. Check back once Week 2 wraps up.</div></div>';
+    return;
+  }
+
+  var risersHtml = data.risers.slice(0, 15).map(function(e){ return playerRow(e, 'riser'); }).join('');
+  var fallersHtml = data.fallers.slice(0, 15).map(function(e){ return playerRow(e, 'faller'); }).join('');
+
+  grid.innerHTML =
+    '<div class="list-col"><div class="list-hdr riser"><span class="list-hdr-title">📈 Top Risers</span></div>' + risersHtml + '</div>' +
+    '<div class="list-col"><div class="list-hdr faller"><span class="list-hdr-title">📉 Top Fallers</span></div>' + fallersHtml + '</div>';
+}
+
+function unlockFullLists() {
+  document.getElementById('paywallArea').style.display = 'none';
+  document.getElementById('fullListsArea').style.display = 'block';
+  if (latestData) renderFullLists(latestData);
+}
+
+function checkPaywallPasscode() {
+  var input = document.getElementById('paywallInput');
+  var err = document.getElementById('paywallError');
+  var entered = input.value.trim().toUpperCase();
+  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+    try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+    unlockFullLists();
+  } else {
+    err.classList.add('show');
+    input.value = '';
+    input.focus();
+  }
+}
+
+function enterPreviewMode() {
+  try { sessionStorage.setItem(PREVIEW_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('paywallArea').innerHTML =
+    '<div class="preview-banner">👁 <strong>You\u2019re viewing a sample preview</strong> — full Risers &amp; Fallers list below, no real subscription required. ' +
+    '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">⚔️ Become a Founding Acolyte</a> to unlock everything sitewide.</div>';
+  unlockFullLists();
+}
+
+function checkGateUnlocked() {
+  try { return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true'; } catch (e) { return false; }
+}
+function checkPreviewMode() {
+  try { return sessionStorage.getItem(PREVIEW_STORAGE_KEY) === 'true'; } catch (e) { return false; }
+}
+
+// Same server-verified OAuth session check as tiers.html/auction.html —
+// a real logged-in Acolyte unlocks automatically, no passcode needed.
+function checkOAuthSession() {
+  return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      if (data && data.fullAccess === true) {
+        try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+        unlockFullLists();
+        return true;
+      }
+      return false;
+    })
+    .catch(function () { return false; });
+}
+
+async function loadData() {
+  setStatus('loading', 'Loading trend data...');
+  try {
+    var res = await fetch('/.netlify/functions/get-risers-fallers');
+    var data = await res.json();
+
+    if (data.status !== 'Success') {
+      setStatus('error', 'Trend data unavailable');
+      return;
+    }
+
+    latestData = data;
+    document.getElementById('weekBadge').textContent = 'Week ' + data.previousWeek + ' → Week ' + data.currentWeek;
+    setStatus('live', data.playerCount + ' players compared · ' + new Date(data.computedAt).toLocaleDateString());
+
+    renderTeaser(data);
+
+    // Unlock order matches tiers.html: unlocked session flag first,
+    // then preview mode, then a real OAuth session check, else show
+    // the paywall (which stays under the always-visible teaser above).
+    if (checkGateUnlocked() || checkPreviewMode()) {
+      unlockFullLists();
+    } else {
+      checkOAuthSession();
+    }
+  } catch (e) {
+    setStatus('error', 'Trend data unavailable — try refreshing');
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
