@@ -26,6 +26,28 @@
 [functions."qa-fact-check"]
   schedule = "30 0 * * *"
 
+# RISERS & FALLERS SCHEDULE — Feature #131 (added 2026-07-14)
+# Runs refresh-risers-fallers.js weekly at 12:00 UTC every Wednesday.
+# That function pulls the current and previous week's completed games
+# via getNFLGamesForWeek, computes week-over-week target share and
+# snap share deltas per player from getNFLBoxScore, and caches the
+# result (risers, fallers, and the full delta list) to Netlify Blobs
+# for the frontend to read. See refresh-risers-fallers.js for the
+# full rationale and the live-verified Tank01 field shapes it's built
+# against.
+#
+# WEEKLY, not daily, unlike refresh-player-data above — target/snap
+# share only meaningfully changes once a full week of games has
+# completed, so a daily refresh would just be redundant Tank01 calls
+# against unchanged data most days.
+#
+# Wednesday 12:00 UTC chosen so every game in the week's slate,
+# including Monday Night Football, is final by the time this runs.
+# Revisit this timing if the NFL ever schedules a game later than
+# Monday night in a given week (e.g. certain international slates).
+[functions."refresh-risers-fallers"]
+  schedule = "0 12 * * 3"
+
 [[redirects]]
   from = "/landing"
   to = "/"
