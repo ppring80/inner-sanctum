@@ -267,6 +267,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   Target share &amp; snap share: <a href="https://tank01.com" target="_blank">Tank01</a>
 </div>
 
+<script src="/shared-player-data.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════════
 // RISERS & FALLERS — Feature #131 frontend
@@ -288,8 +289,35 @@ var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode'; // SAME key as tiers.html — 
 var latestData = null;
 var curPosFilter = 'ALL'; // added — position filter selector state, shared by both columns
 var top50AdpNames = null; // added — Set of normalized names inside the top 50 overall ADP; null until fetched, badge simply omitted until then
+var tank01TeamMap = null; // added — live team-correction map, see below
 
 function pct(n) { return (n * 100).toFixed(1) + '%'; }
+
+// ═══ LIVE TEAM CORRECTION (added) ═══
+// This page currently displays real 2025 box-score data as a stand-in
+// for real 2026 Week-over-week data, which won't exist until the
+// season is underway (see intro copy / tester notes). That means any
+// player's `team` field reflects whoever he played for in the actual
+// 2025 games being compared — accurate for that data, but stale for
+// a reader checking today (e.g. A.J. Brown shown as PHI when he's
+// since been traded to NE). Every other player-facing page on the
+// site (draft.html, auction.html, tiers.html) already solves this
+// exact problem by correcting displayed team against the live Tank01
+// roster cache via shared-player-data.js's fetchTank01PlayerMap() —
+// this page never had that applied. Reusing the same shared function
+// here rather than writing a new one, per the sitewide "one Tank01
+// source of truth" decision (Pre-Deployment Checklist #135).
+//
+// Uses normalizePlayerName() from shared-player-data.js (same name-
+// matching convention already used sitewide) to look up each entry's
+// longName against the live map; falls back to the entry's own team
+// field untouched if the player isn't found or the map hasn't loaded
+// yet, so this can never make things worse, only better once it loads.
+function correctedTeam(entry) {
+  if (!tank01TeamMap) return entry.team;
+  var live = tank01TeamMap[normalizePlayerName(entry.longName)];
+  return (live && live.team) ? live.team : entry.team;
+}
 
 // ═══ TOP 50 ADP LOOKUP (added) ═══
 // Same normalizePlayerName-style approach used elsewhere on the site
@@ -342,14 +370,14 @@ function renderTeaser(data) {
   if (data.risers.length) {
     var r = data.risers[0];
     document.getElementById('teaserRiserName').textContent = r.longName;
-    document.getElementById('teaserRiserMeta').textContent = r.pos + ' · ' + r.team;
+    document.getElementById('teaserRiserMeta').textContent = r.pos + ' · ' + correctedTeam(r);
     document.getElementById('teaserRiserStat').textContent =
       pct(r.previous.targetSharePct) + ' → ' + pct(r.current.targetSharePct) + ' (+' + pct(r.targetShareDelta) + ')';
   }
   if (data.fallers.length) {
     var f = data.fallers[0];
     document.getElementById('teaserFallerName').textContent = f.longName;
-    document.getElementById('teaserFallerMeta').textContent = f.pos + ' · ' + f.team;
+    document.getElementById('teaserFallerMeta').textContent = f.pos + ' · ' + correctedTeam(f);
     document.getElementById('teaserFallerStat').textContent =
       pct(f.previous.targetSharePct) + ' → ' + pct(f.current.targetSharePct) + ' (' + pct(f.targetShareDelta) + ')';
   }
@@ -370,7 +398,7 @@ function playerRow(entry, direction) {
       '<div class="player-name-block">' +
         '<span class="pos-badge ' + entry.pos + '">' + entry.pos + '</span>' +
         '<span class="player-name">' + entry.longName + '</span>' +
-        '<span class="player-team">' + entry.team + '</span>' +
+        '<span class="player-team">' + correctedTeam(entry) + '</span>' +
         adpBadge +
       '</div>' +
       '<span class="delta-val ' + deltaClass + '">' + deltaSign + pct(entry.targetShareDelta) + '</span>' +
@@ -484,6 +512,20 @@ async function loadData() {
       renderFullLists(latestData);
     }
   });
+
+  // Live team correction (added) — same "load in parallel, re-render
+  // once it resolves" pattern as the ADP fetch above. Corrects both
+  // the free teaser (always visible) and the gated full lists once
+  // the map is ready, without blocking initial render on it.
+  fetchTank01PlayerMap().then(function(map){
+    tank01TeamMap = map;
+    if (latestData) {
+      renderTeaser(latestData);
+      if (document.getElementById('fullListsArea').style.display !== 'none') {
+        renderFullLists(latestData);
+      }
+    }
+  }).catch(function(){ /* map stays null — entries fall back to their own team field, unchanged behavior */ });
 
   try {
     var res = await fetch('/.netlify/functions/get-risers-fallers');
