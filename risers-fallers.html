@@ -111,6 +111,17 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .pos-filter-btn:hover{border-color:var(--gold);color:var(--gold)}
 .pos-filter-btn.active{color:#fff;border-color:transparent;background:var(--gold)}
 
+/* ── HIDE TOP 50 ADP TOGGLE (added) — the flip side of the badge:
+   instead of just flagging established names for context, this lets
+   someone actively filter them OUT to surface under-the-radar movers
+   only. Off by default (badge/context stays the primary behavior;
+   this is an opt-in for a specific "sleeper hunting" use case). Same
+   pill look as .pos-filter-btn for visual consistency — it's another
+   filter control, styled like one. ── */
+.hide-top50-toggle{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.hide-top50-toggle:hover{border-color:var(--gold);color:var(--gold)}
+.hide-top50-toggle.active{color:#fff;border-color:transparent;background:var(--gold)}
+
 /* ── TOP 50 ADP BADGE (added) — flags players inside the top-50
    overall ADP so a reader can tell "established name having a quiet
    week" apart from "role genuinely changing." Gold outline/text
@@ -269,6 +280,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
       <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
       <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
       <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+      <button class="hide-top50-toggle" id="hideTop50Btn" onclick="toggleHideTop50()">🙈 Hide Top 50 ADP</button>
     </div>
     <div class="lists-grid" id="listsGrid"></div>
   </div>
@@ -300,6 +312,7 @@ var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode'; // SAME key as tiers.html — 
 
 var latestData = null;
 var curPosFilter = 'ALL'; // added — position filter selector state, shared by both columns
+var hideTop50 = false; // added — "Hide Top 50 ADP" toggle state, off by default
 var top50AdpNames = null; // added — Set of normalized names inside the top 50 overall ADP; null until fetched, badge simply omitted until then
 var tank01TeamMap = null; // added — live team-correction map, see below
 
@@ -464,6 +477,21 @@ function setPosFilter(pos) {
   if (latestData) renderFullLists(latestData);
 }
 
+// ═══ HIDE TOP 50 ADP TOGGLE (added) ═══
+// Opt-in filter for "under-the-radar movers only" — the inverse of
+// the badge above. If top50AdpNames hasn't loaded yet, this is a
+// harmless no-op (nothing gets filtered until the data arrives, same
+// fail-safe pattern as the badge itself).
+function toggleHideTop50() {
+  hideTop50 = !hideTop50;
+  document.getElementById('hideTop50Btn').classList.toggle('active', hideTop50);
+  if (latestData) renderFullLists(latestData);
+}
+
+function isTop50Adp(entry) {
+  return !!(top50AdpNames && top50AdpNames.has(normalizeName(entry.longName)));
+}
+
 function renderFullLists(data) {
   var grid = document.getElementById('listsGrid');
 
@@ -472,14 +500,24 @@ function renderFullLists(data) {
     return;
   }
 
-  var risersFiltered = curPosFilter === 'ALL' ? data.risers : data.risers.filter(function(e){ return e.pos === curPosFilter; });
-  var fallersFiltered = curPosFilter === 'ALL' ? data.fallers : data.fallers.filter(function(e){ return e.pos === curPosFilter; });
+  var risersFiltered = data.risers.filter(function(e){
+    if (curPosFilter !== 'ALL' && e.pos !== curPosFilter) return false;
+    if (hideTop50 && isTop50Adp(e)) return false;
+    return true;
+  });
+  var fallersFiltered = data.fallers.filter(function(e){
+    if (curPosFilter !== 'ALL' && e.pos !== curPosFilter) return false;
+    if (hideTop50 && isTop50Adp(e)) return false;
+    return true;
+  });
 
   var risersHtml = risersFiltered.slice(0, 15).map(function(e){ return playerRow(e, 'riser'); }).join('');
   var fallersHtml = fallersFiltered.slice(0, 15).map(function(e){ return playerRow(e, 'faller'); }).join('');
 
-  var noRisers = !risersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-sub">No ' + curPosFilter + ' risers this week.</div></div>' : risersHtml;
-  var noFallers = !fallersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📉</div><div class="empty-sub">No ' + curPosFilter + ' fallers this week.</div></div>' : fallersHtml;
+  var filterLabel = curPosFilter === 'ALL' ? '' : curPosFilter + ' ';
+  var top50Label = hideTop50 ? ' outside the Top 50 ADP' : '';
+  var noRisers = !risersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-sub">No ' + filterLabel + 'risers' + top50Label + ' this week.</div></div>' : risersHtml;
+  var noFallers = !fallersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📉</div><div class="empty-sub">No ' + filterLabel + 'fallers' + top50Label + ' this week.</div></div>' : fallersHtml;
 
   grid.innerHTML =
     '<div class="list-col"><div class="list-hdr riser"><span class="list-hdr-title">📈 Top Risers</span></div>' + noRisers + '</div>' +
