@@ -97,6 +97,25 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .preview-banner strong{color:#f5c842}
 .preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
 
+/* ── POSITION FILTER (added) — same pill-tab pattern as Draft
+   Command Center's pos-tabs, scaled down for this page's simpler
+   position set (skill positions only — no K/DEF here since target
+   share/snap share don't apply to them). Filters both the Risers
+   and Fallers columns at once with a single selector, per Pat's son's
+   testing feedback. ── */
+.pos-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;justify-content:center}
+.pos-filter-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all 0.15s}
+.pos-filter-btn:hover{border-color:var(--gold);color:var(--gold)}
+.pos-filter-btn.active{color:#fff;border-color:transparent;background:var(--gold)}
+
+/* ── TOP 50 ADP BADGE (added) — flags players inside the top-50
+   overall ADP so a reader can tell "established name having a quiet
+   week" apart from "role genuinely changing." Deliberately a small,
+   muted tag rather than a warning color — this isn't discouraging
+   the entry, just adding context, per the "don't hide the data, add
+   context to it" decision. ── */
+.adp-badge{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;letter-spacing:0.5px;color:var(--dim);background:var(--bg2);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;cursor:help}
+
 /* ── FULL LISTS (revealed once unlocked) ── */
 .lists-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:700px){.lists-grid{grid-template-columns:1fr}}
@@ -175,6 +194,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
       <div class="help-rule"><span>🎯</span><span><strong>Target share</strong> is the percent of his team's throws that went to that one player. It's the single best early signal of whether a player's role is actually growing — well before it shows up in touchdowns or points.</span></div>
       <div class="help-rule"><span>👟</span><span><strong>Snap share</strong> is the percent of offensive plays a player was on the field for. Shown alongside target share as context — rising snaps with flat targets usually means blocking/decoy work, not real opportunity.</span></div>
       <div class="help-rule"><span>📊</span><span>Every player here had a real, meaningful number of targets in at least one of the two weeks compared — noise players (a single garbage-time catch, a punter's snap count) are filtered out before ranking, so what you see is signal, not statistical fluff.</span></div>
+      <div class="help-rule"><span>🏷️</span><span>A small <strong>TOP 50 ADP</strong> tag means that player was already a well-known, highly-drafted name. A single week's dip there is often just normal variance — a tough matchup, a game script that favored the run — since his baseline share is already high. The same swing means more for a player without that tag, since it's more likely to represent an actual new role.</span></div>
       <div class="help-section-title">Why this is worth paying attention to</div>
       <div class="help-rule"><span>⏱️</span><span>Box scores tell you what already happened. Target share <strong>trend</strong> tells you what's about to keep happening — a receiver's role rarely reverses itself in a single week.</span></div>
       <div class="help-rule"><span>💰</span><span>This is the exact data an early waiver claim or a buy-low trade is built on — by the time a riser shows up in weekly rankings or a national article, half your league has already added him.</span></div>
@@ -231,6 +251,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 
   <div id="fullListsArea" style="display:none">
+    <!-- ═══ POSITION FILTER (added) — filters both columns at once ═══ -->
+    <div class="pos-filter-bar" id="posFilterBar">
+      <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
+      <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
+      <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
+      <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+    </div>
     <div class="lists-grid" id="listsGrid"></div>
   </div>
 
@@ -259,8 +286,39 @@ var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock'; // SAME key as tiers.html/aucti
 var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode'; // SAME key as tiers.html — consistent "preview" concept sitewide
 
 var latestData = null;
+var curPosFilter = 'ALL'; // added — position filter selector state, shared by both columns
+var top50AdpNames = null; // added — Set of normalized names inside the top 50 overall ADP; null until fetched, badge simply omitted until then
 
 function pct(n) { return (n * 100).toFixed(1) + '%'; }
+
+// ═══ TOP 50 ADP LOOKUP (added) ═══
+// Same normalizePlayerName-style approach used elsewhere on the site
+// (draft.html/auction.html) for matching a name against a live-data
+// source: lowercase, strip punctuation, collapse whitespace. Fetches
+// the same /.netlify/functions/adp endpoint those pages already use,
+// sorts by ADP, and keeps only the first 50 names as a Set for O(1)
+// lookup per row. Non-critical to the page's core function — if this
+// fetch fails, top50AdpNames stays null and playerRow() below just
+// skips the badge entirely rather than blocking anything else.
+function normalizeName(n) {
+  return (n || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchTop50AdpNames() {
+  try {
+    var res = await fetch('/.netlify/functions/adp?scoring=ppr&teams=12&year=2026&count=300');
+    var data = await res.json();
+    if (data.status === 'Error' || !data.players || !Array.isArray(data.players)) return null;
+    var sorted = data.players
+      .filter(function(p){ return p.name; })
+      .slice()
+      .sort(function(a, b){ return (parseFloat(a.adp) || 999) - (parseFloat(b.adp) || 999); });
+    var top50 = sorted.slice(0, 50).map(function(p){ return normalizeName(p.name); });
+    return new Set(top50);
+  } catch (e) {
+    return null;
+  }
+}
 
 function setStatus(state, text) {
   document.getElementById('statusDot').className = 'status-dot ' + state;
@@ -300,12 +358,20 @@ function renderTeaser(data) {
 function playerRow(entry, direction) {
   var deltaClass = direction === 'riser' ? 'up' : 'down';
   var deltaSign = direction === 'riser' ? '+' : '';
+  // Top 50 ADP badge (added) — only rendered once top50AdpNames has
+  // loaded and this specific player is in it; silently omitted
+  // otherwise (e.g. mid-fetch, or the ADP source was unreachable).
+  var isTop50 = top50AdpNames && top50AdpNames.has(normalizeName(entry.longName));
+  var adpBadge = isTop50
+    ? '<span class="adp-badge" title="Inside the Top 50 overall ADP — a one-week dip here is often normal variance for an established name, not a role change. See How to Use This Page for more.">TOP 50 ADP</span>'
+    : '';
   return '<div class="player-row">' +
     '<div class="player-row-top">' +
       '<div class="player-name-block">' +
         '<span class="pos-badge ' + entry.pos + '">' + entry.pos + '</span>' +
         '<span class="player-name">' + entry.longName + '</span>' +
         '<span class="player-team">' + entry.team + '</span>' +
+        adpBadge +
       '</div>' +
       '<span class="delta-val ' + deltaClass + '">' + deltaSign + pct(entry.targetShareDelta) + '</span>' +
     '</div>' +
@@ -317,6 +383,20 @@ function playerRow(entry, direction) {
   '</div>';
 }
 
+// ═══ POSITION FILTER (added) ═══
+// Filters BOTH columns from a single selector, per Pat's son's
+// testing feedback. Filtering happens against the full risers/fallers
+// arrays (not the already-sliced top-15), then re-slices to 15 per
+// position — so switching to "RB" shows the top 15 RB movers, not
+// just whichever RBs happened to be in the overall top 15.
+function setPosFilter(pos) {
+  curPosFilter = pos;
+  document.querySelectorAll('.pos-filter-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.pos === pos);
+  });
+  if (latestData) renderFullLists(latestData);
+}
+
 function renderFullLists(data) {
   var grid = document.getElementById('listsGrid');
 
@@ -325,12 +405,18 @@ function renderFullLists(data) {
     return;
   }
 
-  var risersHtml = data.risers.slice(0, 15).map(function(e){ return playerRow(e, 'riser'); }).join('');
-  var fallersHtml = data.fallers.slice(0, 15).map(function(e){ return playerRow(e, 'faller'); }).join('');
+  var risersFiltered = curPosFilter === 'ALL' ? data.risers : data.risers.filter(function(e){ return e.pos === curPosFilter; });
+  var fallersFiltered = curPosFilter === 'ALL' ? data.fallers : data.fallers.filter(function(e){ return e.pos === curPosFilter; });
+
+  var risersHtml = risersFiltered.slice(0, 15).map(function(e){ return playerRow(e, 'riser'); }).join('');
+  var fallersHtml = fallersFiltered.slice(0, 15).map(function(e){ return playerRow(e, 'faller'); }).join('');
+
+  var noRisers = !risersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-sub">No ' + curPosFilter + ' risers this week.</div></div>' : risersHtml;
+  var noFallers = !fallersFiltered.length ? '<div class="empty-state"><div class="empty-icon">📉</div><div class="empty-sub">No ' + curPosFilter + ' fallers this week.</div></div>' : fallersHtml;
 
   grid.innerHTML =
-    '<div class="list-col"><div class="list-hdr riser"><span class="list-hdr-title">📈 Top Risers</span></div>' + risersHtml + '</div>' +
-    '<div class="list-col"><div class="list-hdr faller"><span class="list-hdr-title">📉 Top Fallers</span></div>' + fallersHtml + '</div>';
+    '<div class="list-col"><div class="list-hdr riser"><span class="list-hdr-title">📈 Top Risers</span></div>' + noRisers + '</div>' +
+    '<div class="list-col"><div class="list-hdr faller"><span class="list-hdr-title">📉 Top Fallers</span></div>' + noFallers + '</div>';
 }
 
 function unlockFullLists() {
@@ -386,6 +472,19 @@ function checkOAuthSession() {
 
 async function loadData() {
   setStatus('loading', 'Loading trend data...');
+
+  // Top 50 ADP names load in parallel, independently of the main
+  // trend fetch — a slow/failed ADP fetch should never hold up or
+  // break the core risers/fallers data. If it resolves AFTER the
+  // lists have already rendered, re-render once so badges appear
+  // without the user needing to refresh.
+  fetchTop50AdpNames().then(function(names){
+    top50AdpNames = names;
+    if (latestData && document.getElementById('fullListsArea').style.display !== 'none') {
+      renderFullLists(latestData);
+    }
+  });
+
   try {
     var res = await fetch('/.netlify/functions/get-risers-fallers');
     var data = await res.json();
