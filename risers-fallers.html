@@ -113,11 +113,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── TOP 50 ADP BADGE (added) — flags players inside the top-50
    overall ADP so a reader can tell "established name having a quiet
-   week" apart from "role genuinely changing." Deliberately a small,
-   muted tag rather than a warning color — this isn't discouraging
-   the entry, just adding context, per the "don't hide the data, add
-   context to it" decision. ── */
-.adp-badge{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;letter-spacing:0.5px;color:var(--dim);background:var(--bg2);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;cursor:help}
+   week" apart from "role genuinely changing." Gold outline/text
+   (not solid fill) — visible and clearly on-brand, but deliberately
+   stays secondary to the green/red delta number, which is the actual
+   point of the row. Revised from a muted gray after Pat's testing
+   feedback that the original tone was too low-contrast to notice. ── */
+.adp-badge{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:600;letter-spacing:0.5px;color:var(--gold);background:rgba(184,146,26,0.08);border:1px solid rgba(184,146,26,0.4);border-radius:3px;padding:2px 6px;cursor:help}
 
 /* ── FULL LISTS (revealed once unlocked) ── */
 .lists-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
