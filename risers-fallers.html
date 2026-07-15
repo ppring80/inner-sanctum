@@ -66,12 +66,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .teaser-eyebrow{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
 .teaser-card.riser .teaser-eyebrow{color:var(--green)}
 .teaser-card.faller .teaser-eyebrow{color:var(--red)}
-.teaser-name{font-family:'Cinzel',serif;font-size:18px;color:var(--ink);margin-bottom:4px}
+.teaser-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.teaser-name{font-family:'Cinzel',serif;font-size:18px;color:var(--ink)}
 .teaser-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);margin-bottom:12px}
 .teaser-stat{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;margin-bottom:2px}
 .teaser-card.riser .teaser-stat{color:var(--green)}
 .teaser-card.faller .teaser-stat{color:var(--red)}
 .teaser-stat-label{font-size:11px;color:var(--dim)}
+.teaser-why-link{display:block;margin-top:12px;background:transparent;border:none;padding:0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.5px;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.teaser-why-link:hover{color:var(--amber)}
 .teaser-free-tag{position:absolute;top:16px;right:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--gold);background:rgba(184,146,26,0.1);border:1px solid rgba(184,146,26,0.25);padding:3px 8px;border-radius:3px}
 
 /* ── INLINE PAYWALL (NOT a full-screen overlay — teaser above stays
@@ -215,18 +218,26 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <div class="teaser-card riser">
       <span class="teaser-free-tag">FREE</span>
       <div class="teaser-eyebrow">📈 This Week's Biggest Riser</div>
-      <div class="teaser-name" id="teaserRiserName">—</div>
+      <div class="teaser-name-row">
+        <span class="teaser-name" id="teaserRiserName">—</span>
+        <span class="adp-badge" id="teaserRiserAdpBadge" style="display:none"></span>
+      </div>
       <div class="teaser-meta" id="teaserRiserMeta">—</div>
       <div class="teaser-stat" id="teaserRiserStat">—</div>
       <div class="teaser-stat-label">target share, week over week</div>
+      <button class="teaser-why-link" onclick="openHelpAndScroll()">Why is he here? →</button>
     </div>
     <div class="teaser-card faller">
       <span class="teaser-free-tag">FREE</span>
       <div class="teaser-eyebrow">📉 This Week's Biggest Faller</div>
-      <div class="teaser-name" id="teaserFallerName">—</div>
+      <div class="teaser-name-row">
+        <span class="teaser-name" id="teaserFallerName">—</span>
+        <span class="adp-badge" id="teaserFallerAdpBadge" style="display:none"></span>
+      </div>
       <div class="teaser-meta" id="teaserFallerMeta">—</div>
       <div class="teaser-stat" id="teaserFallerStat">—</div>
       <div class="teaser-stat-label">target share, week over week</div>
+      <button class="teaser-why-link" onclick="openHelpAndScroll()">Why is he here? →</button>
     </div>
   </div>
 
@@ -364,6 +375,31 @@ function toggleHelp() {
   document.getElementById('helpBody').classList.toggle('open');
 }
 
+function setTeaserAdpBadge(badgeEl, entry) {
+  var isTop50 = top50AdpNames && top50AdpNames.has(normalizeName(entry.longName));
+  if (isTop50) {
+    badgeEl.textContent = 'TOP 50 ADP';
+    badgeEl.title = 'Inside the Top 50 overall ADP — a one-week swing here is often normal variance for an established name, not a role change. See How to Use This Page for more.';
+    badgeEl.style.display = 'inline-flex';
+  } else {
+    badgeEl.style.display = 'none';
+  }
+}
+
+// ═══ "Why is he here?" link (added) — teaser cards are the very
+// first thing a cold visitor sees, before any context. This opens
+// the (closed-by-default) help panel above and scrolls it into view,
+// rather than duplicating explanatory copy in two places on the page.
+function openHelpAndScroll() {
+  var body = document.getElementById('helpBody');
+  if (!body.classList.contains('open')) {
+    document.getElementById('helpToggle').classList.add('open');
+    document.getElementById('helpIcon').classList.add('open');
+    body.classList.add('open');
+  }
+  document.getElementById('helpToggle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderTeaser(data) {
   if (!data.risers.length && !data.fallers.length) return;
 
@@ -373,6 +409,7 @@ function renderTeaser(data) {
     document.getElementById('teaserRiserMeta').textContent = r.pos + ' · ' + correctedTeam(r);
     document.getElementById('teaserRiserStat').textContent =
       pct(r.previous.targetSharePct) + ' → ' + pct(r.current.targetSharePct) + ' (+' + pct(r.targetShareDelta) + ')';
+    setTeaserAdpBadge(document.getElementById('teaserRiserAdpBadge'), r);
   }
   if (data.fallers.length) {
     var f = data.fallers[0];
@@ -380,6 +417,7 @@ function renderTeaser(data) {
     document.getElementById('teaserFallerMeta').textContent = f.pos + ' · ' + correctedTeam(f);
     document.getElementById('teaserFallerStat').textContent =
       pct(f.previous.targetSharePct) + ' → ' + pct(f.current.targetSharePct) + ' (' + pct(f.targetShareDelta) + ')';
+    setTeaserAdpBadge(document.getElementById('teaserFallerAdpBadge'), f);
   }
 }
 
@@ -508,8 +546,11 @@ async function loadData() {
   // without the user needing to refresh.
   fetchTop50AdpNames().then(function(names){
     top50AdpNames = names;
-    if (latestData && document.getElementById('fullListsArea').style.display !== 'none') {
-      renderFullLists(latestData);
+    if (latestData) {
+      renderTeaser(latestData);
+      if (document.getElementById('fullListsArea').style.display !== 'none') {
+        renderFullLists(latestData);
+      }
     }
   });
 
