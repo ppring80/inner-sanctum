@@ -40,6 +40,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── OFFSEASON / PREVIEW NOTICE ── */
 .preview-banner{background:rgba(184,146,26,0.08);border-bottom:1px solid rgba(184,146,26,0.25);padding:10px 24px;text-align:center}
+.connection-banner{max-width:1040px;margin:12px auto 0;padding:10px 16px;border-radius:6px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.connection-banner.show{display:flex}
+.connection-banner{display:none;background:rgba(46,125,50,0.08);border:1px solid rgba(46,125,50,0.3);color:#2e7d32}
+.connection-banner a{color:inherit;text-decoration:underline;font-weight:600}
 .preview-banner-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px}
 .preview-banner-text strong{color:var(--gold)}
 
@@ -239,6 +243,11 @@ function checkGatePasscode() {
 <!-- ═══ PREVIEW/MOCK DATA NOTICE (remove once real weekly job is live) ═══ -->
 <div class="preview-banner" id="previewBanner">
   <span class="preview-banner-text">🔧 <strong>Preview build</strong> — showing sample data ahead of the season. Real weekly matchups, injury status, and live verdicts activate once Week 1 data exists.</span>
+</div>
+
+<div class="connection-banner" id="connectionBanner">
+  <span id="connectionBannerText"></span>
+  <a href="/connect-league">Manage connection →</a>
 </div>
 
 <div class="toggle-bar">
@@ -516,5 +525,19 @@ document.addEventListener('click', function (e) {
 });
 </script>
 
+<script src="/league-connection.js"></script>
+<script>
+(function showConnectionBanner() {
+  if (typeof LeagueConnection === 'undefined') return;
+  var active = LeagueConnection.getActiveProvider();
+  if (!active) return;
+  var label = LeagueConnection.PROVIDERS[active] ? LeagueConnection.PROVIDERS[active].label : active;
+  var banner = document.getElementById('connectionBanner');
+  var text = document.getElementById('connectionBannerText');
+  if (!banner || !text) return;
+  text.textContent = '🔗 Connected to ' + label + ' — rankings below aren\'t personalized to your roster yet, but your connection is recognized site-wide.';
+  banner.classList.add('show');
+})();
+</script>
 </body>
 </html>
