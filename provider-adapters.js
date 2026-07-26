@@ -98,11 +98,14 @@
   }
 
   function normalizeCbsData(rawData) {
-    // PLACEHOLDER — CBS's Fantasy Platform API (developer.cbssports.com)
-    // is officially deprecated; this shape is a best guess from that
-    // legacy documentation and community token-fetcher projects. No
-    // real response has been captured yet — fill this in for real once
-    // one is. Function signature stays stable.
+    // PLACEHOLDER, RETIRED PATH — CBS's Fantasy Platform API
+    // (developer.cbssports.com) is officially deprecated, AND real
+    // testing found CBS's login now requires solving a reCAPTCHA
+    // challenge before any credentials are accepted — a server-side
+    // integration can't get past that. See league-connection.js's CBS
+    // provider entry (status: "blocked") for the full writeup. Kept
+    // here for reference only; nothing currently calls this with real
+    // CBS data.
     return {
       leagueName: rawData?.league?.name ?? "",
       teamName: rawData?.team?.name ?? "",
