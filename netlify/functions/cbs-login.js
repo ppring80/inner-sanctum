@@ -93,11 +93,22 @@ async function fetchCbsToken({ leagueName, username, password }) {
   const match = html.match(TOKEN_REGEX);
 
   if (!match || !match[1]) {
-    // Most likely cause: wrong username/password, or a league name that
-    // doesn't match an actual CBS league URL. Less likely but possible:
-    // CBS changed their login page markup and this regex no longer
-    // matches anything (see KNOWN FRAGILITY note above).
-    return { token: null };
+    // TEMPORARY DIAGNOSTICS (added during initial testing) — include a
+    // safe, truncated snippet of what CBS actually sent back so we can
+    // tell a bad-password failure apart from CBS having changed their
+    // login page markup, added a CAPTCHA/robot check, or dropped this
+    // endpoint entirely. Contains no username/password, only CBS's own
+    // response HTML — remove this block once the real cause is known
+    // and the flow is confirmed working, since indefinitely echoing
+    // third-party response bodies back to the client isn't something
+    // to keep in a production error path long-term.
+    return {
+      token: null,
+      debug: {
+        cbsResponseStatus: response.status,
+        cbsResponseSnippet: html.slice(0, 800)
+      }
+    };
   }
 
   return { token: match[1] };
@@ -149,17 +160,20 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { token } = await fetchCbsToken({ leagueName, username, password });
+    const result = await fetchCbsToken({ leagueName, username, password });
 
-    if (!token) {
+    if (!result.token) {
       return {
         statusCode: 401,
         headers: CORS_HEADERS,
         body: JSON.stringify({
-          error: "Could not retrieve a CBS token — check your username, password, and league name."
+          error: "Could not retrieve a CBS token — check your username, password, and league name.",
+          debug: result.debug
         })
       };
     }
+
+    const token = result.token;
 
     return {
       statusCode: 200,
