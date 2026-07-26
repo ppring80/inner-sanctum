@@ -7,9 +7,19 @@
 
   <script src="league-connection.js"></script>
 
-  Flip PROVIDERS.yahoo.status from "pending" to "live" the moment
-  Yahoo credentials land — every page using this file picks it up
-  automatically, no other edits needed for the connection layer.
+  Flip a provider's status from "pending"/"planned" to "live" the
+  moment real credentials/backend land — every page using this file
+  picks it up automatically, no other edits needed for the
+  connection layer itself (though the actual fetch/auth flow for
+  that provider still needs building — see provider-adapters.js and
+  the connect-league.html reference page).
+
+  UPDATED (added CBS): now tracks four providers instead of three.
+  ESPN and CBS both ship as "planned" — connect-league.html still
+  lets a visitor walk through their connect form and store a
+  connection locally (status: "demo"), same pattern Yahoo already
+  used on power-rankings.html, so the UI/UX is provable before the
+  real backend proxy exists for either.
 */
 
 (function () {
@@ -17,6 +27,7 @@
     sleeper: { label: "Sleeper", status: "live", icon: "🏈" },
     yahoo: { label: "Yahoo", status: "pending", icon: "🟣" },
     espn: { label: "ESPN", status: "planned", icon: "🔴" },
+    cbs: { label: "CBS", status: "planned", icon: "🔵" },
   };
 
   const STORAGE_KEY = "innerSanctum_leagueConnections";
@@ -50,6 +61,10 @@
       return readState().connections;
     },
 
+    getConnection(provider) {
+      return readState().connections[provider] || null;
+    },
+
     isConnected(provider) {
       return Boolean(readState().connections[provider]);
     },
@@ -70,6 +85,10 @@
       delete state.connections[provider];
       if (state.activeProvider === provider) state.activeProvider = null;
       writeState(state);
+    },
+
+    disconnectAll() {
+      writeState({ activeProvider: null, connections: {} });
     },
   };
 
