@@ -481,16 +481,26 @@ function jumpToStepFromUrl() {
   handleAuthResultParams();
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
-    jumpToStepFromUrl();
+    // NOTE: do NOT call jumpToStepFromUrl() here. This branch runs
+    // synchronously the instant the browser parses this script block,
+    // which is BEFORE the later <script> block (containing goStep and
+    // all step-panel logic) has loaded. Calling goStep() this early
+    // throws a silent ReferenceError and the jump never happens. The
+    // already-unlocked case is instead handled at the bottom of the
+    // step-logic script, after goStep is guaranteed to be defined.
     return;
   }
   if (isPreviewMode()) {
     document.getElementById('gateOverlay').style.display = 'none';
     showPreviewBanner();
-    jumpToStepFromUrl();
+    // Same timing issue as above — handled later instead.
     return;
   }
   checkOAuthSession().then(function (unlocked) {
+    // Safe to call jumpToStepFromUrl() here: this .then() callback only
+    // fires after the verify-session fetch resolves, which happens well
+    // after the rest of the page (including goStep's script block) has
+    // already loaded and parsed.
     if (unlocked) jumpToStepFromUrl();
   });
 })();
@@ -1458,6 +1468,20 @@ function buildTeamInputs() {
   }
 }
 buildTeamInputs();
+
+// ADDED — handles the "already unlocked when the page loaded" case for
+// jumping to a specific step via ?step=N in the URL (e.g. the Tier
+// List page's "Open Price Sheet" link). The gate script above runs
+// BEFORE this script block, so goStep() doesn't exist yet at the point
+// the gate checks sessionStorage — calling it there silently fails.
+// This runs down here instead, which is the earliest point goStep()
+// is guaranteed to be defined. The passcode-entry, preview-mode-click,
+// and OAuth-async paths all call jumpToStepFromUrl() safely on their
+// own (see the gate script) since those all fire after this point too.
+if (typeof checkGateUnlocked === 'function' &&
+    (checkGateUnlocked() || (typeof isPreviewMode === 'function' && isPreviewMode()))) {
+  jumpToStepFromUrl();
+}
 
 // ═══════════════════════════════════════════════════════════
 // STEP 2 — ROSTER
