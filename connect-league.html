@@ -49,6 +49,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .platform-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#7a6a45;margin-top:4px}
 .platform-status.is-live{color:#7dbb7d}
 .platform-status.is-connected{color:#f5c842}
+.platform-status.is-blocked{color:#c97373}
 
 .connected-banner{display:none;background:rgba(46,125,50,0.1);border:1px solid rgba(46,125,50,0.35);border-radius:8px;padding:12px 14px;margin-bottom:20px;text-align:left;font-size:12px;color:#a8d5a8}
 .connected-banner.show{display:block}
@@ -169,6 +170,7 @@ var STATUS_LABELS = {
   live: 'Live',
   pending: 'Pending API access',
   planned: 'Connect (Demo)',
+  blocked: 'Not supported',
 };
 
 function renderPlatformRow() {
@@ -185,7 +187,7 @@ function renderPlatformRow() {
     btn.id = 'platform-' + key;
     btn.onclick = function () { selectPlatform(key); };
 
-    var statusClass = isConnected ? 'is-connected' : (p.status === 'live' ? 'is-live' : '');
+    var statusClass = isConnected ? 'is-connected' : (p.status === 'live' ? 'is-live' : (p.status === 'blocked' ? 'is-blocked' : ''));
     var statusText = isConnected ? 'Connected' : STATUS_LABELS[p.status];
 
     btn.innerHTML =
@@ -229,7 +231,7 @@ function renderProviderForm() {
   if (selectedProvider === 'yahoo') container.appendChild(buildYahooForm());
   if (selectedProvider === 'sleeper') container.appendChild(buildSleeperForm());
   if (selectedProvider === 'espn') container.appendChild(buildEspnForm());
-  if (selectedProvider === 'cbs') container.appendChild(buildCbsForm());
+  if (selectedProvider === 'cbs') container.appendChild(buildCbsBlockedNotice());
 }
 
 function buildYahooForm() {
@@ -279,145 +281,19 @@ function buildEspnForm() {
   return wrap;
 }
 
-function buildCbsForm() {
+function buildCbsBlockedNotice() {
   var wrap = document.createElement('div');
   wrap.className = 'provider-form show';
   wrap.innerHTML =
-    '<div class="pf-group"><label>League Slug</label><input type="text" id="cbsLeagueSlug" placeholder="e.g. widebodies"/>' +
-    '<div class="pf-hint">The part of your CBS league URL right before <code>.football.cbssports.com</code> — e.g. for <code>widebodies.football.cbssports.com</code>, enter <code>widebodies</code>.</div></div>' +
-    '<div class="pf-group"><label>Sport</label>' +
-    '<select id="cbsSport">' +
-    '<option value="football" selected>Football</option>' +
-    '<option value="baseball">Baseball</option>' +
-    '<option value="basketball">Basketball</option>' +
-    '<option value="hockey">Hockey</option>' +
-    '</select>' +
-    '<div class="pf-hint">CBS leagues live under a sport-specific subdomain — this combines with your slug to form <code>{slug}.{sport}.cbssports.com</code>.</div></div>' +
-    '<div class="pf-group"><label>CBS Username or Email</label><input type="text" id="cbsUsername" placeholder="Your CBS Sports login"/></div>' +
-    '<div class="pf-group"><label>CBS Password</label><input type="password" id="cbsPassword" placeholder="Your CBS Sports password"/></div>' +
-    '<div class="pf-risk">⚠️ CBS\'s developer platform is officially deprecated — this uses the same legacy token system, which could stop working without notice. Your password is used once to fetch a league token, never stored.</div>' +
-    '<button class="connect-btn" onclick="connectCbs()">Connect CBS League</button>' +
-    '<div class="connect-note">Signs into CBS Sports directly to fetch your league token — no CBS account credentials are stored by us.</div>' +
-    '<div class="result-box" id="cbsResult"></div>';
+    '<div class="pf-risk" style="margin-bottom:0">' +
+      '<strong style="display:block;margin-bottom:6px;color:#e08a8a">⚠️ CBS is not currently supported</strong>' +
+      'We tested this directly: CBS\'s login now runs through Google reCAPTCHA before accepting any credentials, and their login page is rendered entirely client-side — there\'s no server-side page to read a token from, and no browser here to solve a CAPTCHA challenge.' +
+      '<br><br>' +
+      'This isn\'t a "not built yet" gap like ESPN — it\'s an active block. The only ways around it would be a paid CAPTCHA-solving service (real cost, fragile, and not something we\'re comfortable doing) or CBS offering real API access, which they don\'t.' +
+      '<br><br>' +
+      'If you\'re on CBS, Sleeper and Yahoo remain the best-supported options for now.' +
+    '</div>';
   return wrap;
-}
-
-function toggleEspnPrivateFields() {
-  var type = document.getElementById('espnLeagueType').value;
-  document.getElementById('espnPrivateFields').style.display = (type === 'private') ? 'block' : 'none';
-}
-
-function togglePfHelp(btn) {
-  btn.classList.toggle('open');
-  btn.querySelector('.pf-help-icon').classList.toggle('open');
-  btn.nextElementSibling.classList.toggle('open');
-}
-
-function connectDemo(provider, data) {
-  LeagueConnection.connect(provider, data);
-  afterConnect();
-}
-
-function connectSleeper() {
-  var username = document.getElementById('sleeperUsername').value.trim();
-  if (!username) { alert('Enter your Sleeper username.'); return; }
-  LeagueConnection.connect('sleeper', { username: username });
-  afterConnect();
-}
-
-function connectEspn() {
-  var leagueId = document.getElementById('espnLeagueId').value.trim();
-  var isPrivate = document.getElementById('espnLeagueType').value === 'private';
-  var box = document.getElementById('espnResult');
-
-  if (!leagueId) {
-    box.className = 'result-box error show';
-    box.textContent = '⚠️ Enter your League ID.';
-    return;
-  }
-  if (isPrivate) {
-    var s2 = document.getElementById('espnS2').value.trim();
-    var swid = document.getElementById('espnSwid').value.trim();
-    if (!s2 || !swid) {
-      box.className = 'result-box error show';
-      box.textContent = '⚠️ Private leagues need both espn_s2 and SWID.';
-      return;
-    }
-    LeagueConnection.connect('espn', { leagueId: leagueId, private: true, espn_s2: s2, swid: swid });
-  } else {
-    LeagueConnection.connect('espn', { leagueId: leagueId, private: false });
-  }
-  box.className = 'result-box success show';
-  box.textContent = '✓ [DEMO] League ' + leagueId + ' connected — this proves the flow; a real backend proxy still needs building.';
-  setTimeout(afterConnect, 900);
-}
-
-function connectCbs() {
-  var leagueSlug = document.getElementById('cbsLeagueSlug').value.trim().toLowerCase();
-  var sport = document.getElementById('cbsSport').value;
-  var username = document.getElementById('cbsUsername').value.trim();
-  var password = document.getElementById('cbsPassword').value.trim();
-  var box = document.getElementById('cbsResult');
-  var btn = document.querySelector('#providerForms .connect-btn');
-
-  if (!leagueSlug || !username || !password) {
-    box.className = 'result-box error show';
-    box.textContent = '⚠️ Fill in league slug, username, and password.';
-    return;
-  }
-
-  // CBS leagues live under a sport-specific subdomain — e.g.
-  // widebodies.football.cbssports.com, not just widebodies.cbssports.com.
-  // Combine the slug and sport into the exact string the backend needs.
-  var leagueName = leagueSlug + '.' + sport;
-
-  box.className = 'result-box loading show';
-  box.textContent = '🔮 Signing into CBS Sports and fetching your league token...';
-  if (btn) btn.disabled = true;
-
-  // REAL BACKEND CALL — cbs-login.js Netlify Function. Your password is
-  // sent once, server-side, directly to cbssports.com's own login
-  // endpoint to fetch an API token — it is never stored by us, on this
-  // page or on the server. Only the resulting token is kept, the same
-  // way ESPN's espn_s2/SWID cookie values are kept for that provider.
-  fetch('/.netlify/functions/cbs-login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ leagueName: leagueName, username: username, password: password })
-  })
-    .then(function (res) {
-      return res.json().then(function (data) {
-        return { ok: res.ok, data: data };
-      });
-    })
-    .then(function (result) {
-      if (btn) btn.disabled = false;
-      if (!result.ok || !result.data.success) {
-        box.className = 'result-box error show';
-        var msg = '⚠️ ' + (result.data.error || 'Could not connect to CBS. Check your credentials and league name.');
-        // TEMPORARY — show the diagnostic snippet from cbs-login.js
-        // while we track down why CBS isn't returning a token. Remove
-        // this block once the real cause is confirmed and the flow
-        // works reliably.
-        if (result.data.debug) {
-          msg += '\n\n[DEBUG] CBS responded with status ' + result.data.debug.cbsResponseStatus + ':\n' +
-            result.data.debug.cbsResponseSnippet;
-        }
-        box.style.whiteSpace = 'pre-wrap';
-        box.textContent = msg;
-        return;
-      }
-      // Store only the token + league name — never the password.
-      LeagueConnection.connect('cbs', { leagueName: leagueName, token: result.data.token });
-      box.className = 'result-box success show';
-      box.textContent = '✓ Connected to CBS league "' + leagueName + '".';
-      setTimeout(afterConnect, 900);
-    })
-    .catch(function (err) {
-      if (btn) btn.disabled = false;
-      box.className = 'result-box error show';
-      box.textContent = '⚠️ Network error reaching our server. Try again in a moment.';
-    });
 }
 
 function afterConnect() {
