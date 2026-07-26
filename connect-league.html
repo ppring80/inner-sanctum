@@ -349,16 +349,51 @@ function connectCbs() {
   var username = document.getElementById('cbsUsername').value.trim();
   var password = document.getElementById('cbsPassword').value.trim();
   var box = document.getElementById('cbsResult');
+  var btn = document.querySelector('#providerForms .connect-btn');
 
   if (!leagueName || !username || !password) {
     box.className = 'result-box error show';
     box.textContent = '⚠️ Fill in league name, username, and password.';
     return;
   }
-  LeagueConnection.connect('cbs', { leagueName: leagueName, username: username });
-  box.className = 'result-box success show';
-  box.textContent = '✓ [DEMO] League "' + leagueName + '" connected — this proves the flow; a real backend token-fetch still needs building.';
-  setTimeout(afterConnect, 900);
+
+  box.className = 'result-box loading show';
+  box.textContent = '🔮 Signing into CBS Sports and fetching your league token...';
+  if (btn) btn.disabled = true;
+
+  // REAL BACKEND CALL — cbs-login.js Netlify Function. Your password is
+  // sent once, server-side, directly to cbssports.com's own login
+  // endpoint to fetch an API token — it is never stored by us, on this
+  // page or on the server. Only the resulting token is kept, the same
+  // way ESPN's espn_s2/SWID cookie values are kept for that provider.
+  fetch('/.netlify/functions/cbs-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leagueName: leagueName, username: username, password: password })
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, data: data };
+      });
+    })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      if (!result.ok || !result.data.success) {
+        box.className = 'result-box error show';
+        box.textContent = '⚠️ ' + (result.data.error || 'Could not connect to CBS. Check your credentials and league name.');
+        return;
+      }
+      // Store only the token + league name — never the password.
+      LeagueConnection.connect('cbs', { leagueName: leagueName, token: result.data.token });
+      box.className = 'result-box success show';
+      box.textContent = '✓ Connected to CBS league "' + leagueName + '".';
+      setTimeout(afterConnect, 900);
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      box.className = 'result-box error show';
+      box.textContent = '⚠️ Network error reaching our server. Try again in a moment.';
+    });
 }
 
 function afterConnect() {
