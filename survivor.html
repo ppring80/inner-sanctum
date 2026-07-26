@@ -115,6 +115,19 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
   .mcard-teams{grid-template-columns:1fr auto 1fr}
   .tpick{padding:10px}
 }
+
+/* ── GROUPED DROPDOWN NAV (added, hdr-btn variant) ── */
+.nav-dropdown{position:relative;display:inline-block}
+.nav-dropdown-trigger.hdr-btn{display:inline-flex;align-items:center;gap:4px}
+.nav-dropdown-caret{font-size:9px;transition:transform 0.2s}
+.nav-dropdown.open .nav-dropdown-caret{transform:rotate(180deg)}
+.nav-dropdown.open .nav-dropdown-trigger.hdr-btn{color:var(--gold-lt);border-color:var(--gold-lt)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1a1108;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:190px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#a08550;font-size:12px;font-family:'Lora',serif;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:var(--gold-lt)}
+@media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
+
 </style>
 </head>
 <body>
@@ -126,13 +139,31 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
   </div>
   <div class="hdr-right">
     <a href="/" class="hdr-btn">🏠 Home</a>
-    <a href="/draft" class="hdr-btn">📋 Draft</a>
-    <a href="/compare" class="hdr-btn">🆚 Compare</a>
-    <a href="/power-rankings" class="hdr-btn">📊 Power Rankings</a>
-    <a href="/risers-fallers" class="hdr-btn">📈 Risers & Fallers</a>
-    <a href="/auction" class="hdr-btn">⚔️ Auction</a>
-    <a href="/tiers" class="hdr-btn">🏆 Tier List</a>
-    <a href="/weekly" class="hdr-btn">📅 Weekly Rankings</a>
+
+    <div class="nav-dropdown" id="navDraftTools">
+      <button class="hdr-btn nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">
+        🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/draft">📋 Draft Sheet</a>
+      <a href="/compare">🆚 Compare</a>
+      <a href="/auction">⚔️ Auction War Room</a>
+      <a href="/tiers">🏆 Tier List</a>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" id="navSeasonTools">
+      <button class="hdr-btn nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">
+        📅 Season Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/power-rankings">📊 Power Rankings</a>
+      <a href="/weekly">📅 Weekly Rankings</a>
+      <a href="/risers-fallers">📈 Risers & Fallers</a>
+      </div>
+    </div>
+
+    <a href="/dispatches" class="hdr-btn">📜 Dispatches</a>
     <a href="/sanctum" class="hdr-btn">← Sanctum</a>
   </div>
 </div>
@@ -430,5 +461,21 @@ function clearPick(w){
 renderWeekTabs();
 loadWeek(curWeek);
 </script>
+
+<script>
+// ADDED — grouped dropdown nav toggle
+function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
+  var wasOpen = target.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  }
+});
+</script>
+
 </body>
 </html>
