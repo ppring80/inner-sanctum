@@ -557,6 +557,17 @@ textarea::placeholder { color: #3a3028; }
 .gate-link:hover{opacity:1}
 .gate-skip{display:block;margin-top:14px;font-family:Georgia,serif;font-size:11px;color:#5a4a30;text-decoration:underline;cursor:pointer;background:none;border:none}
 .gate-skip:hover{color:#8a7860}
+
+/* ── GROUPED DROPDOWN NAV (added, sanctum .nav pill variant) ── */
+.nav .nav-dropdown{flex:1;max-width:200px;position:relative;display:block}
+.nav .nav-dropdown-trigger{width:100%;padding:8px 14px;background:transparent;border:1px solid rgba(201,168,76,0.25);border-radius:8px;color:#c9a84c;font-size:11px;font-family:Georgia,serif;text-align:center;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.2s}
+.nav .nav-dropdown-trigger:hover,.nav .nav-dropdown.open .nav-dropdown-trigger{background:rgba(201,168,76,0.1);border-color:#c9a84c}
+.nav .nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#15100a;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:210px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
+.nav .nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav .nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#c9a84c;font-size:11px;font-family:Georgia,serif;letter-spacing:1px;text-transform:none;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav .nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:#f5c842}
+@media(max-width:820px){.nav .nav-dropdown-menu{left:0;transform:none}}
+
 </style>
 </head>
 <body>
@@ -679,14 +690,28 @@ function handleAuthResultParams() {
 
   <div class="nav">
     <a href="/">🏠 Home</a>
-    <a href="/draft">📋 Draft Cheat Sheet</a>
-    <a href="/compare">🆚 Compare</a>
-    <a href="/power-rankings">📊 Power Rankings</a>
-    <a href="/risers-fallers">📈 Risers & Fallers</a>
-    <a href="/auction">⚔️ Auction War Room</a>
-    <a href="/tiers">🏆 Tier List</a>
-    <a href="/weekly">📅 Weekly Rankings</a>
-    <a href="/survivor">☠️ Survivor</a>
+
+    <div class="nav-dropdown" id="navDraftTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">🗡️ Draft Tools ▼</button>
+      <div class="nav-dropdown-menu">
+      <a href="/draft">📋 Draft Sheet</a>
+      <a href="/compare">🆚 Compare</a>
+      <a href="/auction">⚔️ Auction War Room</a>
+      <a href="/tiers">🏆 Tier List</a>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" id="navSeasonTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">📅 Season Tools ▼</button>
+      <div class="nav-dropdown-menu">
+      <a href="/power-rankings">📊 Power Rankings</a>
+      <a href="/weekly">📅 Weekly Rankings</a>
+      <a href="/risers-fallers">📈 Risers & Fallers</a>
+      <a href="/survivor">☠️ Survivor</a>
+      </div>
+    </div>
+
+    <a href="/dispatches">📜 Dispatches</a>
   </div>
 
   <div class="top">
@@ -1749,5 +1774,21 @@ loadAcolyteWindow();
     <div id="acolyteCapResetNote" style="font-size:12px;color:#c9a84c;margin-top:14px;letter-spacing:0.5px;"></div>
   </div>
 </div>
+
+<script>
+// ADDED — grouped dropdown nav toggle
+function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
+  var wasOpen = target.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  }
+});
+</script>
+
 </body>
 </html>
