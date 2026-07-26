@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link Your League — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ef;--bg2:#e8e7e4;--surface:#ffffff;--border:#d4d2ce;--border2:#b8b5b0;
+  --gold:#b8921a;--amber:#c8780a;--glow:#f5c842;--ink:#1c1c1a;--muted:#4a4a46;
+  --dim:#7a7a76;--green:#2e7d32;--red:#8a2020;--blue:#1565c0;--r:6px;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+
+.hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link:hover{opacity:1;color:#f5c842}
+
+.nav-dropdown{position:relative;display:inline-block}
+.nav-dropdown-trigger{background:none;border:none;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;transition:opacity 0.2s}
+.nav-dropdown-trigger:hover,.nav-dropdown.open .nav-dropdown-trigger{opacity:1;color:#f5c842}
+.nav-dropdown-caret{font-size:9px;transition:transform 0.2s}
+.nav-dropdown.open .nav-dropdown-caret{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);background:#15100a;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:0.5px;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:#f5c842}
+@media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
+
+.wrap{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 76px);padding:32px 20px}
+
+.connect-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:40px 32px;max-width:500px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.4)}
+.connect-icon{font-size:40px;margin-bottom:12px}
+.connect-title{font-family:'Cinzel',serif;font-size:19px;font-weight:600;color:#f2f1ef;margin-bottom:10px;letter-spacing:1px}
+.connect-sub{font-family:'Lora',Georgia,serif;font-size:13px;color:#a08a5a;line-height:1.7;margin-bottom:24px}
+
+.platform-row{display:flex;gap:10px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+.platform-btn{flex:1;min-width:105px;padding:14px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(201,168,76,0.25);border-radius:10px;cursor:pointer;transition:all 0.15s;text-align:center}
+.platform-btn:hover{background:rgba(201,168,76,0.1);border-color:#c9a84c}
+.platform-btn.selected{background:rgba(201,168,76,0.15);border-color:#c9a84c}
+.platform-icon{font-size:18px;margin-bottom:4px}
+.platform-name{font-family:'Cinzel',serif;font-size:13px;color:#f2f1ef;letter-spacing:0.5px}
+.platform-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#7a6a45;margin-top:4px}
+.platform-status.is-live{color:#7dbb7d}
+.platform-status.is-connected{color:#f5c842}
+
+.connected-banner{display:none;background:rgba(46,125,50,0.1);border:1px solid rgba(46,125,50,0.35);border-radius:8px;padding:12px 14px;margin-bottom:20px;text-align:left;font-size:12px;color:#a8d5a8}
+.connected-banner.show{display:block}
+.connected-banner strong{color:#7dbb7d}
+.disconnect-link{color:#e57373;text-decoration:underline;cursor:pointer;font-size:11px;margin-left:8px}
+
+.provider-form{display:none;text-align:left;border-top:1px solid rgba(201,168,76,0.15);margin-top:6px;padding-top:20px}
+.provider-form.show{display:block}
+.pf-group{margin-bottom:14px}
+.pf-group label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8a7a55;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.pf-group input,.pf-group select{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(201,168,76,0.25);color:#f2f1ef;font-family:'Lora',serif;font-size:13px;padding:9px 12px;border-radius:6px}
+.pf-group input::placeholder{color:#6a5d42}
+.pf-group input:focus,.pf-group select:focus{outline:none;border-color:#c9a84c}
+.pf-hint{font-size:11px;color:#7a6a45;margin-top:4px;line-height:1.5}
+.pf-hint code{background:rgba(255,255,255,0.06);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;color:#c9a84c}
+
+.pf-help{background:rgba(255,255,255,0.03);border:1px solid rgba(201,168,76,0.15);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.pf-help-toggle{width:100%;background:transparent;border:none;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;letter-spacing:0.5px;text-align:left}
+.pf-help-icon{font-size:12px;transition:transform 0.3s}
+.pf-help-icon.open{transform:rotate(180deg)}
+.pf-help-body{display:none;padding:0 14px 14px}
+.pf-help-body.open{display:block}
+.pf-step{display:flex;gap:10px;margin-bottom:10px;font-size:12px;color:#a08a5a;line-height:1.6}
+.pf-step-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:#c9a84c;flex-shrink:0;width:16px}
+
+.pf-risk{background:rgba(200,120,10,0.08);border:1px solid rgba(200,120,10,0.3);border-radius:6px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#c9a56a;line-height:1.6}
+
+.connect-btn{width:100%;padding:14px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:'Cinzel',serif;font-size:14px;font-weight:600;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;transition:opacity 0.15s}
+.connect-btn:hover{opacity:0.88}
+.connect-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a4a2a;margin-top:16px;letter-spacing:0.5px}
+
+.result-box{display:none;border-radius:6px;padding:12px 14px;margin-top:16px;font-size:12px;line-height:1.6;text-align:left}
+.result-box.show{display:block}
+.result-box.success{background:rgba(46,125,50,0.1);border:1px solid rgba(46,125,50,0.3);color:#a8d5a8}
+.result-box.error{background:rgba(138,32,32,0.1);border:1px solid rgba(138,32,32,0.3);color:#f0a8a8}
+
+.applies-everywhere{font-size:11px;color:#6a5d42;margin-top:18px;line-height:1.6}
+.applies-everywhere strong{color:#8a7a55}
+
+@media(max-width:600px){
+  .connect-card{padding:28px 20px}
+  .platform-row{gap:8px}
+  .platform-btn{min-width:calc(50% - 4px)}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <span class="hdr-eyebrow">The Inner Sanctum</span>
+    <h1 class="hdr-title">🔗 Link Your League</h1>
+  </div>
+  <div class="hdr-right">
+    <a href="/" class="nav-link">🏠 Home</a>
+    <div class="nav-dropdown" id="navDraftTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span></button>
+      <div class="nav-dropdown-menu">
+        <a href="/draft">📋 Draft Sheet</a>
+        <a href="/compare">🆚 Compare</a>
+        <a href="/auction">⚔️ Auction War Room</a>
+        <a href="/tiers">🏆 Tier List</a>
+      </div>
+    </div>
+    <div class="nav-dropdown" id="navSeasonTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">📅 Season Tools <span class="nav-dropdown-caret">▼</span></button>
+      <div class="nav-dropdown-menu">
+        <a href="/power-rankings">📊 Power Rankings</a>
+        <a href="/weekly">📅 Weekly Rankings</a>
+        <a href="/risers-fallers">📈 Risers & Fallers</a>
+        <a href="/survivor">☠️ Survivor</a>
+      </div>
+    </div>
+    <a href="/dispatches" class="nav-link">📜 Dispatches</a>
+    <a href="/sanctum" class="nav-link">← Sanctum</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="connect-card">
+    <div class="connect-icon">🔗</div>
+    <div class="connect-title">Link Your League</div>
+    <div class="connect-sub">Connect once here, and every tool across The Inner Sanctum — Power Rankings, Weekly Rankings, the Auction War Room — recognizes your league automatically.</div>
+
+    <div class="connected-banner" id="connectedBanner">
+      <strong>✓ Connected</strong> — <span id="connectedProviderLabel"></span>
+      <span class="disconnect-link" onclick="disconnectActive()">Disconnect</span>
+    </div>
+
+    <div class="platform-row" id="platformRow"></div>
+
+    <div id="providerForms"></div>
+
+    <div class="applies-everywhere">
+      <strong>This connection is shared site-wide.</strong> Once linked, no other page will ask you to connect again — they'll read this same connection automatically.
+    </div>
+  </div>
+</div>
+
+<script src="/league-connection.js"></script>
+<script src="/provider-adapters.js"></script>
+<script>
+function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
+  var wasOpen = target.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  }
+});
+
+var selectedProvider = 'yahoo';
+
+var STATUS_LABELS = {
+  live: 'Live',
+  pending: 'Pending API access',
+  planned: 'Connect (Demo)',
+};
+
+function renderPlatformRow() {
+  var row = document.getElementById('platformRow');
+  row.innerHTML = '';
+  var providers = LeagueConnection.PROVIDERS;
+  var connections = LeagueConnection.getConnections();
+
+  Object.keys(providers).forEach(function (key) {
+    var p = providers[key];
+    var isConnected = Boolean(connections[key]);
+    var btn = document.createElement('div');
+    btn.className = 'platform-btn' + (key === selectedProvider ? ' selected' : '');
+    btn.id = 'platform-' + key;
+    btn.onclick = function () { selectPlatform(key); };
+
+    var statusClass = isConnected ? 'is-connected' : (p.status === 'live' ? 'is-live' : '');
+    var statusText = isConnected ? 'Connected' : STATUS_LABELS[p.status];
+
+    btn.innerHTML =
+      '<div class="platform-icon">' + p.icon + '</div>' +
+      '<div class="platform-name">' + p.label + '</div>' +
+      '<div class="platform-status ' + statusClass + '">' + statusText + '</div>';
+    row.appendChild(btn);
+  });
+}
+
+function renderConnectedBanner() {
+  var banner = document.getElementById('connectedBanner');
+  var active = LeagueConnection.getActiveProvider();
+  if (active) {
+    var label = LeagueConnection.PROVIDERS[active].label;
+    document.getElementById('connectedProviderLabel').textContent = label + ' league linked';
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function selectPlatform(key) {
+  selectedProvider = key;
+  renderPlatformRow();
+  renderProviderForm();
+}
+
+function disconnectActive() {
+  var active = LeagueConnection.getActiveProvider();
+  if (active) LeagueConnection.disconnect(active);
+  renderPlatformRow();
+  renderConnectedBanner();
+  renderProviderForm();
+}
+
+function renderProviderForm() {
+  var container = document.getElementById('providerForms');
+  container.innerHTML = '';
+
+  if (selectedProvider === 'yahoo') container.appendChild(buildYahooForm());
+  if (selectedProvider === 'sleeper') container.appendChild(buildSleeperForm());
+  if (selectedProvider === 'espn') container.appendChild(buildEspnForm());
+  if (selectedProvider === 'cbs') container.appendChild(buildCbsForm());
+}
+
+function buildYahooForm() {
+  var wrap = document.createElement('div');
+  wrap.className = 'provider-form show';
+  wrap.innerHTML =
+    '<button class="connect-btn" onclick="connectDemo(\'yahoo\', {leagueName:\'The Brotherhood\'})">Connect with Yahoo (Demo)</button>' +
+    '<div class="connect-note">DEMO MODE — loads sample league data. Real Yahoo OAuth is pending Yahoo enabling Fantasy Sports API access on our account.</div>';
+  return wrap;
+}
+
+function buildSleeperForm() {
+  var wrap = document.createElement('div');
+  wrap.className = 'provider-form show';
+  wrap.innerHTML =
+    '<div class="pf-group"><label>Sleeper Username</label><input type="text" id="sleeperUsername" placeholder="Enter your Sleeper username"/></div>' +
+    '<button class="connect-btn" onclick="connectSleeper()">Connect Sleeper League</button>' +
+    '<div class="connect-note">Sleeper leagues are public by default — no password or cookies needed.</div>';
+  return wrap;
+}
+
+function buildEspnForm() {
+  var wrap = document.createElement('div');
+  wrap.className = 'provider-form show';
+  wrap.innerHTML =
+    '<div class="pf-group"><label>League ID</label><input type="text" id="espnLeagueId" placeholder="e.g. 899513"/>' +
+    '<div class="pf-hint">Found in your ESPN league URL after <code>leagueId=</code></div></div>' +
+    '<div class="pf-group"><label>League Type</label>' +
+    '<select id="espnLeagueType" onchange="toggleEspnPrivateFields()">' +
+    '<option value="public">Public League</option><option value="private">Private League</option></select></div>' +
+    '<div id="espnPrivateFields" style="display:none">' +
+      '<div class="pf-help">' +
+        '<button class="pf-help-toggle" onclick="togglePfHelp(this)">📖 How to find your espn_s2 and SWID <span class="pf-help-icon">▼</span></button>' +
+        '<div class="pf-help-body">' +
+          '<div class="pf-step"><span class="pf-step-num">1</span><span>Log into fantasy.espn.com and open your league.</span></div>' +
+          '<div class="pf-step"><span class="pf-step-num">2</span><span>Open Developer Tools (F12) → Application/Storage tab → Cookies → fantasy.espn.com.</span></div>' +
+          '<div class="pf-step"><span class="pf-step-num">3</span><span>Copy the values for <code>espn_s2</code> and <code>SWID</code> below.</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="pf-group"><label>espn_s2</label><input type="text" id="espnS2" placeholder="Paste espn_s2 cookie value"/></div>' +
+      '<div class="pf-group"><label>SWID</label><input type="text" id="espnSwid" placeholder="e.g. {ABC123-...}"/></div>' +
+      '<div class="pf-risk">⚠️ These act like a password to your ESPN account. Stored only to read your league — never shared. Disconnect anytime to revoke access.</div>' +
+    '</div>' +
+    '<button class="connect-btn" onclick="connectEspn()">Connect ESPN League (Demo)</button>' +
+    '<div class="connect-note">DEMO MODE — validates the form and stores a demo connection. Real ESPN data requires a backend proxy (not yet built).</div>' +
+    '<div class="result-box" id="espnResult"></div>';
+  return wrap;
+}
+
+function buildCbsForm() {
+  var wrap = document.createElement('div');
+  wrap.className = 'provider-form show';
+  wrap.innerHTML =
+    '<div class="pf-group"><label>League Name</label><input type="text" id="cbsLeagueName" placeholder="e.g. wundersport"/>' +
+    '<div class="pf-hint">Found in your CBS league URL, e.g. <code>footballgm.cbssports.com/office-pool/leagues/wundersport</code></div></div>' +
+    '<div class="pf-group"><label>CBS Username or Email</label><input type="text" id="cbsUsername" placeholder="Your CBS Sports login"/></div>' +
+    '<div class="pf-group"><label>CBS Password</label><input type="password" id="cbsPassword" placeholder="Your CBS Sports password"/></div>' +
+    '<div class="pf-risk">⚠️ CBS\'s developer platform is officially deprecated — this uses the same legacy token system, which could stop working without notice. Your password is used once to fetch a league token, never stored.</div>' +
+    '<button class="connect-btn" onclick="connectCbs()">Connect CBS League (Demo)</button>' +
+    '<div class="connect-note">DEMO MODE — validates the form and stores a demo connection. Real CBS data requires a backend token-fetch (not yet built).</div>' +
+    '<div class="result-box" id="cbsResult"></div>';
+  return wrap;
+}
+
+function toggleEspnPrivateFields() {
+  var type = document.getElementById('espnLeagueType').value;
+  document.getElementById('espnPrivateFields').style.display = (type === 'private') ? 'block' : 'none';
+}
+
+function togglePfHelp(btn) {
+  btn.classList.toggle('open');
+  btn.querySelector('.pf-help-icon').classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
+}
+
+function connectDemo(provider, data) {
+  LeagueConnection.connect(provider, data);
+  afterConnect();
+}
+
+function connectSleeper() {
+  var username = document.getElementById('sleeperUsername').value.trim();
+  if (!username) { alert('Enter your Sleeper username.'); return; }
+  LeagueConnection.connect('sleeper', { username: username });
+  afterConnect();
+}
+
+function connectEspn() {
+  var leagueId = document.getElementById('espnLeagueId').value.trim();
+  var isPrivate = document.getElementById('espnLeagueType').value === 'private';
+  var box = document.getElementById('espnResult');
+
+  if (!leagueId) {
+    box.className = 'result-box error show';
+    box.textContent = '⚠️ Enter your League ID.';
+    return;
+  }
+  if (isPrivate) {
+    var s2 = document.getElementById('espnS2').value.trim();
+    var swid = document.getElementById('espnSwid').value.trim();
+    if (!s2 || !swid) {
+      box.className = 'result-box error show';
+      box.textContent = '⚠️ Private leagues need both espn_s2 and SWID.';
+      return;
+    }
+    LeagueConnection.connect('espn', { leagueId: leagueId, private: true, espn_s2: s2, swid: swid });
+  } else {
+    LeagueConnection.connect('espn', { leagueId: leagueId, private: false });
+  }
+  box.className = 'result-box success show';
+  box.textContent = '✓ [DEMO] League ' + leagueId + ' connected — this proves the flow; a real backend proxy still needs building.';
+  setTimeout(afterConnect, 900);
+}
+
+function connectCbs() {
+  var leagueName = document.getElementById('cbsLeagueName').value.trim();
+  var username = document.getElementById('cbsUsername').value.trim();
+  var password = document.getElementById('cbsPassword').value.trim();
+  var box = document.getElementById('cbsResult');
+
+  if (!leagueName || !username || !password) {
+    box.className = 'result-box error show';
+    box.textContent = '⚠️ Fill in league name, username, and password.';
+    return;
+  }
+  LeagueConnection.connect('cbs', { leagueName: leagueName, username: username });
+  box.className = 'result-box success show';
+  box.textContent = '✓ [DEMO] League "' + leagueName + '" connected — this proves the flow; a real backend token-fetch still needs building.';
+  setTimeout(afterConnect, 900);
+}
+
+function afterConnect() {
+  renderPlatformRow();
+  renderConnectedBanner();
+  renderProviderForm();
+}
+
+(function init() {
+  var active = LeagueConnection.getActiveProvider();
+  if (active) selectedProvider = active;
+  renderPlatformRow();
+  renderConnectedBanner();
+  renderProviderForm();
+})();
+</script>
+
+</body>
+</html>
