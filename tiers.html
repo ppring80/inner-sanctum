@@ -175,13 +175,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
 .gate-link:hover{opacity:1}
 
-/* ── PREVIEW MODE (added) ──────────────────────────────────────────────
-   Same pattern as auction.html's preview mode — see that file's
-   PREVIEW MODE comment block for full rationale. Simpler here: Tier
-   List has no personal league inputs to lock (no league name, no
-   budget tied to your real league) — it only takes scoring/format
-   settings, which aren't identifying. So preview here just means
-   "fully unlock the real tool," no demo-data faking required. */
+/* ── PREVIEW MODE (added) ── */
 .gate-btn-secondary{width:100%;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
 .gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
 .gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
@@ -451,7 +445,7 @@ function handleAuthResultParams() {
       </select>
     </div>
     <button class="generate-btn" id="generateBtn" onclick="generateTiers()">🔮 Generate Tier List</button>
-    <a href="/auction" class="auction-link-btn">⚔️ Open Price Sheet</a>
+    <a href="/auction?step=4" class="auction-link-btn">⚔️ Open Price Sheet</a>
   </div>
 </div>
 
@@ -466,7 +460,7 @@ function handleAuthResultParams() {
       <div class="connector-source" id="connectorSource"></div>
       <div class="connector-text" id="connectorText"></div>
     </div>
-    <a href="/auction" class="connector-action">Open War Room →</a>
+    <a href="/auction?step=4" class="connector-action">Open War Room →</a>
   </div>
 </div>
 
