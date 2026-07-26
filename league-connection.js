@@ -26,7 +26,10 @@
   const PROVIDERS = {
     sleeper: { label: "Sleeper", status: "live", icon: "🏈" },
     yahoo: { label: "Yahoo", status: "pending", icon: "🟣" },
-    espn: { label: "ESPN", status: "planned", icon: "🔴" },
+    // "beta" — real backend now built (espn-league.js), but not yet
+    // battle-tested against a wide range of real leagues, so kept
+    // distinct from "live" until it's proven reliable.
+    espn: { label: "ESPN", status: "beta", icon: "🔴" },
     // CBS status "blocked" (not "planned") — deliberately distinct.
     // INVESTIGATED AND RULED OUT (added after real testing): CBS's
     // login flow now runs through Google reCAPTCHA before it will
