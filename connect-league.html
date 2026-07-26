@@ -394,7 +394,17 @@ function connectCbs() {
       if (btn) btn.disabled = false;
       if (!result.ok || !result.data.success) {
         box.className = 'result-box error show';
-        box.textContent = '⚠️ ' + (result.data.error || 'Could not connect to CBS. Check your credentials and league name.');
+        var msg = '⚠️ ' + (result.data.error || 'Could not connect to CBS. Check your credentials and league name.');
+        // TEMPORARY — show the diagnostic snippet from cbs-login.js
+        // while we track down why CBS isn't returning a token. Remove
+        // this block once the real cause is confirmed and the flow
+        // works reliably.
+        if (result.data.debug) {
+          msg += '\n\n[DEBUG] CBS responded with status ' + result.data.debug.cbsResponseStatus + ':\n' +
+            result.data.debug.cbsResponseSnippet;
+        }
+        box.style.whiteSpace = 'pre-wrap';
+        box.textContent = msg;
         return;
       }
       // Store only the token + league name — never the password.
