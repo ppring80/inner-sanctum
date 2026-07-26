@@ -235,7 +235,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
       <div class="league-meta-name" id="leagueName">The Brotherhood</div>
       <div class="league-meta-tag" id="leagueMeta">10 teams · PPR · Week 11 · Yahoo Fantasy</div>
     </div>
-    <div class="attribution">Fantasy data provided by Yahoo Fantasy</div>
+    <div class="attribution" id="attribution">Fantasy data provided by Yahoo Fantasy</div>
   </div>
 
   <div class="persona-switcher">
@@ -469,6 +469,25 @@ function connectMock() {
 
   document.getElementById('leagueMeta').textContent =
     LEAGUE.numTeams + ' teams · ' + LEAGUE.scoring + ' · Week ' + LEAGUE.week + ' · ' + platformLabel;
+
+  // Attribution line — was previously hardcoded to Yahoo regardless of
+  // which provider was actually connected. Now reflects the real
+  // active provider. Yahoo specifically requires this exact phrasing,
+  // hyperlinked to an official Yahoo Fantasy page, per the signed API
+  // Access and Use Agreement — that requirement only applies once real
+  // Yahoo data is live, but the link is included now so the correct
+  // format is already in place.
+  var attrEl = document.getElementById('attribution');
+  if (attrEl) {
+    if (activeProvider === 'yahoo') {
+      attrEl.innerHTML = 'Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Yahoo Fantasy</a>';
+    } else if (activeProvider && LeagueConnection.PROVIDERS[activeProvider]) {
+      attrEl.textContent = 'Fantasy data provided by ' + LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy';
+    } else {
+      attrEl.textContent = 'Fantasy data provided by ' + LEAGUE.platform;
+    }
+  }
+
   renderRankings();
   renderMatchups();
 }
