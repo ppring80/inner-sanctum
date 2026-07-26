@@ -191,6 +191,19 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .auth-banner.show{display:block}
 .auth-banner.success{background:rgba(46,125,50,0.08);border:1px solid rgba(46,125,50,0.25);color:var(--green)}
 .auth-banner.error{background:rgba(138,32,32,0.08);border:1px solid rgba(138,32,32,0.25);color:var(--red)}
+
+/* ── GROUPED DROPDOWN NAV (added) ── */
+.nav-dropdown{position:relative;display:inline-block}
+.nav-dropdown-trigger{background:none;border:none;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;transition:opacity 0.2s}
+.nav-dropdown-trigger:hover,.nav-dropdown.open .nav-dropdown-trigger{opacity:1;color:#f5c842}
+.nav-dropdown-caret{font-size:9px;transition:transform 0.2s}
+.nav-dropdown.open .nav-dropdown-caret{transform:rotate(180deg)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);background:#15100a;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:0.5px;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:#f5c842}
+@media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
+
 </style>
 </head>
 <body>
@@ -405,13 +418,31 @@ function handleAuthResultParams() {
   <div class="hdr-right">
     <span class="lock-badge">🔒 Acolyte Feature</span>
     <a href="/" class="nav-link">🏠 Home</a>
-    <a href="/draft" class="nav-link">📋 Draft Sheet</a>
-    <a href="/compare" class="nav-link">🆚 Compare</a>
-    <a href="/power-rankings" class="nav-link">📊 Power Rankings</a>
-    <a href="/risers-fallers" class="nav-link">📈 Risers &amp; Fallers</a>
-    <a href="/auction" class="nav-link">⚔️ Auction War Room</a>
-    <a href="/weekly" class="nav-link">📅 Weekly Rankings</a>
-    <a href="/survivor" class="nav-link">☠️ Survivor</a>
+
+    <div class="nav-dropdown" id="navDraftTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">
+        🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/draft">📋 Draft Sheet</a>
+      <a href="/compare">🆚 Compare</a>
+      <a href="/auction">⚔️ Auction War Room</a>
+      </div>
+    </div>
+
+    <div class="nav-dropdown" id="navSeasonTools">
+      <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">
+        📅 Season Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/power-rankings">📊 Power Rankings</a>
+      <a href="/weekly">📅 Weekly Rankings</a>
+      <a href="/risers-fallers">📈 Risers & Fallers</a>
+      <a href="/survivor">☠️ Survivor</a>
+      </div>
+    </div>
+
+    <a href="/dispatches" class="nav-link">📜 Dispatches</a>
     <a href="/sanctum" class="nav-link">← Sanctum</a>
   </div>
 </div>
@@ -1134,5 +1165,21 @@ if (savedStrategy) {
   }
 }
 </script>
+
+<script>
+// ADDED — grouped dropdown nav toggle
+function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
+  var wasOpen = target.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  }
+});
+</script>
+
 </body>
 </html>
