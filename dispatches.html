@@ -54,19 +54,26 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 /* ── DISPATCH CARDS ── */
 .dispatch-grid{display:flex;flex-direction:column;gap:14px}
 .dispatch-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;display:flex;gap:16px;align-items:flex-start;transition:border-color 0.15s,box-shadow 0.15s;text-decoration:none;color:inherit}
+.dispatch-card[onclick]{cursor:pointer}
 .dispatch-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,0.06)}
 .dispatch-icon{font-size:28px;flex-shrink:0;width:44px;text-align:center;padding-top:2px}
 .dispatch-body{flex:1;min-width:0}
 .dispatch-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
 .dispatch-type{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:3px;font-weight:600}
 .dispatch-type.waiver{background:rgba(46,125,50,0.12);color:var(--green);border:1px solid rgba(46,125,50,0.3)}
+.dispatch-type.camp{background:rgba(200,120,10,0.12);color:var(--amber);border:1px solid rgba(200,120,10,0.3)}
 .dispatch-type.trend{background:rgba(21,101,192,0.12);color:var(--blue);border:1px solid rgba(21,101,192,0.3)}
 .dispatch-type.pod{background:rgba(184,146,26,0.12);color:var(--gold);border:1px solid rgba(184,146,26,0.3)}
 .dispatch-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim)}
 .dispatch-voice{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)}
 .dispatch-title{font-family:'Cinzel',serif;font-size:15px;color:var(--ink);margin-bottom:4px}
 .dispatch-excerpt{font-size:13px;color:var(--muted);line-height:1.6}
-.dispatch-arrow{color:var(--dim);font-size:16px;flex-shrink:0;align-self:center}
+.dispatch-arrow{color:var(--dim);font-size:16px;flex-shrink:0;align-self:center;transition:transform 0.2s}
+.dispatch-card.open .dispatch-arrow{transform:rotate(90deg)}
+.dispatch-full{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);line-height:1.75}
+.dispatch-card.open .dispatch-full{display:block}
+.dispatch-full p{margin-bottom:10px}
+.dispatch-full p:last-child{margin-bottom:0;font-style:italic;color:var(--dim)}
 
 .empty-season{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:28px 24px;text-align:center;margin-top:20px}
 .empty-season-icon{font-size:32px;margin-bottom:10px}
@@ -121,6 +128,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 <div class="type-nav" id="typeNav">
   <div class="type-tab active" data-type="all" onclick="filterType('all')">All</div>
+  <div class="type-tab" data-type="camp" onclick="filterType('camp')">🏕️ Camp Watch</div>
   <div class="type-tab" data-type="waiver" onclick="filterType('waiver')">🟢 Waiver Wire</div>
   <div class="type-tab" data-type="trend" onclick="filterType('trend')">🔵 Risers & Fallers</div>
   <div class="type-tab" data-type="pod" onclick="filterType('pod')">🔮 Podcast</div>
@@ -132,73 +140,197 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
   <div class="oracle-box">
     <div class="oracle-box-label">🔮 The Oracle advises</div>
-    <div class="oracle-box-text">Fantasy football is not won on draft day alone, seeker. It is won in the quiet weeks — the waiver claim no one else saw, the target share creeping upward before the box score notices. Return here each week, and I shall keep you ahead of the pack.</div>
+    <div class="oracle-box-text">Fantasy football is not won on draft day alone, seeker. It is won in the quiet weeks — the camp battle no one else is watching, the target share creeping upward before the box score notices. Return here each week, and I shall keep you ahead of the pack.</div>
   </div>
 
   <div class="dispatch-grid" id="dispatchGrid">
 
-    <a href="#" class="dispatch-card" data-type="waiver">
-      <div class="dispatch-icon">🟢</div>
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔮</div>
       <div class="dispatch-body">
         <div class="dispatch-meta">
-          <span class="dispatch-type waiver">Waiver Wire</span>
-          <span class="dispatch-date">Week 1 · Aug 2026</span>
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
           <span class="dispatch-voice">🔮 The Oracle</span>
         </div>
-        <div class="dispatch-title">The Oracle's Waiver Wisdom — Week 1</div>
-        <div class="dispatch-excerpt">Five names worth your FAAB before the rest of the league catches on, and the one every manager will regret passing over.</div>
+        <div class="dispatch-title">The Oracle's Camp Watch — Jaguars Backfield</div>
+        <div class="dispatch-excerpt">A rookie back finds his rhythm early in Jacksonville — and the wise manager doesn't wait for the herd to notice.</div>
+        <div class="dispatch-full">
+          <p>The Jacksonville backfield sits unsettled, and whispers from camp speak of a rookie finding his rhythm early — Bhayshul Tuten, praised by his own head coach for a strong spring and a knack for finding the end zone.</p>
+          <p>Seekers, this is the pattern I have watched unfold in season after season: a rookie back, praised early, praised often, ascends before the wider world takes notice. The wise manager does not wait for the herd to catch on. Monitor Tuten's preseason reps closely — if the praise continues into August, this stock will not stay hidden long.</p>
+          <p>The Oracle watches. The Oracle waits. So should you.</p>
+        </div>
       </div>
       <div class="dispatch-arrow">→</div>
-    </a>
+    </div>
 
-    <a href="#" class="dispatch-card" data-type="waiver">
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
       <div class="dispatch-icon">🔥</div>
       <div class="dispatch-body">
         <div class="dispatch-meta">
-          <span class="dispatch-type waiver">Waiver Wire</span>
-          <span class="dispatch-date">Week 1 · Aug 2026</span>
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
           <span class="dispatch-voice">🔥 The Trash Lord</span>
         </div>
-        <div class="dispatch-title">Trash Lord's Roster Reality Check — Week 1</div>
-        <div class="dispatch-excerpt">Same five names, zero mysticism — just a brutal accounting of who on your bench needs to go and why you drafted them in the first place.</div>
+        <div class="dispatch-title">Trash Lord's Reality Check — Jaguars Backfield</div>
+        <div class="dispatch-excerpt">Jacksonville doesn't know who their RB1 is and everyone's sleeping on it because it's still July.</div>
+        <div class="dispatch-full">
+          <p>Yo, Jacksonville doesn't know who their RB1 is and everyone's sleeping on it because it's still July. Tuten's coach is already out here hyping him up in the papers — "great spring," "finds the end zone" — that's not nothing, that's a coach setting up his guy for a role.</p>
+          <p>Add him to your watchlist NOW, not in three weeks when everyone else read the same article you're about to close out of. Get ahead of the algorithm, not behind it.</p>
+          <p>Don't @ me when he's the RB1 by September.</p>
+        </div>
       </div>
       <div class="dispatch-arrow">→</div>
-    </a>
+    </div>
 
-    <a href="#" class="dispatch-card" data-type="trend">
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔮</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔮 The Oracle</span>
+        </div>
+        <div class="dispatch-title">The Oracle's Camp Watch — Falcons QB Battle</div>
+        <div class="dispatch-excerpt">The throne in Atlanta is not yet secured — but does it even matter for the skill players?</div>
+        <div class="dispatch-full">
+          <p>In Atlanta, the throne is not yet secured. Michael Penix Jr. holds the incumbent's seat, but a veteran challenger stands ready to claim it should the young signal-caller falter in camp.</p>
+          <p>This matters more than it appears, seekers — Bijan Robinson, Drake London, and Kyle Pitts already anchor this offense regardless of who throws them the ball. But the QB1 designation shifts target quality and red-zone volume in ways that ripple through every skill player on that roster. Watch the reps, watch the snap counts in practice — the answer will reveal itself before the preseason ends.</p>
+          <p>The Oracle watches every quarterback room. This one, closely.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔥</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔥 The Trash Lord</span>
+        </div>
+        <div class="dispatch-title">Trash Lord's Reality Check — Falcons QB Battle</div>
+        <div class="dispatch-excerpt">Atlanta's whole offense is basically already locked in — the QB battle is background noise.</div>
+        <div class="dispatch-full">
+          <p>Atlanta's whole offense is basically already locked in — Bijan, London, Pitts, none of that's changing. The ONE variable is who's slinging it to them, and that's still up in the air.</p>
+          <p>Here's the move: don't overthink the skill players, their value barely moves either way. But if the veteran wins the job, expect a slight bump in efficiency for everybody catching passes. If Penix holds on, it's more of the same. Either way, you're drafting Bijan, London, and Pitts with confidence — the QB battle is background noise for your purposes, not a reason to hesitate.</p>
+          <p>Some storylines matter less than the headlines make them sound. This is one of them.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔮</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔮 The Oracle</span>
+        </div>
+        <div class="dispatch-title">The Oracle's Camp Watch — Mahomes' Return</div>
+        <div class="dispatch-excerpt">The Chiefs' signal-caller returns from a torn ACL and LCL — and the early signs whisper of a return to form.</div>
+        <div class="dispatch-full">
+          <p>The Chiefs' signal-caller returns from a torn ACL and LCL, and his coach reports him a full participant as camp begins. The path back from such an injury is rarely linear, yet the early signs whisper of a return to form.</p>
+          <p>Seekers, remember his standing before the injury struck — QB2, within 40 points of the league's best, cut short only by misfortune in Week 15. Every healthy rep this preseason nudges his value skyward. The Oracle does not yet call him a certainty, but the trajectory is unmistakable.</p>
+          <p>Watch the knee. Watch the reps. The verdict comes in August.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔥</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔥 The Trash Lord</span>
+        </div>
+        <div class="dispatch-title">Trash Lord's Reality Check — Mahomes' Return</div>
+        <div class="dispatch-excerpt">Full participant on day one of camp? That's not "cautiously optimistic," that's a green light.</div>
+        <div class="dispatch-full">
+          <p>Mahomes was literally the QB2 in football before his knee exploded in Week 15. Full participant on day one of camp? That's not "cautiously optimistic," that's a green light.</p>
+          <p>His ADP is going to keep climbing every single week he looks normal out there — which means the value window to grab him at a discount is closing FAST. If you're in a league drafting soon and he's still available at a "coming off injury" discount, that's not a red flag, that's a gift. Don't be the manager who waits until he's back to being priced like peak Mahomes.</p>
+          <p>Buy the dip before everyone else remembers he's still Mahomes.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔮</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔮 The Oracle</span>
+        </div>
+        <div class="dispatch-title">The Oracle's Camp Watch — Malik Nabers</div>
+        <div class="dispatch-excerpt">The offseason's most-watched storyline continues — and the early signs are not on the PUP list.</div>
+        <div class="dispatch-full">
+          <p>The offseason's most-watched storyline continues: Malik Nabers has not been placed on the PUP list, a small but meaningful sign as camp begins in earnest.</p>
+          <p>This detail carries weight beyond its surface, seekers. A PUP designation would have signaled a longer road back; its absence suggests the path may be shorter than many feared. Still, absence of a bad sign is not confirmation of a good one — watch how he moves in practice reps before drawing your final conclusion.</p>
+          <p>The Oracle does not celebrate early. The Oracle observes.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
+      <div class="dispatch-icon">🔥</div>
+      <div class="dispatch-body">
+        <div class="dispatch-meta">
+          <span class="dispatch-type camp">Camp Watch</span>
+          <span class="dispatch-date">Camp · Jul 2026</span>
+          <span class="dispatch-voice">🔥 The Trash Lord</span>
+        </div>
+        <div class="dispatch-title">Trash Lord's Reality Check — Malik Nabers</div>
+        <div class="dispatch-excerpt">Not on PUP is a genuinely good sign — but don't go full send-it mode yet.</div>
+        <div class="dispatch-full">
+          <p>Everyone's been holding their breath on Nabers all offseason, and the fact that he's NOT on PUP is a genuinely good sign — teams don't just skip that designation to be nice.</p>
+          <p>But don't go full send-it mode yet. "Not on PUP" means "cleared to practice," not "fully back to elite form." Watch the next two weeks of camp reports before you pay a premium price on draft day. If the practice reports stay clean, he's still a legit WR1 target. If there's any hedging language creeping in, that's your signal to pump the brakes.</p>
+          <p>Cautiously optimistic beats confidently wrong every single time.</p>
+        </div>
+      </div>
+      <div class="dispatch-arrow">→</div>
+    </div>
+
+    <div class="dispatch-card" data-type="trend">
       <div class="dispatch-icon">📈</div>
       <div class="dispatch-body">
         <div class="dispatch-meta">
           <span class="dispatch-type trend">Risers &amp; Fallers</span>
-          <span class="dispatch-date">Week 1 · Aug 2026</span>
+          <span class="dispatch-date">Coming Week 2–3</span>
           <span class="dispatch-voice">📊 The Analyst</span>
         </div>
         <div class="dispatch-title">Weekly Digest — Who's Climbing, Who's Fading</div>
-        <div class="dispatch-excerpt">Target share and snap share trend data for the top 15 risers and fallers this week, straight from the tool — no guesswork.</div>
+        <div class="dispatch-excerpt">Target share and snap share trend data for the top 15 risers and fallers each week, straight from the tool — no guesswork. Launches once real season data is available.</div>
       </div>
       <div class="dispatch-arrow">→</div>
-    </a>
+    </div>
 
-    <a href="#" class="dispatch-card" data-type="pod">
+    <div class="dispatch-card" data-type="pod">
       <div class="dispatch-icon">🎙️</div>
       <div class="dispatch-body">
         <div class="dispatch-meta">
           <span class="dispatch-type pod">Podcast</span>
-          <span class="dispatch-date">Week 1 · Aug 2026</span>
+          <span class="dispatch-date">Coming Week 1</span>
           <span class="dispatch-voice">🔮 Oracle &amp; 🔥 Trash Lord</span>
         </div>
         <div class="dispatch-title">The Sanctum Debrief — Episode 1</div>
-        <div class="dispatch-excerpt">Two voices, one week's worth of storylines — the Oracle's measured read and the Trash Lord's unfiltered take, back to back.</div>
+        <div class="dispatch-excerpt">Two voices, one week's worth of storylines — the Oracle's measured read and the Trash Lord's unfiltered take, back to back. Launches Week 1 of the regular season.</div>
       </div>
       <div class="dispatch-arrow">→</div>
-    </a>
+    </div>
 
   </div>
 
   <div class="empty-season" id="emptySeasonNote">
-    <div class="empty-season-icon">🗓️</div>
-    <div class="empty-season-title">The season has not yet begun</div>
-    <div class="empty-season-text">Dispatches publish weekly once the NFL season kicks off. The four cards above show the format — real Week 1 content replaces these the moment games start.</div>
+    <div class="empty-season-icon">🏕️</div>
+    <div class="empty-season-title">Camp Watch is live — Waiver Wire, Risers &amp; Fallers, and the Podcast launch with the season</div>
+    <div class="empty-season-text">Click any Camp Watch card above to read the full dispatch. Real Waiver Wire, Risers &amp; Fallers, and podcast episodes replace their placeholders once games begin.</div>
   </div>
 </div>
 
@@ -219,6 +351,14 @@ document.addEventListener('click', function (e) {
     });
   }
 });
+
+function toggleDispatch(card) {
+  var wasOpen = card.classList.contains('open');
+  document.querySelectorAll('.dispatch-card.open').forEach(function (c) {
+    if (c !== card) c.classList.remove('open');
+  });
+  card.classList.toggle('open', !wasOpen);
+}
 
 function filterType(type) {
   document.querySelectorAll('.type-tab').forEach(function (t) {
