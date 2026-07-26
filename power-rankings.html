@@ -221,23 +221,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   <div class="connect-card">
     <div class="connect-icon">🔗</div>
     <div class="connect-title">Link Your League</div>
-    <div class="connect-sub">Connect your fantasy league and The Oracle, The Trash Lord, and The Analyst will break down your standings, your trajectory, and this week's matchups — using your real teams, your real records.</div>
-    <div class="platform-row">
-      <div class="platform-btn selected" id="platform-yahoo" onclick="selectPlatform('yahoo')">
-        <div class="platform-name">Yahoo</div>
-        <div class="platform-status" id="platform-yahoo-status">Pending API access</div>
-      </div>
-      <div class="platform-btn" id="platform-sleeper" onclick="selectPlatform('sleeper')">
-        <div class="platform-name">Sleeper</div>
-        <div class="platform-status">Live</div>
-      </div>
-      <div class="platform-btn" id="platform-espn" onclick="selectPlatform('espn')" style="opacity:0.5;cursor:default" title="Not yet built">
-        <div class="platform-name">ESPN</div>
-        <div class="platform-status">Planned</div>
-      </div>
-    </div>
-    <button class="connect-btn" onclick="connectMock()">Connect with Yahoo (Demo)</button>
-    <div class="connect-note">DEMO MODE — loads sample league data, no real Yahoo account required yet</div>
+    <div class="connect-sub">Connect your fantasy league once, and The Oracle, The Trash Lord, and The Analyst will break down your standings, your trajectory, and this week's matchups — using your real teams, your real records.</div>
+    <a href="/connect-league" class="connect-btn" style="display:block;text-decoration:none;box-sizing:border-box">🔗 Link Your League</a>
+    <div class="connect-note">Connect once on the Link Your League page — every tool across the Sanctum, including this one, picks it up automatically.</div>
   </div>
 </div>
 
@@ -288,6 +274,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 </div>
 
+<script src="/league-connection.js"></script>
+<script src="/provider-adapters.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // MOCK LEAGUE DATA
@@ -473,11 +461,23 @@ function connectMock() {
   document.getElementById('connectWrap').classList.add('hidden');
   document.getElementById('results').classList.add('active');
   document.getElementById('leagueName').textContent = LEAGUE.name;
+
+  var activeProvider = (typeof LeagueConnection !== 'undefined') ? LeagueConnection.getActiveProvider() : null;
+  var platformLabel = activeProvider && LeagueConnection.PROVIDERS[activeProvider]
+    ? LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy'
+    : LEAGUE.platform;
+
   document.getElementById('leagueMeta').textContent =
-    LEAGUE.numTeams + ' teams · ' + LEAGUE.scoring + ' · Week ' + LEAGUE.week + ' · ' + LEAGUE.platform;
+    LEAGUE.numTeams + ' teams · ' + LEAGUE.scoring + ' · Week ' + LEAGUE.week + ' · ' + platformLabel;
   renderRankings();
   renderMatchups();
 }
+
+(function checkSharedConnection() {
+  if (typeof LeagueConnection !== 'undefined' && LeagueConnection.hasAnyConnection()) {
+    connectMock();
+  }
+})();
 
 function selectPersona(p) {
   stopCurrentAudio();
