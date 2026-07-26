@@ -1,4 +1,27 @@
 // ═══════════════════════════════════════════════════════════════════════
+// RETIRED (kept for reference only — no longer called from the site)
+//
+// This function is no longer wired to connect-league.html's CBS tile.
+// Real testing (live browser Network tab, July 26 2026) found that
+// CBS's login flow now runs through Google reCAPTCHA before it accepts
+// credentials at all, and their login page has been rebuilt as a
+// client-rendered Next.js app with no server-rendered HTML to scrape a
+// token from — the approach below (POST credentials, regex a token out
+// of the response page) is based on a once-working community reference
+// implementation that predates both of those changes.
+//
+// A server-side function has no browser and cannot solve a CAPTCHA, so
+// this cannot be fixed by adjusting the request shape — the technique
+// itself no longer has a path through. See league-connection.js's CBS
+// provider entry (status: "blocked") and connect-league.html's CBS tile
+// for the same finding documented where a user/future-dev will see it.
+//
+// Left in the repo rather than deleted so the investigation (and why it
+// dead-ended) isn't lost — safe to delete outright if this file becomes
+// noise; nothing depends on it anymore.
+// ═══════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════
 // CBS-LOGIN
 //
 // WHY THIS FILE EXISTS: CBS Sports never built a modern developer program
