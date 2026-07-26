@@ -27,7 +27,26 @@
     sleeper: { label: "Sleeper", status: "live", icon: "🏈" },
     yahoo: { label: "Yahoo", status: "pending", icon: "🟣" },
     espn: { label: "ESPN", status: "planned", icon: "🔴" },
-    cbs: { label: "CBS", status: "planned", icon: "🔵" },
+    // CBS status "blocked" (not "planned") — deliberately distinct.
+    // INVESTIGATED AND RULED OUT (added after real testing): CBS's
+    // login flow now runs through Google reCAPTCHA before it will
+    // accept credentials at all (confirmed via live browser Network
+    // tab — requests to reCAPTCHA's reload/verify-recaptcha endpoints
+    // fire before CBS's own login call). Their login page has also
+    // been rebuilt as a client-rendered Next.js app (no server-side
+    // HTML to scrape a token out of even if the CAPTCHA weren't
+    // there), which is why the earlier scrape-a-token-from-HTML
+    // approach (based on a once-working community reference
+    // implementation) stopped working. A server-side function has no
+    // browser and cannot solve a CAPTCHA — this is not a "not built
+    // yet" gap like ESPN, it's an active block requiring either a
+    // paid CAPTCHA-solving service (real cost, real fragility, and
+    // ethically dubious — deliberately circumventing a company's own
+    // bot protection) or CBS granting real API access (they have no
+    // supported program for that). See connect-league.html's CBS tile
+    // for the same explanation surfaced to users, and cbs-login.js's
+    // header comment for the full technical writeup.
+    cbs: { label: "CBS", status: "blocked", icon: "🔵" },
   };
 
   const STORAGE_KEY = "innerSanctum_leagueConnections";
