@@ -347,6 +347,7 @@ function checkGatePasscode() {
   var entered = input.value.trim().toUpperCase();
   if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
     unlockGate();
+    jumpToStepFromUrl();
   } else {
     err.classList.add('show');
     input.value = '';
@@ -424,6 +425,7 @@ function enterPreviewMode() {
   document.getElementById('gateOverlay').style.display = 'none';
   lockInputsToDemoLeague();
   showPreviewBanner();
+  jumpToStepFromUrl();
 }
 
 function lockInputsToDemoLeague() {
@@ -462,18 +464,35 @@ function blockStep5Preview() {
   overlay.style.display = 'flex';
 }
 
+// ADDED — reads ?step=N from the URL and jumps the wizard to that step
+// once the page is unlocked (via passcode, preview mode, or a verified
+// OAuth session). Used by the Tier List page's "Open Price Sheet" link
+// (/auction?step=4) so it lands directly on the Target Price Sheet
+// instead of always resetting to Step 1 League Setup.
+function jumpToStepFromUrl() {
+  var urlParams = new URLSearchParams(window.location.search);
+  var jumpStep = parseInt(urlParams.get('step'));
+  if (jumpStep >= 1 && jumpStep <= 5) {
+    goStep(jumpStep);
+  }
+}
+
 (function initGate() {
   handleAuthResultParams();
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
+    jumpToStepFromUrl();
     return;
   }
   if (isPreviewMode()) {
     document.getElementById('gateOverlay').style.display = 'none';
     showPreviewBanner();
+    jumpToStepFromUrl();
     return;
   }
-  checkOAuthSession();
+  checkOAuthSession().then(function (unlocked) {
+    if (unlocked) jumpToStepFromUrl();
+  });
 })();
 
 document.addEventListener('DOMContentLoaded', function () {
