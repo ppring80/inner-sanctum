@@ -171,6 +171,7 @@ var STATUS_LABELS = {
   pending: 'Pending API access',
   planned: 'Connect (Demo)',
   blocked: 'Not supported',
+  beta: 'Beta',
 };
 
 function renderPlatformRow() {
@@ -275,8 +276,8 @@ function buildEspnForm() {
       '<div class="pf-group"><label>SWID</label><input type="text" id="espnSwid" placeholder="e.g. {ABC123-...}"/></div>' +
       '<div class="pf-risk">⚠️ These act like a password to your ESPN account. Stored only to read your league — never shared. Disconnect anytime to revoke access.</div>' +
     '</div>' +
-    '<button class="connect-btn" onclick="connectEspn()">Connect ESPN League (Demo)</button>' +
-    '<div class="connect-note">DEMO MODE — validates the form and stores a demo connection. Real ESPN data requires a backend proxy (not yet built).</div>' +
+    '<button class="connect-btn" onclick="connectEspn()">Connect ESPN League</button>' +
+    '<div class="connect-note">Fetches your real league from ESPN. Public leagues need only a League ID; private leagues also need espn_s2/SWID above. ESPN has no official API, so this may occasionally break without warning.</div>' +
     '<div class="result-box" id="espnResult"></div>';
   return wrap;
 }
@@ -294,6 +295,95 @@ function buildCbsBlockedNotice() {
       'If you\'re on CBS, Sleeper and Yahoo remain the best-supported options for now.' +
     '</div>';
   return wrap;
+}
+
+function toggleEspnPrivateFields() {
+  var type = document.getElementById('espnLeagueType').value;
+  document.getElementById('espnPrivateFields').style.display = (type === 'private') ? 'block' : 'none';
+}
+
+function togglePfHelp(btn) {
+  btn.classList.toggle('open');
+  btn.querySelector('.pf-help-icon').classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
+}
+
+function connectDemo(provider, data) {
+  LeagueConnection.connect(provider, data);
+  afterConnect();
+}
+
+function connectSleeper() {
+  var username = document.getElementById('sleeperUsername').value.trim();
+  if (!username) { alert('Enter your Sleeper username.'); return; }
+  LeagueConnection.connect('sleeper', { username: username });
+  afterConnect();
+}
+
+function connectEspn() {
+  var leagueId = document.getElementById('espnLeagueId').value.trim();
+  var isPrivate = document.getElementById('espnLeagueType').value === 'private';
+  var box = document.getElementById('espnResult');
+  var btn = document.querySelector('#providerForms .connect-btn');
+
+  if (!leagueId) {
+    box.className = 'result-box error show';
+    box.textContent = '⚠️ Enter your League ID.';
+    return;
+  }
+
+  var s2 = null, swid = null;
+  if (isPrivate) {
+    s2 = document.getElementById('espnS2').value.trim();
+    swid = document.getElementById('espnSwid').value.trim();
+    if (!s2 || !swid) {
+      box.className = 'result-box error show';
+      box.textContent = '⚠️ Private leagues need both espn_s2 and SWID.';
+      return;
+    }
+  }
+
+  box.className = 'result-box loading show';
+  box.textContent = '🔮 Fetching your league from ESPN...';
+  if (btn) btn.disabled = true;
+
+  fetch('/.netlify/functions/espn-league', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leagueId: leagueId,
+      season: new Date().getFullYear(),
+      espn_s2: s2,
+      swid: swid
+    })
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, data: data };
+      });
+    })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      if (!result.ok || !result.data.success) {
+        box.className = 'result-box error show';
+        box.textContent = '⚠️ ' + (result.data.error || 'Could not connect to ESPN. Check your League ID and try again.');
+        return;
+      }
+      var connectionData = { leagueId: leagueId, private: isPrivate, league: result.data.league };
+      if (isPrivate) {
+        connectionData.espn_s2 = s2;
+        connectionData.swid = swid;
+      }
+      LeagueConnection.connect('espn', connectionData);
+      box.className = 'result-box success show';
+      box.textContent = '✓ Connected to ESPN league ' + leagueId + '.';
+      setTimeout(afterConnect, 900);
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      box.className = 'result-box error show';
+      box.textContent = '⚠️ Network error reaching our server. Try again in a moment.';
+    });
 }
 
 function afterConnect() {
