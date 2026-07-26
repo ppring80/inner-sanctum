@@ -67,6 +67,8 @@ body {
 .sleeper-btn:hover { background: rgba(201,168,76,0.2); border-color: #c9a84c; }
 .sleeper-status { font-size: 11px; color: #4caf50; white-space: nowrap; display: none; }
 .sleeper-status.error { color: #ff5252; }
+.sleeper-manage-link { font-size: 11px; color: #8a7a55; text-decoration: underline; margin-left: auto; white-space: nowrap; }
+.sleeper-manage-link:hover { color: #c9a84c; }
 
 .tabs { display: flex; gap: 10px; padding: 14px 20px 0; margin-bottom: 6px; }
 .tab { flex: 1; padding: 14px 12px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); color: #4a4040; cursor: pointer; text-align: left; font-family: Georgia, serif; transition: all 0.25s; }
@@ -730,6 +732,7 @@ function handleAuthResultParams() {
       <input class="sleeper-input" id="sleeperUser" type="text" placeholder="Enter your Sleeper username for personalized advice..." />
       <button class="sleeper-btn" onclick="connectSleeper()">Connect</button>
       <span class="sleeper-status" id="sleeperStatus"></span>
+      <a href="/connect-league" class="sleeper-manage-link">Manage connections →</a>
     </div>
   </div>
 
@@ -882,6 +885,7 @@ function handleAuthResultParams() {
   </div>
 </div>
 
+<script src="/league-connection.js"></script>
 <script>
 var rosterContext = '';
 var sleeperConnected = false;
@@ -1460,6 +1464,14 @@ async function connectSleeper() {
     rosterContext = 'The user\'s Sleeper username is ' + username + '. Their league is "' + (league.name || 'their league') + '" (' + (league.settings && league.settings.num_teams ? league.settings.num_teams : '?') + ' teams, ' + (league.scoring_settings && league.scoring_settings.rec ? 'PPR' : 'Standard') + '). Their current roster: ' + playerNames.join(', ') + '. Use this roster context to give highly personalized advice when relevant.';
     sleeperConnected = true;
 
+    // Share this connection site-wide — same store /connect-league writes
+    // to, so other pages recognize it too, and so returning to this page
+    // auto-reconnects instead of asking for the username again (see the
+    // init check near the bottom of this script).
+    if (typeof LeagueConnection !== 'undefined') {
+      LeagueConnection.connect('sleeper', { username: username, leagueName: league.name });
+    }
+
     status.className = 'sleeper-status';
     status.textContent = '✓ ' + username + ' connected · ' + league.name;
     btn.textContent = 'Connected';
@@ -1791,5 +1803,16 @@ document.addEventListener('click', function (e) {
 });
 </script>
 
+<script>
+(function autoReconnectSleeper() {
+  if (typeof LeagueConnection === 'undefined') return;
+  var conn = LeagueConnection.getConnection('sleeper');
+  if (!conn || !conn.username) return;
+  var input = document.getElementById('sleeperUser');
+  if (!input) return;
+  input.value = conn.username;
+  if (typeof connectSleeper === 'function') connectSleeper();
+})();
+</script>
 </body>
 </html>
