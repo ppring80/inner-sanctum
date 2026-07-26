@@ -283,13 +283,21 @@ function buildCbsForm() {
   var wrap = document.createElement('div');
   wrap.className = 'provider-form show';
   wrap.innerHTML =
-    '<div class="pf-group"><label>League Name</label><input type="text" id="cbsLeagueName" placeholder="e.g. wundersport"/>' +
-    '<div class="pf-hint">Found in your CBS league URL, e.g. <code>footballgm.cbssports.com/office-pool/leagues/wundersport</code></div></div>' +
+    '<div class="pf-group"><label>League Slug</label><input type="text" id="cbsLeagueSlug" placeholder="e.g. widebodies"/>' +
+    '<div class="pf-hint">The part of your CBS league URL right before <code>.football.cbssports.com</code> — e.g. for <code>widebodies.football.cbssports.com</code>, enter <code>widebodies</code>.</div></div>' +
+    '<div class="pf-group"><label>Sport</label>' +
+    '<select id="cbsSport">' +
+    '<option value="football" selected>Football</option>' +
+    '<option value="baseball">Baseball</option>' +
+    '<option value="basketball">Basketball</option>' +
+    '<option value="hockey">Hockey</option>' +
+    '</select>' +
+    '<div class="pf-hint">CBS leagues live under a sport-specific subdomain — this combines with your slug to form <code>{slug}.{sport}.cbssports.com</code>.</div></div>' +
     '<div class="pf-group"><label>CBS Username or Email</label><input type="text" id="cbsUsername" placeholder="Your CBS Sports login"/></div>' +
     '<div class="pf-group"><label>CBS Password</label><input type="password" id="cbsPassword" placeholder="Your CBS Sports password"/></div>' +
     '<div class="pf-risk">⚠️ CBS\'s developer platform is officially deprecated — this uses the same legacy token system, which could stop working without notice. Your password is used once to fetch a league token, never stored.</div>' +
-    '<button class="connect-btn" onclick="connectCbs()">Connect CBS League (Demo)</button>' +
-    '<div class="connect-note">DEMO MODE — validates the form and stores a demo connection. Real CBS data requires a backend token-fetch (not yet built).</div>' +
+    '<button class="connect-btn" onclick="connectCbs()">Connect CBS League</button>' +
+    '<div class="connect-note">Signs into CBS Sports directly to fetch your league token — no CBS account credentials are stored by us.</div>' +
     '<div class="result-box" id="cbsResult"></div>';
   return wrap;
 }
@@ -345,17 +353,23 @@ function connectEspn() {
 }
 
 function connectCbs() {
-  var leagueName = document.getElementById('cbsLeagueName').value.trim();
+  var leagueSlug = document.getElementById('cbsLeagueSlug').value.trim().toLowerCase();
+  var sport = document.getElementById('cbsSport').value;
   var username = document.getElementById('cbsUsername').value.trim();
   var password = document.getElementById('cbsPassword').value.trim();
   var box = document.getElementById('cbsResult');
   var btn = document.querySelector('#providerForms .connect-btn');
 
-  if (!leagueName || !username || !password) {
+  if (!leagueSlug || !username || !password) {
     box.className = 'result-box error show';
-    box.textContent = '⚠️ Fill in league name, username, and password.';
+    box.textContent = '⚠️ Fill in league slug, username, and password.';
     return;
   }
+
+  // CBS leagues live under a sport-specific subdomain — e.g.
+  // widebodies.football.cbssports.com, not just widebodies.cbssports.com.
+  // Combine the slug and sport into the exact string the backend needs.
+  var leagueName = leagueSlug + '.' + sport;
 
   box.className = 'result-box loading show';
   box.textContent = '🔮 Signing into CBS Sports and fetching your league token...';
