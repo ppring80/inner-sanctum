@@ -1,8 +1,8 @@
 /*
   THE INNER SANCTUM — provider-adapters.js
   --------------------------------------------
-  Normalizes Sleeper vs Yahoo data into one shared shape so pages
-  never touch raw provider JSON directly.
+  Normalizes Sleeper / Yahoo / ESPN / CBS data into one shared shape
+  so pages never touch raw provider JSON directly.
 
   <script src="provider-adapters.js"></script>
   (include after league-connection.js)
@@ -14,6 +14,13 @@
     roster: [{ name, position, team, projectedPoints }],
     matchup: { opponentName, myProjected, opponentProjected, winProbability } | null
   }
+
+  UPDATED (added ESPN + CBS): both are PLACEHOLDER adapters, same
+  status as the existing Yahoo one — field names are best-guess from
+  public/community documentation since neither has a real backend
+  wired yet. Function signature stays stable so pages calling
+  normalizeLeagueData() never need to change when the real shape
+  gets filled in later.
 */
 
 (function () {
@@ -68,9 +75,53 @@
     };
   }
 
+  function normalizeEspnData(rawData) {
+    // PLACEHOLDER — shape based on ESPN's undocumented v3 endpoint
+    // (fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/
+    // leagues/{leagueId}?view=mTeam&view=mRoster&view=mMatchup), per
+    // community reverse-engineering docs (ffscrapr, espn-api). ESPN
+    // has no official schema to confirm against, so field names here
+    // are best-guess until a real response is captured and this gets
+    // filled in for real. Function signature stays stable.
+    return {
+      leagueName: rawData?.settings?.name ?? "",
+      teamName: rawData?.team?.name ?? "",
+      record: {
+        wins: rawData?.team?.record?.overall?.wins ?? 0,
+        losses: rawData?.team?.record?.overall?.losses ?? 0,
+        ties: rawData?.team?.record?.overall?.ties ?? 0,
+      },
+      standing: rawData?.team?.playoffSeed ?? null,
+      roster: [], // TODO: map once real shape is confirmed
+      matchup: null, // TODO: map once real shape is confirmed
+    };
+  }
+
+  function normalizeCbsData(rawData) {
+    // PLACEHOLDER — CBS's Fantasy Platform API (developer.cbssports.com)
+    // is officially deprecated; this shape is a best guess from that
+    // legacy documentation and community token-fetcher projects. No
+    // real response has been captured yet — fill this in for real once
+    // one is. Function signature stays stable.
+    return {
+      leagueName: rawData?.league?.name ?? "",
+      teamName: rawData?.team?.name ?? "",
+      record: {
+        wins: rawData?.team?.wins ?? 0,
+        losses: rawData?.team?.losses ?? 0,
+        ties: rawData?.team?.ties ?? 0,
+      },
+      standing: rawData?.team?.rank ?? null,
+      roster: [], // TODO: map once real shape is confirmed
+      matchup: null, // TODO: map once real shape is confirmed
+    };
+  }
+
   window.normalizeLeagueData = function (provider, rawData) {
     if (provider === "sleeper") return normalizeSleeperData(rawData);
     if (provider === "yahoo") return normalizeYahooData(rawData);
+    if (provider === "espn") return normalizeEspnData(rawData);
+    if (provider === "cbs") return normalizeCbsData(rawData);
     throw new Error("No adapter defined for provider: " + provider);
   };
 })();
