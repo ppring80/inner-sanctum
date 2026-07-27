@@ -175,7 +175,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 </head>
 <body>
 
-<div class="mock-banner">
+<div class="mock-banner" id="mockBanner">
   🧪 <strong>Framework preview — mock league data.</strong> This page demonstrates the Power Rankings layout, scoring formula, and persona commentary ahead of real Yahoo Fantasy integration (pending API approval).
 </div>
 
@@ -456,28 +456,139 @@ function selectPlatform(p) {
   document.getElementById('platform-' + p).classList.add('selected');
 }
 
+// ═══════════════════════════════════════════════════════════
+// REAL ESPN LEAGUE PARSER — added, builds a LEAGUE-shaped object
+// (same {name, numTeams, scoring, week, teams:[{name,wins,losses,
+// weeklyScores}]} shape the mock LEAGUE constant already uses) from
+// ESPN's real raw v3 response, so it flows through the EXACT SAME
+// computePowerRankings() + persona commentary templates the mock data
+// already uses — no parallel rendering path, no risk of the two
+// diverging in behavior.
+//
+// ESPN's real field names (team.record.overall.wins/losses/ties,
+// schedule[].home/away.teamId + totalPoints per matchupPeriodId) are
+// based on the shape documented by multiple actively-maintained
+// community libraries (cwendt94/espn-api, ffscrapr), not guessed —
+// but ESPN has no official schema to confirm against, so this should
+// be treated as our best real attempt, worth verifying against Pat's
+// actual connected league rather than assumed perfect on the first
+// try. Returns null (triggering the mock-data fallback below) if the
+// response doesn't have enough usable data yet — most commonly
+// because it's still preseason and no games have been played, so
+// every team's weeklyScores would be empty.
+function buildRealLeagueFromEspn(raw) {
+  try {
+    if (!raw || !Array.isArray(raw.teams) || !raw.teams.length) return null;
+
+    // Build teamId -> weeklyScores[] from the real schedule, in
+    // matchupPeriodId order, skipping any matchup that hasn't been
+    // played yet (totalPoints is 0/absent for future weeks).
+    var scoresByTeam = {};
+    raw.teams.forEach(function (t) { scoresByTeam[t.id] = []; });
+
+    var schedule = Array.isArray(raw.schedule) ? raw.schedule.slice() : [];
+    schedule.sort(function (a, b) { return (a.matchupPeriodId || 0) - (b.matchupPeriodId || 0); });
+
+    schedule.forEach(function (m) {
+      [m.home, m.away].forEach(function (side) {
+        if (!side || typeof side.teamId === 'undefined') return;
+        var pts = side.totalPoints;
+        if (typeof pts === 'number' && pts > 0) {
+          if (!scoresByTeam[side.teamId]) scoresByTeam[side.teamId] = [];
+          scoresByTeam[side.teamId].push(pts);
+        }
+      });
+    });
+
+    var teams = raw.teams.map(function (t) {
+      var name = t.name
+        || ((t.location || '') + ' ' + (t.nickname || '')).trim()
+        || t.abbrev
+        || ('Team ' + t.id);
+      var rec = (t.record && t.record.overall) || {};
+      return {
+        name: name,
+        wins: rec.wins || 0,
+        losses: rec.losses || 0,
+        weeklyScores: scoresByTeam[t.id] || []
+      };
+    });
+
+    // If nobody has any real weekly scores yet (preseason, or the
+    // connected league simply hasn't played a game), there's nothing
+    // real to rank — signal the caller to fall back to mock data
+    // rather than rendering a table of all-zero teams.
+    var teamsWithScores = teams.filter(function (t) { return t.weeklyScores.length > 0; });
+    if (teamsWithScores.length < 2) return null;
+
+    // Any team still missing scores this early in the season (bye-adjacent
+    // edge cases, mid-week connection, etc.) needs at least one number so
+    // computePowerRankings()'s .slice(-3) / .reduce() math doesn't break —
+    // pad with a single 0 rather than dropping the team from the league.
+    teams.forEach(function (t) {
+      if (!t.weeklyScores.length) t.weeklyScores = [0];
+    });
+
+    return {
+      name: (raw.settings && raw.settings.name) || 'My ESPN League',
+      numTeams: teams.length,
+      scoring: 'PPR',
+      week: schedule.length ? Math.max.apply(null, schedule.map(function (m) { return m.matchupPeriodId || 0; })) : 1,
+      platform: 'ESPN Fantasy',
+      teams: teams,
+      matchups: [] // real matchup-preview parsing not built yet — renderMatchups() below handles an empty array gracefully
+    };
+  } catch (e) {
+    console.log('buildRealLeagueFromEspn failed, falling back to mock:', e.message);
+    return null;
+  }
+}
+
 function connectMock() {
-  state.rankings = computePowerRankings(LEAGUE);
+  var activeProvider = (typeof LeagueConnection !== 'undefined') ? LeagueConnection.getActiveProvider() : null;
+
+  // Try real data first (ESPN today; other providers can plug into this
+  // same pattern once they have real league-fetching backends too).
+  // Falls back to the mock LEAGUE constant — visibly, not silently —
+  // whenever real data isn't available or can't be parsed yet.
+  var activeLeague = LEAGUE;
+  var usingRealData = false;
+  var fallbackReason = '';
+
+  if (activeProvider === 'espn' && typeof LeagueConnection !== 'undefined') {
+    var conn = LeagueConnection.getConnection('espn');
+    if (conn && conn.league) {
+      var realLeague = buildRealLeagueFromEspn(conn.league);
+      if (realLeague) {
+        activeLeague = realLeague;
+        usingRealData = true;
+      } else {
+        fallbackReason = 'Connected to ESPN, but no games have been played yet in your league — showing preview data until real scores exist.';
+      }
+    } else {
+      fallbackReason = 'Connected to ESPN, but no league data was returned — showing preview data.';
+    }
+  }
+
+  state.rankings = computePowerRankings(activeLeague);
   state.connected = true;
   document.getElementById('connectWrap').classList.add('hidden');
   document.getElementById('results').classList.add('active');
-  document.getElementById('leagueName').textContent = LEAGUE.name;
+  document.getElementById('leagueName').textContent = activeLeague.name;
 
-  var activeProvider = (typeof LeagueConnection !== 'undefined') ? LeagueConnection.getActiveProvider() : null;
   var platformLabel = activeProvider && LeagueConnection.PROVIDERS[activeProvider]
     ? LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy'
-    : LEAGUE.platform;
+    : activeLeague.platform;
 
   document.getElementById('leagueMeta').textContent =
-    LEAGUE.numTeams + ' teams · ' + LEAGUE.scoring + ' · Week ' + LEAGUE.week + ' · ' + platformLabel;
+    activeLeague.numTeams + ' teams · ' + activeLeague.scoring + ' · Week ' + activeLeague.week + ' · ' + platformLabel;
 
-  // Attribution line — was previously hardcoded to Yahoo regardless of
-  // which provider was actually connected. Now reflects the real
-  // active provider. Yahoo specifically requires this exact phrasing,
-  // hyperlinked to an official Yahoo Fantasy page, per the signed API
-  // Access and Use Agreement — that requirement only applies once real
-  // Yahoo data is live, but the link is included now so the correct
-  // format is already in place.
+  // Attribution line — reflects the real active provider. Yahoo
+  // specifically requires this exact phrasing, hyperlinked to an
+  // official Yahoo Fantasy page, per the signed API Access and Use
+  // Agreement — that requirement only applies once real Yahoo data is
+  // live, but the link is included now so the correct format is
+  // already in place.
   var attrEl = document.getElementById('attribution');
   if (attrEl) {
     if (activeProvider === 'yahoo') {
@@ -485,7 +596,24 @@ function connectMock() {
     } else if (activeProvider && LeagueConnection.PROVIDERS[activeProvider]) {
       attrEl.textContent = 'Fantasy data provided by ' + LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy';
     } else {
-      attrEl.textContent = 'Fantasy data provided by ' + LEAGUE.platform;
+      attrEl.textContent = 'Fantasy data provided by ' + activeLeague.platform;
+    }
+  }
+
+  // Mock-data banner — was previously always visible regardless of
+  // connection state. Now: hidden entirely once real data is loaded,
+  // shown with an honest specific reason when a real provider is
+  // connected but real data isn't usable yet, and left as the
+  // original generic message when there's no connection at all.
+  var mockBanner = document.getElementById('mockBanner');
+  if (mockBanner) {
+    if (usingRealData) {
+      mockBanner.style.display = 'none';
+    } else if (fallbackReason) {
+      mockBanner.innerHTML = '🧪 <strong>Preview data.</strong> ' + fallbackReason;
+      mockBanner.style.display = '';
+    } else {
+      mockBanner.style.display = '';
     }
   }
 
