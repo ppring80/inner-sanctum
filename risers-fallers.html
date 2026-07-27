@@ -99,6 +99,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .preview-banner{background:linear-gradient(135deg,#3a2a0a,#1f1608);border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:12px 18px;text-align:center;line-height:1.5;margin-bottom:20px}
 .preview-banner strong{color:#f5c842}
 .preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+.connection-banner{max-width:1040px;margin:12px auto 0;padding:10px 16px;border-radius:6px;font-size:12px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(46,125,50,0.08);border:1px solid rgba(46,125,50,0.3);color:#2e7d32}
+.connection-banner.show{display:flex}
+.connection-banner a{color:inherit;text-decoration:underline;font-weight:600}
 
 /* ── POSITION FILTER (added) — same pill-tab pattern as Draft
    Command Center's pos-tabs, scaled down for this page's simpler
@@ -220,6 +223,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 <div class="status-bar" id="statusBar">
   <span><span class="status-dot loading" id="statusDot"></span><span id="statusText">Loading trend data...</span></span>
+</div>
+
+<div class="connection-banner" id="connectionBanner">
+  <span id="connectionBannerText"></span>
+  <a href="/connect-league">Manage connection →</a>
 </div>
 
 <div class="main">
@@ -686,5 +694,19 @@ document.addEventListener('click', function (e) {
 });
 </script>
 
+<script src="/league-connection.js"></script>
+<script>
+(function showConnectionBanner() {
+  if (typeof LeagueConnection === 'undefined') return;
+  var active = LeagueConnection.getActiveProvider();
+  if (!active) return;
+  var label = LeagueConnection.PROVIDERS[active] ? LeagueConnection.PROVIDERS[active].label : active;
+  var banner = document.getElementById('connectionBanner');
+  var text = document.getElementById('connectionBannerText');
+  if (!banner || !text) return;
+  text.textContent = '🔗 Connected to ' + label + ' — Risers & Fallers is league-wide trend data, not tied to your roster, but your connection is recognized site-wide.';
+  banner.classList.add('show');
+})();
+</script>
 </body>
 </html>
