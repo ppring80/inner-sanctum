@@ -15,12 +15,13 @@ const { getStore, connectLambda } = require("@netlify/blobs");
 // (up to 1,000 entries per page, fetched automatically), so this
 // scales comfortably well past a full season's worth of daily keys.
 //
-// ACCESS: this endpoint has no login. It's reachable by anyone who
-// knows the URL (theinnersanctum.xyz/.netlify/functions/spend-dashboard),
-// same security model as the Acolyte passcode gate — obscurity, not
-// real auth. The data here (aggregate daily $ totals, no user-level
-// detail) is low-sensitivity, but if that changes, add a passcode
-// gate matching the one already in auction.html/tiers.html.
+// ACCESS: UPDATED 2026-08-01 — this endpoint is now gated behind a
+// shared-secret key, not just an obscure URL. Requests must include
+// ?key=<value> matching the SPEND_DASHBOARD_KEY environment variable
+// set in Netlify; anything missing or mismatched gets a 401 with no
+// data returned. The URL itself is no longer sensitive on its own —
+// only the query-string key is. Rotate SPEND_DASHBOARD_KEY in Netlify
+// any time you want to invalidate old bookmarked links.
 //
 // NOT an email alert — per the #114 discussion, alerting was
 // deliberately deferred until the logging itself is proven accurate
@@ -214,8 +215,9 @@ function renderDashboard(days, lifetime) {
     Lifetime total is computed live on each page load by listing and
     summing every daily entry in the store — not a separately-maintained counter, so it can never drift out
     of sync with the table below. No email alert wired yet (manual-check only, per checklist #114) —
-    revisit once this data's been observed for a few real days. This page has no login; treat the URL as
-    semi-private. Days with no traffic simply won't appear below.
+    revisit once this data's been observed for a few real days. Access requires a matching ?key= parameter
+    (see ACCESS note above) — this URL alone is no longer sufficient. Days with no traffic simply won't
+    appear below.
   </div>
 </div>
 </body>
@@ -229,6 +231,19 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+  }
+
+  // ACCESS GATE — added 2026-08-01. Requires ?key=<SPEND_DASHBOARD_KEY>
+  // in the query string. No key set in Netlify env vars, or a mismatched
+  // key, both fail closed (401) rather than falling back to open access.
+  const providedKey = (event.queryStringParameters || {}).key;
+  const expectedKey = process.env.SPEND_DASHBOARD_KEY;
+  if (!expectedKey || providedKey !== expectedKey) {
+    return {
+      statusCode: 401,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: "Unauthorized"
+    };
   }
 
   try {
