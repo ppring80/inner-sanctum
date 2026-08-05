@@ -5,26 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Inner Sanctum — Joining</title>
 <meta name="robots" content="noindex">
-
 <!-- Redirects to https://www.patreon.com/TheInnerSanctum670 -->
-<meta http-equiv="refresh" content="1;url=https://www.patreon.com/TheInnerSanctum670">
-
+<meta http-equiv="refresh" content="4;url=https://www.patreon.com/TheInnerSanctum670">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital@0;1&display=swap');
-
   :root {
     --ink: #17110a;
     --parchment: #efe9dc;
     --gold: #b8912f;
     --gold-bright: #d4af37;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   html, body {
     height: 100%;
   }
-
   body {
     background: var(--ink);
     background-image: radial-gradient(ellipse at 50% 30%, #2a1f12 0%, var(--ink) 70%);
@@ -36,11 +30,9 @@
     text-align: center;
     padding: 24px;
   }
-
   .wrap {
     max-width: 420px;
   }
-
   .mark {
     font-family: 'Cinzel', serif;
     font-size: 13px;
@@ -49,7 +41,6 @@
     text-transform: uppercase;
     margin-bottom: 18px;
   }
-
   .orb {
     width: 46px;
     height: 46px;
@@ -59,12 +50,10 @@
     box-shadow: 0 0 22px rgba(180, 120, 220, 0.55);
     animation: pulse 1.6s ease-in-out infinite;
   }
-
   @keyframes pulse {
     0%, 100% { transform: scale(1); opacity: 0.9; }
     50% { transform: scale(1.08); opacity: 1; }
   }
-
   h1 {
     font-family: 'Cinzel', serif;
     font-weight: 600;
@@ -73,29 +62,30 @@
     color: var(--parchment);
     margin-bottom: 10px;
   }
-
   p {
     font-size: 17px;
     color: #cfc6b3;
     line-height: 1.5;
   }
-
+  .reassure {
+    margin-top: 18px;
+    font-size: 15px;
+    color: var(--gold-bright);
+    letter-spacing: 0.01em;
+  }
   .fallback {
     margin-top: 28px;
     font-size: 15px;
   }
-
   .fallback a {
     color: var(--gold-bright);
     text-decoration: none;
     border-bottom: 1px solid rgba(212, 175, 55, 0.4);
     padding-bottom: 1px;
   }
-
   .fallback a:hover {
     border-bottom-color: var(--gold-bright);
   }
-
   @media (prefers-reduced-motion: reduce) {
     .orb { animation: none; }
   }
@@ -107,12 +97,12 @@
     <div class="orb" aria-hidden="true"></div>
     <h1>Opening the gate…</h1>
     <p>Taking you to Patreon to become a Founding Acolyte.</p>
+    <p class="reassure">Founding Acolyte: $7.99/mo — first 100 members only.</p>
     <div class="fallback">
       Not redirected automatically?
       <a href="https://www.patreon.com/TheInnerSanctum670" id="manual-link">Continue to Patreon →</a>
     </div>
   </div>
-
   <script>
     // REPLACE with your real Patreon URL — must match the two spots above.
     var PATREON_URL = "https://www.patreon.com/TheInnerSanctum670";
@@ -120,7 +110,7 @@
     if (link) link.setAttribute('href', PATREON_URL);
     setTimeout(function () {
       window.location.href = PATREON_URL;
-    }, 700);
+    }, 3500);
   </script>
 </body>
 </html>
