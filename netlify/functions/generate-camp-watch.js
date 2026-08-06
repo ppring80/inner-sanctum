@@ -55,6 +55,16 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 // intentionally does NOT overwrite the existing cache with an empty or
 // partial result — stale-but-real content beats a blank section. The
 // store is only updated once a full, successful batch is ready.
+//
+// CARD FORMAT (updated 2026-08-06): each story's Oracle and Trash Lord
+// takes are now stored TOGETHER under one dispatch object, rather than
+// as two separate dispatch entries. This powers dispatches.html's
+// tabbed-card UI — one card per story, with a small voice toggle
+// switching between the two takes, instead of two full cards showing
+// back-to-back for the same underlying story. Decided after user
+// feedback that eight separate cards (four stories × two voices) felt
+// like visual clutter; the two voices are still both fully present,
+// just paired under one card instead of split into two.
 // ═══════════════════════════════════════
 
 const MAX_STORIES = 4;
@@ -101,9 +111,9 @@ function pickTopStories(newsItems, max) {
 
 // Calls Anthropic to generate BOTH the Oracle's and Trash Lord's take
 // on a single real headline, in one call (cheaper and simpler than two
-// separate requests per story). Returns the two dispatch objects the
-// front end expects, matching the shape of the original hand-written
-// cards in dispatches.html (title / excerpt / full paragraphs).
+// separate requests per story). Returns the two takes the front end
+// expects, matching the shape of the original hand-written cards in
+// dispatches.html (title / excerpt / full paragraphs).
 async function generateTakes(story) {
   const prompt = `You are writing two short fantasy football "Camp Watch" dispatches for The Inner Sanctum, based on this real, dated news item:
 
@@ -178,56 +188,4 @@ exports.handler = async (event) => {
   let storiesFailed = 0;
 
   // Sequential, not parallel: each call is a real Anthropic generation
-  // (not a fast independent network ping like the 32 Tank01 team calls
-  // in refresh-player-data.js), and MAX_STORIES is small (4), so
-  // sequential keeps this simple without any real risk of hitting the
-  // 30s scheduled-function limit at this volume.
-  for (const story of stories) {
-    try {
-      const takes = await generateTakes(story);
-      dispatches.push({
-        icon: "🔮",
-        type: "camp",
-        dateLabel: "Camp · Live",
-        voice: "🔮 The Oracle",
-        title: takes.oracle.title,
-        excerpt: takes.oracle.excerpt,
-        full: takes.oracle.full,
-        sourceLink: story.link
-      });
-      dispatches.push({
-        icon: "🔥",
-        type: "camp",
-        dateLabel: "Camp · Live",
-        voice: "🔥 The Trash Lord",
-        title: takes.trashLord.title,
-        excerpt: takes.trashLord.excerpt,
-        full: takes.trashLord.full,
-        sourceLink: story.link
-      });
-    } catch (e) {
-      storiesFailed++;
-      console.log(`Take generation failed for "${story.player}":`, e.message);
-    }
-  }
-
-  if (dispatches.length === 0) {
-    console.log("Camp Watch generation aborted — all take-generation calls failed, keeping existing cache");
-    return { statusCode: 500 };
-  }
-
-  const store = getStore({ name: "camp-watch" });
-  await store.setJSON("dispatches", {
-    updatedAt: new Date().toISOString(),
-    storiesUsed: stories.length,
-    storiesFailed,
-    dispatches
-  });
-
-  console.log(
-    `Camp Watch generation complete: ${dispatches.length} dispatches from ${stories.length} stories` +
-    (storiesFailed > 0 ? ` (${storiesFailed} story/stories failed — see logs above)` : "")
-  );
-
-  return { statusCode: 200 };
-};
+  // (not a
