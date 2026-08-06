@@ -80,6 +80,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .empty-season-title{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:6px}
 .empty-season-text{font-size:13px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
 
+/* ── LOADING / WARMING-UP STATE (new) ── */
+.cw-loading{text-align:center;padding:24px;color:var(--dim);font-size:13px;font-style:italic}
+.cw-warming{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:20px;text-align:center;margin-bottom:14px;font-size:13px;color:var(--muted)}
+
 @media(max-width:600px){
   .main{padding:18px 16px}
   .dispatch-card{padding:14px}
@@ -144,8 +148,10 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
     <div class="oracle-box-text">Fantasy football is not won on draft day alone, seeker. It is won in the quiet weeks — the camp battle no one else is watching, the target share creeping upward before the box score notices. Return here each week, and I shall keep you ahead of the pack.</div>
   </div>
 
+  <!-- Camp Watch cards are injected here at load time by loadCampWatch() below -->
   <div class="dispatch-grid" id="dispatchGrid">
 
+    <div class="cw-loading" id="cwLoading">Consulting the Oracle for today's Camp Watch…</div>
     <div class="dispatch-card" data-type="camp" onclick="toggleDispatch(this)">
       <div class="dispatch-icon">🔮</div>
       <div class="dispatch-body">
@@ -369,6 +375,70 @@ function filterType(type) {
     card.style.display = (type === 'all' || card.dataset.type === type) ? 'flex' : 'none';
   });
 }
+
+// Builds one dispatch card's DOM from a dispatch object returned by
+// get-dispatches.js. Mirrors the exact markup/classes of the original
+// hand-written cards so styling and the open/close behavior above
+// keep working unchanged.
+function buildCampWatchCard(d) {
+  var card = document.createElement('div');
+  card.className = 'dispatch-card';
+  card.dataset.type = 'camp';
+  card.onclick = function () { toggleDispatch(card); };
+
+  var fullParagraphs = (d.full || []).map(function (p) {
+    return '<p>' + p + '</p>';
+  }).join('');
+
+  card.innerHTML =
+    '<div class="dispatch-icon">' + d.icon + '</div>' +
+    '<div class="dispatch-body">' +
+      '<div class="dispatch-meta">' +
+        '<span class="dispatch-type camp">Camp Watch</span>' +
+        '<span class="dispatch-date">' + d.dateLabel + '</span>' +
+        '<span class="dispatch-voice">' + d.voice + '</span>' +
+      '</div>' +
+      '<div class="dispatch-title">' + d.title + '</div>' +
+      '<div class="dispatch-excerpt">' + d.excerpt + '</div>' +
+      '<div class="dispatch-full">' + fullParagraphs + '</div>' +
+    '</div>' +
+    '<div class="dispatch-arrow">→</div>';
+
+  return card;
+}
+
+async function loadCampWatch() {
+  var loadingEl = document.getElementById('cwLoading');
+  var grid = document.getElementById('dispatchGrid');
+
+  try {
+    var res = await fetch('/.netlify/functions/get-dispatches');
+    var data = await res.json();
+
+    if (loadingEl) loadingEl.remove();
+
+    if (!data.hasData || !data.dispatches || data.dispatches.length === 0) {
+      var warming = document.createElement('div');
+      warming.className = 'cw-warming';
+      warming.textContent = "Camp Watch is warming up — the Oracle's first dispatches land shortly.";
+      grid.insertBefore(warming, grid.firstChild);
+      return;
+    }
+
+    // Insert camp cards at the top of the grid, before the existing
+    // Risers & Fallers / Podcast placeholder cards.
+    var firstExisting = grid.querySelector('.dispatch-card');
+    data.dispatches.forEach(function (d) {
+      var card = buildCampWatchCard(d);
+      grid.insertBefore(card, firstExisting);
+    });
+  } catch (e) {
+    if (loadingEl) loadingEl.textContent = "Couldn't reach the Oracle right now — try refreshing shortly.";
+    console.log('Camp Watch load failed:', e.message);
+  }
+}
+
+loadCampWatch();
 </script>
 
 </body>
