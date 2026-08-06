@@ -48,35 +48,6 @@
 [functions."refresh-risers-fallers"]
   schedule = "0 12 * * 3"
 
-# CAMP WATCH AUTO-GENERATOR SCHEDULE (added 2026-08-05)
-# Runs generate-camp-watch.js TWICE a day, at 13:00 and 23:00 UTC —
-# roughly 9am and 7pm US Eastern (8am/6pm Central) during EDT. That
-# function pulls real, current fantasy-relevant news from Tank01's
-# /getNFLNews endpoint (fantasyNews=true), generates fresh Oracle and
-# Trash Lord takes on the top storylines via the Anthropic API, and
-# caches the result to Netlify Blobs for dispatches.html's Camp Watch
-# section to read live. See generate-camp-watch.js for full rationale,
-# including why this replaces rather than accumulates each run.
-#
-# Twice-daily (not once, unlike refresh-player-data above) because
-# Tank01 itself says this news feed updates multiple times an hour —
-# a single daily pull would leave same-day practice reports and
-# injury designations sitting stale for up to 24 hours, which is the
-# exact "live but not really live" problem this function exists to
-# fix. Twice a day was chosen over more frequent polling because camp
-# news itself doesn't meaningfully change hour-to-hour (injury
-# reports and practice recaps land once or twice a day, not
-# continuously) — more frequent runs would mostly just reprocess the
-# same underlying facts at extra API cost with no new substance.
-#
-# DST note: like refresh-risers-fallers's Wednesday timing above,
-# this is a fixed UTC schedule and will drift an hour relative to US
-# local time across the DST boundary. Not worth chasing with cron
-# alone -- adjust the hours below manually if that drift ever matters
-# enough to fix.
-[functions."generate-camp-watch"]
-  schedule = "0 13,23 * * *"
-
 [[redirects]]
   from = "/landing"
   to = "/"
@@ -166,14 +137,5 @@
 # no explicit redirect entries for any of them either.
 [[headers]]
   for = "/compare"
-  [headers.values]
-    Cache-Control = "no-cache, must-revalidate"
-# Added 2026-08-05, same reasoning as /compare above — dispatches.html
-# now fetches Camp Watch live from get-dispatches.js on every load
-# (see dispatches.html and generate-camp-watch.js), so it joins the
-# same category of pages that must never be served from a stale
-# browser cache.
-[[headers]]
-  for = "/dispatches"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
