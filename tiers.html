@@ -15,12 +15,12 @@
 }
 body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
 .hdr{background:linear-gradient(180deg,#1a1108,#0d0804);border-bottom:1px solid #2a2018;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.hdr-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
-.hdr-title{font-family:'Cinzel',serif;font-size:26px;font-weight:600;color:#f2f1ef}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:clamp(11px, 2vw, 13px);letter-spacing:clamp(2px, 0.8vw, 4px);color:var(--gold);text-transform:uppercase;display:block;margin-bottom:4px}
+.hdr-title{font-family:'Cinzel',serif;font-size:clamp(20px, 4.5vw, 28px);font-weight:600;color:#f2f1ef}
 .hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.nav-link{color:#c9a84c;font-size:13px;text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
+.nav-link{color:#c9a84c;font-size:clamp(12px, 2.2vw, 14px);text-decoration:none;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;transition:opacity 0.2s}
 .nav-link:hover{opacity:1;color:#f5c842}
-.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:11px;color:#c9a84c;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:clamp(11px, 2vw, 12px);color:#c9a84c;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
 .settings-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px}
 .settings-inner{max-width:960px;margin:0 auto;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .setting-group{display:flex;flex-direction:column;gap:5px}
@@ -194,13 +194,13 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── GROUPED DROPDOWN NAV (added) ── */
 .nav-dropdown{position:relative;display:inline-block}
-.nav-dropdown-trigger{background:none;border:none;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;transition:opacity 0.2s}
+.nav-dropdown-trigger{background:none;border:none;color:#c9a84c;font-size:clamp(12px, 2.2vw, 14px);font-family:'Cinzel',serif;letter-spacing:1px;opacity:0.85;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px;transition:opacity 0.2s}
 .nav-dropdown-trigger:hover,.nav-dropdown.open .nav-dropdown-trigger{opacity:1;color:#f5c842}
 .nav-dropdown-caret{font-size:9px;transition:transform 0.2s}
 .nav-dropdown.open .nav-dropdown-caret{transform:rotate(180deg)}
 .nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);background:#15100a;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
 .nav-dropdown.open .nav-dropdown-menu{display:block}
-.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#c9a84c;font-size:13px;font-family:'Cinzel',serif;letter-spacing:0.5px;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#c9a84c;font-size:clamp(12px, 2.2vw, 14px);font-family:'Cinzel',serif;letter-spacing:0.5px;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
 .nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:#f5c842}
 @media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
 
@@ -257,14 +257,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   </div>
 </div>
 <script>
-// ═══ ACOLYTE GATE LOGIC (modified — now offers a sample-data preview path) ═══
-//
-// WHY A FETCH CALL IS NEEDED: oauth-callback.js sets sanctum_session as
-// an HttpOnly cookie, so this page's JS cannot read it directly via
-// document.cookie. verify-session.js is a small Netlify Function that
-// reads the cookie server-side (where HttpOnly doesn't apply), verifies
-// its signature, and returns just {fullAccess} — this
-// page never sees the raw cookie or the signing secret.
 var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
@@ -295,10 +287,6 @@ function checkGatePasscode() {
   }
 }
 
-// Calls verify-session.js and unlocks if fullAccess is true. Never
-// throws — any failure (network error, non-200, malformed response)
-// is treated the same as "no access," which simply means the existing
-// passcode gate stays up exactly as it does today.
 function checkOAuthSession() {
   return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
     .then(function (res) {
@@ -313,22 +301,10 @@ function checkOAuthSession() {
       return false;
     })
     .catch(function () {
-      return false; // network/parse error — fall through to passcode gate, unchanged
+      return false;
     });
 }
 
-// ═══ PREVIEW MODE (added) ═══════════════════════════════════════════
-// See auction.html's PREVIEW MODE comment block for the full rationale
-// behind why this exists. Simpler here than on auction.html: Tier List
-// has no personal/identifying inputs (no league name, no real budget)
-// to lock to a fixed demo — it only takes scoring format and league
-// format settings. So entering preview here just means "fully unlock,"
-// same as a real Acolyte, with a persistent banner reminding the
-// visitor they're in preview and a path to become a real Acolyte.
-// Tracked with its OWN sessionStorage flag (sanctum_preview_mode),
-// kept separate from GATE_STORAGE_KEY, so this page and auction.html
-// can independently know "is this visitor in preview" vs "are they
-// really, fully unlocked" without conflating the two.
 var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
 
 function isPreviewMode() {
@@ -345,9 +321,6 @@ function enterPreviewMode() {
   showPreviewBanner();
 }
 
-// Persistent banner — same pattern as auction.html, injected once at
-// the top of <body> so it's visible regardless of which position tab
-// or generated state the visitor is looking at.
 function showPreviewBanner() {
   if (document.getElementById('previewBanner')) return;
   var banner = document.createElement('div');
@@ -359,14 +332,6 @@ function showPreviewBanner() {
   document.body.insertBefore(banner, document.body.firstChild);
 }
 
-// ═══ AUTH RESULT HANDLING (added — July 2026 #49 site review) ═══
-// oauth-callback.js now returns the user to the page they actually
-// started their Patreon login from (via the &state= param on the
-// login link above), appending ?auth_error=... or ?auth=success to
-// the URL. Previously nothing on this page read these params — a
-// failed login silently dumped the user back on a blank gate, and a
-// successful one gave no visible confirmation beyond the gate quietly
-// disappearing (handled separately by checkOAuthSession() above).
 function handleAuthResultParams() {
   var params = new URLSearchParams(window.location.search);
   var authError = params.get('auth_error');
@@ -646,7 +611,7 @@ var originalTiers = {};
 var currentPos = 'QB';
 var generated = false;
 var POS_LIST = ['QB','RB','WR','TE','K','DEF'];
-var savedStrategy = null; // populated from localStorage
+var savedStrategy = null;
 
 var TIER_NAMES = {
   1:'The Untouchables', 2:'Elite Starters', 3:'Solid Starters',
@@ -702,43 +667,6 @@ var TIER_BREAKS = {
 };
 var SUPERFLEX_QB_BREAKS = [8,14,24,34,40];
 
-// ── LIVE ADP — POSITION-GROUPED FETCH — REWRITTEN JULY 12 2026 (checklist
-// follow-up, same evening as #135/#136's unified live-data-source work)
-//
-// REAL BUG FOUND: Pat noticed Omarion Hampton and Cam Skattebo (both real,
-// rostered 2025-draft-class RBs) were missing from the Tier List entirely,
-// despite showing up correctly on Draft Command Center. Root cause was
-// TWO stacked problems, not one:
-//
-// (1) This function (formerly fetchLiveAdpMap) only ever built a flat
-//     name->adp lookup and threw away every player's position/team from
-//     the live feed. generateTiers() then used that lookup ONLY to
-//     overwrite the .adp field on players ALREADY present in the static
-//     PLAYER_POOL fallback list (applyLiveAdp, removed below) — it could
-//     never ADD a player who wasn't already hand-typed into PLAYER_POOL.
-//     Any player missing from that static list was permanently invisible
-//     on this page, no matter how live or accurate the real ADP feed was.
-//     Draft Command Center never had this problem because it builds its
-//     ENTIRE player list directly from the live feed — the static pool
-//     there is a true last-resort fallback, not the ceiling of what can
-//     ever render.
-//
-// (2) This function's fetch also didn't request enough depth — no
-//     count/teams/year params at all, unlike Draft Command Center's
-//     identical live-ADP call (adp.js?...&teams=12&year=2026&count=300).
-//     Whatever smaller default the proxy falls back to without those
-//     params likely wasn't deep enough to include moderate-ADP rookies
-//     even if problem (1) were fixed alone.
-//
-// FIX: this function now returns a POSITION-GROUPED object —
-// { QB:[{name,team,adp}], RB:[...], ... } — built directly from the live
-// feed, same shape and same explicit count=300/teams=12/year=2026 params
-// Draft Command Center already uses successfully. generateTiers() below
-// now builds each position's pool FROM this live data first (matching
-// Draft Command Center's own approach), falling back to the static
-// PLAYER_POOL only if the live fetch fails ENTIRELY (network error, bad
-// response) — not merely "a specific player happens to be missing from
-// the static list," which was the actual bug.
 async function fetchLiveAdpByPosition(scoring) {
   try {
     var scoringParam = scoring === 'half' ? 'half-ppr' : scoring;
@@ -748,7 +676,7 @@ async function fetchLiveAdpByPosition(scoring) {
     var byPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
     data.players.forEach(function (p) {
       if (!p.name || !p.position) return;
-      var pos = p.position === 'PK' ? 'K' : p.position; // same PK->K normalization every other live-ADP page already uses
+      var pos = p.position === 'PK' ? 'K' : p.position;
       if (!byPos[pos]) return;
       byPos[pos].push({ name: p.name, team: p.team || 'FA', adp: parseFloat(p.adp) || 999 });
     });
@@ -837,27 +765,6 @@ function markTargetTiers(stratData, pos) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// GENERATE TIERS — UNIFIED LIVE-DATA SOURCE — MODIFIED JULY 12 2026
-// (checklist #135/#136), THEN REBUILT SAME EVENING to fix the
-// missing-rookie bug (Omarion Hampton, Cam Skattebo, etc. — see
-// fetchLiveAdpByPosition's header comment above for full root cause).
-//
-// POOL CONSTRUCTION, real fix: each position's pool now comes from the
-// LIVE ADP feed FIRST (liveAdpByPos[pos], built above) — the same real
-// player universe Draft Command Center already renders from — falling
-// back to the static PLAYER_POOL only when the live fetch fails
-// entirely. This replaces the old "always start from the static list,
-// merely overlay live .adp onto matching names" approach, which is what
-// made this page permanently blind to any player not already hand-typed
-// into PLAYER_POOL, regardless of how current the live feed was.
-//
-// TEAM CORRECTION unchanged from the #135/#136 work earlier tonight:
-// fetchTank01PlayerMap() + applyLiveTeamsFromTank01() still run on top
-// of whichever pool (live-built or fallback) was selected above, so team
-// assignment stays correct either way — this rebuild only changes WHICH
-// PLAYERS exist in the pool, not how their team gets corrected.
-// ═══════════════════════════════════════════════════════════════════════
 function generateTiers() {
   var scoring = document.getElementById('settingScoring').value;
   var format  = document.getElementById('settingFormat').value;
@@ -895,13 +802,8 @@ function generateTiers() {
     POS_LIST.forEach(function(pos){
       var pool;
       if (liveAdpByPos && liveAdpByPos[pos] && liveAdpByPos[pos].length) {
-        // Real player universe direct from the live feed — includes any
-        // rookie/breakout player the ADP proxy knows about, not just
-        // whoever happened to be hand-typed into PLAYER_POOL.
         pool = JSON.parse(JSON.stringify(liveAdpByPos[pos]));
       } else {
-        // Live ADP fetch failed ENTIRELY (network error, bad response) —
-        // genuine last-resort fallback, unchanged from before.
         pool = JSON.parse(JSON.stringify(PLAYER_POOL[pos]));
       }
       if (pos !== 'DEF') pool = applyLiveTeamsFromTank01(pool, tank01Map);
