@@ -21,6 +21,22 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .hdr-brand{font-family:'Cinzel',serif;font-size:clamp(9px, 1.8vw, 11px);letter-spacing:clamp(2px, 0.8vw, 4px);color:var(--gold-lt);text-transform:uppercase;display:block;margin-bottom:2px}
 .hdr-title{font-family:'Cinzel',serif;font-size:clamp(16px, 4vw, 22px);font-weight:600;color:#f0e6cc}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:clamp(11px, 2vw, 12px);color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* ── ACOLYTE ACCESS GATE (added) ── */
+.gate-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a1108,#0d0804);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.5)}
+.gate-icon{font-size:38px;margin-bottom:10px}
+.gate-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:#f2f1ef;margin-bottom:8px;letter-spacing:1px}
+.gate-sub{font-family:'Lora',Georgia,serif;font-size:13px;color:#a08a5a;line-height:1.6;margin-bottom:20px}
+.gate-input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.3);color:#f2f1ef;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:2px;text-align:center;padding:12px 14px;border-radius:8px;margin-bottom:12px}
+.gate-input:focus{outline:none;border-color:#c9a84c}
+.gate-btn{width:100%;padding:12px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:'Cinzel',serif;font-size:14px;font-weight:600;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;margin-bottom:14px;transition:opacity 0.15s}
+.gate-btn:hover{opacity:0.88}
+.gate-error{display:none;font-family:'Lora',Georgia,serif;font-size:12px;color:#e57373;margin-bottom:10px}
+.gate-error.show{display:block}
+.gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
+.gate-link:hover{opacity:1}
 .hdr-btn{color:#a08550;font-size:clamp(11px, 2vw, 13px);text-decoration:none;padding:6px 13px;border:1px solid #3d2a12;border-radius:var(--r);transition:all 0.15s;background:transparent;cursor:pointer;font-family:'Lora',serif}
 .hdr-btn:hover{color:var(--gold-lt);border-color:var(--gold-lt)}
 .ctrl-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
@@ -203,12 +219,86 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 </head>
 <body>
 
+<!-- ═══ ACOLYTE ACCESS GATE (added) ═══ -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <div class="gate-icon">🔒</div>
+    <div class="gate-title">Acolyte Feature</div>
+    <div class="gate-sub">The Draft Command Center is reserved for Founding Acolytes. Enter your passcode to continue.</div>
+    <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
+    <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fdraft" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
+    <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
+  </div>
+</div>
+<script>
+var GATE_PASSCODE = 'ORACLE-125';
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
+var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
+
+function checkGateUnlocked() {
+  try {
+    return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function unlockGate() {
+  try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+}
+
+function checkGatePasscode() {
+  var input = document.getElementById('gateInput');
+  var err = document.getElementById('gateError');
+  var entered = input.value.trim().toUpperCase();
+  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+    unlockGate();
+  } else {
+    err.classList.add('show');
+    input.value = '';
+    input.focus();
+  }
+}
+
+function checkOAuthSession() {
+  return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.fullAccess === true) {
+        unlockGate();
+        return true;
+      }
+      return false;
+    })
+    .catch(function () {
+      return false;
+    });
+}
+
+(function initGate() {
+  if (checkGateUnlocked()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    return;
+  }
+  checkOAuthSession();
+})();
+</script>
+<!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
+
 <div class="hdr">
   <div>
     <span class="hdr-brand">The Inner Sanctum</span>
     <div class="hdr-title">📋 Draft Command Center</div>
   </div>
   <div class="hdr-right no-print">
+    <span class="lock-badge">🔒 Acolyte Feature</span>
     <a href="/" class="hdr-btn">🏠 Home</a>
 
     <div class="nav-dropdown" id="navDraftTools">
