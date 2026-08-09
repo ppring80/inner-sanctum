@@ -18,10 +18,10 @@
 }
 body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
 .hdr{background:#1a1108;border-bottom:2px solid var(--gold-lt);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.hdr-brand{font-family:'Cinzel',serif;font-size:9px;letter-spacing:4px;color:var(--gold-lt);text-transform:uppercase;display:block;margin-bottom:2px}
-.hdr-title{font-family:'Cinzel',serif;font-size:20px;font-weight:600;color:#f0e6cc}
+.hdr-brand{font-family:'Cinzel',serif;font-size:clamp(9px, 1.8vw, 11px);letter-spacing:clamp(2px, 0.8vw, 4px);color:var(--gold-lt);text-transform:uppercase;display:block;margin-bottom:2px}
+.hdr-title{font-family:'Cinzel',serif;font-size:clamp(16px, 4vw, 22px);font-weight:600;color:#f0e6cc}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.hdr-btn{color:#a08550;font-size:12px;text-decoration:none;padding:5px 12px;border:1px solid #3d2a12;border-radius:var(--r);transition:all 0.15s;background:transparent;cursor:pointer;font-family:'Lora',serif}
+.hdr-btn{color:#a08550;font-size:clamp(11px, 2vw, 13px);text-decoration:none;padding:6px 13px;border:1px solid #3d2a12;border-radius:var(--r);transition:all 0.15s;background:transparent;cursor:pointer;font-family:'Lora',serif}
 .hdr-btn:hover{color:var(--gold-lt);border-color:var(--gold-lt)}
 
 .ctrl-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
@@ -124,11 +124,28 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .nav-dropdown.open .nav-dropdown-trigger.hdr-btn{color:var(--gold-lt);border-color:var(--gold-lt)}
 .nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1a1108;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:190px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
 .nav-dropdown.open .nav-dropdown-menu{display:block}
-.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#a08550;font-size:12px;font-family:'Lora',serif;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#a08550;font-size:clamp(12px, 2.2vw, 14px);font-family:'Lora',serif;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
 .nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:var(--gold-lt)}
 @media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
 
 </style>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1748852649483750');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 </head>
 <body>
 
