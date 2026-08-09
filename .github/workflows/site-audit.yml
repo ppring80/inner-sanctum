@@ -1,0 +1,22 @@
+name: Site Audit
+
+# Manual trigger only — click "Run workflow" in the Actions tab whenever
+# you want to check the site. (A `push:` trigger could be added later if
+# you ever want this to run automatically on every commit instead.)
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run site audit
+        run: python3 scripts/site_audit.py .
