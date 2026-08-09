@@ -1,3 +1,4 @@
+python
 #!/usr/bin/env python3
 """
 The Inner Sanctum — Site Consistency Audit
@@ -16,7 +17,7 @@ Exit code 0 = clean, 1 = issues found (so this can gate a CI job).
 import os, re, sys, hashlib, html
 
 # test*.html files are scratch/dev pages, not real site pages — skip them
-SKIP_PREFIXES = ('test',)
+SKIP_PREFIXES = ('test', 'google-site-verification')
 
 def load_pages(directory):
     pages = {}
