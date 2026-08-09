@@ -1,4 +1,4 @@
-python
+
 #!/usr/bin/env python3
 """
 The Inner Sanctum — Site Consistency Audit
