@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -493,12 +492,33 @@ function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if
 // ═══════════════════════════════════════
 // BUILD INJURIES OBJECT FROM A TANK01 PLAYER MAP
 // ═══════════════════════════════════════
+//
+// FIX (Aug 11 2026 — Jefferson/Cleveland bug, part 2): this lookup was
+// keyed by normalized NAME ONLY — the exact same collision risk the
+// old applyLiveTeamsFromTank01() had in shared-player-data.js (see
+// that file's header comment for the full root-cause story): a
+// same-named defensive player's injury designation could get applied
+// to the wrong, fantasy-relevant player.
+//
+// Separately, and more urgently: shared-player-data.js's
+// fetchTank01PlayerMap() was changed to key its map by "name|POS"
+// instead of name alone, to fix that exact collision. This function
+// was still building the OLD-shape key, so once that fix shipped,
+// this lookup started silently failing 100% of the time — every
+// player's entry came back undefined, and buildInjuriesFromTank01()
+// began returning an empty {} regardless of real injury data. Fixed
+// below to build the matching "name|POS" key, using p.pos (already
+// set on every player object in adpByPos[pos] by the time this runs;
+// the outer `pos` loop variable is kept as a fallback in case p.pos
+// is ever unset for some reason).
+// ═══════════════════════════════════════
 function buildInjuriesFromTank01(tank01Map){
   var result={};
   if(!tank01Map)return result;
   Object.keys(adpByPos).forEach(function(pos){
     (adpByPos[pos]||[]).forEach(function(p){
-      var entry=tank01Map[normalizePlayerName(p.name)];
+      var mapKey=normalizePlayerName(p.name)+'|'+(p.pos||pos);
+      var entry=tank01Map[mapKey];
       if(entry&&entry.injuryDesignation){
         result[key(p.name)]={status:entry.injuryDesignation,part:entry.injuryDescription||null};
       }
