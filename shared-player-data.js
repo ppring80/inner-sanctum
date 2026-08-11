@@ -64,6 +64,25 @@
 // for team-correction to start using the unified source, just a swap
 // of which fetch function feeds it, done page-by-page as each page is
 // migrated (see Pre-Deployment Checklist for migration status).
+//
+// FIX (Aug 11 2026 — Jefferson/Cleveland bug): fetchTank01PlayerMap()'s
+// lookup map used to be keyed by normalized NAME ONLY. Tank01's full
+// roster includes every player league-wide, not just fantasy-relevant
+// skill positions — which means name collisions across positions are
+// real: e.g. WR Justin Jefferson (MIN) and a rookie LB also named
+// Justin Jefferson (CLE) both normalize to "justin jefferson". With a
+// name-only key, whichever one Object.values() iterated over LAST
+// silently overwrote the other in the map, so
+// applyLiveTeamsFromTank01() could "correct" the Vikings WR's team to
+// CLE by looking up the linebacker's entry instead. Fixed two ways:
+// (1) fetchTank01PlayerMap() now only includes fantasy-relevant
+// positions (QB/RB/WR/TE/K), via the same TANK01_SEARCHABLE_POSITIONS
+// filter fetchTank01PlayerList() already used — this alone would have
+// excluded the LB entirely; (2) the map key is now name+position
+// (e.g. "justin jefferson|WR"), so even two same-named players at
+// different OFFENSIVE positions (e.g. a WR and a TE) can't collide
+// either. See fetchTank01PlayerMap() / applyLiveTeamsFromTank01()
+// below — both now build/consume this composite key.
 // ═══════════════════════════════════════════════════════════════════════
 
 var PLAYER_POOL = {
@@ -284,8 +303,19 @@ function applyLiveTeams(players, teamMap) {
 // (see file header comment above for the full "why")
 // ═══════════════════════════════════════════════════════════════════════
 
+// ── Fantasy-relevant position map (Tank01 pos code -> our convention).
+// Tank01's own position code for kicker is "PK", not "K" — normalized
+// here to "K" to match the convention every other live-data source on
+// this site already uses (e.g. adp.js). Any Tank01 position NOT
+// listed here (defensive positions like LB/DB/DL/S/CB, special teams,
+// etc.) is intentionally excluded — those aren't fantasy-relevant, and
+// including them is what caused the Jefferson/Cleveland name-collision
+// bug (see file header). Declared here, ABOVE fetchTank01PlayerMap()
+// and fetchTank01PlayerList() below, since both depend on it.
+var TANK01_SEARCHABLE_POSITIONS = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', PK: 'K' };
+
 // ── Fetch the Tank01 player-data cache (via player-data.js) and build
-// a name -> {team, exp, injury} map, keyed with the SAME
+// a name+pos -> {team, exp, injury} map, keyed with the SAME
 // normalizePlayerName() used everywhere else in this file, so this is
 // a drop-in alternative source for anything currently calling
 // fetchSleeperTeamMap(). Returns null on any failure — same fail-safe
@@ -293,7 +323,7 @@ function applyLiveTeams(players, teamMap) {
 // "if (!teamMap) keep whatever we already had" pattern works
 // unchanged regardless of which fetch function is used.
 //
-// SHAPE RETURNED, per normalized name:
+// SHAPE RETURNED, per "normalizedName|POS" key:
 //   {
 //     team: "KC",                 // same 2-4 letter abbreviation convention as PLAYER_POOL/Sleeper
 //     exp: "9",                   // or "R" for rookie; may be undefined if Tank01 didn't have it
@@ -306,6 +336,12 @@ function applyLiveTeams(players, teamMap) {
 // live 2026-07-12), just empty strings when a player isn't currently
 // injured — so callers can check `injuryDesignation !== ''` rather
 // than needing to check whether the injury object exists at all.
+//
+// See file header for the Aug 11 2026 fix: this map is filtered to
+// fantasy-relevant positions only, and keyed by name+position rather
+// than name alone, to prevent cross-position name collisions
+// (e.g. WR Justin Jefferson vs. a same-named LB) from silently
+// overwriting each other in the map.
 async function fetchTank01PlayerMap() {
   try {
     var res = await fetch('/.netlify/functions/player-data');
@@ -314,7 +350,10 @@ async function fetchTank01PlayerMap() {
     var map = {};
     Object.values(data.players).forEach(function (p) {
       if (!p.longName || !p.team) return;
-      map[normalizePlayerName(p.longName)] = {
+      var normPos = TANK01_SEARCHABLE_POSITIONS[p.pos];
+      if (!normPos) return; // skip defensive/special-teams positions — not fantasy-relevant, and the source of the Jefferson/CLE collision
+      var mapKey = normalizePlayerName(p.longName) + '|' + normPos;
+      map[mapKey] = {
         team: p.team,
         exp: p.exp,
         injuryDesignation: (p.injury && p.injury.designation) || '',
@@ -334,14 +373,21 @@ async function fetchTank01PlayerMap() {
 // call site. Kept as a SEPARATE function rather than overloading
 // applyLiveTeams() to accept either map shape, since
 // fetchSleeperTeamMap()'s map is a flat name->string, while
-// fetchTank01PlayerMap()'s map is name->object — silently accepting
-// both shapes in one function risks a subtle bug if a future edit
-// mixes them up; two clearly-named functions make the call site's
-// intent unambiguous instead.
+// fetchTank01PlayerMap()'s map is name+pos->object — silently
+// accepting both shapes in one function risks a subtle bug if a
+// future edit mixes them up; two clearly-named functions make the
+// call site's intent unambiguous instead.
+//
+// Looks up by name+position (matching fetchTank01PlayerMap()'s key
+// shape above) rather than name alone — see file header fix note.
+// `p.pos` is expected to already be set on each player object before
+// this is called (true for every existing call site: draft.html sets
+// pos:pos when pushing into adpByPos, before calling this).
 function applyLiveTeamsFromTank01(players, tank01Map) {
   if (!tank01Map) return players;
   return players.map(function (p) {
-    var entry = tank01Map[normalizePlayerName(p.name)];
+    var mapKey = normalizePlayerName(p.name) + '|' + (p.pos || '');
+    var entry = tank01Map[mapKey];
     if (!entry || !entry.team || entry.team === p.team) return p;
     var copy = {};
     for (var k in p) copy[k] = p[k];
@@ -355,25 +401,22 @@ function applyLiveTeamsFromTank01(players, tank01Map) {
 // Auction War Room's Step 5 draft-pick autocomplete), rather than
 // looking up one specific name at a time. This is a DIFFERENT return
 // shape from fetchTank01PlayerMap() above on purpose: that function
-// returns name->{team,exp,injury...} for O(1) single-player lookups
-// (team correction across a whole position array); this one returns
-// an ARRAY of every fantasy-relevant player, matching the shape
-// Sleeper's api.sleeper.app/v1/players/nfl endpoint used to provide
-// to loadSleeperPlayers()-style code, so it's a drop-in replacement
-// for that use case specifically.
+// returns name+pos->{team,exp,injury...} for O(1) single-player
+// lookups (team correction across a whole position array); this one
+// returns an ARRAY of every fantasy-relevant player, matching the
+// shape Sleeper's api.sleeper.app/v1/players/nfl endpoint used to
+// provide to loadSleeperPlayers()-style code, so it's a drop-in
+// replacement for that use case specifically.
 //
 // FILTERING: only fantasy-relevant positions are included — QB, RB,
-// WR, TE, and K (Tank01's own position code for kicker is "PK", not
-// "K" — normalized here to "K" to match the convention every other
-// live-data source on this site already uses, e.g. adp.js). Defenses
-// are NOT included, matching the existing behavior this replaces
-// (Sleeper-based player search never included team defenses either —
-// no regression here, same scope as before).
+// WR, TE, and K, via the shared TANK01_SEARCHABLE_POSITIONS map
+// declared above. Defenses are NOT included, matching the existing
+// behavior this replaces (Sleeper-based player search never included
+// team defenses either — no regression here, same scope as before).
 //
 // Returns null on any failure — same fail-safe contract as
 // fetchTank01PlayerMap()/fetchSleeperTeamMap(), so callers can fall
 // back to an empty list or a cached copy exactly as before.
-var TANK01_SEARCHABLE_POSITIONS = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', PK: 'K' };
 async function fetchTank01PlayerList() {
   try {
     var res = await fetch('/.netlify/functions/player-data');
