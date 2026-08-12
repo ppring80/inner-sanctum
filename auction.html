@@ -498,6 +498,29 @@ function blockStep5Preview() {
   overlay.style.display = 'flex';
 }
 
+// ADDED — same pattern as blockStep5Preview() above, but for the Step 4
+// Print button. Prices in preview mode are already locked to read-only
+// on screen, but window.print() would still render those real dollar
+// values on paper/PDF, bypassing that lock through a different door.
+// This intercepts the Print button in preview mode and shows the same
+// branded gate instead of actually printing.
+function blockPrintPreview() {
+  var overlay = document.getElementById('gateOverlay');
+  var sub = document.getElementById('gateSub');
+  if (sub) sub.textContent = 'Printing your Target Price Sheet is reserved for Founding Acolytes — enter your passcode, or become a member to unlock it.';
+  overlay.style.display = 'flex';
+}
+
+// ADDED — wraps window.print() for the Step 4 Print button so preview
+// visitors hit the gate above instead of printing the real sheet.
+function printTPS() {
+  if (typeof isPreviewMode === 'function' && isPreviewMode()) {
+    blockPrintPreview();
+    return;
+  }
+  window.print();
+}
+
 // ADDED — reads ?step=N from the URL and jumps the wizard to that step
 // once the page is unlocked (via passcode, preview mode, or a verified
 // OAuth session). Used by the Tier List page's "Open Price Sheet" link
@@ -753,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <p class="panel-sub" id="tpsSubtitle" style="margin-bottom:0">Your personalized auction budget blueprint</p>
     </div>
     <div class="btn-row no-print" style="margin:0">
-      <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
+      <button class="btn btn-outline" onclick="printTPS()">🖨 Print</button>
       <button class="btn btn-gold" onclick="goStep(5)">Start Live Draft →</button>
     </div>
   </div>
