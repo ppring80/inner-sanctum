@@ -176,6 +176,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .tps-slot-price-input::-webkit-outer-spin-button,.tps-slot-price-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .tps-slot-price-input:focus{outline:none;border-bottom-color:var(--gold)}
 .tps-slot-row.floor .tps-slot-price-input{color:var(--dim);border-bottom-color:rgba(122,122,118,0.25)}
+.tps-slot-price-input:read-only{color:var(--dim);cursor:default;border-bottom-color:rgba(122,122,118,0.25)}
 .tps-slot-row.floor .tps-slot-price-dollar{color:var(--dim)}
 
 .tps-edit-note{background:rgba(184,146,26,0.07);border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6}
@@ -797,7 +798,7 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
   </div>
 
-  <div class="tps-edit-note no-print">
+  <div class="tps-edit-note no-print" id="tpsEditNote">
     💰 <strong>Each row is a roster slot, not a player.</strong> Your total always lands exactly on budget by design — adjust any price if your own read of the market differs, and the total above updates live. Pair this sheet with the <strong>Oracle Tier List</strong> to know which players to actually target at each slot's price.
   </div>
 
@@ -1679,13 +1680,15 @@ function renderTPS(pricedSlots, stratKey) {
       row.className = 'tps-slot-row' + ((s.isBenchFloor || s.isKDefFloor) ? ' floor' : '');
       row.dataset.pos = pos;
       row.dataset.slotIndex = s.slotIndex;
+      var isPreview = typeof isPreviewMode === 'function' && isPreviewMode();
       row.innerHTML =
         '<span class="tps-slot-name">' + slotLabel + '</span>' +
         ((s.isBenchFloor || s.isKDefFloor) ? '<span class="tps-slot-floor-note">min spend</span>' : '') +
         '<span class="tps-slot-price-wrap"><span class="tps-slot-price-dollar">$</span>' +
           '<input type="number" class="tps-slot-price-input" value="' + s.dollars + '" min="1" ' +
           'data-pos="' + pos + '" data-slot-index="' + s.slotIndex + '" oninput="updateTpsTotal()"' +
-          ((s.isBenchFloor || s.isKDefFloor) ? ' title="Minimum spend — adjustable, but kept low by design"' : '') + '/></span>';
+          (isPreview ? ' readonly title="Become a Founding Acolyte to customize prices"' :
+            ((s.isBenchFloor || s.isKDefFloor) ? ' title="Minimum spend — adjustable, but kept low by design"' : '')) + '/></span>';
       list.appendChild(row);
     });
     section.appendChild(list);
@@ -1693,6 +1696,15 @@ function renderTPS(pricedSlots, stratKey) {
   });
 
   updateTpsTotal();
+
+  var editNoteEl = document.getElementById('tpsEditNote');
+  if (editNoteEl) {
+    if (typeof isPreviewMode === 'function' && isPreviewMode()) {
+      editNoteEl.innerHTML = '🔒 <strong>This is a real Target Price Sheet, built from live ADP.</strong> Prices are locked in preview — <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" style="color:var(--gold);font-weight:600">become a Founding Acolyte</a> to customize every price and enter the Live Draft Tracker.';
+    } else {
+      editNoteEl.innerHTML = '💰 <strong>Each row is a roster slot, not a player.</strong> Your total always lands exactly on budget by design — adjust any price if your own read of the market differs, and the total above updates live. Pair this sheet with the <strong>Oracle Tier List</strong> to know which players to actually target at each slot\'s price.';
+    }
+  }
 
   var scoringLabel = { ppr:'PPR', half:'Half PPR', standard:'Standard' }[state.scoring];
   var formatLabel = state.leagueFormat === 'superflex' ? ' · Superflex/2QB' : '';
