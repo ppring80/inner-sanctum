@@ -234,6 +234,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .log-table td.mono{font-family:'JetBrains Mono',monospace;color:var(--gold)}
 .log-table td.dim{font-size:11px;color:var(--muted)}
 .pos-pill{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.log-remove-btn{background:transparent;border:1px solid rgba(138,32,32,0.35);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.log-remove-btn:hover{background:rgba(138,32,32,0.08)}
 
 /* ── TEAMS GRID ── */
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:12px}
@@ -875,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="draft-log" id="draftLog">
       <div class="log-title" style="margin-top:16px">Draft Log</div>
       <table class="log-table">
-        <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th><th class="no-print"></th></tr></thead>
         <tbody id="draftLogBody"></tbody>
       </table>
     </div>
@@ -917,7 +919,8 @@ var state = {
   strategy: null,
   pricedSlots: [],
   playerPriceLookup: {},
-  draftLog: []
+  draftLog: [],
+  nextPickId: 1
 };
 
 var POS_COLORS = {
@@ -1778,7 +1781,7 @@ function logPick() {
     return;
   }
 
-  state.draftLog.push({ player:player, pos:pos||'—', projected:projected, price:price, team:team, num:state.draftLog.length+1 });
+  state.draftLog.push({ id: state.nextPickId++, player:player, pos:pos||'—', projected:projected, price:price, team:team });
   document.getElementById('pickPlayer').value = '';
   document.getElementById('pickPosition').value = '';
   document.getElementById('pickProjected').value = '';
@@ -1835,7 +1838,9 @@ function renderDraftLog() {
   document.getElementById('draftLog').style.display = log.length > 0 ? 'block' : 'none';
   var tbody = document.getElementById('draftLogBody');
   tbody.innerHTML = '';
-  log.slice().reverse().forEach(function(p){
+  var numbered = log.map(function(p, i){ return { pick: p, num: i + 1 }; });
+  numbered.slice().reverse().forEach(function(entry){
+    var p = entry.pick;
     var diff = p.projected ? p.price - p.projected : null;
     var diffStr = diff === null ? '—' :
       diff > 0 ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
@@ -1843,15 +1848,30 @@ function renderDraftLog() {
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var tr = document.createElement('tr');
     tr.innerHTML =
-      '<td class="dim">#' + p.num + '</td>' +
+      '<td class="dim">#' + entry.num + '</td>' +
       '<td>' + p.player + '</td>' +
       '<td><span class="pos-pill" style="' + posStyle + '">' + p.pos + '</span></td>' +
       '<td class="mono">$' + p.price + '</td>' +
       '<td class="dim">' + (p.projected ? '$' + p.projected : '—') + '</td>' +
       '<td style="font-size:11px">' + diffStr + '</td>' +
-      '<td class="dim">' + p.team + '</td>';
+      '<td class="dim">' + p.team + '</td>' +
+      '<td class="no-print"><button class="log-remove-btn" onclick="removePick(' + p.id + ')">✕ Remove</button></td>';
     tbody.appendChild(tr);
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 5 — REMOVE A MIS-LOGGED PICK
+// ═══════════════════════════════════════════════════════════
+function removePick(id) {
+  var removed = state.draftLog.find(function(p){ return p.id === id; });
+  if (!removed) return;
+  if (!confirm('Remove ' + removed.player + ' ($' + removed.price + ') from the draft log?')) return;
+  state.draftLog = state.draftLog.filter(function(p){ return p.id !== id; });
+  updateTrackerStats();
+  renderDraftLog();
+  renderTeams();
+  document.getElementById('liveOracle').textContent = removed.player + ' has been struck from the record, seeker — the ledger corrects itself.';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1909,6 +1929,7 @@ function updateOracleLive(player, price, team, projected) {
 function resetDraft() {
   if (confirm('Reset the entire draft log? This cannot be undone.')) {
     state.draftLog = [];
+    state.nextPickId = 1;
     renderDraftLog();
     renderTeams();
     updateTrackerStats();
