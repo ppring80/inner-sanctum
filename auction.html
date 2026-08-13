@@ -211,8 +211,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 /* ── PICK ENTRY ── */
 .pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
 .pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
-.pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px 1fr;gap:10px;align-items:end}
+.pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px minmax(140px,220px);gap:10px;align-items:end}
 .pick-grid .form-group{margin:0}
+#pickTeam{text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
 .pick-actions{display:flex;justify-content:flex-end;margin-top:10px}
 .autocomplete-wrap{position:relative}
 .player-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid var(--gold);border-radius:var(--r);max-height:220px;overflow-y:auto;z-index:999;margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
