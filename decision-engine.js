@@ -60,6 +60,41 @@ var NEED_SCORE_NONE   = 0.0;   // no open slot at all (would be hard-rule vetoed
 // valueScore already carries that signal; strategyScore stays neutral).
 var STRATEGY_SCORE_NEUTRAL = 0.5;
 
+// ─── MULTI-RECOMMENDATION ROLE-SELECTION CONSTANTS (Aug 13 2026) ───
+// These govern which candidate fills the Alternative/Value Target role.
+// They are a SELECTION layer on top of the existing per-player factor
+// scores — they do not change WEIGHT_VALUE/WEIGHT_NEED/WEIGHT_INFLATION/
+// WEIGHT_STRATEGY/WEIGHT_BUDGET or finalScore itself, and Primary Target
+// selection is unchanged (still simply the #1 finalScore). Added per
+// Pat's explicit instruction not to tune the existing scoring weights.
+
+// How close (in finalScore) a different-position candidate must be to
+// Primary Target to count as a genuine close alternative. Within this
+// margin, Alternative Target prefers positional diversity from Primary;
+// outside it, falls back to the next-best candidate overall — which is
+// what allows 3 same-position recommendations when scarcity is real
+// (see Pat's brief: "if the three strongest actionable targets are RBs,
+// returning three RBs may be correct").
+var ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN = 0.15;
+
+// Value Target is chosen by this composite instead of finalScore rank —
+// re-weighting the SAME existing factor scores (valueScore, budgetScore,
+// inflationScore) toward value/affordability rather than need/strategy.
+// No new inputs are introduced.
+var VALUE_ROLE_WEIGHT_VALUE = 0.5;
+var VALUE_ROLE_WEIGHT_BUDGET = 0.3;
+var VALUE_ROLE_WEIGHT_INFLATION = 0.2;
+
+// Plain-language, factual-only scoring-format note for rationale text.
+// Deliberately does not claim a specific causal effect on ranking (the
+// price sheet already bakes format into price — see buildDecisionState) —
+// just states which format the numbers reflect.
+var SCORING_FORMAT_LABELS = {
+  standard: 'Values reflect Standard scoring.',
+  half: 'Values reflect Half PPR scoring.',
+  ppr: 'Values reflect PPR scoring.'
+};
+
 // Literal draftable positions (matches POS_ORDER in auction.html)
 var POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
@@ -253,6 +288,16 @@ function buildDecisionState(state, allPlayers) {
   var budget = state.budget || 0;
   var rosterTargets = state.roster || {};
   var strategyKey = state.strategy || null;
+  // Threaded through for rationale/diagnostics observability only (Pat's
+  // instruction, Aug 13 2026). The underlying valuation math is NOT
+  // rebuilt here: state.scoring already feeds fetchLiveAdpByPosition()
+  // when the Target Price Sheet is generated (auction.html generateTPS()),
+  // so playerPriceLookup — and therefore valueScore, which ranks off it —
+  // already reflects the league's scoring format by construction. This
+  // field exists so rationale text and diagnostics can reference which
+  // format is active; it deliberately does not introduce a second,
+  // parallel scoring-format adjustment on top of the price sheet's.
+  var scoringFormat = state.scoring || null;
   var playerPriceLookup = state.playerPriceLookup || {};
 
   var teamBudgetsRemaining = deriveTeamBudgets(draftLog, budget, teamNames);
@@ -280,6 +325,7 @@ function buildDecisionState(state, allPlayers) {
     userTeam: userTeam,
     rosterTargets: rosterTargets,
     strategyKey: strategyKey,
+    scoringFormat: scoringFormat,
     teamBudgetsRemaining: teamBudgetsRemaining,
     userRoster: userRoster,
     userBudgetRemaining: userBudgetRemaining,
@@ -408,6 +454,114 @@ function buildRiskCodes(pos, scores, decisionState) {
   return codes;
 }
 
+// ─── MULTI-RECOMMENDATION SELECTION (Aug 13 2026) ──────────────
+// Extends the existing single-recommendation pipeline: reuses the
+// already-scored, already-sorted diagnostics array as-is and adds a
+// role-assignment layer on top. Does not alter how any individual
+// player was scored.
+function computeValueRoleScore(diag) {
+  return (diag.valueScore * VALUE_ROLE_WEIGHT_VALUE) +
+    (diag.budgetScore * VALUE_ROLE_WEIGHT_BUDGET) +
+    (diag.inflationScore * VALUE_ROLE_WEIGHT_INFLATION);
+}
+
+function buildRationale(role, diag, decisionState, alreadySelected) {
+  var parts = [];
+
+  if (role === 'PRIMARY') {
+    if (diag.needScore >= NEED_SCORE_DIRECT) parts.push(diag.pos + ' fills a starting need');
+    else if (diag.needScore >= NEED_SCORE_FLEX) parts.push(diag.pos + ' fills your FLEX need');
+    if (diag.valueScore >= 0.7) parts.push('best remaining value at the position');
+    if (diag.strategyScore >= 0.7) parts.push('fits your draft strategy');
+    if (!parts.length) parts.push('highest overall score among viable targets');
+  } else if (role === 'ALTERNATIVE') {
+    var primary = alreadySelected[0];
+    if (primary && diag.pos !== primary.pos) {
+      parts.push('a different positional path than ' + primary.player);
+    } else if (primary) {
+      parts.push(diag.pos + ' scarcity currently favors staying concentrated at the position');
+    }
+    if (primary && (primary.finalScore - diag.finalScore) <= ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN) {
+      parts.push('scores close enough to ' + primary.player + ' to be a legitimate co-favorite, not just a fallback');
+    }
+    if (!parts.length) parts.push('next-strongest viable target');
+  } else if (role === 'VALUE') {
+    parts.push('strongest value-for-price among remaining options');
+    if (diag.budgetScore >= 0.6) parts.push('preserves budget flexibility for remaining needs');
+    if (diag.positionalInflationFallback === false && diag.inflationScore > 0.5) {
+      parts.push(diag.pos + ' market is running cool right now — room below expected cost');
+    }
+  }
+
+  var scoringLabel = SCORING_FORMAT_LABELS[decisionState.scoringFormat];
+  if (scoringLabel && (diag.pos === 'WR' || diag.pos === 'RB' || diag.pos === 'TE')) {
+    parts.push(scoringLabel);
+  }
+
+  return parts.join(' — ');
+}
+
+function buildRecommendationEntry(role, diag, decisionState, alreadySelected) {
+  return {
+    role: role,
+    player: diag.player,
+    pos: diag.pos,
+    maxPrice: diag.maxPrice,
+    decisionScore: Math.round(diag.finalScore * 100),
+    finalScore: diag.finalScore,
+    action: diag.action,
+    valueScore: diag.valueScore,
+    needScore: diag.needScore,
+    inflationScore: diag.inflationScore,
+    strategyScore: diag.strategyScore,
+    budgetScore: diag.budgetScore,
+    reasonCodes: diag.reasonCodes,
+    riskCodes: diag.riskCodes,
+    scoringFormat: decisionState.scoringFormat,
+    rationale: buildRationale(role, diag, decisionState, alreadySelected)
+  };
+}
+
+// Selects up to 3 ranked recommendations (Primary/Alternative/Value)
+// from an already-scored, already-sorted (desc by finalScore)
+// diagnostics array. Returns 0-3 entries depending on how many
+// non-vetoed ("viable") candidates exist — never forces a count.
+function selectRecommendationSet(sortedDiagnostics, decisionState) {
+  var viable = sortedDiagnostics.filter(function (d) { return !d.vetoed; });
+  var selected = [];
+  if (!viable.length) return selected;
+
+  // Primary Target: unchanged from Phase 1 — the single best player by
+  // the existing finalScore/weights.
+  var primary = viable[0];
+  selected.push(buildRecommendationEntry('PRIMARY', primary, decisionState, selected));
+  if (viable.length === 1) return selected;
+
+  var remainingAfterPrimary = viable.slice(1);
+
+  // Alternative Target: prefer a different-position candidate that's
+  // still genuinely competitive (within the close-score margin);
+  // otherwise fall back to the next-best candidate overall.
+  var altCandidate = remainingAfterPrimary.filter(function (d) {
+    return d.pos !== primary.pos && (primary.finalScore - d.finalScore) <= ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN;
+  })[0];
+  if (!altCandidate) altCandidate = remainingAfterPrimary[0];
+  selected.push(buildRecommendationEntry('ALTERNATIVE', altCandidate, decisionState, selected));
+  if (remainingAfterPrimary.length === 1) return selected;
+
+  // Value Target: best remaining candidate (excluding whoever was
+  // already selected) by a value/budget-weighted composite, not by
+  // finalScore rank — this is what keeps it from being "just #3."
+  var remainingForValue = remainingAfterPrimary.filter(function (d) { return d !== altCandidate; });
+  if (!remainingForValue.length) return selected;
+  var valueCandidate = remainingForValue.slice().sort(function (a, b) {
+    return computeValueRoleScore(b) - computeValueRoleScore(a);
+  })[0];
+  selected.push(buildRecommendationEntry('VALUE', valueCandidate, decisionState, selected));
+
+  return selected;
+}
+
 // ─── MAIN ORCHESTRATOR ──────────────────────────────────────
 // state: auction.html's live `state` object
 // allPlayers: auction.html's live `allPlayers` array (Tank01 player list)
@@ -415,10 +569,10 @@ function runDecisionEngine(state, allPlayers) {
   var decisionState = buildDecisionState(state, allPlayers || []);
 
   if (!decisionState.userTeam) {
-    return { status: 'NO_USER_TEAM_SELECTED', recommendation: null, diagnostics: [], unscored: [], unscoredCount: 0 };
+    return { status: 'NO_USER_TEAM_SELECTED', recommendations: [], diagnostics: [], unscored: [], unscoredCount: 0 };
   }
   if (decisionState.totalOpenSlots <= 0) {
-    return { status: 'ROSTER_FULL', recommendation: null, diagnostics: [], unscored: decisionState.unscored, unscoredCount: decisionState.unscored.length };
+    return { status: 'ROSTER_FULL', recommendations: [], diagnostics: [], unscored: decisionState.unscored, unscoredCount: decisionState.unscored.length };
   }
 
   var diagnostics = decisionState.remaining.map(function (player) {
@@ -464,16 +618,11 @@ function runDecisionEngine(state, allPlayers) {
 
   diagnostics.sort(function (a, b) { return b.finalScore - a.finalScore; });
 
-  var topNonVetoed = diagnostics.filter(function (d) { return !d.vetoed; })[0];
-
-  var recommendation = null;
-  if (topNonVetoed && (topNonVetoed.action === 'TARGET' || topNonVetoed.action === 'WATCH')) {
-    recommendation = topNonVetoed;
-  }
+  var recommendations = selectRecommendationSet(diagnostics, decisionState);
 
   return {
-    status: recommendation ? recommendation.action : 'NO_CLEAR_TARGET',
-    recommendation: recommendation,
+    status: recommendations.length ? 'RECOMMENDATIONS' : 'NO_VIABLE_PLAYERS',
+    recommendations: recommendations,
     diagnostics: diagnostics,
     unscored: decisionState.unscored,
     unscoredCount: decisionState.unscored.length,
@@ -483,7 +632,8 @@ function runDecisionEngine(state, allPlayers) {
       totalOpenSlots: decisionState.totalOpenSlots,
       maxAffordable: decisionState.maxAffordable,
       globalInflation: decisionState.globalInflation,
-      positionalInflation: decisionState.positionalInflation
+      positionalInflation: decisionState.positionalInflation,
+      scoringFormat: decisionState.scoringFormat
     }
   };
 }
@@ -502,6 +652,10 @@ if (typeof module !== 'undefined' && module.exports) {
     applyHardRules: applyHardRules,
     classifyAction: classifyAction,
     clamp01: clamp01,
+    selectRecommendationSet: selectRecommendationSet,
+    buildRationale: buildRationale,
+    computeValueRoleScore: computeValueRoleScore,
+    ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN: ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN,
     INFLATION_SCORE_NEUTRAL: INFLATION_SCORE_NEUTRAL,
     THRESHOLD_TARGET: THRESHOLD_TARGET,
     THRESHOLD_WATCH: THRESHOLD_WATCH
