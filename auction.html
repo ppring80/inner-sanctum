@@ -1859,6 +1859,7 @@ function populateMyTeamSelect() {
 function setUserTeam() {
   var sel = document.getElementById('myTeamSelect');
   state.userTeam = sel.value || null;
+  renderDecisionPanel(runDecisionEngine(state, allPlayers));
 }
 
 // ═══════════════════════════════════════════════════════════
