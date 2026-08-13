@@ -109,6 +109,17 @@ var POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 // against auction.html's existing top-level identifiers.
 var DECISION_FLEX_ELIGIBLE_POSITIONS = ['RB', 'WR', 'TE'];
 
+// ─── K/DEF RECOMMENDATION-ROLE ELIGIBILITY GATE (Aug 13 2026) ──────
+// Selection-layer only -- does not affect scoring or diagnostics. Added
+// after a real decision-quality issue: Value Target recommended a
+// kicker after only 2 picks, because in a nearly-untouched player pool
+// a K's finalScore can legitimately beat real offensive value (thin K
+// pool -> high valueScore; whole budget still open -> high budgetScore).
+// Core offensive starters -- not bench depth -- are what K/DEF should
+// wait on; see hasOpenCoreOffensiveStarterSlot() below.
+var CORE_OFFENSIVE_STARTER_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+var LATE_DRAFT_ONLY_POSITIONS = ['K', 'DEF'];
+
 // All roster-slot keys as used in state.roster
 var ROSTER_SLOT_KEYS = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BENCH'];
 
@@ -214,6 +225,18 @@ function hasOpenSlotForPosition(pos, userRoster) {
   if (DECISION_FLEX_ELIGIBLE_POSITIONS.indexOf(pos) !== -1 && userRoster.flexRemainingCapacity > 0) return true;
   if (userRoster.benchRemainingCapacity > 0) return true;
   return false;
+}
+
+// True while any CORE offensive starting slot (QB/RB/WR/TE direct, or
+// FLEX) is still open. Bench capacity deliberately does NOT count here
+// — per Pat's instruction, K/DEF should wait on core starters, not on
+// bench depth, which is nearly always open early regardless.
+function hasOpenCoreOffensiveStarterSlot(userRoster) {
+  if (!userRoster) return true; // unknown roster state -> treat as still-open, fail toward excluding K/DEF
+  var anyDirectOpen = CORE_OFFENSIVE_STARTER_POSITIONS.some(function (pos) {
+    return (userRoster.openDirect[pos] || 0) > 0;
+  });
+  return anyDirectOpen || userRoster.flexRemainingCapacity > 0;
 }
 
 function computeNeedScore(pos, userRoster) {
@@ -528,6 +551,15 @@ function buildRecommendationEntry(role, diag, decisionState, alreadySelected) {
 // non-vetoed ("viable") candidates exist — never forces a count.
 function selectRecommendationSet(sortedDiagnostics, decisionState) {
   var viable = sortedDiagnostics.filter(function (d) { return !d.vetoed; });
+
+  // Role-eligibility gate: K/DEF stay fully scored in `diagnostics`
+  // (untouched, built before this function runs) but are excluded from
+  // the pool used for Primary/Alternative/Value while core offensive
+  // starters remain open. Naturally lifts once those slots fill in.
+  if (hasOpenCoreOffensiveStarterSlot(decisionState.userRoster)) {
+    viable = viable.filter(function (d) { return LATE_DRAFT_ONLY_POSITIONS.indexOf(d.pos) === -1; });
+  }
+
   var selected = [];
   if (!viable.length) return selected;
 
@@ -653,6 +685,7 @@ if (typeof module !== 'undefined' && module.exports) {
     classifyAction: classifyAction,
     clamp01: clamp01,
     selectRecommendationSet: selectRecommendationSet,
+    hasOpenCoreOffensiveStarterSlot: hasOpenCoreOffensiveStarterSlot,
     buildRationale: buildRationale,
     computeValueRoleScore: computeValueRoleScore,
     ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN: ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN,
