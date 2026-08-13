@@ -209,11 +209,23 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s;background:var(--green)}
 
 /* ── PICK ENTRY ── */
-.pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;container-type:inline-size}
 .pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
-.pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px minmax(140px,220px);gap:10px;align-items:end}
+.pick-grid{display:grid;grid-template-columns:minmax(190px,1fr) 80px 100px 120px minmax(140px,220px);gap:10px;align-items:end}
 .pick-grid .form-group{margin:0}
 #pickTeam{text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+/* When the row's actual available width can't comfortably fit all 5
+   fields at their protected minimums (Player Name 190 + Position 80 +
+   Projected 100 + Paid 120 + Drafted By 140, plus gaps ≈ 660px), let
+   Drafted By wrap to its own full-width line instead of squeezing
+   Player Name below a usable width. Keyed to the actual .pick-entry
+   container (container-type:inline-size above), not the viewport —
+   this reflows correctly whether the sidebar is beside the row or
+   stacked above it, at any desktop width. */
+@container (max-width: 680px) {
+  .pick-grid{grid-template-columns:minmax(160px,1fr) 80px 100px 120px}
+  .pick-grid > :nth-child(5){grid-column:1/-1}
+}
 .pick-actions{display:flex;justify-content:flex-end;margin-top:10px}
 .autocomplete-wrap{position:relative}
 .player-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid var(--gold);border-radius:var(--r);max-height:220px;overflow-y:auto;z-index:999;margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
@@ -281,6 +293,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 @media(max-width:600px){
   .pick-grid{grid-template-columns:1fr 1fr}
+  .pick-grid > :nth-child(5){grid-column:auto}
   .hdr{padding:14px 16px}
   .panel{padding:20px 16px}
 }
