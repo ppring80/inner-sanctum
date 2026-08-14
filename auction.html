@@ -1985,6 +1985,47 @@ function updateTrackerStats() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// STEP 5 — SHARED TRANSACTION VALUE CLASSIFICATION (Aug 13 2026)
+// Single source of truth for both Draft Log coloring/labels and Oracle
+// Live Update commentary, so the two can never independently disagree
+// about the same pick.
+//
+// Root cause of the bug this replaces: Draft Log and Oracle each had
+// their own separately-coded diff/threshold logic (zero-tolerance
+// red/green in renderDraftLog vs. a $5 deadband in updateOracleLive).
+// That alone wasn't the defect -- Oracle having *some* tolerance is
+// reasonable. The actual bug was a boundary/off-by-one error: Oracle's
+// check used strict `diff > 5` / `diff < -5`, so a diff of EXACTLY $5
+// fell through to the neutral "right on projection" branch instead of
+// the overpay branch. Confirmed exactly reproducible against the
+// reported cases: Saquon Barkley ($52 paid / $47 projected = diff 5)
+// and Justin Jefferson ($51 paid / $46 projected = diff 5) both landed
+// precisely on this broken boundary. Not a data-source mismatch (both
+// paths were already reading the same parsed price/projected values —
+// see logPick(), which parseInt()s both once and passes the same
+// variables to state.draftLog and updateOracleLive()) and not a
+// numeric-conversion bug (parseInt was already used correctly; Draft
+// Log's own diff arithmetic was always correct, which is how we know
+// the underlying numbers were fine and only the classification branch
+// was wrong).
+//
+// Tolerance stays the pre-existing $5 absolute-dollar deadband (Oracle's
+// prior threshold) rather than a new invented number, per instruction —
+// reused, not replaced. See the deliverables note on why a flat dollar
+// tolerance (vs. a percentage-based one) was deliberately left as-is.
+var TRANSACTION_VALUE_TOLERANCE_DOLLARS = 5;
+
+function classifyTransactionValue(price, projected) {
+  if (!projected) return { diff: null, tier: 'UNKNOWN' };
+  var diff = price - projected;
+  var tier;
+  if (diff >= TRANSACTION_VALUE_TOLERANCE_DOLLARS) tier = 'OVERPAY';
+  else if (diff <= -TRANSACTION_VALUE_TOLERANCE_DOLLARS) tier = 'VALUE';
+  else tier = 'ON_PROJECTION';
+  return { diff: diff, tier: tier };
+}
+
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — RENDER DRAFT LOG
 // ═══════════════════════════════════════════════════════════
 function renderDraftLog() {
@@ -1995,10 +2036,12 @@ function renderDraftLog() {
   var numbered = log.map(function(p, i){ return { pick: p, num: i + 1 }; });
   numbered.slice().reverse().forEach(function(entry){
     var p = entry.pick;
-    var diff = p.projected ? p.price - p.projected : null;
+    var classification = classifyTransactionValue(p.price, p.projected);
+    var diff = classification.diff;
     var diffStr = diff === null ? '—' :
-      diff > 0 ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
-                 '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>';
+      classification.tier === 'OVERPAY' ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
+      classification.tier === 'VALUE' ? '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>' :
+      '<span style="color:var(--muted)">' + (diff > 0 ? '+$' + diff : diff < 0 ? '-$' + Math.abs(diff) : '$0') + ' (on projection)</span>';
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var tr = document.createElement('tr');
     tr.innerHTML =
@@ -2064,12 +2107,10 @@ function updateOracleLive(player, price, team, projected) {
   var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
   var avg = Math.round(totalSpent / log.length);
   var valueMsg = '';
-  if (projected) {
-    var diff = price - projected;
-    if (diff > 5) valueMsg = ' That price was $' + diff + ' above projection — a costly overpay.';
-    else if (diff < -5) valueMsg = ' That was $' + Math.abs(diff) + ' below projection — excellent value secured.';
-    else valueMsg = ' That price was right on projection — well executed.';
-  }
+  var classification = classifyTransactionValue(price, projected);
+  if (classification.tier === 'OVERPAY') valueMsg = ' That price was $' + classification.diff + ' above projection — a costly overpay.';
+  else if (classification.tier === 'VALUE') valueMsg = ' That was $' + Math.abs(classification.diff) + ' below projection — excellent value secured.';
+  else if (classification.tier === 'ON_PROJECTION') valueMsg = ' That price was right on projection — well executed.';
   var msgs = [
     'The spirits have spoken. ' + player + ' goes to ' + team + ' for $' + price + '.' + valueMsg + ' The market averages $' + avg + ' per player. Watch your remaining budget carefully, seeker.',
     'So it is written. ' + player + ' — $' + price + ' to ' + team + '.' + valueMsg + ' With ' + log.length + ' souls claimed, the value lies in those yet to be nominated.',
