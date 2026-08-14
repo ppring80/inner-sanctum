@@ -322,6 +322,11 @@ function buildDecisionState(state, allPlayers) {
   // parallel scoring-format adjustment on top of the price sheet's.
   var scoringFormat = state.scoring || null;
   var playerPriceLookup = state.playerPriceLookup || {};
+  // DEF-only ADP rank lookup, used ONLY as a secondary sort tie-break in
+  // runDecisionEngine() when two DEF candidates' finalScore is identical --
+  // never an input to any of the 5 weighted scoring factors. See
+  // buildDefRankLookup() in auction.html for how this is populated.
+  var defRankLookup = state.defRankLookup || {};
 
   var teamBudgetsRemaining = deriveTeamBudgets(draftLog, budget, teamNames);
   var userRoster = userTeam ? deriveUserRoster(draftLog, userTeam, rosterTargets) : null;
@@ -349,6 +354,7 @@ function buildDecisionState(state, allPlayers) {
     rosterTargets: rosterTargets,
     strategyKey: strategyKey,
     scoringFormat: scoringFormat,
+    defRankLookup: defRankLookup,
     teamBudgetsRemaining: teamBudgetsRemaining,
     userRoster: userRoster,
     userBudgetRemaining: userBudgetRemaining,
@@ -624,6 +630,12 @@ function runDecisionEngine(state, allPlayers) {
   }
 
   var diagnostics = decisionState.remaining.map(function (player) {
+    // DEF-only ADP rank, attached for the sort tie-break below. Never read
+    // by scorePlayer()/applyHardRules()/computeMaxPriceForPlayer() -- those
+    // are all called with just `player`, unchanged. Undefined for every
+    // other position, including K.
+    var positionRank = player.pos === 'DEF' ? decisionState.defRankLookup[player.name.toLowerCase()] : undefined;
+
     var hardRuleResult = applyHardRules(player, decisionState);
     if (hardRuleResult.vetoed) {
       return {
@@ -634,7 +646,8 @@ function runDecisionEngine(state, allPlayers) {
         vetoCode: hardRuleResult.code,
         action: 'PASS',
         source: 'hard_rule',
-        finalScore: 0
+        finalScore: 0,
+        positionRank: positionRank
       };
     }
 
@@ -656,6 +669,7 @@ function runDecisionEngine(state, allPlayers) {
       strategyScore: scores.strategyScore,
       budgetScore: scores.budgetScore,
       finalScore: scores.finalScore,
+      positionRank: positionRank,
       positionalInflationUsed: scores.positionalInflationUsed,
       positionalInflationSample: scores.positionalInflationSample,
       positionalInflationFallback: scores.positionalInflationFallback,
@@ -664,7 +678,21 @@ function runDecisionEngine(state, allPlayers) {
     };
   });
 
-  diagnostics.sort(function (a, b) { return b.finalScore - a.finalScore; });
+  // Primary sort: finalScore, unchanged. Secondary sort: ONLY when both
+  // sides are DEF and finalScore is exactly tied, prefer the better (lower)
+  // ADP rank -- this is the entire fix. Every other tie (non-DEF vs
+  // non-DEF, DEF vs non-DEF, K vs K) returns 0 and falls through to JS's
+  // guaranteed-stable Array.sort(), preserving whatever order the ties
+  // already had before this feature existed.
+  diagnostics.sort(function (a, b) {
+    var scoreDiff = b.finalScore - a.finalScore;
+    if (scoreDiff !== 0) return scoreDiff;
+    if (a.pos === 'DEF' && b.pos === 'DEF' &&
+        typeof a.positionRank === 'number' && typeof b.positionRank === 'number') {
+      return a.positionRank - b.positionRank;
+    }
+    return 0;
+  });
 
   var recommendations = selectRecommendationSet(diagnostics, decisionState);
 
