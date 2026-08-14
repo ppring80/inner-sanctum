@@ -2075,7 +2075,7 @@ function logPick() {
 // ═══════════════════════════════════════════════════════════
 // STEP 5 — DECISION PANEL (read-only, driven by decision-engine.js)
 // ═══════════════════════════════════════════════════════════
-var DECISION_ROLE_LABELS = { PRIMARY: 'Primary Target', ALTERNATIVE: 'Alternative Target', VALUE: 'Value Target' };
+var DECISION_ROLE_LABELS = { PRIMARY: 'Primary Target', ALTERNATIVE: 'Alternative Target', VALUE: 'Value Target', MORE: 'Additional Target' };
 
 function renderRecommendationCard(rec, isLast) {
   var label = DECISION_ROLE_LABELS[rec.role] || rec.role;
@@ -2086,6 +2086,21 @@ function renderRecommendationCard(rec, isLast) {
     '<div style="font-size:13px;opacity:0.85">Max Bid: $' + rec.maxPrice + ' &nbsp;•&nbsp; Decision Score: ' + rec.decisionScore + '</div>' +
     '<div style="font-size:12px;opacity:0.7;margin-top:2px">' + rec.rationale + '</div>' +
     '</div>';
+}
+
+// "Show More Targets" (Aug 14 2026): purely a display toggle over
+// result.moreTargets, which decision-engine.js already computed from the
+// same filtered/gated `viable` pool Primary/Alternative/Value came from.
+// No re-scoring, re-ranking, API calls, or eligibility logic lives here --
+// this only remembers (a) the last rendered result, so the button can
+// re-render without recomputing anything, and (b) whether the list is
+// currently expanded.
+var lastDecisionResult = null;
+var moreTargetsExpanded = false;
+
+function toggleMoreTargets() {
+  moreTargetsExpanded = !moreTargetsExpanded;
+  renderDecisionPanel(lastDecisionResult);
 }
 
 function renderDecisionPanel(result) {
@@ -2099,6 +2114,7 @@ function renderDecisionPanel(result) {
   }
 
   panel.style.display = 'block';
+  lastDecisionResult = result;
 
   if (result.status === 'ROSTER_FULL') {
     text.innerHTML = 'Your roster is full — no remaining slots to fill.';
@@ -2111,8 +2127,23 @@ function renderDecisionPanel(result) {
   }
 
   var recs = result.recommendations;
-  var cards = recs.map(function (rec, i) { return renderRecommendationCard(rec, i === recs.length - 1); }).join('');
-  text.innerHTML = cards;
+  var moreTargets = result.moreTargets || [];
+  var cards = recs.map(function (rec, i) { return renderRecommendationCard(rec, i === recs.length - 1 && !moreTargets.length); }).join('');
+
+  var moreHtml = '';
+  if (moreTargets.length) {
+    var buttonLabel = moreTargetsExpanded ? 'Hide More Targets' : 'Show More Targets';
+    moreHtml += '<button type="button" class="no-print" onclick="toggleMoreTargets()" ' +
+      'style="margin-top:4px;margin-bottom:8px;padding:6px 12px;font-size:12px;font-family:\'JetBrains Mono\',monospace;' +
+      'letter-spacing:0.5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);' +
+      'border-radius:5px;color:var(--muted);cursor:pointer;">' + buttonLabel + '</button>';
+    if (moreTargetsExpanded) {
+      var moreCards = moreTargets.map(function (rec, i) { return renderRecommendationCard(rec, i === moreTargets.length - 1); }).join('');
+      moreHtml += '<div id="moreTargetsList">' + moreCards + '</div>';
+    }
+  }
+
+  text.innerHTML = cards + moreHtml;
 }
 
 // ═══════════════════════════════════════════════════════════
