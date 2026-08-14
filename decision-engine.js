@@ -214,13 +214,38 @@ function deriveUserRoster(draftLog, userTeam, rosterTargets) {
     flexRemainingCapacity: flexRemainingCapacity,
     benchTarget: benchTarget,
     benchFilled: benchFilled,
-    benchRemainingCapacity: benchRemainingCapacity
+    benchRemainingCapacity: benchRemainingCapacity,
+    // Raw configured targets, kept alongside the derived fields above so
+    // hasOpenSlotForPosition() can tell "no K/DEF slot exists in this
+    // league" apart from "the K/DEF slot exists but is currently filled"
+    // (Aug 14 2026 -- see gate below; openDirect[pos]=0 alone can't make
+    // that distinction, since it's also 0 once a real slot is filled).
+    rosterTargets: rosterTargets
   };
 }
 
 function hasOpenSlotForPosition(pos, userRoster) {
   if (!userRoster) return false;
   pos = normalizePos(pos);
+  // Hard positional-legality gate (Aug 14 2026): a league configured with
+  // K:0 or DEF:0 has no slot for that position at all, on this team or any
+  // team -- bench capacity is roster depth for positions the league
+  // actually rosters, not a backdoor into positions it doesn't. Without
+  // this, the generic bench-capacity fallback below (by design
+  // position-agnostic, for every other position) would make K/DEF
+  // "eligible" via bench once core offensive starters fill, regardless of
+  // whether either is configured at all -- confirmed live: K/DEF won
+  // Primary/Alternative Target outright in that state before this gate.
+  // Scoped to K/DEF only, not generalized to QB/RB/WR/TE: those positions
+  // are asserted to always carry a real direct target in every roster
+  // format this app currently supports (FLEX eligibility itself is
+  // hardcoded to RB/WR/TE, not QB, so there's no equivalent "covered some
+  // other way" path for them to fall back on the way K/DEF have bench);
+  // broadening this gate to all positions was not validated against that
+  // assumption and is left out of this narrow fix.
+  if ((pos === 'K' || pos === 'DEF') && (userRoster.rosterTargets[pos] || 0) === 0) {
+    return false;
+  }
   if ((userRoster.openDirect[pos] || 0) > 0) return true;
   if (DECISION_FLEX_ELIGIBLE_POSITIONS.indexOf(pos) !== -1 && userRoster.flexRemainingCapacity > 0) return true;
   if (userRoster.benchRemainingCapacity > 0) return true;
