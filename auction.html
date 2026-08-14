@@ -985,6 +985,7 @@ var state = {
   userTeam: null,
   pricedSlots: [],
   playerPriceLookup: {},
+  defRankLookup: {},
   draftLog: [],
   nextPickId: 1
 };
@@ -1068,6 +1069,7 @@ function restoreAuctionOnLoad() {
   state.userTeam = saved.userTeam;
   state.pricedSlots = saved.pricedSlots;
   state.playerPriceLookup = saved.playerPriceLookup;
+  state.defRankLookup = saved.defRankLookup || {};
   state.draftLog = saved.draftLog;
   state.nextPickId = saved.nextPickId;
 
@@ -1587,6 +1589,24 @@ function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPric
   return lookup;
 }
 
+// Aug 13 2026: captures DEF's ADP-based positionRank -- already computed
+// inline inside buildPlayerPriceLookup() above and otherwise discarded --
+// into a separate name-keyed lookup, for use ONLY as a decision-engine
+// tie-break signal (see decision-engine.js). Deliberately DEF-only (per
+// product decision not to bundle K unless there's a clear reason) and
+// entirely separate from buildPlayerPriceLookup() -- does not read from,
+// write to, or otherwise touch price calculation in any way. All DEF
+// targetPrice values remain exactly $1, unchanged, via the existing
+// isKDefFloor mechanism.
+function buildDefRankLookup(adpPlayersByPosition) {
+  const lookup = {};
+  const defPlayers = adpPlayersByPosition.DEF || [];
+  defPlayers.forEach((player, index) => {
+    lookup[player.name.toLowerCase()] = index + 1;
+  });
+  return lookup;
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // PLAYER AUTOCOMPLETE
@@ -1813,6 +1833,7 @@ function generateTPS() {
     var balancedSlots = buildFinalSlotTable('balanced', state.roster, isSuperflex, state.budget);
     var balancedPricedSlots = dollarsForSlots(balancedSlots, 'balanced', state.budget);
     state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots, balancedPricedSlots);
+    state.defRankLookup = buildDefRankLookup(adpSource);
 
     renderTPS(pricedSlots, stratKey);
     saveAuctionState();
