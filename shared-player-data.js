@@ -314,6 +314,26 @@ function applyLiveTeams(players, teamMap) {
 // and fetchTank01PlayerList() below, since both depend on it.
 var TANK01_SEARCHABLE_POSITIONS = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', PK: 'K' };
 
+// Aug 13 2026: separate, DEF-inclusive constant for fetchTank01PlayerList()
+// ONLY -- deliberately NOT merged into TANK01_SEARCHABLE_POSITIONS above,
+// since that constant is also used by fetchTank01PlayerMap() (team/injury
+// merging), which intentionally excludes defensive positions already (see
+// "skip defensive/special-teams positions" at its call site, guarding
+// against the Jefferson/CLE name-collision bug). Widening the shared
+// constant would have silently reopened that risk in an unrelated
+// function; this fix stays scoped to the candidate/search list only.
+//
+// Raw Tank01 position code confirmed as "DST" (not "DEF") via live
+// testing already documented in netlify/functions/adp.js's
+// extractPosition() / TEAM DATA comments — a different Tank01 endpoint
+// (getNFLADP) than this one (getNFLTeamRoster, via player-data.js), but
+// the same vendor/convention. Not independently re-verified against
+// getNFLTeamRoster's raw response specifically (no live API access from
+// this environment) -- if that endpoint turns out not to include defense
+// entries at all, this mapping alone won't be sufficient and would need
+// revisiting against a real response sample.
+var TANK01_LIST_POSITIONS = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', PK: 'K', DST: 'DEF' };
+
 // ── Fetch the Tank01 player-data cache (via player-data.js) and build
 // a name+pos -> {team, exp, injury} map, keyed with the SAME
 // normalizePlayerName() used everywhere else in this file, so this is
@@ -423,11 +443,23 @@ async function fetchTank01PlayerList() {
     var data = await res.json();
     if (!data || data.status !== 'Success' || !data.players) return null;
     var list = [];
+    var seenDefenseNames = {}; // guards against a duplicate DEF entry surfacing under a different playerID
     Object.values(data.players).forEach(function (p) {
-      var normPos = TANK01_SEARCHABLE_POSITIONS[p.pos];
+      var normPos = TANK01_LIST_POSITIONS[p.pos];
       if (!normPos || !p.longName) return;
+      var name = p.longName;
+      if (normPos === 'DEF') {
+        // Tank01 names defenses like "Houston Texans DST" (confirmed live,
+        // same stripping already proven correct in adp.js) -- strip the
+        // suffix so it matches the plain "Houston Texans" convention
+        // playerPriceLookup/PLAYER_POOL.DEF/Sleeper all already use.
+        name = name.replace(/\s+DST$/i, '');
+        var key = name.toLowerCase();
+        if (seenDefenseNames[key]) return;
+        seenDefenseNames[key] = true;
+      }
       list.push({
-        name: p.longName,
+        name: name,
         pos: normPos,
         team: p.team || 'FA',
         injuryDesignation: (p.injury && p.injury.designation) || '',
