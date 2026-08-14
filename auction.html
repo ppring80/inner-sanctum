@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -195,6 +194,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── LIVE DRAFT TRACKER ── */
 .tracker-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.step5-grid{display:grid;grid-template-columns:1fr 300px;grid-template-areas:"main sidebar";gap:20px;align-items:start}
+.step5-main{grid-area:main;min-width:0}
+.step5-sidebar{grid-area:sidebar;display:flex;flex-direction:column;gap:16px;position:sticky;top:20px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
 .stat-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
 .stat-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ink)}
@@ -207,10 +209,23 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s;background:var(--green)}
 
 /* ── PICK ENTRY ── */
-.pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;container-type:inline-size}
 .pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
-.pick-grid{display:grid;grid-template-columns:2fr 80px 100px 120px 1fr;gap:10px;align-items:end}
+.pick-grid{display:grid;grid-template-columns:minmax(190px,1fr) 80px 100px 120px minmax(140px,220px);gap:10px;align-items:end}
 .pick-grid .form-group{margin:0}
+#pickTeam{text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+/* When the row's actual available width can't comfortably fit all 5
+   fields at their protected minimums (Player Name 190 + Position 80 +
+   Projected 100 + Paid 120 + Drafted By 140, plus gaps ≈ 660px), let
+   Drafted By wrap to its own full-width line instead of squeezing
+   Player Name below a usable width. Keyed to the actual .pick-entry
+   container (container-type:inline-size above), not the viewport —
+   this reflows correctly whether the sidebar is beside the row or
+   stacked above it, at any desktop width. */
+@container (max-width: 680px) {
+  .pick-grid{grid-template-columns:minmax(160px,1fr) 80px 100px 120px}
+  .pick-grid > :nth-child(5){grid-column:1/-1}
+}
 .pick-actions{display:flex;justify-content:flex-end;margin-top:10px}
 .autocomplete-wrap{position:relative}
 .player-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#1a1108;border:1px solid var(--gold);border-radius:var(--r);max-height:220px;overflow-y:auto;z-index:999;margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
@@ -278,8 +293,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 @media(max-width:600px){
   .pick-grid{grid-template-columns:1fr 1fr}
+  .pick-grid > :nth-child(5){grid-column:auto}
   .hdr{padding:14px 16px}
   .panel{padding:20px 16px}
+}
+
+@media(max-width:900px){
+  .step5-grid{grid-template-columns:1fr;grid-template-areas:"sidebar" "main"}
+  .step5-sidebar{position:static}
 }
 
 /* ── ACOLYTE ACCESS GATE (added) ── */
@@ -854,67 +875,86 @@ document.addEventListener('DOMContentLoaded', function () {
   <p class="panel-title">Live Draft Tracker</p>
   <p class="panel-sub">Log each pick as it happens. The Oracle tracks inflation and alerts you to value in real time.</p>
 
-  <div class="tracker-stats">
-    <div class="stat-card"><div class="stat-label">Your Budget Left</div><div class="stat-val good" id="myBudgetLeft">$200</div></div>
-    <div class="stat-card"><div class="stat-label">Players Drafted</div><div class="stat-val" id="playersDrafted">0</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Price Paid</div><div class="stat-val" id="avgPricePaid">—</div></div>
-    <div class="stat-card"><div class="stat-label">Market Inflation</div><div class="stat-val warn" id="inflationVal">0%</div></div>
-  </div>
+  <div class="step5-grid">
+    <div class="step5-main">
+      <div class="tracker-stats">
+        <div class="stat-card"><div class="stat-label">Your Budget Left</div><div class="stat-val good" id="myBudgetLeft">$200</div></div>
+        <div class="stat-card"><div class="stat-label">Players Drafted</div><div class="stat-val" id="playersDrafted">0</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Price Paid</div><div class="stat-val" id="avgPricePaid">—</div></div>
+        <div class="stat-card"><div class="stat-label">Market Inflation</div><div class="stat-val warn" id="inflationVal">0%</div></div>
+      </div>
 
-  <div class="inflation-bar">
-    <div class="inflation-header">
-      <span>Budget Spent (Market)</span>
-      <span id="inflationPct">0% of total market budget used</span>
-    </div>
-    <div class="inflation-track"><div class="inflation-fill" id="inflationFill" style="width:0%"></div></div>
-  </div>
+      <div class="inflation-bar">
+        <div class="inflation-header">
+          <span>Budget Spent (Market)</span>
+          <span id="inflationPct">0% of total market budget used</span>
+        </div>
+        <div class="inflation-track"><div class="inflation-fill" id="inflationFill" style="width:0%"></div></div>
+      </div>
 
-  <div class="pick-entry">
-    <div class="pick-entry-title">Log a Pick</div>
-    <div class="pick-grid">
-      <div class="form-group autocomplete-wrap">
-        <label>Player Name</label>
-        <input type="text" id="pickPlayer" placeholder="Type to search players..." autocomplete="off"
-          oninput="searchPlayers(this.value)" onfocus="searchPlayers(this.value)"/>
-        <div class="player-dropdown" id="playerDropdown"></div>
+      <div class="pick-entry">
+        <div class="pick-entry-title">Log a Pick</div>
+        <div class="pick-grid">
+          <div class="form-group autocomplete-wrap">
+            <label>Player Name</label>
+            <input type="text" id="pickPlayer" placeholder="Type to search players..." autocomplete="off"
+              oninput="searchPlayers(this.value)" onfocus="searchPlayers(this.value)"/>
+            <div class="player-dropdown" id="playerDropdown"></div>
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <input type="text" id="pickPosition" placeholder="Auto" readonly/>
+          </div>
+          <div class="form-group">
+            <label>$ Projected</label>
+            <input type="number" id="pickProjected" placeholder="Auto" readonly/>
+          </div>
+          <div class="form-group">
+            <label>$ Paid</label>
+            <input type="number" id="pickPrice" placeholder="Enter $" min="1"/>
+          </div>
+          <div class="form-group">
+            <label>Drafted By</label>
+            <select id="pickTeam"></select>
+          </div>
+        </div>
+        <div class="pick-actions">
+          <button class="btn btn-gold" onclick="logPick()">Log Pick ↵</button>
+        </div>
+        <div class="draft-log" id="draftLog">
+          <div class="log-title" style="margin-top:16px">Draft Log</div>
+          <table class="log-table">
+            <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th><th class="no-print"></th></tr></thead>
+            <tbody id="draftLogBody"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Position</label>
-        <input type="text" id="pickPosition" placeholder="Auto" readonly/>
-      </div>
-      <div class="form-group">
-        <label>$ Projected</label>
-        <input type="number" id="pickProjected" placeholder="Auto" readonly/>
-      </div>
-      <div class="form-group">
-        <label>$ Paid</label>
-        <input type="number" id="pickPrice" placeholder="Enter $" min="1"/>
-      </div>
-      <div class="form-group">
-        <label>Drafted By</label>
-        <select id="pickTeam"></select>
-      </div>
-    </div>
-    <div class="pick-actions">
-      <button class="btn btn-gold" onclick="logPick()">Log Pick ↵</button>
-    </div>
-    <div class="draft-log" id="draftLog">
-      <div class="log-title" style="margin-top:16px">Draft Log</div>
-      <table class="log-table">
-        <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th><th class="no-print"></th></tr></thead>
-        <tbody id="draftLogBody"></tbody>
-      </table>
-    </div>
-  </div>
 
-  <div class="oracle-box">
-    <div class="oracle-box-label">🔮 Oracle Live Update</div>
-    <div class="oracle-box-text" id="liveOracle">The draft has not yet begun. When the first player is nominated, I shall advise...</div>
-  </div>
+      <div class="oracle-box">
+        <div class="oracle-box-label">🔮 Oracle Live Update</div>
+        <div class="oracle-box-text" id="liveOracle">The draft has not yet begun. When the first player is nominated, I shall advise...</div>
+      </div>
 
-  <div>
-    <p style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Team Budgets</p>
-    <div class="teams-grid" id="teamsGrid"></div>
+      <div>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Team Budgets</p>
+        <div class="teams-grid" id="teamsGrid"></div>
+      </div>
+    </div>
+
+    <div class="step5-sidebar">
+      <div class="pick-entry">
+        <div class="pick-entry-title">My Team</div>
+        <div class="form-group">
+          <label>Which team is yours? (set once for the draft)</label>
+          <select id="myTeamSelect" onchange="setUserTeam()"><option value="">— Select your team —</option></select>
+        </div>
+      </div>
+
+      <div class="oracle-box" id="decisionPanel" style="display:none">
+        <div class="oracle-box-label">🎯 Recommended Targets</div>
+        <div class="oracle-box-text" id="decisionPanelText">Log a pick to get recommendations.</div>
+      </div>
+    </div>
   </div>
 
   <div class="btn-row" style="margin-top:20px">
@@ -925,6 +965,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </div>
 
 <script src="/shared-player-data.js"></script>
+<script src="/decision-engine.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -941,11 +982,150 @@ var state = {
   teamNames: [],
   roster: { QB:1, RB:2, WR:2, TE:1, FLEX:1, K:0, DEF:1, BENCH:6 },
   strategy: null,
+  userTeam: null,
   pricedSlots: [],
   playerPriceLookup: {},
+  defRankLookup: {},
   draftLog: [],
   nextPickId: 1
 };
+
+// ═══════════════════════════════════════════════════════════
+// AUCTION DRAFT PERSISTENCE (Aug 13 2026)
+// Saves/restores the active auction across page reloads, in localStorage
+// (separate from the sessionStorage-based GATE_STORAGE_KEY/
+// PREVIEW_STORAGE_KEY, which are access/preview flags, not draft data).
+// Persists SOURCE state only -- everything already in the `state` object
+// above, which contains no derived fields: team budgets, market/positional
+// inflation, and recommendations are never stored, always recomputed fresh
+// on restore via the same functions that already run after every pick
+// (updateTrackerStats/renderTeams/runDecisionEngine). pricedSlots and
+// playerPriceLookup ARE persisted verbatim rather than regenerated --
+// Step 4 allows manual price edits, and live ADP can drift between
+// requests, so regenerating on reload could silently hand the decision
+// engine a different price sheet mid-draft than every prior recommendation
+// was computed against.
+var AUCTION_SAVE_KEY = 'sanctum_auction_draft_v1';
+var AUCTION_SAVE_SCHEMA_VERSION = 1;
+
+function saveAuctionState() {
+  if (isPreviewMode()) return; // never persist a preview/demo session
+  try {
+    localStorage.setItem(AUCTION_SAVE_KEY, JSON.stringify({
+      schemaVersion: AUCTION_SAVE_SCHEMA_VERSION,
+      state: state
+    }));
+  } catch (e) {
+    // localStorage can throw (private browsing, quota exceeded, disabled).
+    // Persistence is a convenience, not a requirement -- fail silently.
+  }
+}
+
+function clearAuctionState() {
+  try { localStorage.removeItem(AUCTION_SAVE_KEY); } catch (e) {}
+}
+
+// Reads and validates the saved payload only -- does not touch `state` or
+// the DOM. Returns the saved state object, or null if nothing valid exists
+// (missing key, corrupted JSON, schema-version mismatch, or the wrong
+// shape) -- fails safe rather than risking malformed data reaching the
+// decision engine.
+function readSavedAuctionState() {
+  try {
+    var raw = localStorage.getItem(AUCTION_SAVE_KEY);
+    if (!raw) return null;
+    var payload = JSON.parse(raw);
+    if (!payload || payload.schemaVersion !== AUCTION_SAVE_SCHEMA_VERSION) return null;
+    var saved = payload.state;
+    if (!saved || typeof saved !== 'object') return null;
+    if (!Array.isArray(saved.draftLog) || !Array.isArray(saved.teamNames) || !Array.isArray(saved.pricedSlots)) return null;
+    return saved;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Restores a saved draft on page load, through the EXISTING calculation/
+// render paths (buildTeamInputs/goStep/initTracker/renderTPS/renderDraftLog/
+// runDecisionEngine) rather than duplicating any of their logic here.
+// initTracker()/generateTPS() re-read leagueName/numTeams/budget/scoring/
+// leagueFormat/teamNames FROM the DOM inputs, so this syncs those inputs
+// from the saved data first, then lets the existing functions read them
+// back exactly as they would from a normal user session.
+function restoreAuctionOnLoad() {
+  if (isPreviewMode()) return;
+  var saved = readSavedAuctionState();
+  if (!saved || saved.step < 4) return; // nothing meaningfully in-progress before Step 4
+
+  var teamNamesSnapshot = saved.teamNames.slice();
+  document.getElementById('leagueName').value = saved.leagueName || '';
+  document.getElementById('numTeams').value = saved.numTeams;
+  document.getElementById('budget').value = saved.budget;
+  if (document.getElementById('scoring')) document.getElementById('scoring').value = saved.scoring;
+  if (document.getElementById('leagueFormat')) document.getElementById('leagueFormat').value = saved.leagueFormat;
+
+  state.roster = saved.roster;
+  state.strategy = saved.strategy;
+  state.scoring = saved.scoring;
+  state.userTeam = saved.userTeam;
+  state.pricedSlots = saved.pricedSlots;
+  state.playerPriceLookup = saved.playerPriceLookup;
+  state.defRankLookup = saved.defRankLookup || {};
+  state.draftLog = saved.draftLog;
+  state.nextPickId = saved.nextPickId;
+
+  buildTeamInputs();
+  teamNamesSnapshot.forEach(function (name, i) {
+    var el = document.getElementById('team-' + (i + 1));
+    if (el) el.value = name;
+  });
+
+  if (saved.step >= 5) {
+    goStep(5); // calls initTracker(), which reads the DOM inputs synced
+               // above and rebuilds teamNames/pickTeam/myTeamSelect/budgets
+    renderDraftLog();
+    updateTrackerStats();
+    renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  } else {
+    goStep(4);
+    renderTPS(state.pricedSlots, state.strategy);
+  }
+
+  backfillDefRankLookupIfNeeded();
+}
+
+// Aug 13 2026: one-time backfill for drafts persisted before defRankLookup
+// existed. Runs only when a restored Step 4/5 draft's lookup is missing or
+// empty -- an already-populated lookup (including one just restored above)
+// is left completely alone, per requirement. Uses the exact same ADP
+// source Step 4 already calls (fetchLiveAdpByPosition) and the exact same
+// buildDefRankLookup() the normal Step 4 path uses -- no new data source,
+// and does not touch playerPriceLookup, pricedSlots, strategy, roster,
+// draftLog, or any price in any way. On any failure (network, empty
+// response), does nothing further -- the draft is left exactly as it was,
+// degrading to the pre-migration alphabetical-tie behavior rather than
+// risking any change to existing state. Once a real lookup is obtained,
+// it's saved immediately so subsequent reloads use the frozen result
+// instead of re-fetching, and the recommendation panel is refreshed
+// immediately so the fix is visible without a manual action.
+function backfillDefRankLookupIfNeeded() {
+  if (isPreviewMode()) return;
+  if (state.defRankLookup && Object.keys(state.defRankLookup).length > 0) return; // already have real ranks
+  if (!state.scoring) return; // scoring format unknown -- nothing to fetch against
+
+  fetchLiveAdpByPosition(state.scoring).then(function (liveAdp) {
+    if (!liveAdp) return; // fetch unavailable -- leave draft untouched
+    var newLookup = buildDefRankLookup(liveAdp);
+    if (!newLookup || !Object.keys(newLookup).length) return; // nothing usable came back
+    state.defRankLookup = newLookup;
+    saveAuctionState();
+    if (state.step >= 5 && state.userTeam) {
+      renderDecisionPanel(runDecisionEngine(state, allPlayers));
+    }
+  }).catch(function () {
+    // Network/parse error -- same as "fetch unavailable" above, leave everything untouched.
+  });
+}
 
 var POS_COLORS = {
   QB: 'background:rgba(21,101,192,0.15);color:#1565c0;border:1px solid rgba(21,101,192,0.3)',
@@ -1445,6 +1625,24 @@ function buildPlayerPriceLookup(adpPlayersByPosition, numTeams, roster, userPric
   return lookup;
 }
 
+// Aug 13 2026: captures DEF's ADP-based positionRank -- already computed
+// inline inside buildPlayerPriceLookup() above and otherwise discarded --
+// into a separate name-keyed lookup, for use ONLY as a decision-engine
+// tie-break signal (see decision-engine.js). Deliberately DEF-only (per
+// product decision not to bundle K unless there's a clear reason) and
+// entirely separate from buildPlayerPriceLookup() -- does not read from,
+// write to, or otherwise touch price calculation in any way. All DEF
+// targetPrice values remain exactly $1, unchanged, via the existing
+// isKDefFloor mechanism.
+function buildDefRankLookup(adpPlayersByPosition) {
+  const lookup = {};
+  const defPlayers = adpPlayersByPosition.DEF || [];
+  defPlayers.forEach((player, index) => {
+    lookup[player.name.toLowerCase()] = index + 1;
+  });
+  return lookup;
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // PLAYER AUTOCOMPLETE
@@ -1454,10 +1652,17 @@ function loadTank01Players() {
   fetchTank01PlayerList()
     .then(function(list){
       allPlayers = list || [];
+      // A restored draft may have rendered its first recommendation panel
+      // against an empty allPlayers list if this fetch hadn't resolved yet
+      // -- refresh it now that real data has arrived.
+      if (state.step >= 5 && state.userTeam) {
+        renderDecisionPanel(runDecisionEngine(state, allPlayers));
+      }
     })
     .catch(function(){ console.log('Tank01 player-data unavailable'); });
 }
 loadTank01Players();
+restoreAuctionOnLoad();
 
 function searchPlayers(query) {
   var dd = document.getElementById('playerDropdown');
@@ -1664,8 +1869,10 @@ function generateTPS() {
     var balancedSlots = buildFinalSlotTable('balanced', state.roster, isSuperflex, state.budget);
     var balancedPricedSlots = dollarsForSlots(balancedSlots, 'balanced', state.budget);
     state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots, balancedPricedSlots);
+    state.defRankLookup = buildDefRankLookup(adpSource);
 
     renderTPS(pricedSlots, stratKey);
+    saveAuctionState();
   });
 }
 
@@ -1797,8 +2004,42 @@ function initTracker() {
     sel.appendChild(o);
   });
 
+  populateMyTeamSelect();
+
   document.getElementById('myBudgetLeft').textContent = '$' + state.budget;
   renderTeams();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 5 — MY TEAM DESIGNATION (persistent, set once for the draft)
+// Added for the decision engine (decision-engine.js): budget/roster
+// need scoring requires knowing which team is the user's, and the
+// pickTeam dropdown (whatever's currently selected there) is too
+// fragile a signal for that — see Aug 12 2026 session decision.
+// ═══════════════════════════════════════════════════════════
+function populateMyTeamSelect() {
+  var sel = document.getElementById('myTeamSelect');
+  if (!sel) return;
+  var prevSelection = state.userTeam;
+  sel.innerHTML = '<option value="">— Select your team —</option>';
+  state.teamNames.forEach(function(t){
+    var o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+  // Preserve the existing selection across re-init if the team name still exists
+  if (prevSelection && state.teamNames.indexOf(prevSelection) !== -1) {
+    sel.value = prevSelection;
+  } else {
+    state.userTeam = null;
+  }
+}
+
+function setUserTeam() {
+  var sel = document.getElementById('myTeamSelect');
+  state.userTeam = sel.value || null;
+  renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1826,7 +2067,90 @@ function logPick() {
   renderDraftLog();
   renderTeams();
   updateOracleLive(player, price, team, projected);
+  renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
   document.getElementById('pickPlayer').focus();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 5 — DECISION PANEL (read-only, driven by decision-engine.js)
+// ═══════════════════════════════════════════════════════════
+var DECISION_ROLE_LABELS = { PRIMARY: 'Primary Target', ALTERNATIVE: 'Alternative Target', VALUE: 'Value Target', MORE: 'Additional Target' };
+
+function renderRecommendationCard(rec, isLast) {
+  var label = DECISION_ROLE_LABELS[rec.role] || rec.role;
+  var borderStyle = isLast ? '' : 'border-bottom:1px solid rgba(255,255,255,0.08);';
+  return '<div style="margin-bottom:10px;padding-bottom:10px;' + borderStyle + '">' +
+    '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px">' + label + '</div>' +
+    '<div style="font-weight:600">' + rec.player + ' <span style="opacity:0.6;font-weight:400">(' + rec.pos + ')</span></div>' +
+    '<div style="font-size:13px;opacity:0.85">Max Bid: $' + rec.maxPrice + ' &nbsp;•&nbsp; Decision Score: ' + rec.decisionScore + '</div>' +
+    '<div style="font-size:12px;opacity:0.7;margin-top:2px">' + rec.rationale + '</div>' +
+    '</div>';
+}
+
+// "Show More Targets" (Aug 14 2026): purely a display toggle over
+// result.moreTargets, which decision-engine.js already computed from the
+// same filtered/gated `viable` pool Primary/Alternative/Value came from.
+// No re-scoring, re-ranking, API calls, or eligibility logic lives here --
+// this only remembers (a) the last rendered result, so the button can
+// re-render without recomputing anything, and (b) whether the list is
+// currently expanded.
+var lastDecisionResult = null;
+var moreTargetsExpanded = false;
+
+function toggleMoreTargets() {
+  moreTargetsExpanded = !moreTargetsExpanded;
+  renderDecisionPanel(lastDecisionResult);
+}
+
+function renderDecisionPanel(result) {
+  var panel = document.getElementById('decisionPanel');
+  var text = document.getElementById('decisionPanelText');
+  if (!panel || !text) return;
+
+  if (!result || result.status === 'NO_USER_TEAM_SELECTED') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  lastDecisionResult = result;
+
+  if (result.status === 'ROSTER_FULL') {
+    text.innerHTML = 'Your roster is full — no remaining slots to fill.';
+    return;
+  }
+
+  if (result.status === 'NO_VIABLE_PLAYERS' || !result.recommendations || !result.recommendations.length) {
+    text.innerHTML = 'NO VIABLE TARGETS<br>Preserve budget • Let the market develop';
+    return;
+  }
+
+  var recs = result.recommendations;
+  var moreTargets = result.moreTargets || [];
+  var cards = recs.map(function (rec, i) { return renderRecommendationCard(rec, i === recs.length - 1 && !moreTargets.length); }).join('');
+
+  var moreHtml = '';
+  if (moreTargets.length) {
+    var buttonLabel = moreTargetsExpanded ? 'Hide More Targets' : 'Show More Targets';
+    moreHtml += '<button type="button" class="no-print" onclick="toggleMoreTargets()" ' +
+      'style="margin-top:4px;margin-bottom:8px;padding:6px 12px;font-size:12px;font-family:\'JetBrains Mono\',monospace;' +
+      'letter-spacing:0.5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);' +
+      'border-radius:5px;color:var(--muted);cursor:pointer;">' + buttonLabel + '</button>';
+    if (moreTargetsExpanded) {
+      var moreCards = moreTargets.map(function (rec, i) { return renderRecommendationCard(rec, i === moreTargets.length - 1); }).join('');
+      // Bounded, independently scrollable container (Aug 14 2026) --
+      // only the additional-target cards scroll; Primary/Alternative/
+      // Value and the toggle button above stay outside this div and
+      // always fully visible. max-height sized for ~2-3 cards at a
+      // glance (Pat's preference: 320-380px) with native momentum
+      // scrolling on touch. Presentation only -- card markup/styling
+      // inside (renderRecommendationCard) is completely unchanged.
+      moreHtml += '<div id="moreTargetsList" style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px;">' + moreCards + '</div>';
+    }
+  }
+
+  text.innerHTML = cards + moreHtml;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1836,7 +2160,7 @@ function updateTrackerStats() {
   var log = state.draftLog;
   var totalMarketBudget = state.budget * state.numTeams;
   var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
-  var myTeam = document.getElementById('pickTeam').value;
+  var myTeam = state.userTeam;
   var mySpent = log.filter(function(p){ return p.team === myTeam; }).reduce(function(a, p){ return a + p.price; }, 0);
   var myLeft = state.budget - mySpent;
   var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
@@ -1866,6 +2190,47 @@ function updateTrackerStats() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// STEP 5 — SHARED TRANSACTION VALUE CLASSIFICATION (Aug 13 2026)
+// Single source of truth for both Draft Log coloring/labels and Oracle
+// Live Update commentary, so the two can never independently disagree
+// about the same pick.
+//
+// Root cause of the bug this replaces: Draft Log and Oracle each had
+// their own separately-coded diff/threshold logic (zero-tolerance
+// red/green in renderDraftLog vs. a $5 deadband in updateOracleLive).
+// That alone wasn't the defect -- Oracle having *some* tolerance is
+// reasonable. The actual bug was a boundary/off-by-one error: Oracle's
+// check used strict `diff > 5` / `diff < -5`, so a diff of EXACTLY $5
+// fell through to the neutral "right on projection" branch instead of
+// the overpay branch. Confirmed exactly reproducible against the
+// reported cases: Saquon Barkley ($52 paid / $47 projected = diff 5)
+// and Justin Jefferson ($51 paid / $46 projected = diff 5) both landed
+// precisely on this broken boundary. Not a data-source mismatch (both
+// paths were already reading the same parsed price/projected values —
+// see logPick(), which parseInt()s both once and passes the same
+// variables to state.draftLog and updateOracleLive()) and not a
+// numeric-conversion bug (parseInt was already used correctly; Draft
+// Log's own diff arithmetic was always correct, which is how we know
+// the underlying numbers were fine and only the classification branch
+// was wrong).
+//
+// Tolerance stays the pre-existing $5 absolute-dollar deadband (Oracle's
+// prior threshold) rather than a new invented number, per instruction —
+// reused, not replaced. See the deliverables note on why a flat dollar
+// tolerance (vs. a percentage-based one) was deliberately left as-is.
+var TRANSACTION_VALUE_TOLERANCE_DOLLARS = 5;
+
+function classifyTransactionValue(price, projected) {
+  if (!projected) return { diff: null, tier: 'UNKNOWN' };
+  var diff = price - projected;
+  var tier;
+  if (diff >= TRANSACTION_VALUE_TOLERANCE_DOLLARS) tier = 'OVERPAY';
+  else if (diff <= -TRANSACTION_VALUE_TOLERANCE_DOLLARS) tier = 'VALUE';
+  else tier = 'ON_PROJECTION';
+  return { diff: diff, tier: tier };
+}
+
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — RENDER DRAFT LOG
 // ═══════════════════════════════════════════════════════════
 function renderDraftLog() {
@@ -1876,10 +2241,12 @@ function renderDraftLog() {
   var numbered = log.map(function(p, i){ return { pick: p, num: i + 1 }; });
   numbered.slice().reverse().forEach(function(entry){
     var p = entry.pick;
-    var diff = p.projected ? p.price - p.projected : null;
+    var classification = classifyTransactionValue(p.price, p.projected);
+    var diff = classification.diff;
     var diffStr = diff === null ? '—' :
-      diff > 0 ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
-                 '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>';
+      classification.tier === 'OVERPAY' ? '<span style="color:var(--red)">+$' + diff + ' overpaid</span>' :
+      classification.tier === 'VALUE' ? '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>' :
+      '<span style="color:var(--muted)">' + (diff > 0 ? '+$' + diff : diff < 0 ? '-$' + Math.abs(diff) : '$0') + ' (on projection)</span>';
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
     var tr = document.createElement('tr');
     tr.innerHTML =
@@ -1907,6 +2274,8 @@ function removePick(id) {
   renderDraftLog();
   renderTeams();
   document.getElementById('liveOracle').textContent = removed.player + ' has been struck from the record, seeker — the ledger corrects itself.';
+  renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1944,12 +2313,10 @@ function updateOracleLive(player, price, team, projected) {
   var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
   var avg = Math.round(totalSpent / log.length);
   var valueMsg = '';
-  if (projected) {
-    var diff = price - projected;
-    if (diff > 5) valueMsg = ' That price was $' + diff + ' above projection — a costly overpay.';
-    else if (diff < -5) valueMsg = ' That was $' + Math.abs(diff) + ' below projection — excellent value secured.';
-    else valueMsg = ' That price was right on projection — well executed.';
-  }
+  var classification = classifyTransactionValue(price, projected);
+  if (classification.tier === 'OVERPAY') valueMsg = ' That price was $' + classification.diff + ' above projection — a costly overpay.';
+  else if (classification.tier === 'VALUE') valueMsg = ' That was $' + Math.abs(classification.diff) + ' below projection — excellent value secured.';
+  else if (classification.tier === 'ON_PROJECTION') valueMsg = ' That price was right on projection — well executed.';
   var msgs = [
     'The spirits have spoken. ' + player + ' goes to ' + team + ' for $' + price + '.' + valueMsg + ' The market averages $' + avg + ' per player. Watch your remaining budget carefully, seeker.',
     'So it is written. ' + player + ' — $' + price + ' to ' + team + '.' + valueMsg + ' With ' + log.length + ' souls claimed, the value lies in those yet to be nominated.',
@@ -1965,10 +2332,15 @@ function resetDraft() {
   if (confirm('Reset the entire draft log? This cannot be undone.')) {
     state.draftLog = [];
     state.nextPickId = 1;
+    state.userTeam = null;
+    var myTeamSel = document.getElementById('myTeamSelect');
+    if (myTeamSel) myTeamSel.value = '';
     renderDraftLog();
     renderTeams();
     updateTrackerStats();
     document.getElementById('liveOracle').textContent = 'The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
+    renderDecisionPanel(runDecisionEngine(state, allPlayers));
+    clearAuctionState();
   }
 }
 </script>
