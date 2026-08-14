@@ -85,6 +85,12 @@ var VALUE_ROLE_WEIGHT_VALUE = 0.5;
 var VALUE_ROLE_WEIGHT_BUDGET = 0.3;
 var VALUE_ROLE_WEIGHT_INFLATION = 0.2;
 
+// "Show More Targets" (Aug 14 2026): how many additional entries to
+// expose beyond Primary/Alternative/Value. Purely a display-list length —
+// does not change which 3 players are selected, their order, or any
+// scoring/rerank/hard-rule/gate logic. See selectRecommendationSet().
+var MORE_TARGETS_COUNT = 5;
+
 // Plain-language, factual-only scoring-format note for rationale text.
 // Deliberately does not claim a specific causal effect on ranking (the
 // price sheet already bakes format into price — see buildDecisionState) —
@@ -561,6 +567,11 @@ function buildRationale(role, diag, decisionState, alreadySelected) {
     if (diag.positionalInflationFallback === false && diag.inflationScore > 0.5) {
       parts.push(diag.pos + ' market is running cool right now — room below expected cost');
     }
+  } else if (role === 'MORE') {
+    // "Show More Targets" entries (Aug 14 2026): same viable pool
+    // Primary/Alternative/Value were drawn from, just not selected for
+    // one of those 3 roles. Purely descriptive text — no scoring input.
+    parts.push('additional viable target, ranked below Primary/Alternative/Value');
   }
 
   var scoringLabel = SCORING_FORMAT_LABELS[decisionState.scoringFormat];
@@ -592,10 +603,29 @@ function buildRecommendationEntry(role, diag, decisionState, alreadySelected) {
   };
 }
 
+// Builds the "Show More Targets" list (Aug 14 2026): the next
+// MORE_TARGETS_COUNT entries of the SAME already-filtered `viable` array
+// Primary/Alternative/Value were drawn from (already past the hard-rule
+// veto filter AND the early/mid-draft K/DEF core-starter gate AND the
+// zero-slot K/DEF eligibility gate -- all upstream of `viable`, nothing
+// re-derived here), excluding whichever raw diagnostic objects were
+// already selected for one of those 3 roles. `viable`'s existing order
+// (finalScore desc, DEF ADP tie-break) is preserved by construction --
+// this only filters and slices, it never re-sorts or re-scores.
+function buildMoreTargets(viable, alreadySelectedDiagObjects, decisionState) {
+  var remaining = viable.filter(function (d) { return alreadySelectedDiagObjects.indexOf(d) === -1; });
+  return remaining.slice(0, MORE_TARGETS_COUNT).map(function (d) {
+    return buildRecommendationEntry('MORE', d, decisionState, alreadySelectedDiagObjects);
+  });
+}
+
 // Selects up to 3 ranked recommendations (Primary/Alternative/Value)
 // from an already-scored, already-sorted (desc by finalScore)
-// diagnostics array. Returns 0-3 entries depending on how many
-// non-vetoed ("viable") candidates exist — never forces a count.
+// diagnostics array, plus up to MORE_TARGETS_COUNT additional viable
+// targets for a "Show More Targets" UI. Returns 0-3 recommendations
+// depending on how many non-vetoed ("viable") candidates exist — never
+// forces a count -- and 0-MORE_TARGETS_COUNT additional targets, always
+// drawn from that same `viable` pool.
 function selectRecommendationSet(sortedDiagnostics, decisionState) {
   var viable = sortedDiagnostics.filter(function (d) { return !d.vetoed; });
 
@@ -603,18 +633,21 @@ function selectRecommendationSet(sortedDiagnostics, decisionState) {
   // (untouched, built before this function runs) but are excluded from
   // the pool used for Primary/Alternative/Value while core offensive
   // starters remain open. Naturally lifts once those slots fill in.
+  // moreTargets is built from this SAME filtered `viable`, further down
+  // -- so it inherits this exclusion too, and can never show K/DEF here
+  // that Primary/Alternative/Value themselves couldn't show.
   if (hasOpenCoreOffensiveStarterSlot(decisionState.userRoster)) {
     viable = viable.filter(function (d) { return LATE_DRAFT_ONLY_POSITIONS.indexOf(d.pos) === -1; });
   }
 
   var selected = [];
-  if (!viable.length) return selected;
+  if (!viable.length) return { recommendations: selected, moreTargets: [] };
 
   // Primary Target: unchanged from Phase 1 — the single best player by
   // the existing finalScore/weights.
   var primary = viable[0];
   selected.push(buildRecommendationEntry('PRIMARY', primary, decisionState, selected));
-  if (viable.length === 1) return selected;
+  if (viable.length === 1) return { recommendations: selected, moreTargets: [] };
 
   var remainingAfterPrimary = viable.slice(1);
 
@@ -626,19 +659,21 @@ function selectRecommendationSet(sortedDiagnostics, decisionState) {
   })[0];
   if (!altCandidate) altCandidate = remainingAfterPrimary[0];
   selected.push(buildRecommendationEntry('ALTERNATIVE', altCandidate, decisionState, selected));
-  if (remainingAfterPrimary.length === 1) return selected;
+  if (remainingAfterPrimary.length === 1) return { recommendations: selected, moreTargets: [] };
 
   // Value Target: best remaining candidate (excluding whoever was
   // already selected) by a value/budget-weighted composite, not by
   // finalScore rank — this is what keeps it from being "just #3."
   var remainingForValue = remainingAfterPrimary.filter(function (d) { return d !== altCandidate; });
-  if (!remainingForValue.length) return selected;
+  if (!remainingForValue.length) return { recommendations: selected, moreTargets: [] };
   var valueCandidate = remainingForValue.slice().sort(function (a, b) {
     return computeValueRoleScore(b) - computeValueRoleScore(a);
   })[0];
   selected.push(buildRecommendationEntry('VALUE', valueCandidate, decisionState, selected));
 
-  return selected;
+  var moreTargets = buildMoreTargets(viable, [primary, altCandidate, valueCandidate], decisionState);
+
+  return { recommendations: selected, moreTargets: moreTargets };
 }
 
 // ─── MAIN ORCHESTRATOR ──────────────────────────────────────
@@ -719,11 +754,14 @@ function runDecisionEngine(state, allPlayers) {
     return 0;
   });
 
-  var recommendations = selectRecommendationSet(diagnostics, decisionState);
+  var recommendationResult = selectRecommendationSet(diagnostics, decisionState);
+  var recommendations = recommendationResult.recommendations;
+  var moreTargets = recommendationResult.moreTargets;
 
   return {
     status: recommendations.length ? 'RECOMMENDATIONS' : 'NO_VIABLE_PLAYERS',
     recommendations: recommendations,
+    moreTargets: moreTargets,
     diagnostics: diagnostics,
     unscored: decisionState.unscored,
     unscoredCount: decisionState.unscored.length,
@@ -760,6 +798,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN: ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN,
     INFLATION_SCORE_NEUTRAL: INFLATION_SCORE_NEUTRAL,
     THRESHOLD_TARGET: THRESHOLD_TARGET,
-    THRESHOLD_WATCH: THRESHOLD_WATCH
+    THRESHOLD_WATCH: THRESHOLD_WATCH,
+    MORE_TARGETS_COUNT: MORE_TARGETS_COUNT
   };
 }
