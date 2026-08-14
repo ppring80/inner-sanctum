@@ -989,6 +989,106 @@ var state = {
   nextPickId: 1
 };
 
+// ═══════════════════════════════════════════════════════════
+// AUCTION DRAFT PERSISTENCE (Aug 13 2026)
+// Saves/restores the active auction across page reloads, in localStorage
+// (separate from the sessionStorage-based GATE_STORAGE_KEY/
+// PREVIEW_STORAGE_KEY, which are access/preview flags, not draft data).
+// Persists SOURCE state only -- everything already in the `state` object
+// above, which contains no derived fields: team budgets, market/positional
+// inflation, and recommendations are never stored, always recomputed fresh
+// on restore via the same functions that already run after every pick
+// (updateTrackerStats/renderTeams/runDecisionEngine). pricedSlots and
+// playerPriceLookup ARE persisted verbatim rather than regenerated --
+// Step 4 allows manual price edits, and live ADP can drift between
+// requests, so regenerating on reload could silently hand the decision
+// engine a different price sheet mid-draft than every prior recommendation
+// was computed against.
+var AUCTION_SAVE_KEY = 'sanctum_auction_draft_v1';
+var AUCTION_SAVE_SCHEMA_VERSION = 1;
+
+function saveAuctionState() {
+  if (isPreviewMode()) return; // never persist a preview/demo session
+  try {
+    localStorage.setItem(AUCTION_SAVE_KEY, JSON.stringify({
+      schemaVersion: AUCTION_SAVE_SCHEMA_VERSION,
+      state: state
+    }));
+  } catch (e) {
+    // localStorage can throw (private browsing, quota exceeded, disabled).
+    // Persistence is a convenience, not a requirement -- fail silently.
+  }
+}
+
+function clearAuctionState() {
+  try { localStorage.removeItem(AUCTION_SAVE_KEY); } catch (e) {}
+}
+
+// Reads and validates the saved payload only -- does not touch `state` or
+// the DOM. Returns the saved state object, or null if nothing valid exists
+// (missing key, corrupted JSON, schema-version mismatch, or the wrong
+// shape) -- fails safe rather than risking malformed data reaching the
+// decision engine.
+function readSavedAuctionState() {
+  try {
+    var raw = localStorage.getItem(AUCTION_SAVE_KEY);
+    if (!raw) return null;
+    var payload = JSON.parse(raw);
+    if (!payload || payload.schemaVersion !== AUCTION_SAVE_SCHEMA_VERSION) return null;
+    var saved = payload.state;
+    if (!saved || typeof saved !== 'object') return null;
+    if (!Array.isArray(saved.draftLog) || !Array.isArray(saved.teamNames) || !Array.isArray(saved.pricedSlots)) return null;
+    return saved;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Restores a saved draft on page load, through the EXISTING calculation/
+// render paths (buildTeamInputs/goStep/initTracker/renderTPS/renderDraftLog/
+// runDecisionEngine) rather than duplicating any of their logic here.
+// initTracker()/generateTPS() re-read leagueName/numTeams/budget/scoring/
+// leagueFormat/teamNames FROM the DOM inputs, so this syncs those inputs
+// from the saved data first, then lets the existing functions read them
+// back exactly as they would from a normal user session.
+function restoreAuctionOnLoad() {
+  if (isPreviewMode()) return;
+  var saved = readSavedAuctionState();
+  if (!saved || saved.step < 4) return; // nothing meaningfully in-progress before Step 4
+
+  var teamNamesSnapshot = saved.teamNames.slice();
+  document.getElementById('leagueName').value = saved.leagueName || '';
+  document.getElementById('numTeams').value = saved.numTeams;
+  document.getElementById('budget').value = saved.budget;
+  if (document.getElementById('scoring')) document.getElementById('scoring').value = saved.scoring;
+  if (document.getElementById('leagueFormat')) document.getElementById('leagueFormat').value = saved.leagueFormat;
+
+  state.roster = saved.roster;
+  state.strategy = saved.strategy;
+  state.userTeam = saved.userTeam;
+  state.pricedSlots = saved.pricedSlots;
+  state.playerPriceLookup = saved.playerPriceLookup;
+  state.draftLog = saved.draftLog;
+  state.nextPickId = saved.nextPickId;
+
+  buildTeamInputs();
+  teamNamesSnapshot.forEach(function (name, i) {
+    var el = document.getElementById('team-' + (i + 1));
+    if (el) el.value = name;
+  });
+
+  if (saved.step >= 5) {
+    goStep(5); // calls initTracker(), which reads the DOM inputs synced
+               // above and rebuilds teamNames/pickTeam/myTeamSelect/budgets
+    renderDraftLog();
+    updateTrackerStats();
+    renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  } else {
+    goStep(4);
+    renderTPS(state.pricedSlots, state.strategy);
+  }
+}
+
 var POS_COLORS = {
   QB: 'background:rgba(21,101,192,0.15);color:#1565c0;border:1px solid rgba(21,101,192,0.3)',
   RB: 'background:rgba(46,125,50,0.15);color:#2e7d32;border:1px solid rgba(46,125,50,0.3)',
@@ -1496,10 +1596,17 @@ function loadTank01Players() {
   fetchTank01PlayerList()
     .then(function(list){
       allPlayers = list || [];
+      // A restored draft may have rendered its first recommendation panel
+      // against an empty allPlayers list if this fetch hadn't resolved yet
+      // -- refresh it now that real data has arrived.
+      if (state.step >= 5 && state.userTeam) {
+        renderDecisionPanel(runDecisionEngine(state, allPlayers));
+      }
     })
     .catch(function(){ console.log('Tank01 player-data unavailable'); });
 }
 loadTank01Players();
+restoreAuctionOnLoad();
 
 function searchPlayers(query) {
   var dd = document.getElementById('playerDropdown');
@@ -1708,6 +1815,7 @@ function generateTPS() {
     state.playerPriceLookup = buildPlayerPriceLookup(adpSource, state.numTeams, state.roster, pricedSlots, balancedPricedSlots);
 
     renderTPS(pricedSlots, stratKey);
+    saveAuctionState();
   });
 }
 
@@ -1874,6 +1982,7 @@ function setUserTeam() {
   var sel = document.getElementById('myTeamSelect');
   state.userTeam = sel.value || null;
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1902,6 +2011,7 @@ function logPick() {
   renderTeams();
   updateOracleLive(player, price, team, projected);
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
   document.getElementById('pickPlayer').focus();
 }
 
@@ -2070,6 +2180,7 @@ function removePick(id) {
   renderTeams();
   document.getElementById('liveOracle').textContent = removed.player + ' has been struck from the record, seeker — the ledger corrects itself.';
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  saveAuctionState();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2134,6 +2245,7 @@ function resetDraft() {
     updateTrackerStats();
     document.getElementById('liveOracle').textContent = 'The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
     renderDecisionPanel(runDecisionEngine(state, allPlayers));
+    clearAuctionState();
   }
 }
 </script>
