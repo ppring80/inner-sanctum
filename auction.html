@@ -2139,7 +2139,14 @@ function renderDecisionPanel(result) {
       'border-radius:5px;color:var(--muted);cursor:pointer;">' + buttonLabel + '</button>';
     if (moreTargetsExpanded) {
       var moreCards = moreTargets.map(function (rec, i) { return renderRecommendationCard(rec, i === moreTargets.length - 1); }).join('');
-      moreHtml += '<div id="moreTargetsList">' + moreCards + '</div>';
+      // Bounded, independently scrollable container (Aug 14 2026) --
+      // only the additional-target cards scroll; Primary/Alternative/
+      // Value and the toggle button above stay outside this div and
+      // always fully visible. max-height sized for ~2-3 cards at a
+      // glance (Pat's preference: 320-380px) with native momentum
+      // scrolling on touch. Presentation only -- card markup/styling
+      // inside (renderRecommendationCard) is completely unchanged.
+      moreHtml += '<div id="moreTargetsList" style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px;">' + moreCards + '</div>';
     }
   }
 
