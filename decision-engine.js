@@ -381,8 +381,24 @@ function applyHardRules(player, decisionState) {
 // model's own read of the board" signal, not an independent quality
 // metric — there's no separate projection data to compare price against
 // in Phase 1. Documented here for tuning review.
+//
+// Aug 13 2026 fix: the comparison pool excludes same-position candidates
+// that are already unaffordable for this team (targetPrice > maxAffordable).
+// Without this, a same-position player this team could never actually buy
+// still set the top of the price range, silently depressing every genuinely
+// affordable candidate's valueScore toward 0 — meaning the score answered
+// "how does this compare to every remaining player at the position" rather
+// than "how does this compare to the players I could realistically acquire."
+// Uses the same affordability condition applyHardRules() checks, applied
+// directly here rather than calling applyHardRules() itself — that function
+// also vetoes on the separate no-open-slot condition, which would broaden
+// this filter beyond affordability alone. No weights, need/inflation/
+// strategy/budget scoring, maxPrice, hard-rule definitions, or roster logic
+// are touched by this change.
 function computeValueScore(player, decisionState) {
-  var samePos = decisionState.remaining.filter(function (p) { return p.pos === player.pos; });
+  var samePos = decisionState.remaining.filter(function (p) {
+    return p.pos === player.pos && p.targetPrice <= decisionState.maxAffordable;
+  });
   var prices = samePos.map(function (p) { return p.targetPrice; });
   var maxP = Math.max.apply(null, prices);
   var minP = Math.min.apply(null, prices);
