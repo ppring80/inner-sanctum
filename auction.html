@@ -1066,6 +1066,7 @@ function restoreAuctionOnLoad() {
 
   state.roster = saved.roster;
   state.strategy = saved.strategy;
+  state.scoring = saved.scoring;
   state.userTeam = saved.userTeam;
   state.pricedSlots = saved.pricedSlots;
   state.playerPriceLookup = saved.playerPriceLookup;
@@ -1089,6 +1090,41 @@ function restoreAuctionOnLoad() {
     goStep(4);
     renderTPS(state.pricedSlots, state.strategy);
   }
+
+  backfillDefRankLookupIfNeeded();
+}
+
+// Aug 13 2026: one-time backfill for drafts persisted before defRankLookup
+// existed. Runs only when a restored Step 4/5 draft's lookup is missing or
+// empty -- an already-populated lookup (including one just restored above)
+// is left completely alone, per requirement. Uses the exact same ADP
+// source Step 4 already calls (fetchLiveAdpByPosition) and the exact same
+// buildDefRankLookup() the normal Step 4 path uses -- no new data source,
+// and does not touch playerPriceLookup, pricedSlots, strategy, roster,
+// draftLog, or any price in any way. On any failure (network, empty
+// response), does nothing further -- the draft is left exactly as it was,
+// degrading to the pre-migration alphabetical-tie behavior rather than
+// risking any change to existing state. Once a real lookup is obtained,
+// it's saved immediately so subsequent reloads use the frozen result
+// instead of re-fetching, and the recommendation panel is refreshed
+// immediately so the fix is visible without a manual action.
+function backfillDefRankLookupIfNeeded() {
+  if (isPreviewMode()) return;
+  if (state.defRankLookup && Object.keys(state.defRankLookup).length > 0) return; // already have real ranks
+  if (!state.scoring) return; // scoring format unknown -- nothing to fetch against
+
+  fetchLiveAdpByPosition(state.scoring).then(function (liveAdp) {
+    if (!liveAdp) return; // fetch unavailable -- leave draft untouched
+    var newLookup = buildDefRankLookup(liveAdp);
+    if (!newLookup || !Object.keys(newLookup).length) return; // nothing usable came back
+    state.defRankLookup = newLookup;
+    saveAuctionState();
+    if (state.step >= 5 && state.userTeam) {
+      renderDecisionPanel(runDecisionEngine(state, allPlayers));
+    }
+  }).catch(function () {
+    // Network/parse error -- same as "fetch unavailable" above, leave everything untouched.
+  });
 }
 
 var POS_COLORS = {
