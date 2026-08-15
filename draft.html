@@ -987,13 +987,91 @@ function remCmp(k){cmpList=cmpList.filter(function(x){return x!==k});updCmpBar()
 function clrCmp(){cmpList=[];updCmpBar()}
 function showCmp(){
   if(cmpList.length<2){alert('Select 2 players.');return}
-  var p1=cmpData[cmpList[0]];var p2=cmpData[cmpList[1]];
+  var k1=cmpList[0],k2=cmpList[1];
+  var p1=cmpData[k1];var p2=cmpData[k2];
   function cls(v1,v2){if(v1===v2)return['',''];return[(v1<v2?'better':'worse'),(v2<v1?'better':'worse')]}
   var ac=cls(p1.adp,p2.adp);var b1=BYE[p1.team]||'—';var b2=BYE[p2.team]||'—';
   function col(p,ac,bye){return'<div class="cmp-col"><div class="cmp-col-name">'+p.name+'</div><div class="cmp-row"><span class="cmp-l">Position</span><span class="cmp-v">'+p.pos+'</span></div><div class="cmp-row"><span class="cmp-l">Team</span><span class="cmp-v">'+p.team+'</span></div><div class="cmp-row"><span class="cmp-l">ADP</span><span class="cmp-v '+ac+'">'+p.adp.toFixed(1)+'</span></div><div class="cmp-row"><span class="cmp-l">Bye Week</span><span class="cmp-v">'+bye+'</span></div></div>'}
   document.getElementById('cmpcols').innerHTML=col(p1,ac[0],b1)+col(p2,ac[1],b2);
-  var w=p1.adp<p2.adp?p1:p2;var l=p1.adp<=p2.adp?p2:p1;
-  document.getElementById('vtxt').textContent='In 38 seasons the spirits favor '+w.name+'. The ADP gap of '+Math.abs(p1.adp-p2.adp).toFixed(1)+' picks reflects market wisdom — though '+l.name+' on '+l.team+' warrants monitoring before draft day.';
+
+  // ═══ Oracle Verdict (Aug 15 2026) ═══
+  // Deterministic prose builder -- same p1/p2/scoring input always
+  // produces the same text (no randomness, no new data source). Every
+  // signal below reuses a helper/state variable that already exists
+  // elsewhere in this file: getInj(), sScore()/tier()/sCls() (via
+  // adpByPos, already loaded), BYE (already looked up above as
+  // b1/b2), and the #scoringSel value (already read by loadAll()).
+  // No new ranking logic, no new player data, no new persisted state.
+  var gap=Math.abs(p1.adp-p2.adp);
+  var samePos=p1.pos===p2.pos;
+  // Winner/loser only resolved when NOT an exact tie -- fixes the prior
+  // bug where a tie made both w and l resolve to the same player
+  // (self-contradictory "favor X... though X warrants monitoring").
+  var w=null,l=null;
+  if(gap>0){w=p1.adp<p2.adp?p1:p2;l=(w===p1)?p2:p1;}
+  var gapCat=gap===0?'TIE':(gap<3?'CLOSE':(gap<15?'MODERATE':'LARGE'));
+
+  var opening;
+  if(gapCat==='TIE'){
+    opening='In 38 seasons the spirits find '+p1.name+' and '+p2.name+' impossible to separate — call it a coin flip.';
+  }else if(gapCat==='CLOSE'){
+    opening=samePos?
+      'In 38 seasons the spirits give the slightest edge to '+w.name+' over '+l.name+' — with ADP this tight, it is close enough to lean either way on draft day.':
+      'In 38 seasons the spirits give a slight ADP edge to '+w.name+', but with '+l.name+' this close, it is more a '+p1.pos+'-vs-'+p2.pos+' roster call than a clear-cut choice.';
+  }else if(gapCat==='MODERATE'){
+    opening=samePos?
+      'In 38 seasons the spirits favor '+w.name+' over '+l.name+' — a real gap, not a landslide.':
+      'In 38 seasons the spirits favor '+w.name+', though '+l.name+' stays squarely in the conversation if your roster leans '+l.pos+'-needy.';
+  }else{
+    opening='In 38 seasons the spirits strongly favor '+w.name+'. The market has '+l.name+' valued well behind — by '+gap.toFixed(1)+' picks.';
+  }
+
+  // Contextual clauses, priority order per spec: injury > stream-tier >
+  // scoring-format > bye-week. At most 2 are used, so verdicts stay
+  // concise instead of stacking every applicable signal.
+  var clauses=[];
+
+  var inj1=getInj(p1.name),inj2=getInj(p2.name);
+  var INJ_SEV={Out:4,IR:4,Doubtful:3,Questionable:2,PUP:1};
+  if(inj1&&inj2){
+    var worseP=(INJ_SEV[inj1.cls]||0)>=(INJ_SEV[inj2.cls]||0)?p1:p2;
+    var worseInj=(worseP===p1)?inj1:inj2;
+    clauses.push(worseP.name+' carries a '+worseInj.label+' tag worth watching before you commit.');
+  }else if(inj1){
+    clauses.push(p1.name+' carries a '+inj1.label+' tag worth watching before you commit.');
+  }else if(inj2){
+    clauses.push(p2.name+' carries a '+inj2.label+' tag worth watching before you commit.');
+  }
+
+  if(gapCat!=='LARGE'){
+    var idx1=(adpByPos[p1.pos]||[]).findIndex(function(x){return x.key===k1});
+    var idx2=(adpByPos[p2.pos]||[]).findIndex(function(x){return x.key===k2});
+    if(idx1>=0&&idx2>=0){
+      var sc1=sScore(idx1+1,p1.pos),sc2=sScore(idx2+1,p2.pos);
+      if(sCls(sc1)!==sCls(sc2)){
+        var lowerP=sc1>sc2?p1:p2,higherP=(lowerP===p1)?p2:p1;
+        clauses.push(lowerP.name+"'s weekly floor is shakier than "+higherP.name+"'s, beyond what ADP alone shows.");
+      }
+    }
+  }
+
+  var scoringEl=document.getElementById('scoringSel');
+  var scoring=scoringEl?scoringEl.value:'standard';
+  if(scoring!=='standard'&&(gapCat==='TIE'||gapCat==='CLOSE')){
+    var skillInvolved=(p1.pos==='RB'||p1.pos==='WR'||p1.pos==='TE'||p2.pos==='RB'||p2.pos==='WR'||p2.pos==='TE');
+    if(skillInvolved){
+      var scoringLbl=scoring==='ppr'?'PPR':'Half PPR';
+      clauses.push('Under '+scoringLbl+' scoring, reception volume can tip a call this tight beyond what raw ADP shows.');
+    }
+  }
+
+  if(b1===b2&&b1!=='—'){
+    clauses.push('Both land on a Week '+b1+' bye, worth weighing if you are pairing them on your bench.');
+  }
+
+  var chosenClauses=clauses.slice(0,2);
+  document.getElementById('vtxt').textContent=opening+(chosenClauses.length?' '+chosenClauses.join(' '):'');
+
   document.getElementById('modal').classList.add('on');
 }
 function closeModal(){document.getElementById('modal').classList.remove('on')}
