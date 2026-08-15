@@ -281,7 +281,7 @@ function slotSearch(slotKey, query) {
   if (q.length < 2) { dd.style.display = 'none'; return; }
 
   var matches = allPlayers.filter(function(p){
-    return p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q);
+    return p.name.toLowerCase().includes(q) || correctedTeam(p).toLowerCase().includes(q);
   }).slice(0, 10);
 
   if (!matches.length) { dd.style.display = 'none'; return; }
@@ -292,7 +292,7 @@ function slotSearch(slotKey, query) {
     item.className = 'slot-dropdown-item';
     item.innerHTML =
       '<span class="slot-item-name">' + p.name + '</span>' +
-      '<span class="slot-item-meta">' + p.pos + ' · ' + p.team + '</span>';
+      '<span class="slot-item-meta">' + p.pos + ' · ' + correctedTeam(p) + '</span>';
     item.onmousedown = function(e){
       e.preventDefault();
       selectPlayer(slotKey, p);
