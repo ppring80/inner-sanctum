@@ -124,7 +124,10 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .ibadge.PUP{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
 .act-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Lora',serif;transition:all 0.15s;white-space:nowrap}
 .act-btn:hover{border-color:var(--gold);color:var(--gold)}
+.act-btn.draft-btn{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);color:var(--gold)}
+.act-btn.draft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
 .prow.drafted .draft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
+.act-btn.cmp-row-btn:disabled{color:var(--green);border-color:#9fd39f;background:#eaf5ea;cursor:default;opacity:1}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;padding:12px}
 .pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
 .pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
@@ -132,14 +135,17 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .crank{position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);font-weight:600}
 .cname{font-size:13px;font-weight:600;color:var(--text);padding-right:26px;line-height:1.3;margin-bottom:4px}
 .cmeta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
-.cdraft-btn{width:100%;margin-top:6px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-family:'Lora',serif;font-size:10px;cursor:pointer;text-align:left;transition:all 0.15s}
-.cdraft-btn:hover{border-color:var(--gold);color:var(--gold)}
+.cdraft-btn{width:100%;margin-top:6px;padding:4px 8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:4px;color:var(--gold);font-family:'Lora',serif;font-size:10px;cursor:pointer;text-align:left;transition:all 0.15s}
+.cdraft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
 .pcard.drafted .cdraft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
 .cmp-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1108;border-top:2px solid var(--gold-lt);padding:10px 24px;display:none;align-items:center;gap:10px;z-index:100;flex-wrap:wrap}
 .cmp-bar.on{display:flex}
 .cmp-pill{background:#2a1e0e;border:1px solid #4a3a22;border-radius:var(--r);padding:5px 10px;font-size:12px;color:#f0e6cc;display:flex;align-items:center;gap:6px}
 .cmp-x{background:transparent;border:none;color:#ff5252;cursor:pointer;font-size:13px;line-height:1}
+.cmp-vs{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--gold-lt);align-self:center}
+.cmp-hint{font-family:'Lora',serif;font-size:12px;color:#a08550;font-style:italic}
 .cmp-go{background:var(--gold-lt);border:none;color:#000;font-family:'Lora',serif;font-size:13px;font-weight:600;padding:7px 18px;border-radius:var(--r);cursor:pointer;margin-left:auto}
+.cmp-go:disabled{background:#4a3a22;color:#7a6a3a;cursor:not-allowed}
 .cmp-clr{background:transparent;border:1px solid #4a3a22;color:#a08550;font-family:'Lora',serif;font-size:12px;padding:7px 12px;border-radius:var(--r);cursor:pointer}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-bg.on{display:flex}
@@ -394,9 +400,10 @@ function checkOAuthSession() {
 </div>
 
 <div class="cmp-bar no-print" id="cbar">
-  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--gold-lt);text-transform:uppercase">Compare:</span>
-  <div id="cslots" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-  <button class="cmp-go" onclick="showCmp()">Compare →</button>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--gold-lt);text-transform:uppercase">Compare Players</span>
+  <div id="cslots" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+  <span id="cmphint" class="cmp-hint" style="display:none">Select one more player to compare</span>
+  <button class="cmp-go" id="cmpgobtn" onclick="showCmp()" disabled>Compare Players →</button>
   <button class="cmp-clr" onclick="clrCmp()">Clear</button>
 </div>
 
@@ -569,7 +576,7 @@ async function loadAll(){
     ready=true;
     hideFallbackBanner();
     var total=Object.values(adpByPos).reduce(function(a,arr){return a+arr.length},0);
-    setStatus('live','2026 Live ADP · '+total+' players · '+new Date().toLocaleTimeString());
+    setStatus('live','2026 Live ADP · '+total+' players · Updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}));
     render();
   }catch(e){
     setStatus('error','Live ADP unavailable — using fallback');
@@ -654,6 +661,7 @@ function render(){
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
         var safeName=p.name.replace(/'/g,'&#39;');
+        var inCmp=cmpList.indexOf(p.key)!==-1;
         var tr=document.createElement('tr');
         tr.className='prow'+(dk?' drafted':'');
         tr.id='row-'+p.key;
@@ -668,7 +676,7 @@ function render(){
           '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
           '<td class="inj-td">'+injHtml+'</td>'+
           '<td><button class="act-btn draft-btn" onclick="tDraft(\''+p.key+'\',this,\'row\')">'+( dk?'✗ Drafted':'+ Draft')+'</button></td>'+
-          '<td><button class="act-btn" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')">Compare</button></td>';
+          '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
@@ -741,6 +749,7 @@ function renderAll(){
       var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
       var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
       var safeName=p.name.replace(/'/g,'&#39;');
+      var inCmp=cmpList.indexOf(p.key)!==-1;
       var tr=document.createElement('tr');
       tr.className='prow'+(dk?' drafted':'');
       tr.id='row-'+p.key;
@@ -755,7 +764,7 @@ function renderAll(){
         '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
         '<td class="inj-td">'+injHtml+'</td>'+
         '<td><button class="act-btn draft-btn" onclick="tDraft(\''+p.key+'\',this,\'row\')">'+( dk?'✗ Drafted':'+ Draft')+'</button></td>'+
-        '<td><button class="act-btn" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')">Compare</button></td>';
+        '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
       tbody.appendChild(tr);
     });
     tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
@@ -937,13 +946,30 @@ function addCmp(k,pos,name,adp,team){
 }
 function updCmpBar(){
   var bar=document.getElementById('cbar');var slots=document.getElementById('cslots');
+  var hint=document.getElementById('cmphint');var goBtn=document.getElementById('cmpgobtn');
   slots.innerHTML='';
-  cmpList.forEach(function(k){
+  cmpList.forEach(function(k,i){
     var d=cmpData[k]||{};var pill=document.createElement('div');pill.className='cmp-pill';
     pill.innerHTML='<span>'+(d.name||k)+'</span><button class="cmp-x" onclick="remCmp(\''+k+'\')">✕</button>';
     slots.appendChild(pill);
+    if(i===0&&cmpList.length===2){
+      var vs=document.createElement('span');vs.className='cmp-vs';vs.textContent='VS';
+      slots.appendChild(vs);
+    }
   });
+  if(hint)hint.style.display=cmpList.length===1?'inline':'none';
+  if(goBtn)goBtn.disabled=cmpList.length<2;
   bar.classList.toggle('on',cmpList.length>0);
+  syncCmpRowButtons();
+}
+// Reflects cmpList onto whichever Compare row-buttons are currently in
+// the DOM (list view only -- card view has no Compare button). Purely a
+// visual sync: reads cmpList, never mutates draft-state/persistence.
+function syncCmpRowButtons(){
+  document.querySelectorAll('.cmp-row-btn').forEach(function(btn){
+    var k=btn.dataset.key;var sel=cmpList.indexOf(k)!==-1;
+    btn.disabled=sel;btn.textContent=sel?'✓ Selected':'Compare';
+  });
 }
 function remCmp(k){cmpList=cmpList.filter(function(x){return x!==k});updCmpBar()}
 function clrCmp(){cmpList=[];updCmpBar()}
