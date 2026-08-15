@@ -138,6 +138,9 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .cdraft-btn{width:100%;margin-top:6px;padding:4px 8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:4px;color:var(--gold);font-family:'Lora',serif;font-size:10px;cursor:pointer;text-align:left;transition:all 0.15s}
 .cdraft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
 .pcard.drafted .cdraft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
+.cactions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cactions .cdraft-btn{width:auto;flex:1 1 auto;min-width:80px;margin-top:0}
+.cactions .cmp-row-btn{flex:1 1 auto;min-width:64px;font-size:10px;padding:4px 6px;white-space:normal;text-align:center}
 .cmp-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1108;border-top:2px solid var(--gold-lt);padding:14px 24px;min-height:76px;display:none;align-items:center;gap:14px;z-index:100;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,0.35)}
 .cmp-bar.on{display:flex}
 .cmp-heading{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2.5px;color:var(--gold-lt);text-transform:uppercase;white-space:nowrap}
@@ -688,14 +691,18 @@ function render(){
         var bye=BYE[p.team]||'—';
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
+        var safeName=p.name.replace(/'/g,"\\'");
+        var inCmp=cmpList.indexOf(p.key)!==-1;
         var card=document.createElement('div');
         card.className='pcard'+(dk?' drafted':'');card.id='card-'+p.key;
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
         card.innerHTML=
           '<div class="crank">#'+pr+'</div>'+
           '<div class="cname">'+p.name+'</div>'+
-          '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span></div>'+
-          injH+'<button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>';
+          '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
+          injH+
+          '<div class="cactions"><button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>'+
+          '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
         grid.appendChild(card);
       });
       sec.appendChild(grid);
@@ -779,14 +786,18 @@ function renderAll(){
       var bye=BYE[p.team]||'—';
       var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
       var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
+      var safeName=p.name.replace(/'/g,"\\'");
+      var inCmp=cmpList.indexOf(p.key)!==-1;
       var card=document.createElement('div');
       card.className='pcard'+(dk?' drafted':'');card.id='card-'+p.key;
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
       card.innerHTML=
         '<div class="crank">#'+pr+'</div>'+
         '<div class="cname">'+p.name+'</div>'+
-        '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span></div>'+
-        injH+'<button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>';
+        '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
+        injH+
+        '<div class="cactions"><button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>'+
+        '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
       grid.appendChild(card);
     });
     sec.appendChild(grid);
@@ -963,9 +974,9 @@ function updCmpBar(){
   bar.classList.toggle('on',cmpList.length>0);
   syncCmpRowButtons();
 }
-// Reflects cmpList onto whichever Compare row-buttons are currently in
-// the DOM (list view only -- card view has no Compare button). Purely a
-// visual sync: reads cmpList, never mutates draft-state/persistence.
+// Sync Compare button state across both List and Card views. Reflects
+// cmpList onto whichever .cmp-row-btn elements are currently in the DOM
+// -- purely a visual sync: reads cmpList, never mutates draft-state/persistence.
 function syncCmpRowButtons(){
   document.querySelectorAll('.cmp-row-btn').forEach(function(btn){
     var k=btn.dataset.key;var sel=cmpList.indexOf(k)!==-1;
