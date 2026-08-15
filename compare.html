@@ -223,6 +223,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 </div>
 
 <script src="/shared-player-data.js"></script>
+<script src="/player-comparison.js"></script>
 <script>
 var BYE={
   BUF:7,MIA:6,NE:11,NYJ:13,
@@ -331,7 +332,14 @@ function getExperience(p) {
   if (String(entry.exp).toUpperCase() === 'R') return { isRookie: true, label: 'Rookie' };
   var yrs = parseInt(entry.exp, 10);
   if (isNaN(yrs)) return null;
-  return { isRookie: false, label: 'Veteran · Yr ' + yrs };
+  // Purely factual year-count label (Aug 15 2026 fix) -- was previously
+  // "Veteran · Yr N" for ANY non-rookie, including a Year-2 or Year-3
+  // player, which reads as a qualitative claim ("seasoned veteran")
+  // this table row was never meant to make. This is presentation-only:
+  // getExperience()'s output is never passed to compareTwoPlayers()
+  // and never affects the recommendation -- confirmed, this table row
+  // is display-only in render(), same as before this fix.
+  return { isRookie: false, label: 'Entering Year ' + yrs };
 }
 
 function correctedTeam(p) {
@@ -371,13 +379,70 @@ function clearSlot(slotKey) {
   render();
 }
 
+// Builds the normalized player object player-comparison.js's engine
+// expects, from compare.html's own data (Aug 15 2026). positionRank is
+// derived from allPlayers -- already sorted by ADP ascending, so
+// filtering to one position preserves ADP order without a re-sort.
+// injury.known is explicitly false (not "healthy") whenever tank01Entry
+// has no record for this player at all -- matches the engine's
+// documented contract that unknown must never be treated as healthy.
+function buildComparisonPlayer(p) {
+  var entry = tank01Entry(p);
+  var posPool = allPlayers.filter(function (x) { return x.pos === p.pos; });
+  var rank = posPool.indexOf(p) + 1;
+  return {
+    name: p.name,
+    pos: p.pos,
+    adp: p.adp,
+    team: correctedTeam(p),
+    bye: BYE[correctedTeam(p)] || null,
+    positionRank: rank > 0 ? rank : undefined,
+    injury: entry ? { known: true, designation: entry.injuryDesignation || null } : { known: false, designation: null }
+  };
+}
+
+// Oracle presentation only (Aug 15 2026) -- this function no longer
+// decides a winner itself. compareTwoPlayers() (player-comparison.js)
+// is the single source of truth for that; this function only explains
+// its result. "In 38 seasons..." framing preserved, varied by the
+// engine's confidence level instead of being one fixed sentence.
 function oracleVerdictText(a, b) {
-  var winner = a.adp < b.adp ? a : b;
-  var loser = winner === a ? b : a;
-  var gap = Math.abs(a.adp - b.adp).toFixed(1);
-  var winnerExpData = getExperience(winner);
-  var expClause = winnerExpData ? (winnerExpData.isRookie ? 'a rookie yet unproven' : 'a seasoned veteran') : 'well-scouted';
-  return 'In 38 seasons the spirits favor ' + winner.name + '. The ADP gap of ' + gap + ' picks reflects market wisdom — ' + winner.name + ' is ' + expClause + ', while ' + loser.name + ' on ' + correctedTeam(loser) + ' still warrants monitoring before draft day.';
+  var cmpA = buildComparisonPlayer(a);
+  var cmpB = buildComparisonPlayer(b);
+  var result = compareTwoPlayers(cmpA, cmpB, { scoring: 'ppr' });
+
+  if (result.isTie) {
+    return 'In 38 seasons the spirits find ' + a.name + ' and ' + b.name + ' impossible to separate — call it a coin flip.';
+  }
+
+  var winnerIsA = result.winner === cmpA;
+  var winnerName = winnerIsA ? a.name : b.name;
+  var loserName = winnerIsA ? b.name : a.name;
+  var loserCmp = winnerIsA ? cmpB : cmpA;
+  var winnerCmp = winnerIsA ? cmpA : cmpB;
+
+  var adpReason = result.reasons.filter(function (r) { return r.factor === 'adp'; })[0];
+  var gap = adpReason ? adpReason.detail.gap.toFixed(1) : Math.abs(a.adp - b.adp).toFixed(1);
+
+  var opening;
+  if (result.confidence === 'close') {
+    opening = 'In 38 seasons the spirits give the slightest edge to ' + winnerName + ' over ' + loserName + ' — with the numbers this tight, it is close enough to lean either way on draft day.';
+  } else if (result.confidence === 'moderate') {
+    opening = 'In 38 seasons the spirits favor ' + winnerName + ' over ' + loserName + ' — a real gap, not a landslide.';
+  } else {
+    opening = 'In 38 seasons the spirits strongly favor ' + winnerName + '. The ADP gap of ' + gap + ' picks reflects real market separation.';
+  }
+
+  var clause = '';
+  if (loserCmp.injury.known && loserCmp.injury.designation) {
+    clause = ' ' + loserName + ' carries a ' + loserCmp.injury.designation + ' tag worth watching before draft day.';
+  } else if (winnerCmp.injury.known && winnerCmp.injury.designation) {
+    clause = ' Worth noting: ' + winnerName + ' carries a ' + winnerCmp.injury.designation + ' tag despite the market edge.';
+  } else if (winnerCmp.injury.known && !winnerCmp.injury.designation) {
+    clause = ' No injury concerns are clouding the pick.';
+  }
+
+  return opening + clause;
 }
 
 function render() {
