@@ -138,13 +138,14 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .cdraft-btn{width:100%;margin-top:6px;padding:4px 8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:4px;color:var(--gold);font-family:'Lora',serif;font-size:10px;cursor:pointer;text-align:left;transition:all 0.15s}
 .cdraft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
 .pcard.drafted .cdraft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
-.cmp-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1108;border-top:2px solid var(--gold-lt);padding:10px 24px;display:none;align-items:center;gap:10px;z-index:100;flex-wrap:wrap}
+.cmp-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1108;border-top:2px solid var(--gold-lt);padding:14px 24px;min-height:76px;display:none;align-items:center;gap:14px;z-index:100;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,0.35)}
 .cmp-bar.on{display:flex}
-.cmp-pill{background:#2a1e0e;border:1px solid #4a3a22;border-radius:var(--r);padding:5px 10px;font-size:12px;color:#f0e6cc;display:flex;align-items:center;gap:6px}
-.cmp-x{background:transparent;border:none;color:#ff5252;cursor:pointer;font-size:13px;line-height:1}
-.cmp-vs{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--gold-lt);align-self:center}
-.cmp-hint{font-family:'Lora',serif;font-size:12px;color:#a08550;font-style:italic}
-.cmp-go{background:var(--gold-lt);border:none;color:#000;font-family:'Lora',serif;font-size:13px;font-weight:600;padding:7px 18px;border-radius:var(--r);cursor:pointer;margin-left:auto}
+.cmp-heading{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2.5px;color:var(--gold-lt);text-transform:uppercase;white-space:nowrap}
+.cmp-pill{background:#2a1e0e;border:1px solid var(--gold-lt);border-radius:var(--r);padding:10px 16px;font-size:16px;font-weight:600;color:#f0e6cc;display:flex;align-items:center;gap:10px}
+.cmp-x{background:transparent;border:none;color:#ff5252;cursor:pointer;font-size:17px;line-height:1;padding:0}
+.cmp-vs{font-family:'Cinzel',serif;font-size:22px;font-weight:600;letter-spacing:2px;color:var(--gold-lt);align-self:center;margin:0 6px}
+.cmp-hint{font-family:'Lora',serif;font-size:14px;color:#c9a84c;font-style:italic}
+.cmp-go{background:var(--gold-lt);border:none;color:#000;font-family:'Lora',serif;font-size:16px;font-weight:700;padding:14px 30px;border-radius:var(--r);cursor:pointer;margin-left:auto}
 .cmp-go:disabled{background:#4a3a22;color:#7a6a3a;cursor:not-allowed}
 .cmp-clr{background:transparent;border:1px solid #4a3a22;color:#a08550;font-family:'Lora',serif;font-size:12px;padding:7px 12px;border-radius:var(--r);cursor:pointer}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
@@ -400,8 +401,8 @@ function checkOAuthSession() {
 </div>
 
 <div class="cmp-bar no-print" id="cbar">
-  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--gold-lt);text-transform:uppercase">Compare Players</span>
-  <div id="cslots" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+  <span class="cmp-heading">🔮 Compare Players</span>
+  <div id="cslots" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"></div>
   <span id="cmphint" class="cmp-hint" style="display:none">Select one more player to compare</span>
   <button class="cmp-go" id="cmpgobtn" onclick="showCmp()" disabled>Compare Players →</button>
   <button class="cmp-clr" onclick="clrCmp()">Clear</button>
