@@ -309,9 +309,24 @@ function hideDropdown(slotKey) {
   }, 150);
 }
 
-function getExperience(p) {
+// Single normalization point for Tank01's live team/injury/experience
+// overlay (Aug 15 2026 fix) -- looks up ONE compound key, matching
+// fetchTank01PlayerMap()'s own key format in shared-player-data.js
+// (normalizePlayerName(longName) + '|' + normalizedPosition) exactly.
+// Previously correctedTeam()/getInjury()/getExperience() each did their
+// own tank01Map[normalizePlayerName(p.name)] lookup -- missing the
+// '|'+position suffix the map is actually keyed with, so the lookup
+// always missed and every player silently fell through to the
+// pre-correction default (team='FA', injury=null, experience=null).
+// Routing all three through one correctly-keyed helper both fixes the
+// bug and guarantees they can't drift out of sync with each other again.
+function tank01Entry(p) {
   if (!tank01Map) return null;
-  var entry = tank01Map[normalizePlayerName(p.name)];
+  return tank01Map[normalizePlayerName(p.name) + '|' + p.pos] || null;
+}
+
+function getExperience(p) {
+  var entry = tank01Entry(p);
   if (!entry || entry.exp === undefined || entry.exp === null || entry.exp === '') return null;
   if (String(entry.exp).toUpperCase() === 'R') return { isRookie: true, label: 'Rookie' };
   var yrs = parseInt(entry.exp, 10);
@@ -320,14 +335,12 @@ function getExperience(p) {
 }
 
 function correctedTeam(p) {
-  if (!tank01Map) return p.team;
-  var live = tank01Map[normalizePlayerName(p.name)];
-  return (live && live.team) ? live.team : p.team;
+  var entry = tank01Entry(p);
+  return (entry && entry.team) ? entry.team : p.team;
 }
 
 function getInjury(p) {
-  if (!tank01Map) return null;
-  var entry = tank01Map[normalizePlayerName(p.name)];
+  var entry = tank01Entry(p);
   if (!entry || !entry.injuryDesignation || entry.injuryDesignation === 'Active') return null;
   var map = {
     Out:{cls:'Out',icon:'🔴',label:'OUT'}, IR:{cls:'IR',icon:'🚨',label:'IR'},
