@@ -56,6 +56,10 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .view-tog{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .view-btn{padding:5px 12px;background:var(--bg2);border:none;color:var(--text3);font-size:clamp(12px, 2.2vw, 14px);cursor:pointer;transition:all 0.15s}
 .view-btn.active{background:var(--gold);color:#fff}
+.setup-summary-btn{background:var(--surface);border:1px solid rgba(184,146,26,0.5);color:var(--gold);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);font-weight:600;padding:5px 12px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.setup-summary-btn:hover{background:rgba(184,146,26,0.08);border-color:var(--gold)}
+.setup-summary-extra{font-weight:400;color:var(--text3)}
+@media(max-width:820px){.setup-summary-extra{display:none}}
 .search-box{position:relative;margin-left:auto}
 .search-box input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);padding:5px 12px 5px 30px;border-radius:var(--r);width:200px}
 .search-box input:focus{outline:none;border-color:var(--gold)}
@@ -372,7 +376,6 @@ function checkOAuthSession() {
     <a href="/dispatches" class="hdr-btn">📜 Dispatches</a>
     <a href="/sanctum" class="hdr-btn">← Sanctum</a>
     <div class="draft-ctrl-group">
-      <button class="hdr-btn" onclick="openSetupModal()">⚙ Draft Setup</button>
       <button class="hdr-btn" onclick="undoLastPick()">⏪ Undo Last Pick</button>
       <button class="hdr-btn" onclick="printList()">🖨 Print</button>
       <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">↺ Reset Draft</button>
@@ -418,6 +421,7 @@ function checkOAuthSession() {
     <button class="view-btn active" id="showDraftedBtn" onclick="setHideDrafted(false)">Show Drafted</button>
     <button class="view-btn" id="hideDraftedBtn" onclick="setHideDrafted(true)">Hide Drafted</button>
   </div>
+  <button class="setup-summary-btn" id="draftSetupBtn" onclick="openSetupModal()">⚙ Draft Setup<span class="setup-summary-extra" id="draftSetupSummaryExtra"></span></button>
   <div class="search-box">
     <span class="search-icon">🔍</span>
     <input type="text" id="srch" placeholder="Search player or team..." oninput="doSearch(this.value)">
@@ -1104,6 +1108,24 @@ function renderMySlotIndicator(){
   el.textContent=isDefaultName?('MY SLOT: '+slot):('MY TEAM: '+team.name+' · SLOT '+slot);
 }
 
+// ─── Draft Setup button label: "⚙ Draft Setup · Snake · Slot 3" once
+// setup is complete, or just "⚙ Draft Setup" before then. Purely
+// presentational — reads draftState.draftType/teams/myTeamId, writes
+// nothing, and the button's click handler is unchanged (still
+// openSetupModal(), the exact same existing modal). The " · Type · Slot N"
+// portion is wrapped in its own span so it can collapse away at narrow
+// widths via CSS (see .setup-summary-extra) without any JS involved. ───
+var DRAFT_TYPE_LABELS={snake:'Snake',linear:'Linear',manual:'Manual'};
+function renderSetupSummaryButton(){
+  var extra=document.getElementById('draftSetupSummaryExtra');
+  if(!extra)return;
+  if(!draftState.teams.length||!draftState.myTeamId){ extra.textContent=''; return; }
+  var slot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!slot){ extra.textContent=''; return; }
+  var typeLabel=DRAFT_TYPE_LABELS[draftState.draftType]||'Snake';
+  extra.textContent=' · '+typeLabel+' · Slot '+slot;
+}
+
 // ─── My Roster (v1 scope: user's own team only — the same draftLog
 // already carries every team's picks, so an all-teams grid later is a
 // straightforward iteration over `teams`, not a data-model change).
@@ -1302,6 +1324,7 @@ function render(){
   updateDBar();
   renderClockStatus();
   renderMySlotIndicator();
+  renderSetupSummaryButton();
   renderMyRoster();
 
   if(curSearch){renderSearch();return;}
