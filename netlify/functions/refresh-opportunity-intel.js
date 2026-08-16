@@ -195,6 +195,12 @@ function buildOpportunityIntelligence(validGames, position) {
       computedAt: new Date().toISOString(),
       sourcePositions: [position],
     },
+    // Historical horizon extension point (Aug 15 2026, Phase 3 audit).
+    // Not populated yet -- only this season's data has ever been
+    // fetched (confirmed: no 2024/2023 pull has been run). Shaped now
+    // so a future multi-season backfill can slot in without breaking
+    // any consumer reading `historical.currentSeason` once it exists;
+    // an empty object today, not a fabricated placeholder value.
     historical: {},
     rushing: rushingMetrics,
     receiving: receivingMetrics,
@@ -205,11 +211,22 @@ function buildOpportunityIntelligence(validGames, position) {
 }
 
 // Generic windowed-metric builder: same lastGame/avgLast3/avgLast5/
-// trend/gamesSampled shape and same null-threshold rules, applied to
-// whichever per-game value `valueFn` extracts (opportunities, carries,
-// or targets). Extracted as one shared function specifically so the
-// three metric series can never silently diverge in their averaging/
-// trend logic.
+// seasonAvg/trend/gamesSampled shape and same null-threshold rules,
+// applied to whichever per-game value `valueFn` extracts
+// (opportunities, carries, or targets). Extracted as one shared
+// function specifically so the three metric series can never silently
+// diverge in their averaging/trend/season-baseline logic.
+//
+// seasonAvg (Aug 15 2026 addition): the average across EVERY valid
+// game in the fetched window -- not gated behind a minimum count the
+// way avgLast3/avgLast5 are, since "every valid game in the fetched
+// season/window" (as specified) has no implied minimum sample size of
+// its own. Non-null as soon as n>=1, same threshold as lastGame. This
+// is a deliberate interpretation, flagged in the report -- a stricter
+// minimum-games requirement for seasonAvg specifically would be a
+// reasonable alternative if a genuinely tiny sample (e.g. a single
+// Week 1 game) turns out to produce a misleading "season average" in
+// practice once real distribution data is reviewed.
 function windowedMetrics(sortedGames, valueFn) {
   const n = sortedGames.length;
   const values = sortedGames.map((g) => ({ week: g.week, value: valueFn(g) }));
@@ -217,6 +234,7 @@ function windowedMetrics(sortedGames, valueFn) {
   const lastGame = n >= 1 ? values[n - 1].value : null;
   const avgLast3 = n >= 3 ? averageValues(values.slice(-3)) : null;
   const avgLast5 = n >= 5 ? averageValues(values.slice(-5)) : null;
+  const seasonAvg = n >= 1 ? averageValues(values) : null;
 
   let trend = null;
   if (n >= 6) {
@@ -229,6 +247,7 @@ function windowedMetrics(sortedGames, valueFn) {
     lastGame,
     avgLast3: avgLast3 === null ? null : round2(avgLast3),
     avgLast5: avgLast5 === null ? null : round2(avgLast5),
+    seasonAvg: seasonAvg === null ? null : round2(seasonAvg),
     trend,
     gamesSampled: n,
   };
@@ -334,6 +353,53 @@ function buildSignals(sortedGames, opportunitiesMetrics, rushingMetrics, receivi
       type: "volumeTier",
       value,
       detail: { basisValue: volumeBasis, position, highVolumeThreshold: tiers.highVolume, moderateVolumeThreshold: tiers.moderateVolume },
+    });
+  }
+
+  // ── recentRoleVsBaseline (Aug 15 2026, Phase 3): answers a DIFFERENT
+  // question than trendClassification above. trend = "is workload
+  // changing recently" (last-3-vs-previous-3, a short local window).
+  // recentRoleVsBaseline = "is the player's recent role materially
+  // different from what they sustained across the whole season" --
+  // compares a recent window against seasonAvg, not against another
+  // recent window. Both are preserved as separate signals; neither
+  // replaces the other.
+  //
+  // DELIBERATELY UNCLASSIFIED: per explicit instruction, no
+  // expanding/stable/contracting threshold is applied here yet.
+  // Classifying "material difference" requires knowing what a normal
+  // recent-vs-season spread actually looks like across real players --
+  // that requires the real 2025 full-season distribution, which has
+  // not been fetched as of this code (still only weeks 1-3 in
+  // production). Rather than invent a threshold, this signal exposes
+  // the RAW, TRANSPARENT relationship (recent value, baseline value,
+  // absolute and percent delta) with value:"unclassified" -- once the
+  // full-season pull runs and the real distribution is reviewed, a
+  // classification threshold can be added as a small, isolated change
+  // to this one block, without touching the underlying computation.
+  const recentBasis = opportunitiesMetrics.avgLast5 !== null
+    ? { value: opportunitiesMetrics.avgLast5, window: "avgLast5" }
+    : opportunitiesMetrics.avgLast3 !== null
+      ? { value: opportunitiesMetrics.avgLast3, window: "avgLast3" }
+      : opportunitiesMetrics.lastGame !== null
+        ? { value: opportunitiesMetrics.lastGame, window: "lastGame" }
+        : null;
+  const baseline = opportunitiesMetrics.seasonAvg;
+
+  if (recentBasis !== null && baseline !== null) {
+    const absoluteDelta = round2(recentBasis.value - baseline);
+    const percentDelta = baseline !== 0 ? round2((absoluteDelta / baseline) * 100) : null;
+    signals.push({
+      type: "recentRoleVsBaseline",
+      value: "unclassified", // see comment above -- not expanding/stable/contracting yet, pending real distribution review
+      detail: {
+        recentValue: recentBasis.value,
+        recentWindow: recentBasis.window,
+        baselineValue: baseline,
+        baselineWindow: "seasonAvg",
+        absoluteDelta,
+        percentDelta,
+      },
     });
   }
 
