@@ -436,7 +436,8 @@ function checkOAuthSession() {
 </div>
 
 <div class="clock-bar no-print" id="clockBar"></div>
-<div class="no-print" style="text-align:right;padding:3px 24px;background:var(--surface);border-bottom:1px solid var(--border)">
+<div class="no-print" style="display:flex;justify-content:space-between;align-items:center;padding:3px 24px;background:var(--surface);border-bottom:1px solid var(--border)">
+  <span id="mySlotIndicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3)"></span>
   <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
 </div>
 
@@ -487,10 +488,11 @@ function checkOAuthSession() {
       </select>
     </div>
     <div class="setup-grid" id="setupTeamNamesGrid"></div>
-    <div class="setup-field" style="margin-bottom:14px;max-width:320px">
-      <label>Which team is yours?</label>
+    <div class="setup-field" style="margin-bottom:6px;max-width:320px">
+      <label>My Draft Position</label>
       <select id="setupMyTeam"></select>
     </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Select your draft slot. This determines when you're on the clock in the snake draft.</p>
     <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
     <div class="btn-row" style="display:flex;gap:10px">
       <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
@@ -856,16 +858,9 @@ function renderSetupTeamNames(){
   for(var j=1;j<=n;j++){
     var o=document.createElement('option');
     o.value='slot-'+j;
-    o.textContent='Team '+j;
+    o.textContent=ordinalLabel(j)+' Pick';
     mySel.appendChild(o);
   }
-  var inputs=grid.querySelectorAll('input');
-  inputs.forEach(function(inp,i){
-    mySel.options[i].textContent=inp.value||('Team '+(i+1));
-    inp.addEventListener('input',function(){
-      mySel.options[i].textContent=inp.value||('Team '+(i+1));
-    });
-  });
   if(draftState.myTeamId){
     var curIdx=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;});
     if(curIdx!==-1 && curIdx<n) mySel.value='slot-'+(curIdx+1);
@@ -967,6 +962,22 @@ function renderClockStatus(){
   el.innerHTML='<div class="clock-line1">'+line1+'</div>'+line2;
 }
 
+// ─── Persistent "MY SLOT" / "MY TEAM · SLOT" identifier. Informational
+// only — does not affect turn logic, auto-assignment, or any engine
+// function; purely reflects the already-stored myTeamId/teams. Shows the
+// team name alongside the slot only once the name has been customized
+// away from the "Team N" default, per the approved copy examples. ───
+function renderMySlotIndicator(){
+  var el=document.getElementById('mySlotIndicator');
+  if(!el)return;
+  if(!draftState.myTeamId||!draftState.teams.length){ el.textContent=''; return; }
+  var slot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!slot){ el.textContent=''; return; }
+  var team=draftState.teams[slot-1];
+  var isDefaultName=team && team.name===('Team '+slot);
+  el.textContent=isDefaultName?('MY SLOT: '+slot):('MY TEAM: '+team.name+' · SLOT '+slot);
+}
+
 // ─── My Roster (v1 scope: user's own team only — the same draftLog
 // already carries every team's picks, so an all-teams grid later is a
 // straightforward iteration over `teams`, not a data-model change).
@@ -1029,6 +1040,13 @@ function getInj(name){
   return{cls:r.c,icon:r.i,label:r.l,part:d.part};
 }
 function escAttr(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+// "1st", "2nd", "3rd", "4th"... — used only for the Draft Setup slot picker
+// ("1st Pick", "2nd Pick", ...). Handles the 11th/12th/13th exceptions.
+function ordinalLabel(n){
+  var rem100=n%100;
+  if(rem100>=11&&rem100<=13)return n+'th';
+  switch(n%10){case 1:return n+'st';case 2:return n+'nd';case 3:return n+'rd';default:return n+'th';}
+}
 function setStatus(s,t){document.getElementById('sdot').className='dot '+s;document.getElementById('stxt').textContent=t}
 function showFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.add('on')}
 function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.remove('on')}
@@ -1157,6 +1175,7 @@ function render(){
   // once per render pass regardless of which branch below runs.
   updateDBar();
   renderClockStatus();
+  renderMySlotIndicator();
   renderMyRoster();
 
   if(curSearch){renderSearch();return;}
