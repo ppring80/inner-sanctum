@@ -104,6 +104,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .prow{border-bottom:1px solid var(--border);transition:background 0.1s}
 .prow:hover{background:#f8f6f0}
 .prow.drafted{opacity:0.3;text-decoration:line-through}
+.prow.mypick{background:#fffbe0;box-shadow:inset 0 0 0 2px var(--gold-lt)}
 .prow td{padding:7px 10px;vertical-align:middle}
 .r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
 .r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
@@ -132,6 +133,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
 .pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
 .pcard.drafted{opacity:0.3}
+.pcard.mypick{opacity:1;border:2px solid var(--gold-lt);background:#fffbe0}
 .crank{position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);font-weight:600}
 .cname{font-size:13px;font-weight:600;color:var(--text);padding-right:26px;line-height:1.3;margin-bottom:4px}
 .cmeta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
@@ -173,7 +175,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .attr{text-align:center;font-size:10px;color:var(--text3);padding:14px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border)}
 .attr a{color:var(--gold);text-decoration:none}
 @media print{
-  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print,.oracle-box,.trash-box{display:none!important}
+  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print,.oracle-box,.trash-box,.own-badge{display:none!important}
   body{background:#fff;font-size:12px;line-height:1.35}
   .hdr{background:#fff!important;border-bottom:2px solid #000;padding:8px 0}
   .hdr-brand,.hdr-title{color:#000!important;text-shadow:none}
@@ -207,6 +209,22 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:var(--gold-lt)}
 @media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
 
+/* ── DRAFT COMMAND CENTER — team-aware tracking (added Aug 2026) ── */
+.own-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);cursor:pointer;margin-left:6px;white-space:nowrap}
+.own-badge:hover{border-color:var(--gold);color:var(--gold)}
+.own-badge.mine{background:rgba(201,168,76,0.18);border-color:var(--gold-lt);color:#8a6a10;font-weight:600}
+.clock-bar{background:#1a1108;border-bottom:1px solid rgba(201,168,76,0.3);padding:8px 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#e8d9a8;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock-bar a{color:var(--gold-lt)}
+.clock-bar .onclock{background:var(--gold-lt);color:#1a1108;padding:4px 12px;border-radius:20px;font-weight:700;letter-spacing:0.5px;animation:pulse 1.6s infinite}
+.clock-bar .away{color:#c9a84c}
+.legacy-banner{display:none;background:#2a2010;border-bottom:1px solid rgba(201,168,76,0.35);padding:10px 24px;align-items:center;gap:10px;font-size:12px;color:#e8d9a8}
+.legacy-banner.on{display:flex}
+.legacy-banner button{margin-left:auto;background:transparent;border:1px solid rgba(201,168,76,0.4);color:#e8d9a8;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:'Lora',serif}
+.roster-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px}
+.roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.setup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
+.setup-field input,.setup-field select{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:'Lora',serif;font-size:13px}
 </style>
 <!-- Meta Pixel Code -->
 <script>
@@ -336,6 +354,8 @@ function checkOAuthSession() {
 
     <a href="/dispatches" class="hdr-btn">📜 Dispatches</a>
     <a href="/sanctum" class="hdr-btn">← Sanctum</a>
+    <button class="hdr-btn" onclick="openSetupModal()">⚙ Draft Setup</button>
+    <button class="hdr-btn" onclick="undoLastPick()">⏪ Undo Last Pick</button>
     <button class="hdr-btn" onclick="printList()">🖨 Print</button>
     <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">Clear Drafted</button>
     <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
@@ -391,6 +411,15 @@ function checkOAuthSession() {
   <span class="fallback-banner-text"><b>USING FALLBACK DATA</b> — live ADP could not be reached. Rankings below are the static backup list, not real-time.</span>
 </div>
 
+<div class="legacy-banner no-print" id="legacyBanner">
+  <span>⚠️ A previous drafted-only list was found in this browser. It never recorded which team drafted whom or in what order, so it can't be truthfully carried into the new team-aware tracker — starting fresh below. Your old data hasn't been touched or deleted.</span>
+  <button onclick="dismissLegacyBanner()">Got it</button>
+</div>
+
+<div class="clock-bar no-print" id="clockBar"></div>
+
+<div class="roster-panel no-print" id="rosterPanel"></div>
+
 <div class="drafted-bar no-print" id="dbar">
   <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase">Drafted: —</span>
 </div>
@@ -417,6 +446,52 @@ function checkOAuthSession() {
     <div class="modal-ttl">🔮 Player Comparison</div>
     <div class="cmp-cols" id="cmpcols"></div>
     <div class="verdict"><div class="verdict-lbl">🔮 Oracle Verdict</div><div class="verdict-txt" id="vtxt">...</div></div>
+  </div>
+</div>
+
+<!-- ═══ DRAFT SETUP MODAL (added) ═══ -->
+<div class="modal-bg" id="setupModalBg">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-x" onclick="closeSetupModal()">✕</button>
+    <div class="modal-ttl">⚙ Draft Setup</div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Number of Teams</label>
+      <select id="setupNumTeams" onchange="renderSetupTeamNames()">
+        <option value="8">8</option>
+        <option value="10">10</option>
+        <option value="12" selected>12</option>
+        <option value="14">14</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+    <div class="setup-grid" id="setupTeamNamesGrid"></div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:320px">
+      <label>Which team is yours?</label>
+      <select id="setupMyTeam"></select>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
+    <div class="btn-row" style="display:flex;gap:10px">
+      <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="saveSetup()">Save Setup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REASSIGN PICK MODAL (added) ═══ -->
+<div class="modal-bg" id="reassignModalBg">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-x" onclick="closeReassignModal()">✕</button>
+    <div class="modal-ttl">Reassign Pick</div>
+    <div id="reassignPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <div class="setup-field" style="margin-bottom:16px">
+      <label>Drafted by</label>
+      <select id="reassignTeamSel"></select>
+    </div>
+    <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
+      <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+    </div>
   </div>
 </div>
 
@@ -475,9 +550,361 @@ var PCOL={QB:'#1a5280',RB:'#2a6e2a',WR:'#8a7010',TE:'#a06010',K:'#6a6a6a',DEF:'#
 // ═══════════════════════════════════════
 var adpByPos={};
 var injuries={};
-var drafted=JSON.parse(localStorage.getItem('isd')||'{}');
 var cmpList=[];var cmpData={};
 var curPos='ALL';var curView='list';var curSearch='';var ready=false;
+
+// ═══════════════════════════════════════════════════════════
+// DRAFT COMMAND CENTER — team-aware draftLog (Aug 2026)
+//
+// Replaces the old flat `drafted{}` boolean (persisted at localStorage
+// key 'isd') with a versioned, team-aware pick log modeled on
+// auction.html's proven draftLog architecture (ownership derived from
+// an array of pick records, roster views are filtered views over that
+// same array, nothing duplicated). Ownership/economics-specific fields
+// (price, projected, budget) are deliberately NOT carried over — this
+// is a snake-draft board, not an auction tracker.
+//
+// Key design points (see /areas/draft-command-center.md for the full
+// approved decision history):
+//  - Each entry stores its own pickNumber, written once and never
+//    rewritten — snake ownership for a NEW pick is derived from
+//    current state, but an already-logged pick's owner is always read
+//    from its stored teamId, never recomputed from pickNumber later.
+//    This is what keeps a historical correction from ever silently
+//    drifting other entries.
+//  - Teams are stable IDs ({id,name}), not name strings, so renaming a
+//    team never changes who owns a historical pick.
+//  - The legacy 'isd' key is left completely untouched. It cannot be
+//    upgraded (it never recorded team or order), so no migration is
+//    attempted — a one-time non-blocking notice explains this instead.
+// ═══════════════════════════════════════════════════════════
+var DRAFT_SAVE_KEY='sanctum_draft_command_v1';
+var DRAFT_SAVE_SCHEMA_VERSION=1;
+var LEGACY_ISD_KEY='isd';
+
+var draftState={
+  schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,
+  teams:[],
+  myTeamId:null,
+  draftLog:[],
+  nextPickId:1
+};
+var currentReassignId=null;
+
+// Stable name+position identity — fixes the same shape of collision risk
+// already found and fixed twice elsewhere in this codebase (Jefferson/
+// Cleveland in shared-player-data.js, then again in buildInjuriesFromTank01
+// here). Two same-named players in different positions now get fully
+// independent board rows and draftLog identities.
+function playerKey(name,pos){ return key(name)+'|'+pos; }
+
+// ─── Persistence (validated, fail-safe — modeled on auction.html's
+// readSavedAuctionState) ───
+function saveDraftState(){
+  try{
+    localStorage.setItem(DRAFT_SAVE_KEY, JSON.stringify(draftState));
+  }catch(e){
+    // localStorage can throw (private browsing, quota, disabled).
+    // Persistence is a convenience, not a requirement — fail silently.
+  }
+}
+
+function readSavedDraftState(){
+  try{
+    var raw=localStorage.getItem(DRAFT_SAVE_KEY);
+    if(!raw)return null;
+    var parsed=JSON.parse(raw);
+    if(!parsed||parsed.schemaVersion!==DRAFT_SAVE_SCHEMA_VERSION)return null;
+    if(!Array.isArray(parsed.teams)||!Array.isArray(parsed.draftLog))return null;
+    return parsed;
+  }catch(e){
+    return null;
+  }
+}
+
+function initDraftState(){
+  var saved=readSavedDraftState();
+  if(saved){
+    draftState=saved;
+    return;
+  }
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1};
+  // No valid new-schema data on this browser. Check for legacy 'isd' data
+  // ONLY to decide whether to show the one-time notice — it is never read
+  // into draftState and never modified or deleted.
+  var legacyRaw=null;
+  try{ legacyRaw=localStorage.getItem(LEGACY_ISD_KEY); }catch(e){}
+  if(legacyRaw){
+    try{
+      var legacyObj=JSON.parse(legacyRaw);
+      var hasAny=legacyObj && Object.keys(legacyObj).some(function(k){return legacyObj[k];});
+      if(hasAny) showLegacyBanner();
+    }catch(e){
+      // Malformed legacy data — nothing to notify about, nothing to touch.
+    }
+  }
+}
+
+function showLegacyBanner(){
+  var b=document.getElementById('legacyBanner');
+  if(b)b.classList.add('on');
+}
+function dismissLegacyBanner(){
+  var b=document.getElementById('legacyBanner');
+  if(b)b.classList.remove('on');
+}
+
+// ─── Snake math — pure functions, no DOM access. Covered by
+// draft-command-center.test.js. ───
+function computeSlotForPick(pickNumber,numTeams){
+  if(!numTeams)return null;
+  var round=Math.ceil(pickNumber/numTeams);
+  var posInRound=((pickNumber-1)%numTeams)+1;
+  return (round%2===1)?posInRound:(numTeams-posInRound+1);
+}
+
+// Deliberately the MAX stored pickNumber + 1, not draftLog.length + 1 —
+// a Correct Historical Pick removal can leave a gap in the array without
+// renumbering anything after it, and the next live pick must still land
+// on the true next number, not silently reuse the gap.
+function nextPickNumber(){
+  if(!draftState.draftLog.length)return 1;
+  var max=0;
+  draftState.draftLog.forEach(function(e){ if(e.pickNumber>max)max=e.pickNumber; });
+  return max+1;
+}
+function teamIdAtSlot(slot){
+  var t=draftState.teams[slot-1];
+  return t?t.id:null;
+}
+function teamOnClock(pickNumber){
+  var slot=computeSlotForPick(pickNumber,draftState.teams.length);
+  return slot?teamIdAtSlot(slot):null;
+}
+// How many picks from `fromPickNumber` until the user's slot comes up
+// again (0 = on the clock right now). Null if setup/my-team isn't set.
+function distanceToMySlot(fromPickNumber){
+  if(!draftState.myTeamId||!draftState.teams.length)return null;
+  var mySlot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!mySlot)return null;
+  var numTeams=draftState.teams.length;
+  for(var offset=0;offset<numTeams*2;offset++){
+    if(computeSlotForPick(fromPickNumber+offset,numTeams)===mySlot)return offset;
+  }
+  return null;
+}
+
+// ─── draftLog lookup index — rebuilt once per render pass, so every
+// board row does an O(1) lookup instead of a scan. ───
+function buildDraftIndex(){
+  var idx={};
+  draftState.draftLog.forEach(function(e){
+    idx[playerKey(e.player,e.pos)]=e;
+  });
+  return idx;
+}
+function teamNameById(id){
+  var t=draftState.teams.find(function(x){return x.id===id;});
+  return t?t.name:'Unknown Team';
+}
+function draftSetupComplete(){ return draftState.teams.length>0; }
+
+// ─── Logging / undo / correction ───
+// One click does double duty, matching draft.html's existing toggle-to-undo
+// idiom: click an AVAILABLE player to log it against whoever is on the
+// clock (or the user, if the snake has reached their slot); click an
+// already-drafted player again to remove that specific pick. A separate
+// "Undo Last Pick" control (not tied to any one row) removes strictly the
+// most recent pick by pickNumber, for the common case of a quick misclick
+// correction without hunting for the row.
+function logDraftPick(name,pos){
+  if(!draftSetupComplete()){
+    openSetupModal();
+    return;
+  }
+  var idx=buildDraftIndex();
+  var k=playerKey(name,pos);
+  var existing=idx[k];
+  if(existing){
+    removePickById(existing.id);
+    return;
+  }
+  var pickNumber=nextPickNumber();
+  var teamId=teamOnClock(pickNumber);
+  draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:name,pos:pos,teamId:teamId});
+  saveDraftState();
+  afterDraftMutation();
+}
+
+function removePickById(id){
+  draftState.draftLog=draftState.draftLog.filter(function(e){return e.id!==id;});
+  saveDraftState();
+  afterDraftMutation();
+}
+
+function undoLastPick(){
+  if(!draftState.draftLog.length){ alert('No picks logged yet.'); return; }
+  var maxEntry=draftState.draftLog.reduce(function(a,b){return b.pickNumber>a.pickNumber?b:a;});
+  if(!confirm('Undo the most recent pick — '+maxEntry.player+' ('+maxEntry.pos+'), pick #'+maxEntry.pickNumber+'?'))return;
+  removePickById(maxEntry.id);
+}
+
+function afterDraftMutation(){
+  render();
+}
+
+// ─── Reassignment modal (Correct Historical Pick: reassign or remove) ───
+function openReassignModal(id){
+  var entry=draftState.draftLog.find(function(e){return e.id===id;});
+  if(!entry)return;
+  currentReassignId=id;
+  document.getElementById('reassignPlayerLabel').textContent=entry.player+' ('+entry.pos+') — Pick #'+entry.pickNumber;
+  var sel=document.getElementById('reassignTeamSel');
+  sel.innerHTML='';
+  draftState.teams.forEach(function(t){
+    var o=document.createElement('option');
+    o.value=t.id;o.textContent=t.name+(t.id===draftState.myTeamId?' (Me)':'');
+    if(t.id===entry.teamId)o.selected=true;
+    sel.appendChild(o);
+  });
+  document.getElementById('reassignModalBg').classList.add('on');
+}
+function closeReassignModal(){
+  document.getElementById('reassignModalBg').classList.remove('on');
+  currentReassignId=null;
+}
+function applyReassign(){
+  if(currentReassignId==null)return;
+  var newTeamId=document.getElementById('reassignTeamSel').value;
+  var entry=draftState.draftLog.find(function(e){return e.id===currentReassignId;});
+  if(entry){ entry.teamId=newTeamId; saveDraftState(); }
+  closeReassignModal();
+  render();
+}
+function removeCurrentReassignPick(){
+  if(currentReassignId==null)return;
+  var id=currentReassignId;
+  closeReassignModal();
+  removePickById(id);
+}
+
+// ─── Draft Setup modal ───
+function openSetupModal(){
+  document.getElementById('setupNumTeams').value=String(draftState.teams.length||12);
+  renderSetupTeamNames();
+  document.getElementById('setupModalBg').classList.add('on');
+}
+function closeSetupModal(){
+  document.getElementById('setupModalBg').classList.remove('on');
+}
+function renderSetupTeamNames(){
+  var n=parseInt(document.getElementById('setupNumTeams').value);
+  var grid=document.getElementById('setupTeamNamesGrid');
+  grid.innerHTML='';
+  for(var i=1;i<=n;i++){
+    var existing=draftState.teams[i-1];
+    var f=document.createElement('div');f.className='setup-field';
+    f.innerHTML='<label>Team '+i+'</label><input type="text" id="setupTeam-'+i+'" value="'+escAttr(existing?existing.name:'Team '+i)+'"/>';
+    grid.appendChild(f);
+  }
+  var mySel=document.getElementById('setupMyTeam');
+  mySel.innerHTML='';
+  for(var j=1;j<=n;j++){
+    var o=document.createElement('option');
+    o.value='slot-'+j;
+    o.textContent='Team '+j;
+    mySel.appendChild(o);
+  }
+  var inputs=grid.querySelectorAll('input');
+  inputs.forEach(function(inp,i){
+    mySel.options[i].textContent=inp.value||('Team '+(i+1));
+    inp.addEventListener('input',function(){
+      mySel.options[i].textContent=inp.value||('Team '+(i+1));
+    });
+  });
+  if(draftState.myTeamId){
+    var curIdx=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;});
+    if(curIdx!==-1 && curIdx<n) mySel.value='slot-'+(curIdx+1);
+  }
+}
+function saveSetup(){
+  var n=parseInt(document.getElementById('setupNumTeams').value);
+  var newTeams=[];
+  for(var i=1;i<=n;i++){
+    var inp=document.getElementById('setupTeam-'+i);
+    var name=(inp&&inp.value.trim())?inp.value.trim():'Team '+i;
+    var existingId=(draftState.teams[i-1]&&draftState.teams[i-1].id)||('team-'+String(i).padStart(2,'0'));
+    newTeams.push({id:existingId,name:name});
+  }
+  var newIds={};
+  newTeams.forEach(function(t){newIds[t.id]=true;});
+  var orphaned=draftState.draftLog.some(function(e){return !newIds[e.teamId];});
+  if(orphaned){
+    alert('That team count/order would orphan picks already logged against a team being removed. Clear Drafted first, or keep all currently-used teams in the list.');
+    return;
+  }
+  var mySlotVal=document.getElementById('setupMyTeam').value;
+  var mySlotIdx=parseInt(mySlotVal.replace('slot-',''),10)-1;
+  draftState.teams=newTeams;
+  draftState.myTeamId=newTeams[mySlotIdx]?newTeams[mySlotIdx].id:null;
+  saveDraftState();
+  closeSetupModal();
+  render();
+}
+
+// ─── Clear Drafted — clears logged picks only; team setup is preserved
+// so a second draft can be tracked without redoing Setup. ───
+function clearDrafted(){
+  if(!confirm('Clear all drafted picks? Your team setup (teams and your slot) will be kept.'))return;
+  draftState.draftLog=[];
+  draftState.nextPickId=1;
+  saveDraftState();
+  render();
+}
+
+// ─── Live clock status: "Round X · Pick Y · Team Z on the Clock", plus
+// either an on-the-clock highlight or "N selections away" for the user. ───
+function renderClockStatus(){
+  var el=document.getElementById('clockBar');
+  if(!el)return;
+  if(!draftSetupComplete()){
+    el.innerHTML='Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.';
+    return;
+  }
+  var pn=nextPickNumber();
+  var numTeams=draftState.teams.length;
+  var round=Math.ceil(pn/numTeams);
+  var slot=computeSlotForPick(pn,numTeams);
+  var onClockTeam=draftState.teams[slot-1];
+  var away=distanceToMySlot(pn);
+  var base='Round '+round+' · Pick '+pn+' · '+(onClockTeam?onClockTeam.name:'—')+' on the Clock';
+  var extra='';
+  if(draftState.myTeamId){
+    if(away===0){
+      extra=' <span class="onclock">YOU\'RE ON THE CLOCK</span>';
+    }else if(away!=null){
+      extra=' <span class="away">Your next pick: '+away+' selection'+(away===1?'':'s')+' away</span>';
+    }
+  }
+  el.innerHTML=base+extra;
+}
+
+// ─── My Roster (v1 scope: user's own team only — the same draftLog
+// already carries every team's picks, so an all-teams grid later is a
+// straightforward iteration over `teams`, not a data-model change). ───
+function renderMyRoster(){
+  var el=document.getElementById('rosterPanel');
+  if(!el)return;
+  if(!draftState.myTeamId){ el.innerHTML=''; return; }
+  var mine=draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;})
+    .sort(function(a,b){return a.pickNumber-b.pickNumber;});
+  if(!mine.length){
+    el.innerHTML='<span style="color:var(--text3)">My Roster: no picks yet</span>';
+    return;
+  }
+  el.innerHTML='<span style="color:var(--text3);margin-right:4px">My Roster ('+mine.length+'):</span>'+
+    mine.map(function(e){return '<span class="roster-chip">'+e.player+' ('+e.pos+')</span>';}).join('');
+}
 
 // ═══════════════════════════════════════
 // UTILITY FUNCTIONS
@@ -567,7 +994,7 @@ async function loadAll(){
       var pos=p.position==='PK'?'K':p.position;
       if(!['QB','RB','WR','TE','K','DEF'].includes(pos))return;
       if(!adpByPos[pos])adpByPos[pos]=[];
-      adpByPos[pos].push({name:p.name,team:p.team||'FA',adp:parseFloat(p.adp)||999,pos:pos,key:key(p.name)});
+      adpByPos[pos].push({name:p.name,team:p.team||'FA',adp:parseFloat(p.adp)||999,pos:pos,key:playerKey(p.name,pos)});
     });
     Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
 
@@ -595,7 +1022,7 @@ async function loadAll(){
 function loadFallback(){
   adpByPos=JSON.parse(JSON.stringify(window.PLAYER_POOL));
   Object.keys(adpByPos).forEach(function(pos){
-    adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=key(p.name); });
+    adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=playerKey(p.name,pos); });
   });
 
   fetchTank01PlayerMap()
@@ -619,6 +1046,13 @@ function loadFallback(){
 // ═══════════════════════════════════════
 function render(){
   if(!ready)return;
+  // These three reflect global draftState, independent of which
+  // position/search subset is currently displayed, so they're updated
+  // once per render pass regardless of which branch below runs.
+  updateDBar();
+  renderClockStatus();
+  renderMyRoster();
+
   if(curSearch){renderSearch();return;}
   if(curPos==='ALL'){renderAll();return;}
 
@@ -627,6 +1061,7 @@ function render(){
   var positions=[curPos];
   var posNames={QB:'Quarterbacks',RB:'Running Backs',WR:'Wide Receivers',TE:'Tight Ends',K:'Kickers',DEF:'Team Defenses'};
   main.innerHTML='';
+  var draftIdx=buildDraftIndex();
 
   positions.forEach(function(pos){
     var all=adpByPos[pos]||[];
@@ -649,11 +1084,13 @@ function render(){
       var tbody=document.createElement('tbody');var ct=0;
 
       players.forEach(function(p,i){
-        var pr=i+1;var t=tier(pr,pos);var dk=!!drafted[p.key];
+        var pr=i+1;var t=tier(pr,pos);
+        var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
         var inj2=getInj(p.name);var sc=sScore(pr,pos);
         var bye=BYE[p.team]||'—';
         var adpStr=p.adp<900?p.adp.toFixed(1):'—';
         var ovrStr=p.adp<900?Math.round(p.adp):'—';
+        var safeName=p.name.replace(/'/g,"\\'");
 
         if(t!==ct){
           ct=t;var w=(TIERS[pos]&&TIERS[pos][t])||'';
@@ -664,10 +1101,10 @@ function render(){
 
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
-        var safeName=p.name.replace(/'/g,"\\'");
         var inCmp=cmpList.indexOf(p.key)!==-1;
+        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
         var tr=document.createElement('tr');
-        tr.className='prow'+(dk?' drafted':'');
+        tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
         tr.id='row-'+p.key;
         tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=pos;
         tr.innerHTML=
@@ -679,7 +1116,7 @@ function render(){
           '<td class="adp-td">'+adpStr+'</td>'+
           '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
           '<td class="inj-td">'+injHtml+'</td>'+
-          '<td><button class="act-btn draft-btn" onclick="tDraft(\''+p.key+'\',this,\'row\')">'+( dk?'✗ Drafted':'+ Draft')+'</button></td>'+
+          '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+( dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>'+
           '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
         tbody.appendChild(tr);
       });
@@ -687,21 +1124,25 @@ function render(){
     }else{
       var grid=document.createElement('div');grid.className='cgrid';
       players.forEach(function(p,i){
-        var pr=i+1;var dk=!!drafted[p.key];var inj2=getInj(p.name);var sc=sScore(pr,pos);
+        var pr=i+1;
+        var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+        var inj2=getInj(p.name);var sc=sScore(pr,pos);
         var bye=BYE[p.team]||'—';
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
         var safeName=p.name.replace(/'/g,"\\'");
         var inCmp=cmpList.indexOf(p.key)!==-1;
+        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
         var card=document.createElement('div');
-        card.className='pcard'+(dk?' drafted':'');card.id='card-'+p.key;
+        card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
         card.innerHTML=
           '<div class="crank">#'+pr+'</div>'+
           '<div class="cname">'+p.name+'</div>'+
           '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
           injH+
-          '<div class="cactions"><button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>'+
+          (dk?'<div style="margin-top:4px">'+ownBadge+'</div>':'')+
+          '<div class="cactions"><button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+( dk?'✗ Undo':'+ Mark as drafted')+'</button>'+
           '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
         grid.appendChild(card);
       });
@@ -709,8 +1150,6 @@ function render(){
     }
     main.appendChild(sec);
   });
-
-  updateDBar();
 }
 
 // ═══════════════════════════════════════
@@ -719,6 +1158,7 @@ function render(){
 function renderAll(){
   var main=document.getElementById('main');
   var show=parseInt(document.getElementById('showSel').value);
+  var draftIdx=buildDraftIndex();
 
   var merged=[];
   ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
@@ -748,7 +1188,7 @@ function renderAll(){
       var pr=i+1;
       var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
       if(posRankForTiers<1)posRankForTiers=pr;
-      var dk=!!drafted[p.key];
+      var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
       var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var adpStr=p.adp<900?p.adp.toFixed(1):'—';
@@ -758,8 +1198,9 @@ function renderAll(){
       var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
+      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
       var tr=document.createElement('tr');
-      tr.className='prow'+(dk?' drafted':'');
+      tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
       tr.id='row-'+p.key;
       tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=p.pos;
       tr.innerHTML=
@@ -771,7 +1212,7 @@ function renderAll(){
         '<td class="adp-td">'+adpStr+'</td>'+
         '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
         '<td class="inj-td">'+injHtml+'</td>'+
-        '<td><button class="act-btn draft-btn" onclick="tDraft(\''+p.key+'\',this,\'row\')">'+( dk?'✗ Drafted':'+ Draft')+'</button></td>'+
+        '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+( dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>'+
         '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
       tbody.appendChild(tr);
     });
@@ -782,21 +1223,24 @@ function renderAll(){
       var pr=i+1;
       var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
       if(posRankForTiers<1)posRankForTiers=pr;
-      var dk=!!drafted[p.key];var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
+      var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+      var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
       var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
+      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
       var card=document.createElement('div');
-      card.className='pcard'+(dk?' drafted':'');card.id='card-'+p.key;
+      card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
       card.innerHTML=
         '<div class="crank">#'+pr+'</div>'+
         '<div class="cname">'+p.name+'</div>'+
         '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
         injH+
-        '<div class="cactions"><button class="cdraft-btn" onclick="tDraft(\''+p.key+'\',this,\'card\')">'+( dk?'✗ Drafted — undo':'+ Mark as drafted')+'</button>'+
+        (dk?'<div style="margin-top:4px">'+ownBadge+'</div>':'')+
+        '<div class="cactions"><button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+( dk?'✗ Undo':'+ Mark as drafted')+'</button>'+
         '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
       grid.appendChild(card);
     });
@@ -804,7 +1248,6 @@ function renderAll(){
   }
 
   main.appendChild(sec);
-  updateDBar();
 }
 
 // ═══════════════════════════════════════
@@ -814,6 +1257,7 @@ function renderSearch(){
   var main=document.getElementById('main');
   var q=curSearch.toLowerCase();
   var matches=[];
+  var draftIdx=buildDraftIndex();
 
   var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
   positions.forEach(function(pos){
@@ -849,7 +1293,7 @@ function renderSearch(){
 
   matches.forEach(function(m){
     var p=m.p;var pos=m.pos;var pr=m.rank;
-    var dk=!!drafted[p.key];
+    var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
     var inj2=getInj(p.name);var sc=sScore(pr,pos);
     var bye=BYE[p.team]||'—';
     var adpStr=p.adp<900?p.adp.toFixed(1):'—';
@@ -857,8 +1301,10 @@ function renderSearch(){
     var injHtml=inj2?
       '<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':
       '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+    var safeName=p.name.replace(/'/g,"\\'");
+    var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
     var tr=document.createElement('tr');
-    tr.className='prow'+(dk?' drafted':'');
+    tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
     tr.id='srow-'+p.key;
     tr.innerHTML=
       '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
@@ -869,7 +1315,7 @@ function renderSearch(){
       '<td class="adp-td">'+adpStr+'</td>'+
       '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
       '<td class="inj-td">'+injHtml+'</td>'+
-      '<td><button class="act-btn draft-btn" onclick="tDraftSearch(\''+p.key+'\',this)">'+(dk?'✗ Drafted':'+ Draft')+'</button></td>';
+      '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+(dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>';
     tbody.appendChild(tr);
   });
 
@@ -878,36 +1324,14 @@ function renderSearch(){
 }
 
 // ═══════════════════════════════════════
-// DRAFT TOGGLE
-// ═══════════════════════════════════════
-function tDraft(k,btn,type){
-  drafted[k]=!drafted[k];localStorage.setItem('isd',JSON.stringify(drafted));
-  var el=document.getElementById((type==='row'?'row-':'card-')+k);
-  if(el){el.classList.toggle('drafted',drafted[k]);btn.textContent=drafted[k]?(type==='row'?'✗ Drafted':'✗ Drafted — undo'):(type==='row'?'+ Draft':'+ Mark as drafted')}
-  updateDBar();
-}
-
-function tDraftSearch(k,btn){
-  drafted[k]=!drafted[k];localStorage.setItem('isd',JSON.stringify(drafted));
-  var el=document.getElementById('srow-'+k);
-  if(el) el.classList.toggle('drafted',drafted[k]);
-  btn.textContent=drafted[k]?'✗ Drafted':'+ Draft';
-  updateDBar();
-}
-
-function clearDrafted(){if(!confirm('Clear all drafted players?'))return;drafted={};localStorage.setItem('isd',JSON.stringify(drafted));render()}
-
-// ═══════════════════════════════════════
 // DRAFTED BAR
 // ═══════════════════════════════════════
 function updateDBar(){
   var bar=document.getElementById('dbar');
   var counts={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};var total=0;
-  Object.keys(drafted).forEach(function(k){
-    if(!drafted[k])return;
-    Object.keys(adpByPos).forEach(function(pos){
-      (adpByPos[pos]||[]).forEach(function(p){if(p.key===k){counts[pos]++;total++}});
-    });
+  draftState.draftLog.forEach(function(e){
+    if(counts.hasOwnProperty(e.pos))counts[e.pos]++;
+    total++;
   });
   bar.innerHTML='<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-right:8px">Drafted ('+total+'):</span>';
   Object.keys(counts).forEach(function(pos){
@@ -1077,6 +1501,7 @@ function showCmp(){
 function closeModal(){document.getElementById('modal').classList.remove('on')}
 document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
 
+initDraftState();
 loadAll();
 </script>
 
