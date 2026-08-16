@@ -213,18 +213,35 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .own-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);cursor:pointer;margin-left:6px;white-space:nowrap}
 .own-badge:hover{border-color:var(--gold);color:var(--gold)}
 .own-badge.mine{background:rgba(201,168,76,0.18);border-color:var(--gold-lt);color:#8a6a10;font-weight:600}
-.clock-bar{background:#1a1108;border-bottom:1px solid rgba(201,168,76,0.3);padding:8px 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#e8d9a8;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock-bar{background:#1a1108;border-bottom:1px solid rgba(201,168,76,0.3);padding:10px 24px;font-family:'JetBrains Mono',monospace;color:#e8d9a8;transition:background 0.2s}
 .clock-bar a{color:var(--gold-lt)}
-.clock-bar .onclock{background:var(--gold-lt);color:#1a1108;padding:4px 12px;border-radius:20px;font-weight:700;letter-spacing:0.5px;animation:pulse 1.6s infinite}
-.clock-bar .away{color:#c9a84c}
+.clock-line1{font-size:14px;font-weight:600;letter-spacing:0.5px;color:#e8d9a8}
+.clock-line2{font-size:11px;color:#a08a5a;margin-top:2px}
+.clock-bar.mine{background:linear-gradient(135deg,#3a2a0a,#2a1e0a);border-bottom:2px solid var(--gold-lt);padding:12px 24px;animation:clockpulse 1.8s infinite}
+.clock-bar.mine .clock-line1{font-size:16px;font-weight:700;letter-spacing:1px;color:var(--gold-lt)}
+.clock-bar.mine .clock-line2{font-size:12px;color:#f0e6cc}
+@keyframes clockpulse{0%,100%{box-shadow:0 0 0 rgba(201,168,76,0)}50%{box-shadow:0 0 18px rgba(201,168,76,0.35)}}
 .legacy-banner{display:none;background:#2a2010;border-bottom:1px solid rgba(201,168,76,0.35);padding:10px 24px;align-items:center;gap:10px;font-size:12px;color:#e8d9a8}
 .legacy-banner.on{display:flex}
 .legacy-banner button{margin-left:auto;background:transparent;border:1px solid rgba(201,168,76,0.4);color:#e8d9a8;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:'Lora',serif}
-.roster-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px}
+.roster-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.roster-hdr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.roster-title{font-weight:700;letter-spacing:1px;color:var(--text);text-transform:uppercase;font-size:11px}
+.roster-groups{color:var(--text3);flex:1}
+.roster-groups b{color:#7a5f10;font-weight:600}
+.roster-toggle{background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:'Lora',serif;white-space:nowrap}
+.roster-toggle:hover{border-color:var(--gold);color:var(--gold)}
+.roster-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;gap:6px}
+.roster-detail.open{display:flex}
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
 .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .setup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
 .setup-field input,.setup-field select{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:'Lora',serif;font-size:13px}
+.draft-ctrl-group{display:inline-flex;align-items:center;gap:8px;padding-left:12px;margin-left:4px;border-left:1px solid #3d2a12}
+.howto-link{color:#7a6a4a;font-size:11px;text-decoration:underline;background:none;border:none;cursor:pointer;font-family:'Lora',serif;padding:0}
+.howto-link:hover{color:var(--gold-lt)}
+.onboard-steps{margin:14px 0;padding-left:20px;line-height:1.8;font-size:14px}
+.onboard-steps li{margin-bottom:4px}
 </style>
 <!-- Meta Pixel Code -->
 <script>
@@ -354,11 +371,13 @@ function checkOAuthSession() {
 
     <a href="/dispatches" class="hdr-btn">📜 Dispatches</a>
     <a href="/sanctum" class="hdr-btn">← Sanctum</a>
-    <button class="hdr-btn" onclick="openSetupModal()">⚙ Draft Setup</button>
-    <button class="hdr-btn" onclick="undoLastPick()">⏪ Undo Last Pick</button>
-    <button class="hdr-btn" onclick="printList()">🖨 Print</button>
-    <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">Clear Drafted</button>
-    <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
+    <div class="draft-ctrl-group">
+      <button class="hdr-btn" onclick="openSetupModal()">⚙ Draft Setup</button>
+      <button class="hdr-btn" onclick="undoLastPick()">⏪ Undo Last Pick</button>
+      <button class="hdr-btn" onclick="printList()">🖨 Print</button>
+      <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">↺ Reset Draft</button>
+      <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
   </div>
 </div>
 
@@ -417,6 +436,9 @@ function checkOAuthSession() {
 </div>
 
 <div class="clock-bar no-print" id="clockBar"></div>
+<div class="no-print" style="text-align:right;padding:3px 24px;background:var(--surface);border-bottom:1px solid var(--border)">
+  <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
+</div>
 
 <div class="roster-panel no-print" id="rosterPanel"></div>
 
@@ -491,6 +513,22 @@ function checkOAuthSession() {
       <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
       <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ONBOARDING MODAL (added) ═══ -->
+<div class="modal-bg" id="onboardingModalBg">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-x" onclick="closeOnboardingModal()">✕</button>
+    <div class="modal-ttl">🔮 You're ready to draft</div>
+    <ol class="onboard-steps">
+      <li>When a player is selected, click <strong>Record Pick</strong> (or <strong>Draft to My Team</strong> when it's your turn).</li>
+      <li>Sanctum automatically assigns the player to the team on the clock.</li>
+      <li>When it's your turn, your selection is automatically added to My Roster.</li>
+    </ol>
+    <div class="btn-row" style="display:flex;justify-content:flex-end">
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="closeOnboardingModal()">Got it</button>
     </div>
   </div>
 </div>
@@ -717,6 +755,12 @@ function draftSetupComplete(){ return draftState.teams.length>0; }
 // "Undo Last Pick" control (not tied to any one row) removes strictly the
 // most recent pick by pickNumber, for the common case of a quick misclick
 // correction without hunting for the row.
+// Contextual action-button wording (presentation only — the click target
+// still calls the exact same logDraftPick() either way).
+function draftActionLabel(amIOnClockNow){
+  return amIOnClockNow?'Draft to My Team':'Record Pick';
+}
+
 function logDraftPick(name,pos){
   if(!draftSetupComplete()){
     openSetupModal();
@@ -840,9 +884,14 @@ function saveSetup(){
   newTeams.forEach(function(t){newIds[t.id]=true;});
   var orphaned=draftState.draftLog.some(function(e){return !newIds[e.teamId];});
   if(orphaned){
-    alert('That team count/order would orphan picks already logged against a team being removed. Clear Drafted first, or keep all currently-used teams in the list.');
+    alert('That team count/order would orphan picks already logged against a team being removed. Reset Draft first, or keep all currently-used teams in the list.');
     return;
   }
+  // UI-only hook (no engine/state-shape change): remember whether this is
+  // the very first time Setup has ever been completed, purely to decide
+  // whether to auto-show the onboarding modal below. Nothing about the
+  // actual teams/myTeamId assignment changes.
+  var isFirstEverSetup = draftState.teams.length===0;
   var mySlotVal=document.getElementById('setupMyTeam').value;
   var mySlotIdx=parseInt(mySlotVal.replace('slot-',''),10)-1;
   draftState.teams=newTeams;
@@ -850,60 +899,117 @@ function saveSetup(){
   saveDraftState();
   closeSetupModal();
   render();
+  if(isFirstEverSetup && !isOnboardingDismissed()) openOnboardingModal();
 }
 
-// ─── Clear Drafted — clears logged picks only; team setup is preserved
-// so a second draft can be tracked without redoing Setup. ───
+// ─── Reset Draft (formerly "Clear Drafted") — clears logged picks only;
+// team setup is preserved so a second draft can be tracked without
+// redoing Setup. Behavior is unchanged from the prior "Clear Drafted"
+// control; only the button label/wording changed. ───
 function clearDrafted(){
-  if(!confirm('Clear all drafted picks? Your team setup (teams and your slot) will be kept.'))return;
+  if(!confirm('Reset the draft? This clears all logged picks. Your team setup (teams and your slot) will be kept.'))return;
   draftState.draftLog=[];
   draftState.nextPickId=1;
   saveDraftState();
   render();
 }
 
-// ─── Live clock status: "Round X · Pick Y · Team Z on the Clock", plus
-// either an on-the-clock highlight or "N selections away" for the user. ───
+// ─── Onboarding (first-use guidance) — entirely separate from
+// draftState/draftLog: a single localStorage flag, not part of the
+// versioned draft-tracking schema, so the core engine is untouched. ───
+var ONBOARDING_DISMISSED_KEY='sanctum_draft_onboarding_dismissed';
+function isOnboardingDismissed(){
+  try{ return localStorage.getItem(ONBOARDING_DISMISSED_KEY)==='true'; }catch(e){ return false; }
+}
+function openOnboardingModal(){
+  var bg=document.getElementById('onboardingModalBg');
+  if(bg)bg.classList.add('on');
+}
+function closeOnboardingModal(){
+  var bg=document.getElementById('onboardingModalBg');
+  if(bg)bg.classList.remove('on');
+  try{ localStorage.setItem(ONBOARDING_DISMISSED_KEY,'true'); }catch(e){}
+}
+
+// ─── Live clock status. Two states, matched to the approved copy:
+//   not my turn -> "PICK Y — TEAM Z ON THE CLOCK" / "Your next pick: #N · M selections away"
+//   my turn     -> "YOU'RE ON THE CLOCK — PICK Y" / "Choose a player below and click Draft to My Team"
+// Never a modal/alert -- purely a styled strip (see .clock-bar.mine). ───
 function renderClockStatus(){
   var el=document.getElementById('clockBar');
   if(!el)return;
+  el.classList.remove('mine');
   if(!draftSetupComplete()){
-    el.innerHTML='Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.';
+    el.innerHTML='<div class="clock-line1">Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.</div>';
     return;
   }
   var pn=nextPickNumber();
   var numTeams=draftState.teams.length;
-  var round=Math.ceil(pn/numTeams);
   var slot=computeSlotForPick(pn,numTeams);
   var onClockTeam=draftState.teams[slot-1];
+  var teamLabel=onClockTeam?onClockTeam.name.toUpperCase():'—';
   var away=distanceToMySlot(pn);
-  var base='Round '+round+' · Pick '+pn+' · '+(onClockTeam?onClockTeam.name:'—')+' on the Clock';
-  var extra='';
-  if(draftState.myTeamId){
-    if(away===0){
-      extra=' <span class="onclock">YOU\'RE ON THE CLOCK</span>';
-    }else if(away!=null){
-      extra=' <span class="away">Your next pick: '+away+' selection'+(away===1?'':'s')+' away</span>';
-    }
+
+  if(draftState.myTeamId && away===0){
+    el.classList.add('mine');
+    el.innerHTML=
+      '<div class="clock-line1">YOU\'RE ON THE CLOCK — PICK '+pn+'</div>'+
+      '<div class="clock-line2">Choose a player below and click <strong>Draft to My Team</strong></div>';
+    return;
   }
-  el.innerHTML=base+extra;
+
+  var line1='PICK '+pn+' — '+teamLabel+' ON THE CLOCK';
+  var line2='';
+  if(draftState.myTeamId && away!=null){
+    var myNextPick=pn+away;
+    line2='<div class="clock-line2">Your next pick: #'+myNextPick+' · '+away+' selection'+(away===1?'':'s')+' away</div>';
+  }
+  el.innerHTML='<div class="clock-line1">'+line1+'</div>'+line2;
 }
 
 // ─── My Roster (v1 scope: user's own team only — the same draftLog
 // already carries every team's picks, so an all-teams grid later is a
-// straightforward iteration over `teams`, not a data-model change). ───
+// straightforward iteration over `teams`, not a data-model change).
+// Compact, grouped by position by default; an optional expandable
+// detail view lists every pick with its pick number. ───
+var ROSTER_POS_ORDER=['QB','RB','WR','TE','K','DEF'];
+var rosterDetailOpen=false;
+function toggleRosterDetail(){
+  rosterDetailOpen=!rosterDetailOpen;
+  renderMyRoster();
+}
 function renderMyRoster(){
   var el=document.getElementById('rosterPanel');
   if(!el)return;
   if(!draftState.myTeamId){ el.innerHTML=''; return; }
   var mine=draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;})
     .sort(function(a,b){return a.pickNumber-b.pickNumber;});
+
   if(!mine.length){
-    el.innerHTML='<span style="color:var(--text3)">My Roster: no picks yet</span>';
+    el.innerHTML='<div class="roster-hdr-row"><span class="roster-title">My Team — 0 Players</span></div>';
     return;
   }
-  el.innerHTML='<span style="color:var(--text3);margin-right:4px">My Roster ('+mine.length+'):</span>'+
-    mine.map(function(e){return '<span class="roster-chip">'+e.player+' ('+e.pos+')</span>';}).join('');
+
+  var byPos={};
+  mine.forEach(function(e){ (byPos[e.pos]=byPos[e.pos]||[]).push(e.player); });
+
+  var groupsHtml=ROSTER_POS_ORDER.map(function(pos){
+    var names=byPos[pos];
+    var label=names&&names.length?names.join(', '):'—';
+    return '<b>'+pos+'</b> '+label;
+  }).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+  var detailHtml=mine.map(function(e){
+    return '<span class="roster-chip">#'+e.pickNumber+' '+e.player+' ('+e.pos+')</span>';
+  }).join('');
+
+  el.innerHTML=
+    '<div class="roster-hdr-row">'+
+      '<span class="roster-title">My Team — '+mine.length+' Player'+(mine.length===1?'':'s')+'</span>'+
+      '<span class="roster-groups">'+groupsHtml+'</span>'+
+      '<button type="button" class="roster-toggle" onclick="toggleRosterDetail()">'+(rosterDetailOpen?'Hide Full Roster':'View Full Roster')+'</button>'+
+    '</div>'+
+    '<div class="roster-detail'+(rosterDetailOpen?' open':'')+'">'+detailHtml+'</div>';
 }
 
 // ═══════════════════════════════════════
@@ -1062,6 +1168,7 @@ function render(){
   var posNames={QB:'Quarterbacks',RB:'Running Backs',WR:'Wide Receivers',TE:'Tight Ends',K:'Kickers',DEF:'Team Defenses'};
   main.innerHTML='';
   var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
 
   positions.forEach(function(pos){
     var all=adpByPos[pos]||[];
@@ -1103,6 +1210,7 @@ function render(){
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
         var inCmp=cmpList.indexOf(p.key)!==-1;
         var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
         var tr=document.createElement('tr');
         tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
         tr.id='row-'+p.key;
@@ -1116,7 +1224,7 @@ function render(){
           '<td class="adp-td">'+adpStr+'</td>'+
           '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
           '<td class="inj-td">'+injHtml+'</td>'+
-          '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+( dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>'+
+          '<td>'+actionCell+'</td>'+
           '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
         tbody.appendChild(tr);
       });
@@ -1133,6 +1241,9 @@ function render(){
         var safeName=p.name.replace(/'/g,"\\'");
         var inCmp=cmpList.indexOf(p.key)!==-1;
         var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+        var cardActionHtml='<div class="cactions">'+leftAction+
+          '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
         var card=document.createElement('div');
         card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
@@ -1141,9 +1252,7 @@ function render(){
           '<div class="cname">'+p.name+'</div>'+
           '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
           injH+
-          (dk?'<div style="margin-top:4px">'+ownBadge+'</div>':'')+
-          '<div class="cactions"><button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+( dk?'✗ Undo':'+ Mark as drafted')+'</button>'+
-          '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
+          cardActionHtml;
         grid.appendChild(card);
       });
       sec.appendChild(grid);
@@ -1159,6 +1268,7 @@ function renderAll(){
   var main=document.getElementById('main');
   var show=parseInt(document.getElementById('showSel').value);
   var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
 
   var merged=[];
   ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
@@ -1199,6 +1309,7 @@ function renderAll(){
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
       var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
       var tr=document.createElement('tr');
       tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
       tr.id='row-'+p.key;
@@ -1212,7 +1323,7 @@ function renderAll(){
         '<td class="adp-td">'+adpStr+'</td>'+
         '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
         '<td class="inj-td">'+injHtml+'</td>'+
-        '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+( dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>'+
+        '<td>'+actionCell+'</td>'+
         '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
       tbody.appendChild(tr);
     });
@@ -1231,6 +1342,7 @@ function renderAll(){
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
       var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
       var card=document.createElement('div');
       card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
@@ -1239,8 +1351,7 @@ function renderAll(){
         '<div class="cname">'+p.name+'</div>'+
         '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
         injH+
-        (dk?'<div style="margin-top:4px">'+ownBadge+'</div>':'')+
-        '<div class="cactions"><button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+( dk?'✗ Undo':'+ Mark as drafted')+'</button>'+
+        '<div class="cactions">'+leftAction+
         '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
       grid.appendChild(card);
     });
@@ -1258,6 +1369,7 @@ function renderSearch(){
   var q=curSearch.toLowerCase();
   var matches=[];
   var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
 
   var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
   positions.forEach(function(pos){
@@ -1303,6 +1415,7 @@ function renderSearch(){
       '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
     var safeName=p.name.replace(/'/g,"\\'");
     var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+    var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
     var tr=document.createElement('tr');
     tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
     tr.id='srow-'+p.key;
@@ -1315,7 +1428,7 @@ function renderSearch(){
       '<td class="adp-td">'+adpStr+'</td>'+
       '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
       '<td class="inj-td">'+injHtml+'</td>'+
-      '<td><button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+(dk?'✗ Undo':'+ Draft')+'</button>'+ownBadge+'</td>';
+      '<td>'+actionCell+'</td>';
     tbody.appendChild(tr);
   });
 
