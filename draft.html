@@ -59,6 +59,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .setup-summary-btn{background:var(--surface);border:1px solid rgba(184,146,26,0.5);color:var(--gold);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);font-weight:600;padding:5px 12px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all 0.15s}
 .setup-summary-btn:hover{background:rgba(184,146,26,0.08);border-color:var(--gold)}
 .setup-summary-extra{font-weight:400;color:var(--text3)}
+@media(max-width:1000px){.setup-summary-rounds{display:none}}
 @media(max-width:820px){.setup-summary-extra{display:none}}
 .search-box{position:relative;margin-left:auto}
 .search-box input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);padding:5px 12px 5px 30px;border-radius:var(--r);width:200px}
@@ -421,7 +422,7 @@ function checkOAuthSession() {
     <button class="view-btn active" id="showDraftedBtn" onclick="setHideDrafted(false)">Show Drafted</button>
     <button class="view-btn" id="hideDraftedBtn" onclick="setHideDrafted(true)">Hide Drafted</button>
   </div>
-  <button class="setup-summary-btn" id="draftSetupBtn" onclick="openSetupModal()">⚙ Draft Setup<span class="setup-summary-extra" id="draftSetupSummaryExtra"></span></button>
+  <button class="setup-summary-btn" id="draftSetupBtn" onclick="openSetupModal()">⚙ Draft Setup<span class="setup-summary-extra" id="draftSetupSummaryExtra"><span id="draftSetupSummaryCore"></span><span class="setup-summary-rounds" id="draftSetupSummaryRounds"></span></span></button>
   <div class="search-box">
     <span class="search-icon">🔍</span>
     <input type="text" id="srch" placeholder="Search player or team..." oninput="doSearch(this.value)">
@@ -493,6 +494,27 @@ function checkOAuthSession() {
         <option value="12" selected>12</option>
         <option value="14">14</option>
         <option value="16">16</option>
+      </select>
+    </div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Number of Rounds</label>
+      <select id="setupNumRounds">
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16" selected>16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+        <option value="19">19</option>
+        <option value="20">20</option>
+        <option value="21">21</option>
+        <option value="22">22</option>
+        <option value="23">23</option>
+        <option value="24">24</option>
+        <option value="25">25</option>
       </select>
     </div>
     <div class="setup-field" style="margin-bottom:14px;max-width:220px">
@@ -675,7 +697,8 @@ var draftState={
   myTeamId:null,
   draftLog:[],
   nextPickId:1,
-  draftType:'snake'
+  draftType:'snake',
+  numRounds:16
 };
 var currentReassignId=null;
 var pendingManualPick=null;
@@ -705,11 +728,12 @@ function readSavedDraftState(){
     var parsed=JSON.parse(raw);
     if(!parsed||parsed.schemaVersion!==DRAFT_SAVE_SCHEMA_VERSION)return null;
     if(!Array.isArray(parsed.teams)||!Array.isArray(parsed.draftLog))return null;
-    // draftType is a new, additive field. Older saved states (persisted
-    // before this feature existed) won't have it — default to 'snake' so
-    // they keep behaving exactly as they always did, no schema-version
-    // bump or migration required.
+    // draftType and numRounds are additive fields. Older saved states
+    // (persisted before these features existed) won't have them — default
+    // to 'snake'/16 so they keep behaving exactly as they always did, no
+    // schema-version bump or migration required.
     if(!parsed.draftType) parsed.draftType='snake';
+    if(!parsed.numRounds) parsed.numRounds=16;
     return parsed;
   }catch(e){
     return null;
@@ -722,7 +746,7 @@ function initDraftState(){
     draftState=saved;
     return;
   }
-  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake'};
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16};
   // No valid new-schema data on this browser. Check for legacy 'isd' data
   // ONLY to decide whether to show the one-time notice — it is never read
   // into draftState and never modified or deleted.
@@ -770,8 +794,14 @@ function computeSlotForPickLinear(pickNumber,numTeams){
 // Manual has no deterministic "on the clock" team — ownership isn't
 // derived from draft order at all in that mode, so this returns null and
 // callers (teamOnClock/distanceToMySlot/renderClockStatus) treat that as
-// "no auto-assignment applies here."
-function resolveSlotForPick(pickNumber,numTeams,draftType){
+// "no auto-assignment applies here." The optional maxPickNumber bound
+// (added for the Rounds feature) is a second, independent reason to
+// return null: once the configured draft length has been reached, there
+// is no valid "next round" slot to resolve to, for any draft type. This
+// does not touch the Snake/Linear/Manual assignment logic itself — it's
+// purely a boundary check applied before that logic runs.
+function resolveSlotForPick(pickNumber,numTeams,draftType,maxPickNumber){
+  if(maxPickNumber && pickNumber>maxPickNumber)return null;
   if(draftType==='manual')return null;
   if(draftType==='linear')return computeSlotForPickLinear(pickNumber,numTeams);
   return computeSlotForPick(pickNumber,numTeams);
@@ -787,25 +817,41 @@ function nextPickNumber(){
   draftState.draftLog.forEach(function(e){ if(e.pickNumber>max)max=e.pickNumber; });
   return max+1;
 }
+// Configured draft length (Rounds feature). Applies identically to Snake,
+// Linear, and Manual — Manual still uses this to know when the draft is
+// "complete" for display purposes, even though it never auto-assigns.
+function totalDraftPicks(){
+  return draftState.teams.length*(draftState.numRounds||16);
+}
+// True once every scheduled pick number has been reached — i.e. the next
+// pick to be logged would fall beyond the configured draft length. Uses
+// the same max-pickNumber convention as the rest of the engine (never
+// backfills gaps), so this stays correct even if an earlier pick was
+// removed via Correct Historical Pick.
+function isDraftComplete(){
+  return draftSetupComplete() && nextPickNumber()>totalDraftPicks();
+}
 function teamIdAtSlot(slot){
   var t=draftState.teams[slot-1];
   return t?t.id:null;
 }
 function teamOnClock(pickNumber){
-  var slot=resolveSlotForPick(pickNumber,draftState.teams.length,draftState.draftType);
+  var slot=resolveSlotForPick(pickNumber,draftState.teams.length,draftState.draftType,totalDraftPicks());
   return slot?teamIdAtSlot(slot):null;
 }
 // How many picks from `fromPickNumber` until the user's slot comes up
-// again (0 = on the clock right now). Null if setup/my-team isn't set, or
-// if draftType is 'manual' (no deterministic turn order to count against).
+// again (0 = on the clock right now). Null if setup/my-team isn't set, if
+// draftType is 'manual' (no deterministic turn order to count against),
+// or if that many picks would fall beyond the configured draft length.
 function distanceToMySlot(fromPickNumber){
   if(!draftState.myTeamId||!draftState.teams.length)return null;
   if(draftState.draftType==='manual')return null;
   var mySlot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
   if(!mySlot)return null;
   var numTeams=draftState.teams.length;
+  var total=totalDraftPicks();
   for(var offset=0;offset<numTeams*2;offset++){
-    if(resolveSlotForPick(fromPickNumber+offset,numTeams,draftState.draftType)===mySlot)return offset;
+    if(resolveSlotForPick(fromPickNumber+offset,numTeams,draftState.draftType,total)===mySlot)return offset;
   }
   return null;
 }
@@ -857,6 +903,12 @@ function logDraftPick(name,pos){
   }
   var pickNumber=nextPickNumber();
   var teamId=teamOnClock(pickNumber);
+  if(!teamId){
+    // Draft complete (or misconfigured setup) — there is no valid "next
+    // round" slot to assign this pick to. Do nothing rather than create a
+    // broken ownerless entry; the clock strip already communicates why.
+    return;
+  }
   draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:name,pos:pos,teamId:teamId});
   saveDraftState();
   afterDraftMutation();
@@ -948,6 +1000,7 @@ function removeCurrentReassignPick(){
 // ─── Draft Setup modal ───
 function openSetupModal(){
   document.getElementById('setupNumTeams').value=String(draftState.teams.length||12);
+  document.getElementById('setupNumRounds').value=String(draftState.numRounds||16);
   document.getElementById('setupDraftType').value=draftState.draftType||'snake';
   updateSetupDraftTypeNote();
   renderSetupTeamNames();
@@ -1017,6 +1070,7 @@ function saveSetup(){
   draftState.teams=newTeams;
   draftState.myTeamId=newTeams[mySlotIdx]?newTeams[mySlotIdx].id:null;
   draftState.draftType=document.getElementById('setupDraftType').value||'snake';
+  draftState.numRounds=parseInt(document.getElementById('setupNumRounds').value)||16;
   saveDraftState();
   closeSetupModal();
   render();
@@ -1064,13 +1118,22 @@ function renderClockStatus(){
     el.innerHTML='<div class="clock-line1">Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.</div>';
     return;
   }
+  if(isDraftComplete()){
+    // Deliberately does not hide/disable anything else on the page — the
+    // board, My Roster, corrections, Undo Last Pick, and Print all stay
+    // fully available. If the final pick is later undone, the very next
+    // render() call re-evaluates isDraftComplete() (false again) and this
+    // falls straight through to the normal on-the-clock display below.
+    el.innerHTML='<div class="clock-line1">DRAFT COMPLETE — '+draftState.draftLog.length+' OF '+totalDraftPicks()+' PICKS RECORDED</div>';
+    return;
+  }
   if(draftState.draftType==='manual'){
     el.innerHTML='<div class="clock-line1">MANUAL DRAFT — select the team for each pick as you record it</div>';
     return;
   }
   var pn=nextPickNumber();
   var numTeams=draftState.teams.length;
-  var slot=resolveSlotForPick(pn,numTeams,draftState.draftType);
+  var slot=resolveSlotForPick(pn,numTeams,draftState.draftType,totalDraftPicks());
   var onClockTeam=slot?draftState.teams[slot-1]:null;
   var teamLabel=onClockTeam?onClockTeam.name.toUpperCase():'—';
   var away=distanceToMySlot(pn);
@@ -1108,22 +1171,28 @@ function renderMySlotIndicator(){
   el.textContent=isDefaultName?('MY SLOT: '+slot):('MY TEAM: '+team.name+' · SLOT '+slot);
 }
 
-// ─── Draft Setup button label: "⚙ Draft Setup · Snake · Slot 3" once
-// setup is complete, or just "⚙ Draft Setup" before then. Purely
-// presentational — reads draftState.draftType/teams/myTeamId, writes
-// nothing, and the button's click handler is unchanged (still
-// openSetupModal(), the exact same existing modal). The " · Type · Slot N"
-// portion is wrapped in its own span so it can collapse away at narrow
-// widths via CSS (see .setup-summary-extra) without any JS involved. ───
+// ─── Draft Setup button label: "⚙ Draft Setup · Snake · 12 Teams · Slot 3
+// · 16 Rds" once setup is complete, or just "⚙ Draft Setup" before then.
+// Purely presentational — reads draftState.draftType/teams/myTeamId/
+// numRounds, writes nothing, and the button's click handler is unchanged
+// (still openSetupModal(), the exact same existing modal). Split into a
+// core span (Type/Teams/Slot) and a rounds span so the least-important
+// detail (Rounds) can collapse first on narrower screens, then the whole
+// summary collapses at the existing narrower breakpoint — CSS only, no
+// JS involved in either collapse. ───
 var DRAFT_TYPE_LABELS={snake:'Snake',linear:'Linear',manual:'Manual'};
 function renderSetupSummaryButton(){
-  var extra=document.getElementById('draftSetupSummaryExtra');
-  if(!extra)return;
-  if(!draftState.teams.length||!draftState.myTeamId){ extra.textContent=''; return; }
+  var core=document.getElementById('draftSetupSummaryCore');
+  var roundsEl=document.getElementById('draftSetupSummaryRounds');
+  if(!core||!roundsEl)return;
+  if(!draftState.teams.length||!draftState.myTeamId){ core.textContent=''; roundsEl.textContent=''; return; }
   var slot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
-  if(!slot){ extra.textContent=''; return; }
+  if(!slot){ core.textContent=''; roundsEl.textContent=''; return; }
   var typeLabel=DRAFT_TYPE_LABELS[draftState.draftType]||'Snake';
-  extra.textContent=' · '+typeLabel+' · Slot '+slot;
+  var numTeams=draftState.teams.length;
+  var rounds=draftState.numRounds||16;
+  core.textContent=' · '+typeLabel+' · '+numTeams+' Teams · Slot '+slot;
+  roundsEl.textContent=' · '+rounds+' Rds';
 }
 
 // ─── My Roster (v1 scope: user's own team only — the same draftLog
