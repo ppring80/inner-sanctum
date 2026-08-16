@@ -414,6 +414,10 @@ function checkOAuthSession() {
     <button class="view-btn active" id="listBtn" onclick="goView('list')">≡ List</button>
     <button class="view-btn" id="cardBtn" onclick="goView('card')">⊞ Cards</button>
   </div>
+  <div class="view-tog">
+    <button class="view-btn active" id="showDraftedBtn" onclick="setHideDrafted(false)">Show Drafted</button>
+    <button class="view-btn" id="hideDraftedBtn" onclick="setHideDrafted(true)">Hide Drafted</button>
+  </div>
   <div class="search-box">
     <span class="search-icon">🔍</span>
     <input type="text" id="srch" placeholder="Search player or team..." oninput="doSearch(this.value)">
@@ -487,13 +491,21 @@ function checkOAuthSession() {
         <option value="16">16</option>
       </select>
     </div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Draft Type</label>
+      <select id="setupDraftType" onchange="updateSetupDraftTypeNote()">
+        <option value="snake">Snake</option>
+        <option value="linear">Linear</option>
+        <option value="manual">Manual</option>
+      </select>
+    </div>
     <div class="setup-grid" id="setupTeamNamesGrid"></div>
     <div class="setup-field" style="margin-bottom:6px;max-width:320px">
       <label>My Draft Position</label>
       <select id="setupMyTeam"></select>
     </div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Select your draft slot. This determines when you're on the clock in the snake draft.</p>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px" id="setupDraftTypeNote">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
     <div class="btn-row" style="display:flex;gap:10px">
       <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="saveSetup()">Save Setup</button>
@@ -515,6 +527,23 @@ function checkOAuthSession() {
       <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
       <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MANUAL DRAFT TYPE — PICK TEAM MODAL (added) ═══ -->
+<div class="modal-bg" id="manualPickModalBg">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-x" onclick="closeManualPickModal()">✕</button>
+    <div class="modal-ttl">Who drafted this player?</div>
+    <div id="manualPickPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <div class="setup-field" style="margin-bottom:16px">
+      <label>Drafted by</label>
+      <select id="manualPickTeamSel"></select>
+    </div>
+    <div class="btn-row" style="display:flex;gap:10px">
+      <button class="hdr-btn" onclick="closeManualPickModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="confirmManualPick()">Confirm Pick</button>
     </div>
   </div>
 </div>
@@ -592,6 +621,20 @@ var adpByPos={};
 var injuries={};
 var cmpList=[];var cmpData={};
 var curPos='ALL';var curView='list';var curSearch='';var ready=false;
+// Show/Hide Drafted: board-view-only filter. Defaults to showing drafted
+// players (matches existing behavior). Never touches draftLog, My Roster,
+// counters, ownership, pick numbers, or availability logic — it only
+// decides whether an already-computed drafted row gets appended to the
+// DOM during render.
+var hideDrafted=false;
+function setHideDrafted(v){
+  hideDrafted=v;
+  var showBtn=document.getElementById('showDraftedBtn');
+  var hideBtn=document.getElementById('hideDraftedBtn');
+  if(showBtn)showBtn.classList.toggle('active',!v);
+  if(hideBtn)hideBtn.classList.toggle('active',v);
+  render();
+}
 
 // ═══════════════════════════════════════════════════════════
 // DRAFT COMMAND CENTER — team-aware draftLog (Aug 2026)
@@ -627,9 +670,11 @@ var draftState={
   teams:[],
   myTeamId:null,
   draftLog:[],
-  nextPickId:1
+  nextPickId:1,
+  draftType:'snake'
 };
 var currentReassignId=null;
+var pendingManualPick=null;
 
 // Stable name+position identity — fixes the same shape of collision risk
 // already found and fixed twice elsewhere in this codebase (Jefferson/
@@ -656,6 +701,11 @@ function readSavedDraftState(){
     var parsed=JSON.parse(raw);
     if(!parsed||parsed.schemaVersion!==DRAFT_SAVE_SCHEMA_VERSION)return null;
     if(!Array.isArray(parsed.teams)||!Array.isArray(parsed.draftLog))return null;
+    // draftType is a new, additive field. Older saved states (persisted
+    // before this feature existed) won't have it — default to 'snake' so
+    // they keep behaving exactly as they always did, no schema-version
+    // bump or migration required.
+    if(!parsed.draftType) parsed.draftType='snake';
     return parsed;
   }catch(e){
     return null;
@@ -668,7 +718,7 @@ function initDraftState(){
     draftState=saved;
     return;
   }
-  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1};
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake'};
   // No valid new-schema data on this browser. Check for legacy 'isd' data
   // ONLY to decide whether to show the one-time notice — it is never read
   // into draftState and never modified or deleted.
@@ -695,12 +745,32 @@ function dismissLegacyBanner(){
 }
 
 // ─── Snake math — pure functions, no DOM access. Covered by
-// draft-command-center.test.js. ───
+// draft-command-center.test.js. computeSlotForPick() is left completely
+// byte-identical to before this feature: existing snake behavior is
+// unchanged. Linear and Manual are handled by the new functions below it,
+// dispatched through resolveSlotForPick() rather than by touching this
+// function. ───
 function computeSlotForPick(pickNumber,numTeams){
   if(!numTeams)return null;
   var round=Math.ceil(pickNumber/numTeams);
   var posInRound=((pickNumber-1)%numTeams)+1;
   return (round%2===1)?posInRound:(numTeams-posInRound+1);
+}
+
+// Linear: same team order every round, no reversal.
+function computeSlotForPickLinear(pickNumber,numTeams){
+  if(!numTeams)return null;
+  return ((pickNumber-1)%numTeams)+1;
+}
+
+// Manual has no deterministic "on the clock" team — ownership isn't
+// derived from draft order at all in that mode, so this returns null and
+// callers (teamOnClock/distanceToMySlot/renderClockStatus) treat that as
+// "no auto-assignment applies here."
+function resolveSlotForPick(pickNumber,numTeams,draftType){
+  if(draftType==='manual')return null;
+  if(draftType==='linear')return computeSlotForPickLinear(pickNumber,numTeams);
+  return computeSlotForPick(pickNumber,numTeams);
 }
 
 // Deliberately the MAX stored pickNumber + 1, not draftLog.length + 1 —
@@ -718,18 +788,20 @@ function teamIdAtSlot(slot){
   return t?t.id:null;
 }
 function teamOnClock(pickNumber){
-  var slot=computeSlotForPick(pickNumber,draftState.teams.length);
+  var slot=resolveSlotForPick(pickNumber,draftState.teams.length,draftState.draftType);
   return slot?teamIdAtSlot(slot):null;
 }
 // How many picks from `fromPickNumber` until the user's slot comes up
-// again (0 = on the clock right now). Null if setup/my-team isn't set.
+// again (0 = on the clock right now). Null if setup/my-team isn't set, or
+// if draftType is 'manual' (no deterministic turn order to count against).
 function distanceToMySlot(fromPickNumber){
   if(!draftState.myTeamId||!draftState.teams.length)return null;
+  if(draftState.draftType==='manual')return null;
   var mySlot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
   if(!mySlot)return null;
   var numTeams=draftState.teams.length;
   for(var offset=0;offset<numTeams*2;offset++){
-    if(computeSlotForPick(fromPickNumber+offset,numTeams)===mySlot)return offset;
+    if(resolveSlotForPick(fromPickNumber+offset,numTeams,draftState.draftType)===mySlot)return offset;
   }
   return null;
 }
@@ -775,10 +847,45 @@ function logDraftPick(name,pos){
     removePickById(existing.id);
     return;
   }
+  if(draftState.draftType==='manual'){
+    openManualTeamPicker(name,pos);
+    return;
+  }
   var pickNumber=nextPickNumber();
   var teamId=teamOnClock(pickNumber);
   draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:name,pos:pos,teamId:teamId});
   saveDraftState();
+  afterDraftMutation();
+}
+
+// ─── Manual draft type: ownership is never auto-assigned from draft
+// order — recording a pick requires explicitly selecting the drafting
+// team. pickNumber is still derived the normal way (it's just a counter,
+// not tied to ownership), so persistence/historical-correction/Undo Last
+// Pick all keep working exactly as they do for Snake/Linear. ───
+function openManualTeamPicker(name,pos){
+  pendingManualPick={name:name,pos:pos};
+  document.getElementById('manualPickPlayerLabel').textContent=name+' ('+pos+')';
+  var sel=document.getElementById('manualPickTeamSel');
+  sel.innerHTML='';
+  draftState.teams.forEach(function(t){
+    var o=document.createElement('option');
+    o.value=t.id;o.textContent=t.name+(t.id===draftState.myTeamId?' (Me)':'');
+    sel.appendChild(o);
+  });
+  document.getElementById('manualPickModalBg').classList.add('on');
+}
+function closeManualPickModal(){
+  document.getElementById('manualPickModalBg').classList.remove('on');
+  pendingManualPick=null;
+}
+function confirmManualPick(){
+  if(!pendingManualPick)return;
+  var teamId=document.getElementById('manualPickTeamSel').value;
+  var pickNumber=nextPickNumber();
+  draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:pendingManualPick.name,pos:pendingManualPick.pos,teamId:teamId});
+  saveDraftState();
+  closeManualPickModal();
   afterDraftMutation();
 }
 
@@ -837,8 +944,22 @@ function removeCurrentReassignPick(){
 // ─── Draft Setup modal ───
 function openSetupModal(){
   document.getElementById('setupNumTeams').value=String(draftState.teams.length||12);
+  document.getElementById('setupDraftType').value=draftState.draftType||'snake';
+  updateSetupDraftTypeNote();
   renderSetupTeamNames();
   document.getElementById('setupModalBg').classList.add('on');
+}
+function updateSetupDraftTypeNote(){
+  var note=document.getElementById('setupDraftTypeNote');
+  if(!note)return;
+  var t=document.getElementById('setupDraftType').value;
+  if(t==='linear'){
+    note.textContent='Linear: the same team order repeats every round (no snake reversal).';
+  }else if(t==='manual'){
+    note.textContent="Manual: nothing is auto-assigned by draft order. You'll choose the drafting team each time you record a pick.";
+  }else{
+    note.textContent='Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.';
+  }
 }
 function closeSetupModal(){
   document.getElementById('setupModalBg').classList.remove('on');
@@ -891,6 +1012,7 @@ function saveSetup(){
   var mySlotIdx=parseInt(mySlotVal.replace('slot-',''),10)-1;
   draftState.teams=newTeams;
   draftState.myTeamId=newTeams[mySlotIdx]?newTeams[mySlotIdx].id:null;
+  draftState.draftType=document.getElementById('setupDraftType').value||'snake';
   saveDraftState();
   closeSetupModal();
   render();
@@ -938,10 +1060,14 @@ function renderClockStatus(){
     el.innerHTML='<div class="clock-line1">Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.</div>';
     return;
   }
+  if(draftState.draftType==='manual'){
+    el.innerHTML='<div class="clock-line1">MANUAL DRAFT — select the team for each pick as you record it</div>';
+    return;
+  }
   var pn=nextPickNumber();
   var numTeams=draftState.teams.length;
-  var slot=computeSlotForPick(pn,numTeams);
-  var onClockTeam=draftState.teams[slot-1];
+  var slot=resolveSlotForPick(pn,numTeams,draftState.draftType);
+  var onClockTeam=slot?draftState.teams[slot-1]:null;
   var teamLabel=onClockTeam?onClockTeam.name.toUpperCase():'—';
   var away=distanceToMySlot(pn);
 
@@ -1224,6 +1350,7 @@ function render(){
           tr2.innerHTML='<td colspan="10"><div class="tier-inner"><div class="tier-line"></div><span class="tier-lbl">Tier '+t+'</span><div class="tier-line"></div><span class="tier-wisdom">'+w+'</span></div></td>';
           tbody.appendChild(tr2);
         }
+        if(hideDrafted&&dk)return;
 
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
@@ -1253,6 +1380,7 @@ function render(){
       players.forEach(function(p,i){
         var pr=i+1;
         var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+        if(hideDrafted&&dk)return;
         var inj2=getInj(p.name);var sc=sScore(pr,pos);
         var bye=BYE[p.team]||'—';
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
@@ -1318,6 +1446,7 @@ function renderAll(){
       var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
       if(posRankForTiers<1)posRankForTiers=pr;
       var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+      if(hideDrafted&&dk)return;
       var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var adpStr=p.adp<900?p.adp.toFixed(1):'—';
@@ -1354,6 +1483,7 @@ function renderAll(){
       var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
       if(posRankForTiers<1)posRankForTiers=pr;
       var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+      if(hideDrafted&&dk)return;
       var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
       var bye=BYE[p.team]||'—';
       var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
@@ -1425,6 +1555,7 @@ function renderSearch(){
   matches.forEach(function(m){
     var p=m.p;var pos=m.pos;var pr=m.rank;
     var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+    if(hideDrafted&&dk)return;
     var inj2=getInj(p.name);var sc=sScore(pr,pos);
     var bye=BYE[p.team]||'—';
     var adpStr=p.adp<900?p.adp.toFixed(1):'—';
