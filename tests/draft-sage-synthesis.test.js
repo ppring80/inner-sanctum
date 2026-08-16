@@ -1,5 +1,7 @@
 const {
-  buildRecommendation
+  buildRecommendation,
+  isWeakOpportunity,
+  isOpportunityCaution
 } = require(
   '../netlify/functions/draft-sage-synthesis'
 );
@@ -88,7 +90,40 @@ function scarcity(cost) {
   };
 }
 
+function context(
+  environment = 'Neutral',
+  role = 'Similar',
+  rookie = 'Not Applicable',
+  confidence = 'Moderate'
+) {
+  return {
+    environmentChange: {
+      label:
+        environment
+    },
+
+    roleOpportunity: {
+      label:
+        role
+    },
+
+    rookieImpact: {
+      label:
+        rookie
+    },
+
+    contextConfidence: {
+      label:
+        confidence
+    }
+  };
+}
+
 let r;
+
+// ---------------------------------------
+// 1. Strong opportunity + timing pressure
+// ---------------------------------------
 
 r =
   buildRecommendation({
@@ -100,47 +135,28 @@ r =
 
     marketProfile:
       market(
-        'Ahead of Market',
+        'At Market',
         'Market Leans Gone'
       ),
 
     scarcityProfile:
       scarcity(
         'Moderate'
-      )
+      ),
+
+    contextProfile:
+      context()
   });
 
 eq(
-  'strong + market gone => Take Now',
+  'strong + timing pressure => Take Now',
   r.recommendation,
   'Take Now'
 );
 
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'High Volume',
-        'Increasing Role'
-      ),
-
-    marketProfile:
-      market(
-        'Discount',
-        'Market Says He May Return'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'Low'
-      )
-  });
-
-eq(
-  'strong + discount => Take Now',
-  r.recommendation,
-  'Take Now'
-);
+// ---------------------------------------
+// 2. Strong opportunity + room to wait
+// ---------------------------------------
 
 r =
   buildRecommendation({
@@ -159,7 +175,10 @@ r =
     scarcityProfile:
       scarcity(
         'Low'
-      )
+      ),
+
+    contextProfile:
+      context()
   });
 
 eq(
@@ -168,6 +187,10 @@ eq(
   'Can Wait'
 );
 
+// ---------------------------------------
+// 3. High scarcity can force action
+// ---------------------------------------
+
 r =
   buildRecommendation({
     opportunityProfile:
@@ -178,80 +201,79 @@ r =
 
     marketProfile:
       market(
-        'Ahead of Market',
-        'No Next-Pick Read'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'Moderate'
-      )
-  });
-
-eq(
-  'strong + mixed timing => Strong Consideration',
-  r.recommendation,
-  'Strong Consideration'
-);
-
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'Role Player',
-        'Stable Role'
-      ),
-
-    marketProfile:
-      market(
-        'Ahead of Market',
+        'At Market',
         'Market Says He May Return'
       ),
 
     scarcityProfile:
       scarcity(
-        'Low'
-      )
+        'High'
+      ),
+
+    contextProfile:
+      context()
   });
 
 eq(
-  'weak + can wait => Wait',
+  'strong + high scarcity => Take Now',
   r.recommendation,
-  'Wait'
+  'Take Now'
 );
 
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'Role Player',
-        'Stable Role'
-      ),
+// ---------------------------------------
+// 4. KEY FIX:
+//    Decreasing != weak
+// ---------------------------------------
 
-    marketProfile:
-      market(
-        'Ahead of Market',
-        'No Next-Pick Read'
-      ),
+const decliningHigh =
+  {
+    workload:
+      'High Volume',
 
-    scarcityProfile:
-      scarcity(
-        'Moderate'
-      )
-  });
+    direction:
+      'Decreasing Role',
 
-eq(
-  'weak + ahead of market => Pass For Now',
-  r.recommendation,
-  'Pass For Now'
+    style:
+      'Receiving-Driven',
+
+    evidence:
+      'Established'
+  };
+
+check(
+  'high-volume declining is NOT weak',
+  !isWeakOpportunity(
+    decliningHigh
+  )
 );
+
+check(
+  'high-volume declining IS caution',
+  isOpportunityCaution(
+    decliningHigh
+  )
+);
+
+// ---------------------------------------
+// 5. A.J. Brown-type case
+//
+// Historical signal:
+//   moderate-volume + declining
+//
+// Context:
+//   new environment positive,
+//   role expected similar,
+//   strong confidence.
+//
+// This must NOT produce Pass For Now.
+// ---------------------------------------
 
 r =
   buildRecommendation({
     opportunityProfile:
       op(
         'Moderate Volume',
-        'Stable Role'
+        'Decreasing Role'
       ),
 
     marketProfile:
@@ -263,14 +285,335 @@ r =
     scarcityProfile:
       scarcity(
         'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Positive',
+        'Similar',
+        'Not Applicable',
+        'Strong'
       )
   });
 
 eq(
-  'moderate opportunity + market pressure => Consider Now',
+  'AJ-type context restores strong consideration',
+  r.recommendation,
+  'Strong Consideration'
+);
+
+check(
+  'AJ-type result is not pass',
+  r.recommendation !==
+    'Pass For Now'
+);
+
+// ---------------------------------------
+// 6. Declining role without positive
+//    context + timing pressure
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'Moderate Volume',
+        'Decreasing Role'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Leans Gone'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Neutral',
+        'Similar',
+        'Not Applicable',
+        'Moderate'
+      )
+  });
+
+eq(
+  'declining + timing pressure => Consider Now',
   r.recommendation,
   'Consider Now'
 );
+
+// ---------------------------------------
+// 7. Declining + negative context
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'Moderate Volume',
+        'Decreasing Role'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Says He May Return'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Negative',
+        'Reduced',
+        'Not Applicable',
+        'Strong'
+      )
+  });
+
+eq(
+  'declining + negative context + wait room => Wait',
+  r.recommendation,
+  'Wait'
+);
+
+// ---------------------------------------
+// 8. True weak profile can still wait
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'Role Player',
+        'Stable Role'
+      ),
+
+    marketProfile:
+      market(
+        'Ahead of Market',
+        'Market Says He May Return'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Low'
+      ),
+
+    contextProfile:
+      context()
+  });
+
+eq(
+  'role player + wait room => Wait',
+  r.recommendation,
+  'Wait'
+);
+
+// ---------------------------------------
+// 9. True weak + overpriced
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'Role Player',
+        'Stable Role'
+      ),
+
+    marketProfile:
+      market(
+        'Ahead of Market',
+        'No Next-Pick Read'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Moderate'
+      ),
+
+    contextProfile:
+      context()
+  });
+
+eq(
+  'role player + ahead market => Pass For Now',
+  r.recommendation,
+  'Pass For Now'
+);
+
+// ---------------------------------------
+// 10. High-impact rookie
+//
+// No NFL history,
+// but strong Context + timing pressure.
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'No NFL History',
+        'No NFL History',
+        'No NFL History'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Leans Gone'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Moderate'
+      ),
+
+    contextProfile:
+      context(
+        'Positive',
+        'Improved',
+        'High',
+        'Strong'
+      )
+  });
+
+eq(
+  'high-impact rookie => Strong Consideration',
+  r.recommendation,
+  'Strong Consideration'
+);
+
+// ---------------------------------------
+// 11. Rookie with meaningful context
+//     but lower timing pressure
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'No NFL History',
+        'No NFL History',
+        'No NFL History'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Says He May Return'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Neutral',
+        'Improved',
+        'Moderate',
+        'Moderate'
+      )
+  });
+
+eq(
+  'moderate-impact rookie => Consider',
+  r.recommendation,
+  'Consider'
+);
+
+// ---------------------------------------
+// 12. Rookie without real support
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'No NFL History',
+        'No NFL History',
+        'No NFL History'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Says He May Return'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Uncertain',
+        'Uncertain',
+        'Developmental',
+        'Limited'
+      )
+  });
+
+eq(
+  'unsupported rookie => Needs More Evidence',
+  r.recommendation,
+  'Needs More Evidence'
+);
+
+// ---------------------------------------
+// 13. Strong Opportunity + negative
+//     context should lose conviction
+// ---------------------------------------
+
+r =
+  buildRecommendation({
+    opportunityProfile:
+      op(
+        'High Volume',
+        'Stable Role'
+      ),
+
+    marketProfile:
+      market(
+        'At Market',
+        'Market Leans Gone'
+      ),
+
+    scarcityProfile:
+      scarcity(
+        'High'
+      ),
+
+    contextProfile:
+      context(
+        'Negative',
+        'Reduced',
+        'Not Applicable',
+        'Strong'
+      )
+  });
+
+eq(
+  'strong history + negative context => Strong Consideration',
+  r.recommendation,
+  'Strong Consideration'
+);
+
+// ---------------------------------------
+// 14. Mixed player + positive context
+// ---------------------------------------
 
 r =
   buildRecommendation({
@@ -289,14 +632,27 @@ r =
     scarcityProfile:
       scarcity(
         'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Positive',
+        'Improved',
+        'Not Applicable',
+        'Strong'
       )
   });
 
 eq(
-  'mixed/no force => Flexible',
+  'mixed history + positive context => Consider',
   r.recommendation,
-  'Flexible'
+  'Consider'
 );
+
+// ---------------------------------------
+// 15. Limited opportunity evidence,
+//     no context rescue
+// ---------------------------------------
 
 r =
   buildRecommendation({
@@ -316,67 +672,26 @@ r =
     scarcityProfile:
       scarcity(
         'Low'
+      ),
+
+    contextProfile:
+      context(
+        'Neutral',
+        'Uncertain',
+        'Not Applicable',
+        'Limited'
       )
   });
 
 eq(
-  'limited evidence => Needs More Evidence',
+  'limited evidence without context => Needs More Evidence',
   r.recommendation,
   'Needs More Evidence'
 );
 
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'High Volume',
-        'Stable Role',
-        'Established'
-      ),
-
-    marketProfile:
-      market(
-        'Market Value Unknown',
-        'Return Outlook Unknown'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'Unknown'
-      )
-  });
-
-eq(
-  'strong opportunity survives unknown timing evidence',
-  r.recommendation,
-  'Strong Consideration'
-);
-
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'High Volume',
-        'Stable Role'
-      ),
-
-    marketProfile:
-      market(
-        'At Market',
-        'Market Says He May Return'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'High'
-      )
-  });
-
-eq(
-  'high scarcity overrides wait room => Take Now',
-  r.recommendation,
-  'Take Now'
-);
+// ---------------------------------------
+// 16. Moderate workload + timing pressure
+// ---------------------------------------
 
 r =
   buildRecommendation({
@@ -389,79 +704,27 @@ r =
     marketProfile:
       market(
         'At Market',
-        'Market Says He May Return'
+        'Market Leans Gone'
       ),
 
     scarcityProfile:
       scarcity(
-        'High'
-      )
+        'Moderate'
+      ),
+
+    contextProfile:
+      context()
   });
 
 eq(
-  'moderate opportunity + high scarcity => Consider Now',
+  'moderate + timing pressure => Consider Now',
   r.recommendation,
   'Consider Now'
 );
 
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'High Volume',
-        'Decreasing Role'
-      ),
-
-    marketProfile:
-      market(
-        'Ahead of Market',
-        'Market Says He May Return'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'Low'
-      )
-  });
-
-eq(
-  'declining role + wait room => Wait',
-  r.recommendation,
-  'Wait'
-);
-
-r =
-  buildRecommendation({
-    opportunityProfile:
-      op(
-        'High Volume',
-        'Stable Role'
-      ),
-
-    marketProfile:
-      market(
-        'At Market',
-        'Market Says He May Return'
-      ),
-
-    scarcityProfile:
-      scarcity(
-        'Uncertain'
-      )
-  });
-
-eq(
-  'strong + uncertain scarcity => Strong Consideration',
-  r.recommendation,
-  'Strong Consideration'
-);
-
-check(
-  'reasons are plain-language array',
-  Array.isArray(
-    r.reasons
-  )
-);
+// ---------------------------------------
+// 17. No hidden score
+// ---------------------------------------
 
 check(
   'no hidden score field',
@@ -470,6 +733,33 @@ check(
     'score'
   )
 );
+
+// ---------------------------------------
+// 18. Context retained in evidence
+// ---------------------------------------
+
+check(
+  'context evidence returned',
+  r.evidence &&
+  r.evidence.context &&
+  r.evidence.context.confidence ===
+    'Moderate'
+);
+
+// ---------------------------------------
+// 19. Plain-language reasons
+// ---------------------------------------
+
+check(
+  'reasons array exists',
+  Array.isArray(
+    r.reasons
+  )
+);
+
+// ---------------------------------------
+// 20. Pure / non-mutating
+// ---------------------------------------
 
 const input = {
   opportunityProfile:
@@ -487,6 +777,14 @@ const input = {
   scarcityProfile:
     scarcity(
       'Moderate'
+    ),
+
+  contextProfile:
+    context(
+      'Positive',
+      'Improved',
+      'Not Applicable',
+      'Strong'
     )
 };
 
@@ -511,7 +809,9 @@ console.log(
   `draft-sage-synthesis.test.js: ${passed}/${passed + failed} passed`
 );
 
-if (failures.length) {
+if (
+  failures.length
+) {
   failures.forEach(
     (failure) =>
       console.error(
