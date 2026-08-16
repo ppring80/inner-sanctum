@@ -152,52 +152,194 @@ function extractOpportunitiesFromStatLine(statLine) {
 }
 
 // ── Build one player's opportunityIntelligence object from their
-// sorted (oldest -> newest) list of valid {week, opportunities} games. ──
+// sorted (oldest -> newest) list of valid {week, carries, targets,
+// opportunities} games. ──
+//
+// PHASE 2 ADDITION (Aug 15 2026): carries and targets are now tracked
+// as their own independent metric series (rushing.*/receiving.*),
+// mirroring the exact same lastGame/avgLast3/avgLast5/trend/
+// gamesSampled shape as the combined opportunities series -- per
+// explicit instruction to preserve them independently, not just their
+// sum. All three series (opportunities, rushing, receiving) are built
+// by the SAME generic windowedMetrics() helper below, so the
+// null-threshold rules (avgLast3 needs 3 games, avgLast5 needs 5,
+// trend needs 6) apply identically and can't drift between the three.
+//
+// PHASE 2 ADDITION: signals[] -- descriptive, consumer-facing
+// classifications derived from the numbers above. These are LABELS,
+// not scores: nothing in this file (or anywhere Opportunity
+// Intelligence is read today -- confirmed, still zero consumers)
+// automatically moves a recommendation. This mirrors the exact
+// pattern already proven and shipped in player-comparison.js, where
+// injury/tier/bye/scoring-format are informational "reasons" a
+// presentation layer explains, never an automatic score mover unless
+// a human deliberately wires one in later. See SIGNAL THRESHOLDS
+// below -- every constant is named, documented, and explicitly a
+// reasoned starting value, not empirically derived (same discipline
+// as player-comparison.js's CMP_* constants) -- flag for review
+// before any consumer treats them as settled.
 function buildOpportunityIntelligence(validGames, position) {
   // validGames must already be sorted chronologically ascending.
   const sorted = validGames.slice().sort((a, b) => a.week - b.week);
   const n = sorted.length;
 
-  const lastGame = n >= 1 ? sorted[n - 1].opportunities : null;
+  const opportunitiesMetrics = windowedMetrics(sorted, (g) => g.opportunities);
+  const rushingMetrics = windowedMetrics(sorted, (g) => g.carries);
+  const receivingMetrics = windowedMetrics(sorted, (g) => g.targets);
 
-  // avgLast3 / avgLast5: null unless that many valid games exist --
-  // see file header "DESIGN DECISIONS" note. Deliberately NOT averaging
-  // over fewer games than the field name implies.
-  const avgLast3 = n >= 3 ? average(sorted.slice(-3)) : null;
-  const avgLast5 = n >= 5 ? average(sorted.slice(-5)) : null;
-
-  // trend: avg(last 3 valid) - avg(previous 3 valid), null until 6
-  // valid games exist. Exactly as specified.
-  let trend = null;
-  if (n >= 6) {
-    const last3 = average(sorted.slice(-3));
-    const prev3 = average(sorted.slice(-6, -3));
-    trend = round2(last3 - prev3);
-  }
+  const signals = buildSignals(sorted, opportunitiesMetrics, rushingMetrics, receivingMetrics, position);
 
   return {
-    opportunities: {
-      lastGame,
-      avgLast3: avgLast3 === null ? null : round2(avgLast3),
-      avgLast5: avgLast5 === null ? null : round2(avgLast5),
-      trend,
-      gamesSampled: n,
-    },
+    opportunities: opportunitiesMetrics,
     meta: {
       computedAt: new Date().toISOString(),
       sourcePositions: [position],
     },
     historical: {},
-    receiving: {},
+    rushing: rushingMetrics,
+    receiving: receivingMetrics,
     highValue: {},
     persistence: {},
-    signals: [],
+    signals,
   };
 }
 
-function average(games) {
-  return games.reduce((sum, g) => sum + g.opportunities, 0) / games.length;
+// Generic windowed-metric builder: same lastGame/avgLast3/avgLast5/
+// trend/gamesSampled shape and same null-threshold rules, applied to
+// whichever per-game value `valueFn` extracts (opportunities, carries,
+// or targets). Extracted as one shared function specifically so the
+// three metric series can never silently diverge in their averaging/
+// trend logic.
+function windowedMetrics(sortedGames, valueFn) {
+  const n = sortedGames.length;
+  const values = sortedGames.map((g) => ({ week: g.week, value: valueFn(g) }));
+
+  const lastGame = n >= 1 ? values[n - 1].value : null;
+  const avgLast3 = n >= 3 ? averageValues(values.slice(-3)) : null;
+  const avgLast5 = n >= 5 ? averageValues(values.slice(-5)) : null;
+
+  let trend = null;
+  if (n >= 6) {
+    const last3 = averageValues(values.slice(-3));
+    const prev3 = averageValues(values.slice(-6, -3));
+    trend = round2(last3 - prev3);
+  }
+
+  return {
+    lastGame,
+    avgLast3: avgLast3 === null ? null : round2(avgLast3),
+    avgLast5: avgLast5 === null ? null : round2(avgLast5),
+    trend,
+    gamesSampled: n,
+  };
 }
+
+function averageValues(entries) {
+  return entries.reduce((sum, e) => sum + e.value, 0) / entries.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SIGNAL THRESHOLDS — reasoned starting values, NOT empirically
+// derived (no historical outcome data exists anywhere in this
+// codebase to fit these against, same honest caveat as
+// player-comparison.js's CMP_* constants). Named and isolated here so
+// any future tuning is a one-line, reviewable change, not a hunt
+// through the classification logic itself.
+// ═══════════════════════════════════════════════════════════════════
+const SIGNAL_MIN_GAMES_FOR_ROLE = 1; // role composition needs at least 1 real game to say anything at all
+const SIGNAL_ROLE_DOMINANT_SHARE = 0.7; // >=70% of opportunities from one side (carries or targets) -> "-dominant"
+const SIGNAL_TREND_EXPANDING = 3; // trend >= +3 opportunities/game -> "expanding role"
+const SIGNAL_TREND_DECLINING = -3; // trend <= -3 opportunities/game -> "declining usage"
+// Volume tiers are intentionally POSITION-AWARE -- a workhorse RB and
+// a high-volume WR/TE do not sit at the same raw opportunity count.
+// Based on the ROLE the position typically plays (RB workload =
+// carries+targets combined tends to run higher than a WR/TE's
+// targets-only workload), not on any measured percentile -- flag for
+// review once real multi-season data exists to check these against.
+const SIGNAL_VOLUME_TIERS = {
+  RB: { highVolume: 18, moderateVolume: 10 },
+  WR: { highVolume: 8, moderateVolume: 5 },
+  TE: { highVolume: 7, moderateVolume: 4 },
+};
+const SIGNAL_LIMITED_SAMPLE_GAMES = 3; // fewer than this -> flag as an early/limited sample
+
+function buildSignals(sortedGames, opportunitiesMetrics, rushingMetrics, receivingMetrics, position) {
+  const signals = [];
+  const n = sortedGames.length;
+
+  // ── Sample-size flag -- always emitted when there's at least 1 game,
+  // so a consumer never has to separately re-derive "how much do I
+  // trust this." ──
+  if (n >= 1) {
+    signals.push({
+      type: "sampleSize",
+      value: n < SIGNAL_LIMITED_SAMPLE_GAMES ? "limited" : "adequate",
+      detail: { gamesSampled: n, threshold: SIGNAL_LIMITED_SAMPLE_GAMES },
+    });
+  }
+
+  // ── Role composition: carries vs. targets share of the most recent
+  // reliable window (avgLast3 if available, else the single lastGame).
+  // Never fires with zero total opportunities (undefined share). ──
+  const roleBasis = rushingMetrics.avgLast3 !== null && receivingMetrics.avgLast3 !== null
+    ? { carries: rushingMetrics.avgLast3, targets: receivingMetrics.avgLast3, window: "avgLast3" }
+    : n >= SIGNAL_MIN_GAMES_FOR_ROLE
+      ? { carries: rushingMetrics.lastGame, targets: receivingMetrics.lastGame, window: "lastGame" }
+      : null;
+
+  if (roleBasis) {
+    const total = roleBasis.carries + roleBasis.targets;
+    if (total > 0) {
+      const carriesShare = roleBasis.carries / total;
+      const targetsShare = roleBasis.targets / total;
+      let value = "balanced";
+      if (carriesShare >= SIGNAL_ROLE_DOMINANT_SHARE) value = "rushing-dominant";
+      else if (targetsShare >= SIGNAL_ROLE_DOMINANT_SHARE) value = "receiving-dominant";
+      signals.push({
+        type: "roleComposition",
+        value,
+        detail: { carriesShare: round2(carriesShare), targetsShare: round2(targetsShare), basedOn: roleBasis.window },
+      });
+    }
+  }
+
+  // ── Trend classification: translates the numeric opportunities
+  // trend (null until 6 valid games exist -- same rule as everywhere
+  // else) into a decision-ready label. Never fires while trend is null
+  // -- an "insufficient data" signal would be redundant with the
+  // sampleSize signal above, so it's simply omitted rather than
+  // duplicated. ──
+  if (opportunitiesMetrics.trend !== null) {
+    let value = "stable";
+    if (opportunitiesMetrics.trend >= SIGNAL_TREND_EXPANDING) value = "expanding";
+    else if (opportunitiesMetrics.trend <= SIGNAL_TREND_DECLINING) value = "declining";
+    signals.push({
+      type: "trendClassification",
+      value,
+      detail: { trend: opportunitiesMetrics.trend, expandingThreshold: SIGNAL_TREND_EXPANDING, decliningThreshold: SIGNAL_TREND_DECLINING },
+    });
+  }
+
+  // ── Volume tier: position-aware, uses avgLast3 if available (a
+  // steadier signal than any single game), else lastGame. ──
+  const volumeBasis = opportunitiesMetrics.avgLast3 !== null ? opportunitiesMetrics.avgLast3
+    : opportunitiesMetrics.lastGame !== null ? opportunitiesMetrics.lastGame
+    : null;
+  const tiers = SIGNAL_VOLUME_TIERS[position];
+  if (volumeBasis !== null && tiers) {
+    let value = "role-player";
+    if (volumeBasis >= tiers.highVolume) value = "high-volume";
+    else if (volumeBasis >= tiers.moderateVolume) value = "moderate-volume";
+    signals.push({
+      type: "volumeTier",
+      value,
+      detail: { basisValue: volumeBasis, position, highVolumeThreshold: tiers.highVolume, moderateVolumeThreshold: tiers.moderateVolume },
+    });
+  }
+
+  return signals;
+}
+
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
@@ -364,3 +506,5 @@ function normalizePlayerName(name) {
 module.exports.extractOpportunitiesFromStatLine = extractOpportunitiesFromStatLine;
 module.exports.buildOpportunityIntelligence = buildOpportunityIntelligence;
 module.exports.normalizePlayerName = normalizePlayerName;
+module.exports.windowedMetrics = windowedMetrics;
+module.exports.buildSignals = buildSignals;
