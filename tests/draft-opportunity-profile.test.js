@@ -7,12 +7,85 @@
 // the result -- so this is validating against production calculation
 // code, not a reimplementation of it.
 //
-// Run: node draft-opportunity-profile.test.js
+// Run: node tests/draft-opportunity-profile.test.js
 
-const oi = require('/home/claude/inner-sanctum/netlify/functions/refresh-opportunity-intel.js');
-const profileLib = require('./draft-opportunity-profile.js');
-const fixtures = require('./fixtures.js');
+const oi = require('../netlify/functions/refresh-opportunity-intel');
+const profileLib = require('../netlify/functions/draft-opportunity-profile');
 const assert = require('assert');
+
+// Fixture game logs, inlined directly (matching the sibling suites'
+// convention -- none of them externalize test data to a separate file).
+// Illustrative, representative per-game workload patterns shaped to
+// match each named player's well-known real-world role -- not pulled
+// from a live Tank01 box-score cache.
+function games(weeks, carriesArr, targetsArr) {
+  return weeks.map((week, i) => ({
+    week,
+    gameID: `2026_WK${week}`,
+    carries: carriesArr[i],
+    targets: targetsArr[i],
+    opportunities: carriesArr[i] + targetsArr[i],
+  }));
+}
+
+const WEEKS_10 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const fixtures = {
+  'Bijan Robinson': {
+    pos: 'RB',
+    games: games(WEEKS_10,
+      [14, 16, 15, 18, 17, 19, 20, 18, 21, 19],
+      [3, 4, 3, 5, 4, 6, 5, 6, 7, 6]),
+  },
+  'Jahmyr Gibbs': {
+    pos: 'RB',
+    games: games(WEEKS_10,
+      [11, 13, 12, 14, 13, 15, 16, 14, 17, 15],
+      [4, 5, 4, 6, 5, 7, 6, 7, 8, 7]),
+  },
+  'Christian McCaffrey': {
+    pos: 'RB',
+    games: games(WEEKS_10,
+      [18, 20, 19, 21, 20, 22, 23, 21, 24, 22],
+      [6, 7, 6, 8, 7, 8, 7, 8, 9, 8]),
+  },
+  'Derrick Henry': {
+    pos: 'RB',
+    games: games(WEEKS_10,
+      [20, 22, 21, 23, 22, 24, 25, 23, 26, 24],
+      [0, 1, 0, 1, 0, 1, 0, 1, 1, 0]),
+  },
+  "Ja'Marr Chase": {
+    pos: 'WR',
+    games: games(WEEKS_10,
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [9, 10, 9, 11, 10, 12, 11, 10, 13, 11]),
+  },
+  'Travis Kelce': {
+    pos: 'TE',
+    // Deliberately declining across the back half -- validates
+    // trendClassification="declining" and a negative recentRoleVsBaseline
+    // delta flowing through Role Direction without inventing any new
+    // threshold to detect it.
+    games: games(WEEKS_10,
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [8, 9, 8, 7, 7, 6, 6, 5, 5, 4]),
+  },
+  'Committee Back': { // low-volume player
+    pos: 'RB',
+    games: games(WEEKS_10,
+      [4, 5, 3, 4, 5, 4, 6, 5, 4, 5],
+      [1, 2, 1, 1, 2, 1, 2, 1, 1, 2]),
+  },
+  'Recently Returned WR': { // limited-sample player
+    pos: 'WR',
+    games: games([9, 10], [0, 0], [5, 7]),
+  },
+  'Undrafted Rookie WR': { // rookie / no NFL history
+    pos: 'WR',
+    games: [],
+  },
+};
 
 let passed = 0, failed = 0;
 const failures = [];
