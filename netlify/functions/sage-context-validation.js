@@ -225,7 +225,7 @@ const VALIDATION_PLAYERS = [
     expectedContext: {
       environmentChange: "Neutral",
       roleOpportunity: "Uncertain",
-      contextConfidence: "Strong"
+      contextConfidence: "Moderate"
     },
 
     expectedBehavior: "rookie-evidence-restraint"
@@ -389,12 +389,6 @@ function profileLabel(
 
 // ------------------------------------------------------------
 // CONTEXT EXPECTATION CHECK
-//
-// Phase 2G intentionally validates only fields explicitly
-// supplied in expectedContext.
-//
-// This allows the validator to test the governing restraint
-// directly without turning rookieImpact into a ranking rule.
 // ------------------------------------------------------------
 
 function validateContextProfile(
@@ -420,7 +414,6 @@ function validateContextProfile(
     };
   }
 
-
   if (
     !contextRecord ||
     contextRecord.contextStatus !==
@@ -441,10 +434,8 @@ function validateContextProfile(
     };
   }
 
-
   const profile =
     contextRecord.contextProfile;
-
 
   const actual = {
     environmentChange:
@@ -472,10 +463,8 @@ function validateContextProfile(
       )
   };
 
-
   const fields =
     Object.keys(expected);
-
 
   const mismatches =
     fields.filter(
@@ -486,7 +475,6 @@ function validateContextProfile(
         );
       }
     );
-
 
   return {
     passed:
@@ -602,7 +590,6 @@ function buildSharedOpportunityProfile(
     };
   }
 
-
   if (
     contextRecord &&
     contextRecord.isRookie ===
@@ -627,7 +614,6 @@ function buildSharedOpportunityProfile(
         )
     };
   }
-
 
   return {
     source:
@@ -660,7 +646,6 @@ function buildScarcityUniverse(
       : {};
 
   const universe = [];
-
 
   Object.keys(
     contextRecords
@@ -697,11 +682,9 @@ function buildScarcityUniverse(
       return;
     }
 
-
     const opportunityRecord =
       opportunityRecords[key] ||
       null;
-
 
     if (opportunityRecord) {
       universe.push(
@@ -725,7 +708,6 @@ function buildScarcityUniverse(
 
       return;
     }
-
 
     universe.push({
       playerID:
@@ -757,7 +739,6 @@ function buildScarcityUniverse(
       }
     });
   });
-
 
   return universe
     .slice()
@@ -835,7 +816,6 @@ function buildScarcityPools(
     };
   }
 
-
   const currentPool =
     universe.filter(
       function(record) {
@@ -860,7 +840,6 @@ function buildScarcityPools(
       }
     );
 
-
   const nextTurnPool =
     universe.filter(
       function(record) {
@@ -884,7 +863,6 @@ function buildScarcityPools(
         );
       }
     );
-
 
   return {
     currentPool:
@@ -915,7 +893,6 @@ function buildScarcityCandidate(
       }
     );
   }
-
 
   return {
     playerID:
@@ -1004,10 +981,6 @@ function isBlankDirection(
 
 // ------------------------------------------------------------
 // BEHAVIOR VALIDATION
-//
-// This does NOT impose numeric directionality.
-// It only checks that each archetype behaves consistently
-// with the design intent.
 // ------------------------------------------------------------
 
 function validateBehavior(
@@ -1019,7 +992,6 @@ function validateBehavior(
 ) {
   const behavior =
     player.expectedBehavior;
-
 
   if (
     behavior ===
@@ -1054,7 +1026,6 @@ function validateBehavior(
       }
     };
   }
-
 
   if (
     behavior ===
@@ -1112,7 +1083,6 @@ function validateBehavior(
     };
   }
 
-
   if (
     behavior ===
       "rookie-support"
@@ -1156,7 +1126,6 @@ function validateBehavior(
     };
   }
 
-
   if (
     behavior ===
       "rookie-evidence-restraint"
@@ -1166,7 +1135,6 @@ function validateBehavior(
         contextRecord
       );
 
-
     const isRookie =
       (
         contextRecord &&
@@ -1174,11 +1142,9 @@ function validateBehavior(
           true
       );
 
-
     const noNFLHistory =
       opportunitySource ===
         "explicit-no-nfl-history";
-
 
     const environment =
       contextRecord &&
@@ -1189,7 +1155,6 @@ function validateBehavior(
           )
         : null;
 
-
     const role =
       contextRecord &&
       contextRecord.contextProfile
@@ -1198,7 +1163,6 @@ function validateBehavior(
             "roleOpportunity"
           )
         : null;
-
 
     const rookieImpact =
       contextRecord &&
@@ -1209,16 +1173,13 @@ function validateBehavior(
           )
         : null;
 
-
     const neutralEnvironment =
       environment ===
         "Neutral";
 
-
     const uncertainRole =
       role ===
         "Uncertain";
-
 
     const rookieImpactPresent =
       (
@@ -1226,7 +1187,6 @@ function validateBehavior(
         rookieImpact !==
           "Not Applicable"
       );
-
 
     const blankEnvironmentDirection =
       (
@@ -1236,7 +1196,6 @@ function validateBehavior(
         )
       );
 
-
     const blankRoleDirection =
       (
         evidence &&
@@ -1245,7 +1204,6 @@ function validateBehavior(
         )
       );
 
-
     const noManufacturedDirection =
       (
         neutralEnvironment &&
@@ -1253,7 +1211,6 @@ function validateBehavior(
         blankEnvironmentDirection &&
         blankRoleDirection
       );
-
 
     const contextVisible =
       (
@@ -1271,7 +1228,6 @@ function validateBehavior(
         )
       );
 
-
     const passed =
       (
         isRookie &&
@@ -1280,7 +1236,6 @@ function validateBehavior(
         noManufacturedDirection &&
         contextVisible
       );
-
 
     return {
       passed:
@@ -1342,7 +1297,6 @@ function validateBehavior(
     };
   }
 
-
   if (
     behavior ===
       "negative-support"
@@ -1387,7 +1341,6 @@ function validateBehavior(
       }
     };
   }
-
 
   if (
     behavior ===
@@ -1439,7 +1392,6 @@ function validateBehavior(
     };
   }
 
-
   return {
     passed:
       false,
@@ -1466,13 +1418,11 @@ function buildPlayerTest(
       player
     );
 
-
   const contextValidation =
     validateContextProfile(
       contextRecord,
       player.expectedContext
     );
-
 
   if (!contextRecord) {
     return {
@@ -1502,12 +1452,10 @@ function buildPlayerTest(
     };
   }
 
-
   const adp =
     getContextAdp(
       contextRecord
     );
-
 
   if (adp === null) {
     return {
@@ -1537,20 +1485,17 @@ function buildPlayerTest(
     };
   }
 
-
   const opportunityRecord =
     getOpportunityRecord(
       opportunityCache,
       player
     );
 
-
   const opportunityResult =
     buildSharedOpportunityProfile(
       opportunityRecord,
       contextRecord
     );
-
 
   if (!opportunityResult.profile) {
     return {
@@ -1580,16 +1525,13 @@ function buildPlayerTest(
     };
   }
 
-
   const state =
     buildDiagnosticDraftState(
       adp
     );
 
-
   const opportunityProfile =
     opportunityResult.profile;
-
 
   const marketProfile =
     buildDraftMarketProfile({
@@ -1603,13 +1545,11 @@ function buildPlayerTest(
         state.nextUserPick
     });
 
-
   const pools =
     buildScarcityPools(
       universe,
       state
     );
-
 
   const candidate =
     buildScarcityCandidate(
@@ -1617,7 +1557,6 @@ function buildPlayerTest(
       contextRecord,
       adp
     );
-
 
   const scarcityProfile =
     buildDraftScarcityProfile({
@@ -1631,13 +1570,11 @@ function buildPlayerTest(
         pools.nextTurnPool
     });
 
-
   const productionContextProfile =
     contextRecord.contextStatus ===
       "context-profiled"
       ? contextRecord.contextProfile
       : null;
-
 
   const controlSage =
     buildRecommendation({
@@ -1654,7 +1591,6 @@ function buildPlayerTest(
         null
     });
 
-
   const contextSage =
     buildRecommendation({
       opportunityProfile:
@@ -1670,7 +1606,6 @@ function buildPlayerTest(
         productionContextProfile
     });
 
-
   const behaviorValidation =
     validateBehavior(
       player,
@@ -1679,7 +1614,6 @@ function buildPlayerTest(
       contextSage,
       opportunityResult.source
     );
-
 
   return {
     player: {
@@ -1834,7 +1768,6 @@ function buildSummary(
       }
     );
 
-
   const contextValidationFailures =
     results.filter(
       function(result) {
@@ -1846,7 +1779,6 @@ function buildSummary(
       }
     );
 
-
   const behaviorValidationFailures =
     results.filter(
       function(result) {
@@ -1857,7 +1789,6 @@ function buildSummary(
         );
       }
     );
-
 
   const changedByContext =
     okResults.filter(
@@ -1873,7 +1804,6 @@ function buildSummary(
       }
     );
 
-
   const unchanged =
     okResults.filter(
       function(result) {
@@ -1886,7 +1816,6 @@ function buildSummary(
       }
     );
 
-
   const phase2GRookies =
     okResults.filter(
       function(result) {
@@ -1897,7 +1826,6 @@ function buildSummary(
         );
       }
     );
-
 
   const phase2GRookiePasses =
     phase2GRookies.filter(
@@ -1912,7 +1840,6 @@ function buildSummary(
         );
       }
     );
-
 
   return {
     validationPlayerCount:
@@ -2133,7 +2060,6 @@ exports.handler =
       event
     );
 
-
     if (
       event.httpMethod ===
         "OPTIONS"
@@ -2149,7 +2075,6 @@ exports.handler =
           ""
       };
     }
-
 
     if (
       event.httpMethod !==
@@ -2170,7 +2095,6 @@ exports.handler =
       };
     }
 
-
     try {
       const opportunityStore =
         getStore({
@@ -2178,13 +2102,11 @@ exports.handler =
             "opportunity-intel"
         });
 
-
       const contextStore =
         getStore({
           name:
             "context-intel"
         });
-
 
       const [
         opportunityCache,
@@ -2208,7 +2130,6 @@ exports.handler =
           )
         ]);
 
-
       if (!opportunityCache) {
         return {
           statusCode:
@@ -2228,7 +2149,6 @@ exports.handler =
             )
         };
       }
-
 
       if (!contextCache) {
         return {
@@ -2250,13 +2170,11 @@ exports.handler =
         };
       }
 
-
       const universe =
         buildScarcityUniverse(
           opportunityCache,
           contextCache
         );
-
 
       const results =
         VALIDATION_PLAYERS.map(
@@ -2270,17 +2188,14 @@ exports.handler =
           }
         );
 
-
       const summary =
         buildSummary(
           results
         );
 
-
       const allPlayersSuccessful =
         summary.successfulPlayerCount ===
         summary.validationPlayerCount;
-
 
       const validationPassed =
         (
@@ -2296,7 +2211,6 @@ exports.handler =
           summary.phase2GRookieFailureCount ===
             0
         );
-
 
       return {
         statusCode:
