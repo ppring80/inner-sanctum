@@ -1,6 +1,6 @@
 // netlify/functions/context-integrity-check.js
 //
-// SAGE CONTEXT INTELLIGENCE — RELEASE INTEGRITY CHECK v2
+// SAGE CONTEXT INTELLIGENCE — RELEASE INTEGRITY CHECK v2.1
 //
 // PURPOSE:
 // Validate that Context evidence and cached Context records still match
@@ -19,6 +19,16 @@
 //   profiledWithoutEvidenceCount === 0
 //   liveTeamMismatchCount === 0
 //   cacheVsLiveTeamMismatchCount === 0
+//   liveIdentityMismatchCount === 0
+//   profiledPlayerMissingLiveDataCount === 0
+//
+// TEAM NORMALIZATION:
+//
+// Inner Sanctum canonical team code:
+//   WSH -> WAS
+//
+// This matches the normalization already used by adp.js and
+// refresh-context-intel.js.
 //
 // WARNINGS:
 //
@@ -110,12 +120,28 @@ function playerKey(
 }
 
 
+// ------------------------------------------------------------
+// TEAM NORMALIZATION
+//
+// Inner Sanctum canonical convention:
+//
+//   Tank01 / some sources: WSH
+//   Inner Sanctum:          WAS
+//
+// All team comparisons must pass through this function.
+// ------------------------------------------------------------
+
 function normalizeTeam(team) {
-  return String(
-    team || ""
-  )
-    .trim()
-    .toUpperCase();
+  const value =
+    String(team || "")
+      .trim()
+      .toUpperCase();
+
+  if (value === "WSH") {
+    return "WAS";
+  }
+
+  return value;
 }
 
 
@@ -212,6 +238,8 @@ async function readCurrentPlayerData() {
 //   pos,
 //   team
 // }
+//
+// Team is normalized before entering this map.
 // ------------------------------------------------------------
 
 function buildLivePlayerMap(
@@ -331,7 +359,6 @@ function buildIntegrityReport(
     [];
 
 
-  // NEW v2 checks
   const liveTeamMismatches =
     [];
 
@@ -535,10 +562,6 @@ function buildIntegrityReport(
 
     // --------------------------------------------------------
     // CURRENT LIVE PLAYER DATA CHECK
-    //
-    // If a Context-profiled player has no current live record,
-    // that is a hard failure because we cannot validate the
-    // evidence against current team identity.
     // --------------------------------------------------------
 
     if (
@@ -633,7 +656,7 @@ function buildIntegrityReport(
     // --------------------------------------------------------
     // EXPECTED TEAM vs CURRENT LIVE TEAM
     //
-    // This is the Njoku protection.
+    // All three values are canonicalized before comparison.
     // --------------------------------------------------------
 
     if (
@@ -674,7 +697,7 @@ function buildIntegrityReport(
     // --------------------------------------------------------
     // CACHED TEAM vs CURRENT LIVE TEAM
     //
-    // Detects a player moved after the last Context refresh.
+    // Detects a player move after the last Context refresh.
     // --------------------------------------------------------
 
     if (
@@ -745,8 +768,9 @@ function buildIntegrityReport(
           null,
 
         team:
-          record.team ||
-          null
+          normalizeTeam(
+            record.team
+          ) || null
       });
     }
   });
@@ -795,7 +819,7 @@ function buildIntegrityReport(
       "SAGE Context Integrity",
 
     version:
-      "v2-live-team-check",
+      "v2.1-live-team-normalized",
 
     contextPhase:
       contextCache &&
