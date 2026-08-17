@@ -1,6 +1,6 @@
 // netlify/functions/context-evidence.js
 //
-// SAGE CONTEXT INTELLIGENCE — PHASE 2A EVIDENCE REGISTRY
+// SAGE CONTEXT INTELLIGENCE — PHASE 2D EVIDENCE REGISTRY
 //
 // PURPOSE:
 // Store objective, reviewable Context evidence for players whose
@@ -33,8 +33,6 @@
 //
 //   expectedTeam: "NE"
 //
-// This is the team the Context evidence assumes is current.
-//
 // context-integrity-check.js compares expectedTeam against:
 //   1. context-intel/latest
 //   2. CURRENT live player-data.js
@@ -42,15 +40,19 @@
 // If those disagree, the evidence is treated as stale and the
 // release integrity check fails.
 //
-// CURRENT VALIDATED RECORDS:
-//   A.J. Brown
-//   Ashton Jeanty
-//   Jeremiyah Love
+// CURRENT VALIDATED ARCHETYPES:
 //
-// NOTE:
-// Additional positive/negative Context archetypes should be added
-// only after their CURRENT source facts have been independently
-// verified. We do not add a player merely to complete a test matrix.
+//   A.J. Brown
+//     veteran team/QB environment change
+//
+//   Ashton Jeanty
+//     coaching/scheme + role opportunity improvement
+//
+//   Jeremiyah Love
+//     high-impact rookie with no manufactured NFL history
+//
+//   Rachaad White
+//     veteran team change into a narrower role opportunity
 
 (function(root, factory) {
   if (
@@ -455,6 +457,145 @@
 
           sourceUrl:
             "https://www.azcardinals.com/video/on-the-call-jeremiyah-love-learns-he-is-a-cardinal"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // RACHAAD WHITE — RB — WASHINGTON
+    //
+    // Archetype:
+    // Veteran changing teams into a narrower role opportunity.
+    //
+    // Current objective evidence:
+    // - Washington's 2026 unofficial depth chart lists
+    //   Jacory Croskey-Merritt first at RB and Rachaad White second.
+    // - Commanders coverage says White was brought in to serve as
+    //   a third-down pass catcher.
+    // - Commanders coverage identifies Croskey-Merritt as the player
+    //   positioned to lead the backfield.
+    //
+    // Interpretation boundary:
+    // - We do NOT predict White's carries.
+    // - We do NOT project receptions or fantasy points.
+    // - We do NOT say he has no fantasy value.
+    // - We record that his expected 2026 role is narrower than a
+    //   featured/lead-back role.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Rachaad White",
+        "RB"
+      )
+    ] = {
+      // Intentionally null for this first validation pass.
+      //
+      // The live Context population will resolve the Tank01 identity
+      // through normalizedName|POS. After the refresh confirms the
+      // correct player, we can capture and lock his playerID.
+      playerID:
+        null,
+
+      longName:
+        "Rachaad White",
+
+      pos:
+        "RB",
+
+      expectedTeam:
+        "WAS",
+
+      evidence: {
+        isRookie:
+          false,
+
+        changedTeam:
+          true,
+
+        coachingChange:
+          true,
+
+        quarterbackChange:
+          true,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "reduced",
+
+        depthChartChange:
+          "reduced",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "",
+
+        // Washington specifically identifies third-down receiving
+        // work as part of White's intended role.
+        receivingProfile:
+          "strong",
+
+        // We are NOT declaring Washington's offensive environment
+        // inherently negative. The negative signal is role-specific.
+        environmentDirection:
+          "neutral",
+
+        roleDirection:
+          "reduced",
+
+        notes: [
+          "Washington's 2026 unofficial depth chart lists Jacory Croskey-Merritt first at running back and Rachaad White second.",
+          "Commanders coverage says White was brought in to serve as a third-down pass catcher.",
+          "The evidence supports a narrower role opportunity without projecting a specific workload."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Washington Commanders",
+
+          description:
+            "Official 2026 unofficial depth chart listing Jacory Croskey-Merritt first and Rachaad White second at running back.",
+
+          sourceUrl:
+            "https://www.commanders.com/news/commanders-release-2026-unofficial-depth-chart"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Washington Commanders",
+
+          description:
+            "Commanders coverage describing Croskey-Merritt at the top of the backfield and White as a third-down pass catcher.",
+
+          sourceUrl:
+            "https://www.commanders.com/news/shawn-springs-competition-commanders-running-back-room"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Washington Commanders",
+
+          description:
+            "Commanders coverage identifying Croskey-Merritt as having the best chance to become the team's lead back in 2026.",
+
+          sourceUrl:
+            "https://www.commanders.com/news/commanders-confidence-running-back-room-rachaad-white"
         }
       ]
     };
