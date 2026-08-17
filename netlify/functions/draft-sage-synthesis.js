@@ -1,5 +1,5 @@
 // draft-sage-synthesis.js
-// SAGE Step 5 v2 — Explainable Draft Synthesis + Context Intelligence
+// SAGE Step 5 v2.1 — Explainable Draft Synthesis + Context Intelligence
 //
 // Pure, additive decision layer.
 //
@@ -21,6 +21,18 @@
 // - Context never erases historical evidence.
 // - Rookies can be considered without fabricated NFL production.
 // - Missing evidence reduces conviction rather than being guessed through.
+//
+// v2.1 COMPATIBILITY FIX:
+// Step 2's production draftOpportunityProfile uses:
+//   workload.level
+//   evidence.level
+//
+// Earlier Step 5 code looked only for:
+//   workload.label
+//   evidence.label
+//
+// This version accepts BOTH shapes so the real Step 2 values flow into
+// SAGE without changing any Opportunity calculation or recommendation rule.
 
 (function(root, factory){
   if (
@@ -65,17 +77,31 @@
         profile.evidence || {};
 
       return {
+        // Step 2 production shape = .level
+        // Legacy/test shape = .label
         workload:
-          text(workload.label),
+          text(
+            workload.level ||
+            workload.label
+          ),
 
         direction:
-          text(direction.label),
+          text(
+            direction.label
+          ),
 
         style:
-          text(style.label),
+          text(
+            style.label
+          ),
 
+        // Step 2 production shape = .level
+        // Legacy/test shape = .label
         evidence:
-          text(evidence.label)
+          text(
+            evidence.level ||
+            evidence.label
+          )
       };
     }
 
@@ -167,17 +193,15 @@
       );
     }
 
-    // IMPORTANT:
     // A declining role is NOT weak by itself.
     //
-    // Example:
-    // High Volume + Decreasing Role
-    // remains meaningful Opportunity evidence,
-    // but receives a caution flag.
+    // High Volume + Decreasing Role remains
+    // meaningful Opportunity evidence but
+    // receives a caution flag.
     function isWeakOpportunity(s) {
       return (
         s.workload ===
-        'Role Player'
+          'Role Player'
       );
     }
 
@@ -207,6 +231,8 @@
       return (
         s.evidence ===
           'Limited' ||
+        s.evidence ===
+          'Limited Sample' ||
         s.direction ===
           'Not Enough Data Yet'
       );
@@ -285,7 +311,7 @@
     function contextStronglyPositive(s) {
       if (
         s.confidence !==
-        'Strong'
+          'Strong'
       ) {
         return false;
       }
