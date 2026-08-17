@@ -1,14 +1,14 @@
 // netlify/functions/refresh-opportunity-intel.js
 //
 // OPPORTUNITY INTELLIGENCE — Phase 1 (Aug 15 2026) — collection/cache
-// ONLY. This function is deliberately NOT wired into netlify.toml's
-// scheduled-function list yet, and NOTHING reads its output cache
-// except the companion read-only diagnostic endpoint
-// (opportunity-intel.js) built alongside it. Draft Command Center,
-// auction recommendations, player-comparison.js, Sanctum/chat, and
-// Weekly Rankings are completely untouched by this file's existence —
-// confirmed by grep: no other file in this repo references the
-// "opportunity-intel" Blobs store name introduced here.
+// ONLY. NOTHING reads its output cache except the companion read-only
+// diagnostic endpoint (opportunity-intel.js) built alongside it, and
+// (as of the SAGE release-readiness workstream) the SAGE synthesis
+// validation endpoints. Draft Command Center, auction recommendations,
+// player-comparison.js, Sanctum/chat, and Weekly Rankings are
+// completely untouched by this file's existence — confirmed by grep:
+// no other file in this repo references the "opportunity-intel" Blobs
+// store name introduced here.
 //
 // MODEL: this file follows the exact architecture already proven
 // twice in this codebase — refresh-player-data.js (scheduled fetch +
@@ -48,11 +48,67 @@
 // literal, useful diagnostic signal of "how much real data did we
 // actually find," independent of which specific averages that data
 // was enough to fill in.
+//
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 2 — SCHEDULED/MANUAL SPLIT (Aug 17 2026 refresh-hardening pass)
+// ═══════════════════════════════════════════════════════════════════
+//
+// This function now supports two completely separate modes, dispatched
+// on whether the request carries an explicit `weeks` and/or `season`
+// query param:
+//
+//   MANUAL MODE (params.weeks and/or params.season present):
+//     Byte-identical to the original Phase 1 behavior below -- fetch
+//     exactly the specified weeks, rebuild the returned players' full
+//     records from exactly that explicit game set, overwrite `latest`
+//     unconditionally. This is the same tool that produced the real
+//     437-player validation dataset; it must keep working exactly as
+//     it always has for manual backfill/debugging use.
+//
+//   SCHEDULED MODE (no params at all -- the shape a Netlify Scheduled
+//   Function invokes with):
+//     - Derives season and target week dynamically (see
+//       deriveCurrentSeason/deriveMaxCachedWeek below) instead of the
+//       old hardcoded season:"2026"/weeks:[1,2,3] defaults, which were
+//       a real, live bug for exactly this reason -- fine for a manual
+//       diagnostic call, unsafe as a permanent default.
+//     - Regular season only, capped at week 18. Never chases into
+//       preseason or postseason automatically (see the separate
+//       preseason/postseason findings report -- automation never
+//       constructs a request outside the numeric 1-18 range, so it
+//       never needs to know Tank01's conventions for anything else).
+//     - Fetches ONLY the single next unfetched week, and MERGES those
+//       new per-player games into the existing same-season cache
+//       (keyed by gameID, never losing an already-cached game) rather
+//       than re-fetching the whole season every run. Every player's
+//       final record is still computed by the exact same, completely
+//       unmodified buildOpportunityIntelligence() below -- merging
+//       only changes what game list gets handed to it.
+//     - Refuses to write if this run's Tank01 processing was
+//       incomplete for the target week (any box-score fetch failure
+//       or normalization failure at all -- deliberately no percentage
+//       threshold, see report) or if the merge would somehow have
+//       dropped a previously-cached game.
+//     - On a season rollover (cached latest.season != derived season),
+//       starts fresh at week 1 WITHOUT comparing size/health against
+//       the prior season's cache (a new season's week 1 will always
+//       look "smaller" than a full prior season -- that's expected,
+//       not a failure, and must never block the write). The completed
+//       prior season's `latest` snapshot is preserved under its own
+//       explicit `season:<year>:final` key before being replaced, in
+//       addition to the per-week `window:<season>:<week>` keys that
+//       already exist from every run, manual or scheduled.
+//
+// netlify.toml is NOT changed as part of this pass -- actually wiring
+// a schedule that invokes scheduled mode is a deliberately separate,
+// later step.
+// ═══════════════════════════════════════════════════════════════════
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const TARGET_POSITIONS = ["RB", "WR", "TE"]; // QB deliberately excluded, per instruction
+const REGULAR_SEASON_MAX_WEEK = 18; // per explicit product decision: automated refresh is regular-season-only
 
 async function fetchTank01(endpoint, params = {}) {
   const queryString = new URLSearchParams(params).toString();
@@ -168,16 +224,21 @@ function extractOpportunitiesFromStatLine(statLine) {
 // PHASE 2 ADDITION: signals[] -- descriptive, consumer-facing
 // classifications derived from the numbers above. These are LABELS,
 // not scores: nothing in this file (or anywhere Opportunity
-// Intelligence is read today -- confirmed, still zero consumers)
-// automatically moves a recommendation. This mirrors the exact
-// pattern already proven and shipped in player-comparison.js, where
-// injury/tier/bye/scoring-format are informational "reasons" a
-// presentation layer explains, never an automatic score mover unless
-// a human deliberately wires one in later. See SIGNAL THRESHOLDS
-// below -- every constant is named, documented, and explicitly a
-// reasoned starting value, not empirically derived (same discipline
-// as player-comparison.js's CMP_* constants) -- flag for review
-// before any consumer treats them as settled.
+// Intelligence is read today) automatically moves a recommendation.
+// This mirrors the exact pattern already proven and shipped in
+// player-comparison.js, where injury/tier/bye/scoring-format are
+// informational "reasons" a presentation layer explains, never an
+// automatic score mover unless a human deliberately wires one in
+// later. See SIGNAL THRESHOLDS below -- every constant is named,
+// documented, and explicitly a reasoned starting value, not
+// empirically derived (same discipline as player-comparison.js's
+// CMP_* constants) -- flag for review before any consumer treats them
+// as settled.
+//
+// UNCHANGED in this refresh-hardening pass -- this function is called
+// identically by both manual and scheduled mode, and by both the
+// original single-run path and the new merge path. No Opportunity
+// profile/calculation logic changed as part of this pass.
 function buildOpportunityIntelligence(validGames, position) {
   // validGames must already be sorted chronologically ascending.
   const sorted = validGames.slice().sort((a, b) => a.week - b.week);
@@ -197,10 +258,10 @@ function buildOpportunityIntelligence(validGames, position) {
     },
     // Historical horizon extension point (Aug 15 2026, Phase 3 audit).
     // Not populated yet -- only this season's data has ever been
-    // fetched (confirmed: no 2024/2023 pull has been run). Shaped now
-    // so a future multi-season backfill can slot in without breaking
-    // any consumer reading `historical.currentSeason` once it exists;
-    // an empty object today, not a fabricated placeholder value.
+    // fetched. Shaped now so a future multi-season backfill can slot
+    // in without breaking any consumer reading `historical.currentSeason`
+    // once it exists; an empty object today, not a fabricated
+    // placeholder value.
     historical: {},
     rushing: rushingMetrics,
     receiving: receivingMetrics,
@@ -221,12 +282,7 @@ function buildOpportunityIntelligence(validGames, position) {
 // game in the fetched window -- not gated behind a minimum count the
 // way avgLast3/avgLast5 are, since "every valid game in the fetched
 // season/window" (as specified) has no implied minimum sample size of
-// its own. Non-null as soon as n>=1, same threshold as lastGame. This
-// is a deliberate interpretation, flagged in the report -- a stricter
-// minimum-games requirement for seasonAvg specifically would be a
-// reasonable alternative if a genuinely tiny sample (e.g. a single
-// Week 1 game) turns out to produce a misleading "season average" in
-// practice once real distribution data is reviewed.
+// its own. Non-null as soon as n>=1, same threshold as lastGame.
 function windowedMetrics(sortedGames, valueFn) {
   const n = sortedGames.length;
   const values = sortedGames.map((g) => ({ week: g.week, value: valueFn(g) }));
@@ -366,17 +422,10 @@ function buildSignals(sortedGames, opportunitiesMetrics, rushingMetrics, receivi
   // replaces the other.
   //
   // DELIBERATELY UNCLASSIFIED: per explicit instruction, no
-  // expanding/stable/contracting threshold is applied here yet.
-  // Classifying "material difference" requires knowing what a normal
-  // recent-vs-season spread actually looks like across real players --
-  // that requires the real 2025 full-season distribution, which has
-  // not been fetched as of this code (still only weeks 1-3 in
-  // production). Rather than invent a threshold, this signal exposes
-  // the RAW, TRANSPARENT relationship (recent value, baseline value,
-  // absolute and percent delta) with value:"unclassified" -- once the
-  // full-season pull runs and the real distribution is reviewed, a
-  // classification threshold can be added as a small, isolated change
-  // to this one block, without touching the underlying computation.
+  // expanding/stable/contracting threshold is applied here. Rather
+  // than invent a threshold, this signal exposes the RAW, TRANSPARENT
+  // relationship (recent value, baseline value, absolute and percent
+  // delta) with value:"unclassified".
   const recentBasis = opportunitiesMetrics.avgLast5 !== null
     ? { value: opportunitiesMetrics.avgLast5, window: "avgLast5" }
     : opportunitiesMetrics.avgLast3 !== null
@@ -391,7 +440,7 @@ function buildSignals(sortedGames, opportunitiesMetrics, rushingMetrics, receivi
     const percentDelta = baseline !== 0 ? round2((absoluteDelta / baseline) * 100) : null;
     signals.push({
       type: "recentRoleVsBaseline",
-      value: "unclassified", // see comment above -- not expanding/stable/contracting yet, pending real distribution review
+      value: "unclassified",
       detail: {
         recentValue: recentBasis.value,
         recentWindow: recentBasis.window,
@@ -410,10 +459,92 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+// Same normalization convention used everywhere else in this codebase
+// (shared-player-data.js's normalizePlayerName), duplicated here per
+// this project's established cross-runtime-boundary pattern rather
+// than importing across the client/server split. MUST be byte-for-byte
+// identical to shared-player-data.js's real implementation -- a first
+// draft of this function mistakenly copied draft.html's simpler
+// hyphenated key() helper instead (a DIFFERENT convention used only
+// for that page's own internal DOM element IDs), which would have
+// produced keys ("ja-marr-chase") that could never match the real
+// player-data cache's keys ("jamarr chase") for any name containing a
+// hyphen, apostrophe, period, or suffix. Caught and fixed during this
+// implementation's own self-check, before any cache was written under
+// the wrong convention.
+function normalizePlayerName(name) {
+  return (name || "")
+    .toLowerCase()
+    .replace(/[.''']/g, "")
+    .replace(/-/g, " ")
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 2 — SCHEDULED-MODE HELPERS (pure functions, no I/O; covered by
+// tests/refresh-opportunity-intel-scheduled.test.js)
+// ═══════════════════════════════════════════════════════════════════
+
+// NFL season convention: the season is named for the year it STARTS in
+// (e.g. the 2026 season runs Sep 2026 - Feb 2027). A simple, explicit,
+// reviewable rule -- not a formula chasing exact season-start dates --
+// matching this file's existing "named constant, not clever
+// calculation" discipline (see SIGNAL_* thresholds above). August is
+// the rollover month: preseason typically begins in early August, well
+// before Opportunity Intelligence (regular season only) would ever
+// have real regular-season data to fetch, so an early-August rollover
+// is safely ahead of when this would matter in practice, without
+// needing to track exact season-start dates season to season.
+function deriveCurrentSeason(now) {
+  const month = now.getUTCMonth(); // 0-indexed; 7 = August
+  const year = now.getUTCFullYear();
+  return String(month >= 7 ? year : year - 1);
+}
+
+// Scans the already-cached records' own game history to find the
+// highest week number successfully cached -- derived from the real
+// data itself rather than a separately maintained counter, so it
+// stays correct even against a cache produced entirely by a manual
+// full-rebuild run (which predates this change and never set any new
+// tracking field). Returns 0 if there's no game history at all.
+function deriveMaxCachedWeek(records) {
+  let max = 0;
+  Object.values(records || {}).forEach((record) => {
+    (record._rawGames || []).forEach((g) => {
+      if (typeof g.week === "number" && g.week > max) max = g.week;
+    });
+  });
+  return max;
+}
+
+// Union two players' game lists by gameID, new data winning only on an
+// (expected-never) collision. Never drops a game present in `existingGames`.
+function mergeGamesForPlayer(existingGames, newGames) {
+  const byGameID = {};
+  (existingGames || []).forEach((g) => { byGameID[g.gameID] = g; });
+  (newGames || []).forEach((g) => { byGameID[g.gameID] = g; });
+  return Object.values(byGameID).sort((a, b) => a.week - b.week);
+}
+
 exports.handler = async (event) => {
   connectLambda(event);
 
   const params = event.queryStringParameters || {};
+  const isManualMode = Boolean(params.weeks || params.season);
+
+  if (isManualMode) {
+    return runManualRefresh(params);
+  }
+  return runScheduledRefresh();
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// MANUAL MODE — byte-identical to the original Phase 1 handler body.
+// Triggered by any explicit `weeks` and/or `season` query param.
+// ═══════════════════════════════════════════════════════════════════
+async function runManualRefresh(params) {
   const season = params.season || "2026";
   // Deliberately bounded Phase 1 test window -- explicit weeks list
   // (comma-separated) if given, else defaults to a small 3-week window.
@@ -423,7 +554,7 @@ exports.handler = async (event) => {
     ? params.weeks.split(",").map((w) => parseInt(w.trim(), 10)).filter((w) => !isNaN(w))
     : [1, 2, 3];
 
-  console.log(`Opportunity Intelligence Phase 1: fetching weeks [${weeks.join(",")}], season ${season}`);
+  console.log(`Opportunity Intelligence manual refresh: fetching weeks [${weeks.join(",")}], season ${season}`);
 
   // ── Step 1: game IDs for every requested week ──
   const gameEntryLists = await Promise.all(weeks.map((w) => fetchGameIDsForWeek(w, season)));
@@ -507,6 +638,7 @@ exports.handler = async (event) => {
     computedAt: new Date().toISOString(),
     season,
     weeksRequested: weeks,
+    mode: "manual",
     gamesFound: allGameEntries.length,
     gamesFailed: failedGameIDs.length,
     playersRecorded: Object.keys(records).length,
@@ -530,6 +662,7 @@ exports.handler = async (event) => {
   return {
     statusCode: 200,
     body: JSON.stringify({
+      mode: "manual",
       season,
       weeksRequested: weeks,
       gamesFound: allGameEntries.length,
@@ -537,40 +670,286 @@ exports.handler = async (event) => {
       playersRecorded: Object.keys(records).length,
       excludedNoPositionMatch,
       normalizationFailureCount: normalizationFailures.length,
+      writeOccurred: true,
     }),
   };
-};
+}
 
-// Same normalization convention used everywhere else in this codebase
-// (shared-player-data.js's normalizePlayerName), duplicated here per
-// this project's established cross-runtime-boundary pattern rather
-// than importing across the client/server split. MUST be byte-for-byte
-// identical to shared-player-data.js's real implementation -- a first
-// draft of this function mistakenly copied draft.html's simpler
-// hyphenated key() helper instead (a DIFFERENT convention used only
-// for that page's own internal DOM element IDs), which would have
-// produced keys ("ja-marr-chase") that could never match the real
-// player-data cache's keys ("jamarr chase") for any name containing a
-// hyphen, apostrophe, period, or suffix. Caught and fixed during this
-// implementation's own self-check, before any cache was written under
-// the wrong convention -- see report.
-function normalizePlayerName(name) {
-  return (name || "")
-    .toLowerCase()
-    .replace(/[.''']/g, "")
-    .replace(/-/g, " ")
-    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+// ═══════════════════════════════════════════════════════════════════
+// SCHEDULED MODE — no query params. Safe-by-default: derives season/
+// week, fetches only the single next week, merges into existing
+// same-season history, and refuses to write on any incomplete
+// processing. See the Phase 2 header comment at the top of this file
+// for the full design rationale.
+// ═══════════════════════════════════════════════════════════════════
+async function runScheduledRefresh() {
+  const derivedSeason = deriveCurrentSeason(new Date());
+  const store = getStore({ name: "opportunity-intel" });
+
+  let existingLatest = null;
+  try {
+    existingLatest = await store.get("latest", { type: "json" });
+  } catch (e) {
+    console.log("Scheduled refresh: could not read existing 'latest' cache (treated as absent):", e.message);
+  }
+
+  const seasonRollover = !existingLatest || existingLatest.season !== derivedSeason;
+  const priorCachedMaxWeek = seasonRollover ? 0 : deriveMaxCachedWeek(existingLatest.records);
+  const targetWeek = priorCachedMaxWeek + 1;
+
+  if (targetWeek > REGULAR_SEASON_MAX_WEEK) {
+    return scheduledNoOp({
+      derivedSeason,
+      seasonRollover,
+      priorCachedMaxWeek,
+      targetWeek,
+      noOpReason: `Derived next week (${targetWeek}) is beyond the regular season (max ${REGULAR_SEASON_MAX_WEEK}) -- nothing to do until next season.`,
+    });
+  }
+
+  console.log(
+    `Opportunity Intelligence scheduled refresh: season ${derivedSeason}, target week ${targetWeek}${seasonRollover ? " (new season)" : ""}`
+  );
+
+  // ── Step 1: game IDs for the single target week only ──
+  const gameEntries = await fetchGameIDsForWeek(targetWeek, derivedSeason);
+
+  if (gameEntries.length === 0) {
+    return scheduledNoOp({
+      derivedSeason,
+      seasonRollover,
+      priorCachedMaxWeek,
+      targetWeek,
+      noOpReason: `No completed games found yet for week ${targetWeek}, season ${derivedSeason} -- nothing to do this run.`,
+    });
+  }
+
+  // ── Step 2: box scores for that week's games ──
+  const { allPlayers, failedGameIDs } = await fetchPlayerStatsForGames(gameEntries);
+
+  // ── Step 3: position cross-reference (same reused pattern as manual mode) ──
+  let positionLookup = {};
+  try {
+    const playerDataStore = getStore({ name: "player-data" });
+    const cachedPlayerData = await playerDataStore.get("playerData", { type: "json" });
+    if (cachedPlayerData?.players) positionLookup = cachedPlayerData.players;
+  } catch (e) {
+    console.log("Scheduled refresh: player-data cache read failed (non-fatal, all players excluded this run):", e.message);
+  }
+
+  // ── Step 4: extract this week's new per-player games (same
+  // normalization rules as manual mode, same functions, unmodified) ──
+  const newGamesByPlayer = {}; // playerID -> {longName, pos, games:[...]}
+  const normalizationFailures = [];
+  let excludedNoPositionMatch = 0;
+
+  allPlayers.forEach((statLine) => {
+    const playerID = statLine.playerID;
+    if (!playerID) return;
+
+    const posInfo = positionLookup[playerID];
+    if (!posInfo || !posInfo.pos || TARGET_POSITIONS.indexOf(posInfo.pos) === -1) {
+      excludedNoPositionMatch++;
+      return;
+    }
+
+    const extracted = extractOpportunitiesFromStatLine(statLine);
+    if (extracted === null) {
+      normalizationFailures.push({ playerID, longName: statLine.longName, gameID: statLine.gameID, week: statLine.week });
+      return;
+    }
+
+    if (!newGamesByPlayer[playerID]) newGamesByPlayer[playerID] = { longName: statLine.longName, pos: posInfo.pos, games: [] };
+    newGamesByPlayer[playerID].games.push({
+      week: statLine.week,
+      gameID: statLine.gameID,
+      carries: extracted.carries,
+      targets: extracted.targets,
+      opportunities: extracted.opportunities,
+    });
+  });
+
+  // ── WRITE-SAFETY GATE 1: any box-score fetch failure or
+  // normalization failure for this week blocks the write entirely.
+  // Deliberately no percentage/threshold math -- any incomplete
+  // processing of the games we set out to fetch this run is reason
+  // enough not to trust the result. This is the primary, strongest
+  // protection, per explicit instruction to stay conservative here. ──
+  if (failedGameIDs.length > 0 || normalizationFailures.length > 0) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          mode: "scheduled",
+          derivedSeason,
+          seasonRollover,
+          priorCachedMaxWeek,
+          targetWeek,
+          noOp: false,
+          gamesFound: gameEntries.length,
+          gamesFailed: failedGameIDs.length,
+          normalizationFailureCount: normalizationFailures.length,
+          writeOccurred: false,
+          writeBlockedReason: `${failedGameIDs.length} box-score fetch failure(s) and/or ${normalizationFailures.length} normalization failure(s) for week ${targetWeek} -- refusing to write an incomplete week.`,
+          failedGameIDs,
+          normalizationFailures,
+        },
+        null,
+        2
+      ),
+    };
+  }
+
+  // ── Merge into existing same-season history. Skipped entirely on a
+  // season rollover -- there is no "existing same-season history" to
+  // merge into yet; every player untouched this week (bye, inactive)
+  // otherwise carries forward unchanged from the existing cache. ──
+  const mergedRecords = {};
+  if (!seasonRollover) {
+    Object.assign(mergedRecords, existingLatest.records);
+  }
+
+  // ── WRITE-SAFETY GATE 2: the merge must never lose a previously-
+  // cached game. Union logic in mergeGamesForPlayer() should make this
+  // impossible, but it is checked explicitly rather than only trusted. ──
+  let mergeLostGames = false;
+
+  Object.keys(newGamesByPlayer).forEach((playerID) => {
+    const { longName, pos, games: thisWeekGames } = newGamesByPlayer[playerID];
+    const key = `${normalizePlayerName(longName)}|${pos}`;
+    const existingRecord = mergedRecords[key];
+    const existingGames = existingRecord ? existingRecord._rawGames : [];
+
+    const mergedGames = mergeGamesForPlayer(existingGames, thisWeekGames);
+
+    const existingIDs = new Set((existingGames || []).map((g) => g.gameID));
+    const mergedIDs = new Set(mergedGames.map((g) => g.gameID));
+    existingIDs.forEach((id) => {
+      if (!mergedIDs.has(id)) mergeLostGames = true;
+    });
+
+    mergedRecords[key] = Object.assign(
+      { playerID, longName, pos },
+      buildOpportunityIntelligence(mergedGames, pos)
+    );
+    mergedRecords[key]._rawGames = mergedGames;
+  });
+
+  if (mergeLostGames) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify(
+        {
+          mode: "scheduled",
+          derivedSeason,
+          seasonRollover,
+          priorCachedMaxWeek,
+          targetWeek,
+          noOp: false,
+          gamesFound: gameEntries.length,
+          gamesFailed: failedGameIDs.length,
+          normalizationFailureCount: normalizationFailures.length,
+          writeOccurred: false,
+          writeBlockedReason:
+            "Merge would have dropped one or more previously-cached games -- refusing to write. This should not be possible under normal union logic; investigate before retrying.",
+        },
+        null,
+        2
+      ),
+    };
+  }
+
+  const result = {
+    computedAt: new Date().toISOString(),
+    season: derivedSeason,
+    weeksRequested: [targetWeek],
+    mode: "scheduled",
+    seasonRollover,
+    gamesFound: gameEntries.length,
+    gamesFailed: failedGameIDs.length,
+    playersRecorded: Object.keys(mergedRecords).length,
+    excludedNoPositionMatch,
+    normalizationFailures,
+    records: mergedRecords,
+  };
+
+  try {
+    // Preserve the completed prior season under its own explicit,
+    // directly-addressable key before repointing `latest` -- in
+    // addition to the per-week `window:<season>:<week>` keys that
+    // already exist from every run, manual or scheduled, and are
+    // never deleted or overwritten by this change.
+    if (seasonRollover && existingLatest) {
+      await store.setJSON(`season:${existingLatest.season}:final`, existingLatest);
+    }
+
+    await store.setJSON(`window:${derivedSeason}:${targetWeek}`, result);
+    await store.setJSON("latest", result);
+
+    console.log(
+      `Opportunity Intelligence scheduled refresh cached: season ${derivedSeason}, week ${targetWeek}, ${Object.keys(newGamesByPlayer).length} players updated this run, ${Object.keys(mergedRecords).length} total players in cache${seasonRollover ? " (new season)" : ""}`
+    );
+  } catch (e) {
+    console.log("Scheduled refresh: failed to write opportunity-intel cache:", e.message);
+    return { statusCode: 500, body: JSON.stringify({ error: "Cache write failed", detail: e.message }) };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        mode: "scheduled",
+        derivedSeason,
+        seasonRollover,
+        priorCachedMaxWeek,
+        targetWeek,
+        noOp: false,
+        gamesFound: gameEntries.length,
+        gamesFailed: failedGameIDs.length,
+        normalizationFailureCount: normalizationFailures.length,
+        playersUpdatedThisRun: Object.keys(newGamesByPlayer).length,
+        playersRecordedTotal: Object.keys(mergedRecords).length,
+        writeOccurred: true,
+        writeBlockedReason: null,
+      },
+      null,
+      2
+    ),
+  };
+}
+
+function scheduledNoOp({ derivedSeason, seasonRollover, priorCachedMaxWeek, targetWeek, noOpReason }) {
+  console.log(`Opportunity Intelligence scheduled refresh: no-op -- ${noOpReason}`);
+  return {
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        mode: "scheduled",
+        derivedSeason,
+        seasonRollover,
+        priorCachedMaxWeek,
+        targetWeek,
+        noOp: true,
+        noOpReason,
+        writeOccurred: false,
+        writeBlockedReason: null,
+      },
+      null,
+      2
+    ),
+  };
 }
 
 // Exported for direct unit testing of the pure computation logic,
-// independent of the live Tank01 fetch / Blobs cache (see
-// opportunity-intel-calc.test.js). exports.handler above is the real
-// production entry point; these are the pieces that can be verified
-// without live network access.
+// independent of the live Tank01 fetch / Blobs cache. exports.handler
+// above is the real production entry point; these are the pieces that
+// can be verified without live network access.
 module.exports.extractOpportunitiesFromStatLine = extractOpportunitiesFromStatLine;
 module.exports.buildOpportunityIntelligence = buildOpportunityIntelligence;
 module.exports.normalizePlayerName = normalizePlayerName;
 module.exports.windowedMetrics = windowedMetrics;
 module.exports.buildSignals = buildSignals;
+module.exports.deriveCurrentSeason = deriveCurrentSeason;
+module.exports.deriveMaxCachedWeek = deriveMaxCachedWeek;
+module.exports.mergeGamesForPlayer = mergeGamesForPlayer;
+module.exports.REGULAR_SEASON_MAX_WEEK = REGULAR_SEASON_MAX_WEEK;
