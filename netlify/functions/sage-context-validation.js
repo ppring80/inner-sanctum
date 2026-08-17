@@ -2,7 +2,7 @@
 //
 // SAGE — CONTEXT DIRECTIONAL VALIDATION
 //
-// PHASE 2E
+// PHASE 2G — RELEASE GATE 1
 //
 // PURPOSE:
 // Validate that production Context Intelligence influences SAGE
@@ -32,32 +32,41 @@
 // - A rookie with no historical Opportunity record receives an
 //   explicit "No NFL History" Opportunity profile.
 // - No NFL production is fabricated.
-// - High-value players who changed teams are restraint tests:
-//   Context may describe material change without automatically
-//   forcing a positive or negative recommendation.
+// - High-value players who changed teams are restraint tests.
+// - Phase 2G rookies are evidence-restraint tests:
+//   objective rookie evidence may inform SAGE, but draft capital,
+//   prospect evidence, receiving evidence, or landing spot must
+//   NOT manufacture positive environment or role direction.
 //
-// VALIDATION ARCHETYPES:
+// PHASE 2G VALIDATION SET:
 //
+// Existing regression set:
 //   A.J. Brown
-//     Positive environment / similar role
-//
 //   Ashton Jeanty
-//     Positive environment / improved role
-//
 //   Jeremiyah Love
-//     High-impact rookie / No NFL History
-//
 //   Rachaad White
-//     Neutral environment / reduced role
-//
 //   Jaylen Waddle
-//     High-value team-change restraint case
-//
 //   Kenneth Walker III
-//     High-value team-change restraint case
-//
 //   Chase Brown
-//     Baseline-only control
+//
+// Phase 2G rookie expansion:
+//   Carnell Tate
+//   Jadarian Price
+//   Jordyn Tyson
+//   Makai Lemon
+//   KC Concepcion
+//
+// RELEASE GATE 1 PASS CONDITION:
+// - All validation players execute successfully.
+// - All expected Context profiles validate.
+// - All behavioral validations pass.
+// - Phase 2G rookies use explicit No NFL History Opportunity.
+// - Phase 2G rookie evidence retains blank environmentDirection
+//   and roleDirection.
+// - Phase 2G rookie Context resolves to Neutral environment and
+//   Uncertain role.
+// - Context may affect SAGE reasoning, but must not invent
+//   directional NFL environment or role evidence.
 
 const {
   getStore,
@@ -95,188 +104,173 @@ const CORS_HEADERS = {
 
 const VALIDATION_PLAYERS = [
   {
-    name:
-      "A.J. Brown",
-
-    pos:
-      "WR",
-
-    archetype:
-      "positive-environment",
+    name: "A.J. Brown",
+    pos: "WR",
+    archetype: "positive-environment",
 
     expectedContext: {
-      environmentChange:
-        "Positive",
-
-      roleOpportunity:
-        "Similar",
-
-      rookieImpact:
-        "Not Applicable",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Positive",
+      roleOpportunity: "Similar",
+      rookieImpact: "Not Applicable",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "positive-support"
+    expectedBehavior: "positive-support"
   },
 
   {
-    name:
-      "Ashton Jeanty",
-
-    pos:
-      "RB",
-
-    archetype:
-      "positive-role",
+    name: "Ashton Jeanty",
+    pos: "RB",
+    archetype: "positive-role",
 
     expectedContext: {
-      environmentChange:
-        "Positive",
-
-      roleOpportunity:
-        "Improved",
-
-      rookieImpact:
-        "Not Applicable",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Positive",
+      roleOpportunity: "Improved",
+      rookieImpact: "Not Applicable",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "positive-support"
+    expectedBehavior: "positive-support"
   },
 
   {
-    name:
-      "Jeremiyah Love",
-
-    pos:
-      "RB",
-
-    archetype:
-      "high-impact-rookie",
+    name: "Jeremiyah Love",
+    pos: "RB",
+    archetype: "high-impact-rookie",
 
     expectedContext: {
-      environmentChange:
-        "Neutral",
-
-      roleOpportunity:
-        "Uncertain",
-
-      rookieImpact:
-        "High",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      rookieImpact: "High",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "rookie-support"
+    expectedBehavior: "rookie-support"
   },
 
   {
-    name:
-      "Rachaad White",
-
-    pos:
-      "RB",
-
-    archetype:
-      "reduced-role",
+    name: "Rachaad White",
+    pos: "RB",
+    archetype: "reduced-role",
 
     expectedContext: {
-      environmentChange:
-        "Neutral",
-
-      roleOpportunity:
-        "Reduced",
-
-      rookieImpact:
-        "Not Applicable",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Neutral",
+      roleOpportunity: "Reduced",
+      rookieImpact: "Not Applicable",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "negative-support"
+    expectedBehavior: "negative-support"
   },
 
   {
-    name:
-      "Jaylen Waddle",
-
-    pos:
-      "WR",
-
-    archetype:
-      "high-value-restraint-wr",
+    name: "Jaylen Waddle",
+    pos: "WR",
+    archetype: "high-value-restraint-wr",
 
     expectedContext: {
-      environmentChange:
-        "Uncertain",
-
-      roleOpportunity:
-        "Similar",
-
-      rookieImpact:
-        "Not Applicable",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Uncertain",
+      roleOpportunity: "Similar",
+      rookieImpact: "Not Applicable",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "restraint"
+    expectedBehavior: "restraint"
   },
 
   {
-    name:
-      "Kenneth Walker III",
-
-    pos:
-      "RB",
-
-    archetype:
-      "high-value-restraint-rb",
+    name: "Kenneth Walker III",
+    pos: "RB",
+    archetype: "high-value-restraint-rb",
 
     expectedContext: {
-      environmentChange:
-        "Uncertain",
-
-      roleOpportunity:
-        "Similar",
-
-      rookieImpact:
-        "Not Applicable",
-
-      contextConfidence:
-        "Strong"
+      environmentChange: "Uncertain",
+      roleOpportunity: "Similar",
+      rookieImpact: "Not Applicable",
+      contextConfidence: "Strong"
     },
 
-    expectedBehavior:
-      "restraint"
+    expectedBehavior: "restraint"
   },
 
   {
-    name:
-      "Chase Brown",
+    name: "Chase Brown",
+    pos: "RB",
+    archetype: "baseline-control",
 
-    pos:
-      "RB",
+    expectedContext: null,
 
-    archetype:
-      "baseline-control",
+    expectedBehavior: "baseline-control"
+  },
 
-    expectedContext:
-      null,
+  {
+    name: "Carnell Tate",
+    pos: "WR",
+    archetype: "phase-2g-premium-draft-capital-rookie",
 
-    expectedBehavior:
-      "baseline-control"
+    expectedContext: {
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      contextConfidence: "Strong"
+    },
+
+    expectedBehavior: "rookie-evidence-restraint"
+  },
+
+  {
+    name: "Jadarian Price",
+    pos: "RB",
+    archetype: "phase-2g-day-one-draft-capital-rookie",
+
+    expectedContext: {
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      contextConfidence: "Strong"
+    },
+
+    expectedBehavior: "rookie-evidence-restraint"
+  },
+
+  {
+    name: "Jordyn Tyson",
+    pos: "WR",
+    archetype: "phase-2g-premium-draft-capital-rookie",
+
+    expectedContext: {
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      contextConfidence: "Strong"
+    },
+
+    expectedBehavior: "rookie-evidence-restraint"
+  },
+
+  {
+    name: "Makai Lemon",
+    pos: "WR",
+    archetype: "phase-2g-day-one-draft-capital-rookie",
+
+    expectedContext: {
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      contextConfidence: "Strong"
+    },
+
+    expectedBehavior: "rookie-evidence-restraint"
+  },
+
+  {
+    name: "KC Concepcion",
+    pos: "WR",
+    archetype: "phase-2g-day-one-draft-capital-rookie",
+
+    expectedContext: {
+      environmentChange: "Neutral",
+      roleOpportunity: "Uncertain",
+      contextConfidence: "Strong"
+    },
+
+    expectedBehavior: "rookie-evidence-restraint"
   }
 ];
 
@@ -297,26 +291,17 @@ function normalizePlayerName(name) {
 
 
 function normalizePosition(pos) {
-  return String(
-    pos || ""
-  )
+  return String(pos || "")
     .trim()
     .toUpperCase();
 }
 
 
-function playerKey(
-  name,
-  pos
-) {
+function playerKey(name, pos) {
   return (
-    normalizePlayerName(
-      name
-    ) +
+    normalizePlayerName(name) +
     "|" +
-    normalizePosition(
-      pos
-    )
+    normalizePosition(pos)
   );
 }
 
@@ -404,6 +389,12 @@ function profileLabel(
 
 // ------------------------------------------------------------
 // CONTEXT EXPECTATION CHECK
+//
+// Phase 2G intentionally validates only fields explicitly
+// supplied in expectedContext.
+//
+// This allows the validator to test the governing restraint
+// directly without turning rookieImpact into a ranking rule.
 // ------------------------------------------------------------
 
 function validateContextProfile(
@@ -482,27 +473,36 @@ function validateContextProfile(
   };
 
 
+  const fields =
+    Object.keys(expected);
+
+
+  const mismatches =
+    fields.filter(
+      function(field) {
+        return (
+          actual[field] !==
+          expected[field]
+        );
+      }
+    );
+
+
   return {
     passed:
-      (
-        actual.environmentChange ===
-          expected.environmentChange &&
-
-        actual.roleOpportunity ===
-          expected.roleOpportunity &&
-
-        actual.rookieImpact ===
-          expected.rookieImpact &&
-
-        actual.contextConfidence ===
-          expected.contextConfidence
-      ),
+      mismatches.length === 0,
 
     expected:
       expected,
 
     actual:
-      actual
+      actual,
+
+    validatedFields:
+      fields,
+
+    mismatches:
+      mismatches
   };
 }
 
@@ -955,6 +955,54 @@ function buildScarcityCandidate(
 
 
 // ------------------------------------------------------------
+// EVIDENCE HELPERS
+// ------------------------------------------------------------
+
+function getContextEvidence(
+  contextRecord
+) {
+  if (
+    !contextRecord ||
+    typeof contextRecord !==
+      "object"
+  ) {
+    return null;
+  }
+
+  if (
+    contextRecord.evidence &&
+    typeof contextRecord.evidence ===
+      "object"
+  ) {
+    return contextRecord.evidence;
+  }
+
+  if (
+    contextRecord.contextProfile &&
+    contextRecord.contextProfile.evidence &&
+    typeof contextRecord.contextProfile.evidence ===
+      "object"
+  ) {
+    return contextRecord.contextProfile.evidence;
+  }
+
+  return null;
+}
+
+
+function isBlankDirection(
+  value
+) {
+  return (
+    value === undefined ||
+    value === null ||
+    String(value).trim() ===
+      ""
+  );
+}
+
+
+// ------------------------------------------------------------
 // BEHAVIOR VALIDATION
 //
 // This does NOT impose numeric directionality.
@@ -966,7 +1014,8 @@ function validateBehavior(
   player,
   contextRecord,
   controlSage,
-  contextSage
+  contextSage,
+  opportunitySource
 ) {
   const behavior =
     player.expectedBehavior;
@@ -997,7 +1046,12 @@ function validateBehavior(
         unchanged,
 
       expectation:
-        "No Context profile should leave SAGE unchanged."
+        "No Context profile should leave SAGE unchanged.",
+
+      checks: {
+        unchanged:
+          unchanged
+      }
     };
   }
 
@@ -1035,7 +1089,7 @@ function validateBehavior(
         ) ||
 
         contextSage.code !==
-        controlSage.code
+          controlSage.code
       );
 
     return {
@@ -1046,7 +1100,15 @@ function validateBehavior(
         ),
 
       expectation:
-        "Positive Context should be visible in SAGE reasoning or recommendation."
+        "Positive Context should be visible in SAGE reasoning or recommendation.",
+
+      checks: {
+        positiveSignalPresent:
+          positiveSignalPresent,
+
+        contextVisible:
+          contextVisible
+      }
     };
   }
 
@@ -1069,9 +1131,9 @@ function validateBehavior(
     const contextRaisesSupport =
       (
         contextSage.code !==
-        controlSage.code ||
+          controlSage.code ||
         contextSage.explanation !==
-        controlSage.explanation
+          controlSage.explanation
       );
 
     return {
@@ -1082,7 +1144,201 @@ function validateBehavior(
         ),
 
       expectation:
-        "High rookie Context should provide legitimate support despite no NFL history."
+        "High rookie Context should provide legitimate support despite no NFL history.",
+
+      checks: {
+        rookieHigh:
+          rookieHigh,
+
+        contextRaisesSupport:
+          contextRaisesSupport
+      }
+    };
+  }
+
+
+  if (
+    behavior ===
+      "rookie-evidence-restraint"
+  ) {
+    const evidence =
+      getContextEvidence(
+        contextRecord
+      );
+
+
+    const isRookie =
+      (
+        contextRecord &&
+        contextRecord.isRookie ===
+          true
+      );
+
+
+    const noNFLHistory =
+      opportunitySource ===
+        "explicit-no-nfl-history";
+
+
+    const environment =
+      contextRecord &&
+      contextRecord.contextProfile
+        ? profileLabel(
+            contextRecord.contextProfile,
+            "environmentChange"
+          )
+        : null;
+
+
+    const role =
+      contextRecord &&
+      contextRecord.contextProfile
+        ? profileLabel(
+            contextRecord.contextProfile,
+            "roleOpportunity"
+          )
+        : null;
+
+
+    const rookieImpact =
+      contextRecord &&
+      contextRecord.contextProfile
+        ? profileLabel(
+            contextRecord.contextProfile,
+            "rookieImpact"
+          )
+        : null;
+
+
+    const neutralEnvironment =
+      environment ===
+        "Neutral";
+
+
+    const uncertainRole =
+      role ===
+        "Uncertain";
+
+
+    const rookieImpactPresent =
+      (
+        rookieImpact &&
+        rookieImpact !==
+          "Not Applicable"
+      );
+
+
+    const blankEnvironmentDirection =
+      (
+        evidence &&
+        isBlankDirection(
+          evidence.environmentDirection
+        )
+      );
+
+
+    const blankRoleDirection =
+      (
+        evidence &&
+        isBlankDirection(
+          evidence.roleDirection
+        )
+      );
+
+
+    const noManufacturedDirection =
+      (
+        neutralEnvironment &&
+        uncertainRole &&
+        blankEnvironmentDirection &&
+        blankRoleDirection
+      );
+
+
+    const contextVisible =
+      (
+        contextSage.code !==
+          controlSage.code ||
+
+        contextSage.explanation !==
+          controlSage.explanation ||
+
+        JSON.stringify(
+          contextSage.reasons
+        ) !==
+        JSON.stringify(
+          controlSage.reasons
+        )
+      );
+
+
+    const passed =
+      (
+        isRookie &&
+        noNFLHistory &&
+        rookieImpactPresent &&
+        noManufacturedDirection &&
+        contextVisible
+      );
+
+
+    return {
+      passed:
+        passed,
+
+      expectation:
+        "Reviewed rookie evidence may inform SAGE, but must use No NFL History and must not manufacture positive environment or role direction.",
+
+      checks: {
+        isRookie:
+          isRookie,
+
+        opportunitySource:
+          opportunitySource,
+
+        noNFLHistory:
+          noNFLHistory,
+
+        environmentChange:
+          environment,
+
+        neutralEnvironment:
+          neutralEnvironment,
+
+        roleOpportunity:
+          role,
+
+        uncertainRole:
+          uncertainRole,
+
+        rookieImpact:
+          rookieImpact,
+
+        rookieImpactPresent:
+          !!rookieImpactPresent,
+
+        evidenceEnvironmentDirection:
+          evidence
+            ? evidence.environmentDirection
+            : null,
+
+        blankEnvironmentDirection:
+          !!blankEnvironmentDirection,
+
+        evidenceRoleDirection:
+          evidence
+            ? evidence.roleDirection
+            : null,
+
+        blankRoleDirection:
+          !!blankRoleDirection,
+
+        noManufacturedDirection:
+          noManufacturedDirection,
+
+        contextVisible:
+          contextVisible
+      }
     };
   }
 
@@ -1120,7 +1376,15 @@ function validateBehavior(
         ),
 
       expectation:
-        "Reduced-role Context should be visible in SAGE reasoning without requiring a forced downgrade."
+        "Reduced-role Context should be visible in SAGE reasoning without requiring a forced downgrade.",
+
+      checks: {
+        reducedRole:
+          reducedRole,
+
+        negativeVisible:
+          negativeVisible
+      }
     };
   }
 
@@ -1160,7 +1424,18 @@ function validateBehavior(
         noDirectionalBoost,
 
       expectation:
-        "Material team change should remain non-directional unless evidence proves improvement or decline."
+        "Material team change should remain non-directional unless evidence proves improvement or decline.",
+
+      checks: {
+        environmentChange:
+          environment,
+
+        roleOpportunity:
+          role,
+
+        noDirectionalBoost:
+          noDirectionalBoost
+      }
     };
   }
 
@@ -1401,7 +1676,8 @@ function buildPlayerTest(
       player,
       contextRecord,
       controlSage,
-      contextSage
+      contextSage,
+      opportunityResult.source
     );
 
 
@@ -1553,7 +1829,7 @@ function buildSummary(
       function(result) {
         return (
           result.status ===
-          "ok"
+            "ok"
         );
       }
     );
@@ -1611,6 +1887,33 @@ function buildSummary(
     );
 
 
+  const phase2GRookies =
+    okResults.filter(
+      function(result) {
+        return (
+          result.player &&
+          result.player.expectedBehavior ===
+            "rookie-evidence-restraint"
+        );
+      }
+    );
+
+
+  const phase2GRookiePasses =
+    phase2GRookies.filter(
+      function(result) {
+        return (
+          result.contextValidation &&
+          result.contextValidation.passed ===
+            true &&
+          result.behaviorValidation &&
+          result.behaviorValidation.passed ===
+            true
+        );
+      }
+    );
+
+
   return {
     validationPlayerCount:
       results.length,
@@ -1629,6 +1932,75 @@ function buildSummary(
 
     contextUnchangedSageCount:
       unchanged.length,
+
+    phase2GRookieCount:
+      phase2GRookies.length,
+
+    phase2GRookiePassedCount:
+      phase2GRookiePasses.length,
+
+    phase2GRookieFailureCount:
+      (
+        phase2GRookies.length -
+        phase2GRookiePasses.length
+      ),
+
+    phase2GRookieResults:
+      phase2GRookies.map(
+        function(result) {
+          const checks =
+            result.behaviorValidation &&
+            result.behaviorValidation.checks
+              ? result.behaviorValidation.checks
+              : {};
+
+          return {
+            name:
+              result.player.name,
+
+            opportunitySource:
+              result.opportunitySource,
+
+            contextValidationPassed:
+              result.contextValidation
+                ? result.contextValidation.passed
+                : false,
+
+            behaviorValidationPassed:
+              result.behaviorValidation
+                ? result.behaviorValidation.passed
+                : false,
+
+            environmentChange:
+              checks.environmentChange ||
+              null,
+
+            roleOpportunity:
+              checks.roleOpportunity ||
+              null,
+
+            rookieImpact:
+              checks.rookieImpact ||
+              null,
+
+            blankEnvironmentDirection:
+              checks.blankEnvironmentDirection ===
+                true,
+
+            blankRoleDirection:
+              checks.blankRoleDirection ===
+                true,
+
+            noManufacturedDirection:
+              checks.noManufacturedDirection ===
+                true,
+
+            contextVisible:
+              checks.contextVisible ===
+                true
+          };
+        }
+      ),
 
     contextChangedPlayers:
       changedByContext.map(
@@ -1683,6 +2055,41 @@ function buildSummary(
         }
       ),
 
+    contextValidationFailures:
+      contextValidationFailures.map(
+        function(result) {
+          return {
+            name:
+              result.player &&
+              result.player.name
+                ? result.player.name
+                : null,
+
+            archetype:
+              result.player &&
+              result.player.archetype
+                ? result.player.archetype
+                : null,
+
+            expected:
+              result.contextValidation
+                ? result.contextValidation.expected
+                : null,
+
+            actual:
+              result.contextValidation
+                ? result.contextValidation.actual
+                : null,
+
+            mismatches:
+              result.contextValidation &&
+              result.contextValidation.mismatches
+                ? result.contextValidation.mismatches
+                : []
+          };
+        }
+      ),
+
     behaviorValidationFailures:
       behaviorValidationFailures.map(
         function(result) {
@@ -1702,6 +2109,12 @@ function buildSummary(
             expectation:
               result.behaviorValidation
                 ? result.behaviorValidation.expectation
+                : null,
+
+            checks:
+              result.behaviorValidation &&
+              result.behaviorValidation.checks
+                ? result.behaviorValidation.checks
                 : null
           };
         }
@@ -1723,7 +2136,7 @@ exports.handler =
 
     if (
       event.httpMethod ===
-      "OPTIONS"
+        "OPTIONS"
     ) {
       return {
         statusCode:
@@ -1740,7 +2153,7 @@ exports.handler =
 
     if (
       event.httpMethod !==
-      "GET"
+        "GET"
     ) {
       return {
         statusCode:
@@ -1875,6 +2288,12 @@ exports.handler =
           summary.contextValidationFailureCount ===
             0 &&
           summary.behaviorValidationFailureCount ===
+            0 &&
+          summary.phase2GRookieCount ===
+            5 &&
+          summary.phase2GRookiePassedCount ===
+            5 &&
+          summary.phase2GRookieFailureCount ===
             0
         );
 
@@ -1895,7 +2314,7 @@ exports.handler =
                 "SAGE Context Directional Validation",
 
               phase:
-                "2E",
+                "2G-release-gate-1",
 
               validationPassed:
                 validationPassed,
@@ -1918,6 +2337,12 @@ exports.handler =
 
                 restraintRule:
                   "A material team or quarterback change is not automatically positive or negative. Direction must be supported by evidence.",
+
+                phase2GRookieRule:
+                  "Draft capital, prospect evidence, receiving evidence, or landing spot may inform rookie Context but must not automatically create positive environment or role direction.",
+
+                phase2GRookieDirectionRequirement:
+                  "Phase 2G rookies must retain blank evidence environmentDirection and roleDirection unless objective directional evidence exists.",
 
                 hiddenNumericContextScore:
                   false
@@ -2030,6 +2455,12 @@ module.exports.buildScarcityPools =
 
 module.exports.buildScarcityCandidate =
   buildScarcityCandidate;
+
+module.exports.getContextEvidence =
+  getContextEvidence;
+
+module.exports.isBlankDirection =
+  isBlankDirection;
 
 module.exports.validateBehavior =
   validateBehavior;
