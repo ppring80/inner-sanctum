@@ -1,6 +1,6 @@
 // netlify/functions/refresh-context-intel.js
 //
-// SAGE CONTEXT INTELLIGENCE — PHASE 2B PROFILE INTEGRATION
+// SAGE CONTEXT INTELLIGENCE — PHASE 2B.1 PROFILE INTEGRATION + TEAM NORMALIZATION
 //
 // PURPOSE:
 // Build and cache the production Context Intelligence population.
@@ -30,6 +30,11 @@
 // - Join registered Context evidence to the dynamic 256-player population.
 // - Run that evidence through draft-context-profile.js.
 // - Store the resulting Context Profile in context-intel/latest.
+//
+// PHASE 2B.1:
+// - Canonicalize team abbreviations before writing Context records.
+// - Inner Sanctum standard: WSH -> WAS.
+// - Include Rachaad White in the small validation view.
 //
 // IMPORTANT:
 // - Most of the 256 players will remain baseline-only.
@@ -128,6 +133,27 @@ function normalizePosition(pos) {
 
   if (value === "DST") {
     return "DEF";
+  }
+
+  return value;
+}
+
+
+// ------------------------------------------------------------
+// TEAM NORMALIZATION
+//
+// Inner Sanctum standardized on WAS rather than Tank01's WSH.
+// Keep Context cache records aligned with adp.js / Draft Command Center.
+// ------------------------------------------------------------
+
+function normalizeTeam(team) {
+  const value =
+    String(team || "")
+      .trim()
+      .toUpperCase();
+
+  if (value === "WSH") {
+    return "WAS";
   }
 
   return value;
@@ -497,7 +523,9 @@ function buildBaselineRecord(
     team:
       livePlayer &&
       livePlayer.team
-        ? livePlayer.team
+        ? normalizeTeam(
+            livePlayer.team
+          ) || null
         : null,
 
     experience:
@@ -946,6 +974,7 @@ function buildContextCache(
 // - Ashton Jeanty
 // - Chase Brown
 // - Jeremiyah Love
+// - Rachaad White
 //
 // Chase Brown intentionally acts as a control:
 // he should remain baseline-only because Phase 2A did not create
@@ -993,7 +1022,8 @@ function buildValidationView(
       "A.J. Brown",
       "Ashton Jeanty",
       "Chase Brown",
-      "Jeremiyah Love"
+      "Jeremiyah Love",
+      "Rachaad White"
     ];
 
   namesToInclude.forEach(
@@ -1320,6 +1350,9 @@ module.exports.normalizePlayerName =
 
 module.exports.normalizePosition =
   normalizePosition;
+
+module.exports.normalizeTeam =
+  normalizeTeam;
 
 module.exports.playerKey =
   playerKey;
