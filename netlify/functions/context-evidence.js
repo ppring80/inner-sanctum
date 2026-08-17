@@ -35,16 +35,22 @@
 //
 // This is the team the Context evidence assumes is current.
 //
-// The upcoming context-integrity-check.js will compare expectedTeam
-// against the live team stored in context-intel/latest.
+// context-integrity-check.js compares expectedTeam against:
+//   1. context-intel/latest
+//   2. CURRENT live player-data.js
 //
-// If they disagree, the evidence should be treated as stale and must
-// not be trusted until reviewed.
+// If those disagree, the evidence is treated as stale and the
+// release integrity check fails.
 //
-// Initial validation records:
+// CURRENT VALIDATED RECORDS:
 //   A.J. Brown
 //   Ashton Jeanty
 //   Jeremiyah Love
+//
+// NOTE:
+// Additional positive/negative Context archetypes should be added
+// only after their CURRENT source facts have been independently
+// verified. We do not add a player merely to complete a test matrix.
 
 (function(root, factory) {
   if (
@@ -108,6 +114,14 @@
 
     // ==========================================================
     // A.J. BROWN — WR — NEW ENGLAND
+    //
+    // Archetype:
+    // Veteran changing teams into a new QB/offensive environment.
+    //
+    // Interpretation boundary:
+    // We are NOT saying his fantasy production will improve.
+    // We are saying his environment materially changed and there
+    // is credible evidence supporting continued featured usage.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -220,6 +234,15 @@
 
     // ==========================================================
     // ASHTON JEANTY — RB — LAS VEGAS
+    //
+    // Archetype:
+    // Established NFL player entering a materially different
+    // coaching/scheme environment.
+    //
+    // Interpretation boundary:
+    // We do NOT add fantasy points or targets.
+    // We flag that his future usage environment may differ from
+    // the historical 2025 Opportunity profile.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -332,6 +355,15 @@
 
     // ==========================================================
     // JEREMIYAH LOVE — RB — ARIZONA
+    //
+    // Archetype:
+    // High-impact rookie with no NFL Opportunity history.
+    //
+    // Interpretation boundary:
+    // We do NOT fabricate carries, targets, opportunity share,
+    // fantasy points, or an NFL role history.
+    //
+    // Context records objective rookie evidence only.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
