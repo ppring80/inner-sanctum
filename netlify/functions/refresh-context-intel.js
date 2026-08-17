@@ -18,9 +18,9 @@
 // IMPORTANT:
 // - 256 is a POPULATION SIZE, not a hand-maintained player list.
 // - K and DEF do not consume Context population slots.
-// - Current ADP comes through the EXISTING adp.js implementation.
+// - Current ADP comes through the EXISTING deployed adp.js endpoint.
 // - Live team / experience / injury comes through the EXISTING
-//   player-data.js implementation.
+//   deployed player-data.js endpoint.
 // - No coaching-change, QB-change, offensive-line, role-change,
 //   or rookie-impact conclusions are created in Phase 1.
 // - No fake Opportunity history is created for rookies.
@@ -35,17 +35,28 @@
 //
 // The literal run=validation gate is intentional so an ordinary request
 // cannot accidentally trigger the paid ADP fetch + Blob write.
+//
+// PHASE 1.1 PLUMBING FIX:
+// The first implementation attempted to invoke adp.js and player-data.js
+// handlers directly with synthetic Lambda events.
+//
+// player-data.js depends on real Netlify request infrastructure, so that
+// synthetic invocation produced:
+//   "The first argument must be of type string ... Received undefined"
+//
+// This version instead consumes the SAME canonical deployed endpoints
+// over HTTP. We therefore still have:
+//
+//   ONE adp.js implementation
+//   ONE player-data.js implementation
+//
+// Context does not duplicate either data-source implementation.
 
 const {
   getStore,
   connectLambda
 } = require("@netlify/blobs");
 
-const adpFunction =
-  require("./adp");
-
-const playerDataFunction =
-  require("./player-data");
 
 const CONTEXT_POPULATION_SIZE = 256;
 
@@ -65,7 +76,31 @@ const CORS_HEADERS = {
 
 
 // ------------------------------------------------------------
+// CANONICAL SITE ORIGIN
+//
+// Netlify normally supplies process.env.URL for the production site.
+// Keep the public production URL as a safe fallback.
+//
+// We deliberately call our existing public Netlify functions rather
+// than attempting to synthesize Lambda events internally.
+// ------------------------------------------------------------
+
+function siteOrigin() {
+  const configured =
+    String(
+      process.env.URL ||
+      "https://theinnersanctum.xyz"
+    )
+      .trim()
+      .replace(/\/+$/, "");
+
+  return configured;
+}
+
+
+// ------------------------------------------------------------
 // PLAYER IDENTITY
+//
 // Same normalization convention already used elsewhere in the
 // Opportunity / shared-player-data pipeline.
 // ------------------------------------------------------------
@@ -109,42 +144,44 @@ function playerKey(name, pos) {
 
 
 // ------------------------------------------------------------
-// INTERNAL FUNCTION RESPONSE PARSING
-//
-// We invoke the EXISTING Netlify handlers instead of implementing a
-// second Tank01 ADP or player-data client here.
+// SAFE JSON FETCH
 // ------------------------------------------------------------
 
-function parseFunctionBody(response, label) {
-  if (!response) {
-    throw new Error(
-      `${label} returned no response`
+async function fetchJson(url, label) {
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
+        headers: {
+          "Accept":
+            "application/json"
+        }
+      }
     );
-  }
 
-  const statusCode =
-    Number(response.statusCode || 0);
+  if (!response.ok) {
+    let detail = "";
 
-  if (
-    statusCode < 200 ||
-    statusCode >= 300
-  ) {
+    try {
+      detail =
+        await response.text();
+    } catch (e) {
+      detail = "";
+    }
+
     throw new Error(
-      `${label} failed with status ${statusCode}: ${response.body || ""}`
+      `${label} failed with status ${response.status}` +
+      (
+        detail
+          ? `: ${detail}`
+          : ""
+      )
     );
-  }
-
-  if (
-    typeof response.body === "object" &&
-    response.body !== null
-  ) {
-    return response.body;
   }
 
   try {
-    return JSON.parse(
-      response.body || "{}"
-    );
+    return await response.json();
   } catch (e) {
     throw new Error(
       `${label} returned invalid JSON`
@@ -154,42 +191,22 @@ function parseFunctionBody(response, label) {
 
 
 // ------------------------------------------------------------
-// READ CURRENT ADP THROUGH EXISTING adp.js
+// READ CURRENT ADP THROUGH EXISTING DEPLOYED adp.js
 //
 // PPR is deliberate for the Phase-1 production cache.
-// Later we can decide whether Context requires separate market
-// populations per scoring format. Context facts themselves remain
-// scoring-independent.
+//
+// Context facts themselves are scoring-independent. PPR is being used
+// here only to define the current 256-player market population.
 // ------------------------------------------------------------
 
 async function readCurrentAdp() {
-  if (
-    !adpFunction ||
-    typeof adpFunction.handler !==
-      "function"
-  ) {
-    throw new Error(
-      "adp.js handler is unavailable"
-    );
-  }
-
-  const response =
-    await adpFunction.handler({
-      httpMethod:
-        "GET",
-
-      headers:
-        {},
-
-      queryStringParameters: {
-        scoring:
-          "ppr"
-      }
-    });
+  const url =
+    siteOrigin() +
+    "/.netlify/functions/adp?scoring=ppr";
 
   const data =
-    parseFunctionBody(
-      response,
+    await fetchJson(
+      url,
       "adp.js"
     );
 
@@ -209,38 +226,18 @@ async function readCurrentAdp() {
 
 
 // ------------------------------------------------------------
-// READ CURRENT PLAYER DATA THROUGH EXISTING player-data.js
+// READ CURRENT PLAYER DATA THROUGH EXISTING DEPLOYED
+// player-data.js
 // ------------------------------------------------------------
 
-async function readCurrentPlayerData(
-  event
-) {
-  if (
-    !playerDataFunction ||
-    typeof playerDataFunction.handler !==
-      "function"
-  ) {
-    throw new Error(
-      "player-data.js handler is unavailable"
-    );
-  }
-
-  const response =
-    await playerDataFunction.handler({
-      httpMethod:
-        "GET",
-
-      headers:
-        (event && event.headers) ||
-        {},
-
-      queryStringParameters:
-        {}
-    });
+async function readCurrentPlayerData() {
+  const url =
+    siteOrigin() +
+    "/.netlify/functions/player-data";
 
   const data =
-    parseFunctionBody(
-      response,
+    await fetchJson(
+      url,
       "player-data.js"
     );
 
@@ -263,7 +260,8 @@ async function readCurrentPlayerData(
 // Filter FIRST, then sort, then take 256.
 //
 // K / DEF do not consume Context population slots.
-// Invalid / placeholder ADP values are placed at the end naturally.
+//
+// Invalid / placeholder ADP values naturally fall to the end.
 // ------------------------------------------------------------
 
 function buildAdpPopulation(
@@ -319,8 +317,14 @@ function buildAdpPopulation(
     })
     .filter(Boolean)
     .sort(function(a, b) {
-      if (a.adp !== b.adp) {
-        return a.adp - b.adp;
+      if (
+        a.adp !==
+        b.adp
+      ) {
+        return (
+          a.adp -
+          b.adp
+        );
       }
 
       return (
@@ -354,8 +358,13 @@ function buildAdpPopulation(
 // ------------------------------------------------------------
 // PLAYER-DATA LOOKUP MAP
 //
-// player-data.js returns Tank01 player records keyed by its own
-// player IDs. We convert them into the established name|POS key.
+// player-data.js returns Tank01 player records keyed by Tank01 IDs.
+//
+// Convert them to our established:
+//
+//   normalizedName|POS
+//
+// identity convention.
 // ------------------------------------------------------------
 
 function buildPlayerDataMap(
@@ -398,7 +407,8 @@ function buildPlayerDataMap(
         pos
       );
 
-    map[key] = player;
+    map[key] =
+      player;
   });
 
   return map;
@@ -411,9 +421,12 @@ function buildPlayerDataMap(
 // Phase 1 records FACTS only.
 //
 // A missing value stays null / empty rather than being interpreted.
+//
 // Example:
-// - We can identify exp === "R" as rookie.
-// - We do NOT claim that a rookie has High/Moderate impact yet.
+// - exp === "R" allows us to identify a rookie.
+// - It does NOT allow us to claim that rookie has High/Moderate impact.
+//
+// Those judgments belong to later Context evidence phases.
 // ------------------------------------------------------------
 
 function buildBaselineRecord(
@@ -542,7 +555,9 @@ function buildContextCache(
         playerMap[key] ||
         null;
 
-      if (!livePlayer) {
+      if (
+        !livePlayer
+      ) {
         missingPlayerData.push({
           key:
             key,
@@ -638,8 +653,7 @@ function buildContextCache(
 // ------------------------------------------------------------
 // SMALL VALIDATION VIEW
 //
-// Returns a small sample rather than dumping all 256 records into
-// the browser.
+// Return a compact sample rather than dumping all 256 records.
 //
 // Includes:
 // - first 10 players by current market rank
@@ -663,7 +677,8 @@ function buildValidationView(
       records
     );
 
-  const selected = {};
+  const selected =
+    {};
 
   entries
     .slice()
@@ -680,7 +695,8 @@ function buildValidationView(
     .forEach(function(entry) {
       selected[
         entry[0]
-      ] = entry[1];
+      ] =
+        entry[1];
     });
 
   const namesToInclude =
@@ -705,7 +721,8 @@ function buildValidationView(
           ) {
             selected[
               entry[0]
-            ] = entry[1];
+            ] =
+              entry[1];
           }
         }
       );
@@ -812,7 +829,7 @@ exports.handler =
           JSON.stringify(
             {
               error:
-                'Refresh not executed. Use ?run=validation for the Phase-1 manual refresh.'
+                "Refresh not executed. Use ?run=validation for the Phase-1 manual refresh."
             },
             null,
             2
@@ -827,9 +844,7 @@ exports.handler =
       ] =
         await Promise.all([
           readCurrentAdp(),
-          readCurrentPlayerData(
-            event
-          )
+          readCurrentPlayerData()
         ]);
 
       const computedAt =
@@ -843,6 +858,9 @@ exports.handler =
           computedAt
         );
 
+      // Safety gate:
+      //
+      // Do not write a partial population cache.
       if (
         cache.populationCount !==
         CONTEXT_POPULATION_SIZE
@@ -938,6 +956,9 @@ module.exports.CONTEXT_POPULATION_SIZE =
 module.exports.CONTEXT_POSITIONS =
   CONTEXT_POSITIONS;
 
+module.exports.siteOrigin =
+  siteOrigin;
+
 module.exports.normalizePlayerName =
   normalizePlayerName;
 
@@ -947,8 +968,14 @@ module.exports.normalizePosition =
 module.exports.playerKey =
   playerKey;
 
-module.exports.parseFunctionBody =
-  parseFunctionBody;
+module.exports.fetchJson =
+  fetchJson;
+
+module.exports.readCurrentAdp =
+  readCurrentAdp;
+
+module.exports.readCurrentPlayerData =
+  readCurrentPlayerData;
 
 module.exports.buildAdpPopulation =
   buildAdpPopulation;
