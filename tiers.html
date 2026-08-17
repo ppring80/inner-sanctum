@@ -180,6 +180,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
 .gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
 .gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
+.gate-note{font-family:'Lora',Georgia,serif;font-size:11px;color:#5a4a2a;line-height:1.5}
 .preview-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
 .preview-banner strong{color:#f5c842}
 .preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
@@ -262,14 +263,20 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <div class="gate-card">
     <div class="gate-icon">🔒</div>
     <div class="gate-title">Acolyte Feature</div>
-    <div class="gate-sub" id="gateSub">The Oracle Tier List is reserved for Founding Acolytes. Enter your passcode to continue, or preview with sample data below.</div>
+    <div class="gate-sub" id="gateSub">The Oracle Tier List is reserved for Founding Acolytes, or preview with sample data below.</div>
+
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Ftiers" class="gate-btn-secondary" style="display:block;text-decoration:none;box-sizing:border-box">🔑 Already a Founding Acolyte? Log In with Patreon</a>
+    <div class="gate-note" style="margin-bottom:14px">Use the same email you pledged with on Patreon</div>
+
+    <div class="gate-divider">OR</div>
+
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div class="gate-note" style="margin-top:-8px;margin-bottom:14px">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
     <div class="gate-divider">OR</div>
     <button class="gate-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
-    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Ftiers" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
