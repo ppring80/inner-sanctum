@@ -2,6 +2,8 @@
 //
 // SAGE — PICK 13 VALIDATION ENDPOINT
 //
+// PHASE 2C — REAL CONTEXT INTEGRATION
+//
 // TEMPORARY, READ-ONLY diagnostic endpoint.
 //
 // PURPOSE:
@@ -11,22 +13,22 @@
 //   Step 2 — Opportunity
 //   Step 3 — Market
 //   Step 4 — Scarcity
-//   Step 5 v2 — SAGE Synthesis
+//   Context Intelligence
+//   Step 5 — SAGE Synthesis
 //
-// CONTEXT NOTE:
-// The Context calculation module exists, but there is not yet a production
-// 256-player Context data/cache pipeline. Therefore this endpoint does NOT
-// invent Context evidence for any player.
+// CONTEXT RULE:
+// Context is read ONLY from the production "context-intel" Blob cache.
 //
-// That means:
-//   - A.J. Brown's team/QB change is NOT manually injected here.
-//   - Rookie/context assumptions are NOT manually injected here.
-//   - Step 5 receives no Context evidence.
+// No player-specific Context is manually injected here.
 //
-// This gives us a clean BASELINE validation using only production evidence
-// that currently exists.
+// If a player is:
+//   contextStatus === "context-profiled"
+// then their cached contextProfile is passed to SAGE.
 //
-// Nothing is written to Netlify Blobs.
+// Otherwise:
+//   contextProfile = null
+//
+// Nothing is written by this diagnostic endpoint.
 // Nothing in draft.html is modified.
 
 const {
@@ -50,6 +52,7 @@ const {
   buildRecommendation
 } = require("./draft-sage-synthesis");
 
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -72,10 +75,7 @@ const CORS_HEADERS = {
 //   Pick 13
 //
 // Next user turn:
-//   Picks 36 / 37
-//
-// We use pick 36 as the first deterministic next-pick boundary
-// for the Step 3 market read.
+//   Pick 36
 // ------------------------------------------------------------
 
 const VALIDATION_STATE = {
@@ -99,9 +99,6 @@ const VALIDATION_STATE = {
 
 // ------------------------------------------------------------
 // REAL PICK-13 CANDIDATE SET
-//
-// Taken from the Draft Command Center board at the frozen
-// decision state.
 // ------------------------------------------------------------
 
 const CANDIDATES = [
@@ -160,13 +157,6 @@ const CANDIDATES = [
 
 // ------------------------------------------------------------
 // NEXT-TURN MARKET WINDOW
-//
-// These are players surrounding the user's next turn at
-// picks 36 / 37.
-//
-// This is NOT a claim that any specific player will survive.
-// It is a market window used by Step 4 to measure comparable
-// positional opportunity near the next turn.
 // ------------------------------------------------------------
 
 const NEXT_TURN_POOL = [
@@ -220,8 +210,6 @@ const NEXT_TURN_POOL = [
 
 // ------------------------------------------------------------
 // NAME NORMALIZATION
-//
-// Must match Opportunity Intelligence key convention.
 // ------------------------------------------------------------
 
 function normalizePlayerName(name) {
@@ -235,39 +223,21 @@ function normalizePlayerName(name) {
 }
 
 
-function opportunityKey(player) {
+function playerKey(player) {
   return (
-    normalizePlayerName(player.name) +
+    normalizePlayerName(
+      player.name
+    ) +
     "|" +
-    String(player.pos || "").toUpperCase()
+    String(
+      player.pos || ""
+    ).toUpperCase()
   );
 }
 
 
 // ------------------------------------------------------------
-// ATTACH BOARD ADP TO A REAL OPPORTUNITY RECORD
-//
-// This creates a shallow diagnostic wrapper only.
-// The cached Opportunity record itself is not mutated.
-// ------------------------------------------------------------
-
-function attachAdp(record, player) {
-  if (!record) {
-    return null;
-  }
-
-  return Object.assign(
-    {},
-    record,
-    {
-      adp: player.adp
-    }
-  );
-}
-
-
-// ------------------------------------------------------------
-// FIND REAL CACHED RECORD
+// OPPORTUNITY RECORD LOOKUP
 // ------------------------------------------------------------
 
 function getOpportunityRecord(
@@ -280,28 +250,105 @@ function getOpportunityRecord(
       ? cached.records
       : {};
 
-  return records[
-    opportunityKey(player)
-  ] || null;
+  return (
+    records[
+      playerKey(player)
+    ] ||
+    null
+  );
 }
 
 
 // ------------------------------------------------------------
-// BUILD A REAL POOL FROM THE CACHED OPPORTUNITY DATA
+// CONTEXT RECORD LOOKUP
+// ------------------------------------------------------------
+
+function getContextRecord(
+  cached,
+  player
+) {
+  const records =
+    cached &&
+    cached.records
+      ? cached.records
+      : {};
+
+  return (
+    records[
+      playerKey(player)
+    ] ||
+    null
+  );
+}
+
+
+// ------------------------------------------------------------
+// CONTEXT PROFILE LOOKUP
 //
-// Missing players remain visible in the diagnostic output,
-// but are NOT turned into fake Opportunity records.
+// Only explicitly profiled Context is allowed into SAGE.
+// ------------------------------------------------------------
+
+function getProductionContextProfile(
+  contextCache,
+  player
+) {
+  const record =
+    getContextRecord(
+      contextCache,
+      player
+    );
+
+  if (
+    !record ||
+    record.contextStatus !==
+      "context-profiled"
+  ) {
+    return null;
+  }
+
+  return (
+    record.contextProfile ||
+    null
+  );
+}
+
+
+// ------------------------------------------------------------
+// ATTACH BOARD ADP TO OPPORTUNITY RECORD
+// ------------------------------------------------------------
+
+function attachAdp(
+  record,
+  player
+) {
+  if (!record) {
+    return null;
+  }
+
+  return Object.assign(
+    {},
+    record,
+    {
+      adp:
+        player.adp
+    }
+  );
+}
+
+
+// ------------------------------------------------------------
+// BUILD OPPORTUNITY POOL
 // ------------------------------------------------------------
 
 function buildOpportunityPool(
-  cached,
+  opportunityCache,
   players
 ) {
   return players
-    .map((player) => {
+    .map(function(player) {
       const record =
         getOpportunityRecord(
-          cached,
+          opportunityCache,
           player
         );
 
@@ -319,24 +366,38 @@ function buildOpportunityPool(
 
 
 // ------------------------------------------------------------
-// ONE PLAYER — FULL BASELINE SAGE READ
+// ONE PLAYER — FULL SAGE READ
 // ------------------------------------------------------------
 
 function buildPlayerValidation(
-  cached,
+  opportunityCache,
+  contextCache,
   player,
   currentPool,
   nextTurnPool
 ) {
   const rawRecord =
     getOpportunityRecord(
-      cached,
+      opportunityCache,
+      player
+    );
+
+  const contextRecord =
+    getContextRecord(
+      contextCache,
+      player
+    );
+
+  const contextProfile =
+    getProductionContextProfile(
+      contextCache,
       player
     );
 
   if (!rawRecord) {
     return {
-      player: player,
+      player:
+        player,
 
       status:
         "missing-opportunity-intelligence",
@@ -359,13 +420,19 @@ function buildPlayerValidation(
       scarcityProfile:
         null,
 
+      contextStatus:
+        contextRecord
+          ? contextRecord.contextStatus
+          : "not-in-context-cache",
+
       contextProfile:
-        null,
+        contextProfile,
 
       sage:
         null
     };
   }
+
 
   const record =
     attachAdp(
@@ -373,10 +440,12 @@ function buildPlayerValidation(
       player
     );
 
+
   const opportunityProfile =
     buildDraftOpportunityProfile(
       rawRecord
     );
+
 
   const marketProfile =
     buildDraftMarketProfile({
@@ -390,6 +459,7 @@ function buildPlayerValidation(
         VALIDATION_STATE.nextUserPick
     });
 
+
   const scarcityProfile =
     buildDraftScarcityProfile({
       candidate:
@@ -402,13 +472,6 @@ function buildPlayerValidation(
         nextTurnPool
     });
 
-  // IMPORTANT:
-  // No production Context cache exists yet.
-  //
-  // We intentionally pass no Context profile rather than manually
-  // manufacturing evidence for A.J. Brown, rookies, coaching changes, etc.
-  const contextProfile =
-    null;
 
   const sage =
     buildRecommendation({
@@ -425,8 +488,10 @@ function buildPlayerValidation(
         contextProfile
     });
 
+
   return {
-    player: player,
+    player:
+      player,
 
     status:
       "ok",
@@ -440,11 +505,13 @@ function buildPlayerValidation(
     scarcityProfile:
       scarcityProfile,
 
+    contextStatus:
+      contextRecord
+        ? contextRecord.contextStatus
+        : "not-in-context-cache",
+
     contextProfile:
       contextProfile,
-
-    contextStatus:
-      "not-production-sourced",
 
     sage:
       sage
@@ -456,236 +523,362 @@ function buildPlayerValidation(
 // HANDLER
 // ------------------------------------------------------------
 
-exports.handler = async (event) => {
-  connectLambda(event);
+exports.handler =
+  async function(event) {
+    connectLambda(
+      event
+    );
 
-  if (
-    event.httpMethod ===
-    "OPTIONS"
-  ) {
-    return {
-      statusCode: 204,
-      headers: CORS_HEADERS,
-      body: ""
-    };
-  }
-
-  if (
-    event.httpMethod !==
-    "GET"
-  ) {
-    return {
-      statusCode: 405,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        error:
-          "GET only"
-      })
-    };
-  }
-
-  try {
-    const store =
-      getStore({
-        name:
-          "opportunity-intel"
-      });
-
-    const cached =
-      await store.get(
-        "latest",
-        {
-          type:
-            "json"
-        }
-      );
-
-    if (!cached) {
+    if (
+      event.httpMethod ===
+      "OPTIONS"
+    ) {
       return {
-        statusCode: 404,
-        headers: CORS_HEADERS,
-        body: JSON.stringify(
-          {
-            error:
-              'No cached Opportunity Intelligence data found for key "latest".'
-          },
-          null,
-          2
-        )
+        statusCode:
+          204,
+
+        headers:
+          CORS_HEADERS,
+
+        body:
+          ""
       };
     }
 
-    const currentPool =
-      buildOpportunityPool(
-        cached,
-        CANDIDATES
-      );
 
-    const nextTurnPool =
-      buildOpportunityPool(
-        cached,
-        NEXT_TURN_POOL
-      );
+    if (
+      event.httpMethod !==
+      "GET"
+    ) {
+      return {
+        statusCode:
+          405,
 
-    const missingCandidates =
-      CANDIDATES
-        .filter((player) => {
-          return !getOpportunityRecord(
-            cached,
-            player
-          );
-        })
-        .map((player) => ({
+        headers:
+          CORS_HEADERS,
+
+        body:
+          JSON.stringify({
+            error:
+              "GET only"
+          })
+      };
+    }
+
+
+    try {
+      const opportunityStore =
+        getStore({
           name:
-            player.name,
+            "opportunity-intel"
+        });
 
-          pos:
-            player.pos,
-
-          adp:
-            player.adp,
-
-          key:
-            opportunityKey(
-              player
-            )
-        }));
-
-    const missingNextTurn =
-      NEXT_TURN_POOL
-        .filter((player) => {
-          return !getOpportunityRecord(
-            cached,
-            player
-          );
-        })
-        .map((player) => ({
+      const contextStore =
+        getStore({
           name:
-            player.name,
+            "context-intel"
+        });
 
-          pos:
-            player.pos,
 
-          adp:
-            player.adp,
+      const [
+        opportunityCache,
+        contextCache
+      ] =
+        await Promise.all([
+          opportunityStore.get(
+            "latest",
+            {
+              type:
+                "json"
+            }
+          ),
 
-          key:
-            opportunityKey(
-              player
-            )
-        }));
-
-    const results =
-      CANDIDATES.map(
-        (player) =>
-          buildPlayerValidation(
-            cached,
-            player,
-            currentPool,
-            nextTurnPool
+          contextStore.get(
+            "latest",
+            {
+              type:
+                "json"
+            }
           )
-      );
+        ]);
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
 
-      body: JSON.stringify(
-        {
-          validation:
-            "SAGE Pick 13 Baseline",
+      if (!opportunityCache) {
+        return {
+          statusCode:
+            404,
 
-          computedAt:
-            cached.computedAt ||
+          headers:
+            CORS_HEADERS,
+
+          body:
+            JSON.stringify(
+              {
+                error:
+                  'No cached Opportunity Intelligence data found for key "latest".'
+              },
+              null,
+              2
+            )
+        };
+      }
+
+
+      if (!contextCache) {
+        return {
+          statusCode:
+            404,
+
+          headers:
+            CORS_HEADERS,
+
+          body:
+            JSON.stringify(
+              {
+                error:
+                  'No cached Context Intelligence data found for key "latest". Run refresh-context-intel first.'
+              },
+              null,
+              2
+            )
+        };
+      }
+
+
+      const currentPool =
+        buildOpportunityPool(
+          opportunityCache,
+          CANDIDATES
+        );
+
+
+      const nextTurnPool =
+        buildOpportunityPool(
+          opportunityCache,
+          NEXT_TURN_POOL
+        );
+
+
+      const missingCandidates =
+        CANDIDATES
+          .filter(function(player) {
+            return !getOpportunityRecord(
+              opportunityCache,
+              player
+            );
+          })
+          .map(function(player) {
+            return {
+              name:
+                player.name,
+
+              pos:
+                player.pos,
+
+              adp:
+                player.adp,
+
+              key:
+                playerKey(
+                  player
+                )
+            };
+          });
+
+
+      const missingNextTurn =
+        NEXT_TURN_POOL
+          .filter(function(player) {
+            return !getOpportunityRecord(
+              opportunityCache,
+              player
+            );
+          })
+          .map(function(player) {
+            return {
+              name:
+                player.name,
+
+              pos:
+                player.pos,
+
+              adp:
+                player.adp,
+
+              key:
+                playerKey(
+                  player
+                )
+            };
+          });
+
+
+      const results =
+        CANDIDATES.map(
+          function(player) {
+            return buildPlayerValidation(
+              opportunityCache,
+              contextCache,
+              player,
+              currentPool,
+              nextTurnPool
+            );
+          }
+        );
+
+
+      const contextProfiledCandidates =
+        results
+          .filter(function(result) {
+            return (
+              result.contextStatus ===
+              "context-profiled"
+            );
+          })
+          .map(function(result) {
+            return {
+              name:
+                result.player.name,
+
+              pos:
+                result.player.pos,
+
+              contextProfile:
+                result.contextProfile
+            };
+          });
+
+
+      return {
+        statusCode:
+          200,
+
+        headers:
+          CORS_HEADERS,
+
+        body:
+          JSON.stringify(
+            {
+              validation:
+                "SAGE Pick 13 — Context Integrated",
+
+              opportunityComputedAt:
+                opportunityCache.computedAt ||
+                null,
+
+              contextComputedAt:
+                contextCache.computedAt ||
+                null,
+
+              contextPhase:
+                contextCache.phase ||
+                null,
+
+              state:
+                VALIDATION_STATE,
+
+              humanBenchmark: {
+                pick12:
+                  "Ashton Jeanty",
+
+                pick13:
+                  "Chase Brown"
+              },
+
+              contextSummary: {
+                available:
+                  true,
+
+                productionSource:
+                  "context-intel/latest",
+
+                totalContextPopulation:
+                  contextCache.populationCount ||
+                  null,
+
+                totalContextProfiled:
+                  contextCache.contextProfiledCount ||
+                  0,
+
+                profiledCandidatesInThisDecision:
+                  contextProfiledCandidates
+              },
+
+              candidateCount:
+                CANDIDATES.length,
+
+              candidateOpportunityMatches:
+                currentPool.length,
+
+              nextTurnCount:
+                NEXT_TURN_POOL.length,
+
+              nextTurnOpportunityMatches:
+                nextTurnPool.length,
+
+              missingCandidates:
+                missingCandidates,
+
+              missingNextTurn:
+                missingNextTurn,
+
+              results:
+                results
+            },
             null,
+            2
+          )
+      };
 
-          state:
-            VALIDATION_STATE,
+    } catch (e) {
+      return {
+        statusCode:
+          500,
 
-          humanBenchmark: {
-            pick12:
-              "Ashton Jeanty",
+        headers:
+          CORS_HEADERS,
 
-            pick13:
-              "Chase Brown"
-          },
+        body:
+          JSON.stringify(
+            {
+              error:
+                "SAGE Context-integrated pick validation failed",
 
-          contextStatus: {
-            available:
-              false,
+              detail:
+                e.message,
 
-            reason:
-              "Context calculation exists, but the production 256-player Context data/cache pipeline has not been built yet.",
-
-            rule:
-              "No manual Context evidence is injected into this baseline."
-          },
-
-          candidateCount:
-            CANDIDATES.length,
-
-          candidateOpportunityMatches:
-            currentPool.length,
-
-          nextTurnCount:
-            NEXT_TURN_POOL.length,
-
-          nextTurnOpportunityMatches:
-            nextTurnPool.length,
-
-          missingCandidates:
-            missingCandidates,
-
-          missingNextTurn:
-            missingNextTurn,
-
-          results:
-            results
-        },
-        null,
-        2
-      )
-    };
-
-  } catch (e) {
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-
-      body: JSON.stringify(
-        {
-          error:
-            "SAGE pick validation failed",
-
-          detail:
-            e.message,
-
-          stack:
-            e.stack
-        },
-        null,
-        2
-      )
-    };
-  }
-};
+              stack:
+                e.stack
+            },
+            null,
+            2
+          )
+      };
+    }
+  };
 
 
 // ------------------------------------------------------------
-// PURE EXPORTS FOR OPTIONAL LATER TESTING
+// PURE EXPORTS
 // ------------------------------------------------------------
 
 module.exports.normalizePlayerName =
   normalizePlayerName;
 
-module.exports.opportunityKey =
-  opportunityKey;
-
-module.exports.attachAdp =
-  attachAdp;
+module.exports.playerKey =
+  playerKey;
 
 module.exports.getOpportunityRecord =
   getOpportunityRecord;
+
+module.exports.getContextRecord =
+  getContextRecord;
+
+module.exports.getProductionContextProfile =
+  getProductionContextProfile;
+
+module.exports.attachAdp =
+  attachAdp;
 
 module.exports.buildOpportunityPool =
   buildOpportunityPool;
