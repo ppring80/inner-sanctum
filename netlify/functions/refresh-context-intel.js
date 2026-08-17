@@ -1,6 +1,6 @@
 // netlify/functions/refresh-context-intel.js
 //
-// SAGE CONTEXT INTELLIGENCE — PHASE 1 POPULATION REFRESH
+// SAGE CONTEXT INTELLIGENCE — PHASE 2B PROFILE INTEGRATION
 //
 // PURPOSE:
 // Build and cache the production Context Intelligence population.
@@ -15,43 +15,59 @@
 // Inner Sanctum supports leagues up to 16 teams × 16 roster spots.
 // 16 × 16 = 256 maximum drafted players.
 //
+// PHASE 1:
+// - Dynamic top-256 population
+// - Current ADP
+// - Player identity
+// - Team
+// - Experience / rookie status
+// - Injury envelope
+//
+// PHASE 2A:
+// - context-evidence.js introduced the event-driven evidence registry.
+//
+// PHASE 2B:
+// - Join registered Context evidence to the dynamic 256-player population.
+// - Run that evidence through draft-context-profile.js.
+// - Store the resulting Context Profile in context-intel/latest.
+//
 // IMPORTANT:
-// - 256 is a POPULATION SIZE, not a hand-maintained player list.
-// - K and DEF do not consume Context population slots.
-// - Current ADP comes through the EXISTING deployed adp.js endpoint.
-// - Live team / experience / injury comes through the EXISTING
-//   deployed player-data.js endpoint.
-// - No coaching-change, QB-change, offensive-line, role-change,
-//   or rookie-impact conclusions are created in Phase 1.
-// - No fake Opportunity history is created for rookies.
-// - No SAGE recommendation logic is touched.
+// - Most of the 256 players will remain baseline-only.
+// - No Context entry is manufactured when no material evidence exists.
+// - Context does NOT alter Opportunity Intelligence.
+// - Context does NOT manufacture NFL history for rookies.
+// - Context does NOT change ADP.
+// - Context does NOT decide whom to draft.
+// - SAGE recommendation logic is untouched.
 //
 // CACHE:
 // Netlify Blobs store: "context-intel"
 // key: "latest"
 //
-// MANUAL PHASE-1 REFRESH:
+// MANUAL VALIDATION REFRESH:
 // GET /.netlify/functions/refresh-context-intel?run=validation
 //
-// PHASE 1.1 PLUMBING FIX:
-// Consume the existing deployed adp.js and player-data.js endpoints
-// over HTTP rather than synthesizing Lambda events.
+// EXPECTED INITIAL PROFILED PLAYERS:
+//   A.J. Brown
+//   Ashton Jeanty
+//   Jeremiyah Love
 //
-// PHASE 1.2 PLAYER-ID FIX:
-// player-data.js returns an object keyed by Tank01 player ID.
-// The previous buildPlayerDataMap() used Object.values(), which
-// discarded that key before the Context record was built.
-//
-// This version uses Object.entries() and explicitly carries the
-// source object's key forward as playerID.
-//
-// This does NOT change player matching, Context population,
-// football interpretation, or SAGE behavior.
+// Everyone else remains baseline-only unless context-evidence.js
+// contains an explicit evidence record for that player.
 
 const {
   getStore,
   connectLambda
 } = require("@netlify/blobs");
+
+const {
+  getContextEvidenceByKey,
+  getAllContextEvidence
+} = require("./context-evidence");
+
+const {
+  buildDraftContextProfile
+} = require("./draft-context-profile");
 
 
 const CONTEXT_POPULATION_SIZE = 256;
@@ -76,15 +92,12 @@ const CORS_HEADERS = {
 // ------------------------------------------------------------
 
 function siteOrigin() {
-  const configured =
-    String(
-      process.env.URL ||
-      "https://theinnersanctum.xyz"
-    )
-      .trim()
-      .replace(/\/+$/, "");
-
-  return configured;
+  return String(
+    process.env.URL ||
+    "https://theinnersanctum.xyz"
+  )
+    .trim()
+    .replace(/\/+$/, "");
 }
 
 
@@ -121,7 +134,10 @@ function normalizePosition(pos) {
 }
 
 
-function playerKey(name, pos) {
+function playerKey(
+  name,
+  pos
+) {
   return (
     normalizePlayerName(name) +
     "|" +
@@ -134,12 +150,17 @@ function playerKey(name, pos) {
 // SAFE JSON FETCH
 // ------------------------------------------------------------
 
-async function fetchJson(url, label) {
+async function fetchJson(
+  url,
+  label
+) {
   const response =
     await fetch(
       url,
       {
-        method: "GET",
+        method:
+          "GET",
+
         headers: {
           "Accept":
             "application/json"
@@ -237,6 +258,12 @@ async function readCurrentPlayerData() {
 
 // ------------------------------------------------------------
 // ADP POPULATION
+//
+// Filter first.
+// Sort second.
+// Take 256 third.
+//
+// K / DEF do not consume Context population slots.
 // ------------------------------------------------------------
 
 function buildAdpPopulation(
@@ -312,7 +339,10 @@ function buildAdpPopulation(
       0,
       CONTEXT_POPULATION_SIZE
     )
-    .map(function(player, index) {
+    .map(function(
+      player,
+      index
+    ) {
       return {
         name:
           player.name,
@@ -333,22 +363,10 @@ function buildAdpPopulation(
 // ------------------------------------------------------------
 // PLAYER-DATA LOOKUP MAP
 //
-// PHASE 1.2 FIX:
+// player-data.js returns an object keyed by Tank01 player ID.
 //
-// player-data.js returns:
-//
-// {
-//   "4047646": {
-//      longName: "A.J. Brown",
-//      ...
-//   }
-// }
-//
-// The object KEY is the Tank01 player ID.
-//
-// Use Object.entries() so we preserve that ID while creating:
-//
-// normalizedName|POS -> player record
+// Preserve that key so every matched Context record carries
+// stable player identity.
 // ------------------------------------------------------------
 
 function buildPlayerDataMap(
@@ -397,8 +415,6 @@ function buildPlayerDataMap(
         pos
       );
 
-    // Create a new object.
-    // Do NOT mutate the player-data cache record.
     map[key] =
       Object.assign(
         {},
@@ -425,7 +441,11 @@ function buildPlayerDataMap(
 
 
 // ------------------------------------------------------------
-// BASELINE CONTEXT RECORD
+// BASELINE FACT RECORD
+//
+// This is the Phase-1 foundation.
+//
+// It records facts but creates no Context conclusions.
 // ------------------------------------------------------------
 
 function buildBaselineRecord(
@@ -444,7 +464,8 @@ function buildBaselineRecord(
       : null;
 
   const isRookie =
-    experience === "R";
+    experience ===
+      "R";
 
   const injury =
     livePlayer &&
@@ -501,25 +522,160 @@ function buildBaselineRecord(
     contextProfile:
       null,
 
-    evidence: {
-      environmentChange:
-        null,
+    evidence:
+      null,
 
-      roleOpportunity:
-        null,
-
-      rookieImpact:
-        null,
-
-      contextConfidence:
-        null
-    }
+    contextSources:
+      []
   };
 }
 
 
 // ------------------------------------------------------------
-// BUILD COMPLETE PHASE-1 CACHE
+// CONTEXT EVIDENCE IDENTITY CHECK
+//
+// Evidence is keyed by normalizedName|POS.
+//
+// The evidence registry may also carry a playerID.
+//
+// If BOTH IDs exist and disagree, we refuse to profile the player.
+// We keep the baseline record and surface the mismatch.
+//
+// This is deliberately conservative.
+// ------------------------------------------------------------
+
+function evidenceIdentityMatches(
+  baselineRecord,
+  evidenceRecord
+) {
+  if (
+    !baselineRecord ||
+    !evidenceRecord
+  ) {
+    return true;
+  }
+
+  if (
+    !baselineRecord.playerID ||
+    !evidenceRecord.playerID
+  ) {
+    return true;
+  }
+
+  return (
+    String(
+      baselineRecord.playerID
+    ) ===
+    String(
+      evidenceRecord.playerID
+    )
+  );
+}
+
+
+// ------------------------------------------------------------
+// APPLY CONTEXT EVIDENCE
+//
+// Only players with explicit event-driven evidence are profiled.
+//
+// No evidence:
+//   baseline-only
+//
+// Evidence + identity match:
+//   context-profiled
+//
+// Evidence + identity mismatch:
+//   evidence-identity-mismatch
+// ------------------------------------------------------------
+
+function applyContextEvidence(
+  baselineRecord,
+  evidenceRecord
+) {
+  if (
+    !evidenceRecord
+  ) {
+    return baselineRecord;
+  }
+
+  if (
+    !evidenceIdentityMatches(
+      baselineRecord,
+      evidenceRecord
+    )
+  ) {
+    return Object.assign(
+      {},
+      baselineRecord,
+      {
+        contextStatus:
+          "evidence-identity-mismatch",
+
+        evidence: {
+          expectedPlayerID:
+            evidenceRecord.playerID ||
+            null,
+
+          actualPlayerID:
+            baselineRecord.playerID ||
+            null
+        },
+
+        contextSources:
+          Array.isArray(
+            evidenceRecord.sources
+          )
+            ? evidenceRecord.sources.slice()
+            : []
+      }
+    );
+  }
+
+  const evidence =
+    evidenceRecord.evidence ||
+    {};
+
+  const contextProfile =
+    buildDraftContextProfile({
+      playerID:
+        baselineRecord.playerID,
+
+      longName:
+        baselineRecord.longName,
+
+      pos:
+        baselineRecord.pos,
+
+      evidence:
+        evidence
+    });
+
+  return Object.assign(
+    {},
+    baselineRecord,
+    {
+      contextStatus:
+        "context-profiled",
+
+      contextProfile:
+        contextProfile,
+
+      evidence:
+        evidence,
+
+      contextSources:
+        Array.isArray(
+          evidenceRecord.sources
+        )
+          ? evidenceRecord.sources.slice()
+          : []
+    }
+  );
+}
+
+
+// ------------------------------------------------------------
+// BUILD COMPLETE CONTEXT CACHE
 // ------------------------------------------------------------
 
 function buildContextCache(
@@ -541,6 +697,12 @@ function buildContextCache(
 
   const missingPlayerData =
     [];
+
+  const evidenceIdentityMismatches =
+    [];
+
+  let contextProfiledCount =
+    0;
 
   population.forEach(
     function(marketPlayer) {
@@ -575,20 +737,113 @@ function buildContextCache(
         });
       }
 
-      records[key] =
+      const baselineRecord =
         buildBaselineRecord(
           marketPlayer,
           livePlayer
         );
+
+      const evidenceRecord =
+        getContextEvidenceByKey(
+          key
+        );
+
+      const finalRecord =
+        applyContextEvidence(
+          baselineRecord,
+          evidenceRecord
+        );
+
+      if (
+        finalRecord.contextStatus ===
+        "context-profiled"
+      ) {
+        contextProfiledCount++;
+      }
+
+      if (
+        finalRecord.contextStatus ===
+        "evidence-identity-mismatch"
+      ) {
+        evidenceIdentityMismatches.push({
+          key:
+            key,
+
+          name:
+            marketPlayer.name,
+
+          pos:
+            marketPlayer.pos,
+
+          marketPlayerID:
+            baselineRecord.playerID,
+
+          evidencePlayerID:
+            evidenceRecord &&
+            evidenceRecord.playerID
+              ? String(
+                  evidenceRecord.playerID
+                )
+              : null
+        });
+      }
+
+      records[key] =
+        finalRecord;
     }
   );
 
+  const registry =
+    getAllContextEvidence();
+
+  const evidenceRegistryCount =
+    Object.keys(
+      registry || {}
+    ).length;
+
+  const evidenceOutsidePopulation =
+    [];
+
+  Object.keys(
+    registry || {}
+  ).forEach(function(key) {
+    if (
+      !Object.prototype
+        .hasOwnProperty
+        .call(
+          records,
+          key
+        )
+    ) {
+      const evidenceRecord =
+        registry[key] ||
+        {};
+
+      evidenceOutsidePopulation.push({
+        key:
+          key,
+
+        playerID:
+          evidenceRecord.playerID ||
+          null,
+
+        longName:
+          evidenceRecord.longName ||
+          null,
+
+        pos:
+          evidenceRecord.pos ||
+          null
+      });
+    }
+  });
+
   return {
     schemaVersion:
-      1,
+      2,
 
     phase:
-      "context-phase-1",
+      "context-phase-2b",
 
     computedAt:
       computedAt,
@@ -627,6 +882,16 @@ function buildContextCache(
       playerData: {
         source:
           "player-data.js"
+      },
+
+      contextEvidence: {
+        source:
+          "context-evidence.js"
+      },
+
+      contextProfile: {
+        source:
+          "draft-context-profile.js"
       }
     },
 
@@ -643,6 +908,29 @@ function buildContextCache(
     missingPlayerData:
       missingPlayerData,
 
+    evidenceRegistryCount:
+      evidenceRegistryCount,
+
+    contextProfiledCount:
+      contextProfiledCount,
+
+    baselineOnlyCount:
+      population.length -
+      contextProfiledCount -
+      evidenceIdentityMismatches.length,
+
+    evidenceIdentityMismatchCount:
+      evidenceIdentityMismatches.length,
+
+    evidenceIdentityMismatches:
+      evidenceIdentityMismatches,
+
+    evidenceOutsidePopulationCount:
+      evidenceOutsidePopulation.length,
+
+    evidenceOutsidePopulation:
+      evidenceOutsidePopulation,
+
     records:
       records
   };
@@ -651,6 +939,17 @@ function buildContextCache(
 
 // ------------------------------------------------------------
 // SMALL VALIDATION VIEW
+//
+// Includes:
+// - first 10 current ADP players
+// - A.J. Brown
+// - Ashton Jeanty
+// - Chase Brown
+// - Jeremiyah Love
+//
+// Chase Brown intentionally acts as a control:
+// he should remain baseline-only because Phase 2A did not create
+// a material Context evidence record for him.
 // ------------------------------------------------------------
 
 function buildValidationView(
@@ -744,6 +1043,27 @@ function buildValidationView(
     missingPlayerData:
       cache.missingPlayerData,
 
+    evidenceRegistryCount:
+      cache.evidenceRegistryCount,
+
+    contextProfiledCount:
+      cache.contextProfiledCount,
+
+    baselineOnlyCount:
+      cache.baselineOnlyCount,
+
+    evidenceIdentityMismatchCount:
+      cache.evidenceIdentityMismatchCount,
+
+    evidenceIdentityMismatches:
+      cache.evidenceIdentityMismatches,
+
+    evidenceOutsidePopulationCount:
+      cache.evidenceOutsidePopulationCount,
+
+    evidenceOutsidePopulation:
+      cache.evidenceOutsidePopulation,
+
     validationSampleCount:
       Object.keys(
         selected
@@ -819,7 +1139,7 @@ exports.handler =
           JSON.stringify(
             {
               error:
-                "Refresh not executed. Use ?run=validation for the Phase-1 manual refresh."
+                "Refresh not executed. Use ?run=validation for the manual Context refresh."
             },
             null,
             2
@@ -848,8 +1168,12 @@ exports.handler =
           computedAt
         );
 
-      // Never overwrite the good cache
-      // with a partial population.
+      // --------------------------------------------------------
+      // SAFETY GATE 1
+      //
+      // Never overwrite a good cache with a partial population.
+      // --------------------------------------------------------
+
       if (
         cache.populationCount !==
         CONTEXT_POPULATION_SIZE
@@ -881,6 +1205,49 @@ exports.handler =
             )
         };
       }
+
+
+      // --------------------------------------------------------
+      // SAFETY GATE 2
+      //
+      // Phase 2B validation should not silently write records when
+      // the explicit evidence registry conflicts with player identity.
+      //
+      // If that ever happens, inspect it first.
+      // --------------------------------------------------------
+
+      if (
+        cache.evidenceIdentityMismatchCount >
+        0
+      ) {
+        return {
+          statusCode:
+            500,
+
+          headers:
+            CORS_HEADERS,
+
+          body:
+            JSON.stringify(
+              {
+                error:
+                  "Context evidence identity mismatch detected.",
+
+                mismatchCount:
+                  cache.evidenceIdentityMismatchCount,
+
+                mismatches:
+                  cache.evidenceIdentityMismatches,
+
+                detail:
+                  "No Blob write was performed."
+              },
+              null,
+              2
+            )
+        };
+      }
+
 
       const store =
         getStore({
@@ -922,7 +1289,7 @@ exports.handler =
           JSON.stringify(
             {
               error:
-                "Context Intelligence Phase-1 refresh failed",
+                "Context Intelligence Phase-2B refresh failed",
 
               detail:
                 e.message
@@ -974,6 +1341,12 @@ module.exports.buildPlayerDataMap =
 
 module.exports.buildBaselineRecord =
   buildBaselineRecord;
+
+module.exports.evidenceIdentityMatches =
+  evidenceIdentityMatches;
+
+module.exports.applyContextEvidence =
+  applyContextEvidence;
 
 module.exports.buildContextCache =
   buildContextCache;
