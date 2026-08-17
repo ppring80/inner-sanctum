@@ -1,10 +1,10 @@
 // netlify/functions/context-integrity-check.js
 //
-// SAGE CONTEXT INTELLIGENCE — RELEASE INTEGRITY CHECK
+// SAGE CONTEXT INTELLIGENCE — RELEASE INTEGRITY CHECK v2
 //
 // PURPOSE:
-// Validate that Context evidence still matches the live player/team
-// identities in context-intel/latest before release.
+// Validate that Context evidence and cached Context records still match
+// the CURRENT live player/team data before release.
 //
 // READ-ONLY.
 // DOES NOT write to Netlify Blobs.
@@ -16,12 +16,22 @@
 //   teamMismatchCount === 0
 //   identityMismatchCount === 0
 //   profiledPlayerMissingTeamCount === 0
+//   profiledWithoutEvidenceCount === 0
+//   liveTeamMismatchCount === 0
+//   cacheVsLiveTeamMismatchCount === 0
 //
 // WARNINGS:
 //
-// Players missing from player-data.js remain visible separately.
-// They do not automatically fail this integrity check unless they
-// have active Context evidence that cannot be validated.
+// Players present in ADP but absent from live player-data remain visible
+// separately.
+//
+// Those can legitimately include:
+// - free agents
+// - reserve / unusual roster status
+// - other market-relevant players without an active team assignment
+//
+// They do NOT automatically fail the integrity check unless active
+// Context evidence cannot be safely validated.
 
 const {
   getStore,
@@ -42,8 +52,63 @@ const CORS_HEADERS = {
 
 
 // ------------------------------------------------------------
+// SITE ORIGIN
+// ------------------------------------------------------------
+
+function siteOrigin() {
+  return String(
+    process.env.URL ||
+    "https://theinnersanctum.xyz"
+  )
+    .trim()
+    .replace(/\/+$/, "");
+}
+
+
+// ------------------------------------------------------------
 // NORMALIZATION
 // ------------------------------------------------------------
+
+function normalizePlayerName(name) {
+  return (name || "")
+    .toLowerCase()
+    .replace(/[.''']/g, "")
+    .replace(/-/g, " ")
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+function normalizePosition(pos) {
+  const value =
+    String(pos || "")
+      .trim()
+      .toUpperCase();
+
+  if (value === "PK") {
+    return "K";
+  }
+
+  if (value === "DST") {
+    return "DEF";
+  }
+
+  return value;
+}
+
+
+function playerKey(
+  name,
+  pos
+) {
+  return (
+    normalizePlayerName(name) +
+    "|" +
+    normalizePosition(pos)
+  );
+}
+
 
 function normalizeTeam(team) {
   return String(
@@ -55,12 +120,182 @@ function normalizeTeam(team) {
 
 
 // ------------------------------------------------------------
+// SAFE JSON FETCH
+// ------------------------------------------------------------
+
+async function fetchJson(
+  url,
+  label
+) {
+  const response =
+    await fetch(
+      url,
+      {
+        method:
+          "GET",
+
+        headers: {
+          "Accept":
+            "application/json"
+        }
+      }
+    );
+
+  if (!response.ok) {
+    let detail = "";
+
+    try {
+      detail =
+        await response.text();
+    } catch (e) {
+      detail = "";
+    }
+
+    throw new Error(
+      `${label} failed with status ${response.status}` +
+      (
+        detail
+          ? `: ${detail}`
+          : ""
+      )
+    );
+  }
+
+  try {
+    return await response.json();
+  } catch (e) {
+    throw new Error(
+      `${label} returned invalid JSON`
+    );
+  }
+}
+
+
+// ------------------------------------------------------------
+// CURRENT LIVE PLAYER DATA
+// ------------------------------------------------------------
+
+async function readCurrentPlayerData() {
+  const url =
+    siteOrigin() +
+    "/.netlify/functions/player-data";
+
+  const data =
+    await fetchJson(
+      url,
+      "player-data.js"
+    );
+
+  if (
+    !data ||
+    !data.players
+  ) {
+    throw new Error(
+      "player-data.js returned no players object"
+    );
+  }
+
+  return data;
+}
+
+
+// ------------------------------------------------------------
+// BUILD LIVE PLAYER MAP
+//
+// player-data.js is keyed by Tank01 player ID.
+//
+// Convert to:
+//
+// normalizedName|POS -> {
+//   playerID,
+//   longName,
+//   pos,
+//   team
+// }
+// ------------------------------------------------------------
+
+function buildLivePlayerMap(
+  playerData
+) {
+  const rawPlayers =
+    playerData &&
+    playerData.players
+      ? playerData.players
+      : {};
+
+  const map = {};
+
+  Object.entries(
+    rawPlayers
+  ).forEach(function(entry) {
+    const sourcePlayerID =
+      entry[0];
+
+    const player =
+      entry[1];
+
+    if (
+      !player ||
+      !player.longName
+    ) {
+      return;
+    }
+
+    const pos =
+      normalizePosition(
+        player.pos
+      );
+
+    if (
+      ![
+        "QB",
+        "RB",
+        "WR",
+        "TE"
+      ].includes(pos)
+    ) {
+      return;
+    }
+
+    const key =
+      playerKey(
+        player.longName,
+        pos
+      );
+
+    map[key] = {
+      playerID:
+        sourcePlayerID
+          ? String(
+              sourcePlayerID
+            )
+          : null,
+
+      longName:
+        player.longName,
+
+      pos:
+        pos,
+
+      team:
+        normalizeTeam(
+          player.team
+        ) || null
+    };
+  });
+
+  return map;
+}
+
+
+// ------------------------------------------------------------
 // BUILD INTEGRITY REPORT
 // ------------------------------------------------------------
 
 function buildIntegrityReport(
   contextCache,
-  evidenceRegistry
+  evidenceRegistry,
+  livePlayerMap
 ) {
   const records =
     contextCache &&
@@ -72,6 +307,11 @@ function buildIntegrityReport(
     evidenceRegistry ||
     {};
 
+  const liveMap =
+    livePlayerMap ||
+    {};
+
+
   const teamMismatches =
     [];
 
@@ -81,13 +321,27 @@ function buildIntegrityReport(
   const profiledPlayersMissingTeam =
     [];
 
+  const profiledWithoutEvidence =
+    [];
+
   const evidenceOutsidePopulation =
     [];
 
   const evidenceMissingExpectedTeam =
     [];
 
-  const profiledWithoutEvidence =
+
+  // NEW v2 checks
+  const liveTeamMismatches =
+    [];
+
+  const cacheVsLiveTeamMismatches =
+    [];
+
+  const liveIdentityMismatches =
+    [];
+
+  const profiledPlayerMissingLiveData =
     [];
 
 
@@ -102,13 +356,20 @@ function buildIntegrityReport(
       registry[key] ||
       {};
 
-    const liveRecord =
+    const cachedRecord =
       records[key] ||
       null;
 
+    const liveRecord =
+      liveMap[key] ||
+      null;
 
-    // Evidence exists but player is outside current top-256 population.
-    if (!liveRecord) {
+
+    // --------------------------------------------------------
+    // EVIDENCE OUTSIDE CURRENT ADP POPULATION
+    // --------------------------------------------------------
+
+    if (!cachedRecord) {
       evidenceOutsidePopulation.push({
         key:
           key,
@@ -135,7 +396,201 @@ function buildIntegrityReport(
 
 
     // --------------------------------------------------------
-    // PLAYER-ID CHECK
+    // EVIDENCE ID vs CACHED CONTEXT ID
+    // --------------------------------------------------------
+
+    if (
+      evidenceRecord.playerID &&
+      cachedRecord.playerID &&
+      String(
+        evidenceRecord.playerID
+      ) !==
+      String(
+        cachedRecord.playerID
+      )
+    ) {
+      identityMismatches.push({
+        key:
+          key,
+
+        longName:
+          cachedRecord.longName ||
+          evidenceRecord.longName ||
+          null,
+
+        pos:
+          cachedRecord.pos ||
+          evidenceRecord.pos ||
+          null,
+
+        evidencePlayerID:
+          String(
+            evidenceRecord.playerID
+          ),
+
+        cachedPlayerID:
+          String(
+            cachedRecord.playerID
+          )
+      });
+    }
+
+
+    // --------------------------------------------------------
+    // EXPECTED TEAM vs CACHED CONTEXT TEAM
+    // --------------------------------------------------------
+
+    const expectedTeam =
+      normalizeTeam(
+        evidenceRecord.expectedTeam
+      );
+
+    const cachedTeam =
+      normalizeTeam(
+        cachedRecord.team
+      );
+
+
+    if (!expectedTeam) {
+      evidenceMissingExpectedTeam.push({
+        key:
+          key,
+
+        longName:
+          cachedRecord.longName ||
+          evidenceRecord.longName ||
+          null,
+
+        pos:
+          cachedRecord.pos ||
+          evidenceRecord.pos ||
+          null,
+
+        cachedTeam:
+          cachedTeam ||
+          null
+      });
+    }
+
+    else if (
+      cachedTeam &&
+      expectedTeam !==
+      cachedTeam
+    ) {
+      teamMismatches.push({
+        key:
+          key,
+
+        longName:
+          cachedRecord.longName ||
+          evidenceRecord.longName ||
+          null,
+
+        pos:
+          cachedRecord.pos ||
+          evidenceRecord.pos ||
+          null,
+
+        playerID:
+          cachedRecord.playerID ||
+          evidenceRecord.playerID ||
+          null,
+
+        expectedTeam:
+          expectedTeam,
+
+        cachedTeam:
+          cachedTeam
+      });
+    }
+
+
+    // --------------------------------------------------------
+    // PROFILED PLAYER MUST HAVE CACHED TEAM
+    // --------------------------------------------------------
+
+    if (
+      cachedRecord.contextStatus ===
+        "context-profiled" &&
+      !cachedTeam
+    ) {
+      profiledPlayersMissingTeam.push({
+        key:
+          key,
+
+        playerID:
+          cachedRecord.playerID ||
+          null,
+
+        longName:
+          cachedRecord.longName ||
+          null,
+
+        pos:
+          cachedRecord.pos ||
+          null
+      });
+    }
+
+
+    // --------------------------------------------------------
+    // CURRENT LIVE PLAYER DATA CHECK
+    //
+    // If a Context-profiled player has no current live record,
+    // that is a hard failure because we cannot validate the
+    // evidence against current team identity.
+    // --------------------------------------------------------
+
+    if (
+      cachedRecord.contextStatus ===
+        "context-profiled" &&
+      !liveRecord
+    ) {
+      profiledPlayerMissingLiveData.push({
+        key:
+          key,
+
+        playerID:
+          cachedRecord.playerID ||
+          evidenceRecord.playerID ||
+          null,
+
+        longName:
+          cachedRecord.longName ||
+          evidenceRecord.longName ||
+          null,
+
+        pos:
+          cachedRecord.pos ||
+          evidenceRecord.pos ||
+          null,
+
+        expectedTeam:
+          expectedTeam ||
+          null,
+
+        cachedTeam:
+          cachedTeam ||
+          null
+      });
+
+      return;
+    }
+
+
+    if (!liveRecord) {
+      return;
+    }
+
+
+    const liveTeam =
+      normalizeTeam(
+        liveRecord.team
+      );
+
+
+    // --------------------------------------------------------
+    // EVIDENCE ID vs CURRENT LIVE ID
     // --------------------------------------------------------
 
     if (
@@ -148,18 +603,18 @@ function buildIntegrityReport(
         liveRecord.playerID
       )
     ) {
-      identityMismatches.push({
+      liveIdentityMismatches.push({
         key:
           key,
 
         longName:
           liveRecord.longName ||
-          evidenceRecord.longName ||
+          cachedRecord.longName ||
           null,
 
         pos:
           liveRecord.pos ||
-          evidenceRecord.pos ||
+          cachedRecord.pos ||
           null,
 
         evidencePlayerID:
@@ -176,64 +631,35 @@ function buildIntegrityReport(
 
 
     // --------------------------------------------------------
-    // EXPECTED TEAM CHECK
+    // EXPECTED TEAM vs CURRENT LIVE TEAM
+    //
+    // This is the Njoku protection.
     // --------------------------------------------------------
 
-    const expectedTeam =
-      normalizeTeam(
-        evidenceRecord.expectedTeam
-      );
-
-    const liveTeam =
-      normalizeTeam(
-        liveRecord.team
-      );
-
-
-    if (!expectedTeam) {
-      evidenceMissingExpectedTeam.push({
-        key:
-          key,
-
-        longName:
-          liveRecord.longName ||
-          evidenceRecord.longName ||
-          null,
-
-        pos:
-          liveRecord.pos ||
-          evidenceRecord.pos ||
-          null,
-
-        liveTeam:
-          liveTeam ||
-          null
-      });
-    }
-
-
-    else if (
+    if (
+      expectedTeam &&
       liveTeam &&
       expectedTeam !==
       liveTeam
     ) {
-      teamMismatches.push({
+      liveTeamMismatches.push({
         key:
           key,
 
+        playerID:
+          liveRecord.playerID ||
+          cachedRecord.playerID ||
+          evidenceRecord.playerID ||
+          null,
+
         longName:
           liveRecord.longName ||
-          evidenceRecord.longName ||
+          cachedRecord.longName ||
           null,
 
         pos:
           liveRecord.pos ||
-          evidenceRecord.pos ||
-          null,
-
-        playerID:
-          liveRecord.playerID ||
-          evidenceRecord.playerID ||
+          cachedRecord.pos ||
           null,
 
         expectedTeam:
@@ -246,36 +672,48 @@ function buildIntegrityReport(
 
 
     // --------------------------------------------------------
-    // PROFILED PLAYER MUST HAVE LIVE TEAM
+    // CACHED TEAM vs CURRENT LIVE TEAM
+    //
+    // Detects a player moved after the last Context refresh.
     // --------------------------------------------------------
 
     if (
-      liveRecord.contextStatus ===
-        "context-profiled" &&
-      !liveTeam
+      cachedTeam &&
+      liveTeam &&
+      cachedTeam !==
+      liveTeam
     ) {
-      profiledPlayersMissingTeam.push({
+      cacheVsLiveTeamMismatches.push({
         key:
           key,
 
         playerID:
           liveRecord.playerID ||
+          cachedRecord.playerID ||
           null,
 
         longName:
           liveRecord.longName ||
+          cachedRecord.longName ||
           null,
 
         pos:
           liveRecord.pos ||
-          null
+          cachedRecord.pos ||
+          null,
+
+        cachedTeam:
+          cachedTeam,
+
+        liveTeam:
+          liveTeam
       });
     }
   });
 
 
   // ----------------------------------------------------------
-  // CHECK CACHE FOR PROFILED PLAYERS WITHOUT REGISTRY EVIDENCE
+  // PROFILED CACHE RECORD WITHOUT EVIDENCE REGISTRY ENTRY
   // ----------------------------------------------------------
 
   Object.keys(
@@ -315,7 +753,12 @@ function buildIntegrityReport(
 
 
   // ----------------------------------------------------------
-  // MISSING PLAYER-DATA WARNINGS
+  // ADP-RELEVANT PLAYERS WITHOUT CURRENT PLAYER-DATA MATCH
+  //
+  // WARNING ONLY.
+  //
+  // A player may legitimately remain fantasy-market relevant while
+  // currently unsigned or in an unusual roster state.
   // ----------------------------------------------------------
 
   const missingPlayerData =
@@ -328,14 +771,18 @@ function buildIntegrityReport(
 
 
   // ----------------------------------------------------------
-  // RELEASE DECISION
+  // HARD RELEASE FAILURE COUNT
   // ----------------------------------------------------------
 
   const hardFailureCount =
     teamMismatches.length +
     identityMismatches.length +
     profiledPlayersMissingTeam.length +
-    profiledWithoutEvidence.length;
+    profiledWithoutEvidence.length +
+    liveTeamMismatches.length +
+    cacheVsLiveTeamMismatches.length +
+    liveIdentityMismatches.length +
+    profiledPlayerMissingLiveData.length;
 
 
   const releaseReady =
@@ -346,6 +793,9 @@ function buildIntegrityReport(
   return {
     check:
       "SAGE Context Integrity",
+
+    version:
+      "v2-live-team-check",
 
     contextPhase:
       contextCache &&
@@ -358,6 +808,10 @@ function buildIntegrityReport(
       contextCache.computedAt
         ? contextCache.computedAt
         : null,
+
+    livePlayerDataCheckedAt:
+      new Date()
+        .toISOString(),
 
     populationCount:
       contextCache &&
@@ -394,7 +848,7 @@ function buildIntegrityReport(
 
 
     // --------------------------------------------------------
-    // HARD RELEASE GATES
+    // RELEASE RESULT
     // --------------------------------------------------------
 
     releaseReady:
@@ -402,6 +856,11 @@ function buildIntegrityReport(
 
     hardFailureCount:
       hardFailureCount,
+
+
+    // --------------------------------------------------------
+    // EVIDENCE vs CACHED CONTEXT
+    // --------------------------------------------------------
 
     teamMismatchCount:
       teamMismatches.length,
@@ -414,6 +873,40 @@ function buildIntegrityReport(
 
     identityMismatches:
       identityMismatches,
+
+
+    // --------------------------------------------------------
+    // EVIDENCE / CACHE vs CURRENT LIVE PLAYER DATA
+    // --------------------------------------------------------
+
+    liveTeamMismatchCount:
+      liveTeamMismatches.length,
+
+    liveTeamMismatches:
+      liveTeamMismatches,
+
+    cacheVsLiveTeamMismatchCount:
+      cacheVsLiveTeamMismatches.length,
+
+    cacheVsLiveTeamMismatches:
+      cacheVsLiveTeamMismatches,
+
+    liveIdentityMismatchCount:
+      liveIdentityMismatches.length,
+
+    liveIdentityMismatches:
+      liveIdentityMismatches,
+
+    profiledPlayerMissingLiveDataCount:
+      profiledPlayerMissingLiveData.length,
+
+    profiledPlayerMissingLiveData:
+      profiledPlayerMissingLiveData,
+
+
+    // --------------------------------------------------------
+    // PROFILE COMPLETENESS
+    // --------------------------------------------------------
 
     profiledPlayerMissingTeamCount:
       profiledPlayersMissingTeam.length,
@@ -429,7 +922,7 @@ function buildIntegrityReport(
 
 
     // --------------------------------------------------------
-    // WARNINGS / REVIEW ITEMS
+    // WARNINGS
     // --------------------------------------------------------
 
     evidenceMissingExpectedTeamCount:
@@ -508,14 +1001,21 @@ exports.handler =
         });
 
 
-      const contextCache =
-        await store.get(
-          "latest",
-          {
-            type:
-              "json"
-          }
-        );
+      const [
+        contextCache,
+        playerData
+      ] =
+        await Promise.all([
+          store.get(
+            "latest",
+            {
+              type:
+                "json"
+            }
+          ),
+
+          readCurrentPlayerData()
+        ]);
 
 
       if (!contextCache) {
@@ -543,10 +1043,17 @@ exports.handler =
         getAllContextEvidence();
 
 
+      const livePlayerMap =
+        buildLivePlayerMap(
+          playerData
+        );
+
+
       const report =
         buildIntegrityReport(
           contextCache,
-          evidenceRegistry
+          evidenceRegistry,
+          livePlayerMap
         );
 
 
@@ -593,11 +1100,32 @@ exports.handler =
 
 
 // ------------------------------------------------------------
-// PURE EXPORT
+// PURE EXPORTS
 // ------------------------------------------------------------
+
+module.exports.siteOrigin =
+  siteOrigin;
+
+module.exports.normalizePlayerName =
+  normalizePlayerName;
+
+module.exports.normalizePosition =
+  normalizePosition;
+
+module.exports.playerKey =
+  playerKey;
 
 module.exports.normalizeTeam =
   normalizeTeam;
+
+module.exports.fetchJson =
+  fetchJson;
+
+module.exports.readCurrentPlayerData =
+  readCurrentPlayerData;
+
+module.exports.buildLivePlayerMap =
+  buildLivePlayerMap;
 
 module.exports.buildIntegrityReport =
   buildIntegrityReport;
