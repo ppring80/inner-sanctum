@@ -2,7 +2,7 @@
 //
 // SAGE — CONTEXT DIRECTIONAL VALIDATION
 //
-// PHASE 2D
+// PHASE 2E
 //
 // PURPOSE:
 // Validate that production Context Intelligence influences SAGE
@@ -32,6 +32,9 @@
 // - A rookie with no historical Opportunity record receives an
 //   explicit "No NFL History" Opportunity profile.
 // - No NFL production is fabricated.
+// - High-value players who changed teams are restraint tests:
+//   Context may describe material change without automatically
+//   forcing a positive or negative recommendation.
 //
 // VALIDATION ARCHETYPES:
 //
@@ -46,6 +49,12 @@
 //
 //   Rachaad White
 //     Neutral environment / reduced role
+//
+//   Jaylen Waddle
+//     High-value team-change restraint case
+//
+//   Kenneth Walker III
+//     High-value team-change restraint case
 //
 //   Chase Brown
 //     Baseline-only control
@@ -107,7 +116,10 @@ const VALIDATION_PLAYERS = [
 
       contextConfidence:
         "Strong"
-    }
+    },
+
+    expectedBehavior:
+      "positive-support"
   },
 
   {
@@ -132,7 +144,10 @@ const VALIDATION_PLAYERS = [
 
       contextConfidence:
         "Strong"
-    }
+    },
+
+    expectedBehavior:
+      "positive-support"
   },
 
   {
@@ -157,7 +172,10 @@ const VALIDATION_PLAYERS = [
 
       contextConfidence:
         "Strong"
-    }
+    },
+
+    expectedBehavior:
+      "rookie-support"
   },
 
   {
@@ -182,7 +200,66 @@ const VALIDATION_PLAYERS = [
 
       contextConfidence:
         "Strong"
-    }
+    },
+
+    expectedBehavior:
+      "negative-support"
+  },
+
+  {
+    name:
+      "Jaylen Waddle",
+
+    pos:
+      "WR",
+
+    archetype:
+      "high-value-restraint-wr",
+
+    expectedContext: {
+      environmentChange:
+        "Uncertain",
+
+      roleOpportunity:
+        "Similar",
+
+      rookieImpact:
+        "Not Applicable",
+
+      contextConfidence:
+        "Strong"
+    },
+
+    expectedBehavior:
+      "restraint"
+  },
+
+  {
+    name:
+      "Kenneth Walker III",
+
+    pos:
+      "RB",
+
+    archetype:
+      "high-value-restraint-rb",
+
+    expectedContext: {
+      environmentChange:
+        "Uncertain",
+
+      roleOpportunity:
+        "Similar",
+
+      rookieImpact:
+        "Not Applicable",
+
+      contextConfidence:
+        "Strong"
+    },
+
+    expectedBehavior:
+      "restraint"
   },
 
   {
@@ -196,7 +273,10 @@ const VALIDATION_PLAYERS = [
       "baseline-control",
 
     expectedContext:
-      null
+      null,
+
+    expectedBehavior:
+      "baseline-control"
   }
 ];
 
@@ -429,9 +509,6 @@ function validateContextProfile(
 
 // ------------------------------------------------------------
 // ADP
-//
-// ADP comes from context-intel/latest because Opportunity records
-// do not carry market ADP.
 // ------------------------------------------------------------
 
 function getContextAdp(
@@ -456,14 +533,6 @@ function getContextAdp(
 
 // ------------------------------------------------------------
 // ROOKIE / NO NFL HISTORY PROFILE
-//
-// This is NOT manufactured production.
-//
-// It explicitly tells Step 5:
-//   there is no NFL Opportunity history.
-//
-// draft-sage-synthesis.js already contains a dedicated
-// No NFL History branch.
 // ------------------------------------------------------------
 
 function buildNoNFLHistoryOpportunityProfile(
@@ -572,12 +641,6 @@ function buildSharedOpportunityProfile(
 
 // ------------------------------------------------------------
 // SCARCITY UNIVERSE
-//
-// Use Opportunity cache records where historical Opportunity exists.
-// Join ADP from context cache.
-//
-// Rookie Context records without Opportunity history can still be
-// added to the universe as market-visible candidates.
 // ------------------------------------------------------------
 
 function buildScarcityUniverse(
@@ -664,7 +727,6 @@ function buildScarcityUniverse(
     }
 
 
-    // Rookie/no-history market-visible record.
     universe.push({
       playerID:
         contextRecord.playerID ||
@@ -710,10 +772,6 @@ function buildScarcityUniverse(
 
 // ------------------------------------------------------------
 // DIAGNOSTIC DRAFT STATE
-//
-// Each player is tested around his own current market price.
-//
-// CONTROL and CONTEXT runs use identical timing inputs.
 // ------------------------------------------------------------
 
 function buildDiagnosticDraftState(
@@ -897,6 +955,227 @@ function buildScarcityCandidate(
 
 
 // ------------------------------------------------------------
+// BEHAVIOR VALIDATION
+//
+// This does NOT impose numeric directionality.
+// It only checks that each archetype behaves consistently
+// with the design intent.
+// ------------------------------------------------------------
+
+function validateBehavior(
+  player,
+  contextRecord,
+  controlSage,
+  contextSage
+) {
+  const behavior =
+    player.expectedBehavior;
+
+
+  if (
+    behavior ===
+      "baseline-control"
+  ) {
+    const unchanged =
+      (
+        controlSage.code ===
+          contextSage.code &&
+
+        controlSage.explanation ===
+          contextSage.explanation &&
+
+        JSON.stringify(
+          controlSage.reasons
+        ) ===
+        JSON.stringify(
+          contextSage.reasons
+        )
+      );
+
+    return {
+      passed:
+        unchanged,
+
+      expectation:
+        "No Context profile should leave SAGE unchanged."
+    };
+  }
+
+
+  if (
+    behavior ===
+      "positive-support"
+  ) {
+    const positiveSignalPresent =
+      (
+        contextRecord &&
+        contextRecord.contextProfile &&
+        (
+          profileLabel(
+            contextRecord.contextProfile,
+            "environmentChange"
+          ) ===
+            "Positive" ||
+
+          profileLabel(
+            contextRecord.contextProfile,
+            "roleOpportunity"
+          ) ===
+            "Improved"
+        )
+      );
+
+    const contextVisible =
+      (
+        JSON.stringify(
+          contextSage.reasons
+        ) !==
+        JSON.stringify(
+          controlSage.reasons
+        ) ||
+
+        contextSage.code !==
+        controlSage.code
+      );
+
+    return {
+      passed:
+        (
+          positiveSignalPresent &&
+          contextVisible
+        ),
+
+      expectation:
+        "Positive Context should be visible in SAGE reasoning or recommendation."
+    };
+  }
+
+
+  if (
+    behavior ===
+      "rookie-support"
+  ) {
+    const rookieHigh =
+      (
+        contextRecord &&
+        contextRecord.contextProfile &&
+        profileLabel(
+          contextRecord.contextProfile,
+          "rookieImpact"
+        ) ===
+          "High"
+      );
+
+    const contextRaisesSupport =
+      (
+        contextSage.code !==
+        controlSage.code ||
+        contextSage.explanation !==
+        controlSage.explanation
+      );
+
+    return {
+      passed:
+        (
+          rookieHigh &&
+          contextRaisesSupport
+        ),
+
+      expectation:
+        "High rookie Context should provide legitimate support despite no NFL history."
+    };
+  }
+
+
+  if (
+    behavior ===
+      "negative-support"
+  ) {
+    const reducedRole =
+      (
+        contextRecord &&
+        contextRecord.contextProfile &&
+        profileLabel(
+          contextRecord.contextProfile,
+          "roleOpportunity"
+        ) ===
+          "Reduced"
+      );
+
+    const negativeVisible =
+      (
+        JSON.stringify(
+          contextSage.reasons
+        ) !==
+        JSON.stringify(
+          controlSage.reasons
+        )
+      );
+
+    return {
+      passed:
+        (
+          reducedRole &&
+          negativeVisible
+        ),
+
+      expectation:
+        "Reduced-role Context should be visible in SAGE reasoning without requiring a forced downgrade."
+    };
+  }
+
+
+  if (
+    behavior ===
+      "restraint"
+  ) {
+    const environment =
+      contextRecord &&
+      contextRecord.contextProfile
+        ? profileLabel(
+            contextRecord.contextProfile,
+            "environmentChange"
+          )
+        : null;
+
+    const role =
+      contextRecord &&
+      contextRecord.contextProfile
+        ? profileLabel(
+            contextRecord.contextProfile,
+            "roleOpportunity"
+          )
+        : null;
+
+    const noDirectionalBoost =
+      (
+        environment ===
+          "Uncertain" &&
+        role ===
+          "Similar"
+      );
+
+    return {
+      passed:
+        noDirectionalBoost,
+
+      expectation:
+        "Material team change should remain non-directional unless evidence proves improvement or decline."
+    };
+  }
+
+
+  return {
+    passed:
+      false,
+
+    expectation:
+      "Unknown validation behavior."
+  };
+}
+
+
+// ------------------------------------------------------------
 // ONE PLAYER — CONTROL vs CONTEXT
 // ------------------------------------------------------------
 
@@ -931,6 +1210,15 @@ function buildPlayerTest(
       contextValidation:
         contextValidation,
 
+      behaviorValidation:
+        {
+          passed:
+            false,
+
+          expectation:
+            "Context record missing."
+        },
+
       control:
         null,
 
@@ -956,6 +1244,15 @@ function buildPlayerTest(
 
       contextValidation:
         contextValidation,
+
+      behaviorValidation:
+        {
+          passed:
+            false,
+
+          expectation:
+            "ADP missing."
+        },
 
       control:
         null,
@@ -990,6 +1287,15 @@ function buildPlayerTest(
 
       contextValidation:
         contextValidation,
+
+      behaviorValidation:
+        {
+          passed:
+            false,
+
+          expectation:
+            "No Opportunity profile available."
+        },
 
       control:
         null,
@@ -1058,10 +1364,6 @@ function buildPlayerTest(
       : null;
 
 
-  // ----------------------------------------------------------
-  // CONTROL RUN
-  // ----------------------------------------------------------
-
   const controlSage =
     buildRecommendation({
       opportunityProfile:
@@ -1077,10 +1379,6 @@ function buildPlayerTest(
         null
     });
 
-
-  // ----------------------------------------------------------
-  // CONTEXT RUN
-  // ----------------------------------------------------------
 
   const contextSage =
     buildRecommendation({
@@ -1098,6 +1396,15 @@ function buildPlayerTest(
     });
 
 
+  const behaviorValidation =
+    validateBehavior(
+      player,
+      contextRecord,
+      controlSage,
+      contextSage
+    );
+
+
   return {
     player: {
       name:
@@ -1108,6 +1415,9 @@ function buildPlayerTest(
 
       archetype:
         player.archetype,
+
+      expectedBehavior:
+        player.expectedBehavior,
 
       playerID:
         contextRecord.playerID ||
@@ -1155,13 +1465,11 @@ function buildPlayerTest(
     contextValidation:
       contextValidation,
 
+    behaviorValidation:
+      behaviorValidation,
+
     contextProfile:
       productionContextProfile,
-
-
-    // --------------------------------------------------------
-    // THESE INPUTS ARE IDENTICAL IN BOTH SAGE RUNS
-    // --------------------------------------------------------
 
     sharedInputs: {
       opportunityProfile:
@@ -1174,7 +1482,6 @@ function buildPlayerTest(
         scarcityProfile
     },
 
-
     control: {
       contextApplied:
         false,
@@ -1183,7 +1490,6 @@ function buildPlayerTest(
         controlSage
     },
 
-
     withContext: {
       contextApplied:
         !!productionContextProfile,
@@ -1191,7 +1497,6 @@ function buildPlayerTest(
       sage:
         contextSage
     },
-
 
     delta: {
       recommendationChanged:
@@ -1266,6 +1571,18 @@ function buildSummary(
     );
 
 
+  const behaviorValidationFailures =
+    results.filter(
+      function(result) {
+        return (
+          !result.behaviorValidation ||
+          result.behaviorValidation.passed !==
+            true
+        );
+      }
+    );
+
+
   const changedByContext =
     okResults.filter(
       function(result) {
@@ -1304,6 +1621,9 @@ function buildSummary(
     contextValidationFailureCount:
       contextValidationFailures.length,
 
+    behaviorValidationFailureCount:
+      behaviorValidationFailures.length,
+
     contextChangedSageCount:
       changedByContext.length,
 
@@ -1320,6 +1640,9 @@ function buildSummary(
             archetype:
               result.player.archetype,
 
+            expectedBehavior:
+              result.player.expectedBehavior,
+
             controlRecommendation:
               result.delta.controlRecommendation,
 
@@ -1333,7 +1656,10 @@ function buildSummary(
               result.delta.explanationChanged,
 
             reasonsChanged:
-              result.delta.reasonsChanged
+              result.delta.reasonsChanged,
+
+            behaviorValidationPassed:
+              result.behaviorValidation.passed
           };
         }
       ),
@@ -1346,7 +1672,37 @@ function buildSummary(
               result.player.name,
 
             archetype:
+              result.player.archetype,
+
+            expectedBehavior:
+              result.player.expectedBehavior,
+
+            behaviorValidationPassed:
+              result.behaviorValidation.passed
+          };
+        }
+      ),
+
+    behaviorValidationFailures:
+      behaviorValidationFailures.map(
+        function(result) {
+          return {
+            name:
+              result.player &&
+              result.player.name
+                ? result.player.name
+                : null,
+
+            archetype:
+              result.player &&
               result.player.archetype
+                ? result.player.archetype
+                : null,
+
+            expectation:
+              result.behaviorValidation
+                ? result.behaviorValidation.expectation
+                : null
           };
         }
       )
@@ -1513,13 +1869,19 @@ exports.handler =
         summary.validationPlayerCount;
 
 
+      const validationPassed =
+        (
+          allPlayersSuccessful &&
+          summary.contextValidationFailureCount ===
+            0 &&
+          summary.behaviorValidationFailureCount ===
+            0
+        );
+
+
       return {
         statusCode:
-          (
-            summary.contextValidationFailureCount ===
-              0 &&
-            allPlayersSuccessful
-          )
+          validationPassed
             ? 200
             : 409,
 
@@ -1533,7 +1895,10 @@ exports.handler =
                 "SAGE Context Directional Validation",
 
               phase:
-                "2D-v2",
+                "2E",
+
+              validationPassed:
+                validationPassed,
 
               methodology: {
                 description:
@@ -1550,6 +1915,9 @@ exports.handler =
 
                 rookieOpportunityRule:
                   "If a rookie has no production Opportunity record, use an explicit No NFL History profile rather than fabricating NFL production.",
+
+                restraintRule:
+                  "A material team or quarterback change is not automatically positive or negative. Direction must be supported by evidence.",
 
                 hiddenNumericContextScore:
                   false
@@ -1662,6 +2030,9 @@ module.exports.buildScarcityPools =
 
 module.exports.buildScarcityCandidate =
   buildScarcityCandidate;
+
+module.exports.validateBehavior =
+  validateBehavior;
 
 module.exports.buildPlayerTest =
   buildPlayerTest;
