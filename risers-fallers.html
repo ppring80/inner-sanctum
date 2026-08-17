@@ -308,7 +308,6 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 
 <script src="/shared-player-data.js"></script>
 <script>
-var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
@@ -485,7 +484,7 @@ function checkPaywallPasscode() {
   var input = document.getElementById('paywallInput');
   var err = document.getElementById('paywallError');
   var entered = input.value.trim().toUpperCase();
-  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+  if (entered === ALLOWLIST_PASSCODE) {
     try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
     unlockFullLists();
   } else {
