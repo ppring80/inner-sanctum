@@ -18,13 +18,20 @@
 //     SAME Opportunity + SAME Market + SAME Scarcity
 //     + production Context profile
 //
-// The difference between those two SAGE outputs is therefore
-// attributable to Context.
+// The difference between those two SAGE outputs is attributable
+// to Context.
 //
 // READ-ONLY.
 // DOES NOT write Blobs.
 // DOES NOT modify SAGE.
 // DOES NOT modify Context.
+//
+// IMPORTANT:
+// - ADP is read from context-intel/latest.
+// - Veterans use real Opportunity Intelligence when available.
+// - A rookie with no historical Opportunity record receives an
+//   explicit "No NFL History" Opportunity profile.
+// - No NFL production is fabricated.
 //
 // VALIDATION ARCHETYPES:
 //
@@ -35,17 +42,13 @@
 //     Positive environment / improved role
 //
 //   Jeremiyah Love
-//     High-impact rookie
+//     High-impact rookie / No NFL History
 //
 //   Rachaad White
 //     Neutral environment / reduced role
 //
 //   Chase Brown
 //     Baseline-only control
-//
-// IMPORTANT:
-// This is a diagnostic endpoint, not a draft recommendation endpoint.
-// Its purpose is to prove directional Context behavior.
 
 const {
   getStore,
@@ -239,7 +242,7 @@ function playerKey(
 
 
 // ------------------------------------------------------------
-// CACHE RECORD LOOKUPS
+// CACHE LOOKUPS
 // ------------------------------------------------------------
 
 function getOpportunityRecord(
@@ -425,17 +428,22 @@ function validateContextProfile(
 
 
 // ------------------------------------------------------------
-// ADP HELPERS
+// ADP
+//
+// ADP comes from context-intel/latest because Opportunity records
+// do not carry market ADP.
 // ------------------------------------------------------------
 
-function numericAdp(record) {
-  if (!record) {
+function getContextAdp(
+  contextRecord
+) {
+  if (!contextRecord) {
     return null;
   }
 
   const value =
     Number(
-      record.adp
+      contextRecord.adp
     );
 
   return Number.isFinite(
@@ -447,116 +455,307 @@ function numericAdp(record) {
 
 
 // ------------------------------------------------------------
-// BUILD OPPORTUNITY UNIVERSE
+// ROOKIE / NO NFL HISTORY PROFILE
 //
-// Scarcity uses real Opportunity records from the cache.
+// This is NOT manufactured production.
 //
-// We preserve the existing cached data and use current ADP.
+// It explicitly tells Step 5:
+//   there is no NFL Opportunity history.
+//
+// draft-sage-synthesis.js already contains a dedicated
+// No NFL History branch.
 // ------------------------------------------------------------
 
-function buildOpportunityUniverse(
-  opportunityCache
+function buildNoNFLHistoryOpportunityProfile(
+  player
 ) {
-  const records =
+  return {
+    player: {
+      playerID:
+        player &&
+        player.playerID
+          ? player.playerID
+          : null,
+
+      longName:
+        player &&
+        player.longName
+          ? player.longName
+          : null,
+
+      pos:
+        player &&
+        player.pos
+          ? player.pos
+          : null
+    },
+
+    workload: {
+      level:
+        "No NFL History"
+    },
+
+    roleDirection: {
+      label:
+        "No NFL History"
+    },
+
+    roleStyle: {
+      label:
+        "No NFL History"
+    },
+
+    evidence: {
+      level:
+        "Limited"
+    }
+  };
+}
+
+
+// ------------------------------------------------------------
+// BUILD SHARED OPPORTUNITY PROFILE
+// ------------------------------------------------------------
+
+function buildSharedOpportunityProfile(
+  opportunityRecord,
+  contextRecord
+) {
+  if (opportunityRecord) {
+    return {
+      source:
+        "production-opportunity",
+
+      profile:
+        buildDraftOpportunityProfile(
+          opportunityRecord
+        )
+    };
+  }
+
+
+  if (
+    contextRecord &&
+    contextRecord.isRookie ===
+      true
+  ) {
+    return {
+      source:
+        "explicit-no-nfl-history",
+
+      profile:
+        buildNoNFLHistoryOpportunityProfile(
+          {
+            playerID:
+              contextRecord.playerID,
+
+            longName:
+              contextRecord.longName,
+
+            pos:
+              contextRecord.pos
+          }
+        )
+    };
+  }
+
+
+  return {
+    source:
+      "missing",
+
+    profile:
+      null
+  };
+}
+
+
+// ------------------------------------------------------------
+// SCARCITY UNIVERSE
+//
+// Use Opportunity cache records where historical Opportunity exists.
+// Join ADP from context cache.
+//
+// Rookie Context records without Opportunity history can still be
+// added to the universe as market-visible candidates.
+// ------------------------------------------------------------
+
+function buildScarcityUniverse(
+  opportunityCache,
+  contextCache
+) {
+  const opportunityRecords =
     opportunityCache &&
     opportunityCache.records
       ? opportunityCache.records
       : {};
 
-  return Object.values(
-    records
-  )
-    .filter(function(record) {
-      if (!record) {
-        return false;
-      }
+  const contextRecords =
+    contextCache &&
+    contextCache.records
+      ? contextCache.records
+      : {};
 
-      const pos =
-        normalizePosition(
-          record.pos
-        );
+  const universe = [];
 
-      return [
+
+  Object.keys(
+    contextRecords
+  ).forEach(function(key) {
+    const contextRecord =
+      contextRecords[key];
+
+    if (!contextRecord) {
+      return;
+    }
+
+    const pos =
+      normalizePosition(
+        contextRecord.pos
+      );
+
+    if (
+      ![
         "QB",
         "RB",
         "WR",
         "TE"
-      ].includes(pos);
-    })
-    .filter(function(record) {
-      return (
-        numericAdp(
-          record
-        ) !==
-        null
+      ].includes(pos)
+    ) {
+      return;
+    }
+
+    const adp =
+      getContextAdp(
+        contextRecord
       );
-    })
+
+    if (adp === null) {
+      return;
+    }
+
+
+    const opportunityRecord =
+      opportunityRecords[key] ||
+      null;
+
+
+    if (opportunityRecord) {
+      universe.push(
+        Object.assign(
+          {},
+          opportunityRecord,
+          {
+            adp:
+              adp,
+
+            longName:
+              opportunityRecord.longName ||
+              contextRecord.longName,
+
+            pos:
+              opportunityRecord.pos ||
+              contextRecord.pos
+          }
+        )
+      );
+
+      return;
+    }
+
+
+    // Rookie/no-history market-visible record.
+    universe.push({
+      playerID:
+        contextRecord.playerID ||
+        null,
+
+      longName:
+        contextRecord.longName,
+
+      pos:
+        contextRecord.pos,
+
+      adp:
+        adp,
+
+      workload: {
+        level:
+          "No NFL History"
+      },
+
+      roleDirection: {
+        label:
+          "No NFL History"
+      },
+
+      evidence: {
+        level:
+          "Limited"
+      }
+    });
+  });
+
+
+  return universe
     .slice()
     .sort(function(a, b) {
       return (
-        numericAdp(a) -
-        numericAdp(b)
+        Number(a.adp) -
+        Number(b.adp)
       );
     });
 }
 
 
 // ------------------------------------------------------------
-// LOCAL MARKET WINDOW
+// DIAGNOSTIC DRAFT STATE
 //
-// This diagnostic is not pretending all five players are available
-// at the same actual draft pick.
+// Each player is tested around his own current market price.
 //
-// Instead, each player is evaluated at approximately their current
-// market price.
-//
-// The important comparison is CONTROL vs CONTEXT for the SAME
-// player. These market/scarcity inputs are identical in both runs.
+// CONTROL and CONTEXT runs use identical timing inputs.
 // ------------------------------------------------------------
 
 function buildDiagnosticDraftState(
-  record
+  adp
 ) {
-  const adp =
-    numericAdp(
-      record
-    );
-
-  if (adp === null) {
+  if (
+    !Number.isFinite(
+      Number(adp)
+    )
+  ) {
     return null;
   }
+
+  const numeric =
+    Number(
+      adp
+    );
 
   const currentPick =
     Math.max(
       1,
       Math.round(
-        adp
+        numeric
       )
     );
 
-  // 12-team diagnostic horizon:
-  // approximately two rounds later.
-  //
-  // This value is used identically in the control and context runs.
-  const nextUserPick =
-    currentPick +
-    24;
-
   return {
     adp:
-      adp,
+      numeric,
 
     currentPick:
       currentPick,
 
     nextUserPick:
-      nextUserPick
+      currentPick +
+      24
   };
 }
 
 
 // ------------------------------------------------------------
-// LOCAL SCARCITY WINDOWS
+// SCARCITY WINDOWS
 // ------------------------------------------------------------
 
 function buildScarcityPools(
@@ -583,12 +782,12 @@ function buildScarcityPools(
     universe.filter(
       function(record) {
         const adp =
-          numericAdp(
-            record
+          Number(
+            record.adp
           );
 
         return (
-          adp !== null &&
+          Number.isFinite(adp) &&
           adp >=
             (
               state.currentPick -
@@ -608,12 +807,12 @@ function buildScarcityPools(
     universe.filter(
       function(record) {
         const adp =
-          numericAdp(
-            record
+          Number(
+            record.adp
           );
 
         return (
-          adp !== null &&
+          Number.isFinite(adp) &&
           adp >=
             (
               state.nextUserPick -
@@ -640,6 +839,64 @@ function buildScarcityPools(
 
 
 // ------------------------------------------------------------
+// CANDIDATE RECORD FOR SCARCITY
+// ------------------------------------------------------------
+
+function buildScarcityCandidate(
+  opportunityRecord,
+  contextRecord,
+  adp
+) {
+  if (opportunityRecord) {
+    return Object.assign(
+      {},
+      opportunityRecord,
+      {
+        adp:
+          adp
+      }
+    );
+  }
+
+
+  return {
+    playerID:
+      contextRecord
+        ? contextRecord.playerID
+        : null,
+
+    longName:
+      contextRecord
+        ? contextRecord.longName
+        : null,
+
+    pos:
+      contextRecord
+        ? contextRecord.pos
+        : null,
+
+    adp:
+      adp,
+
+    workload: {
+      level:
+        "No NFL History"
+    },
+
+    roleDirection: {
+      label:
+        "No NFL History"
+    },
+
+    evidence: {
+      level:
+        "Limited"
+    }
+  };
+}
+
+
+// ------------------------------------------------------------
 // ONE PLAYER — CONTROL vs CONTEXT
 // ------------------------------------------------------------
 
@@ -649,13 +906,6 @@ function buildPlayerTest(
   universe,
   player
 ) {
-  const opportunityRecord =
-    getOpportunityRecord(
-      opportunityCache,
-      player
-    );
-
-
   const contextRecord =
     getContextRecord(
       contextCache,
@@ -670,13 +920,13 @@ function buildPlayerTest(
     );
 
 
-  if (!opportunityRecord) {
+  if (!contextRecord) {
     return {
       player:
         player,
 
       status:
-        "missing-opportunity-intelligence",
+        "missing-context-record",
 
       contextValidation:
         contextValidation,
@@ -690,13 +940,13 @@ function buildPlayerTest(
   }
 
 
-  const state =
-    buildDiagnosticDraftState(
-      opportunityRecord
+  const adp =
+    getContextAdp(
+      contextRecord
     );
 
 
-  if (!state) {
+  if (adp === null) {
     return {
       player:
         player,
@@ -716,10 +966,48 @@ function buildPlayerTest(
   }
 
 
-  const opportunityProfile =
-    buildDraftOpportunityProfile(
-      opportunityRecord
+  const opportunityRecord =
+    getOpportunityRecord(
+      opportunityCache,
+      player
     );
+
+
+  const opportunityResult =
+    buildSharedOpportunityProfile(
+      opportunityRecord,
+      contextRecord
+    );
+
+
+  if (!opportunityResult.profile) {
+    return {
+      player:
+        player,
+
+      status:
+        "missing-opportunity-and-not-rookie",
+
+      contextValidation:
+        contextValidation,
+
+      control:
+        null,
+
+      withContext:
+        null
+    };
+  }
+
+
+  const state =
+    buildDiagnosticDraftState(
+      adp
+    );
+
+
+  const opportunityProfile =
+    opportunityResult.profile;
 
 
   const marketProfile =
@@ -742,10 +1030,18 @@ function buildPlayerTest(
     );
 
 
+  const candidate =
+    buildScarcityCandidate(
+      opportunityRecord,
+      contextRecord,
+      adp
+    );
+
+
   const scarcityProfile =
     buildDraftScarcityProfile({
       candidate:
-        opportunityRecord,
+        candidate,
 
       currentPool:
         pools.currentPool,
@@ -755,10 +1051,15 @@ function buildPlayerTest(
     });
 
 
+  const productionContextProfile =
+    contextRecord.contextStatus ===
+      "context-profiled"
+      ? contextRecord.contextProfile
+      : null;
+
+
   // ----------------------------------------------------------
-  // CONTROL
-  //
-  // Exact same player evidence, but Context intentionally absent.
+  // CONTROL RUN
   // ----------------------------------------------------------
 
   const controlSage =
@@ -780,14 +1081,6 @@ function buildPlayerTest(
   // ----------------------------------------------------------
   // CONTEXT RUN
   // ----------------------------------------------------------
-
-  const productionContextProfile =
-    contextRecord &&
-    contextRecord.contextStatus ===
-      "context-profiled"
-      ? contextRecord.contextProfile
-      : null;
-
 
   const contextSage =
     buildRecommendation({
@@ -817,24 +1110,30 @@ function buildPlayerTest(
         player.archetype,
 
       playerID:
-        opportunityRecord.playerID ||
+        contextRecord.playerID ||
         (
-          contextRecord
-            ? contextRecord.playerID
+          opportunityRecord
+            ? opportunityRecord.playerID
             : null
         ),
 
       team:
-        contextRecord
-          ? contextRecord.team
-          : null,
+        contextRecord.team ||
+        null,
 
       adp:
-        state.adp
+        adp,
+
+      marketRank:
+        contextRecord.marketRank ||
+        null
     },
 
     status:
       "ok",
+
+    opportunitySource:
+      opportunityResult.source,
 
     diagnosticState: {
       currentPick:
@@ -851,9 +1150,7 @@ function buildPlayerTest(
     },
 
     contextStatus:
-      contextRecord
-        ? contextRecord.contextStatus
-        : "missing-context-record",
+      contextRecord.contextStatus,
 
     contextValidation:
       contextValidation,
@@ -862,7 +1159,10 @@ function buildPlayerTest(
       productionContextProfile,
 
 
-    // These three profiles are shared by BOTH SAGE runs.
+    // --------------------------------------------------------
+    // THESE INPUTS ARE IDENTICAL IN BOTH SAGE RUNS
+    // --------------------------------------------------------
+
     sharedInputs: {
       opportunityProfile:
         opportunityProfile,
@@ -893,42 +1193,43 @@ function buildPlayerTest(
     },
 
 
-    // --------------------------------------------------------
-    // DELTA
-    //
-    // Keep this intentionally simple and inspectable.
-    // No hidden numeric score is introduced.
-    // --------------------------------------------------------
-
     delta: {
       recommendationChanged:
-        JSON.stringify(
+        (
           controlSage &&
-          controlSage.recommendation
-        ) !==
-        JSON.stringify(
           contextSage &&
-          contextSage.recommendation
+          controlSage.code !==
+            contextSage.code
         ),
 
+      controlRecommendation:
+        controlSage
+          ? controlSage.recommendation
+          : null,
+
+      contextRecommendation:
+        contextSage
+          ? contextSage.recommendation
+          : null,
+
       explanationChanged:
-        JSON.stringify(
+        (
           controlSage &&
-          controlSage.explanation
-        ) !==
-        JSON.stringify(
           contextSage &&
-          contextSage.explanation
+          controlSage.explanation !==
+            contextSage.explanation
         ),
 
       reasonsChanged:
         JSON.stringify(
-          controlSage &&
-          controlSage.reasons
+          controlSage
+            ? controlSage.reasons
+            : null
         ) !==
         JSON.stringify(
-          contextSage &&
-          contextSage.reasons
+          contextSage
+            ? contextSage.reasons
+            : null
         )
     }
   };
@@ -980,6 +1281,19 @@ function buildSummary(
     );
 
 
+  const unchanged =
+    okResults.filter(
+      function(result) {
+        return (
+          result.delta &&
+          !result.delta.recommendationChanged &&
+          !result.delta.explanationChanged &&
+          !result.delta.reasonsChanged
+        );
+      }
+    );
+
+
   return {
     validationPlayerCount:
       results.length,
@@ -993,6 +1307,9 @@ function buildSummary(
     contextChangedSageCount:
       changedByContext.length,
 
+    contextUnchangedSageCount:
+      unchanged.length,
+
     contextChangedPlayers:
       changedByContext.map(
         function(result) {
@@ -1003,6 +1320,12 @@ function buildSummary(
             archetype:
               result.player.archetype,
 
+            controlRecommendation:
+              result.delta.controlRecommendation,
+
+            contextRecommendation:
+              result.delta.contextRecommendation,
+
             recommendationChanged:
               result.delta.recommendationChanged,
 
@@ -1011,6 +1334,19 @@ function buildSummary(
 
             reasonsChanged:
               result.delta.reasonsChanged
+          };
+        }
+      ),
+
+    unchangedPlayers:
+      unchanged.map(
+        function(result) {
+          return {
+            name:
+              result.player.name,
+
+            archetype:
+              result.player.archetype
           };
         }
       )
@@ -1147,8 +1483,9 @@ exports.handler =
 
 
       const universe =
-        buildOpportunityUniverse(
-          opportunityCache
+        buildScarcityUniverse(
+          opportunityCache,
+          contextCache
         );
 
 
@@ -1171,10 +1508,18 @@ exports.handler =
         );
 
 
+      const allPlayersSuccessful =
+        summary.successfulPlayerCount ===
+        summary.validationPlayerCount;
+
+
       return {
         statusCode:
-          summary.contextValidationFailureCount ===
-          0
+          (
+            summary.contextValidationFailureCount ===
+              0 &&
+            allPlayersSuccessful
+          )
             ? 200
             : 409,
 
@@ -1188,7 +1533,7 @@ exports.handler =
                 "SAGE Context Directional Validation",
 
               phase:
-                "2D",
+                "2D-v2",
 
               methodology: {
                 description:
@@ -1199,6 +1544,12 @@ exports.handler =
 
                 treatment:
                   "Opportunity + Market + Scarcity + Context",
+
+                adpSource:
+                  "context-intel/latest",
+
+                rookieOpportunityRule:
+                  "If a rookie has no production Opportunity record, use an explicit No NFL History profile rather than fabricating NFL production.",
 
                 hiddenNumericContextScore:
                   false
@@ -1291,17 +1642,26 @@ module.exports.profileLabel =
 module.exports.validateContextProfile =
   validateContextProfile;
 
-module.exports.numericAdp =
-  numericAdp;
+module.exports.getContextAdp =
+  getContextAdp;
 
-module.exports.buildOpportunityUniverse =
-  buildOpportunityUniverse;
+module.exports.buildNoNFLHistoryOpportunityProfile =
+  buildNoNFLHistoryOpportunityProfile;
+
+module.exports.buildSharedOpportunityProfile =
+  buildSharedOpportunityProfile;
+
+module.exports.buildScarcityUniverse =
+  buildScarcityUniverse;
 
 module.exports.buildDiagnosticDraftState =
   buildDiagnosticDraftState;
 
 module.exports.buildScarcityPools =
   buildScarcityPools;
+
+module.exports.buildScarcityCandidate =
+  buildScarcityCandidate;
 
 module.exports.buildPlayerTest =
   buildPlayerTest;
