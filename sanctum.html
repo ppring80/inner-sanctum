@@ -612,8 +612,13 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <div class="gate-divider">or</div>
 
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
+      oninput="toggleGiveawayEmailField()"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
-    <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div id="gateGiveawayEmailWrap" style="display:none">
+      <input type="email" class="gate-input" id="gateGiveawayEmail" placeholder="Email for your giveaway code" autocomplete="email"
+        onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
+    </div>
+    <button class="gate-btn" id="gateUnlockBtn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-passcode-note">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link" style="margin-bottom:8px">⚔️ Become a Founding Acolyte</a>
@@ -621,7 +626,6 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 </div>
 <script>
-var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 var GATE_SKIPPED_KEY = 'sanctum_gate_skipped';
@@ -652,17 +656,97 @@ function skipGate() {
   document.getElementById('gateOverlay').style.display = 'none';
 }
 
+var DEFAULT_GATE_ERROR_TEXT = 'Incorrect passcode. Try again.';
+var GIVEAWAY_CODE_PATTERN = /^SANCTUM-[A-Z0-9]{8}$/;
+
+// Reveals the email field only once the entered value looks like it's
+// headed toward a giveaway code — keeps the field out of the way for
+// the existing hardcoded-passcode and Patreon flows, which never need it.
+function toggleGiveawayEmailField() {
+  var input = document.getElementById('gateInput');
+  var wrap = document.getElementById('gateGiveawayEmailWrap');
+  if (!input || !wrap) return;
+  var entered = input.value.trim().toUpperCase();
+  wrap.style.display = entered.indexOf('SANCTUM-') === 0 ? 'block' : 'none';
+}
+
+function showGateError(message) {
+  var err = document.getElementById('gateError');
+  err.textContent = message;
+  err.classList.add('show');
+}
+
 function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
   var entered = input.value.trim().toUpperCase();
-  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+
+  // Existing hardcoded-passcode behavior — unchanged (GATE_PASSCODE
+  // itself was removed sitewide Aug 17 2026; ALLOWLIST_PASSCODE is
+  // untouched and still works exactly as before).
+  if (entered === ALLOWLIST_PASSCODE) {
     unlockGate();
-  } else {
-    err.classList.add('show');
-    input.value = '';
-    input.focus();
+    return;
   }
+
+  // New: a giveaway-code-shaped entry routes to server-side redemption
+  // instead of a local string comparison (there's nothing to compare
+  // against locally — the real codes only exist in the backend store).
+  if (GIVEAWAY_CODE_PATTERN.test(entered)) {
+    redeemGiveawayCode(entered);
+    return;
+  }
+
+  err.textContent = DEFAULT_GATE_ERROR_TEXT;
+  err.classList.add('show');
+  input.value = '';
+  input.focus();
+}
+
+// Redeems a giveaway code against the real backend store. On success,
+// the server has already set the standard signed sanctum_session
+// cookie (same format/secret oauth-callback.js uses) via Set-Cookie —
+// unlockGate() here only updates THIS page's own overlay; every other
+// gated page picks the winner up automatically via its existing
+// checkOAuthSession() call, no separate per-page code needed.
+function redeemGiveawayCode(code) {
+  var err = document.getElementById('gateError');
+  var btn = document.getElementById('gateUnlockBtn');
+  var emailInput = document.getElementById('gateGiveawayEmail');
+  var email = emailInput ? emailInput.value.trim() : '';
+
+  err.classList.remove('show');
+
+  if (!email) {
+    showGateError("Please enter the email address for your giveaway code.");
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+
+  fetch('/.netlify/functions/redeem-giveaway-code', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: code, email: email })
+  })
+    .then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        return { ok: res.ok, data: data };
+      });
+    })
+    .then(function (result) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Unlock'; }
+      if (result.ok && result.data && result.data.success) {
+        unlockGate();
+      } else {
+        showGateError((result.data && result.data.error) || 'Something went wrong redeeming your code. Please try again.');
+      }
+    })
+    .catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Unlock'; }
+      showGateError('Network error — please check your connection and try again.');
+    });
 }
 
 function checkOAuthSession() {
