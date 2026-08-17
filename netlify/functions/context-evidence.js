@@ -1,6 +1,6 @@
 // netlify/functions/context-evidence.js
 //
-// SAGE CONTEXT INTELLIGENCE — PHASE 2E EVIDENCE REGISTRY
+// SAGE CONTEXT INTELLIGENCE — PHASE 2G EVIDENCE REGISTRY
 //
 // PURPOSE:
 // Store objective, reviewable Context evidence for players whose
@@ -59,6 +59,23 @@
 //
 //   Kenneth Walker III
 //     high-value veteran team change; restraint case
+//
+// PHASE 2G BATCH 1 ROOKIES:
+//
+//   Carnell Tate
+//     premium draft-capital rookie
+//
+//   Jordyn Tyson
+//     premium draft-capital rookie
+//
+//   Makai Lemon
+//     first-round rookie; trade-up investment
+//
+//   KC Concepcion
+//     first-round rookie receiving profile
+//
+//   Jadarian Price
+//     first-round rookie running back
 
 (function(root, factory) {
   if (
@@ -808,6 +825,528 @@
 
           sourceUrl:
             "https://www.chiefs.com/news/pre-camp-breakdown-looking-at-the-chiefs-running-backs"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // CARNELL TATE — WR — TENNESSEE
+    //
+    // PHASE 2G ROOKIE EVIDENCE:
+    // Premium draft capital and a strong collegiate receiving
+    // profile are legitimate non-NFL evidence.
+    //
+    // No landing-spot direction is manufactured.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Carnell Tate",
+        "WR"
+      )
+    ] = {
+      playerID:
+        "4871023",
+
+      longName:
+        "Carnell Tate",
+
+      pos:
+        "WR",
+
+      expectedTeam:
+        "TEN",
+
+      evidence: {
+        isRookie:
+          true,
+
+        changedTeam:
+          false,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          false,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "premium",
+
+        receivingProfile:
+          "strong",
+
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "",
+
+        notes: [
+          "Selected No. 4 overall by Tennessee in the 2026 NFL Draft.",
+          "Top-five draft capital represents major organizational investment.",
+          "Tennessee's player biography describes Tate as a proven downfield threat with a large catch radius and elite body control.",
+          "No NFL Opportunity history is manufactured for this rookie.",
+          "No positive or negative fantasy environment direction is inferred solely from the landing spot."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Tennessee Titans",
+
+          description:
+            "Official Titans draft coverage confirming Carnell Tate was selected No. 4 overall in the 2026 NFL Draft.",
+
+          sourceUrl:
+            "https://www.tennesseetitans.com/news/2026-draft-media"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Tennessee Titans",
+
+          description:
+            "Official Titans player biography documenting Tate's draft position and collegiate receiving profile.",
+
+          sourceUrl:
+            "https://www.tennesseetitans.com/team/players-roster/carnell-tate/"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // JORDYN TYSON — WR — NEW ORLEANS
+    //
+    // PHASE 2G ROOKIE EVIDENCE:
+    // Premium top-10 draft capital and substantial collegiate
+    // receiving production.
+    //
+    // No role/environment direction is inferred.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Jordyn Tyson",
+        "WR"
+      )
+    ] = {
+      playerID:
+        "4880281",
+
+      longName:
+        "Jordyn Tyson",
+
+      pos:
+        "WR",
+
+      expectedTeam:
+        "NO",
+
+      evidence: {
+        isRookie:
+          true,
+
+        changedTeam:
+          false,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          false,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "premium",
+
+        receivingProfile:
+          "strong",
+
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "",
+
+        notes: [
+          "Selected No. 8 overall by New Orleans in the 2026 NFL Draft.",
+          "Top-ten draft capital represents major organizational investment.",
+          "Saints draft coverage documents back-to-back third-team AP All-American recognition and substantial collegiate receiving production.",
+          "No role or environment direction is inferred solely from draft capital or landing spot.",
+          "No NFL Opportunity history is manufactured for this rookie."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "New Orleans Saints",
+
+          description:
+            "Official Saints announcement confirming Jordyn Tyson was selected No. 8 overall in the 2026 NFL Draft.",
+
+          sourceUrl:
+            "https://www.neworleanssaints.com/news/jordyn-tyson-saints-draft-pick-2026"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "New Orleans Saints",
+
+          description:
+            "Official Saints draft tracker documenting Tyson's collegiate receiving production.",
+
+          sourceUrl:
+            "https://www.neworleanssaints.com/draft/2026/draft-tracker-2026"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // MAKAI LEMON — WR — PHILADELPHIA
+    //
+    // PHASE 2G ROOKIE EVIDENCE:
+    // First-round capital plus additional organizational investment
+    // because Philadelphia traded up to select him.
+    //
+    // No automatic role/environment boost.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Makai Lemon",
+        "WR"
+      )
+    ] = {
+      playerID:
+        "4870795",
+
+      longName:
+        "Makai Lemon",
+
+      pos:
+        "WR",
+
+      expectedTeam:
+        "PHI",
+
+      evidence: {
+        isRookie:
+          true,
+
+        changedTeam:
+          false,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          false,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "day-one",
+
+        receivingProfile:
+          "strong",
+
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "",
+
+        notes: [
+          "Selected No. 20 overall by Philadelphia in the 2026 NFL Draft.",
+          "Philadelphia moved up three spots in a trade with Dallas to select Lemon.",
+          "First-round draft capital and the trade-up provide objective evidence of organizational investment.",
+          "Eagles draft coverage documents a 1,156-yard final college season, unanimous All-American honors and the Biletnikoff Award.",
+          "No role or environment direction is inferred solely from the transaction.",
+          "No NFL Opportunity history is manufactured for this rookie."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Philadelphia Eagles",
+
+          description:
+            "Official Eagles draft coverage confirming Makai Lemon was selected No. 20 overall after Philadelphia moved up three spots.",
+
+          sourceUrl:
+            "https://www.philadelphiaeagles.com/news/eagles-makai-lemon-2026-nfl-draft-wide-receiver-usc"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // KC CONCEPCION — WR — CLEVELAND
+    //
+    // PHASE 2G ROOKIE EVIDENCE:
+    // First-round draft capital plus documented receiving and
+    // all-purpose production.
+    //
+    // No automatic role/environment direction.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "KC Concepcion",
+        "WR"
+      )
+    ] = {
+      playerID:
+        "4870653",
+
+      longName:
+        "KC Concepcion",
+
+      pos:
+        "WR",
+
+      expectedTeam:
+        "CLE",
+
+      evidence: {
+        isRookie:
+          true,
+
+        changedTeam:
+          false,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          false,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "day-one",
+
+        receivingProfile:
+          "strong",
+
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "",
+
+        notes: [
+          "Selected No. 24 overall by Cleveland in the 2026 NFL Draft.",
+          "First-round draft capital provides objective evidence of organizational investment.",
+          "Cleveland's official draft coverage documents 61 receptions for 919 yards and nine receiving touchdowns during his final college season.",
+          "Browns coverage also documents Concepcion's inside/outside alignment versatility and all-purpose production.",
+          "No positive or negative role direction is inferred solely from draft capital or landing spot.",
+          "No NFL Opportunity history is manufactured for this rookie."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Cleveland Browns",
+
+          description:
+            "Official Browns announcement confirming KC Concepcion was selected No. 24 overall in the 2026 NFL Draft.",
+
+          sourceUrl:
+            "https://www.clevelandbrowns.com/news/browns-select-wr-kc-concepcion-with-the-no-24-pick-in-the-2026-nfl-draft"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Cleveland Browns",
+
+          description:
+            "Official Browns draft tracker documenting Concepcion's collegiate receiving and all-purpose production.",
+
+          sourceUrl:
+            "https://www.clevelandbrowns.com/draft/index-pre/"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // JADARIAN PRICE — RB — SEATTLE
+    //
+    // PHASE 2G ROOKIE EVIDENCE:
+    // First-round running-back capital plus an objectively meaningful
+    // opportunity situation.
+    //
+    // IMPORTANT:
+    // We still do NOT assign roleDirection = improved.
+    // The evidence establishes opportunity to compete, not guaranteed
+    // NFL workload.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Jadarian Price",
+        "RB"
+      )
+    ] = {
+      playerID:
+        "4685512",
+
+      longName:
+        "Jadarian Price",
+
+      pos:
+        "RB",
+
+      expectedTeam:
+        "SEA",
+
+      evidence: {
+        isRookie:
+          true,
+
+        changedTeam:
+          false,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          false,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "day-one",
+
+        receivingProfile:
+          "",
+
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "",
+
+        notes: [
+          "Selected No. 32 overall by Seattle in the first round of the 2026 NFL Draft.",
+          "First-round draft capital provides objective evidence of organizational investment.",
+          "Seattle's post-draft coverage says Price was the top player remaining on the team's board.",
+          "Seattle also identified an opportunity to compete for a significant role after Kenneth Walker III departed and with Zach Charbonnet returning from an ACL injury.",
+          "That opportunity evidence is not converted into a guaranteed workload or automatic positive role direction.",
+          "No NFL Opportunity history is manufactured for this rookie."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Seattle Seahawks",
+
+          description:
+            "Official Seahawks coverage confirming Jadarian Price was selected No. 32 overall in the first round of the 2026 NFL Draft.",
+
+          sourceUrl:
+            "https://www.seahawks.com/news/jadarian-price-nfl-draft-running-back-notre-dame"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Seattle Seahawks",
+
+          description:
+            "Official Seahawks post-draft coverage discussing Price's board position and opportunity to compete in the backfield.",
+
+          sourceUrl:
+            "https://www.seahawks.com/news/first-round-pick-jadarian-price-a-great-fit-for-seahawks"
         }
       ]
     };
