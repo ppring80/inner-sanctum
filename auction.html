@@ -388,7 +388,6 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 </div>
 <script>
-var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
@@ -409,7 +408,7 @@ function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
   var entered = input.value.trim().toUpperCase();
-  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+  if (entered === ALLOWLIST_PASSCODE) {
     unlockGate();
     jumpToStepFromUrl();
   } else {
