@@ -33,24 +33,20 @@
 // MANUAL PHASE-1 REFRESH:
 // GET /.netlify/functions/refresh-context-intel?run=validation
 //
-// The literal run=validation gate is intentional so an ordinary request
-// cannot accidentally trigger the paid ADP fetch + Blob write.
-//
 // PHASE 1.1 PLUMBING FIX:
-// The first implementation attempted to invoke adp.js and player-data.js
-// handlers directly with synthetic Lambda events.
+// Consume the existing deployed adp.js and player-data.js endpoints
+// over HTTP rather than synthesizing Lambda events.
 //
-// player-data.js depends on real Netlify request infrastructure, so that
-// synthetic invocation produced:
-//   "The first argument must be of type string ... Received undefined"
+// PHASE 1.2 PLAYER-ID FIX:
+// player-data.js returns an object keyed by Tank01 player ID.
+// The previous buildPlayerDataMap() used Object.values(), which
+// discarded that key before the Context record was built.
 //
-// This version instead consumes the SAME canonical deployed endpoints
-// over HTTP. We therefore still have:
+// This version uses Object.entries() and explicitly carries the
+// source object's key forward as playerID.
 //
-//   ONE adp.js implementation
-//   ONE player-data.js implementation
-//
-// Context does not duplicate either data-source implementation.
+// This does NOT change player matching, Context population,
+// football interpretation, or SAGE behavior.
 
 const {
   getStore,
@@ -77,12 +73,6 @@ const CORS_HEADERS = {
 
 // ------------------------------------------------------------
 // CANONICAL SITE ORIGIN
-//
-// Netlify normally supplies process.env.URL for the production site.
-// Keep the public production URL as a safe fallback.
-//
-// We deliberately call our existing public Netlify functions rather
-// than attempting to synthesize Lambda events internally.
 // ------------------------------------------------------------
 
 function siteOrigin() {
@@ -100,9 +90,6 @@ function siteOrigin() {
 
 // ------------------------------------------------------------
 // PLAYER IDENTITY
-//
-// Same normalization convention already used elsewhere in the
-// Opportunity / shared-player-data pipeline.
 // ------------------------------------------------------------
 
 function normalizePlayerName(name) {
@@ -191,12 +178,7 @@ async function fetchJson(url, label) {
 
 
 // ------------------------------------------------------------
-// READ CURRENT ADP THROUGH EXISTING DEPLOYED adp.js
-//
-// PPR is deliberate for the Phase-1 production cache.
-//
-// Context facts themselves are scoring-independent. PPR is being used
-// here only to define the current 256-player market population.
+// READ CURRENT ADP
 // ------------------------------------------------------------
 
 async function readCurrentAdp() {
@@ -226,8 +208,7 @@ async function readCurrentAdp() {
 
 
 // ------------------------------------------------------------
-// READ CURRENT PLAYER DATA THROUGH EXISTING DEPLOYED
-// player-data.js
+// READ CURRENT PLAYER DATA
 // ------------------------------------------------------------
 
 async function readCurrentPlayerData() {
@@ -256,12 +237,6 @@ async function readCurrentPlayerData() {
 
 // ------------------------------------------------------------
 // ADP POPULATION
-//
-// Filter FIRST, then sort, then take 256.
-//
-// K / DEF do not consume Context population slots.
-//
-// Invalid / placeholder ADP values naturally fall to the end.
 // ------------------------------------------------------------
 
 function buildAdpPopulation(
@@ -358,13 +333,22 @@ function buildAdpPopulation(
 // ------------------------------------------------------------
 // PLAYER-DATA LOOKUP MAP
 //
-// player-data.js returns Tank01 player records keyed by Tank01 IDs.
+// PHASE 1.2 FIX:
 //
-// Convert them to our established:
+// player-data.js returns:
 //
-//   normalizedName|POS
+// {
+//   "4047646": {
+//      longName: "A.J. Brown",
+//      ...
+//   }
+// }
 //
-// identity convention.
+// The object KEY is the Tank01 player ID.
+//
+// Use Object.entries() so we preserve that ID while creating:
+//
+// normalizedName|POS -> player record
 // ------------------------------------------------------------
 
 function buildPlayerDataMap(
@@ -378,9 +362,15 @@ function buildPlayerDataMap(
 
   const map = {};
 
-  Object.values(
+  Object.entries(
     rawPlayers
-  ).forEach(function(player) {
+  ).forEach(function(entry) {
+    const sourcePlayerID =
+      entry[0];
+
+    const player =
+      entry[1];
+
     if (
       !player ||
       !player.longName
@@ -407,8 +397,27 @@ function buildPlayerDataMap(
         pos
       );
 
+    // Create a new object.
+    // Do NOT mutate the player-data cache record.
     map[key] =
-      player;
+      Object.assign(
+        {},
+        player,
+        {
+          playerID:
+            sourcePlayerID
+              ? String(
+                  sourcePlayerID
+                )
+              : (
+                  player.playerID
+                    ? String(
+                        player.playerID
+                      )
+                    : null
+                )
+        }
+      );
   });
 
   return map;
@@ -417,16 +426,6 @@ function buildPlayerDataMap(
 
 // ------------------------------------------------------------
 // BASELINE CONTEXT RECORD
-//
-// Phase 1 records FACTS only.
-//
-// A missing value stays null / empty rather than being interpreted.
-//
-// Example:
-// - exp === "R" allows us to identify a rookie.
-// - It does NOT allow us to claim that rookie has High/Moderate impact.
-//
-// Those judgments belong to later Context evidence phases.
 // ------------------------------------------------------------
 
 function buildBaselineRecord(
@@ -652,15 +651,6 @@ function buildContextCache(
 
 // ------------------------------------------------------------
 // SMALL VALIDATION VIEW
-//
-// Return a compact sample rather than dumping all 256 records.
-//
-// Includes:
-// - first 10 players by current market rank
-// - A.J. Brown if present
-// - Ashton Jeanty if present
-// - Chase Brown if present
-// - Jeremiyah Love if present
 // ------------------------------------------------------------
 
 function buildValidationView(
@@ -858,9 +848,8 @@ exports.handler =
           computedAt
         );
 
-      // Safety gate:
-      //
-      // Do not write a partial population cache.
+      // Never overwrite the good cache
+      // with a partial population.
       if (
         cache.populationCount !==
         CONTEXT_POPULATION_SIZE
