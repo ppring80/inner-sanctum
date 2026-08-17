@@ -1,6 +1,6 @@
 // netlify/functions/context-evidence.js
 //
-// SAGE CONTEXT INTELLIGENCE — PHASE 2D EVIDENCE REGISTRY
+// SAGE CONTEXT INTELLIGENCE — PHASE 2E EVIDENCE REGISTRY
 //
 // PURPOSE:
 // Store objective, reviewable Context evidence for players whose
@@ -53,6 +53,12 @@
 //
 //   Rachaad White
 //     veteran team change into a narrower role opportunity
+//
+//   Jaylen Waddle
+//     high-value veteran team change; restraint case
+//
+//   Kenneth Walker III
+//     high-value veteran team change; restraint case
 
 (function(root, factory) {
   if (
@@ -116,14 +122,6 @@
 
     // ==========================================================
     // A.J. BROWN — WR — NEW ENGLAND
-    //
-    // Archetype:
-    // Veteran changing teams into a new QB/offensive environment.
-    //
-    // Interpretation boundary:
-    // We are NOT saying his fantasy production will improve.
-    // We are saying his environment materially changed and there
-    // is credible evidence supporting continued featured usage.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -236,15 +234,6 @@
 
     // ==========================================================
     // ASHTON JEANTY — RB — LAS VEGAS
-    //
-    // Archetype:
-    // Established NFL player entering a materially different
-    // coaching/scheme environment.
-    //
-    // Interpretation boundary:
-    // We do NOT add fantasy points or targets.
-    // We flag that his future usage environment may differ from
-    // the historical 2025 Opportunity profile.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -357,15 +346,6 @@
 
     // ==========================================================
     // JEREMIYAH LOVE — RB — ARIZONA
-    //
-    // Archetype:
-    // High-impact rookie with no NFL Opportunity history.
-    //
-    // Interpretation boundary:
-    // We do NOT fabricate carries, targets, opportunity share,
-    // fantasy points, or an NFL role history.
-    //
-    // Context records objective rookie evidence only.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -464,24 +444,6 @@
 
     // ==========================================================
     // RACHAAD WHITE — RB — WASHINGTON
-    //
-    // Archetype:
-    // Veteran changing teams into a narrower role opportunity.
-    //
-    // Current objective evidence:
-    // - Washington's 2026 unofficial depth chart lists
-    //   Jacory Croskey-Merritt first at RB and Rachaad White second.
-    // - Commanders coverage says White was brought in to serve as
-    //   a third-down pass catcher.
-    // - Commanders coverage identifies Croskey-Merritt as the player
-    //   positioned to lead the backfield.
-    //
-    // Interpretation boundary:
-    // - We do NOT predict White's carries.
-    // - We do NOT project receptions or fantasy points.
-    // - We do NOT say he has no fantasy value.
-    // - We record that his expected 2026 role is narrower than a
-    //   featured/lead-back role.
     // ==========================================================
 
     CONTEXT_EVIDENCE[
@@ -490,11 +452,6 @@
         "RB"
       )
     ] = {
-      // Intentionally null for this first validation pass.
-      //
-      // The live Context population will resolve the Tank01 identity
-      // through normalizedName|POS. After the refresh confirms the
-      // correct player, we can capture and lock his playerID.
       playerID:
         null,
 
@@ -535,13 +492,9 @@
         draftCapitalTier:
           "",
 
-        // Washington specifically identifies third-down receiving
-        // work as part of White's intended role.
         receivingProfile:
           "strong",
 
-        // We are NOT declaring Washington's offensive environment
-        // inherently negative. The negative signal is role-specific.
         environmentDirection:
           "neutral",
 
@@ -596,6 +549,265 @@
 
           sourceUrl:
             "https://www.commanders.com/news/commanders-confidence-running-back-room-rachaad-white"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // JAYLEN WADDLE — WR — DENVER
+    //
+    // Archetype:
+    // High-value established veteran changing teams.
+    //
+    // RESTRAINT TEST:
+    // The transaction is objectively important, but changing teams
+    // does NOT by itself prove that Waddle's fantasy environment or
+    // role improved.
+    //
+    // Therefore:
+    //   changedTeam = true
+    //   quarterbackChange = true
+    //   environmentDirection = ""
+    //   roleDirection = "similar"
+    //
+    // Context should recognize meaningful change without creating
+    // an automatic positive fantasy adjustment.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Jaylen Waddle",
+        "WR"
+      )
+    ] = {
+      // Allow the production refresh to resolve and verify identity
+      // before we permanently lock a Tank01 player ID.
+      playerID:
+        null,
+
+      longName:
+        "Jaylen Waddle",
+
+      pos:
+        "WR",
+
+      expectedTeam:
+        "DEN",
+
+      evidence: {
+        isRookie:
+          false,
+
+        changedTeam:
+          true,
+
+        coachingChange:
+          false,
+
+        quarterbackChange:
+          true,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "similar",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "",
+
+        receivingProfile:
+          "strong",
+
+        // Deliberately unspecified.
+        //
+        // Denver's investment establishes importance, not an
+        // objectively guaranteed fantasy upgrade.
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "similar",
+
+        notes: [
+          "Denver acquired Jaylen Waddle from Miami during the 2026 offseason.",
+          "Denver surrendered significant draft capital in the transaction, demonstrating substantial organizational investment.",
+          "Broncos leadership identified Waddle as an explosive offensive element intended to complement the existing receiving group.",
+          "The evidence establishes a meaningful team and quarterback change but does not independently prove that Waddle's fantasy environment improved."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Denver Broncos",
+
+          description:
+            "Official announcement confirming Denver acquired Jaylen Waddle from Miami.",
+
+          sourceUrl:
+            "https://www.denverbroncos.com/news/broncos-acquire-wr-jaylen-waddle-in-trade-with-dolphins"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Denver Broncos",
+
+          description:
+            "Broncos GM George Paton discusses the organizational rationale and offensive fit behind the Waddle acquisition.",
+
+          sourceUrl:
+            "https://www.denverbroncos.com/news/gm-george-paton-details-why-trade-for-waddle-was-too-unique-to-pass-up-confidence-in-wr-room"
+        }
+      ]
+    };
+
+
+    // ==========================================================
+    // KENNETH WALKER III — RB — KANSAS CITY
+    //
+    // Archetype:
+    // High-value established veteran changing teams.
+    //
+    // RESTRAINT TEST:
+    // Kansas City clearly valued Walker and made him a marquee
+    // addition to the backfield. That does NOT automatically prove
+    // his fantasy opportunity improved relative to Seattle.
+    //
+    // Therefore:
+    //   changedTeam = true
+    //   quarterbackChange = true
+    //   environmentDirection = ""
+    //   roleDirection = "similar"
+    //
+    // Context records the material change without double-counting
+    // Walker's established player value.
+    // ==========================================================
+
+    CONTEXT_EVIDENCE[
+      playerKey(
+        "Kenneth Walker III",
+        "RB"
+      )
+    ] = {
+      // Allow live production data to resolve and verify the Tank01
+      // identity before permanently locking the ID.
+      playerID:
+        null,
+
+      longName:
+        "Kenneth Walker III",
+
+      pos:
+        "RB",
+
+      expectedTeam:
+        "KC",
+
+      evidence: {
+        isRookie:
+          false,
+
+        changedTeam:
+          true,
+
+        coachingChange:
+          true,
+
+        quarterbackChange:
+          true,
+
+        offensiveLineChange:
+          "",
+
+        roleChange:
+          "similar",
+
+        depthChartChange:
+          "",
+
+        prospectTier:
+          "",
+
+        draftCapitalTier:
+          "",
+
+        receivingProfile:
+          "",
+
+        // Deliberately unspecified.
+        //
+        // Joining Kansas City is a material environment change,
+        // but Context does not convert team reputation into an
+        // automatic fantasy upgrade.
+        environmentDirection:
+          "",
+
+        roleDirection:
+          "similar",
+
+        notes: [
+          "Kenneth Walker signed with Kansas City during the 2026 offseason after four seasons with Seattle.",
+          "Kansas City identified Walker as a major addition to its backfield.",
+          "Chiefs pre-camp coverage described Walker as the team's marquee free-agent running back signing.",
+          "The evidence establishes a meaningful team and offensive-environment change without independently declaring his fantasy opportunity improved."
+        ]
+      },
+
+      sources: [
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Kansas City Chiefs",
+
+          description:
+            "Official Chiefs player biography and transaction record confirming Walker signed with Kansas City on March 12, 2026.",
+
+          sourceUrl:
+            "https://www.chiefs.com/team/players-roster/kenneth-walker-iii/"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Kansas City Chiefs",
+
+          description:
+            "Official Chiefs feature describing Walker as a major addition to the backfield.",
+
+          sourceUrl:
+            "https://www.chiefs.com/news/five-things-to-know-about-new-chiefs-rb-kenneth-walker-"
+        },
+
+        {
+          sourceType:
+            "primary",
+
+          publisher:
+            "Kansas City Chiefs",
+
+          description:
+            "Chiefs pre-camp running-back breakdown describing Walker as the marquee free-agent addition.",
+
+          sourceUrl:
+            "https://www.chiefs.com/news/pre-camp-breakdown-looking-at-the-chiefs-running-backs"
         }
       ]
     };
