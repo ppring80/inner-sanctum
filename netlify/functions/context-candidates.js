@@ -1,7 +1,7 @@
 // netlify/functions/context-candidates.js
 //
 // SAGE CONTEXT INTELLIGENCE — PHASE 2F
-// CONTEXT CANDIDATE DISCOVERY
+// CONTEXT CANDIDATE DISCOVERY v2
 //
 // PURPOSE:
 // Produce a read-only review queue showing which players in the
@@ -16,43 +16,53 @@
 // - This does NOT write to Netlify Blobs.
 // - This does NOT modify SAGE.
 //
-// Candidate discovery and Context evidence are intentionally separate:
+// ------------------------------------------------------------
+// CORE PHILOSOPHY
+// ------------------------------------------------------------
 //
-//   256-player live population
-//          |
-//          v
-//   candidate discovery
-//          |
-//          v
-//   human / evidence review
-//          |
-//          v
-//   context-evidence.js
-//          |
-//          v
-//   draft-context-profile.js
-//          |
-//          v
-//        SAGE
+// Candidate discovery and data diagnostics are NOT the same thing.
 //
-// PHASE 2F INITIAL SCOPE:
+// A candidate signal means:
 //
-// The first version is deliberately conservative.
+//   "There is an objective reason this player's current situation
+//    deserves Context evidence review."
 //
-// It identifies:
+// A diagnostic means:
 //
-// 1. Players already carrying validated Context evidence.
-// 2. Players whose live team differs from the team represented in
-//    their historical Opportunity Intelligence record.
-// 3. Rookies / players with no historical Opportunity record.
-// 4. Players in the live 256-player population for whom Opportunity
-//    history is unavailable.
+//   "The available production data does not contain enough historical
+//    information to make this type of comparison."
 //
-// A flag means:
-//   "Investigate this player."
+// Missing data by itself must NEVER create a Context candidate.
 //
-// It does NOT mean:
-//   "This player's fantasy value increased or decreased."
+// ------------------------------------------------------------
+// PHASE 2F v2 CANDIDATE TRIGGERS
+// ------------------------------------------------------------
+//
+// 1. Rookie in the live 256-player population without reviewed
+//    Context evidence.
+//
+// Future candidate triggers may include:
+//
+// - objectively verified team change
+// - objectively verified quarterback change
+// - coaching / coordinator change
+// - depth-chart change
+// - material injury return
+// - offensive-line change
+//
+// BUT only after we have a reliable source for detecting those events.
+//
+// ------------------------------------------------------------
+// DIAGNOSTICS ONLY
+// ------------------------------------------------------------
+//
+// - Opportunity record missing
+// - historical team unavailable
+// - existing Context evidence
+//
+// None of those conditions creates a new review candidate.
+//
+// READ-ONLY.
 
 const {
   getStore,
@@ -114,13 +124,6 @@ function playerKey(
 
 // ------------------------------------------------------------
 // TEAM NORMALIZATION
-//
-// Keep this consistent with Context integrity handling.
-//
-// Washington is the known provider-code exception:
-//   WAS / WSH
-//
-// We normalize both to WAS.
 // ------------------------------------------------------------
 
 function normalizeTeam(team) {
@@ -189,12 +192,16 @@ function finiteNumber(value) {
 
 
 // ------------------------------------------------------------
-// TEAM EXTRACTION
+// HISTORICAL TEAM EXTRACTION
 //
-// Opportunity cache structure may contain team in slightly
-// different places depending on the production record.
+// IMPORTANT:
 //
-// This helper is intentionally read-only and defensive.
+// The Phase 2F v1 run proved that the current Opportunity cache
+// generally does NOT contain historical team information.
+//
+// Therefore historical-team availability is now DIAGNOSTIC ONLY.
+//
+// It must never create a candidate by itself.
 // ------------------------------------------------------------
 
 function getOpportunityTeam(
@@ -210,10 +217,13 @@ function getOpportunityTeam(
     record.teamAbbr,
     record.teamAbbreviation,
     record.currentTeam,
+
     record.player &&
       record.player.team,
+
     record.player &&
       record.player.teamAbv,
+
     record.player &&
       record.player.teamAbbr
   ];
@@ -240,7 +250,7 @@ function getOpportunityTeam(
 
 
 // ------------------------------------------------------------
-// EVIDENCE LOOKUP
+// EVIDENCE INDEX
 // ------------------------------------------------------------
 
 function buildEvidenceIndex() {
@@ -265,42 +275,53 @@ function buildEvidenceIndex() {
 
 
 // ------------------------------------------------------------
-// SIGNAL DEFINITIONS
+// CANDIDATE SIGNALS
 //
-// These are discovery signals.
-//
-// NONE of these signals contain fantasy direction.
+// These signals ARE allowed to create needsReview = true.
 // ------------------------------------------------------------
 
-const SIGNALS = {
-  EXISTING_EVIDENCE:
-    "existing-context-evidence",
-
-  TEAM_CHANGE:
-    "team-change-candidate",
-
-  NO_OPPORTUNITY_HISTORY:
-    "no-opportunity-history",
-
-  POSSIBLE_ROOKIE:
-    "possible-rookie",
-
-  TEAM_UNKNOWN:
-    "historical-team-unavailable"
+const CANDIDATE_SIGNALS = {
+  ROOKIE:
+    "rookie-context-review"
 };
 
 
 // ------------------------------------------------------------
-// BUILD ONE CANDIDATE
+// DIAGNOSTIC SIGNALS
+//
+// These NEVER create a candidate by themselves.
 // ------------------------------------------------------------
 
-function buildCandidate(
+const DIAGNOSTIC_SIGNALS = {
+  EXISTING_EVIDENCE:
+    "existing-context-evidence",
+
+  NO_OPPORTUNITY_HISTORY:
+    "no-opportunity-history",
+
+  HISTORICAL_TEAM_UNAVAILABLE:
+    "historical-team-unavailable",
+
+  HISTORICAL_TEAM_AVAILABLE:
+    "historical-team-available",
+
+  POTENTIAL_TEAM_DIFFERENCE:
+    "potential-team-difference"
+};
+
+
+// ------------------------------------------------------------
+// BUILD ONE DISCOVERY RECORD
+// ------------------------------------------------------------
+
+function buildDiscoveryRecord(
   key,
   contextRecord,
   opportunityRecord,
   evidenceRecord
 ) {
-  const signals = [];
+  const candidateSignals = [];
+  const diagnostics = [];
 
 
   const currentTeam =
@@ -316,14 +337,28 @@ function buildCandidate(
     );
 
 
+  const isRookie =
+    !!(
+      contextRecord &&
+      contextRecord.isRookie ===
+        true
+    );
+
+
   // ----------------------------------------------------------
-  // EXISTING VALIDATED EVIDENCE
+  // EXISTING EVIDENCE
+  //
+  // Diagnostic only.
+  //
+  // A reviewed player is not a new candidate just because evidence
+  // already exists.
   // ----------------------------------------------------------
 
   if (evidenceRecord) {
-    signals.push({
+    diagnostics.push({
       code:
-        SIGNALS.EXISTING_EVIDENCE,
+        DIAGNOSTIC_SIGNALS
+          .EXISTING_EVIDENCE,
 
       description:
         "Player already has a reviewed Context evidence record."
@@ -332,119 +367,142 @@ function buildCandidate(
 
 
   // ----------------------------------------------------------
-  // NO HISTORICAL OPPORTUNITY
+  // OPPORTUNITY COVERAGE
+  //
+  // Diagnostic only.
+  //
+  // Missing historical Opportunity data is a coverage limitation,
+  // not proof that Context changed.
   // ----------------------------------------------------------
 
   if (!opportunityRecord) {
-    signals.push({
+    diagnostics.push({
       code:
-        SIGNALS.NO_OPPORTUNITY_HISTORY,
+        DIAGNOSTIC_SIGNALS
+          .NO_OPPORTUNITY_HISTORY,
 
       description:
-        "Player is in the live Context population but has no matching historical Opportunity Intelligence record."
+        "No matching historical Opportunity Intelligence record is available."
     });
-
-
-    if (
-      contextRecord &&
-      contextRecord.isRookie ===
-        true
-    ) {
-      signals.push({
-        code:
-          SIGNALS.POSSIBLE_ROOKIE,
-
-        description:
-          "Live Context record identifies the player as a rookie."
-      });
-    }
   }
 
 
   // ----------------------------------------------------------
-  // HISTORICAL TEAM UNAVAILABLE
+  // HISTORICAL TEAM COVERAGE
   //
-  // We deliberately do NOT call this a team change.
+  // Diagnostic only.
   // ----------------------------------------------------------
 
   if (
     opportunityRecord &&
-    currentTeam &&
     !historicalTeam
   ) {
-    signals.push({
+    diagnostics.push({
       code:
-        SIGNALS.TEAM_UNKNOWN,
+        DIAGNOSTIC_SIGNALS
+          .HISTORICAL_TEAM_UNAVAILABLE,
 
       description:
-        "Historical Opportunity record exists, but no comparable historical team value was found."
+        "Historical Opportunity record exists, but it does not expose a comparable historical team value."
+    });
+  }
+
+
+  if (
+    opportunityRecord &&
+    historicalTeam
+  ) {
+    diagnostics.push({
+      code:
+        DIAGNOSTIC_SIGNALS
+          .HISTORICAL_TEAM_AVAILABLE,
+
+      description:
+        (
+          "Historical Opportunity team is available: " +
+          historicalTeam +
+          "."
+        )
     });
   }
 
 
   // ----------------------------------------------------------
-  // OBJECTIVE TEAM CHANGE
+  // POTENTIAL TEAM DIFFERENCE
   //
-  // Only flag when BOTH team values exist.
+  // Still diagnostic in v2.
   //
-  // This says nothing about whether the change is good or bad.
+  // Why?
+  //
+  // We have not yet proven that the Opportunity team's semantics
+  // represent a trustworthy prior-team snapshot.
+  //
+  // If this condition begins appearing in production, we can inspect
+  // those cases and promote this to a candidate trigger in a later
+  // version.
   // ----------------------------------------------------------
 
   if (
-    opportunityRecord &&
     currentTeam &&
     historicalTeam &&
     currentTeam !==
       historicalTeam
   ) {
-    signals.push({
+    diagnostics.push({
       code:
-        SIGNALS.TEAM_CHANGE,
+        DIAGNOSTIC_SIGNALS
+          .POTENTIAL_TEAM_DIFFERENCE,
 
       description:
         (
-          "Current live team (" +
+          "Current team (" +
           currentTeam +
-          ") differs from historical Opportunity team (" +
+          ") differs from available Opportunity team (" +
           historicalTeam +
-          ")."
+          "). Manual validation required before treating this as a team-change event."
         )
     });
   }
 
 
-  const adp =
-    finiteNumber(
-      contextRecord &&
-      contextRecord.adp
-    );
+  // ----------------------------------------------------------
+  // ROOKIE CANDIDATE
+  //
+  // This IS a real candidate trigger.
+  //
+  // A rookie in the current fantasy market may have no NFL history,
+  // so Context can provide legitimate non-NFL evidence such as:
+  //
+  // - draft capital
+  // - prospect quality
+  // - expected immediate role
+  //
+  // If evidence already exists, the player is already reviewed and
+  // should NOT be placed back in the candidate queue.
+  // ----------------------------------------------------------
 
+  if (
+    isRookie &&
+    !evidenceRecord
+  ) {
+    candidateSignals.push({
+      code:
+        CANDIDATE_SIGNALS.ROOKIE,
 
-  const marketRank =
-    finiteNumber(
-      contextRecord &&
-      contextRecord.marketRank
-    );
+      description:
+        "Rookie is present in the live draft population and does not yet have reviewed Context evidence."
+    });
+  }
 
 
   const needsReview =
-    signals.some(
-      function(signal) {
-        return (
-          signal.code !==
-          SIGNALS.EXISTING_EVIDENCE
-        );
-      }
-    );
+    candidateSignals.length >
+    0;
 
 
   const reviewStatus =
     evidenceRecord
-      ? (
-          needsReview
-            ? "evidence-exists-review-change"
-            : "evidence-exists"
-        )
+      ? "evidence-exists"
       : (
           needsReview
             ? "needs-evidence-review"
@@ -491,6 +549,9 @@ function buildCandidate(
               )
         ) || null,
 
+      isRookie:
+        isRookie,
+
       currentTeam:
         currentTeam ||
         null,
@@ -500,10 +561,16 @@ function buildCandidate(
         null,
 
       adp:
-        adp,
+        finiteNumber(
+          contextRecord &&
+          contextRecord.adp
+        ),
 
       marketRank:
-        marketRank
+        finiteNumber(
+          contextRecord &&
+          contextRecord.marketRank
+        )
     },
 
     evidence: {
@@ -524,9 +591,76 @@ function buildCandidate(
     needsReview:
       needsReview,
 
-    signals:
-      signals
+    candidateSignals:
+      candidateSignals,
+
+    diagnostics:
+      diagnostics
   };
+}
+
+
+// ------------------------------------------------------------
+// SORT BY CURRENT MARKET RANK
+//
+// This does NOT rank Context.
+//
+// The population already comes from market ADP.
+//
+// Sorting only makes the review queue easier to consume.
+// ------------------------------------------------------------
+
+function marketSort(
+  a,
+  b
+) {
+  const aRank =
+    a &&
+    a.player &&
+    a.player.marketRank !==
+      null
+      ? a.player.marketRank
+      : 999999;
+
+
+  const bRank =
+    b &&
+    b.player &&
+    b.player.marketRank !==
+      null
+      ? b.player.marketRank
+      : 999999;
+
+
+  return (
+    aRank -
+    bRank
+  );
+}
+
+
+// ------------------------------------------------------------
+// COUNT SIGNALS
+// ------------------------------------------------------------
+
+function initializeCounts(
+  definitions
+) {
+  const counts = {};
+
+
+  Object.keys(
+    definitions
+  ).forEach(
+    function(name) {
+      counts[
+        definitions[name]
+      ] = 0;
+    }
+  );
+
+
+  return counts;
 }
 
 
@@ -543,16 +677,18 @@ function buildDiscoveryReport(
       contextCache
     );
 
+
   const opportunityRecords =
     getOpportunityRecords(
       opportunityCache
     );
 
+
   const evidenceIndex =
     buildEvidenceIndex();
 
 
-  const allRecords = [];
+  const records = [];
 
 
   Object.keys(
@@ -595,8 +731,8 @@ function buildDiscoveryReport(
         null;
 
 
-      allRecords.push(
-        buildCandidate(
+      records.push(
+        buildDiscoveryRecord(
           key,
           contextRecord,
           opportunityRecord,
@@ -608,16 +744,11 @@ function buildDiscoveryReport(
 
 
   // ----------------------------------------------------------
-  // REVIEW QUEUE
-  //
-  // Existing evidence records are included if another discovery
-  // signal exists, allowing stale/change detection.
-  //
-  // Pure existing-evidence records are shown separately.
+  // TRUE CANDIDATE QUEUE
   // ----------------------------------------------------------
 
   const reviewQueue =
-    allRecords
+    records
       .filter(
         function(record) {
           return (
@@ -627,29 +758,16 @@ function buildDiscoveryReport(
         }
       )
       .sort(
-        function(a, b) {
-          const aRank =
-            a.player.marketRank !==
-              null
-              ? a.player.marketRank
-              : 999999;
-
-          const bRank =
-            b.player.marketRank !==
-              null
-              ? b.player.marketRank
-              : 999999;
-
-          return (
-            aRank -
-            bRank
-          );
-        }
+        marketSort
       );
 
 
+  // ----------------------------------------------------------
+  // EXISTING REVIEWED EVIDENCE
+  // ----------------------------------------------------------
+
   const existingEvidence =
-    allRecords
+    records
       .filter(
         function(record) {
           return (
@@ -659,61 +777,57 @@ function buildDiscoveryReport(
         }
       )
       .sort(
-        function(a, b) {
-          const aRank =
-            a.player.marketRank !==
-              null
-              ? a.player.marketRank
-              : 999999;
-
-          const bRank =
-            b.player.marketRank !==
-              null
-              ? b.player.marketRank
-              : 999999;
-
-          return (
-            aRank -
-            bRank
-          );
-        }
+        marketSort
       );
 
 
   // ----------------------------------------------------------
-  // SIGNAL COUNTS
+  // UNFLAGGED POPULATION
   // ----------------------------------------------------------
 
-  const signalCounts = {};
+  const unflagged =
+    records
+      .filter(
+        function(record) {
+          return (
+            record.needsReview ===
+              false &&
+            record.evidence.exists ===
+              false
+          );
+        }
+      )
+      .sort(
+        marketSort
+      );
 
 
-  Object.keys(
-    SIGNALS
-  ).forEach(
-    function(name) {
-      signalCounts[
-        SIGNALS[name]
-      ] = 0;
-    }
-  );
+  // ----------------------------------------------------------
+  // CANDIDATE SIGNAL COUNTS
+  // ----------------------------------------------------------
+
+  const candidateSignalCounts =
+    initializeCounts(
+      CANDIDATE_SIGNALS
+    );
 
 
-  allRecords.forEach(
+  records.forEach(
     function(record) {
-      record.signals.forEach(
+      record.candidateSignals.forEach(
         function(signal) {
           if (
-            typeof signalCounts[
+            typeof candidateSignalCounts[
               signal.code
             ] !==
             "number"
           ) {
-            signalCounts[
+            candidateSignalCounts[
               signal.code
             ] = 0;
           }
 
-          signalCounts[
+          candidateSignalCounts[
             signal.code
           ]++;
         }
@@ -722,20 +836,80 @@ function buildDiscoveryReport(
   );
 
 
-  const unflaggedCount =
-    allRecords.filter(
+  // ----------------------------------------------------------
+  // DIAGNOSTIC COUNTS
+  // ----------------------------------------------------------
+
+  const diagnosticCounts =
+    initializeCounts(
+      DIAGNOSTIC_SIGNALS
+    );
+
+
+  records.forEach(
+    function(record) {
+      record.diagnostics.forEach(
+        function(signal) {
+          if (
+            typeof diagnosticCounts[
+              signal.code
+            ] !==
+            "number"
+          ) {
+            diagnosticCounts[
+              signal.code
+            ] = 0;
+          }
+
+          diagnosticCounts[
+            signal.code
+          ]++;
+        }
+      );
+    }
+  );
+
+
+  // ----------------------------------------------------------
+  // ROOKIE ACCOUNTING
+  // ----------------------------------------------------------
+
+  const rookiePopulation =
+    records.filter(
+      function(record) {
+        return (
+          record.player.isRookie ===
+          true
+        );
+      }
+    );
+
+
+  const rookiesWithEvidence =
+    rookiePopulation.filter(
+      function(record) {
+        return (
+          record.evidence.exists ===
+          true
+        );
+      }
+    );
+
+
+  const rookiesNeedingReview =
+    rookiePopulation.filter(
       function(record) {
         return (
           record.needsReview ===
-          false
+          true
         );
       }
-    ).length;
+    );
 
 
   return {
     populationCount:
-      allRecords.length,
+      records.length,
 
     evidenceRegistryCount:
       Object.keys(
@@ -745,11 +919,26 @@ function buildDiscoveryReport(
     candidateReviewCount:
       reviewQueue.length,
 
-    unflaggedCount:
-      unflaggedCount,
+    existingEvidenceCount:
+      existingEvidence.length,
 
-    signalCounts:
-      signalCounts,
+    unflaggedCount:
+      unflagged.length,
+
+    rookiePopulationCount:
+      rookiePopulation.length,
+
+    rookiesWithEvidenceCount:
+      rookiesWithEvidence.length,
+
+    rookiesNeedingReviewCount:
+      rookiesNeedingReview.length,
+
+    candidateSignalCounts:
+      candidateSignalCounts,
+
+    diagnosticCounts:
+      diagnosticCounts,
 
     reviewQueue:
       reviewQueue,
@@ -909,14 +1098,29 @@ exports.handler =
                 "SAGE Context Candidate Discovery",
 
               phase:
-                "2F",
+                "2F-v2",
 
               methodology: {
                 population:
                   "Current context-intel/latest population.",
 
                 purpose:
-                  "Identify players whose circumstances may warrant objective Context evidence review.",
+                  "Identify players whose circumstances warrant objective Context evidence review.",
+
+                candidateRule:
+                  "Only positive discovery evidence creates candidates. Missing historical data is diagnostic only.",
+
+                currentCandidateTriggers: [
+                  "rookie-without-reviewed-context-evidence"
+                ],
+
+                diagnosticOnlyConditions: [
+                  "existing-context-evidence",
+                  "no-opportunity-history",
+                  "historical-team-unavailable",
+                  "historical-team-available",
+                  "potential-team-difference"
+                ],
 
                 candidateDoesNotMean:
                   "Positive, Negative, Improved, Reduced, Buy, Sell, Draft, or Fade.",
@@ -948,11 +1152,26 @@ exports.handler =
               candidateReviewCount:
                 report.candidateReviewCount,
 
+              existingEvidenceCount:
+                report.existingEvidenceCount,
+
               unflaggedCount:
                 report.unflaggedCount,
 
-              signalCounts:
-                report.signalCounts,
+              rookiePopulationCount:
+                report.rookiePopulationCount,
+
+              rookiesWithEvidenceCount:
+                report.rookiesWithEvidenceCount,
+
+              rookiesNeedingReviewCount:
+                report.rookiesNeedingReviewCount,
+
+              candidateSignalCounts:
+                report.candidateSignalCounts,
+
+              diagnosticCounts:
+                report.diagnosticCounts,
 
               reviewQueue:
                 report.reviewQueue,
@@ -1021,11 +1240,17 @@ module.exports.getOpportunityTeam =
 module.exports.buildEvidenceIndex =
   buildEvidenceIndex;
 
-module.exports.SIGNALS =
-  SIGNALS;
+module.exports.CANDIDATE_SIGNALS =
+  CANDIDATE_SIGNALS;
 
-module.exports.buildCandidate =
-  buildCandidate;
+module.exports.DIAGNOSTIC_SIGNALS =
+  DIAGNOSTIC_SIGNALS;
+
+module.exports.buildDiscoveryRecord =
+  buildDiscoveryRecord;
+
+module.exports.marketSort =
+  marketSort;
 
 module.exports.buildDiscoveryReport =
   buildDiscoveryReport;
