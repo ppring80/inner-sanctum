@@ -562,6 +562,12 @@ textarea::placeholder { color: #3a3028; }
 .gate-link:hover{opacity:1}
 .gate-skip{display:block;margin-top:14px;font-family:Georgia,serif;font-size:11px;color:#5a4a30;text-decoration:underline;cursor:pointer;background:none;border:none}
 .gate-skip:hover{color:#8a7860}
+.gate-patreon-btn{display:block;width:100%;box-sizing:border-box;padding:12px 20px;background:transparent;border:1.5px solid #c9a84c;color:#f0e0b0;font-family:Georgia,serif;font-size:14px;font-weight:bold;border-radius:8px;cursor:pointer;letter-spacing:0.5px;text-decoration:none;transition:all 0.15s;margin-bottom:6px}
+.gate-patreon-btn:hover{background:rgba(201,168,76,0.12)}
+.gate-patreon-note{font-size:11px;color:#5a4a30;font-family:Georgia,serif;margin-bottom:18px}
+.gate-divider{display:flex;align-items:center;gap:10px;margin:4px 0 16px;font-family:Georgia,serif;font-size:11px;color:#5a4a30;letter-spacing:1px;text-transform:uppercase}
+.gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.2)}
+.gate-passcode-note{font-size:11px;color:#5a4a30;font-family:Georgia,serif;margin-top:-6px;margin-bottom:14px}
 
 /* ── GROUPED DROPDOWN NAV (added, sanctum .nav pill variant) ── */
 .nav .nav-dropdown{flex:1;max-width:200px;position:relative;display:block}
@@ -598,13 +604,19 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <div class="gate-card">
     <div class="gate-icon">🔮</div>
     <div class="gate-title">Founding Acolyte Access</div>
-    <div class="gate-sub" id="gateSub">Enter your passcode for unlimited questions across all three personas. Or skip below to use the free Apprentice tier.</div>
+    <div class="gate-sub" id="gateSub">Founding Acolytes get unlimited questions across all three personas — free Apprentices get limited daily questions.</div>
+
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fsanctum" class="gate-patreon-btn">🔑 Already a Founding Acolyte? Log In with Patreon</a>
+    <div class="gate-patreon-note">Use the same email you pledged with on Patreon</div>
+
+    <div class="gate-divider">or</div>
+
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div class="gate-passcode-note">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
-    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fsanctum" class="gate-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
-    <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
+    <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link" style="margin-bottom:8px">⚔️ Become a Founding Acolyte</a>
     <button class="gate-skip" onclick="skipGate()">Continue as free Apprentice →</button>
   </div>
 </div>
