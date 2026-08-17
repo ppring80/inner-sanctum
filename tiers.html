@@ -245,13 +245,12 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
      alongside the real Patreon-backed check, not a replacement for it.
      See Pre-Deployment Checklist #105/#105a.
 
-     #105a TESTER ALLOWLIST (added): a second, separate passcode
-     (ALLOWLIST_PASSCODE) is checked alongside the normal Acolyte
-     passcode. Either one unlocks the same sessionStorage flag, so an
-     allowlisted tester is indistinguishable from a real Acolyte once
-     in. Kept deliberately distinct from GATE_PASSCODE so ORACLE-125
-     can be rotated (see Passcode Rotation Runbook) without locking
-     out testers, and vice versa.
+     #105a TESTER ALLOWLIST: ALLOWLIST_PASSCODE ('SANCTUM-TEST') is the
+     owner/tester passcode, checked alongside the real Patreon-backed
+     access check. A separate temporary launch-era passcode that used
+     to sit alongside it was removed sitewide (Aug 17 2026 cleanup),
+     since it was never meant to be permanent. ALLOWLIST_PASSCODE is
+     untouched and continues to work exactly as before.
 
      THIS PAGE CHECKS fullAccess — same single flag every other
      gated page checks. Per the 2026-06-27 tier collapse, there is now
@@ -281,7 +280,6 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 </div>
 <script>
-var GATE_PASSCODE = 'ORACLE-125';
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
@@ -302,7 +300,7 @@ function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
   var entered = input.value.trim().toUpperCase();
-  if (entered === GATE_PASSCODE || entered === ALLOWLIST_PASSCODE) {
+  if (entered === ALLOWLIST_PASSCODE) {
     unlockGate();
   } else {
     err.classList.add('show');
