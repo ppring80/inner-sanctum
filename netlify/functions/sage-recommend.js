@@ -35,30 +35,35 @@
 //                   (~20-30) of currently-available players to evaluate
 //                   and rank. Draft Command Center is expected to send
 //                   its own top-N-by-ADP slice, not the full pool.
+//
 //     currentPool:  [{name, pos, adp}, ...]   OPTIONAL. Defaults to
 //                   `candidates` if omitted. Fed to Scarcity's
 //                   "currentPool". As of the Aug 17 2026 correction,
 //                   Draft Command Center sends the BROADER available-
 //                   player population here, not the same bounded slice
-//                   as `candidates` -- this endpoint's own interface
-//                   never needed to change for that fix, since it
-//                   already treated currentPool as independent input;
-//                   only draft.html's request construction did.
+//                   as `candidates`.
+//
 //     nextTurnPool: [{name, pos, adp}, ...]   OPTIONAL. Defaults to [].
-//                   Fed to Scarcity's "nextTurnPool". Draft Command
-//                   Center is expected to derive this itself (players
-//                   beyond however many picks happen before the user's
-//                   next turn) -- this endpoint does not compute it.
-//                   Also sent as the broader projected pool, not a
-//                   bounded slice, as of the same correction.
+//                   Fed to Scarcity's "nextTurnPool".
+//
 //     currentPick:  number                    REQUIRED.
+//
 //     nextUserPick: number                    REQUIRED.
-//     scoring:      string                    OPTIONAL. Accepted and
-//                   echoed back in the response for forward
-//                   compatibility, but NOT currently consumed by any
-//                   pillar -- none of Market/Opportunity/Scarcity/
-//                   Context/Synthesis read a scoring-format input today.
-//                   Flagged explicitly rather than silently dropped.
+//
+//     scoring:      string                    OPTIONAL. The scoring string
+//                   itself is not consumed directly by the existing SAGE
+//                   pillars. HOWEVER, Draft Command Center loads Tank01
+//                   ADP using this scoring format before constructing the
+//                   candidate/current/next-turn pools. Therefore each
+//                   player's `adp` arriving here is already specific to
+//                   Standard, Half-PPR, or PPR.
+//
+//                   Aug 18 2026 draft-readiness correction:
+//                   recommendation SEQUENCE now preserves that scoring-
+//                   specific market signal by sorting primarily on ADP.
+//                   SAGE still evaluates every player and supplies the
+//                   recommendation/action/explanation; its categorical
+//                   code is used only as a secondary tie-break.
 //   }
 //
 // ═══════════════════════════════════════════════════════════════════
@@ -66,22 +71,19 @@
 // ═══════════════════════════════════════════════════════════════════
 //   {
 //     computedAt: ISO string,
-//     candidateCount: number,        // how many candidates were evaluated
+//     candidateCount: number,
 //     recommendations: [
 //       {
-//         player: {name, pos, team},   // team passed through if supplied
+//         player: {name, pos, team},
 //         adp: number,
-//         recommendation: "Take Now", // plain-language label, unmodified
-//         code: "take-now",           // SAGE's own existing code, unmodified
-//         explanation: "...",         // plain-language, unmodified
-//         reasons: ["...", "..."]     // plain-language, unmodified, capped
+//         recommendation: "Take Now",
+//         code: "take-now",
+//         explanation: "...",
+//         reasons: ["...", "..."]
 //       },
-//       ... up to 5, deterministic order (see ORDERING below)
+//       ... up to 5
 //     ],
 //     degraded: [ {name, pos, missing: ["opportunity"|"context", ...]} ]
-//       // informational only -- which candidates were missing pillar
-//       // data and therefore evaluated with a graceful null for that
-//       // pillar, never exposed as raw profile objects.
 //   }
 //
 // No raw opportunityProfile/marketProfile/scarcityProfile/contextProfile
@@ -89,27 +91,70 @@
 // synthesis output plus player identity/ADP.
 //
 // ═══════════════════════════════════════════════════════════════════
-// ORDERING -- NOT a new hidden numeric score. SAGE's own `code` values
-// (from draft-sage-synthesis.js, unmodified, enumerated by direct
-// inspection of the real file) are given a fixed ORDINAL rank -- a
-// reviewable position in a list, not a computed number derived from any
-// pillar's internals:
+// ORDERING — AUG 18 2026 DRAFT-READINESS CORRECTION
+// ═══════════════════════════════════════════════════════════════════
+//
+// PRIMARY ORDER:
+//   scoring-specific ADP, ascending.
+//
+// WHY:
+// Draft Command Center already requests a distinct Tank01 ADP feed for
+// Standard, Half-PPR, or PPR. Live validation confirmed those feeds move
+// players materially across formats. ADP is therefore our strongest
+// currently-available objective signal of how the selected league scoring
+// format changes relative player value.
+//
+// PREVIOUS BEHAVIOR:
+// SAGE recommendation code had absolute ordering priority:
+//
 //   take-now > strong-consideration > consider-now > consider >
 //   can-wait > flexible > caution > wait > pass-for-now >
 //   needs-more-evidence
-// This ordering reflects the codes' own plain-English meaning (SAGE
-// already decided the category; this only decides how the ten existing
-// categories are listed relative to each other). Within the same code,
-// the tie-break is ascending ADP -- an existing, objective, already-
-// present field, exactly as instructed.
+//
+// ADP was used only when two players had the exact same SAGE code.
+//
+// That categorical compression could erase meaningful scoring-format
+// movement. A player with much stronger format-specific ADP could be
+// listed below a much later-market player solely because one was labeled
+// "Strong Consideration" and the other "Take Now."
+//
+// CURRENT BEHAVIOR:
+//   1. scoring-specific ADP
+//   2. SAGE recommendation code, only when ADP is exactly equal
+//   3. normalized player name, only for deterministic final stability
+//
+// SAGE IS NOT REMOVED:
+// Every player is still evaluated through Opportunity + Market + Scarcity
+// + Context + Synthesis. SAGE still determines the recommendation label,
+// explanation and reasons shown to the consumer. This change affects only
+// which evaluated players are presented first.
+//
+// This is deliberately the conservative draft-readiness behavior.
+// A future hybrid model may allow SAGE evidence to move players around
+// scoring-specific ADP within objectively validated boundaries, but no
+// arbitrary numeric weighting is introduced here.
 // ═══════════════════════════════════════════════════════════════════
 
-const { getStore, connectLambda } = require("@netlify/blobs");
+const {
+  getStore,
+  connectLambda
+} = require("@netlify/blobs");
 
-const { buildDraftOpportunityProfile } = require("./draft-opportunity-profile");
-const { buildDraftMarketProfile } = require("./draft-market-profile");
-const { buildDraftScarcityProfile } = require("./draft-scarcity-profile");
-const { buildRecommendation } = require("./draft-sage-synthesis");
+const {
+  buildDraftOpportunityProfile
+} = require("./draft-opportunity-profile");
+
+const {
+  buildDraftMarketProfile
+} = require("./draft-market-profile");
+
+const {
+  buildDraftScarcityProfile
+} = require("./draft-scarcity-profile");
+
+const {
+  buildRecommendation
+} = require("./draft-sage-synthesis");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -125,10 +170,9 @@ const CORS_HEADERS = {
 const MAX_CANDIDATES = 40;
 const MAX_RECOMMENDATIONS = 5;
 
-// Fixed ordinal rank of SAGE's own existing recommendation codes -- see
-// the ORDERING note above. Lower index = higher priority. Any code not
-// in this list (should not happen given the real synthesis module, but
-// handled defensively) sorts last, before nothing.
+// SAGE's existing recommendation-code ordering remains useful as a
+// SECONDARY tie-break when two candidates have exactly the same ADP.
+// Lower index = stronger action language.
 const CODE_RANK = [
   "take-now",
   "strong-consideration",
@@ -141,223 +185,676 @@ const CODE_RANK = [
   "pass-for-now",
   "needs-more-evidence"
 ];
+
 function codeRank(code) {
-  const idx = CODE_RANK.indexOf(code);
-  return idx === -1 ? CODE_RANK.length : idx;
+  const idx =
+    CODE_RANK.indexOf(code);
+
+  return idx === -1
+    ? CODE_RANK.length
+    : idx;
 }
 
-// ── Identical logic to sage-pick-validation.js's own helpers (see file
-// header for why this is a deliberate duplicate, not an import). ──
-// Aug 18 2026 fix (Ja'Marr Chase identity-normalization defect): the
-// apostrophe class below is written with explicit \u escapes
-// deliberately -- the original version, `[.''']`, LOOKED like it
-// covered three different apostrophe styles but all three characters
-// were actually the identical ASCII U+0027 typed three times (a real,
-// confirmed defect, verified by direct Unicode codepoint inspection).
-// Explicit escapes make each character unambiguous at a glance and
-// prevent that exact mistake from silently recurring here again.
-// Covers: U+0027 (ASCII apostrophe), U+2019 (right single quotation
-// mark / the common "smart quote" a data source or CMS can produce),
-// U+2018 (left single quotation mark, included for symmetry/safety).
+// ── Identical logic to sage-pick-validation.js's own helpers ─────────
+//
+// Aug 18 2026 fix (Ja'Marr Chase identity-normalization defect):
+// explicit Unicode escapes cover ASCII apostrophe plus common smart
+// apostrophe characters.
+
 function normalizePlayerName(name) {
   return (name || "")
     .toLowerCase()
-    .replace(/[.\u0027\u2018\u2019]/g, "")
-    .replace(/-/g, " ")
-    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
-    .replace(/\s+/g, " ")
+    .replace(
+      /[.\u0027\u2018\u2019]/g,
+      ""
+    )
+    .replace(
+      /-/g,
+      " "
+    )
+    .replace(
+      /\b(jr|sr|ii|iii|iv)\b/g,
+      ""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
     .trim();
 }
 
 function playerKey(player) {
-  return normalizePlayerName(player.name) + "|" + String(player.pos || "").toUpperCase();
+  return (
+    normalizePlayerName(
+      player.name
+    ) +
+    "|" +
+    String(
+      player.pos || ""
+    ).toUpperCase()
+  );
 }
 
-function getOpportunityRecord(cached, player) {
-  const records = cached && cached.records ? cached.records : {};
-  return records[playerKey(player)] || null;
+function getOpportunityRecord(
+  cached,
+  player
+) {
+  const records =
+    cached &&
+    cached.records
+      ? cached.records
+      : {};
+
+  return (
+    records[
+      playerKey(player)
+    ] ||
+    null
+  );
 }
 
-function getContextRecord(cached, player) {
-  const records = cached && cached.records ? cached.records : {};
-  return records[playerKey(player)] || null;
+function getContextRecord(
+  cached,
+  player
+) {
+  const records =
+    cached &&
+    cached.records
+      ? cached.records
+      : {};
+
+  return (
+    records[
+      playerKey(player)
+    ] ||
+    null
+  );
 }
 
-function getProductionContextProfile(contextCache, player) {
-  const record = getContextRecord(contextCache, player);
-  if (!record || record.contextStatus !== "context-profiled") return null;
-  return record.contextProfile || null;
+function getProductionContextProfile(
+  contextCache,
+  player
+) {
+  const record =
+    getContextRecord(
+      contextCache,
+      player
+    );
+
+  if (
+    !record ||
+    record.contextStatus !==
+      "context-profiled"
+  ) {
+    return null;
+  }
+
+  return (
+    record.contextProfile ||
+    null
+  );
 }
 
-function attachAdp(record, player) {
-  if (!record) return null;
-  return Object.assign({}, record, { adp: player.adp });
+function attachAdp(
+  record,
+  player
+) {
+  if (!record) {
+    return null;
+  }
+
+  return Object.assign(
+    {},
+    record,
+    {
+      adp:
+        player.adp
+    }
+  );
 }
 
-function buildOpportunityPool(opportunityCache, players) {
-  return (players || [])
-    .map(function (player) {
-      const record = getOpportunityRecord(opportunityCache, player);
-      if (!record) return null;
-      return attachAdp(record, player);
-    })
+function buildOpportunityPool(
+  opportunityCache,
+  players
+) {
+  return (
+    players ||
+    []
+  )
+    .map(
+      function (player) {
+        const record =
+          getOpportunityRecord(
+            opportunityCache,
+            player
+          );
+
+        if (!record) {
+          return null;
+        }
+
+        return attachAdp(
+          record,
+          player
+        );
+      }
+    )
     .filter(Boolean);
 }
 
 function isValidPlayerShape(p) {
-  return Boolean(p && typeof p === "object" && typeof p.name === "string" && p.name.trim().length > 0);
+  return Boolean(
+    p &&
+    typeof p === "object" &&
+    typeof p.name ===
+      "string" &&
+    p.name.trim().length >
+      0
+  );
 }
 
-function jsonResponse(statusCode, body) {
-  return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) };
+function jsonResponse(
+  statusCode,
+  body
+) {
+  return {
+    statusCode,
+    headers:
+      CORS_HEADERS,
+    body:
+      JSON.stringify(
+        body
+      )
+  };
 }
 
-// ── One candidate, full SAGE read -- same wiring shape as
-// sage-pick-validation.js's buildPlayerValidation(), adapted to accept
-// real currentPick/nextUserPick instead of a frozen constant. ──
-function evaluateCandidate(opportunityCache, contextCache, player, currentPool, nextTurnPool, currentPick, nextUserPick) {
-  const rawRecord = getOpportunityRecord(opportunityCache, player);
-  const contextProfile = getProductionContextProfile(contextCache, player);
+// ── Deterministic recommendation ordering ─────────────────────────────
+//
+// Primary:
+//   format-specific ADP.
+//
+// Secondary:
+//   SAGE category only when ADPs are exactly equal.
+//
+// Final:
+//   normalized player name so identical ADP + identical SAGE category
+//   always yields stable output.
+//
+// No weighted score is created.
+
+function compareEvaluatedCandidates(
+  a,
+  b
+) {
+  const adpA =
+    Number.isFinite(
+      a.adp
+    )
+      ? a.adp
+      : Infinity;
+
+  const adpB =
+    Number.isFinite(
+      b.adp
+    )
+      ? b.adp
+      : Infinity;
+
+  if (
+    adpA !== adpB
+  ) {
+    return (
+      adpA -
+      adpB
+    );
+  }
+
+  const rankDiff =
+    codeRank(
+      a.sage &&
+      a.sage.code
+    ) -
+    codeRank(
+      b.sage &&
+      b.sage.code
+    );
+
+  if (
+    rankDiff !== 0
+  ) {
+    return rankDiff;
+  }
+
+  return normalizePlayerName(
+    a.player &&
+    a.player.name
+  ).localeCompare(
+    normalizePlayerName(
+      b.player &&
+      b.player.name
+    )
+  );
+}
+
+// ── One candidate, full SAGE read ──────────────────────────────────────
+
+function evaluateCandidate(
+  opportunityCache,
+  contextCache,
+  player,
+  currentPool,
+  nextTurnPool,
+  currentPick,
+  nextUserPick
+) {
+  const rawRecord =
+    getOpportunityRecord(
+      opportunityCache,
+      player
+    );
+
+  const contextProfile =
+    getProductionContextProfile(
+      contextCache,
+      player
+    );
+
   const missing = [];
 
-  const marketProfile = buildDraftMarketProfile({
-    adp: player.adp,
-    currentPick: currentPick,
-    nextUserPick: nextUserPick
-  });
+  const marketProfile =
+    buildDraftMarketProfile({
+      adp:
+        player.adp,
 
-  if (!contextProfile) missing.push("context");
+      currentPick:
+        currentPick,
+
+      nextUserPick:
+        nextUserPick
+    });
+
+  if (!contextProfile) {
+    missing.push(
+      "context"
+    );
+  }
 
   if (!rawRecord) {
-    missing.push("opportunity");
-    const sage = buildRecommendation({
-      opportunityProfile: null,
-      marketProfile: marketProfile,
-      scarcityProfile: null,
-      contextProfile: contextProfile
-    });
-    return { player, adp: player.adp, sage, missing };
+    missing.push(
+      "opportunity"
+    );
+
+    const sage =
+      buildRecommendation({
+        opportunityProfile:
+          null,
+
+        marketProfile:
+          marketProfile,
+
+        scarcityProfile:
+          null,
+
+        contextProfile:
+          contextProfile
+      });
+
+    return {
+      player,
+      adp:
+        player.adp,
+      sage,
+      missing
+    };
   }
 
-  const record = attachAdp(rawRecord, player);
-  const opportunityProfile = buildDraftOpportunityProfile(rawRecord);
-  const scarcityProfile = buildDraftScarcityProfile({
-    candidate: record,
-    currentPool: currentPool,
-    nextTurnPool: nextTurnPool
-  });
+  const record =
+    attachAdp(
+      rawRecord,
+      player
+    );
 
-  const sage = buildRecommendation({
-    opportunityProfile: opportunityProfile,
-    marketProfile: marketProfile,
-    scarcityProfile: scarcityProfile,
-    contextProfile: contextProfile
-  });
+  const opportunityProfile =
+    buildDraftOpportunityProfile(
+      rawRecord
+    );
 
-  return { player, adp: player.adp, sage, missing };
+  const scarcityProfile =
+    buildDraftScarcityProfile({
+      candidate:
+        record,
+
+      currentPool:
+        currentPool,
+
+      nextTurnPool:
+        nextTurnPool
+    });
+
+  const sage =
+    buildRecommendation({
+      opportunityProfile:
+        opportunityProfile,
+
+      marketProfile:
+        marketProfile,
+
+      scarcityProfile:
+        scarcityProfile,
+
+      contextProfile:
+        contextProfile
+    });
+
+  return {
+    player,
+    adp:
+      player.adp,
+    sage,
+    missing
+  };
 }
 
-exports.handler = async (event) => {
-  connectLambda(event);
+// ── Handler ────────────────────────────────────────────────────────────
 
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
-  }
-  if (event.httpMethod !== "POST") {
-    return jsonResponse(405, { error: "POST only" });
-  }
+exports.handler =
+  async (event) => {
+    connectLambda(
+      event
+    );
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || "{}");
-  } catch (e) {
-    return jsonResponse(400, { error: "Invalid request body." });
-  }
-
-  const rawCandidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-  const candidates = rawCandidates.filter(isValidPlayerShape).slice(0, MAX_CANDIDATES);
-
-  if (candidates.length === 0) {
-    return jsonResponse(200, {
-      computedAt: new Date().toISOString(),
-      candidateCount: 0,
-      recommendations: [],
-      degraded: []
-    });
-  }
-
-  const currentPoolInput = Array.isArray(payload.currentPool) && payload.currentPool.length > 0
-    ? payload.currentPool.filter(isValidPlayerShape)
-    : candidates;
-  const nextTurnPoolInput = Array.isArray(payload.nextTurnPool)
-    ? payload.nextTurnPool.filter(isValidPlayerShape)
-    : [];
-
-  const currentPick = payload.currentPick;
-  const nextUserPick = payload.nextUserPick;
-
-  try {
-    const opportunityStore = getStore({ name: "opportunity-intel" });
-    const contextStore = getStore({ name: "context-intel" });
-
-    const [opportunityCache, contextCache] = await Promise.all([
-      opportunityStore.get("latest", { type: "json" }).catch(() => null),
-      contextStore.get("latest", { type: "json" }).catch(() => null)
-    ]);
-
-    // Build the pool objects ONCE, reused across every candidate's
-    // Scarcity call -- same real opportunity records, not rebuilt per
-    // candidate.
-    const currentPool = buildOpportunityPool(opportunityCache, currentPoolInput);
-    const nextTurnPool = buildOpportunityPool(opportunityCache, nextTurnPoolInput);
-
-    const degraded = [];
-    const evaluated = candidates.map(function (player) {
-      const result = evaluateCandidate(
-        opportunityCache,
-        contextCache,
-        player,
-        currentPool,
-        nextTurnPool,
-        currentPick,
-        nextUserPick
-      );
-      if (result.missing.length > 0) {
-        degraded.push({ name: player.name, pos: player.pos, missing: result.missing });
-      }
-      return result;
-    });
-
-    evaluated.sort(function (a, b) {
-      const rankDiff = codeRank(a.sage.code) - codeRank(b.sage.code);
-      if (rankDiff !== 0) return rankDiff;
-      const adpA = Number.isFinite(a.adp) ? a.adp : Infinity;
-      const adpB = Number.isFinite(b.adp) ? b.adp : Infinity;
-      return adpA - adpB;
-    });
-
-    const recommendations = evaluated.slice(0, MAX_RECOMMENDATIONS).map(function (e) {
+    if (
+      event.httpMethod ===
+      "OPTIONS"
+    ) {
       return {
-        player: { name: e.player.name, pos: e.player.pos, team: e.player.team || null },
-        adp: e.adp,
-        recommendation: e.sage.recommendation,
-        code: e.sage.code,
-        explanation: e.sage.explanation,
-        reasons: Array.isArray(e.sage.reasons) ? e.sage.reasons.slice(0, 2) : []
-      };
-    });
+        statusCode:
+          204,
 
-    return jsonResponse(200, {
-      computedAt: new Date().toISOString(),
-      candidateCount: candidates.length,
-      recommendations: recommendations,
-      degraded: degraded
-    });
-  } catch (err) {
-    console.log("sage-recommend error:", err.message);
-    return jsonResponse(500, { error: "SAGE recommendations temporarily unavailable." });
-  }
-};
+        headers:
+          CORS_HEADERS,
+
+        body:
+          ""
+      };
+    }
+
+    if (
+      event.httpMethod !==
+      "POST"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "POST only"
+        }
+      );
+    }
+
+    let payload;
+
+    try {
+      payload =
+        JSON.parse(
+          event.body ||
+          "{}"
+        );
+    } catch (e) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "Invalid request body."
+        }
+      );
+    }
+
+    const rawCandidates =
+      Array.isArray(
+        payload.candidates
+      )
+        ? payload.candidates
+        : [];
+
+    const candidates =
+      rawCandidates
+        .filter(
+          isValidPlayerShape
+        )
+        .slice(
+          0,
+          MAX_CANDIDATES
+        );
+
+    if (
+      candidates.length ===
+      0
+    ) {
+      return jsonResponse(
+        200,
+        {
+          computedAt:
+            new Date()
+              .toISOString(),
+
+          candidateCount:
+            0,
+
+          recommendations:
+            [],
+
+          degraded:
+            []
+        }
+      );
+    }
+
+    const currentPoolInput =
+      Array.isArray(
+        payload.currentPool
+      ) &&
+      payload.currentPool.length >
+        0
+        ? payload.currentPool.filter(
+            isValidPlayerShape
+          )
+        : candidates;
+
+    const nextTurnPoolInput =
+      Array.isArray(
+        payload.nextTurnPool
+      )
+        ? payload.nextTurnPool.filter(
+            isValidPlayerShape
+          )
+        : [];
+
+    const currentPick =
+      payload.currentPick;
+
+    const nextUserPick =
+      payload.nextUserPick;
+
+    try {
+      const opportunityStore =
+        getStore({
+          name:
+            "opportunity-intel"
+        });
+
+      const contextStore =
+        getStore({
+          name:
+            "context-intel"
+        });
+
+      const [
+        opportunityCache,
+        contextCache
+      ] =
+        await Promise.all([
+          opportunityStore
+            .get(
+              "latest",
+              {
+                type:
+                  "json"
+              }
+            )
+            .catch(
+              () => null
+            ),
+
+          contextStore
+            .get(
+              "latest",
+              {
+                type:
+                  "json"
+              }
+            )
+            .catch(
+              () => null
+            )
+        ]);
+
+      // Build the pool objects ONCE, reused across every candidate's
+      // Scarcity call.
+      const currentPool =
+        buildOpportunityPool(
+          opportunityCache,
+          currentPoolInput
+        );
+
+      const nextTurnPool =
+        buildOpportunityPool(
+          opportunityCache,
+          nextTurnPoolInput
+        );
+
+      const degraded = [];
+
+      const evaluated =
+        candidates.map(
+          function (player) {
+            const result =
+              evaluateCandidate(
+                opportunityCache,
+                contextCache,
+                player,
+                currentPool,
+                nextTurnPool,
+                currentPick,
+                nextUserPick
+              );
+
+            if (
+              result.missing.length >
+              0
+            ) {
+              degraded.push({
+                name:
+                  player.name,
+
+                pos:
+                  player.pos,
+
+                missing:
+                  result.missing
+              });
+            }
+
+            return result;
+          }
+        );
+
+      // AUG 18 2026:
+      // Preserve scoring-specific market order as the primary sequence.
+      // SAGE category remains a secondary tie-break and still supplies
+      // the action/explanation shown for every recommendation.
+      evaluated.sort(
+        compareEvaluatedCandidates
+      );
+
+      const recommendations =
+        evaluated
+          .slice(
+            0,
+            MAX_RECOMMENDATIONS
+          )
+          .map(
+            function (e) {
+              return {
+                player: {
+                  name:
+                    e.player.name,
+
+                  pos:
+                    e.player.pos,
+
+                  team:
+                    e.player.team ||
+                    null
+                },
+
+                adp:
+                  e.adp,
+
+                recommendation:
+                  e.sage.recommendation,
+
+                code:
+                  e.sage.code,
+
+                explanation:
+                  e.sage.explanation,
+
+                reasons:
+                  Array.isArray(
+                    e.sage.reasons
+                  )
+                    ? e.sage.reasons.slice(
+                        0,
+                        2
+                      )
+                    : []
+              };
+            }
+          );
+
+      return jsonResponse(
+        200,
+        {
+          computedAt:
+            new Date()
+              .toISOString(),
+
+          candidateCount:
+            candidates.length,
+
+          recommendations:
+            recommendations,
+
+          degraded:
+            degraded
+        }
+      );
+    } catch (err) {
+      console.log(
+        "sage-recommend error:",
+        err.message
+      );
+
+      return jsonResponse(
+        500,
+        {
+          error:
+            "SAGE recommendations temporarily unavailable."
+        }
+      );
+    }
+  };
 
 // Exported for direct unit testing of the pure logic, independent of the
 // live Blobs caches.
@@ -370,6 +867,7 @@ module.exports._test = {
   attachAdp,
   buildOpportunityPool,
   evaluateCandidate,
+  compareEvaluatedCandidates,
   codeRank,
   CODE_RANK,
   isValidPlayerShape
