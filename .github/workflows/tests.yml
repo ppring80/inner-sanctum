@@ -1,4 +1,4 @@
-    name: Inner Sanctum Tests
+name: Inner Sanctum Tests
 
 on:
   push:
