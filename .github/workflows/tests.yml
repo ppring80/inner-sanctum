@@ -1,4 +1,4 @@
-name: Inner Sanctum Tests
+    name: Inner Sanctum Tests
 
 on:
   push:
@@ -19,5 +19,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run Draft Fit tests
+      - name: Run Draft Fit unit tests
         run: node tests/draft-fit-profile.test.js
+
+      - name: Run Draft Fit scenario tests
+        run: node tests/draft-fit-scenarios.test.js
