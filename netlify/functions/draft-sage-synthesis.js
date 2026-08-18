@@ -188,7 +188,9 @@
           s.direction ===
             'Increasing Role' ||
           s.direction ===
-            'Stable Role'
+            'Stable Role' ||
+          s.direction ===
+            'Softening Role'
         )
       );
     }
@@ -213,8 +215,12 @@
           s.workload ===
             'Moderate Volume'
         ) &&
-        s.direction ===
-          'Decreasing Role'
+        (
+          s.direction ===
+            'Decreasing Role' ||
+          s.direction ===
+            'Sustained Decline'
+        )
       );
     }
 
@@ -395,10 +401,24 @@
         );
       } else if (
         opportunity.direction ===
+          'Softening Role'
+      ) {
+        reasons.push(
+          'recent role has softened but volume remains strong'
+        );
+      } else if (
+        opportunity.direction ===
           'Decreasing Role'
       ) {
         reasons.push(
           'recent role trend warrants caution'
+        );
+      } else if (
+        opportunity.direction ===
+          'Sustained Decline'
+      ) {
+        reasons.push(
+          'role decline has persisted across longer windows'
         );
       }
 
