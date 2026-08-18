@@ -122,6 +122,37 @@ const T = sageModule._test;
 test('playerKey matches the exact convention used across opportunity-intel/context-intel (normalized name + |POS)', () => {
   assert.strictEqual(T.playerKey({ name: "Ja'Marr Chase", pos: 'wr' }), 'jamarr chase|WR');
 });
+
+// ─────────────────────────────────────────────────────────
+// Aug 18 2026 fix: Ja'Marr Chase identity-normalization defect.
+// normalizePlayerName()'s apostrophe class used to LOOK like it covered
+// three different apostrophe styles ([.''']) but all three characters
+// were actually the identical ASCII U+0027 typed three times -- a
+// curly apostrophe (U+2019, the common "smart quote" a data source or
+// CMS can produce) silently failed to strip, breaking the Opportunity
+// cache lookup for exactly this name. Confirmed by a live diagnostic
+// that ran the real production handler with both variants.
+// ─────────────────────────────────────────────────────────
+test("apostrophe fix: straight (U+0027) and curly right (U+2019) quotes normalize Ja'Marr Chase to the identical key", () => {
+  const straight = T.playerKey({ name: 'Ja' + String.fromCharCode(0x27) + 'Marr Chase', pos: 'WR' });
+  const curlyRight = T.playerKey({ name: 'Ja' + String.fromCharCode(0x2019) + 'Marr Chase', pos: 'WR' });
+  assert.strictEqual(straight, 'jamarr chase|WR');
+  assert.strictEqual(curlyRight, straight, 'a curly right-quote apostrophe must normalize to the exact same key as the straight one');
+});
+test('apostrophe fix: curly left quote (U+2018) also normalizes to the identical key', () => {
+  const straight = T.playerKey({ name: 'Ja' + String.fromCharCode(0x27) + 'Marr Chase', pos: 'WR' });
+  const curlyLeft = T.playerKey({ name: 'Ja' + String.fromCharCode(0x2018) + 'Marr Chase', pos: 'WR' });
+  assert.strictEqual(curlyLeft, straight);
+});
+test('apostrophe fix: unpunctuated names (e.g. Jahmyr Gibbs) are completely unaffected', () => {
+  assert.strictEqual(T.playerKey({ name: 'Jahmyr Gibbs', pos: 'RB' }), 'jahmyr gibbs|RB');
+});
+test('apostrophe fix: every other existing normalization rule is preserved unchanged (period, hyphen, suffix, whitespace)', () => {
+  assert.strictEqual(T.normalizePlayerName('A.J. Brown'), 'aj brown');
+  assert.strictEqual(T.normalizePlayerName('Amon-Ra St. Brown'), 'amon ra st brown');
+  assert.strictEqual(T.normalizePlayerName('Michael Pittman Jr.'), 'michael pittman');
+  assert.strictEqual(T.normalizePlayerName('  Extra   Space  '), 'extra space');
+});
 test('CODE_RANK contains exactly the codes found in the real draft-sage-synthesis.js (no invented categories)', () => {
   const draftSage = require('../netlify/functions/draft-sage-synthesis.js');
   // Every code sage-recommend.js knows how to rank must be a real,
@@ -158,6 +189,62 @@ test('attachAdp returns null for a null record, otherwise merges adp onto a copy
 //    modules, mocked Blobs)
 // ─────────────────────────────────────────────────────────
 async function runHandlerTests() {
+  await testAsync("Aug 18 2026 fix: straight and curly apostrophe variants of Ja'Marr Chase both match the SAME real Opportunity record and produce the SAME real recommendation", async () => {
+    resetStores();
+    seedOpportunity('jamarr chase|WR', makeOpportunityRecord({ longName: "Ja'Marr Chase", pos: 'WR', signals: [
+      { type: 'sampleSize', value: 'adequate', detail: {} },
+      { type: 'roleComposition', value: 'receiving-dominant', detail: { carriesShare: 0, targetsShare: 1 } },
+      { type: 'volumeTier', value: 'high-volume', detail: {} },
+    ] }));
+
+    const straightVariant = { name: 'Ja' + String.fromCharCode(0x27) + 'Marr Chase', pos: 'WR', adp: 1.6 };
+    const curlyVariant = { name: 'Ja' + String.fromCharCode(0x2019) + 'Marr Chase', pos: 'WR', adp: 1.6 };
+
+    const resStraight = await sageModule.handler(makeEvent({ candidates: [straightVariant], currentPick: 1, nextUserPick: 24 }));
+    const resCurly = await sageModule.handler(makeEvent({ candidates: [curlyVariant], currentPick: 1, nextUserPick: 24 }));
+    const bodyStraight = JSON.parse(resStraight.body);
+    const bodyCurly = JSON.parse(resCurly.body);
+
+    // Both must find the real Opportunity record -- neither should be
+    // flagged as missing "opportunity" anymore (this is exactly the
+    // check that failed before the fix).
+    assert.ok(!bodyStraight.degraded.some((d) => d.missing.includes('opportunity')), 'straight-apostrophe variant must match the Opportunity record');
+    assert.ok(!bodyCurly.degraded.some((d) => d.missing.includes('opportunity')), 'curly-apostrophe variant must ALSO match the same Opportunity record -- this is the actual fix');
+
+    // Both must produce the identical real recommendation from the
+    // actual handler -- not a reimplementation of the comparison.
+    assert.strictEqual(bodyCurly.recommendations[0].code, bodyStraight.recommendations[0].code);
+    assert.strictEqual(bodyCurly.recommendations[0].recommendation, bodyStraight.recommendations[0].recommendation);
+    assert.strictEqual(bodyCurly.recommendations[0].explanation, bodyStraight.recommendations[0].explanation);
+  });
+
+  await testAsync("Aug 18 2026 fix: reproduces the exact live diagnostic scenario -- Chase and Gibbs both resolve to take-now regardless of apostrophe style", async () => {
+    resetStores();
+    seedOpportunity('jamarr chase|WR', makeOpportunityRecord({ longName: "Ja'Marr Chase", pos: 'WR', signals: [
+      { type: 'sampleSize', value: 'adequate', detail: {} },
+      { type: 'roleComposition', value: 'receiving-dominant', detail: { carriesShare: 0, targetsShare: 1 } },
+      { type: 'trendClassification', value: 'stable', detail: { trend: 0 } },
+      { type: 'volumeTier', value: 'high-volume', detail: {} },
+    ] }));
+    seedOpportunity('jahmyr gibbs|RB', makeOpportunityRecord({ longName: 'Jahmyr Gibbs', pos: 'RB', signals: [
+      { type: 'sampleSize', value: 'adequate', detail: {} },
+      { type: 'roleComposition', value: 'balanced', detail: { carriesShare: 0.6, targetsShare: 0.4 } },
+      { type: 'trendClassification', value: 'stable', detail: { trend: 0 } },
+      { type: 'volumeTier', value: 'high-volume', detail: {} },
+    ] }));
+
+    const curlyChase = { name: 'Ja' + String.fromCharCode(0x2019) + 'Marr Chase', pos: 'WR', adp: 1.6 };
+    const gibbs = { name: 'Jahmyr Gibbs', pos: 'RB', adp: 2.0 };
+
+    const res = await sageModule.handler(makeEvent({ candidates: [curlyChase, gibbs], currentPick: 1, nextUserPick: 24 }));
+    const body = JSON.parse(res.body);
+    const chaseRec = body.recommendations.find((r) => r.player.name.includes('Marr Chase'));
+    const gibbsRec = body.recommendations.find((r) => r.player.name === 'Jahmyr Gibbs');
+
+    assert.strictEqual(chaseRec.code, 'take-now', 'this is the exact bug: before the fix this was "consider-now"');
+    assert.strictEqual(gibbsRec.code, 'take-now');
+  });
+
   await testAsync('Aug 17 2026 correction: a player OUTSIDE the candidate subset, present only in currentPool, measurably changes the real Scarcity read', async () => {
     resetStores();
     // The candidate actually being evaluated.
