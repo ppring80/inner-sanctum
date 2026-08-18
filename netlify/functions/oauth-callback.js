@@ -258,6 +258,8 @@ async function exchangeCodeForToken(
 async function fetchIdentity(
   accessToken
 ) {
+  // currently_entitled_tiers is a relationship on the Patreon member
+  // resource, so it must be requested through the nested include path.
   return httpsRequest({
     hostname:
       "www.patreon.com",
@@ -277,115 +279,24 @@ async function fetchIdentity(
   });
 }
 
-// ── Patreon membership diagnostics ─────────────────────────────────────
-//
-// TEMPORARY.
-//
-// We deliberately DO NOT log:
-// - email addresses
-// - Patreon access tokens
-// - client secrets
-// - cookie signing secret
-// - signed session cookie
-//
-// We only log membership status and tier IDs so we can verify the
-// entitlement decision.
-
-function getMembershipDiagnostics(
-  identityJson
-) {
-  if (
-    !identityJson ||
-    !Array.isArray(
-      identityJson.included
-    )
-  ) {
-    return [];
-  }
-
-  return identityJson.included
-    .filter(
-      (item) =>
-        item &&
-        item.type === "member"
-    )
-    .map(
-      (member, index) => {
-        const tiers =
-          (
-            member.relationships &&
-            member.relationships
-              .currently_entitled_tiers &&
-            Array.isArray(
-              member.relationships
-                .currently_entitled_tiers
-                .data
-            ) &&
-            member.relationships
-              .currently_entitled_tiers
-              .data
-          ) ||
-          [];
-
-        return {
-          index:
-            index + 1,
-
-          memberId:
-            member.id ||
-            null,
-
-          patronStatus:
-            (
-              member.attributes &&
-              member.attributes
-                .patron_status
-            ) ||
-            null,
-
-          entitledTierIds:
-            tiers.map(
-              (tier) =>
-                String(
-                  tier.id
-                )
-            ),
-        };
-      }
-    );
-}
-
 // ── Entitlement logic ───────────────────────────────────────────────────
 //
-// IMPORTANT FIX — AUGUST 2026
+// IMPORTANT — MULTI-MEMBERSHIP SUPPORT
 //
-// Patreon may return MULTIPLE `member` records for one authenticated
+// Patreon may return multiple `member` records for one authenticated
 // Patreon user when that person belongs to multiple creators.
 //
-// Previous behavior:
-//
-//   const member = included.find(item => item.type === "member")
-//
-// That selected the first Patreon membership returned and ignored all
-// others.
-//
-// Evan Galbreath exposed the defect:
-// - another Patreon creator membership returned tier 3115740 first
-// - Inner Sanctum membership returned tier 28845597
-// - old logic extracted only 3115740
-// - fullAccess incorrectly became false
-//
-// Correct behavior:
+// We must therefore:
 //
 //   1. inspect ALL member records
 //   2. keep only active_patron memberships
 //   3. collect ALL currently entitled tier IDs
-//   4. de-duplicate the IDs
-//   5. grant Inner Sanctum access if ANY ID matches the configured
-//      Founding Acolyte tier
+//   4. de-duplicate those IDs
+//   5. grant Inner Sanctum access only if one of those IDs matches
+//      the configured Founding Acolyte tier
 //
-// Other Patreon creators still cannot grant Inner Sanctum access because
-// only our configured tier ID 28845597 satisfies isAcolyte().
+// This preserves access for ordinary single-membership patrons while
+// correctly supporting patrons who also belong to other Patreon creators.
 
 function extractEntitledTierIds(
   identityJson
@@ -477,46 +388,6 @@ function isAcolyte(
   );
 }
 
-function logPatreonDiagnostics(
-  identityJson,
-  entitledTierIds,
-  returnPath
-) {
-  const memberships =
-    getMembershipDiagnostics(
-      identityJson
-    );
-
-  const acolyteFound =
-    isAcolyte(
-      entitledTierIds
-    );
-
-  console.log(
-    "[PATREON AUTH DIAGNOSTIC]",
-    JSON.stringify({
-      returnPath,
-
-      memberRecordCount:
-        memberships.length,
-
-      memberships,
-
-      extractedEntitledTierIds:
-        entitledTierIds,
-
-      configuredAcolyteTierIds:
-        ACOLYTE_TIER_IDS,
-
-      acolyteTierFound:
-        acolyteFound,
-
-      resultingFullAccess:
-        acolyteFound,
-    })
-  );
-}
-
 // ── Session payload ─────────────────────────────────────────────────────
 
 function buildSessionPayload(
@@ -582,10 +453,6 @@ exports.handler =
           code
         );
     } catch {
-      console.error(
-        "[PATREON AUTH DIAGNOSTIC] token exchange request failed"
-      );
-
       return redirectTo(
         "?auth_error=token_exchange_failed"
       );
@@ -596,14 +463,6 @@ exports.handler =
       !tokenResp.json
         .access_token
     ) {
-      console.error(
-        "[PATREON AUTH DIAGNOSTIC] token exchange returned no access token",
-        JSON.stringify({
-          status:
-            tokenResp.status,
-        })
-      );
-
       return redirectTo(
         "?auth_error=token_exchange_failed"
       );
@@ -618,10 +477,6 @@ exports.handler =
             .access_token
         );
     } catch {
-      console.error(
-        "[PATREON AUTH DIAGNOSTIC] identity request failed"
-      );
-
       return redirectTo(
         "?auth_error=identity_fetch_failed"
       );
@@ -632,22 +487,11 @@ exports.handler =
         identityResp.json
       );
 
-    // Temporary safe diagnostics.
-    logPatreonDiagnostics(
-      identityResp.json,
-      entitledTierIds,
-      returnPath
-    );
-
     const secret =
       process.env
         .COOKIE_SIGNING_SECRET;
 
     if (!secret) {
-      console.error(
-        "[PATREON AUTH DIAGNOSTIC] COOKIE_SIGNING_SECRET missing"
-      );
-
       return redirectTo(
         "?auth_error=server_misconfigured"
       );
@@ -685,7 +529,7 @@ exports.handler =
     );
   };
 
-// Exported for isolated testing only.
+// Exported for isolated testing only — not used by the handler itself.
 module.exports._test = {
   signSession,
   verifySession,
@@ -700,6 +544,4 @@ module.exports._test = {
   base64urlDecode,
 
   sanitizeReturnPath,
-
-  getMembershipDiagnostics,
 };
