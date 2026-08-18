@@ -30,3 +30,6 @@ jobs:
 
       - name: Run Draft Intelligence ranking tests
         run: node tests/draft-intelligence-ranking.test.js
+
+      - name: Run Draft Intelligence output contract tests
+        run: node tests/draft-intelligence-output.test.js
