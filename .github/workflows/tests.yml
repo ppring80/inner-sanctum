@@ -24,3 +24,6 @@ jobs:
 
       - name: Run Draft Fit scenario tests
         run: node tests/draft-fit-scenarios.test.js
+
+      - name: Run Draft Intelligence scenario tests
+        run: node tests/draft-intelligence-scenarios.test.js
