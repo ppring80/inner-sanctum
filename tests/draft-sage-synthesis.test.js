@@ -1,5 +1,6 @@
 const {
   buildRecommendation,
+  isStrongOpportunity,
   isWeakOpportunity,
   isOpportunityCaution
 } = require(
@@ -723,7 +724,147 @@ eq(
 );
 
 // ---------------------------------------
-// 17. No hidden score
+// 17. 3 / 6 / 10 role-direction vocabulary
+// ---------------------------------------
+
+const softeningHigh = {
+  workload: 'High Volume',
+  direction: 'Softening Role',
+  style: 'Receiving-Driven',
+  evidence: 'Established'
+};
+
+check(
+  'high-volume Softening Role remains strong Opportunity',
+  isStrongOpportunity(softeningHigh)
+);
+
+check(
+  'high-volume Softening Role is not caution',
+  !isOpportunityCaution(softeningHigh)
+);
+
+r = buildRecommendation({
+  opportunityProfile:
+    op(
+      'High Volume',
+      'Softening Role'
+    ),
+
+  marketProfile:
+    market(
+      'At Market',
+      'Market Leans Gone'
+    ),
+
+  scarcityProfile:
+    scarcity(
+      'Moderate'
+    ),
+
+  contextProfile:
+    context()
+});
+
+eq(
+  'high-volume softening + timing pressure => Take Now',
+  r.recommendation,
+  'Take Now'
+);
+
+check(
+  'Softening Take Now retains plain-language caution reason',
+  r.reasons.includes(
+    'recent role has softened but volume remains strong'
+  )
+);
+
+const sustainedHigh = {
+  workload: 'High Volume',
+  direction: 'Sustained Decline',
+  style: 'Receiving-Driven',
+  evidence: 'Established'
+};
+
+check(
+  'high-volume Sustained Decline is caution',
+  isOpportunityCaution(
+    sustainedHigh
+  )
+);
+
+check(
+  'high-volume Sustained Decline is not strong',
+  !isStrongOpportunity(
+    sustainedHigh
+  )
+);
+
+r = buildRecommendation({
+  opportunityProfile:
+    op(
+      'High Volume',
+      'Sustained Decline'
+    ),
+
+  marketProfile:
+    market(
+      'At Market',
+      'Market Leans Gone'
+    ),
+
+  scarcityProfile:
+    scarcity(
+      'Moderate'
+    ),
+
+  contextProfile:
+    context()
+});
+
+eq(
+  'sustained decline + timing pressure => Consider Now',
+  r.recommendation,
+  'Consider Now'
+);
+
+check(
+  'Sustained Decline reason communicates persistence',
+  r.reasons.includes(
+    'role decline has persisted across longer windows'
+  )
+);
+
+r = buildRecommendation({
+  opportunityProfile:
+    op(
+      'Moderate Volume',
+      'Softening Role'
+    ),
+
+  marketProfile:
+    market(
+      'At Market',
+      'Market Leans Gone'
+    ),
+
+  scarcityProfile:
+    scarcity(
+      'Moderate'
+    ),
+
+  contextProfile:
+    context()
+});
+
+check(
+  'Moderate Volume + Softening Role never becomes Take Now through strong-opportunity path',
+  r.recommendation !==
+    'Take Now'
+);
+
+// ---------------------------------------
+// 18. No hidden score
 // ---------------------------------------
 
 check(
@@ -735,7 +876,7 @@ check(
 );
 
 // ---------------------------------------
-// 18. Context retained in evidence
+// 19. Context retained in evidence
 // ---------------------------------------
 
 check(
@@ -747,7 +888,7 @@ check(
 );
 
 // ---------------------------------------
-// 19. Plain-language reasons
+// 20. Plain-language reasons
 // ---------------------------------------
 
 check(
@@ -758,7 +899,7 @@ check(
 );
 
 // ---------------------------------------
-// 20. Pure / non-mutating
+// 21. Pure / non-mutating
 // ---------------------------------------
 
 const input = {
