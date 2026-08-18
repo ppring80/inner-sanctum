@@ -4,7 +4,7 @@
 // Unified local regression gate for the SAGE pillar test suites plus
 // the giveaway redemption suites.
 //
-// Runs all eight suites below, in order, even if an earlier one fails —
+// Runs all ten suites below, in order, even if an earlier one fails —
 // so a single `npm test` run surfaces every suite's result at once
 // rather than stopping at the first failure. Each suite's own
 // stdout/stderr is preserved exactly as if it were run directly.
@@ -34,6 +34,8 @@ const SUITES = [
   'tests/draft-sage-synthesis.test.js',
   'tests/redeem-giveaway-code.test.js',
   'tests/weekly-oauth-session.test.js',
+  'tests/sage-recommend.test.js',
+  'tests/draft-sage-integration.test.js',
 ];
 
 const results = [];
