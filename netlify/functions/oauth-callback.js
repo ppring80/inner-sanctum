@@ -1,4 +1,3 @@
-
 const crypto = require("crypto");
 const https = require("https");
 
@@ -95,6 +94,7 @@ function signSession(payload, secret) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
+
   return `${encodedPayload}.${signature}`;
 }
 
@@ -103,6 +103,7 @@ function verifySession(cookie, secret) {
     if (!cookie || typeof cookie !== "string" || !cookie.includes(".")) {
       return null;
     }
+
     const [encodedPayload, signature] = cookie.split(".");
     if (!encodedPayload || !signature) return null;
 
@@ -116,6 +117,7 @@ function verifySession(cookie, secret) {
 
     const sigBuf = Buffer.from(signature);
     const expectedBuf = Buffer.from(expectedSignature);
+
     if (
       sigBuf.length !== expectedBuf.length ||
       !crypto.timingSafeEqual(sigBuf, expectedBuf)
@@ -124,7 +126,10 @@ function verifySession(cookie, secret) {
     }
 
     const payload = JSON.parse(base64urlDecode(encodedPayload));
-    if (!payload.exp || Date.now() > payload.exp) return null;
+
+    if (!payload.exp || Date.now() > payload.exp) {
+      return null;
+    }
 
     return payload;
   } catch {
@@ -137,17 +142,33 @@ function httpsRequest(options, body) {
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       let data = "";
-      res.on("data", (chunk) => (data += chunk));
+
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+
       res.on("end", () => {
         try {
-          resolve({ status: res.statusCode, json: JSON.parse(data) });
+          resolve({
+            status: res.statusCode,
+            json: JSON.parse(data),
+          });
         } catch {
-          resolve({ status: res.statusCode, json: null, raw: data });
+          resolve({
+            status: res.statusCode,
+            json: null,
+            raw: data,
+          });
         }
       });
     });
+
     req.on("error", reject);
-    if (body) req.write(body);
+
+    if (body) {
+      req.write(body);
+    }
+
     req.end();
   });
 }
@@ -190,7 +211,10 @@ async function fetchIdentity(accessToken) {
   // only ever gets populated via this corrected include path.
   return httpsRequest({
     hostname: "www.patreon.com",
-    path: `/api/oauth2/v2/identity?include=memberships.currently_entitled_tiers&fields%5Bmember%5D=patron_status`,
+    path:
+      "/api/oauth2/v2/identity" +
+      "?include=memberships.currently_entitled_tiers" +
+      "&fields%5Bmember%5D=patron_status",
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -198,20 +222,90 @@ async function fetchIdentity(accessToken) {
   });
 }
 
-// ── Pure decision logic (kept separate from network code, easy to test) ─
-function extractEntitledTierIds(identityJson) {
-  if (!identityJson || !identityJson.included) return [];
-  const member = identityJson.included.find((item) => item.type === "member");
-  if (!member) return [];
-  if (member.attributes && member.attributes.patron_status !== "active_patron") {
+// ── Diagnostic helpers ─────────────────────────────────────────────────
+//
+// IMPORTANT:
+// These logs deliberately DO NOT include:
+// - Patreon access tokens
+// - Patreon client secrets
+// - cookie signing secret
+// - signed session cookie
+// - email address
+//
+// They only expose the membership state Patreon returned and the tier IDs
+// used to make the access decision.
+
+function getMembershipDiagnostics(identityJson) {
+  if (!identityJson || !Array.isArray(identityJson.included)) {
     return [];
   }
+
+  return identityJson.included
+    .filter((item) => item && item.type === "member")
+    .map((member, index) => {
+      const tiers =
+        (member.relationships &&
+          member.relationships.currently_entitled_tiers &&
+          Array.isArray(member.relationships.currently_entitled_tiers.data) &&
+          member.relationships.currently_entitled_tiers.data) ||
+        [];
+
+      return {
+        index: index + 1,
+        memberId: member.id || null,
+        patronStatus:
+          (member.attributes && member.attributes.patron_status) || null,
+        entitledTierIds: tiers.map((tier) => tier.id),
+      };
+    });
+}
+
+function logPatreonDiagnostics(identityJson, entitledTierIds, returnPath) {
+  const memberships = getMembershipDiagnostics(identityJson);
+  const acolyteFound = isAcolyte(entitledTierIds);
+
+  console.log(
+    "[PATREON AUTH DIAGNOSTIC]",
+    JSON.stringify({
+      returnPath,
+      memberRecordCount: memberships.length,
+      memberships,
+      extractedEntitledTierIds: entitledTierIds,
+      configuredAcolyteTierIds: ACOLYTE_TIER_IDS,
+      acolyteTierFound: acolyteFound,
+      resultingFullAccess: acolyteFound,
+    })
+  );
+}
+
+// ── Pure decision logic (kept separate from network code, easy to test) ─
+function extractEntitledTierIds(identityJson) {
+  if (!identityJson || !identityJson.included) {
+    return [];
+  }
+
+  const member = identityJson.included.find(
+    (item) => item.type === "member"
+  );
+
+  if (!member) {
+    return [];
+  }
+
+  if (
+    member.attributes &&
+    member.attributes.patron_status !== "active_patron"
+  ) {
+    return [];
+  }
+
   const tiers =
     (member.relationships &&
       member.relationships.currently_entitled_tiers &&
       member.relationships.currently_entitled_tiers.data) ||
     [];
-  return tiers.map((t) => t.id);
+
+  return tiers.map((tier) => tier.id);
 }
 
 // Generic helper: does this set of entitled tier IDs intersect a
@@ -219,13 +313,19 @@ function extractEntitledTierIds(identityJson) {
 // an empty bucket always returns false, never silently "matches everything."
 function hasTier(entitledTierIds, tierIdBucket) {
   if (!Array.isArray(tierIdBucket) || tierIdBucket.length === 0) {
-    return false; // fail closed — no tier IDs configured yet
+    return false;
   }
-  return entitledTierIds.some((id) => tierIdBucket.includes(id));
+
+  return entitledTierIds.some((id) =>
+    tierIdBucket.includes(id)
+  );
 }
 
 function isAcolyte(entitledTierIds) {
-  return hasTier(entitledTierIds, ACOLYTE_TIER_IDS);
+  return hasTier(
+    entitledTierIds,
+    ACOLYTE_TIER_IDS
+  );
 }
 
 // ── Session payload shape ────────────────────────────────────────────────
@@ -234,10 +334,17 @@ function isAcolyte(entitledTierIds) {
 // boolean) for forward compatibility — if a second tier is ever
 // reintroduced, the session shape can grow without every existing gate
 // check needing to change its access pattern.
-function buildSessionPayload(entitledTierIds, now) {
+function buildSessionPayload(
+  entitledTierIds,
+  now
+) {
   return {
-    fullAccess: isAcolyte(entitledTierIds),
-    exp: now.getTime() + SESSION_DURATION_MS,
+    fullAccess:
+      isAcolyte(entitledTierIds),
+
+    exp:
+      now.getTime() +
+      SESSION_DURATION_MS,
   };
 }
 
@@ -247,54 +354,137 @@ exports.handler = async (event) => {
   // echoed back (or "/sanctum" if absent/invalid/tampered) — every
   // redirect below, success or failure, uses this same resolved path
   // instead of a hardcoded destination.
-  const rawState = event.queryStringParameters && event.queryStringParameters.state;
-  const returnPath = sanitizeReturnPath(rawState);
+  const rawState =
+    event.queryStringParameters &&
+    event.queryStringParameters.state;
 
-  const redirectTo = (query, extraHeaders = {}) => ({
+  const returnPath =
+    sanitizeReturnPath(rawState);
+
+  const redirectTo = (
+    query,
+    extraHeaders = {}
+  ) => ({
     statusCode: 302,
-    headers: { Location: `${returnPath}${query}`, ...extraHeaders },
+    headers: {
+      Location: `${returnPath}${query}`,
+      ...extraHeaders,
+    },
   });
 
-  const code = event.queryStringParameters && event.queryStringParameters.code;
+  const code =
+    event.queryStringParameters &&
+    event.queryStringParameters.code;
+
   if (!code) {
-    return redirectTo("?auth_error=missing_code");
+    return redirectTo(
+      "?auth_error=missing_code"
+    );
   }
 
   let tokenResp;
+
   try {
-    tokenResp = await exchangeCodeForToken(code);
-  } catch {
-    return redirectTo("?auth_error=token_exchange_failed");
+    tokenResp =
+      await exchangeCodeForToken(code);
+  } catch (err) {
+    console.error(
+      "[PATREON AUTH DIAGNOSTIC] token exchange request failed"
+    );
+
+    return redirectTo(
+      "?auth_error=token_exchange_failed"
+    );
   }
 
-  if (!tokenResp.json || !tokenResp.json.access_token) {
-    return redirectTo("?auth_error=token_exchange_failed");
+  if (
+    !tokenResp.json ||
+    !tokenResp.json.access_token
+  ) {
+    console.error(
+      "[PATREON AUTH DIAGNOSTIC] token exchange returned no access token",
+      JSON.stringify({
+        status: tokenResp.status,
+      })
+    );
+
+    return redirectTo(
+      "?auth_error=token_exchange_failed"
+    );
   }
 
   let identityResp;
+
   try {
-    identityResp = await fetchIdentity(tokenResp.json.access_token);
-  } catch {
-    return redirectTo("?auth_error=identity_fetch_failed");
+    identityResp =
+      await fetchIdentity(
+        tokenResp.json.access_token
+      );
+  } catch (err) {
+    console.error(
+      "[PATREON AUTH DIAGNOSTIC] identity request failed"
+    );
+
+    return redirectTo(
+      "?auth_error=identity_fetch_failed"
+    );
   }
 
-  const entitledTierIds = extractEntitledTierIds(identityResp.json);
+  const entitledTierIds =
+    extractEntitledTierIds(
+      identityResp.json
+    );
 
-  const secret = process.env.COOKIE_SIGNING_SECRET;
+  // TEMPORARY SAFE DIAGNOSTIC LOGGING.
+  // This does not change entitlement logic.
+  logPatreonDiagnostics(
+    identityResp.json,
+    entitledTierIds,
+    returnPath
+  );
+
+  const secret =
+    process.env.COOKIE_SIGNING_SECRET;
+
   if (!secret) {
-    return redirectTo("?auth_error=server_misconfigured");
+    console.error(
+      "[PATREON AUTH DIAGNOSTIC] COOKIE_SIGNING_SECRET missing"
+    );
+
+    return redirectTo(
+      "?auth_error=server_misconfigured"
+    );
   }
 
-  const payload = buildSessionPayload(entitledTierIds, new Date());
-  const session = signSession(payload, secret);
+  const payload =
+    buildSessionPayload(
+      entitledTierIds,
+      new Date()
+    );
 
-  const cookieHeader = `${COOKIE_NAME}=${session}; Path=/; Max-Age=${Math.floor(
-    SESSION_DURATION_MS / 1000
-  )}; HttpOnly; Secure; SameSite=Lax`;
+  const session =
+    signSession(
+      payload,
+      secret
+    );
 
-  return redirectTo("?auth=success", {
-    "Set-Cookie": cookieHeader,
-  });
+  const cookieHeader =
+    `${COOKIE_NAME}=${session}; ` +
+    `Path=/; ` +
+    `Max-Age=${Math.floor(
+      SESSION_DURATION_MS / 1000
+    )}; ` +
+    `HttpOnly; ` +
+    `Secure; ` +
+    `SameSite=Lax`;
+
+  return redirectTo(
+    "?auth=success",
+    {
+      "Set-Cookie":
+        cookieHeader,
+    }
+  );
 };
 
 // Exported for isolated testing only — not used by the handler itself.
@@ -308,4 +498,5 @@ module.exports._test = {
   base64urlEncode,
   base64urlDecode,
   sanitizeReturnPath,
+  getMembershipDiagnostics,
 };
