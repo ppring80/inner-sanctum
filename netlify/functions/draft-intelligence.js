@@ -8,570 +8,699 @@
 //   "How attractive is this player right now?"
 //
 // Draft Fit answers:
-//   "How well does this player fit my roster?"
+//   "How well does this player fit MY roster right now?"
 //
 // Draft Intelligence answers:
-//   "Given my roster, this league, the board, and when I pick again,
-//    should I take this player NOW?"
+//   "Given both of those things, should I take this player now,
+//    and how should this player rank against my other choices?"
 //
-// This module is intentionally deterministic and explainable.
-// It does not replace SAGE or Draft Fit. It consumes their output.
+// IMPORTANT DESIGN RULES
+// ----------------------
+// 1. SAGE remains the underlying player evaluation.
+// 2. Draft Fit remains categorical and explainable.
+// 3. No hidden Draft Fit numeric score is created here.
+// 4. Draft Intelligence may adjust a decision when SAGE choices are close.
+// 5. Roster need is pressure, not a command.
+// 6. Exceptional value may override temporary roster imbalance.
+// 7. Waiting risk matters because the user may not pick again for many turns.
+// 8. Adjustments are deliberately limited to ONE recommendation tier.
+//
+// This module is pure:
+// - no network calls
+// - no Netlify Blobs
+// - no DOM
+// - no state writes
 
 "use strict";
 
-const DECISION = Object.freeze({
-  TAKE_NOW: "TAKE_NOW",
-  STRONG_CONSIDERATION: "STRONG_CONSIDERATION",
-  CONSIDER: "CONSIDER",
-  WAIT: "WAIT",
+const SAGE_CODES = Object.freeze([
+  "take-now",
+  "strong-consideration",
+  "consider-now",
+  "consider",
+  "can-wait",
+  "flexible",
+  "caution",
+  "wait",
+  "pass-for-now",
+  "needs-more-evidence",
+]);
+
+const DECISION_LABELS = Object.freeze({
+  "take-now": "Take Now",
+  "strong-consideration": "Strong Consideration",
+  "consider-now": "Consider Now",
+  "consider": "Consider",
+  "can-wait": "Can Wait",
+  "flexible": "Flexible",
+  "caution": "Caution",
+  "wait": "Wait",
+  "pass-for-now": "Pass For Now",
+  "needs-more-evidence": "Needs More Evidence",
 });
 
-const DEFAULT_CONFIG = Object.freeze({
-  sageWeight: 0.40,
-  fitWeight: 0.30,
-  scarcityWeight: 0.15,
-  marketWeight: 0.15,
-
-  takeNowThreshold: 80,
-  strongConsiderationThreshold: 70,
-  considerThreshold: 58,
-
-  maxMarketAdjustment: 15,
-  maxScarcityAdjustment: 15,
+const FIT_PRIORITY = Object.freeze({
+  "value-override": 0,
+  "excellent-fit": 1,
+  "good-fit": 2,
+  "neutral-fit": 3,
+  "roster-pressure": 4,
 });
 
-function clamp(value, min, max) {
+const WAITING_RISK = Object.freeze({
+  HIGH: "high",
+  MEDIUM: "medium",
+  LOW: "low",
+  UNKNOWN: "unknown",
+});
+
+function safeNumber(value, fallback = null) {
   const number = Number(value);
 
-  if (!Number.isFinite(number)) {
-    return min;
-  }
-
-  return Math.min(max, Math.max(min, number));
+  return Number.isFinite(number)
+    ? number
+    : fallback;
 }
 
-function normalizeScore(value) {
-  return clamp(value, 0, 100);
+function normalizePos(pos) {
+  return String(pos || "")
+    .trim()
+    .toUpperCase();
 }
 
-function normalizePositiveInteger(value, fallback) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number) || number <= 0) {
-    return fallback;
-  }
-
-  return Math.round(number);
+function normalizeName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[.\u0027\u2018\u2019]/g, "")
+    .replace(/-/g, " ")
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function getCandidateName(candidate) {
+function playerKey(player) {
   return (
-    candidate?.name ||
-    candidate?.playerName ||
-    candidate?.player ||
-    "Unknown Player"
+    normalizeName(player && player.name) +
+    "|" +
+    normalizePos(player && player.pos)
   );
 }
 
-function getCandidatePosition(candidate) {
-  return String(
-    candidate?.position ||
-    candidate?.pos ||
+function getSageCode(sage) {
+  const code = String(
+    (sage && (
+      sage.code ||
+      sage.recommendationCode
+    )) ||
     ""
-  ).toUpperCase();
+  )
+    .trim()
+    .toLowerCase();
+
+  return SAGE_CODES.includes(code)
+    ? code
+    : "needs-more-evidence";
 }
 
-function getSageScore(candidate) {
-  const possibleScores = [
-    candidate?.sageScore,
-    candidate?.sage_score,
-    candidate?.sage?.score,
-    candidate?.score,
-  ];
+function sageRank(code) {
+  const index = SAGE_CODES.indexOf(code);
 
-  for (const value of possibleScores) {
-    const number = Number(value);
-
-    if (Number.isFinite(number)) {
-      return normalizeScore(number);
-    }
-  }
-
-  return 50;
+  return index >= 0
+    ? index
+    : SAGE_CODES.length - 1;
 }
 
-function getFitScore(candidate) {
-  const possibleScores = [
-    candidate?.draftFitScore,
-    candidate?.fitScore,
-    candidate?.fit_score,
-    candidate?.draftFit?.score,
-    candidate?.fit?.score,
-  ];
+function codeFromRank(rank) {
+  const safeRank = Math.max(
+    0,
+    Math.min(
+      SAGE_CODES.length - 1,
+      Math.round(rank)
+    )
+  );
 
-  for (const value of possibleScores) {
-    const number = Number(value);
+  return SAGE_CODES[safeRank];
+}
 
-    if (Number.isFinite(number)) {
-      return normalizeScore(number);
-    }
-  }
+function getFitCode(draftFit) {
+  return String(
+    (draftFit && draftFit.fit) ||
+    "neutral-fit"
+  )
+    .trim()
+    .toLowerCase();
+}
 
-  return 50;
+function getFitAction(draftFit) {
+  return String(
+    (draftFit && draftFit.action) ||
+    "hold"
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function getFitPriority(draftFit) {
+  const fit = getFitCode(draftFit);
+
+  return Object.prototype.hasOwnProperty.call(
+    FIT_PRIORITY,
+    fit
+  )
+    ? FIT_PRIORITY[fit]
+    : FIT_PRIORITY["neutral-fit"];
 }
 
 function getAdp(candidate) {
-  const possibleValues = [
-    candidate?.adp,
-    candidate?.ADP,
-    candidate?.market?.adp,
-  ];
-
-  for (const value of possibleValues) {
-    const number = Number(value);
-
-    if (Number.isFinite(number) && number > 0) {
-      return number;
-    }
-  }
-
-  return null;
-}
-
-function calculatePicksUntilNextTurn(context = {}) {
-  const explicit = Number(
-    context.picksUntilNextTurn ??
-    context.selectionsUntilNextPick ??
-    context.picksUntilNextPick
+  const adp = safeNumber(
+    candidate && candidate.adp,
+    null
   );
 
-  if (Number.isFinite(explicit) && explicit >= 0) {
-    return Math.round(explicit);
-  }
-
-  const currentPick = Number(context.currentPick);
-  const nextPick = Number(context.nextPick);
-
-  if (
-    Number.isFinite(currentPick) &&
-    Number.isFinite(nextPick) &&
-    nextPick > currentPick
-  ) {
-    return Math.max(0, Math.round(nextPick - currentPick - 1));
-  }
-
-  return 0;
+  return adp !== null && adp > 0
+    ? adp
+    : null;
 }
 
-function calculateMarketScore(candidate, context = {}) {
-  const adp = getAdp(candidate);
-
-  if (adp === null) {
-    return {
-      score: 50,
-      value: 0,
-      label: "UNKNOWN_MARKET",
-    };
+function candidateAppearsInNextTurnPool(
+  candidate,
+  nextTurnPool
+) {
+  if (!Array.isArray(nextTurnPool)) {
+    return false;
   }
 
-  const currentPick = normalizePositiveInteger(
-    context.currentPick,
-    Math.round(adp)
+  const key = playerKey(candidate);
+
+  return nextTurnPool.some(
+    (player) => playerKey(player) === key
+  );
+}
+
+function positionAppearsInNextTurnPool(
+  candidate,
+  nextTurnPool
+) {
+  if (!Array.isArray(nextTurnPool)) {
+    return false;
+  }
+
+  const pos = normalizePos(
+    candidate && candidate.pos
   );
 
-  const value = currentPick - adp;
-
-  // Positive value means the player has fallen beyond ADP.
-  // Negative value means we are considering the player ahead of ADP.
-  //
-  // Convert approximately +/- 20 picks of market value
-  // into a 0-100 market score centered at 50.
-
-  const score = normalizeScore(50 + value * 2.5);
-
-  let label = "AT_MARKET";
-
-  if (value >= 8) {
-    label = "STRONG_VALUE";
-  } else if (value >= 3) {
-    label = "VALUE";
-  } else if (value <= -8) {
-    label = "WELL_AHEAD_OF_MARKET";
-  } else if (value <= -3) {
-    label = "AHEAD_OF_MARKET";
-  }
-
-  return {
-    score,
-    value,
-    label,
-  };
+  return nextTurnPool.some(
+    (player) =>
+      normalizePos(player && player.pos) === pos
+  );
 }
 
-function calculateScarcityScore(candidate, context = {}) {
-  const position = getCandidatePosition(candidate);
+// Waiting risk is deliberately categorical.
+//
+// We first trust the projected next-turn pool because Draft Command
+// Center already derives that from the live draft state.
+//
+// ADP is used only as additional evidence when the projected pool
+// cannot answer the question directly.
+function evaluateWaitingRisk(
+  candidate,
+  context
+) {
+  const data = context || {};
 
-  const availablePlayers = Array.isArray(context.availablePlayers)
-    ? context.availablePlayers
+  const nextTurnPool = Array.isArray(
+    data.nextTurnPool
+  )
+    ? data.nextTurnPool
     : [];
 
-  if (!position || availablePlayers.length === 0) {
-    return {
-      score: 50,
-      samePositionCount: null,
-      label: "UNKNOWN_SCARCITY",
-    };
-  }
-
-  const samePosition = availablePlayers.filter(
-    (player) => getCandidatePosition(player) === position
+  const currentPick = safeNumber(
+    data.currentPick,
+    null
   );
 
-  if (samePosition.length === 0) {
-    return {
-      score: 100,
-      samePositionCount: 0,
-      label: "EXTREME_SCARCITY",
-    };
-  }
+  const nextUserPick = safeNumber(
+    data.nextUserPick,
+    safeNumber(data.nextPick, null)
+  );
 
-  const candidateSage = getSageScore(candidate);
+  const adp = getAdp(candidate);
 
-  const viableAlternatives = samePosition.filter((player) => {
-    const name = getCandidateName(player);
-
-    if (name === getCandidateName(candidate)) {
-      return false;
+  if (nextTurnPool.length > 0) {
+    if (
+      candidateAppearsInNextTurnPool(
+        candidate,
+        nextTurnPool
+      )
+    ) {
+      return {
+        level: WAITING_RISK.LOW,
+        reason:
+          "This player is projected to remain available at your next turn.",
+      };
     }
 
-    return getSageScore(player) >= candidateSage - 10;
-  });
+    if (
+      !positionAppearsInNextTurnPool(
+        candidate,
+        nextTurnPool
+      )
+    ) {
+      return {
+        level: WAITING_RISK.HIGH,
+        reason:
+          `${normalizePos(candidate.pos)} depth is projected to thin before your next turn.`,
+      };
+    }
 
-  const count = viableAlternatives.length;
-
-  let score;
-  let label;
-
-  if (count <= 1) {
-    score = 90;
-    label = "HIGH_SCARCITY";
-  } else if (count <= 3) {
-    score = 75;
-    label = "SCARCE";
-  } else if (count <= 6) {
-    score = 60;
-    label = "MODERATE_SCARCITY";
-  } else {
-    score = 40;
-    label = "DEPTH_AVAILABLE";
+    return {
+      level: WAITING_RISK.MEDIUM,
+      reason:
+        "Comparable positional options may remain, but this specific player is not projected to survive.",
+    };
   }
-
-  return {
-    score,
-    samePositionCount: count,
-    label,
-  };
-}
-
-function estimateSurvivalToNextPick(candidate, context = {}) {
-  const adp = getAdp(candidate);
-  const currentPick = Number(context.currentPick);
-  const picksUntilNextTurn = calculatePicksUntilNextTurn(context);
 
   if (
-    adp === null ||
-    !Number.isFinite(currentPick) ||
-    picksUntilNextTurn <= 0
+    adp !== null &&
+    nextUserPick !== null
+  ) {
+    if (adp <= nextUserPick - 5) {
+      return {
+        level: WAITING_RISK.HIGH,
+        reason:
+          "Market position suggests meaningful risk that this player will be gone before your next pick.",
+      };
+    }
+
+    if (adp <= nextUserPick + 3) {
+      return {
+        level: WAITING_RISK.MEDIUM,
+        reason:
+          "The player's market range overlaps your next selection.",
+      };
+    }
+
+    return {
+      level: WAITING_RISK.LOW,
+      reason:
+        "Market position suggests there may be room to wait.",
+    };
+  }
+
+  if (
+    adp !== null &&
+    currentPick !== null &&
+    adp <= currentPick
   ) {
     return {
-      probability: null,
-      label: "UNKNOWN",
+      level: WAITING_RISK.HIGH,
+      reason:
+        "The player is already available beyond his market expectation.",
     };
   }
 
-  const nextSelectionPoint = currentPick + picksUntilNextTurn + 1;
-  const cushion = adp - nextSelectionPoint;
-
-  // This is intentionally a transparent heuristic rather than
-  // pretending to be a probability model.
-  //
-  // Large positive cushion:
-  //   ADP is comfortably after our next pick -> likely survives.
-  //
-  // Large negative cushion:
-  //   ADP occurs before our next pick -> meaningful waiting risk.
-
-  let probability;
-
-  if (cushion >= 15) {
-    probability = 0.90;
-  } else if (cushion >= 8) {
-    probability = 0.75;
-  } else if (cushion >= 3) {
-    probability = 0.60;
-  } else if (cushion >= -2) {
-    probability = 0.45;
-  } else if (cushion >= -8) {
-    probability = 0.25;
-  } else {
-    probability = 0.10;
-  }
-
-  let label;
-
-  if (probability >= 0.75) {
-    label = "LIKELY_AVAILABLE";
-  } else if (probability >= 0.50) {
-    label = "MAY_SURVIVE";
-  } else if (probability >= 0.25) {
-    label = "MEANINGFUL_RISK";
-  } else {
-    label = "UNLIKELY_TO_SURVIVE";
-  }
-
   return {
-    probability,
-    label,
+    level: WAITING_RISK.UNKNOWN,
+    reason:
+      "Waiting risk cannot be established confidently from the available draft state.",
   };
 }
 
-function calculateUrgencyScore(candidate, context = {}) {
-  const survival = estimateSurvivalToNextPick(candidate, context);
+// Draft Intelligence is intentionally restrained.
+//
+// A Draft Fit signal may move a player by AT MOST one SAGE tier.
+//
+// Examples:
+//
+// consider-now + excellent fit + high waiting risk
+//   -> strong-consideration
+//
+// take-now + roster pressure
+//   -> strong-consideration
+//
+// take-now + value override
+//   -> take-now
+//
+// A weak underlying SAGE player cannot suddenly become Take Now
+// just because the roster has an empty position.
+function determineDecisionRank(
+  sage,
+  draftFit,
+  waitingRisk
+) {
+  const baseCode = getSageCode(sage);
+  const baseRank = sageRank(baseCode);
 
-  if (survival.probability === null) {
+  const fit = getFitCode(draftFit);
+  const action = getFitAction(draftFit);
+
+  let adjustedRank = baseRank;
+  let adjustment = "none";
+
+  // Exceptional value protection.
+  if (
+    fit === "value-override" ||
+    action === "value-override"
+  ) {
     return {
-      score: 50,
-      survival,
+      baseCode,
+      baseRank,
+      decisionRank: baseRank,
+      decisionCode: baseCode,
+      adjustment: "value-override",
     };
   }
 
+  // Excellent fit only promotes when waiting carries real danger.
+  if (
+    action === "promote" &&
+    (
+      waitingRisk.level === WAITING_RISK.HIGH ||
+      waitingRisk.level === WAITING_RISK.MEDIUM
+    )
+  ) {
+    adjustedRank = Math.max(
+      0,
+      baseRank - 1
+    );
+
+    if (adjustedRank !== baseRank) {
+      adjustment = "promoted-one-tier";
+    }
+  }
+
+  // Roster pressure may restrain a strong recommendation,
+  // but never by more than one tier.
+  if (action === "pressure") {
+    adjustedRank = Math.min(
+      SAGE_CODES.length - 1,
+      baseRank + 1
+    );
+
+    if (adjustedRank !== baseRank) {
+      adjustment = "restrained-one-tier";
+    }
+  }
+
   return {
-    score: normalizeScore((1 - survival.probability) * 100),
-    survival,
+    baseCode,
+    baseRank,
+    decisionRank: adjustedRank,
+    decisionCode: codeFromRank(
+      adjustedRank
+    ),
+    adjustment,
   };
 }
 
-function buildReasons({
+function buildExplanation({
   candidate,
-  sageScore,
-  fitScore,
-  market,
-  scarcity,
-  urgency,
+  sage,
+  draftFit,
+  waitingRisk,
+  decision,
 }) {
-  const reasons = [];
-
-  if (sageScore >= 80) {
-    reasons.push("SAGE sees a strong player opportunity.");
-  } else if (sageScore >= 65) {
-    reasons.push("SAGE sees a solid player opportunity.");
-  }
-
-  if (fitScore >= 80) {
-    reasons.push("The player is an excellent fit for your current roster.");
-  } else if (fitScore >= 65) {
-    reasons.push("The player fits your current roster well.");
-  } else if (fitScore < 45) {
-    reasons.push("Roster fit is weaker than the player's standalone value.");
-  }
-
-  if (market.label === "STRONG_VALUE") {
-    reasons.push("The player has fallen meaningfully beyond market cost.");
-  } else if (market.label === "VALUE") {
-    reasons.push("The player is available at a favorable market price.");
-  } else if (
-    market.label === "AHEAD_OF_MARKET" ||
-    market.label === "WELL_AHEAD_OF_MARKET"
-  ) {
-    reasons.push("This selection would be ahead of the current market price.");
-  }
+  const fitLabel =
+    (draftFit && draftFit.label) ||
+    "Neutral Fit";
 
   if (
-    scarcity.label === "HIGH_SCARCITY" ||
-    scarcity.label === "EXTREME_SCARCITY"
+    decision.adjustment ===
+    "value-override"
   ) {
-    reasons.push(
-      `Comparable ${getCandidatePosition(candidate)} options are becoming scarce.`
+    return (
+      `SAGE value is strong enough to preserve the recommendation despite roster imbalance. ` +
+      `${fitLabel}: ${draftFit.explanation || "temporary roster imbalance is acceptable."}`
     );
   }
 
-  if (urgency.survival.label === "UNLIKELY_TO_SURVIVE") {
-    reasons.push("Waiting until your next pick carries substantial risk.");
-  } else if (urgency.survival.label === "MEANINGFUL_RISK") {
-    reasons.push("There is meaningful risk the player will not reach your next pick.");
-  } else if (urgency.survival.label === "LIKELY_AVAILABLE") {
-    reasons.push("The player has a reasonable chance to remain available.");
+  if (
+    decision.adjustment ===
+    "promoted-one-tier"
+  ) {
+    return (
+      `${fitLabel} strengthens the case for acting now. ` +
+      waitingRisk.reason
+    );
   }
-
-  return reasons.slice(0, 4);
-}
-
-function determineDecision(score, fitScore, urgencyScore, config) {
-  // Excellent player + excellent roster fit + meaningful waiting risk
-  // should be actionable even if one secondary component is weaker.
 
   if (
-    score >= config.takeNowThreshold ||
-    (
-      fitScore >= 80 &&
-      urgencyScore >= 70 &&
-      score >= config.strongConsiderationThreshold
-    )
+    decision.adjustment ===
+    "restrained-one-tier"
   ) {
-    return DECISION.TAKE_NOW;
+    return (
+      `The player remains attractive, but roster construction reduces the urgency. ` +
+      `${draftFit.explanation || ""}`
+    ).trim();
   }
 
-  if (score >= config.strongConsiderationThreshold) {
-    return DECISION.STRONG_CONSIDERATION;
-  }
-
-  if (score >= config.considerThreshold) {
-    return DECISION.CONSIDER;
-  }
-
-  return DECISION.WAIT;
+  return (
+    `${fitLabel}. ` +
+    (
+      draftFit &&
+      draftFit.explanation
+        ? draftFit.explanation
+        : waitingRisk.reason
+    )
+  );
 }
 
-function evaluateDraftDecision(candidate, context = {}, options = {}) {
-  if (!candidate || typeof candidate !== "object") {
-    throw new TypeError("candidate must be an object");
-  }
+function evaluateDraftIntelligence(
+  input,
+  context
+) {
+  const data = input || {};
 
-  const config = {
-    ...DEFAULT_CONFIG,
-    ...(options.config || {}),
-  };
+  const candidate =
+    data.candidate || {};
 
-  const sageScore = getSageScore(candidate);
-  const fitScore = getFitScore(candidate);
+  const sage =
+    data.sage || {};
 
-  const market = calculateMarketScore(candidate, context);
-  const scarcity = calculateScarcityScore(candidate, context);
-  const urgency = calculateUrgencyScore(candidate, context);
+  const draftFit =
+    data.draftFit || {};
 
-  // Urgency belongs inside the market/timing portion of the decision.
-  // It should influence whether we act now without overwhelming
-  // SAGE player quality or Draft Fit.
+  const waitingRisk =
+    evaluateWaitingRisk(
+      candidate,
+      context || {}
+    );
 
-  const timingScore = normalizeScore(
-    market.score * 0.45 +
-    urgency.score * 0.55
-  );
-
-  const intelligenceScore = normalizeScore(
-    sageScore * config.sageWeight +
-    fitScore * config.fitWeight +
-    scarcity.score * config.scarcityWeight +
-    timingScore * config.marketWeight
-  );
-
-  const decision = determineDecision(
-    intelligenceScore,
-    fitScore,
-    urgency.score,
-    config
-  );
-
-  const reasons = buildReasons({
-    candidate,
-    sageScore,
-    fitScore,
-    market,
-    scarcity,
-    urgency,
-  });
+  const decision =
+    determineDecisionRank(
+      sage,
+      draftFit,
+      waitingRisk
+    );
 
   return {
-    player: getCandidateName(candidate),
-    position: getCandidatePosition(candidate),
-
-    decision,
-    intelligenceScore: Number(intelligenceScore.toFixed(1)),
-
-    components: {
-      sage: Number(sageScore.toFixed(1)),
-      draftFit: Number(fitScore.toFixed(1)),
-      scarcity: Number(scarcity.score.toFixed(1)),
-      market: Number(market.score.toFixed(1)),
-      urgency: Number(urgency.score.toFixed(1)),
-      timing: Number(timingScore.toFixed(1)),
+    player: {
+      name:
+        candidate.name ||
+        "",
+      pos:
+        normalizePos(
+          candidate.pos
+        ),
+      team:
+        candidate.team ||
+        "",
     },
 
-    market: {
-      adp: getAdp(candidate),
-      valueVsCurrentPick: market.value,
-      label: market.label,
+    adp: getAdp(candidate),
+
+    sage: {
+      recommendation:
+        sage.recommendation ||
+        DECISION_LABELS[
+          decision.baseCode
+        ] ||
+        "",
+      code:
+        decision.baseCode,
     },
 
-    scarcity: {
-      label: scarcity.label,
-      viableSamePositionAlternatives: scarcity.samePositionCount,
+    draftFit: {
+      fit:
+        getFitCode(draftFit),
+      label:
+        draftFit.label ||
+        "Neutral Fit",
+      action:
+        getFitAction(draftFit),
+      explanation:
+        draftFit.explanation ||
+        "",
+      reasons:
+        Array.isArray(
+          draftFit.reasons
+        )
+          ? draftFit.reasons
+          : [],
     },
 
-    nextTurn: {
-      picksUntilNextTurn: calculatePicksUntilNextTurn(context),
-      survivalProbability: urgency.survival.probability,
-      survivalLabel: urgency.survival.label,
+    waitingRisk,
+
+    decision: {
+      recommendation:
+        DECISION_LABELS[
+          decision.decisionCode
+        ] ||
+        decision.decisionCode,
+
+      code:
+        decision.decisionCode,
+
+      adjustment:
+        decision.adjustment,
+
+      explanation:
+        buildExplanation({
+          candidate,
+          sage,
+          draftFit,
+          waitingRisk,
+          decision,
+        }),
     },
 
-    reasons,
+    diagnostics: {
+      sageRank:
+        decision.baseRank,
+
+      decisionRank:
+        decision.decisionRank,
+
+      fitPriority:
+        getFitPriority(
+          draftFit
+        ),
+    },
   };
 }
 
-function rankDraftCandidates(candidates = [], context = {}, options = {}) {
-  if (!Array.isArray(candidates)) {
-    throw new TypeError("candidates must be an array");
-  }
+function rankDraftIntelligence(
+  candidates,
+  context
+) {
+  const list = Array.isArray(
+    candidates
+  )
+    ? candidates
+    : [];
 
-  const evaluationContext = {
-    ...context,
-    availablePlayers:
-      context.availablePlayers || candidates,
-  };
-
-  return candidates
-    .map((candidate) =>
-      evaluateDraftDecision(candidate, evaluationContext, options)
+  return list
+    .map((entry) =>
+      evaluateDraftIntelligence(
+        entry,
+        context || {}
+      )
     )
     .sort((a, b) => {
-      if (b.intelligenceScore !== a.intelligenceScore) {
-        return b.intelligenceScore - a.intelligenceScore;
+      // 1. Final Draft Intelligence decision.
+      if (
+        a.diagnostics.decisionRank !==
+        b.diagnostics.decisionRank
+      ) {
+        return (
+          a.diagnostics.decisionRank -
+          b.diagnostics.decisionRank
+        );
       }
 
-      if (b.components.draftFit !== a.components.draftFit) {
-        return b.components.draftFit - a.components.draftFit;
+      // 2. Draft Fit breaks close decisions.
+      if (
+        a.diagnostics.fitPriority !==
+        b.diagnostics.fitPriority
+      ) {
+        return (
+          a.diagnostics.fitPriority -
+          b.diagnostics.fitPriority
+        );
       }
 
-      return b.components.sage - a.components.sage;
+      // 3. Original SAGE strength remains relevant.
+      if (
+        a.diagnostics.sageRank !==
+        b.diagnostics.sageRank
+      ) {
+        return (
+          a.diagnostics.sageRank -
+          b.diagnostics.sageRank
+        );
+      }
+
+      // 4. ADP remains the objective final tie-breaker,
+      // matching the existing SAGE endpoint convention.
+      const adpA =
+        a.adp === null
+          ? Number.POSITIVE_INFINITY
+          : a.adp;
+
+      const adpB =
+        b.adp === null
+          ? Number.POSITIVE_INFINITY
+          : b.adp;
+
+      return adpA - adpB;
     });
 }
 
-function buildTopRecommendations(
-  candidates = [],
-  context = {},
-  options = {}
+function buildTopDraftRecommendations(
+  candidates,
+  context,
+  limit
 ) {
-  const limit = normalizePositiveInteger(options.limit, 5);
+  const max =
+    Number.isFinite(
+      Number(limit)
+    ) &&
+    Number(limit) > 0
+      ? Math.round(
+          Number(limit)
+        )
+      : 5;
 
-  return rankDraftCandidates(candidates, context, options)
-    .slice(0, limit)
-    .map((result, index) => ({
-      rank: index + 1,
-      ...result,
-    }));
+  return rankDraftIntelligence(
+    candidates,
+    context
+  )
+    .slice(0, max)
+    .map(
+      (result, index) => ({
+        rank:
+          index + 1,
+        ...result,
+      })
+    );
 }
 
 module.exports = {
-  DECISION,
-  DEFAULT_CONFIG,
-  clamp,
-  normalizeScore,
-  calculatePicksUntilNextTurn,
-  calculateMarketScore,
-  calculateScarcityScore,
-  estimateSurvivalToNextPick,
-  calculateUrgencyScore,
-  evaluateDraftDecision,
-  rankDraftCandidates,
-  buildTopRecommendations,
+  SAGE_CODES,
+  DECISION_LABELS,
+  FIT_PRIORITY,
+  WAITING_RISK,
+
+  normalizePos,
+  normalizeName,
+  playerKey,
+
+  getSageCode,
+  sageRank,
+  codeFromRank,
+
+  getFitCode,
+  getFitAction,
+  getFitPriority,
+
+  getAdp,
+
+  candidateAppearsInNextTurnPool,
+  positionAppearsInNextTurnPool,
+  evaluateWaitingRisk,
+
+  determineDecisionRank,
+  evaluateDraftIntelligence,
+  rankDraftIntelligence,
+  buildTopDraftRecommendations,
 };
