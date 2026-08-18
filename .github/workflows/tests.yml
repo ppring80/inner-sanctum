@@ -27,3 +27,6 @@ jobs:
 
       - name: Run Draft Intelligence scenario tests
         run: node tests/draft-intelligence-scenarios.test.js
+
+      - name: Run Draft Intelligence ranking tests
+        run: node tests/draft-intelligence-ranking.test.js
