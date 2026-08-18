@@ -55,11 +55,6 @@ function findSignal(signals, type) {
   return (signals || []).find((s) => s.type === type) || null;
 }
 
-// ── Shared: the same "most reliable recent basis" cascade the existing
-// recentRoleVsBaseline signal already uses internally (avgLast5 ->
-// avgLast3 -> lastGame). Reused here verbatim rather than inventing a
-// second, different cascade for Workload's recentAvg — one convention,
-// not two. ──
 function recentBasis(metrics) {
   if (metrics.avgLast5 !== null) return { value: metrics.avgLast5, window: "avgLast5" };
   if (metrics.avgLast3 !== null) return { value: metrics.avgLast3, window: "avgLast3" };
@@ -73,7 +68,6 @@ const VOLUME_TIER_LABELS = {
   "role-player": "Role Player",
 };
 
-// ── 1. WORKLOAD — "how much" ──
 function buildWorkload(record) {
   const opp = record.opportunities;
   const volumeSignal = findSignal(record.signals, "volumeTier");
@@ -90,53 +84,57 @@ function buildWorkload(record) {
 
   return {
     level: volumeSignal ? VOLUME_TIER_LABELS[volumeSignal.value] || volumeSignal.value : "Not Enough Data Yet",
-    seasonAvg: opp.seasonAvg, // preserved exactly, no rounding/rework beyond what the source already applied
+    seasonAvg: opp.seasonAvg,
     recentAvg: recent ? recent.value : null,
-    unit: "opportunities per game", // self-check fix: a bare number like "22.6" isn't self-explanatory to a consumer without this
+    unit: "opportunities per game",
   };
 }
 
-// ── 2. ROLE DIRECTION — "is it moving" ──
-// Label is driven ENTIRELY by the already-classified trendClassification
-// signal (expanding/stable/declining), relabeled for consumers. When
-// trendClassification isn't available yet (fewer than 6 games), the
-// label says so plainly rather than guessing — but the explanation can
-// still surface the raw, literal recentRoleVsBaseline delta as
-// unclassified supporting context, since reporting a signed number back
-// is not the same as classifying it.
-// Presentation-only thresholds (Aug 16 2026 refinement) for translating
-// the raw, still-continuous/unclassified recentRoleVsBaseline delta into
-// one of three fixed plain-language phrases. These do NOT alter
-// recentRoleVsBaseline's own computation or its "unclassified" status in
-// any way -- they only decide which fixed sentence to print here, and
-// the raw percentDelta number itself is never surfaced in this
-// explanation anymore. Deliberately dual-gated (percent AND absolute) so
-// a low-volume player's naturally noisy percent swings (e.g. 1 extra
-// opportunity/game on a 2/game baseline = 50%) aren't described as a
-// meaningful move when the real magnitude is trivial -- this is exactly
-// what "avoid percentage-heavy language that exaggerates small-number
-// changes" requires.
-const ROLE_DIRECTION_PCT_THRESHOLD = 10; // percent
-const ROLE_DIRECTION_ABS_THRESHOLD = 1.5; // opportunities/game
+const ROLE_DIRECTION_PCT_THRESHOLD = 10;
+const ROLE_DIRECTION_ABS_THRESHOLD = 1.5;
 
 function describeRecentVsBaseline(baselineSignal) {
   if (!baselineSignal) return null;
+
   const { percentDelta, absoluteDelta } = baselineSignal.detail;
+
   if (percentDelta === null || absoluteDelta === null) return null;
+
   const meaningfullyMoved =
-    Math.abs(percentDelta) >= ROLE_DIRECTION_PCT_THRESHOLD && Math.abs(absoluteDelta) >= ROLE_DIRECTION_ABS_THRESHOLD;
+    Math.abs(percentDelta) >= ROLE_DIRECTION_PCT_THRESHOLD &&
+    Math.abs(absoluteDelta) >= ROLE_DIRECTION_ABS_THRESHOLD;
+
   if (!meaningfullyMoved) return "Recent workload is near his season norm.";
-  return absoluteDelta > 0 ? "Recent workload is above his season norm." : "Recent workload is below his season norm.";
+
+  return absoluteDelta > 0
+    ? "Recent workload is above his season norm."
+    : "Recent workload is below his season norm.";
+}
+
+function isMeaningfulPersistenceDecline(window) {
+  if (!window || window.percentDelta === null || window.absoluteDelta === null) {
+    return false;
+  }
+
+  return (
+    window.percentDelta <= -ROLE_DIRECTION_PCT_THRESHOLD &&
+    window.absoluteDelta <= -ROLE_DIRECTION_ABS_THRESHOLD
+  );
 }
 
 function buildRoleDirection(record) {
   const opp = record.opportunities;
+
   if (opp.gamesSampled === 0) {
-    return { label: "No NFL History", explanation: "This player has no recorded NFL role to evaluate yet." };
+    return {
+      label: "No NFL History",
+      explanation: "This player has no recorded NFL role to evaluate yet.",
+    };
   }
 
   const trendSignal = findSignal(record.signals, "trendClassification");
   const baselineSignal = findSignal(record.signals, "recentRoleVsBaseline");
+  const volumeSignal = findSignal(record.signals, "volumeTier");
   const baselineNote = describeRecentVsBaseline(baselineSignal);
 
   if (!trendSignal) {
@@ -148,32 +146,85 @@ function buildRoleDirection(record) {
     };
   }
 
-  const LABELS = { expanding: "Increasing Role", stable: "Stable Role", declining: "Decreasing Role" };
-  const VERBS = { expanding: "increased", stable: "held steady", declining: "decreased" };
-  const label = LABELS[trendSignal.value] || trendSignal.value;
-  const verb = VERBS[trendSignal.value] || "changed";
+  if (trendSignal.value === "expanding") {
+    return {
+      label: "Increasing Role",
+      explanation: baselineNote
+        ? `Role has increased over the last 3 weeks. ${baselineNote}`
+        : "Role has increased over the last 3 weeks.",
+    };
+  }
+
+  if (trendSignal.value === "stable") {
+    return {
+      label: "Stable Role",
+      explanation: baselineNote
+        ? `Role has held steady over the last 3 weeks. ${baselineNote}`
+        : "Role has held steady over the last 3 weeks.",
+    };
+  }
+
+  if (trendSignal.value === "declining") {
+    const persistence = record.persistence || {};
+
+    const declining3 = isMeaningfulPersistenceDecline(persistence.last3);
+    const declining6 = isMeaningfulPersistenceDecline(persistence.last6);
+    const declining10 = isMeaningfulPersistenceDecline(persistence.last10);
+
+    const isHighVolume = Boolean(
+      volumeSignal &&
+      volumeSignal.value === "high-volume"
+    );
+
+    if (declining3 && declining6 && declining10) {
+      return {
+        label: "Sustained Decline",
+        explanation: baselineNote
+          ? `Role decline is sustained across the 3-, 6-, and 10-game windows. ${baselineNote}`
+          : "Role decline is sustained across the 3-, 6-, and 10-game windows.",
+      };
+    }
+
+    if (declining3 && declining6) {
+      return {
+        label: "Decreasing Role",
+        explanation: baselineNote
+          ? `Role decline is confirmed across the 3- and 6-game windows. ${baselineNote}`
+          : "Role decline is confirmed across the 3- and 6-game windows.",
+      };
+    }
+
+    if (isHighVolume) {
+      return {
+        label: "Softening Role",
+        explanation: baselineNote
+          ? `Recent role has softened, but workload remains high volume. ${baselineNote}`
+          : "Recent role has softened, but workload remains high volume.",
+      };
+    }
+
+    return {
+      label: "Decreasing Role",
+      explanation: baselineNote
+        ? `Role has decreased over the last 3 weeks. ${baselineNote}`
+        : "Role has decreased over the last 3 weeks.",
+    };
+  }
 
   return {
-    label,
-    explanation: baselineNote
-      ? `Role has ${verb} over the last 3 weeks. ${baselineNote}`
-      : `Role has ${verb} over the last 3 weeks.`,
+    label: trendSignal.value,
+    explanation:
+      baselineNote ||
+      "Recent role direction is available but not recognized by this profile version.",
   };
 }
-
-// ── 3. ROLE STYLE — "what kind of role" (renamed from Role Quality, Aug
-// 16 2026 refinement). Built ONLY from roleComposition -- volumeTier is
-// deliberately NOT folded in here anymore: Workload already owns volume,
-// so cross-multiplying the two produced redundant and sometimes awkward
-// combined labels (e.g. a slash-joined "Depth/Complementary Role" showed
-// up on real AJ Dillon data during validation). Role Style now answers
-// exactly one question -- usage shape -- and nothing else.
 
 const ROLE_STYLE_LABELS = {
   "rushing-dominant": "Rush-Heavy",
   "receiving-dominant": "Receiving-Driven",
   "balanced": "Balanced",
 };
+
 const ROLE_STYLE_DESC = {
   "rushing-dominant": "primarily a rushing role",
   "receiving-dominant": "primarily a receiving role",
@@ -182,33 +233,32 @@ const ROLE_STYLE_DESC = {
 
 function buildRoleStyle(record) {
   const opp = record.opportunities;
+
   if (opp.gamesSampled === 0) {
-    return { label: "No NFL History", explanation: "No NFL role data exists for this player yet." };
+    return {
+      label: "No NFL History",
+      explanation: "No NFL role data exists for this player yet.",
+    };
   }
 
   const roleSignal = findSignal(record.signals, "roleComposition");
 
   if (!roleSignal) {
-    // A player who has played games but recorded zero rushing AND zero
-    // receiving opportunities in the basis window -- a real, distinct
-    // situation from "no NFL history," never conflated with it.
     return {
       label: "No Recorded Offensive Touches",
-      explanation: "This player has game data on file but no recorded rushing or receiving opportunities in the window we have.",
+      explanation:
+        "This player has game data on file but no recorded rushing or receiving opportunities in the window we have.",
     };
   }
 
   const label = ROLE_STYLE_LABELS[roleSignal.value] || roleSignal.value;
+
   return {
     label,
     explanation: `This is ${ROLE_STYLE_DESC[roleSignal.value] || roleSignal.value}.`,
   };
 }
 
-// ── 4. EVIDENCE — "how much do we trust this" ──
-// Directly relabels the existing sampleSize signal, plus explicitly
-// distinguishing zero-games (rookie/no history) from a genuinely small
-// but real sample -- constraint #3 and #4 both land here.
 function buildEvidence(record) {
   const opp = record.opportunities;
   const n = opp.gamesSampled;
@@ -217,12 +267,16 @@ function buildEvidence(record) {
     return {
       level: "No NFL History",
       gamesSampled: 0,
-      explanation: "This player has no recorded NFL game data yet — this is not a judgment about opportunity, there is simply no history to evaluate.",
+      explanation:
+        "This player has no recorded NFL game data yet — this is not a judgment about opportunity, there is simply no history to evaluate.",
     };
   }
 
   const sampleSignal = findSignal(record.signals, "sampleSize");
-  const isLimited = sampleSignal ? sampleSignal.value === "limited" : n < 3;
+
+  const isLimited = sampleSignal
+    ? sampleSignal.value === "limited"
+    : n < 3;
 
   return {
     level: isLimited ? "Limited Sample" : "Established Sample",
@@ -233,7 +287,6 @@ function buildEvidence(record) {
   };
 }
 
-// ── Public entry point ──
 function buildDraftOpportunityProfile(record) {
   return {
     workload: buildWorkload(record),
@@ -251,4 +304,5 @@ module.exports = {
   buildEvidence,
   recentBasis,
   describeRecentVsBaseline,
+  isMeaningfulPersistenceDecline,
 };
