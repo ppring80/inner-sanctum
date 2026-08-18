@@ -36,3 +36,6 @@ jobs:
 
       - name: Run Draft Intelligence explanation tests
         run: node tests/draft-intelligence-explanations.test.js
+
+      - name: Run Patreon multi-membership regression tests
+        run: node tests/patreon-multi-membership.test.js
