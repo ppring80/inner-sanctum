@@ -244,6 +244,24 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;gap:6px}
 .roster-detail.open{display:flex}
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
+.sage-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:none}
+.sage-panel-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.sage-status{font-family:'Lora',serif;font-size:12px;color:var(--text3);font-style:italic}
+.sage-error-msg{color:#a06010}
+.sage-rec-list{display:flex;flex-direction:column;gap:6px}
+.sage-rec{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.sage-rec-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.sage-rec-player{font-family:'Lora',serif;font-weight:600;font-size:13px;color:var(--text)}
+.sage-rec-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.sage-rec-label{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:rgba(201,168,76,0.15);color:#8a6a10;border:1px solid rgba(201,168,76,0.3);white-space:nowrap}
+.sage-code-take-now,.sage-code-strong-consideration{background:rgba(42,110,42,0.12);color:#2a6e2a;border-color:rgba(42,110,42,0.3)}
+.sage-code-caution,.sage-code-wait,.sage-code-pass-for-now{background:rgba(184,48,32,0.1);color:#a03020;border-color:rgba(184,48,32,0.25)}
+.sage-code-needs-more-evidence{background:rgba(122,122,118,0.12);color:#6a6a66;border-color:rgba(122,122,118,0.25)}
+.sage-rec-explanation{font-family:'Lora',serif;font-size:12px;color:var(--text2);line-height:1.4}
+.sage-rec-reasons{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px}
+.sage-showmore-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:3px 10px;cursor:pointer;font-size:10px;font-family:'Lora',serif}
+.sage-showmore-btn:hover{border-color:var(--gold);color:var(--gold)}
+.sage-rec-extra{margin-top:6px}
 .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .setup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
 .setup-field input,.setup-field select{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:'Lora',serif;font-size:13px}
@@ -459,6 +477,8 @@ function checkOAuthSession() {
   <span id="mySlotIndicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3)"></span>
   <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
 </div>
+
+<div class="sage-panel no-print" id="sagePanel"></div>
 
 <div class="roster-panel no-print" id="rosterPanel"></div>
 
@@ -881,6 +901,180 @@ function teamNameById(id){
 }
 function draftSetupComplete(){ return draftState.teams.length>0; }
 
+// ═══════════════════════════════════════════════════════════════════
+// SAGE V1 — DRAFT COMMAND CENTER INTEGRATION (Aug 17 2026)
+//
+// Additive, read-only decision support only. Nothing in this section
+// ever writes to draftState, calls saveDraftState(), logs/removes a
+// pick, or touches draft sequencing -- it only ever reads existing
+// state (adpByPos, draftState, the existing nextPickNumber()/
+// distanceToMySlot()/buildDraftIndex() functions, all unmodified) to
+// build a request, and only ever updates its own three variables
+// (sageRecommendations/sageLoading/sageError) plus this one panel's
+// DOM. A SAGE failure can never affect anything else on the page --
+// every call site below is a small addition alongside an existing
+// call, never a replacement of one.
+// ═══════════════════════════════════════════════════════════════════
+var SAGE_MAX_CANDIDATES=25;
+var sageRecommendations=null;
+var sageLoading=false;
+var sageError=null;
+var sageRequestSeq=0; // guards a slow/late response from overwriting a newer one
+var sageShowAll=false;
+var sageInitialRefreshDone=false;
+
+// Pure: currently-available players (not in draftLog), in ADP order.
+// Reused both as the candidate set and as the basis for the next-turn
+// pool below -- same source of truth the board itself already renders
+// from, nothing new fetched.
+function buildAvailablePlayersSortedByAdp(){
+  var draftIdx=buildDraftIndex();
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){ merged.push(p); });
+  });
+  merged.sort(function(a,b){return a.adp-b.adp});
+  return merged.filter(function(p){ return !draftIdx[p.key]; });
+}
+
+// Pure: the one genuinely new derived value Draft Command Center
+// needed for Scarcity (see the pre-integration audit) -- an estimate
+// of who's likely still around at the user's next turn. Skips the N
+// players (picksUntilNextTurn) most likely to be taken by other teams
+// first. Uncapped by default (returns the full remainder) -- Scarcity
+// needs the broader projected pool, not a bounded slice; maxSize is
+// only for callers/tests that explicitly want a capped result.
+function deriveNextTurnPool(availableSortedByAdp,picksUntilNextTurn,maxSize){
+  var skip=(typeof picksUntilNextTurn==='number'&&picksUntilNextTurn>0)?picksUntilNextTurn:0;
+  var remainder=availableSortedByAdp.slice(skip);
+  return (typeof maxSize==='number')?remainder.slice(0,maxSize):remainder;
+}
+
+function toSagePlayer(p){
+  return {name:p.name,pos:p.pos,adp:p.adp,team:p.team||null};
+}
+
+function toggleSageShowAll(){
+  sageShowAll=!sageShowAll;
+  renderSagePanel();
+}
+
+function renderSagePanel(){
+  var el=document.getElementById('sagePanel');
+  if(!el)return;
+
+  if(!draftSetupComplete()||isDraftComplete()){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+  if(sageLoading&&!sageRecommendations){
+    el.style.display='block';
+    el.innerHTML='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div><div class="sage-status">Thinking through the board...</div>';
+    return;
+  }
+  if(sageError){
+    el.style.display='block';
+    el.innerHTML='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div><div class="sage-status sage-error-msg">'+sageError+'</div>';
+    return;
+  }
+  if(!sageRecommendations||sageRecommendations.length===0){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+
+  var top3=sageRecommendations.slice(0,3);
+  var rest=sageRecommendations.slice(3,5);
+
+  function escText(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderRec(r){
+    var reasonsHtml=(r.reasons&&r.reasons.length)?('<div class="sage-rec-reasons">'+r.reasons.map(function(x){return '· '+escText(x);}).join('&nbsp;&nbsp;')+'</div>'):'';
+    var codeClass='sage-code-'+String(r.code||'').replace(/[^a-z-]/g,'');
+    return '<div class="sage-rec">'+
+      '<div class="sage-rec-top"><span class="sage-rec-player">'+escText(r.player.name)+'</span>'+
+      '<span class="sage-rec-meta">'+escText(r.player.pos)+(r.player.team?' · '+escText(r.player.team):'')+'</span>'+
+      '<span class="sage-rec-label '+codeClass+'">'+escText(r.recommendation)+'</span></div>'+
+      '<div class="sage-rec-explanation">'+escText(r.explanation)+'</div>'+
+      reasonsHtml+
+      '</div>';
+  }
+
+  var html='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div>';
+  html+='<div class="sage-rec-list">'+top3.map(renderRec).join('')+'</div>';
+  if(rest.length){
+    html+='<button type="button" class="sage-showmore-btn" onclick="toggleSageShowAll()">'+(sageShowAll?'Show less':'Show '+rest.length+' more')+'</button>';
+    html+='<div class="sage-rec-list sage-rec-extra" style="display:'+(sageShowAll?'flex':'none')+'">'+rest.map(renderRec).join('')+'</div>';
+  }
+  el.style.display='block';
+  el.innerHTML=html;
+}
+
+// The ONLY function that talks to the network for SAGE. Fully
+// asynchronous, never awaited by anything that logs/removes a pick --
+// every call site fires this and moves on immediately.
+function refreshSageRecommendations(){
+  if(!draftSetupComplete()||isDraftComplete()){
+    sageRecommendations=null; sageError=null; sageLoading=false;
+    renderSagePanel();
+    return;
+  }
+
+  var available=buildAvailablePlayersSortedByAdp();
+  if(available.length===0){
+    sageRecommendations=null; sageError=null; sageLoading=false;
+    renderSagePanel();
+    return;
+  }
+
+  var candidates=available.slice(0,SAGE_MAX_CANDIDATES).map(toSagePlayer);
+  var currentPick=nextPickNumber();
+  var away=distanceToMySlot(currentPick);
+  var nextUserPick=currentPick+(typeof away==='number'?away:0);
+  // Scarcity needs the BROADER available-player depth, not the same
+  // bounded slice SAGE evaluates as candidates -- Draft Command Center
+  // already has the full available population in memory (this is the
+  // same `available` list the board itself renders from), so it's used
+  // directly here rather than re-slicing it down to SAGE_MAX_CANDIDATES.
+  var currentPool=available.map(toSagePlayer);
+  var nextTurnPool=deriveNextTurnPool(available,away).map(toSagePlayer);
+  var scoringEl=document.getElementById('scoringSel');
+
+  var mySeq=++sageRequestSeq;
+  sageLoading=true;
+  sageError=null;
+  renderSagePanel();
+
+  fetch('/.netlify/functions/sage-recommend',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      candidates:candidates,
+      currentPool:currentPool,
+      nextTurnPool:nextTurnPool,
+      currentPick:currentPick,
+      nextUserPick:nextUserPick,
+      scoring:scoringEl?scoringEl.value:undefined
+    })
+  })
+    .then(function(res){ return res.json().catch(function(){return {};}).then(function(data){ return {ok:res.ok,data:data}; }); })
+    .then(function(result){
+      if(mySeq!==sageRequestSeq)return; // superseded by a newer request -- discard
+      sageLoading=false;
+      if(result.ok&&result.data&&Array.isArray(result.data.recommendations)){
+        sageRecommendations=result.data.recommendations;
+        sageError=null;
+      }else{
+        sageRecommendations=null;
+        sageError='SAGE recommendations temporarily unavailable.';
+      }
+      renderSagePanel();
+    })
+    .catch(function(){
+      if(mySeq!==sageRequestSeq)return;
+      sageLoading=false;
+      sageRecommendations=null;
+      sageError='SAGE recommendations temporarily unavailable.';
+      renderSagePanel();
+    });
+}
+
 // ─── Logging / undo / correction ───
 // One click does double duty, matching draft.html's existing toggle-to-undo
 // idiom: click an AVAILABLE player to log it against whoever is on the
@@ -970,6 +1164,7 @@ function undoLastPick(){
 
 function afterDraftMutation(){
   render();
+  refreshSageRecommendations();
 }
 
 // ─── Reassignment modal (Correct Historical Pick: reassign or remove) ───
@@ -1083,7 +1278,9 @@ function saveSetup(){
   draftState.numRounds=parseInt(document.getElementById('setupNumRounds').value)||16;
   saveDraftState();
   closeSetupModal();
+  sageInitialRefreshDone=true; // this call refreshes SAGE explicitly below; prevent render()'s own one-time auto-check from also firing
   render();
+  refreshSageRecommendations();
   if(isFirstEverSetup && !isOnboardingDismissed()) openOnboardingModal();
 }
 
@@ -1097,6 +1294,7 @@ function clearDrafted(){
   draftState.nextPickId=1;
   saveDraftState();
   render();
+  refreshSageRecommendations();
 }
 
 // ─── Onboarding (first-use guidance) — entirely separate from
@@ -1405,6 +1603,16 @@ function render(){
   renderMySlotIndicator();
   renderSetupSummaryButton();
   renderMyRoster();
+
+  // SAGE V1: fires exactly once, only if setup was already complete
+  // before this page load (a restored session) -- saveSetup() handles
+  // the "setup just completed/changed during this session" case with
+  // its own explicit call, and sets this same flag first so the two
+  // paths never both fire for the same event.
+  if(!sageInitialRefreshDone && draftSetupComplete()){
+    sageInitialRefreshDone=true;
+    refreshSageRecommendations();
+  }
 
   if(curSearch){renderSearch();return;}
   if(curPos==='ALL'){renderAll();return;}
