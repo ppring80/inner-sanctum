@@ -148,10 +148,21 @@ function codeRank(code) {
 
 // ── Identical logic to sage-pick-validation.js's own helpers (see file
 // header for why this is a deliberate duplicate, not an import). ──
+// Aug 18 2026 fix (Ja'Marr Chase identity-normalization defect): the
+// apostrophe class below is written with explicit \u escapes
+// deliberately -- the original version, `[.''']`, LOOKED like it
+// covered three different apostrophe styles but all three characters
+// were actually the identical ASCII U+0027 typed three times (a real,
+// confirmed defect, verified by direct Unicode codepoint inspection).
+// Explicit escapes make each character unambiguous at a glance and
+// prevent that exact mistake from silently recurring here again.
+// Covers: U+0027 (ASCII apostrophe), U+2019 (right single quotation
+// mark / the common "smart quote" a data source or CMS can produce),
+// U+2018 (left single quotation mark, included for symmetry/safety).
 function normalizePlayerName(name) {
   return (name || "")
     .toLowerCase()
-    .replace(/[.''']/g, "")
+    .replace(/[.\u0027\u2018\u2019]/g, "")
     .replace(/-/g, " ")
     .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
     .replace(/\s+/g, " ")
