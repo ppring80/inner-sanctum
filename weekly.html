@@ -72,7 +72,29 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .my-roster-toggle.active{background:var(--blue);color:#fff}
 
 /* ── TABLE ── */
-.table-wrap{max-width:1100px;margin:0 auto;padding:20px 24px 60px}
+.table-wrap{max-width:1480px;margin:0 auto;padding:20px 24px 60px}
+
+/* ── DESKTOP WEEKLY LAYOUT (added) ── */
+.weekly-grid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
+@media(min-width:981px){
+  .weekly-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+}
+@media(max-width:980px){
+  .weekly-grid{grid-template-columns:1fr}
+}
+.weekly-main{min-width:0}
+.weekly-side{min-width:0}
+
+/* ── WEEK SNAPSHOT PANEL (added) ── */
+.week-snapshot-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.week-snapshot-title{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:0.5px;margin-bottom:10px}
+.week-snapshot-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.week-snapshot-item:last-child{border-bottom:none;padding-bottom:0}
+.week-snapshot-item:first-child{padding-top:0}
+.week-snapshot-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.week-snapshot-value{font-family:'Cinzel',serif;font-size:14px;color:var(--ink)}
+.week-snapshot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+
 .rank-table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
 .rank-table thead th{background:var(--bg2);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
 .rank-table thead th:hover{color:var(--ink)}
@@ -336,22 +358,32 @@ function checkOAuthSession() {
 </div>
 
 <div class="table-wrap">
-  <table class="rank-table">
-    <thead>
-      <tr>
-        <th onclick="setSort('name')" id="th-name">Player <span class="sort-arrow">▼</span></th>
-        <th onclick="setSort('pos')" id="th-pos">Pos <span class="sort-arrow">▼</span></th>
-        <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
-        <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
-        <th>Verdict</th>
-        <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
-      </tr>
-    </thead>
-    <tbody id="rankTableBody"></tbody>
-  </table>
-  <div class="empty-state" id="emptyState" style="display:none">
-    <div class="empty-state-icon">🔍</div>
-    <div>No players match your search or filters.</div>
+  <div class="weekly-grid">
+    <div class="weekly-main">
+      <table class="rank-table">
+        <thead>
+          <tr>
+            <th onclick="setSort('name')" id="th-name">Player <span class="sort-arrow">▼</span></th>
+            <th onclick="setSort('pos')" id="th-pos">Pos <span class="sort-arrow">▼</span></th>
+            <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
+            <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
+            <th>Verdict</th>
+            <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
+          </tr>
+        </thead>
+        <tbody id="rankTableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="empty-state-icon">🔍</div>
+        <div>No players match your search or filters.</div>
+      </div>
+    </div>
+    <div class="weekly-side">
+      <div class="week-snapshot-panel" id="weekSnapshotPanel">
+        <div class="week-snapshot-title">📊 Week Snapshot</div>
+        <div id="weekSnapshotList"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -552,6 +584,106 @@ function renderTable() {
       '</tr>'
     );
   }).join('');
+
+  renderWeekSnapshot();
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEEK SNAPSHOT (added) — derived entirely from MOCK_RANKINGS and
+// existing state (scoring format, week selector, myRosterNames).
+// No new data fetching, no new ranking/injury/call computation —
+// this just picks out max/best entries across fields the table
+// already renders from. Intentionally reads the FULL dataset (not
+// getFilteredSorted()'s result), same way the table's own filters
+// don't change what "this week" looks like overall. Called at the
+// end of renderTable(), so it stays in sync with every trigger that
+// already re-renders the table (persona, scoring format, week,
+// search, position filter, My Roster Only, sort).
+// ═══════════════════════════════════════════════════════════
+function renderWeekSnapshot() {
+  var panel = document.getElementById('weekSnapshotList');
+  if (!panel) return;
+  var fmt = getScoringFormat();
+
+  var withProj = MOCK_RANKINGS.filter(function (p) { return p.proj[fmt] > 0; });
+  var topProjected = withProj.length
+    ? withProj.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; })
+    : null;
+
+  var severity = { out: 3, doubtful: 2, questionable: 1, healthy: 0 };
+  var withConcern = MOCK_RANKINGS.filter(function (p) { return p.injury !== 'healthy'; });
+  var biggestConcern = withConcern.length
+    ? withConcern.reduce(function (a, b) {
+        var sa = severity[a.injury] || 0, sb = severity[b.injury] || 0;
+        if (sb !== sa) return sb > sa ? b : a;
+        return b.proj[fmt] > a.proj[fmt] ? b : a;
+      })
+    : null;
+
+  var starters = MOCK_RANKINGS.filter(function (p) { return p.call[fmt] === 'start'; });
+  var bestStart = starters.length
+    ? starters.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; })
+    : null;
+
+  var myTop = null;
+  if (state.myRosterNames && state.myRosterNames.length) {
+    var mine = MOCK_RANKINGS.filter(function (p) { return state.myRosterNames.indexOf(p.name) !== -1; });
+    if (mine.length) {
+      myTop = mine.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; });
+    }
+  }
+
+  var weekSelect = document.getElementById('weekSelect');
+  var weekLabel = (weekSelect && weekSelect.options[weekSelect.selectedIndex])
+    ? weekSelect.options[weekSelect.selectedIndex].textContent
+    : '';
+  var fmtLabel = { ppr: 'PPR', half: 'Half PPR', standard: 'Standard' }[fmt] || fmt;
+
+  var html = '';
+
+  if (topProjected) {
+    html +=
+      '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Top Projected</div>' +
+        '<div class="week-snapshot-value">' + topProjected.name + '</div>' +
+        '<div class="week-snapshot-sub">' + topProjected.pos + ' · ' + topProjected.proj[fmt].toFixed(1) + ' pts</div>' +
+      '</div>';
+  }
+
+  if (biggestConcern) {
+    html +=
+      '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Biggest Injury Concern</div>' +
+        '<div class="week-snapshot-value">' + biggestConcern.name + '</div>' +
+        '<div class="week-snapshot-sub">' + injuryLabel(biggestConcern.injury) + ' · ' + biggestConcern.pos + '</div>' +
+      '</div>';
+  }
+
+  if (bestStart) {
+    html +=
+      '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Strongest Start Signal</div>' +
+        '<div class="week-snapshot-value">' + bestStart.name + '</div>' +
+        '<div class="week-snapshot-sub">vs ' + bestStart.opp + ' · ' + bestStart.proj[fmt].toFixed(1) + ' pts</div>' +
+      '</div>';
+  }
+
+  if (myTop) {
+    html +=
+      '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Top On My Roster</div>' +
+        '<div class="week-snapshot-value">' + myTop.name + '</div>' +
+        '<div class="week-snapshot-sub">' + myTop.pos + ' · ' + myTop.proj[fmt].toFixed(1) + ' pts</div>' +
+      '</div>';
+  }
+
+  html +=
+    '<div class="week-snapshot-item">' +
+      '<div class="week-snapshot-label">Format &amp; Week</div>' +
+      '<div class="week-snapshot-value">' + fmtLabel + (weekLabel ? ' · ' + weekLabel : '') + '</div>' +
+    '</div>';
+
+  panel.innerHTML = html;
 }
 
 document.getElementById('th-proj').classList.add('sorted');
