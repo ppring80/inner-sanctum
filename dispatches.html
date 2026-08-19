@@ -204,6 +204,9 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
            so the tabbed voice-toggle logic only has to exist in one place. -->
       <div class="dispatch-grid" id="dispatchGrid">
         <div class="cw-loading" id="cwLoading">Consulting the Oracle for today's Camp Watch…</div>
+        <div class="cw-warming" id="categoryEmpty-waiver" style="display:none">Waiver Wire begins Week 1. Once regular-season data is available, weekly waiver targets and analysis will appear here.</div>
+        <div class="cw-warming" id="categoryEmpty-trend" style="display:none">Risers &amp; Fallers begins Week 2–3. Once enough real weekly usage data exists to establish meaningful trends, weekly risers and fallers will appear here.</div>
+        <div class="cw-warming" id="categoryEmpty-pod" style="display:none">The Sanctum Debrief begins Week 1. Weekly Oracle and Trash Lord audio recaps will appear here once the regular season begins.</div>
       </div>
     </div>
     <div class="dispatches-side">
@@ -367,12 +370,33 @@ function toggleDispatch(card) {
   card.classList.toggle('open', !wasOpen);
 }
 
+// Categories with no real published content yet — selecting one of these
+// hides every .dispatch-card (including the Risers & Fallers / Podcast
+// placeholder cards, which are styled identically to real dispatches and
+// would otherwise look like published content) and shows a dedicated
+// category-specific empty state instead. The 'all' view and 'camp' view
+// are untouched — this only changes what happens when one of these three
+// specific tabs is selected directly.
+var NO_CONTENT_TYPES = ['waiver', 'trend', 'pod'];
+
 function filterType(type) {
   document.querySelectorAll('.type-tab').forEach(function (t) {
     t.classList.toggle('active', t.dataset.type === type);
   });
+
+  var isNoContentType = NO_CONTENT_TYPES.indexOf(type) !== -1;
+
   document.querySelectorAll('.dispatch-card').forEach(function (card) {
-    card.style.display = (type === 'all' || card.dataset.type === type) ? 'flex' : 'none';
+    if (isNoContentType) {
+      card.style.display = 'none';
+    } else {
+      card.style.display = (type === 'all' || card.dataset.type === type) ? 'flex' : 'none';
+    }
+  });
+
+  NO_CONTENT_TYPES.forEach(function (t) {
+    var el = document.getElementById('categoryEmpty-' + t);
+    if (el) el.style.display = (type === t) ? 'block' : 'none';
   });
 }
 
