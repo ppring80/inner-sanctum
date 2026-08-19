@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .type-tab:hover{color:var(--muted)}
 .type-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
 
-.main{max-width:960px;margin:0 auto;padding:28px 24px}
+.main{max-width:1100px;margin:0 auto;padding:28px 24px}
 .panel-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;margin-bottom:4px;color:var(--ink)}
 .panel-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
 
@@ -51,11 +51,36 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .oracle-box-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
 .oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
 
+/* ── DESKTOP DISPATCHES LAYOUT (added) ── */
+.dispatches-grid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
+@media(min-width:981px){
+  .dispatches-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+}
+@media(max-width:980px){
+  .dispatches-grid{grid-template-columns:1fr}
+}
+.dispatches-main{min-width:0}
+.dispatches-side{min-width:0}
+
+/* ── DISPATCH SNAPSHOT PANEL (added) ── */
+.snapshot-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.snapshot-title{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:0.5px;margin-bottom:10px}
+.snapshot-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.snapshot-item:last-child{border-bottom:none;padding-bottom:0}
+.snapshot-item:first-child{padding-top:0}
+.snapshot-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.snapshot-value{font-family:'Cinzel',serif;font-size:14px;color:var(--ink)}
+.snapshot-value.live{color:var(--green)}
+.snapshot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+
 /* ── DISPATCH CARDS ── */
 .dispatch-grid{display:flex;flex-direction:column;gap:14px}
 .dispatch-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;display:flex;gap:16px;align-items:flex-start;transition:border-color 0.15s,box-shadow 0.15s;text-decoration:none;color:inherit}
 .dispatch-card[data-clickable]{cursor:pointer}
 .dispatch-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,0.06)}
+.dispatch-card.latest{border-color:var(--gold);box-shadow:0 0 0 1px rgba(184,146,26,0.3)}
+.dispatch-card.latest:hover{box-shadow:0 0 0 1px rgba(184,146,26,0.3),0 4px 16px rgba(0,0,0,0.06)}
+.latest-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:3px;font-weight:700;background:var(--gold);color:#fff}
 .dispatch-icon{font-size:28px;flex-shrink:0;width:44px;text-align:center;padding-top:2px}
 .dispatch-body{flex:1;min-width:0}
 .dispatch-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
@@ -81,10 +106,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .voice-tab:hover{color:var(--muted)}
 .voice-tab.active{background:var(--ink);color:#f2f1ef;border-color:var(--ink)}
 
-.empty-season{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:28px 24px;text-align:center;margin-top:20px}
-.empty-season-icon{font-size:32px;margin-bottom:10px}
-.empty-season-title{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:6px}
-.empty-season-text{font-size:13px;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
+.empty-season{background:#fffdf5;border:1px solid rgba(184,146,26,0.25);border-radius:var(--r);padding:14px 18px;margin-top:20px;display:flex;align-items:center;gap:14px;text-align:left}
+.empty-season-icon{font-size:22px;flex-shrink:0}
+.empty-season-body{min-width:0}
+.empty-season-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:2px}
+.empty-season-text{font-size:12px;color:var(--muted);line-height:1.5;max-width:none;margin:0}
 
 /* ── LOADING / WARMING-UP STATE ── */
 .cw-loading{text-align:center;padding:24px;color:var(--dim);font-size:13px;font-style:italic}
@@ -172,16 +198,48 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <div class="oracle-box-text">Fantasy football is not won on draft day alone, seeker. It is won in the quiet weeks — the camp battle no one else is watching, the target share creeping upward before the box score notices. Return here each week, and I shall keep you ahead of the pack.</div>
   </div>
 
-  <!-- All Camp Watch cards (static fallback + live) are built by JS below,
-       so the tabbed voice-toggle logic only has to exist in one place. -->
-  <div class="dispatch-grid" id="dispatchGrid">
-    <div class="cw-loading" id="cwLoading">Consulting the Oracle for today's Camp Watch…</div>
+  <div class="dispatches-grid">
+    <div class="dispatches-main">
+      <!-- All Camp Watch cards (static fallback + live) are built by JS below,
+           so the tabbed voice-toggle logic only has to exist in one place. -->
+      <div class="dispatch-grid" id="dispatchGrid">
+        <div class="cw-loading" id="cwLoading">Consulting the Oracle for today's Camp Watch…</div>
+      </div>
+    </div>
+    <div class="dispatches-side">
+      <div class="snapshot-panel" id="dispatchSnapshotPanel">
+        <div class="snapshot-title">📜 Dispatch Snapshot</div>
+        <div class="snapshot-item">
+          <div class="snapshot-label">Latest Dispatch</div>
+          <div class="snapshot-value" id="snapLatestTitle">—</div>
+          <div class="snapshot-sub" id="snapLatestDate"></div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-label">Camp Watch</div>
+          <div class="snapshot-value live">🟢 Live</div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-label">Waiver Wire</div>
+          <div class="snapshot-value">Begins Week 1</div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-label">Risers &amp; Fallers</div>
+          <div class="snapshot-value">Begins Week 2–3</div>
+        </div>
+        <div class="snapshot-item">
+          <div class="snapshot-label">Podcast</div>
+          <div class="snapshot-value">Begins Week 1</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="empty-season" id="emptySeasonNote">
     <div class="empty-season-icon">🏕️</div>
-    <div class="empty-season-title">Camp Watch is live — Waiver Wire, Risers &amp; Fallers, and the Podcast launch with the season</div>
-    <div class="empty-season-text">Click any Camp Watch card above to read the full dispatch. Real Waiver Wire, Risers &amp; Fallers, and podcast episodes replace their placeholders once games begin.</div>
+    <div class="empty-season-body">
+      <div class="empty-season-title">Camp Watch is live — Waiver Wire, Risers &amp; Fallers, and the Podcast launch with the season</div>
+      <div class="empty-season-text">Click any Camp Watch card above to read the full dispatch. Real Waiver Wire, Risers &amp; Fallers, and podcast episodes replace their placeholders once games begin.</div>
+    </div>
   </div>
 </div>
 
@@ -322,9 +380,9 @@ function filterType(type) {
 // trashLord take. Clicking a voice tab swaps which take is shown
 // without toggling the card's own open/closed state (stopPropagation);
 // clicking anywhere else on the card still opens/closes it as before.
-function buildCampWatchCard(story) {
+function buildCampWatchCard(story, isLatest) {
   var card = document.createElement('div');
-  card.className = 'dispatch-card';
+  card.className = 'dispatch-card' + (isLatest ? ' latest' : '');
   card.dataset.type = 'camp';
   card.dataset.clickable = 'true';
   card.onclick = function () { toggleDispatch(card); };
@@ -361,6 +419,12 @@ function buildCampWatchCard(story) {
   trashTab.textContent = '🔥 Trash Lord';
 
   meta.appendChild(typeLabel);
+  if (isLatest) {
+    var latestBadge = document.createElement('span');
+    latestBadge.className = 'latest-badge';
+    latestBadge.textContent = 'Latest';
+    meta.appendChild(latestBadge);
+  }
   meta.appendChild(dateLabel);
   tabs.appendChild(oracleTab);
   tabs.appendChild(trashTab);
@@ -464,13 +528,30 @@ async function loadCampWatch() {
     grid.appendChild(warming);
   }
 
+  // The newest dispatch is whichever story renders first overall — a live
+  // dispatch if any exist, otherwise the first static fallback story. Only
+  // that one card gets the "latest" treatment; the Dispatch Snapshot's
+  // "Latest Dispatch" line reuses the exact same story object, so it can
+  // never show a different dispatch than the one actually featured below.
+  var isFirstCampWatch = true;
+  var latestStory = liveDispatches.length ? liveDispatches[0] : (STATIC_STORIES.length ? STATIC_STORIES[0] : null);
+
   liveDispatches.forEach(function (story) {
-    grid.appendChild(buildCampWatchCard(story));
+    grid.appendChild(buildCampWatchCard(story, isFirstCampWatch));
+    isFirstCampWatch = false;
   });
 
   STATIC_STORIES.forEach(function (story) {
-    grid.appendChild(buildCampWatchCard(story));
+    grid.appendChild(buildCampWatchCard(story, isFirstCampWatch));
+    isFirstCampWatch = false;
   });
+
+  if (latestStory) {
+    var titleEl = document.getElementById('snapLatestTitle');
+    var dateEl = document.getElementById('snapLatestDate');
+    if (titleEl) titleEl.textContent = latestStory.oracle.title;
+    if (dateEl) dateEl.textContent = latestStory.dateLabel;
+  }
 
   grid.appendChild(buildPlaceholderCard({
     type: 'trend',
