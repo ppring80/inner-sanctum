@@ -145,7 +145,8 @@ const {
 } = require("./draft-opportunity-profile");
 
 const {
-  buildDraftMarketProfile
+  buildDraftMarketProfile,
+  normalizeAdpToPick
 } = require("./draft-market-profile");
 
 const {
@@ -371,16 +372,20 @@ function jsonResponse(
 // ── Deterministic recommendation ordering ─────────────────────────────
 //
 // Primary:
-//   format-specific ADP.
+//   normalized market pick (nearest actual draft slot).
 //
 // Secondary:
-//   SAGE category only when ADPs are exactly equal.
+//   SAGE category when players occupy the same market slot.
+//
+// Tertiary:
+//   raw format-specific ADP when market slot + SAGE category are equal.
 //
 // Final:
-//   normalized player name so identical ADP + identical SAGE category
-//   always yields stable output.
+//   normalized player name for stable deterministic output.
 //
-// No weighted score is created.
+// This keeps ADP as the market guardrail without allowing fractional ADP
+// differences inside the same draft slot to suppress SAGE evidence.
+// No weighted score or invented tolerance band is created.
 
 function compareEvaluatedCandidates(
   a,
@@ -400,12 +405,33 @@ function compareEvaluatedCandidates(
       ? b.adp
       : Infinity;
 
+  const marketPickA =
+    normalizeAdpToPick(
+      adpA
+    );
+
+  const marketPickB =
+    normalizeAdpToPick(
+      adpB
+    );
+
+  const sortableMarketPickA =
+    marketPickA === null
+      ? Infinity
+      : marketPickA;
+
+  const sortableMarketPickB =
+    marketPickB === null
+      ? Infinity
+      : marketPickB;
+
   if (
-    adpA !== adpB
+    sortableMarketPickA !==
+    sortableMarketPickB
   ) {
     return (
-      adpA -
-      adpB
+      sortableMarketPickA -
+      sortableMarketPickB
     );
   }
 
@@ -423,6 +449,15 @@ function compareEvaluatedCandidates(
     rankDiff !== 0
   ) {
     return rankDiff;
+  }
+
+  if (
+    adpA !== adpB
+  ) {
+    return (
+      adpA -
+      adpB
+    );
   }
 
   return normalizePlayerName(
@@ -769,10 +804,10 @@ exports.handler =
           }
         );
 
-      // AUG 18 2026:
-      // Preserve scoring-specific market order as the primary sequence.
-      // SAGE category remains a secondary tie-break and still supplies
-      // the action/explanation shown for every recommendation.
+      // AUG 19 2026:
+      // Preserve the scoring-specific market slot as the primary guardrail.
+      // Within the same normalized draft slot, SAGE category decides order;
+      // raw ADP then breaks same-slot, same-category ties.
       evaluated.sort(
         compareEvaluatedCandidates
       );
