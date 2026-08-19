@@ -1557,7 +1557,15 @@ async function loadAll(){
     hideFallbackBanner();
     var total=Object.values(adpByPos).reduce(function(a,arr){return a+arr.length},0);
     setStatus('live','2026 Live ADP · '+total+' players · Updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}));
+    // Scoring/teams selector change reloaded fresh, format-specific ADP
+    // above -- explicitly refresh SAGE so it re-evaluates against the
+    // new data. Set the one-time flag BEFORE render() so render()'s own
+    // internal auto-check (for the initial/restored-session case) does
+    // not also fire and double-request alongside this explicit call --
+    // same pattern already used in saveSetup().
+    if(draftSetupComplete()){ sageInitialRefreshDone=true; }
     render();
+    if(draftSetupComplete()){ refreshSageRecommendations(); }
   }catch(e){
     setStatus('error','Live ADP unavailable — using fallback');
     showFallbackBanner();
