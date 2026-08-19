@@ -676,6 +676,16 @@ function connectMock() {
 (function checkSharedConnection() {
   if (typeof LeagueConnection !== 'undefined' && LeagueConnection.hasAnyConnection()) {
     connectMock();
+    return;
+  }
+  // DEV/QA PREVIEW ONLY — added. Visiting the page with ?preview=1 in the
+  // URL forces the mock-data results view without requiring a real league
+  // connection, so the layout can be checked on mobile without devtools.
+  // Calls the exact same connectMock() used by the real connection path —
+  // no new rendering logic, no change to real-user behavior (this branch
+  // only fires when the query param is explicitly present).
+  if (new URLSearchParams(window.location.search).get('preview') === '1') {
+    connectMock();
   }
 })();
 
