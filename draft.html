@@ -1,51 +1,2123 @@
-Diagnosis confirmed exactly against real main. Let me verify distanceToMySlot()'s exact behavior too, to make sure my planned fix is mechanically sound before touching anything.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft Command Center — The Inner Sanctum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ef;--bg2:#e8e7e4;--surface:#ffffff;--border:#d4d2ce;
+  --text:#1c1c1a;--text2:#4a4a46;--text3:#7a7a76;
+  --gold:#b8921a;--gold-lt:#c9a84c;--amber:#c8780a;
+  --green:#2a6e2a;--red:#b83020;--blue:#1a5280;--r:6px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.6;min-height:100vh}
+.hdr{background:#1a1108;border-bottom:2px solid var(--gold-lt);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-brand{font-family:'Cinzel',serif;font-size:clamp(9px, 1.8vw, 11px);letter-spacing:clamp(2px, 0.8vw, 4px);color:var(--gold-lt);text-transform:uppercase;display:block;margin-bottom:2px}
+.hdr-title{font-family:'Cinzel',serif;font-size:clamp(16px, 4vw, 22px);font-weight:600;color:#f0e6cc}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lock-badge{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:4px 12px;font-size:clamp(11px, 2vw, 12px);color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
 
-Ran 7 commands, edited 2 files · 4 notes
+/* ── ACOLYTE ACCESS GATE (added) ── */
+.gate-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a1108,#0d0804);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.5)}
+.gate-icon{font-size:38px;margin-bottom:10px}
+.gate-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:#f2f1ef;margin-bottom:8px;letter-spacing:1px}
+.gate-sub{font-family:'Lora',Georgia,serif;font-size:13px;color:#a08a5a;line-height:1.6;margin-bottom:20px}
+.gate-input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(201,168,76,0.3);color:#f2f1ef;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:2px;text-align:center;padding:12px 14px;border-radius:8px;margin-bottom:12px}
+.gate-input:focus{outline:none;border-color:#c9a84c}
+.gate-btn{width:100%;padding:12px 20px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font-family:'Cinzel',serif;font-size:14px;font-weight:600;border:none;border-radius:8px;cursor:pointer;letter-spacing:1px;margin-bottom:14px;transition:opacity 0.15s}
+.gate-btn:hover{opacity:0.88}
+.gate-error{display:none;font-family:'Lora',Georgia,serif;font-size:12px;color:#e57373;margin-bottom:10px}
+.gate-error.show{display:block}
+.gate-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
+.gate-link:hover{opacity:1}
+.gate-btn-secondary{width:100%;padding:11px 20px;background:transparent;border:1px solid rgba(201,168,76,0.35);color:#c9a84c;font-family:'Cinzel',serif;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;letter-spacing:0.5px;margin-bottom:14px;transition:all 0.15s}
+.gate-btn-secondary:hover{background:rgba(201,168,76,0.08);border-color:#c9a84c}
+.gate-divider{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#5a4a2a;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px}
+.gate-divider::before,.gate-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
+.gate-note{font-family:'Lora',Georgia,serif;font-size:11px;color:#5a4a2a;line-height:1.5}
+.hdr-btn{color:#a08550;font-size:clamp(11px, 2vw, 13px);text-decoration:none;padding:6px 13px;border:1px solid #3d2a12;border-radius:var(--r);transition:all 0.15s;background:transparent;cursor:pointer;font-family:'Lora',serif}
+.hdr-btn:hover{color:var(--gold-lt);border-color:var(--gold-lt)}
+.ctrl-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.pos-tabs{display:flex;gap:5px;flex-wrap:wrap}
+.pos-tab{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:clamp(11px, 2vw, 13px);font-weight:600;letter-spacing:1px;cursor:pointer;transition:all 0.15s}
+.pos-tab:hover{border-color:var(--gold);color:var(--gold)}
+.pos-tab.active{color:#fff;border-color:transparent}
+.pos-tab.ALL.active{background:var(--gold)}
+.pos-tab.QB.active{background:#1a5280}
+.pos-tab.RB.active{background:#2a6e2a}
+.pos-tab.WR.active{background:#8a7010}
+.pos-tab.TE.active{background:#a06010}
+.pos-tab.K.active{background:#6a6a6a}
+.pos-tab.DEF.active{background:#8a2020}
+.divider{width:1px;height:26px;background:var(--border);flex-shrink:0}
+.ctrl-sel{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);padding:5px 26px 5px 10px;border-radius:var(--r);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a7a76'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer}
+.ctrl-sel:focus{outline:none;border-color:var(--gold)}
+.view-tog{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.view-btn{padding:5px 12px;background:var(--bg2);border:none;color:var(--text3);font-size:clamp(12px, 2.2vw, 14px);cursor:pointer;transition:all 0.15s}
+.view-btn.active{background:var(--gold);color:#fff}
+.setup-summary-btn{background:var(--surface);border:1px solid rgba(184,146,26,0.5);color:var(--gold);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);font-weight:600;padding:5px 12px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.setup-summary-btn:hover{background:rgba(184,146,26,0.08);border-color:var(--gold)}
+.setup-summary-extra{font-weight:400;color:var(--text3)}
+@media(max-width:1000px){.setup-summary-rounds{display:none}}
+@media(max-width:820px){.setup-summary-extra{display:none}}
+.search-box{position:relative;margin-left:auto}
+.search-box input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Lora',serif;font-size:clamp(12px, 2.2vw, 14px);padding:5px 12px 5px 30px;border-radius:var(--r);width:200px}
+.search-box input:focus{outline:none;border-color:var(--gold)}
+.search-box input::placeholder{color:var(--text3)}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
+.status-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 24px;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.live{background:var(--green);animation:pulse 2s infinite}
+.dot.loading{background:var(--amber);animation:pulse 0.8s infinite}
+.dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.fallback-banner{display:none;background:#3a1408;border-bottom:3px solid #ff4d2e;padding:10px 24px;align-items:center;gap:10px}
+.fallback-banner.on{display:flex}
+.fallback-banner-icon{font-size:18px;animation:pulse 1.2s infinite}
+.fallback-banner-text{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#ffd6c2}
+.fallback-banner-text b{color:#ff8a5c}
+.drafted-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.dctr{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10px}
+.dbadge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.main{padding:16px 24px;max-width:1200px;margin:0 auto}
 
-That draft-sage-integration.test.js failure is the same test-harness race I diagnosed and fixed in an earlier session — that fix just never made it to GitHub. Since "verify existing tests" is part of this task, I'll reapply it (test-file only, zero production changes) so the suite is actually trustworthy. Let me confirm sage-recommend.test.js's failure is the separate, already-known, out-of-scope issue first:
+/* SEARCH RESULTS — flat list shown when search active */
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+.search-results-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.search-results-count{color:var(--gold);font-weight:600}
+.search-no-results{padding:32px;text-align:center;color:var(--text3);font-style:italic}
 
-Ran 12 commands, edited 2 files, read a file · 9 notes
-1. Diagnosis verified against real current main
+.pos-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.pos-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.pbadge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
+.pbadge.QB{background:#1a5280}.pbadge.RB{background:#2a6e2a}.pbadge.WR{background:#8a7010}
+.pbadge.TE{background:#a06010}.pbadge.K{background:#6a6a6a}.pbadge.DEF{background:#8a2020}
+.ptitle{font-family:'Cinzel',serif;font-size:14px;color:var(--text)}
+.pcount{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto}
+.oracle-box{background:#fffbf0;border-left:3px solid var(--gold);padding:8px 14px;font-style:italic;font-size:12px;color:#5a4a1a;line-height:1.7;border-bottom:1px solid #f0e8c0}
+.oracle-lbl{font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:2px;font-style:normal}
+.trash-box{background:#fff8f8;border-left:3px solid var(--red);padding:8px 14px;font-style:italic;font-size:12px;color:#5a1a1a;line-height:1.7;border-bottom:1px solid #fdd}
+.trash-lbl{font-size:9px;letter-spacing:2px;color:var(--red);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:2px;font-style:normal}
+.tier-tr td{padding:3px 12px;background:var(--bg)}
+.tier-inner{display:flex;align-items:center;gap:8px}
+.tier-line{flex:1;height:1px;background:var(--border)}
+.tier-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;white-space:nowrap}
+.tier-wisdom{font-style:italic;font-size:11px;color:var(--gold);flex:2}
+.ptable{width:100%;border-collapse:collapse}
+.ptable th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);background:var(--bg);white-space:nowrap}
+.prow{border-bottom:1px solid var(--border);transition:background 0.1s}
+.prow:hover{background:#f8f6f0}
+.prow.drafted{opacity:0.3;text-decoration:line-through}
+.prow.mypick{background:#fffbe0;box-shadow:inset 0 0 0 2px var(--gold-lt)}
+.prow td{padding:7px 10px;vertical-align:middle}
+.r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
+.r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
+.pname{font-size:14px;font-weight:600;color:var(--text)}
+.pteam-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:1px}
+.bye-td{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;width:40px;color:var(--amber);font-weight:600}
+.adp-td{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);text-align:center;width:52px}
+.str-td{text-align:center;width:68px}
+.sbadge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-size:10px;font-weight:600}
+.s-hi{background:#e8f5e9;color:#2a6e2a;border:1px solid #a5d6a7}
+.s-md{background:#fffde7;color:#8a7010;border:1px solid #fff176}
+.s-lo{background:#fce4ec;color:#8a2020;border:1px solid #ef9a9a}
+.inj-td{width:140px}
+.ibadge{display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px}
+.ibadge.Out,.ibadge.IR{background:#fce4ec;color:#c0392b;border:1px solid #ef9a9a}
+.ibadge.Doubtful{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
+.ibadge.Questionable{background:#fffde7;color:#f57f17;border:1px solid #fff176}
+.ibadge.PUP{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
+.act-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Lora',serif;transition:all 0.15s;white-space:nowrap}
+.act-btn:hover{border-color:var(--gold);color:var(--gold)}
+.act-btn.draft-btn{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);color:var(--gold)}
+.act-btn.draft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
+.prow.drafted .draft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
+.act-btn.cmp-row-btn:disabled{color:var(--green);border-color:#9fd39f;background:#eaf5ea;cursor:default;opacity:1}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;padding:12px}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
+.pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.pcard.drafted{opacity:0.3}
+.pcard.mypick{opacity:1;border:2px solid var(--gold-lt);background:#fffbe0}
+.crank{position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);font-weight:600}
+.cname{font-size:13px;font-weight:600;color:var(--text);padding-right:26px;line-height:1.3;margin-bottom:4px}
+.cmeta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.cdraft-btn{width:100%;margin-top:6px;padding:4px 8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:4px;color:var(--gold);font-family:'Lora',serif;font-size:10px;cursor:pointer;text-align:left;transition:all 0.15s}
+.cdraft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
+.pcard.drafted .cdraft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
+.cactions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.cactions .cdraft-btn{width:auto;flex:1 1 auto;min-width:80px;margin-top:0}
+.cactions .cmp-row-btn{flex:1 1 auto;min-width:64px;font-size:10px;padding:4px 6px;white-space:normal;text-align:center}
+.cmp-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1108;border-top:2px solid var(--gold-lt);padding:14px 24px;min-height:76px;display:none;align-items:center;gap:14px;z-index:100;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,0.35)}
+.cmp-bar.on{display:flex}
+.cmp-heading{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2.5px;color:var(--gold-lt);text-transform:uppercase;white-space:nowrap}
+.cmp-pill{background:#2a1e0e;border:1px solid var(--gold-lt);border-radius:var(--r);padding:10px 16px;font-size:16px;font-weight:600;color:#f0e6cc;display:flex;align-items:center;gap:10px}
+.cmp-x{background:transparent;border:none;color:#ff5252;cursor:pointer;font-size:17px;line-height:1;padding:0}
+.cmp-vs{font-family:'Cinzel',serif;font-size:22px;font-weight:600;letter-spacing:2px;color:var(--gold-lt);align-self:center;margin:0 6px}
+.cmp-hint{font-family:'Lora',serif;font-size:14px;color:#c9a84c;font-style:italic}
+.cmp-go{background:var(--gold-lt);border:none;color:#000;font-family:'Lora',serif;font-size:16px;font-weight:700;padding:14px 30px;border-radius:var(--r);cursor:pointer;margin-left:auto}
+.cmp-go:disabled{background:#4a3a22;color:#7a6a3a;cursor:not-allowed}
+.cmp-clr{background:transparent;border:1px solid #4a3a22;color:#a08550;font-family:'Lora',serif;font-size:12px;padding:7px 12px;border-radius:var(--r);cursor:pointer}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:30px;max-width:820px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+.modal-ttl{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.modal-x{float:right;background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1}
+.cmp-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.cmp-col{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.cmp-col-name{font-family:'Cinzel',serif;font-size:20px;font-weight:600;color:var(--text);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.cmp-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+.cmp-row:last-child{border-bottom:none}
+.cmp-l{color:var(--text3)}.cmp-v{font-family:'JetBrains Mono',monospace;color:var(--text);font-size:15px;font-weight:600}
+.cmp-v.better{color:var(--green);font-weight:600}.cmp-v.worse{color:var(--red)}
+.verdict{background:#fffbf0;border-left:4px solid var(--gold);padding:20px;border-radius:0 var(--r) var(--r) 0;margin-top:4px}
+.verdict-lbl{font-size:10px;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:8px;font-weight:600}
+.verdict-txt{font-style:italic;font-size:16px;color:#5a4a1a;line-height:1.7}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:14px;text-align:center}
+.ring{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-lbl{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--text3);text-transform:uppercase}
+.attr{text-align:center;font-size:10px;color:var(--text3);padding:14px;font-family:'JetBrains Mono',monospace;background:var(--bg2);border-top:1px solid var(--border)}
+.attr a{color:var(--gold);text-decoration:none}
+@media print{
+  .hdr-right,.ctrl-bar,.status-bar,.fallback-banner,.drafted-bar,.cmp-bar,.modal-bg,.act-btn,.cdraft-btn,.no-print,.oracle-box,.trash-box,.own-badge{display:none!important}
+  body{background:#fff;font-size:12px;line-height:1.35}
+  .hdr{background:#fff!important;border-bottom:2px solid #000;padding:8px 0}
+  .hdr-brand,.hdr-title{color:#000!important;text-shadow:none}
+  .main{padding:0;max-width:100%}
+  .pos-sec{border:1px solid #999;box-shadow:none;margin-bottom:10px}
+  .pos-hdr{background:#fff;page-break-after:avoid}
+  .pcount{color:#000}
+  /* Badges: keep the information, drop the ink-heavy color fills */
+  .pbadge,.sbadge,.search-results-count{background:#fff!important;color:#000!important;border:1px solid #000!important}
+  .ibadge{background:#fff!important;color:#000!important;border:1px solid #000!important}
+  .tier-wisdom{color:#333!important}
+  .bye-td{color:#000!important}
+  .tier-tr{page-break-after:avoid}
+  .ptable thead{display:table-header-group}
+  .ptable tr{page-break-inside:avoid}
+  .ptable th{color:#000;background:#eee;border-bottom:2px solid #000}
+  .prow td,.ptable th{padding:4px 8px}
+  .pname{font-size:12px}
+  .prow.drafted,.pcard.drafted{display:none}
+}
 
-Confirmed exactly as you described — pulled a fresh clone and checked the live code directly:
+/* ── GROUPED DROPDOWN NAV (added, hdr-btn variant) ── */
+.nav-dropdown{position:relative;display:inline-block}
+.nav-dropdown-trigger.hdr-btn{display:inline-flex;align-items:center;gap:4px}
+.nav-dropdown-caret{font-size:9px;transition:transform 0.2s}
+.nav-dropdown.open .nav-dropdown-caret{transform:rotate(180deg)}
+.nav-dropdown.open .nav-dropdown-trigger.hdr-btn{color:var(--gold-lt);border-color:var(--gold-lt)}
+.nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:#1a1108;border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:8px;min-width:190px;box-shadow:0 12px 32px rgba(0,0,0,0.4);z-index:200}
+.nav-dropdown.open .nav-dropdown-menu{display:block}
+.nav-dropdown-menu a{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#a08550;font-size:clamp(12px, 2.2vw, 14px);font-family:'Lora',serif;text-decoration:none;border-radius:5px;white-space:nowrap;transition:background 0.15s,color 0.15s}
+.nav-dropdown-menu a:hover{background:rgba(201,168,76,0.1);color:var(--gold-lt)}
+@media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
 
-js
-var currentPick=nextPickNumber();
-var away=distanceToMySlot(currentPick);
-var nextUserPick=currentPick+(typeof away==='number'?away:0);
+/* ── DRAFT COMMAND CENTER — team-aware tracking (added Aug 2026) ── */
+.own-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);cursor:pointer;margin-left:6px;white-space:nowrap}
+.own-badge:hover{border-color:var(--gold);color:var(--gold)}
+.own-badge.mine{background:rgba(201,168,76,0.18);border-color:var(--gold-lt);color:#8a6a10;font-weight:600}
+.clock-bar{background:#1a1108;border-bottom:1px solid rgba(201,168,76,0.3);padding:10px 24px;font-family:'JetBrains Mono',monospace;color:#e8d9a8;transition:background 0.2s}
+.clock-bar a{color:var(--gold-lt)}
+.clock-line1{font-size:14px;font-weight:600;letter-spacing:0.5px;color:#e8d9a8}
+.clock-line2{font-size:11px;color:#a08a5a;margin-top:2px}
+.clock-bar.mine{background:linear-gradient(135deg,#3a2a0a,#2a1e0a);border-bottom:2px solid var(--gold-lt);padding:12px 24px;animation:clockpulse 1.8s infinite}
+.clock-bar.mine .clock-line1{font-size:16px;font-weight:700;letter-spacing:1px;color:var(--gold-lt)}
+.clock-bar.mine .clock-line2{font-size:12px;color:#f0e6cc}
+@keyframes clockpulse{0%,100%{box-shadow:0 0 0 rgba(201,168,76,0)}50%{box-shadow:0 0 18px rgba(201,168,76,0.35)}}
+.legacy-banner{display:none;background:#2a2010;border-bottom:1px solid rgba(201,168,76,0.35);padding:10px 24px;align-items:center;gap:10px;font-size:12px;color:#e8d9a8}
+.legacy-banner.on{display:flex}
+.legacy-banner button{margin-left:auto;background:transparent;border:1px solid rgba(201,168,76,0.4);color:#e8d9a8;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:'Lora',serif}
+.roster-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.roster-hdr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.roster-title{font-weight:700;letter-spacing:1px;color:var(--text);text-transform:uppercase;font-size:11px}
+.roster-groups{color:var(--text3);flex:1}
+.roster-groups b{color:#7a5f10;font-weight:600}
+.roster-toggle{background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:'Lora',serif;white-space:nowrap}
+.roster-toggle:hover{border-color:var(--gold);color:var(--gold)}
+.roster-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;gap:6px}
+.roster-detail.open{display:flex}
+.roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
+.sage-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:none}
+.sage-panel-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.sage-status{font-family:'Lora',serif;font-size:12px;color:var(--text3);font-style:italic}
+.sage-error-msg{color:#a06010}
+.sage-rec-list{display:flex;flex-direction:column;gap:6px}
+.sage-rec{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.sage-rec-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.sage-rec-player{font-family:'Lora',serif;font-weight:600;font-size:13px;color:var(--text)}
+.sage-rec-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.sage-rec-label{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:rgba(201,168,76,0.15);color:#8a6a10;border:1px solid rgba(201,168,76,0.3);white-space:nowrap}
+.sage-code-take-now,.sage-code-strong-consideration{background:rgba(42,110,42,0.12);color:#2a6e2a;border-color:rgba(42,110,42,0.3)}
+.sage-code-caution,.sage-code-wait,.sage-code-pass-for-now{background:rgba(184,48,32,0.1);color:#a03020;border-color:rgba(184,48,32,0.25)}
+.sage-code-needs-more-evidence{background:rgba(122,122,118,0.12);color:#6a6a66;border-color:rgba(122,122,118,0.25)}
+.sage-rec-explanation{font-family:'Lora',serif;font-size:12px;color:var(--text2);line-height:1.4}
+.sage-rec-reasons{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px}
+.sage-showmore-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:3px 10px;cursor:pointer;font-size:10px;font-family:'Lora',serif}
+.sage-showmore-btn:hover{border-color:var(--gold);color:var(--gold)}
+.sage-rec-extra{margin-top:6px}
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.setup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
+.setup-field input,.setup-field select{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:'Lora',serif;font-size:13px}
+.draft-ctrl-group{display:inline-flex;align-items:center;gap:8px;padding-left:12px;margin-left:4px;border-left:1px solid #3d2a12}
+.howto-link{color:#7a6a4a;font-size:11px;text-decoration:underline;background:none;border:none;cursor:pointer;font-family:'Lora',serif;padding:0}
+.howto-link:hover{color:var(--gold-lt)}
+.onboard-steps{margin:14px 0;padding-left:20px;line-height:1.8;font-size:14px}
+.onboard-steps li{margin-bottom:4px}
+</style>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1748852649483750');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+</head>
+<body>
 
-When away===0, nextUserPick collapses to currentPick. I also verified the snake math itself with real execution — pick 12 and pick 13 both land on slot 12 in a 12-team draft (the last-slot wraparound), which is exactly the scenario your example describes.
+<!-- ═══ ACOLYTE ACCESS GATE (added) ═══ -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <div class="gate-icon">🔒</div>
+    <div class="gate-title">Acolyte Feature</div>
+    <div class="gate-sub">The Draft Command Center is reserved for Founding Acolytes.</div>
 
-2. Fix implemented — exactly as scoped
+    <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Fdraft" class="gate-btn-secondary" style="display:block;text-decoration:none;box-sizing:border-box">🔑 Already a Founding Acolyte? Log In with Patreon</a>
+    <div class="gate-note" style="margin-bottom:14px">Use the same email you pledged with on Patreon</div>
 
-distanceToMySlot() is completely untouched. Inside refreshSageRecommendations() only, when away===0, a new sageAway value is computed by calling the same unmodified distanceToMySlot(currentPick+1) — reusing the existing function from a different starting point rather than teaching this code any snake-specific logic. nextUserPick and the nextTurnPool call both switched from away to sageAway. Nothing else in the function changed.
+    <div class="gate-divider">OR</div>
 
-3–4. New tests — all four requested scenarios
+    <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
+    <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <div class="gate-note" style="margin-top:-8px;margin-bottom:14px">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
+    <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
+  </div>
+</div>
+<script>
+var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
+var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
-Added to tests/draft-sage-integration.test.js, using a real 12-team snake setup and capturing the actual request body from the real refreshSageRecommendations() call:
+function checkGateUnlocked() {
+  try {
+    return sessionStorage.getItem(GATE_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
 
-Pick 11 → nextUserPick 12 (confirms the unchanged path still works)
-Pick 12 → nextUserPick 13 (the core fix)
-Pick 13 → nextUserPick 36 (next real slot-12 turn after the wraparound)
-A fourth test confirming nextTurnPool uses the corrected distance, not the raw away value
+function unlockGate() {
+  try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+}
 
-All 4 pass on the real code, not a reimplementation.
+function checkGatePasscode() {
+  var input = document.getElementById('gateInput');
+  var err = document.getElementById('gateError');
+  var entered = input.value.trim().toUpperCase();
+  if (entered === ALLOWLIST_PASSCODE) {
+    unlockGate();
+  } else {
+    err.classList.add('show');
+    input.value = '';
+    input.focus();
+  }
+}
 
-5. Existing tests — verified, with one disclosure
+function checkOAuthSession() {
+  return fetch('/.netlify/functions/verify-session', { credentials: 'same-origin' })
+    .then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.fullAccess === true) {
+        unlockGate();
+        return true;
+      }
+      return false;
+    })
+    .catch(function () {
+      return false;
+    });
+}
 
-While running the full suite I found tests/draft-sage-integration.test.js was already failing on unmodified main — a test-harness race I'd diagnosed and fixed in an earlier session, but that fix never made it to GitHub. Since "verify existing tests" was part of this task, I reapplied that known fix (test file only, zero production changes) rather than leave a misleading red suite. One separate, unrelated failure remains in tests/sage-recommend.test.js — the already-known sort-priority mismatch from your earlier ADP-primary rewrite, correctly out of scope here since I didn't touch sage-recommend.js.
+(function initGate() {
+  if (checkGateUnlocked()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    return;
+  }
+  checkOAuthSession();
+})();
+</script>
+<!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
 
-Final: 9/10 suites, matching the pre-existing baseline exactly — this pass introduced zero new failures. Also reran the two pre-existing engine suites (pick logging, undo, snake math) independently: 113/113 and 61/61, unaffected.
+<div class="hdr">
+  <div>
+    <span class="hdr-brand">The Inner Sanctum</span>
+    <div class="hdr-title">📋 Draft Command Center</div>
+  </div>
+  <div class="hdr-right no-print">
+    <span class="lock-badge">🔒 Acolyte Feature</span>
+    <a href="/" class="hdr-btn">🏠 Home</a>
 
-6. Exact files changed
+    <div class="nav-dropdown" id="navDraftTools">
+      <button class="hdr-btn nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">
+        🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/compare">🆚 Compare</a>
+      <a href="/auction">⚔️ Auction War Room</a>
+      <a href="/tiers">🏆 Oracle Tier List</a>
+      </div>
+    </div>
 
-draft.html (22 lines) and tests/draft-sage-integration.test.js (114 lines — the harness fix plus 4 new tests). Nothing else.
+    <div class="nav-dropdown" id="navSeasonTools">
+      <button class="hdr-btn nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">
+        📅 Season Tools <span class="nav-dropdown-caret">▼</span>
+      </button>
+      <div class="nav-dropdown-menu">
+      <a href="/power-rankings">📊 League Power Rankings</a>
+      <a href="/weekly">📅 Weekly Rankings</a>
+      <a href="/risers-fallers">📈 Risers & Fallers</a>
+      <a href="/survivor">☠️ Survivor Pool</a>
+      <a href="/connect-league">🔗 Link Your League</a>
+      </div>
+    </div>
 
-7. Complete draft.html
+    <a href="/dispatches" class="hdr-btn">📜 Dispatches</a>
+    <a href="/sanctum" class="hdr-btn">← Sanctum</a>
+    <div class="draft-ctrl-group">
+      <button class="hdr-btn" onclick="undoLastPick()">⏪ Undo Last Pick</button>
+      <button class="hdr-btn" onclick="printList()">🖨 Print</button>
+      <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">↺ Reset Draft</button>
+      <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </div>
+</div>
 
-Attached above as a download (safer than a raw chat block after last time). Also attached the updated test file — let me know if you want it pasted raw in chat too.
+<div class="ctrl-bar no-print">
+  <div class="pos-tabs">
+    <button class="pos-tab ALL active" onclick="goPos('ALL')">ALL</button>
+    <button class="pos-tab QB" onclick="goPos('QB')">QB</button>
+    <button class="pos-tab RB" onclick="goPos('RB')">RB</button>
+    <button class="pos-tab WR" onclick="goPos('WR')">WR</button>
+    <button class="pos-tab TE" onclick="goPos('TE')">TE</button>
+    <button class="pos-tab K" onclick="goPos('K')">K</button>
+    <button class="pos-tab DEF" onclick="goPos('DEF')">DEF</button>
+  </div>
+  <div class="divider"></div>
+  <select class="ctrl-sel" id="scoringSel" onchange="loadAll()">
+    <option value="ppr">PPR</option>
+    <option value="half-ppr">Half PPR</option>
+    <option value="standard">Standard</option>
+  </select>
+  <select class="ctrl-sel" id="teamsSel" onchange="loadAll()">
+    <option value="10">10 Teams</option>
+    <option value="12" selected>12 Teams</option>
+    <option value="14">14 Teams</option>
+    <option value="8">8 Teams</option>
+  </select>
+  <select class="ctrl-sel" id="showSel" onchange="render()">
+    <option value="15">Top 15</option>
+    <option value="30" selected>Top 30</option>
+    <option value="50">Top 50</option>
+    <option value="999">All</option>
+  </select>
+  <div class="divider"></div>
+  <div class="view-tog">
+    <button class="view-btn active" id="listBtn" onclick="goView('list')">≡ List</button>
+    <button class="view-btn" id="cardBtn" onclick="goView('card')">⊞ Cards</button>
+  </div>
+  <div class="view-tog">
+    <button class="view-btn active" id="showDraftedBtn" onclick="setHideDrafted(false)">Show Drafted</button>
+    <button class="view-btn" id="hideDraftedBtn" onclick="setHideDrafted(true)">Hide Drafted</button>
+  </div>
+  <button class="setup-summary-btn" id="draftSetupBtn" onclick="openSetupModal()">⚙ Draft Setup<span class="setup-summary-extra" id="draftSetupSummaryExtra"><span id="draftSetupSummaryCore"></span><span class="setup-summary-rounds" id="draftSetupSummaryRounds"></span></span></button>
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="srch" placeholder="Search player or team..." oninput="doSearch(this.value)">
+  </div>
+</div>
 
-Draft
-Code · HTML 
-Draft sage integration.test
-JS 
+<div class="status-bar" id="sb">
+  <span><span class="dot loading" id="sdot"></span><span id="stxt">Loading live data...</span></span>
+  <span id="stime"></span>
+</div>
+
+<div class="fallback-banner" id="fallbackBanner">
+  <span class="fallback-banner-icon">⚠️</span>
+  <span class="fallback-banner-text"><b>USING FALLBACK DATA</b> — live ADP could not be reached. Rankings below are the static backup list, not real-time.</span>
+</div>
+
+<div class="legacy-banner no-print" id="legacyBanner">
+  <span>⚠️ A previous drafted-only list was found in this browser. It never recorded which team drafted whom or in what order, so it can't be truthfully carried into the new team-aware tracker — starting fresh below. Your old data hasn't been touched or deleted.</span>
+  <button onclick="dismissLegacyBanner()">Got it</button>
+</div>
+
+<div class="clock-bar no-print" id="clockBar"></div>
+<div class="no-print" style="display:flex;justify-content:space-between;align-items:center;padding:3px 24px;background:var(--surface);border-bottom:1px solid var(--border)">
+  <span id="mySlotIndicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3)"></span>
+  <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
+</div>
+
+<div class="sage-panel no-print" id="sagePanel"></div>
+
+<div class="roster-panel no-print" id="rosterPanel"></div>
+
+<div class="drafted-bar no-print" id="dbar">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase">Drafted: —</span>
+</div>
+
+<div class="main" id="main">
+  <div class="loading"><div class="ring"></div><div class="loading-lbl">The Oracle consults the scrolls...</div></div>
+</div>
+
+<div class="attr no-print">
+  ADP: <a href="https://fantasyfootballcalculator.com" target="_blank">FantasyFootballCalculator.com</a> &nbsp;·&nbsp; Team/Injury: <a href="https://tank01.com" target="_blank">Tank01</a>
+</div>
+
+<div class="cmp-bar no-print" id="cbar">
+  <span class="cmp-heading">🔮 Compare Players</span>
+  <div id="cslots" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"></div>
+  <span id="cmphint" class="cmp-hint" style="display:none">Select one more player to compare</span>
+  <button class="cmp-go" id="cmpgobtn" onclick="showCmp()" disabled>Compare Players →</button>
+  <button class="cmp-clr" onclick="clrCmp()">Clear</button>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeModal()">✕</button>
+    <div class="modal-ttl">🔮 Player Comparison</div>
+    <div class="cmp-cols" id="cmpcols"></div>
+    <div class="verdict"><div class="verdict-lbl">🔮 Oracle Verdict</div><div class="verdict-txt" id="vtxt">...</div></div>
+  </div>
+</div>
+
+<!-- ═══ DRAFT SETUP MODAL (added) ═══ -->
+<div class="modal-bg" id="setupModalBg">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-x" onclick="closeSetupModal()">✕</button>
+    <div class="modal-ttl">⚙ Draft Setup</div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Number of Teams</label>
+      <select id="setupNumTeams" onchange="renderSetupTeamNames()">
+        <option value="8">8</option>
+        <option value="10">10</option>
+        <option value="12" selected>12</option>
+        <option value="14">14</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Number of Rounds</label>
+      <select id="setupNumRounds">
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16" selected>16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+        <option value="19">19</option>
+        <option value="20">20</option>
+        <option value="21">21</option>
+        <option value="22">22</option>
+        <option value="23">23</option>
+        <option value="24">24</option>
+        <option value="25">25</option>
+      </select>
+    </div>
+    <div class="setup-field" style="margin-bottom:14px;max-width:220px">
+      <label>Draft Type</label>
+      <select id="setupDraftType" onchange="updateSetupDraftTypeNote()">
+        <option value="snake">Snake</option>
+        <option value="linear">Linear</option>
+        <option value="manual">Manual</option>
+      </select>
+    </div>
+    <div class="setup-grid" id="setupTeamNamesGrid"></div>
+    <div class="setup-field" style="margin-bottom:6px;max-width:320px">
+      <label>My Draft Position</label>
+      <select id="setupMyTeam"></select>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Select your draft slot. This determines when you're on the clock in the snake draft.</p>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px" id="setupDraftTypeNote">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
+    <div class="btn-row" style="display:flex;gap:10px">
+      <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="saveSetup()">Save Setup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REASSIGN PICK MODAL (added) ═══ -->
+<div class="modal-bg" id="reassignModalBg">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-x" onclick="closeReassignModal()">✕</button>
+    <div class="modal-ttl">Reassign Pick</div>
+    <div id="reassignPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <div class="setup-field" style="margin-bottom:16px">
+      <label>Drafted by</label>
+      <select id="reassignTeamSel"></select>
+    </div>
+    <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
+      <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MANUAL DRAFT TYPE — PICK TEAM MODAL (added) ═══ -->
+<div class="modal-bg" id="manualPickModalBg">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-x" onclick="closeManualPickModal()">✕</button>
+    <div class="modal-ttl">Who drafted this player?</div>
+    <div id="manualPickPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <div class="setup-field" style="margin-bottom:16px">
+      <label>Drafted by</label>
+      <select id="manualPickTeamSel"></select>
+    </div>
+    <div class="btn-row" style="display:flex;gap:10px">
+      <button class="hdr-btn" onclick="closeManualPickModal()">Cancel</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="confirmManualPick()">Confirm Pick</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ONBOARDING MODAL (added) ═══ -->
+<div class="modal-bg" id="onboardingModalBg">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-x" onclick="closeOnboardingModal()">✕</button>
+    <div class="modal-ttl">🔮 You're ready to draft</div>
+    <ol class="onboard-steps">
+      <li>When a player is selected, click <strong>Record Pick</strong> (or <strong>Draft to My Team</strong> when it's your turn).</li>
+      <li>Sanctum automatically assigns the player to the team on the clock.</li>
+      <li>When it's your turn, your selection is automatically added to My Roster.</li>
+    </ol>
+    <div class="btn-row" style="display:flex;justify-content:flex-end">
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="closeOnboardingModal()">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script src="/shared-player-data.js"></script>
+<script>
+// ═══════════════════════════════════════
+// ORACLE / TRASH LORD WISDOM
+// ═══════════════════════════════════════
+var ORACLE={
+  QB:'The spirits whisper: in PPR, let your brethren exhaust themselves on quarterbacks early. The difference between QB8 and QB16 is but a few points. Take two elite skill players first — then claim your signal-caller in rounds 7-9.',
+  RB:'Running backs are the currency of champions. The elite tier vanishes by pick 20. After the top eight, the dropoff is severe. Secure two workhorse backs before Round 5, or risk a season of committee despair.',
+  WR:'Receivers are plentiful yet treacherous. The top six are cornerstones of dynasties. Beyond rank 20, injuries and target share shifts make every selection a leap of faith. Seek the young and the healthy.',
+  TE:'Two tiers exist at tight end: the transcendent few, and the replaceable many. If the top four escape you in the first three rounds, pivot — streaming TE is a viable path to glory.',
+  K:'The Oracle has watched kickers cost champions their crowns. Draft last. Always. The variance is whisper-thin — spend this spot on depth that matters.',
+  DEF:'Defense is the final puzzle piece. The best defense in August may be the worst by October. Draft in the final two rounds, then stream matchups weekly.'
+};
+var TRASH={
+  QB:'BOMB PICK: Drafting a QB before Round 7 in a single-QB league and I will screenshot your team. The position is DEEP. Use early picks on skill players.',
+  RB:'BOMB PICK: Taking a committee RB in the top 3 rounds is how you finish last. If he is not a workhorse, HE IS NOT WORTH IT.',
+  WR:'BOMB PICK: Reaching for a WR3 on a run-first team because you love his upside is a CLASSIC loser move. Target share is everything. No targets, no points.',
+  TE:'BOMB PICK: Drafting a TE outside the top 4 before Round 8 is throwing picks away. The drop-off is a cliff. Stream it and spend elsewhere.',
+  K:'BOMB PICK: Drafting a kicker before Round 14 is the single most embarrassing thing you can do in a draft. I will find out.',
+  DEF:'BOMB PICK: Paying early for a defense gets you laughed out of the chat. They get schemed against and your elite DEF is droppable by Week 6.'
+};
+var TIERS={
+  QB:{1:'Elite rushing QBs — only ones worth early picks',2:'Reliable starters with weekly upside',3:'Streamable — matchup dependent',4:'Bye week fills only'},
+  RB:{1:'Workhorse backs — foundation of champions',2:'High-upside with feature role paths',3:'Handcuff value only',4:'Depth only',5:'Deep leagues only'},
+  WR:{1:'Alpha receivers on pass-heavy offenses',2:'WR1/2 upside — cornerstone picks',3:'PPR value with target share',4:'Fliers and streamers',5:'Stash or stream only'},
+  TE:{1:'Top-tier pass catchers — draft early',2:'Solid if elite tier gone',3:'Streamer territory',4:'Drop candidates'},
+  K:{1:'Premier kickers on high-scoring offenses',2:'Streamable'},
+  DEF:{1:'Top defenses — still stream-worthy',2:'Solid but vulnerable',3:'Stream only'}
+};
+var TIER_CUTS={QB:[3,6,9,15],RB:[4,8,12,18,25],WR:[5,10,16,24,35],TE:[4,8,12,20],K:[5,12],DEF:[4,8,15]};
+var POS_MAX={QB:40,RB:150,WR:150,TE:60,K:32,DEF:32};
+
+// ═══════════════════════════════════════
+// 2026 BYE WEEKS — VERIFIED against official released schedule
+// (Source: NFL schedule release, May 2026 — confirmed via SI.com
+// and league-wide reporting. No Week 12 byes leaguewide.)
+// ═══════════════════════════════════════
+var BYE={
+  BUF:7,MIA:6,NE:11,NYJ:13,
+  BAL:13,CIN:6,CLE:11,PIT:9,
+  HOU:8,IND:13,JAX:7,TEN:9,
+  DEN:10,KC:5,LV:13,LAC:7,
+  DAL:14,NYG:8,PHI:10,WAS:7,
+  CHI:10,DET:6,GB:11,MIN:6,
+  ATL:11,CAR:5,NO:8,TB:10,
+  ARI:14,LAR:11,SF:8,SEA:11
+};
+
+var PCOL={QB:'#1a5280',RB:'#2a6e2a',WR:'#8a7010',TE:'#a06010',K:'#6a6a6a',DEF:'#8a2020'};
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+var adpByPos={};
+var injuries={};
+var cmpList=[];var cmpData={};
+var curPos='ALL';var curView='list';var curSearch='';var ready=false;
+// Show/Hide Drafted: board-view-only filter. Defaults to showing drafted
+// players (matches existing behavior). Never touches draftLog, My Roster,
+// counters, ownership, pick numbers, or availability logic — it only
+// decides whether an already-computed drafted row gets appended to the
+// DOM during render.
+var hideDrafted=false;
+function setHideDrafted(v){
+  hideDrafted=v;
+  var showBtn=document.getElementById('showDraftedBtn');
+  var hideBtn=document.getElementById('hideDraftedBtn');
+  if(showBtn)showBtn.classList.toggle('active',!v);
+  if(hideBtn)hideBtn.classList.toggle('active',v);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAFT COMMAND CENTER — team-aware draftLog (Aug 2026)
+//
+// Replaces the old flat `drafted{}` boolean (persisted at localStorage
+// key 'isd') with a versioned, team-aware pick log modeled on
+// auction.html's proven draftLog architecture (ownership derived from
+// an array of pick records, roster views are filtered views over that
+// same array, nothing duplicated). Ownership/economics-specific fields
+// (price, projected, budget) are deliberately NOT carried over — this
+// is a snake-draft board, not an auction tracker.
+//
+// Key design points (see /areas/draft-command-center.md for the full
+// approved decision history):
+//  - Each entry stores its own pickNumber, written once and never
+//    rewritten — snake ownership for a NEW pick is derived from
+//    current state, but an already-logged pick's owner is always read
+//    from its stored teamId, never recomputed from pickNumber later.
+//    This is what keeps a historical correction from ever silently
+//    drifting other entries.
+//  - Teams are stable IDs ({id,name}), not name strings, so renaming a
+//    team never changes who owns a historical pick.
+//  - The legacy 'isd' key is left completely untouched. It cannot be
+//    upgraded (it never recorded team or order), so no migration is
+//    attempted — a one-time non-blocking notice explains this instead.
+// ═══════════════════════════════════════════════════════════
+var DRAFT_SAVE_KEY='sanctum_draft_command_v1';
+var DRAFT_SAVE_SCHEMA_VERSION=1;
+var LEGACY_ISD_KEY='isd';
+
+var draftState={
+  schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,
+  teams:[],
+  myTeamId:null,
+  draftLog:[],
+  nextPickId:1,
+  draftType:'snake',
+  numRounds:16
+};
+var currentReassignId=null;
+var pendingManualPick=null;
+
+// Stable name+position identity — fixes the same shape of collision risk
+// already found and fixed twice elsewhere in this codebase (Jefferson/
+// Cleveland in shared-player-data.js, then again in buildInjuriesFromTank01
+// here). Two same-named players in different positions now get fully
+// independent board rows and draftLog identities.
+function playerKey(name,pos){ return key(name)+'|'+pos; }
+
+// ─── Persistence (validated, fail-safe — modeled on auction.html's
+// readSavedAuctionState) ───
+function saveDraftState(){
+  try{
+    localStorage.setItem(DRAFT_SAVE_KEY, JSON.stringify(draftState));
+  }catch(e){
+    // localStorage can throw (private browsing, quota, disabled).
+    // Persistence is a convenience, not a requirement — fail silently.
+  }
+}
+
+function readSavedDraftState(){
+  try{
+    var raw=localStorage.getItem(DRAFT_SAVE_KEY);
+    if(!raw)return null;
+    var parsed=JSON.parse(raw);
+    if(!parsed||parsed.schemaVersion!==DRAFT_SAVE_SCHEMA_VERSION)return null;
+    if(!Array.isArray(parsed.teams)||!Array.isArray(parsed.draftLog))return null;
+    // draftType and numRounds are additive fields. Older saved states
+    // (persisted before these features existed) won't have them — default
+    // to 'snake'/16 so they keep behaving exactly as they always did, no
+    // schema-version bump or migration required.
+    if(!parsed.draftType) parsed.draftType='snake';
+    if(!parsed.numRounds) parsed.numRounds=16;
+    return parsed;
+  }catch(e){
+    return null;
+  }
+}
+
+function initDraftState(){
+  var saved=readSavedDraftState();
+  if(saved){
+    draftState=saved;
+    return;
+  }
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16};
+  // No valid new-schema data on this browser. Check for legacy 'isd' data
+  // ONLY to decide whether to show the one-time notice — it is never read
+  // into draftState and never modified or deleted.
+  var legacyRaw=null;
+  try{ legacyRaw=localStorage.getItem(LEGACY_ISD_KEY); }catch(e){}
+  if(legacyRaw){
+    try{
+      var legacyObj=JSON.parse(legacyRaw);
+      var hasAny=legacyObj && Object.keys(legacyObj).some(function(k){return legacyObj[k];});
+      if(hasAny) showLegacyBanner();
+    }catch(e){
+      // Malformed legacy data — nothing to notify about, nothing to touch.
+    }
+  }
+}
+
+function showLegacyBanner(){
+  var b=document.getElementById('legacyBanner');
+  if(b)b.classList.add('on');
+}
+function dismissLegacyBanner(){
+  var b=document.getElementById('legacyBanner');
+  if(b)b.classList.remove('on');
+}
+
+// ─── Snake math — pure functions, no DOM access. Covered by
+// draft-command-center.test.js. computeSlotForPick() is left completely
+// byte-identical to before this feature: existing snake behavior is
+// unchanged. Linear and Manual are handled by the new functions below it,
+// dispatched through resolveSlotForPick() rather than by touching this
+// function. ───
+function computeSlotForPick(pickNumber,numTeams){
+  if(!numTeams)return null;
+  var round=Math.ceil(pickNumber/numTeams);
+  var posInRound=((pickNumber-1)%numTeams)+1;
+  return (round%2===1)?posInRound:(numTeams-posInRound+1);
+}
+
+// Linear: same team order every round, no reversal.
+function computeSlotForPickLinear(pickNumber,numTeams){
+  if(!numTeams)return null;
+  return ((pickNumber-1)%numTeams)+1;
+}
+
+// Manual has no deterministic "on the clock" team — ownership isn't
+// derived from draft order at all in that mode, so this returns null and
+// callers (teamOnClock/distanceToMySlot/renderClockStatus) treat that as
+// "no auto-assignment applies here." The optional maxPickNumber bound
+// (added for the Rounds feature) is a second, independent reason to
+// return null: once the configured draft length has been reached, there
+// is no valid "next round" slot to resolve to, for any draft type. This
+// does not touch the Snake/Linear/Manual assignment logic itself — it's
+// purely a boundary check applied before that logic runs.
+function resolveSlotForPick(pickNumber,numTeams,draftType,maxPickNumber){
+  if(maxPickNumber && pickNumber>maxPickNumber)return null;
+  if(draftType==='manual')return null;
+  if(draftType==='linear')return computeSlotForPickLinear(pickNumber,numTeams);
+  return computeSlotForPick(pickNumber,numTeams);
+}
+
+// Deliberately the MAX stored pickNumber + 1, not draftLog.length + 1 —
+// a Correct Historical Pick removal can leave a gap in the array without
+// renumbering anything after it, and the next live pick must still land
+// on the true next number, not silently reuse the gap.
+function nextPickNumber(){
+  if(!draftState.draftLog.length)return 1;
+  var max=0;
+  draftState.draftLog.forEach(function(e){ if(e.pickNumber>max)max=e.pickNumber; });
+  return max+1;
+}
+// Configured draft length (Rounds feature). Applies identically to Snake,
+// Linear, and Manual — Manual still uses this to know when the draft is
+// "complete" for display purposes, even though it never auto-assigns.
+function totalDraftPicks(){
+  return draftState.teams.length*(draftState.numRounds||16);
+}
+// True once every scheduled pick number has been reached — i.e. the next
+// pick to be logged would fall beyond the configured draft length. Uses
+// the same max-pickNumber convention as the rest of the engine (never
+// backfills gaps), so this stays correct even if an earlier pick was
+// removed via Correct Historical Pick.
+function isDraftComplete(){
+  return draftSetupComplete() && nextPickNumber()>totalDraftPicks();
+}
+function teamIdAtSlot(slot){
+  var t=draftState.teams[slot-1];
+  return t?t.id:null;
+}
+function teamOnClock(pickNumber){
+  var slot=resolveSlotForPick(pickNumber,draftState.teams.length,draftState.draftType,totalDraftPicks());
+  return slot?teamIdAtSlot(slot):null;
+}
+// How many picks from `fromPickNumber` until the user's slot comes up
+// again (0 = on the clock right now). Null if setup/my-team isn't set, if
+// draftType is 'manual' (no deterministic turn order to count against),
+// or if that many picks would fall beyond the configured draft length.
+function distanceToMySlot(fromPickNumber){
+  if(!draftState.myTeamId||!draftState.teams.length)return null;
+  if(draftState.draftType==='manual')return null;
+  var mySlot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!mySlot)return null;
+  var numTeams=draftState.teams.length;
+  var total=totalDraftPicks();
+  for(var offset=0;offset<numTeams*2;offset++){
+    if(resolveSlotForPick(fromPickNumber+offset,numTeams,draftState.draftType,total)===mySlot)return offset;
+  }
+  return null;
+}
+
+// ─── draftLog lookup index — rebuilt once per render pass, so every
+// board row does an O(1) lookup instead of a scan. ───
+function buildDraftIndex(){
+  var idx={};
+  draftState.draftLog.forEach(function(e){
+    idx[playerKey(e.player,e.pos)]=e;
+  });
+  return idx;
+}
+function teamNameById(id){
+  var t=draftState.teams.find(function(x){return x.id===id;});
+  return t?t.name:'Unknown Team';
+}
+function draftSetupComplete(){ return draftState.teams.length>0; }
+
+// ═══════════════════════════════════════════════════════════════════
+// SAGE V1 — DRAFT COMMAND CENTER INTEGRATION (Aug 17 2026)
+//
+// Additive, read-only decision support only. Nothing in this section
+// ever writes to draftState, calls saveDraftState(), logs/removes a
+// pick, or touches draft sequencing -- it only ever reads existing
+// state (adpByPos, draftState, the existing nextPickNumber()/
+// distanceToMySlot()/buildDraftIndex() functions, all unmodified) to
+// build a request, and only ever updates its own three variables
+// (sageRecommendations/sageLoading/sageError) plus this one panel's
+// DOM. A SAGE failure can never affect anything else on the page --
+// every call site below is a small addition alongside an existing
+// call, never a replacement of one.
+// ═══════════════════════════════════════════════════════════════════
+var SAGE_MAX_CANDIDATES=25;
+var sageRecommendations=null;
+var sageLoading=false;
+var sageError=null;
+var sageRequestSeq=0; // guards a slow/late response from overwriting a newer one
+var sageShowAll=false;
+var sageInitialRefreshDone=false;
+
+// Pure: currently-available players (not in draftLog), in ADP order.
+// Reused both as the candidate set and as the basis for the next-turn
+// pool below -- same source of truth the board itself already renders
+// from, nothing new fetched.
+function buildAvailablePlayersSortedByAdp(){
+  var draftIdx=buildDraftIndex();
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){ merged.push(p); });
+  });
+  merged.sort(function(a,b){return a.adp-b.adp});
+  return merged.filter(function(p){ return !draftIdx[p.key]; });
+}
+
+// Pure: the one genuinely new derived value Draft Command Center
+// needed for Scarcity (see the pre-integration audit) -- an estimate
+// of who's likely still around at the user's next turn. Skips the N
+// players (picksUntilNextTurn) most likely to be taken by other teams
+// first. Uncapped by default (returns the full remainder) -- Scarcity
+// needs the broader projected pool, not a bounded slice; maxSize is
+// only for callers/tests that explicitly want a capped result.
+function deriveNextTurnPool(availableSortedByAdp,picksUntilNextTurn,maxSize){
+  var skip=(typeof picksUntilNextTurn==='number'&&picksUntilNextTurn>0)?picksUntilNextTurn:0;
+  var remainder=availableSortedByAdp.slice(skip);
+  return (typeof maxSize==='number')?remainder.slice(0,maxSize):remainder;
+}
+
+function toSagePlayer(p){
+  return {name:p.name,pos:p.pos,adp:p.adp,team:p.team||null};
+}
+
+function toggleSageShowAll(){
+  sageShowAll=!sageShowAll;
+  renderSagePanel();
+}
+
+function renderSagePanel(){
+  var el=document.getElementById('sagePanel');
+  if(!el)return;
+
+  if(!draftSetupComplete()||isDraftComplete()){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+  if(sageLoading&&!sageRecommendations){
+    el.style.display='block';
+    el.innerHTML='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div><div class="sage-status">Thinking through the board...</div>';
+    return;
+  }
+  if(sageError){
+    el.style.display='block';
+    el.innerHTML='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div><div class="sage-status sage-error-msg">'+sageError+'</div>';
+    return;
+  }
+  if(!sageRecommendations||sageRecommendations.length===0){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+
+  var top3=sageRecommendations.slice(0,3);
+  var rest=sageRecommendations.slice(3,5);
+
+  function escText(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderRec(r){
+    var reasonsHtml=(r.reasons&&r.reasons.length)?('<div class="sage-rec-reasons">'+r.reasons.map(function(x){return '· '+escText(x);}).join('&nbsp;&nbsp;')+'</div>'):'';
+    var codeClass='sage-code-'+String(r.code||'').replace(/[^a-z-]/g,'');
+    return '<div class="sage-rec">'+
+      '<div class="sage-rec-top"><span class="sage-rec-player">'+escText(r.player.name)+'</span>'+
+      '<span class="sage-rec-meta">'+escText(r.player.pos)+(r.player.team?' · '+escText(r.player.team):'')+'</span>'+
+      '<span class="sage-rec-label '+codeClass+'">'+escText(r.recommendation)+'</span></div>'+
+      '<div class="sage-rec-explanation">'+escText(r.explanation)+'</div>'+
+      reasonsHtml+
+      '</div>';
+  }
+
+  var html='<div class="sage-panel-hdr">🔮 SAGE Recommendations</div>';
+  html+='<div class="sage-rec-list">'+top3.map(renderRec).join('')+'</div>';
+  if(rest.length){
+    html+='<button type="button" class="sage-showmore-btn" onclick="toggleSageShowAll()">'+(sageShowAll?'Show less':'Show '+rest.length+' more')+'</button>';
+    html+='<div class="sage-rec-list sage-rec-extra" style="display:'+(sageShowAll?'flex':'none')+'">'+rest.map(renderRec).join('')+'</div>';
+  }
+  el.style.display='block';
+  el.innerHTML=html;
+}
+
+// The ONLY function that talks to the network for SAGE. Fully
+// asynchronous, never awaited by anything that logs/removes a pick --
+// every call site fires this and moves on immediately.
+function refreshSageRecommendations(){
+  if(!draftSetupComplete()||isDraftComplete()){
+    sageRecommendations=null; sageError=null; sageLoading=false;
+    renderSagePanel();
+    return;
+  }
+
+  var available=buildAvailablePlayersSortedByAdp();
+  if(available.length===0){
+    sageRecommendations=null; sageError=null; sageLoading=false;
+    renderSagePanel();
+    return;
+  }
+
+  var candidates=available.slice(0,SAGE_MAX_CANDIDATES).map(toSagePlayer);
+  var currentPick=nextPickNumber();
+  var away=distanceToMySlot(currentPick);
+  // SAGE needs "my NEXT opportunity AFTER this current selection" -- a
+  // different question than distanceToMySlot(currentPick) itself answers
+  // ("am I on the clock right now"), which the draft tracker/UI depends
+  // on and must not change. When away===0 (on the clock now), look
+  // forward from currentPick+1 instead of currentPick -- this reuses
+  // distanceToMySlot() completely unmodified, just called from a
+  // different starting point, so it correctly finds an immediate
+  // back-to-back turn (e.g. the last slot in an even-team-count snake
+  // picking both the final pick of one round and the first pick of the
+  // next) as well as any further-out next turn, without this needing to
+  // know anything about snake mechanics itself. When NOT currently on
+  // the clock (away is a positive number, or null for manual-draft-type/
+  // no-setup), behavior is completely unchanged from before.
+  var sageAway=away;
+  if(away===0){
+    var awayFromNext=distanceToMySlot(currentPick+1);
+    sageAway=1+(typeof awayFromNext==='number'?awayFromNext:0);
+  }
+  var nextUserPick=currentPick+(typeof sageAway==='number'?sageAway:0);
+  // Scarcity needs the BROADER available-player depth, not the same
+  // bounded slice SAGE evaluates as candidates -- Draft Command Center
+  // already has the full available population in memory (this is the
+  // same `available` list the board itself renders from), so it's used
+  // directly here rather than re-slicing it down to SAGE_MAX_CANDIDATES.
+  var currentPool=available.map(toSagePlayer);
+  var nextTurnPool=deriveNextTurnPool(available,sageAway).map(toSagePlayer);
+  var scoringEl=document.getElementById('scoringSel');
+
+  var mySeq=++sageRequestSeq;
+  sageLoading=true;
+  sageError=null;
+  renderSagePanel();
+
+  fetch('/.netlify/functions/sage-recommend',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      candidates:candidates,
+      currentPool:currentPool,
+      nextTurnPool:nextTurnPool,
+      currentPick:currentPick,
+      nextUserPick:nextUserPick,
+      scoring:scoringEl?scoringEl.value:undefined
+    })
+  })
+    .then(function(res){ return res.json().catch(function(){return {};}).then(function(data){ return {ok:res.ok,data:data}; }); })
+    .then(function(result){
+      if(mySeq!==sageRequestSeq)return; // superseded by a newer request -- discard
+      sageLoading=false;
+      if(result.ok&&result.data&&Array.isArray(result.data.recommendations)){
+        sageRecommendations=result.data.recommendations;
+        sageError=null;
+      }else{
+        sageRecommendations=null;
+        sageError='SAGE recommendations temporarily unavailable.';
+      }
+      renderSagePanel();
+    })
+    .catch(function(){
+      if(mySeq!==sageRequestSeq)return;
+      sageLoading=false;
+      sageRecommendations=null;
+      sageError='SAGE recommendations temporarily unavailable.';
+      renderSagePanel();
+    });
+}
+
+// ─── Logging / undo / correction ───
+// One click does double duty, matching draft.html's existing toggle-to-undo
+// idiom: click an AVAILABLE player to log it against whoever is on the
+// clock (or the user, if the snake has reached their slot); click an
+// already-drafted player again to remove that specific pick. A separate
+// "Undo Last Pick" control (not tied to any one row) removes strictly the
+// most recent pick by pickNumber, for the common case of a quick misclick
+// correction without hunting for the row.
+// Contextual action-button wording (presentation only — the click target
+// still calls the exact same logDraftPick() either way).
+function draftActionLabel(amIOnClockNow){
+  return amIOnClockNow?'Draft to My Team':'Record Pick';
+}
+
+function logDraftPick(name,pos){
+  if(!draftSetupComplete()){
+    openSetupModal();
+    return;
+  }
+  var idx=buildDraftIndex();
+  var k=playerKey(name,pos);
+  var existing=idx[k];
+  if(existing){
+    removePickById(existing.id);
+    return;
+  }
+  if(draftState.draftType==='manual'){
+    openManualTeamPicker(name,pos);
+    return;
+  }
+  var pickNumber=nextPickNumber();
+  var teamId=teamOnClock(pickNumber);
+  if(!teamId){
+    // Draft complete (or misconfigured setup) — there is no valid "next
+    // round" slot to assign this pick to. Do nothing rather than create a
+    // broken ownerless entry; the clock strip already communicates why.
+    return;
+  }
+  draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:name,pos:pos,teamId:teamId});
+  saveDraftState();
+  afterDraftMutation();
+}
+
+// ─── Manual draft type: ownership is never auto-assigned from draft
+// order — recording a pick requires explicitly selecting the drafting
+// team. pickNumber is still derived the normal way (it's just a counter,
+// not tied to ownership), so persistence/historical-correction/Undo Last
+// Pick all keep working exactly as they do for Snake/Linear. ───
+function openManualTeamPicker(name,pos){
+  pendingManualPick={name:name,pos:pos};
+  document.getElementById('manualPickPlayerLabel').textContent=name+' ('+pos+')';
+  var sel=document.getElementById('manualPickTeamSel');
+  sel.innerHTML='';
+  draftState.teams.forEach(function(t){
+    var o=document.createElement('option');
+    o.value=t.id;o.textContent=t.name+(t.id===draftState.myTeamId?' (Me)':'');
+    sel.appendChild(o);
+  });
+  document.getElementById('manualPickModalBg').classList.add('on');
+}
+function closeManualPickModal(){
+  document.getElementById('manualPickModalBg').classList.remove('on');
+  pendingManualPick=null;
+}
+function confirmManualPick(){
+  if(!pendingManualPick)return;
+  var teamId=document.getElementById('manualPickTeamSel').value;
+  var pickNumber=nextPickNumber();
+  draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:pendingManualPick.name,pos:pendingManualPick.pos,teamId:teamId});
+  saveDraftState();
+  closeManualPickModal();
+  afterDraftMutation();
+}
+
+function removePickById(id){
+  draftState.draftLog=draftState.draftLog.filter(function(e){return e.id!==id;});
+  saveDraftState();
+  afterDraftMutation();
+}
+
+function undoLastPick(){
+  if(!draftState.draftLog.length){ alert('No picks logged yet.'); return; }
+  var maxEntry=draftState.draftLog.reduce(function(a,b){return b.pickNumber>a.pickNumber?b:a;});
+  if(!confirm('Undo the most recent pick — '+maxEntry.player+' ('+maxEntry.pos+'), pick #'+maxEntry.pickNumber+'?'))return;
+  removePickById(maxEntry.id);
+}
+
+function afterDraftMutation(){
+  render();
+  refreshSageRecommendations();
+}
+
+// ─── Reassignment modal (Correct Historical Pick: reassign or remove) ───
+function openReassignModal(id){
+  var entry=draftState.draftLog.find(function(e){return e.id===id;});
+  if(!entry)return;
+  currentReassignId=id;
+  document.getElementById('reassignPlayerLabel').textContent=entry.player+' ('+entry.pos+') — Pick #'+entry.pickNumber;
+  var sel=document.getElementById('reassignTeamSel');
+  sel.innerHTML='';
+  draftState.teams.forEach(function(t){
+    var o=document.createElement('option');
+    o.value=t.id;o.textContent=t.name+(t.id===draftState.myTeamId?' (Me)':'');
+    if(t.id===entry.teamId)o.selected=true;
+    sel.appendChild(o);
+  });
+  document.getElementById('reassignModalBg').classList.add('on');
+}
+function closeReassignModal(){
+  document.getElementById('reassignModalBg').classList.remove('on');
+  currentReassignId=null;
+}
+function applyReassign(){
+  if(currentReassignId==null)return;
+  var newTeamId=document.getElementById('reassignTeamSel').value;
+  var entry=draftState.draftLog.find(function(e){return e.id===currentReassignId;});
+  if(entry){ entry.teamId=newTeamId; saveDraftState(); }
+  closeReassignModal();
+  render();
+}
+function removeCurrentReassignPick(){
+  if(currentReassignId==null)return;
+  var id=currentReassignId;
+  closeReassignModal();
+  removePickById(id);
+}
+
+// ─── Draft Setup modal ───
+function openSetupModal(){
+  document.getElementById('setupNumTeams').value=String(draftState.teams.length||12);
+  document.getElementById('setupNumRounds').value=String(draftState.numRounds||16);
+  document.getElementById('setupDraftType').value=draftState.draftType||'snake';
+  updateSetupDraftTypeNote();
+  renderSetupTeamNames();
+  document.getElementById('setupModalBg').classList.add('on');
+}
+function updateSetupDraftTypeNote(){
+  var note=document.getElementById('setupDraftTypeNote');
+  if(!note)return;
+  var t=document.getElementById('setupDraftType').value;
+  if(t==='linear'){
+    note.textContent='Linear: the same team order repeats every round (no snake reversal).';
+  }else if(t==='manual'){
+    note.textContent="Manual: nothing is auto-assigned by draft order. You'll choose the drafting team each time you record a pick.";
+  }else{
+    note.textContent='Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.';
+  }
+}
+function closeSetupModal(){
+  document.getElementById('setupModalBg').classList.remove('on');
+}
+function renderSetupTeamNames(){
+  var n=parseInt(document.getElementById('setupNumTeams').value);
+  var grid=document.getElementById('setupTeamNamesGrid');
+  grid.innerHTML='';
+  for(var i=1;i<=n;i++){
+    var existing=draftState.teams[i-1];
+    var f=document.createElement('div');f.className='setup-field';
+    f.innerHTML='<label>Team '+i+'</label><input type="text" id="setupTeam-'+i+'" value="'+escAttr(existing?existing.name:'Team '+i)+'"/>';
+    grid.appendChild(f);
+  }
+  var mySel=document.getElementById('setupMyTeam');
+  mySel.innerHTML='';
+  for(var j=1;j<=n;j++){
+    var o=document.createElement('option');
+    o.value='slot-'+j;
+    o.textContent=ordinalLabel(j)+' Pick';
+    mySel.appendChild(o);
+  }
+  if(draftState.myTeamId){
+    var curIdx=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;});
+    if(curIdx!==-1 && curIdx<n) mySel.value='slot-'+(curIdx+1);
+  }
+}
+function saveSetup(){
+  var n=parseInt(document.getElementById('setupNumTeams').value);
+  var newTeams=[];
+  for(var i=1;i<=n;i++){
+    var inp=document.getElementById('setupTeam-'+i);
+    var name=(inp&&inp.value.trim())?inp.value.trim():'Team '+i;
+    var existingId=(draftState.teams[i-1]&&draftState.teams[i-1].id)||('team-'+String(i).padStart(2,'0'));
+    newTeams.push({id:existingId,name:name});
+  }
+  var newIds={};
+  newTeams.forEach(function(t){newIds[t.id]=true;});
+  var orphaned=draftState.draftLog.some(function(e){return !newIds[e.teamId];});
+  if(orphaned){
+    alert('That team count/order would orphan picks already logged against a team being removed. Reset Draft first, or keep all currently-used teams in the list.');
+    return;
+  }
+  // UI-only hook (no engine/state-shape change): remember whether this is
+  // the very first time Setup has ever been completed, purely to decide
+  // whether to auto-show the onboarding modal below. Nothing about the
+  // actual teams/myTeamId assignment changes.
+  var isFirstEverSetup = draftState.teams.length===0;
+  var mySlotVal=document.getElementById('setupMyTeam').value;
+  var mySlotIdx=parseInt(mySlotVal.replace('slot-',''),10)-1;
+  draftState.teams=newTeams;
+  draftState.myTeamId=newTeams[mySlotIdx]?newTeams[mySlotIdx].id:null;
+  draftState.draftType=document.getElementById('setupDraftType').value||'snake';
+  draftState.numRounds=parseInt(document.getElementById('setupNumRounds').value)||16;
+  saveDraftState();
+  closeSetupModal();
+  sageInitialRefreshDone=true; // this call refreshes SAGE explicitly below; prevent render()'s own one-time auto-check from also firing
+  render();
+  refreshSageRecommendations();
+  if(isFirstEverSetup && !isOnboardingDismissed()) openOnboardingModal();
+}
+
+// ─── Reset Draft (formerly "Clear Drafted") — clears logged picks only;
+// team setup is preserved so a second draft can be tracked without
+// redoing Setup. Behavior is unchanged from the prior "Clear Drafted"
+// control; only the button label/wording changed. ───
+function clearDrafted(){
+  if(!confirm('Reset the draft? This clears all logged picks. Your team setup (teams and your slot) will be kept.'))return;
+  draftState.draftLog=[];
+  draftState.nextPickId=1;
+  saveDraftState();
+  render();
+  refreshSageRecommendations();
+}
+
+// ─── Onboarding (first-use guidance) — entirely separate from
+// draftState/draftLog: a single localStorage flag, not part of the
+// versioned draft-tracking schema, so the core engine is untouched. ───
+var ONBOARDING_DISMISSED_KEY='sanctum_draft_onboarding_dismissed';
+function isOnboardingDismissed(){
+  try{ return localStorage.getItem(ONBOARDING_DISMISSED_KEY)==='true'; }catch(e){ return false; }
+}
+function openOnboardingModal(){
+  var bg=document.getElementById('onboardingModalBg');
+  if(bg)bg.classList.add('on');
+}
+function closeOnboardingModal(){
+  var bg=document.getElementById('onboardingModalBg');
+  if(bg)bg.classList.remove('on');
+  try{ localStorage.setItem(ONBOARDING_DISMISSED_KEY,'true'); }catch(e){}
+}
+
+// ─── Live clock status. Two states, matched to the approved copy:
+//   not my turn -> "PICK Y — TEAM Z ON THE CLOCK" / "Your next pick: #N · M selections away"
+//   my turn     -> "YOU'RE ON THE CLOCK — PICK Y" / "Choose a player below and click Draft to My Team"
+// Never a modal/alert -- purely a styled strip (see .clock-bar.mine). ───
+function renderClockStatus(){
+  var el=document.getElementById('clockBar');
+  if(!el)return;
+  el.classList.remove('mine');
+  if(!draftSetupComplete()){
+    el.innerHTML='<div class="clock-line1">Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.</div>';
+    return;
+  }
+  if(isDraftComplete()){
+    // Deliberately does not hide/disable anything else on the page — the
+    // board, My Roster, corrections, Undo Last Pick, and Print all stay
+    // fully available. If the final pick is later undone, the very next
+    // render() call re-evaluates isDraftComplete() (false again) and this
+    // falls straight through to the normal on-the-clock display below.
+    el.innerHTML='<div class="clock-line1">DRAFT COMPLETE — '+draftState.draftLog.length+' OF '+totalDraftPicks()+' PICKS RECORDED</div>';
+    return;
+  }
+  if(draftState.draftType==='manual'){
+    el.innerHTML='<div class="clock-line1">MANUAL DRAFT — select the team for each pick as you record it</div>';
+    return;
+  }
+  var pn=nextPickNumber();
+  var numTeams=draftState.teams.length;
+  var slot=resolveSlotForPick(pn,numTeams,draftState.draftType,totalDraftPicks());
+  var onClockTeam=slot?draftState.teams[slot-1]:null;
+  var teamLabel=onClockTeam?onClockTeam.name.toUpperCase():'—';
+  var away=distanceToMySlot(pn);
+
+  if(draftState.myTeamId && away===0){
+    el.classList.add('mine');
+    el.innerHTML=
+      '<div class="clock-line1">YOU\'RE ON THE CLOCK — PICK '+pn+'</div>'+
+      '<div class="clock-line2">Choose a player below and click <strong>Draft to My Team</strong></div>';
+    return;
+  }
+
+  var line1='PICK '+pn+' — '+teamLabel+' ON THE CLOCK';
+  var line2='';
+  if(draftState.myTeamId && away!=null){
+    var myNextPick=pn+away;
+    line2='<div class="clock-line2">Your next pick: #'+myNextPick+' · '+away+' selection'+(away===1?'':'s')+' away</div>';
+  }
+  el.innerHTML='<div class="clock-line1">'+line1+'</div>'+line2;
+}
+
+// ─── Persistent "MY SLOT" / "MY TEAM · SLOT" identifier. Informational
+// only — does not affect turn logic, auto-assignment, or any engine
+// function; purely reflects the already-stored myTeamId/teams. Shows the
+// team name alongside the slot only once the name has been customized
+// away from the "Team N" default, per the approved copy examples. ───
+function renderMySlotIndicator(){
+  var el=document.getElementById('mySlotIndicator');
+  if(!el)return;
+  if(!draftState.myTeamId||!draftState.teams.length){ el.textContent=''; return; }
+  var slot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!slot){ el.textContent=''; return; }
+  var team=draftState.teams[slot-1];
+  var isDefaultName=team && team.name===('Team '+slot);
+  el.textContent=isDefaultName?('MY SLOT: '+slot):('MY TEAM: '+team.name+' · SLOT '+slot);
+}
+
+// ─── Draft Setup button label: "⚙ Draft Setup · Snake · 12 Teams · Slot 3
+// · 16 Rds" once setup is complete, or just "⚙ Draft Setup" before then.
+// Purely presentational — reads draftState.draftType/teams/myTeamId/
+// numRounds, writes nothing, and the button's click handler is unchanged
+// (still openSetupModal(), the exact same existing modal). Split into a
+// core span (Type/Teams/Slot) and a rounds span so the least-important
+// detail (Rounds) can collapse first on narrower screens, then the whole
+// summary collapses at the existing narrower breakpoint — CSS only, no
+// JS involved in either collapse. ───
+var DRAFT_TYPE_LABELS={snake:'Snake',linear:'Linear',manual:'Manual'};
+function renderSetupSummaryButton(){
+  var core=document.getElementById('draftSetupSummaryCore');
+  var roundsEl=document.getElementById('draftSetupSummaryRounds');
+  if(!core||!roundsEl)return;
+  if(!draftState.teams.length||!draftState.myTeamId){ core.textContent=''; roundsEl.textContent=''; return; }
+  var slot=draftState.teams.findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  if(!slot){ core.textContent=''; roundsEl.textContent=''; return; }
+  var typeLabel=DRAFT_TYPE_LABELS[draftState.draftType]||'Snake';
+  var numTeams=draftState.teams.length;
+  var rounds=draftState.numRounds||16;
+  core.textContent=' · '+typeLabel+' · '+numTeams+' Teams · Slot '+slot;
+  roundsEl.textContent=' · '+rounds+' Rds';
+}
+
+// ─── My Roster (v1 scope: user's own team only — the same draftLog
+// already carries every team's picks, so an all-teams grid later is a
+// straightforward iteration over `teams`, not a data-model change).
+// Compact, grouped by position by default; an optional expandable
+// detail view lists every pick with its pick number. ───
+var ROSTER_POS_ORDER=['QB','RB','WR','TE','K','DEF'];
+var rosterDetailOpen=false;
+function toggleRosterDetail(){
+  rosterDetailOpen=!rosterDetailOpen;
+  renderMyRoster();
+}
+function renderMyRoster(){
+  var el=document.getElementById('rosterPanel');
+  if(!el)return;
+  if(!draftState.myTeamId){ el.innerHTML=''; return; }
+  var mine=draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;})
+    .sort(function(a,b){return a.pickNumber-b.pickNumber;});
+
+  if(!mine.length){
+    el.innerHTML='<div class="roster-hdr-row"><span class="roster-title">My Team — 0 Players</span></div>';
+    return;
+  }
+
+  var byPos={};
+  mine.forEach(function(e){ (byPos[e.pos]=byPos[e.pos]||[]).push(e.player); });
+
+  var groupsHtml=ROSTER_POS_ORDER.map(function(pos){
+    var names=byPos[pos];
+    var label=names&&names.length?names.join(', '):'—';
+    return '<b>'+pos+'</b> '+label;
+  }).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+  var detailHtml=mine.map(function(e){
+    return '<span class="roster-chip">#'+e.pickNumber+' '+e.player+' ('+e.pos+')</span>';
+  }).join('');
+
+  el.innerHTML=
+    '<div class="roster-hdr-row">'+
+      '<span class="roster-title">My Team — '+mine.length+' Player'+(mine.length===1?'':'s')+'</span>'+
+      '<span class="roster-groups">'+groupsHtml+'</span>'+
+      '<button type="button" class="roster-toggle" onclick="toggleRosterDetail()">'+(rosterDetailOpen?'Hide Full Roster':'View Full Roster')+'</button>'+
+    '</div>'+
+    '<div class="roster-detail'+(rosterDetailOpen?' open':'')+'">'+detailHtml+'</div>';
+}
+
+// ═══════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════
+function key(n){return(n||'').toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-')}
+function tier(rank,pos){var cuts=TIER_CUTS[pos]||[5,10,20];for(var i=0;i<cuts.length;i++){if(rank<=cuts[i])return i+1}return cuts.length+1}
+function sScore(rank,pos){return Math.min(8,tier(rank,pos)+2)}
+function sCls(s){return s<=3?'s-hi':s<=5?'s-md':'s-lo'}
+function sLbl(s){return s<=3?'★★★':s<=5?'★★☆':'★☆☆'}
+function getInj(name){
+  var d=injuries[key(name)];
+  if(!d)return null;
+  var s=d.status;if(!s||s==='Active')return null;
+  var m={Out:{c:'Out',i:'🔴',l:'OUT'},IR:{c:'IR',i:'🚨',l:'IR'},'Injured Reserve':{c:'IR',i:'🚨',l:'IR'},Doubtful:{c:'Doubtful',i:'🟠',l:'DOUBTFUL'},Questionable:{c:'Questionable',i:'🟡',l:'Q'},PUP:{c:'PUP',i:'🟣',l:'PUP'}};
+  var r=m[s]||{c:'Questionable',i:'⚠️',l:s};
+  return{cls:r.c,icon:r.i,label:r.l,part:d.part};
+}
+function escAttr(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+// "1st", "2nd", "3rd", "4th"... — used only for the Draft Setup slot picker
+// ("1st Pick", "2nd Pick", ...). Handles the 11th/12th/13th exceptions.
+function ordinalLabel(n){
+  var rem100=n%100;
+  if(rem100>=11&&rem100<=13)return n+'th';
+  switch(n%10){case 1:return n+'st';case 2:return n+'nd';case 3:return n+'rd';default:return n+'th';}
+}
+function setStatus(s,t){document.getElementById('sdot').className='dot '+s;document.getElementById('stxt').textContent=t}
+function showFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.add('on')}
+function hideFallbackBanner(){var b=document.getElementById('fallbackBanner');if(b)b.classList.remove('on')}
+
+// ═══════════════════════════════════════
+// BUILD INJURIES OBJECT FROM A TANK01 PLAYER MAP
+// ═══════════════════════════════════════
+//
+// FIX (Aug 11 2026 — Jefferson/Cleveland bug, part 2): this lookup was
+// keyed by normalized NAME ONLY — the exact same collision risk the
+// old applyLiveTeamsFromTank01() had in shared-player-data.js (see
+// that file's header comment for the full root-cause story): a
+// same-named defensive player's injury designation could get applied
+// to the wrong, fantasy-relevant player.
+//
+// Separately, and more urgently: shared-player-data.js's
+// fetchTank01PlayerMap() was changed to key its map by "name|POS"
+// instead of name alone, to fix that exact collision. This function
+// was still building the OLD-shape key, so once that fix shipped,
+// this lookup started silently failing 100% of the time — every
+// player's entry came back undefined, and buildInjuriesFromTank01()
+// began returning an empty {} regardless of real injury data. Fixed
+// below to build the matching "name|POS" key, using p.pos (already
+// set on every player object in adpByPos[pos] by the time this runs;
+// the outer `pos` loop variable is kept as a fallback in case p.pos
+// is ever unset for some reason).
+// ═══════════════════════════════════════
+function buildInjuriesFromTank01(tank01Map){
+  var result={};
+  if(!tank01Map)return result;
+  Object.keys(adpByPos).forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){
+      var mapKey=normalizePlayerName(p.name)+'|'+(p.pos||pos);
+      var entry=tank01Map[mapKey];
+      if(entry&&entry.injuryDesignation){
+        result[key(p.name)]={status:entry.injuryDesignation,part:entry.injuryDescription||null};
+      }
+    });
+  });
+  return result;
+}
+
+// ═══════════════════════════════════════
+// LOAD DATA
+// ═══════════════════════════════════════
+async function loadAll(){
+  var scoring=document.getElementById('scoringSel').value;
+  var teams=document.getElementById('teamsSel').value;
+  setStatus('loading','Loading live ADP + team/injury data...');
+  document.getElementById('main').innerHTML='<div class="loading"><div class="ring"></div><div class="loading-lbl">Consulting the scrolls...</div></div>';
+
+  try{
+    var adpUrl='/.netlify/functions/adp?scoring='+scoring+'&teams='+teams+'&year=2026&count=300';
+    var results=await Promise.all([
+      fetch(adpUrl).then(function(r){return r.json()}),
+      fetchTank01PlayerMap()
+    ]);
+    var adpData=results[0];
+    var tank01Map=results[1];
+
+    if(adpData.status==='Error'||!adpData.players){
+      throw new Error(adpData.errors||'ADP proxy returned no players');
+    }
+
+    adpByPos={};
+    var players=adpData.players||[];
+    players.forEach(function(p){
+      if(!p.name||!p.position)return;
+      var pos=p.position==='PK'?'K':p.position;
+      if(!['QB','RB','WR','TE','K','DEF'].includes(pos))return;
+      if(!adpByPos[pos])adpByPos[pos]=[];
+      adpByPos[pos].push({name:p.name,team:p.team||'FA',adp:parseFloat(p.adp)||999,pos:pos,key:playerKey(p.name,pos)});
+    });
+    Object.keys(adpByPos).forEach(function(pos){adpByPos[pos].sort(function(a,b){return a.adp-b.adp})});
+
+    ['QB','RB','WR','TE','K'].forEach(function(pos){
+      if(adpByPos[pos])adpByPos[pos]=applyLiveTeamsFromTank01(adpByPos[pos],tank01Map);
+    });
+
+    injuries=buildInjuriesFromTank01(tank01Map);
+
+    ready=true;
+    hideFallbackBanner();
+    var total=Object.values(adpByPos).reduce(function(a,arr){return a+arr.length},0);
+    setStatus('live','2026 Live ADP · '+total+' players · Updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}));
+    // Scoring/teams selector change reloaded fresh, format-specific ADP
+    // above -- explicitly refresh SAGE so it re-evaluates against the
+    // new data. Set the one-time flag BEFORE render() so render()'s own
+    // internal auto-check (for the initial/restored-session case) does
+    // not also fire and double-request alongside this explicit call --
+    // same pattern already used in saveSetup().
+    if(draftSetupComplete()){ sageInitialRefreshDone=true; }
+    render();
+    if(draftSetupComplete()){ refreshSageRecommendations(); }
+  }catch(e){
+    setStatus('error','Live ADP unavailable — using fallback');
+    showFallbackBanner();
+    loadFallback();
+  }
+}
+
+// ═══════════════════════════════════════
+// FALLBACK DATA
+// ═══════════════════════════════════════
+function loadFallback(){
+  adpByPos=JSON.parse(JSON.stringify(window.PLAYER_POOL));
+  Object.keys(adpByPos).forEach(function(pos){
+    adpByPos[pos].forEach(function(p){ p.pos=pos; p.key=playerKey(p.name,pos); });
+  });
+
+  fetchTank01PlayerMap()
+    .then(function(tank01Map){
+      ['QB','RB','WR','TE','K'].forEach(function(pos){
+        if(adpByPos[pos])adpByPos[pos]=applyLiveTeamsFromTank01(adpByPos[pos],tank01Map);
+      });
+      injuries=buildInjuriesFromTank01(tank01Map);
+      render();
+    })
+    .catch(function(){
+      render();
+    });
+
+  ready=true;
+  render();
+}
+
+// ═══════════════════════════════════════
+// RENDER — POSITION SECTIONS
+// ═══════════════════════════════════════
+function render(){
+  if(!ready)return;
+  // These three reflect global draftState, independent of which
+  // position/search subset is currently displayed, so they're updated
+  // once per render pass regardless of which branch below runs.
+  updateDBar();
+  renderClockStatus();
+  renderMySlotIndicator();
+  renderSetupSummaryButton();
+  renderMyRoster();
+
+  // SAGE V1: fires exactly once, only if setup was already complete
+  // before this page load (a restored session) -- saveSetup() handles
+  // the "setup just completed/changed during this session" case with
+  // its own explicit call, and sets this same flag first so the two
+  // paths never both fire for the same event.
+  if(!sageInitialRefreshDone && draftSetupComplete()){
+    sageInitialRefreshDone=true;
+    refreshSageRecommendations();
+  }
+
+  if(curSearch){renderSearch();return;}
+  if(curPos==='ALL'){renderAll();return;}
+
+  var main=document.getElementById('main');
+  var show=parseInt(document.getElementById('showSel').value);
+  var positions=[curPos];
+  var posNames={QB:'Quarterbacks',RB:'Running Backs',WR:'Wide Receivers',TE:'Tight Ends',K:'Kickers',DEF:'Team Defenses'};
+  main.innerHTML='';
+  var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
+
+  positions.forEach(function(pos){
+    var all=adpByPos[pos]||[];
+    var maxP=POS_MAX[pos]||50;
+    var limit=(pos==='DEF'||pos==='K')?maxP:(show===999?maxP:Math.min(show,maxP));
+    var players=all.slice(0,limit);
+    if(!players.length)return;
+
+    var sec=document.createElement('div');
+    sec.className='pos-sec';sec.dataset.pos=pos;
+    sec.innerHTML=
+      '<div class="pos-hdr"><span class="pbadge '+pos+'">'+pos+'</span><span class="ptitle">'+posNames[pos]+'</span><span class="pcount">'+players.length+' of '+all.length+'</span></div>'+
+      '<div class="oracle-box"><div class="oracle-lbl">🔮 The Oracle</div>'+ORACLE[pos]+'</div>'+
+      '<div class="trash-box"><div class="trash-lbl">🔥 Trash Lord Bomb Pick</div>'+TRASH[pos]+'</div>';
+
+    if(curView==='list'){
+      var wrap=document.createElement('div');wrap.style.overflowX='auto';
+      var tbl=document.createElement('table');tbl.className='ptable';
+      tbl.innerHTML='<thead><tr><th>OVR</th><th>'+pos+'#</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th></th></tr></thead>';
+      var tbody=document.createElement('tbody');var ct=0;
+
+      players.forEach(function(p,i){
+        var pr=i+1;var t=tier(pr,pos);
+        var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+        var inj2=getInj(p.name);var sc=sScore(pr,pos);
+        var bye=BYE[p.team]||'—';
+        var adpStr=p.adp<900?p.adp.toFixed(1):'—';
+        var ovrStr=p.adp<900?Math.round(p.adp):'—';
+        var safeName=p.name.replace(/'/g,"\\'");
+
+        if(t!==ct){
+          ct=t;var w=(TIERS[pos]&&TIERS[pos][t])||'';
+          var tr2=document.createElement('tr');tr2.className='tier-tr';
+          tr2.innerHTML='<td colspan="10"><div class="tier-inner"><div class="tier-line"></div><span class="tier-lbl">Tier '+t+'</span><div class="tier-line"></div><span class="tier-wisdom">'+w+'</span></div></td>';
+          tbody.appendChild(tr2);
+        }
+        if(hideDrafted&&dk)return;
+
+        var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
+        var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+        var inCmp=cmpList.indexOf(p.key)!==-1;
+        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+        var tr=document.createElement('tr');
+        tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+        tr.id='row-'+p.key;
+        tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=pos;
+        tr.innerHTML=
+          '<td class="r-ovr">'+ovrStr+'</td>'+
+          '<td class="r-pos">'+pr+'</td>'+
+          '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+          '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
+          '<td class="bye-td">'+bye+'</td>'+
+          '<td class="adp-td">'+adpStr+'</td>'+
+          '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
+          '<td class="inj-td">'+injHtml+'</td>'+
+          '<td>'+actionCell+'</td>'+
+          '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
+    }else{
+      var grid=document.createElement('div');grid.className='cgrid';
+      players.forEach(function(p,i){
+        var pr=i+1;
+        var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+        if(hideDrafted&&dk)return;
+        var inj2=getInj(p.name);var sc=sScore(pr,pos);
+        var bye=BYE[p.team]||'—';
+        var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
+        var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
+        var safeName=p.name.replace(/'/g,"\\'");
+        var inCmp=cmpList.indexOf(p.key)!==-1;
+        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+        var cardActionHtml='<div class="cactions">'+leftAction+
+          '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
+        var card=document.createElement('div');
+        card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
+        card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
+        card.innerHTML=
+          '<div class="crank">#'+pr+'</div>'+
+          '<div class="cname">'+p.name+'</div>'+
+          '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
+          injH+
+          cardActionHtml;
+        grid.appendChild(card);
+      });
+      sec.appendChild(grid);
+    }
+    main.appendChild(sec);
+  });
+}
+
+// ═══════════════════════════════════════
+// RENDER — "ALL" MERGED BOARD
+// ═══════════════════════════════════════
+function renderAll(){
+  var main=document.getElementById('main');
+  var show=parseInt(document.getElementById('showSel').value);
+  var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
+
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){
+      merged.push(p);
+    });
+  });
+  merged.sort(function(a,b){return a.adp-b.adp});
+
+  var limit=show===999?merged.length:show;
+  var players=merged.slice(0,limit);
+
+  main.innerHTML='';
+
+  var sec=document.createElement('div');
+  sec.className='pos-sec';
+
+  sec.innerHTML='<div class="pos-hdr"><span class="ptitle">All Positions — True Draft Order</span><span class="pcount">'+players.length+' of '+merged.length+'</span></div>';
+
+  if(curView==='list'){
+    var wrap=document.createElement('div');wrap.style.overflowX='auto';
+    var tbl=document.createElement('table');tbl.className='ptable';
+    tbl.innerHTML='<thead><tr><th>OVR</th><th>Pos</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th></th></tr></thead>';
+    var tbody=document.createElement('tbody');
+
+    players.forEach(function(p,i){
+      var pr=i+1;
+      var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
+      if(posRankForTiers<1)posRankForTiers=pr;
+      var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+      if(hideDrafted&&dk)return;
+      var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
+      var bye=BYE[p.team]||'—';
+      var adpStr=p.adp<900?p.adp.toFixed(1):'—';
+      var ovrStr=pr;
+
+      var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
+      var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+      var safeName=p.name.replace(/'/g,"\\'");
+      var inCmp=cmpList.indexOf(p.key)!==-1;
+      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+      var tr=document.createElement('tr');
+      tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+      tr.id='row-'+p.key;
+      tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=p.pos;
+      tr.innerHTML=
+        '<td class="r-ovr">'+ovrStr+'</td>'+
+        '<td><span class="pbadge '+p.pos+'" style="font-size:9px;padding:2px 6px">'+p.pos+'</span></td>'+
+        '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
+        '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
+        '<td class="bye-td">'+bye+'</td>'+
+        '<td class="adp-td">'+adpStr+'</td>'+
+        '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
+        '<td class="inj-td">'+injHtml+'</td>'+
+        '<td>'+actionCell+'</td>'+
+        '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
+  }else{
+    var grid=document.createElement('div');grid.className='cgrid';
+    players.forEach(function(p,i){
+      var pr=i+1;
+      var posRankForTiers=(adpByPos[p.pos]||[]).findIndex(function(x){return x.key===p.key})+1;
+      if(posRankForTiers<1)posRankForTiers=pr;
+      var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+      if(hideDrafted&&dk)return;
+      var inj2=getInj(p.name);var sc=sScore(posRankForTiers,p.pos);
+      var bye=BYE[p.team]||'—';
+      var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
+      var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
+      var safeName=p.name.replace(/'/g,"\\'");
+      var inCmp=cmpList.indexOf(p.key)!==-1;
+      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+      var card=document.createElement('div');
+      card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
+      card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
+      card.innerHTML=
+        '<div class="crank">#'+pr+'</div>'+
+        '<div class="cname">'+p.name+'</div>'+
+        '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
+        injH+
+        '<div class="cactions">'+leftAction+
+        '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
+      grid.appendChild(card);
+    });
+    sec.appendChild(grid);
+  }
+
+  main.appendChild(sec);
+}
+
+// ═══════════════════════════════════════
+// SEARCH RENDER — MOBILE PERFORMANCE FIX
+// ═══════════════════════════════════════
+function renderSearch(){
+  var main=document.getElementById('main');
+  var q=curSearch.toLowerCase();
+  var matches=[];
+  var draftIdx=buildDraftIndex();
+  var amIOnClockNow=draftSetupComplete()&&draftState.myTeamId&&teamOnClock(nextPickNumber())===draftState.myTeamId;
+
+  var positions=curPos==='ALL'?['QB','RB','WR','TE','K','DEF']:[curPos];
+  positions.forEach(function(pos){
+    var all=adpByPos[pos]||[];
+    all.forEach(function(p,i){
+      if(p.name.toLowerCase().includes(q)||(p.team&&p.team.toLowerCase().includes(q))){
+        matches.push({p:p,pos:pos,rank:i+1});
+      }
+    });
+  });
+
+  matches.sort(function(a,b){return a.p.adp-b.p.adp});
+
+  main.innerHTML='';
+
+  var sec=document.createElement('div');
+  sec.className='search-results';
+
+  if(!matches.length){
+    sec.innerHTML=
+      '<div class="search-results-hdr">🔍 Search results for "'+curSearch+'"</div>'+
+      '<div class="search-no-results">No players found matching "'+curSearch+'"</div>';
+    main.appendChild(sec);
+    return;
+  }
+
+  sec.innerHTML='<div class="search-results-hdr">🔍 Search results for "'+curSearch+'" — <span class="search-results-count">'+matches.length+' players</span></div>';
+
+  var wrap=document.createElement('div');wrap.style.overflowX='auto';
+  var tbl=document.createElement('table');tbl.className='ptable';
+  tbl.innerHTML='<thead><tr><th>Pos</th><th>Rank</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th></tr></thead>';
+  var tbody=document.createElement('tbody');
+
+  matches.forEach(function(m){
+    var p=m.p;var pos=m.pos;var pr=m.rank;
+    var entry=draftIdx[p.key];var dk=!!entry;var isMine=dk&&entry.teamId===draftState.myTeamId;
+    if(hideDrafted&&dk)return;
+    var inj2=getInj(p.name);var sc=sScore(pr,pos);
+    var bye=BYE[p.team]||'—';
+    var adpStr=p.adp<900?p.adp.toFixed(1):'—';
+    var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
+    var injHtml=inj2?
+      '<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':
+      '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
+    var safeName=p.name.replace(/'/g,"\\'");
+    var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+    var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+    var tr=document.createElement('tr');
+    tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+    tr.id='srow-'+p.key;
+    tr.innerHTML=
+      '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
+      '<td class="r-pos">'+pr+'</td>'+
+      '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+      '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
+      '<td class="bye-td">'+bye+'</td>'+
+      '<td class="adp-td">'+adpStr+'</td>'+
+      '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
+      '<td class="inj-td">'+injHtml+'</td>'+
+      '<td>'+actionCell+'</td>';
+    tbody.appendChild(tr);
+  });
+
+  tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
+  main.appendChild(sec);
+}
+
+// ═══════════════════════════════════════
+// DRAFTED BAR
+// ═══════════════════════════════════════
+function updateDBar(){
+  var bar=document.getElementById('dbar');
+  var counts={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};var total=0;
+  draftState.draftLog.forEach(function(e){
+    if(counts.hasOwnProperty(e.pos))counts[e.pos]++;
+    total++;
+  });
+  bar.innerHTML='<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-right:8px">Drafted ('+total+'):</span>';
+  Object.keys(counts).forEach(function(pos){
+    var s=document.createElement('span');s.className='dctr';
+    s.innerHTML='<span class="dbadge" style="background:'+PCOL[pos]+'22;color:'+PCOL[pos]+';border:1px solid '+PCOL[pos]+'44">'+pos+'</span><span style="font-weight:600">'+counts[pos]+'</span><span style="color:var(--text3)"> gone</span>';
+    bar.appendChild(s);
+  });
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function goPos(pos){
+  curPos=pos;
+  document.querySelectorAll('.pos-tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelector('.pos-tab.'+pos).classList.add('active');
+  var showSel=document.getElementById('showSel');
+  var defKInert=(pos==='DEF'||pos==='K');
+  showSel.disabled=defKInert;
+  showSel.title=defKInert?'DEF and K always show the full team/kicker pool':'';
+  render();
+}
+
+function doSearch(q){
+  curSearch=(q||'').toLowerCase().trim();
+  render();
+}
+
+function goView(v){
+  curView=v;
+  document.getElementById('listBtn').classList.toggle('active',v==='list');
+  document.getElementById('cardBtn').classList.toggle('active',v==='card');
+  render();
+}
+
+function printList(){
+  if(curView!=='list')goView('list');
+  window.print();
+}
+
+// ═══════════════════════════════════════
+// COMPARE
+// ═══════════════════════════════════════
+function addCmp(k,pos,name,adp,team){
+  if(cmpList.length>=2){alert('Clear compare first.');return}
+  if(cmpList.includes(k))return;
+  cmpList.push(k);cmpData[k]={pos:pos,name:name,adp:adp,team:team};updCmpBar();
+}
+function updCmpBar(){
+  var bar=document.getElementById('cbar');var slots=document.getElementById('cslots');
+  var hint=document.getElementById('cmphint');var goBtn=document.getElementById('cmpgobtn');
+  slots.innerHTML='';
+  cmpList.forEach(function(k,i){
+    var d=cmpData[k]||{};var pill=document.createElement('div');pill.className='cmp-pill';
+    pill.innerHTML='<span>'+(d.name||k)+'</span><button class="cmp-x" onclick="remCmp(\''+k+'\')">✕</button>';
+    slots.appendChild(pill);
+    if(i===0&&cmpList.length===2){
+      var vs=document.createElement('span');vs.className='cmp-vs';vs.textContent='VS';
+      slots.appendChild(vs);
+    }
+  });
+  if(hint)hint.style.display=cmpList.length===1?'inline':'none';
+  if(goBtn)goBtn.disabled=cmpList.length<2;
+  bar.classList.toggle('on',cmpList.length>0);
+  syncCmpRowButtons();
+}
+// Sync Compare button state across both List and Card views. Reflects
+// cmpList onto whichever .cmp-row-btn elements are currently in the DOM
+// -- purely a visual sync: reads cmpList, never mutates draft-state/persistence.
+function syncCmpRowButtons(){
+  document.querySelectorAll('.cmp-row-btn').forEach(function(btn){
+    var k=btn.dataset.key;var sel=cmpList.indexOf(k)!==-1;
+    btn.disabled=sel;btn.textContent=sel?'✓ Selected':'Compare';
+  });
+}
+function remCmp(k){cmpList=cmpList.filter(function(x){return x!==k});updCmpBar()}
+function clrCmp(){cmpList=[];updCmpBar()}
+function showCmp(){
+  if(cmpList.length<2){alert('Select 2 players.');return}
+  var k1=cmpList[0],k2=cmpList[1];
+  var p1=cmpData[k1];var p2=cmpData[k2];
+  function cls(v1,v2){if(v1===v2)return['',''];return[(v1<v2?'better':'worse'),(v2<v1?'better':'worse')]}
+  var ac=cls(p1.adp,p2.adp);var b1=BYE[p1.team]||'—';var b2=BYE[p2.team]||'—';
+  function col(p,ac,bye){return'<div class="cmp-col"><div class="cmp-col-name">'+p.name+'</div><div class="cmp-row"><span class="cmp-l">Position</span><span class="cmp-v">'+p.pos+'</span></div><div class="cmp-row"><span class="cmp-l">Team</span><span class="cmp-v">'+p.team+'</span></div><div class="cmp-row"><span class="cmp-l">ADP</span><span class="cmp-v '+ac+'">'+p.adp.toFixed(1)+'</span></div><div class="cmp-row"><span class="cmp-l">Bye Week</span><span class="cmp-v">'+bye+'</span></div></div>'}
+  document.getElementById('cmpcols').innerHTML=col(p1,ac[0],b1)+col(p2,ac[1],b2);
+
+  // ═══ Oracle Verdict (Aug 15 2026) ═══
+  // Deterministic prose builder -- same p1/p2/scoring input always
+  // produces the same text (no randomness, no new data source). Every
+  // signal below reuses a helper/state variable that already exists
+  // elsewhere in this file: getInj(), sScore()/tier()/sCls() (via
+  // adpByPos, already loaded), BYE (already looked up above as
+  // b1/b2), and the #scoringSel value (already read by loadAll()).
+  // No new ranking logic, no new player data, no new persisted state.
+  var gap=Math.abs(p1.adp-p2.adp);
+  var samePos=p1.pos===p2.pos;
+  // Winner/loser only resolved when NOT an exact tie -- fixes the prior
+  // bug where a tie made both w and l resolve to the same player
+  // (self-contradictory "favor X... though X warrants monitoring").
+  var w=null,l=null;
+  if(gap>0){w=p1.adp<p2.adp?p1:p2;l=(w===p1)?p2:p1;}
+  var gapCat=gap===0?'TIE':(gap<3?'CLOSE':(gap<15?'MODERATE':'LARGE'));
+
+  var opening;
+  if(gapCat==='TIE'){
+    opening='In 38 seasons the spirits find '+p1.name+' and '+p2.name+' impossible to separate — call it a coin flip.';
+  }else if(gapCat==='CLOSE'){
+    opening=samePos?
+      'In 38 seasons the spirits give the slightest edge to '+w.name+' over '+l.name+' — with ADP this tight, it is close enough to lean either way on draft day.':
+      'In 38 seasons the spirits give a slight ADP edge to '+w.name+', but with '+l.name+' this close, it is more a '+p1.pos+'-vs-'+p2.pos+' roster call than a clear-cut choice.';
+  }else if(gapCat==='MODERATE'){
+    opening=samePos?
+      'In 38 seasons the spirits favor '+w.name+' over '+l.name+' — a real gap, not a landslide.':
+      'In 38 seasons the spirits favor '+w.name+', though '+l.name+' stays squarely in the conversation if your roster leans '+l.pos+'-needy.';
+  }else{
+    opening='In 38 seasons the spirits strongly favor '+w.name+'. The market has '+l.name+' valued well behind — by '+gap.toFixed(1)+' picks.';
+  }
+
+  // Contextual clauses, priority order per spec: injury > stream-tier >
+  // scoring-format > bye-week. At most 2 are used, so verdicts stay
+  // concise instead of stacking every applicable signal.
+  var clauses=[];
+
+  var inj1=getInj(p1.name),inj2=getInj(p2.name);
+  var INJ_SEV={Out:4,IR:4,Doubtful:3,Questionable:2,PUP:1};
+  if(inj1&&inj2){
+    var worseP=(INJ_SEV[inj1.cls]||0)>=(INJ_SEV[inj2.cls]||0)?p1:p2;
+    var worseInj=(worseP===p1)?inj1:inj2;
+    clauses.push(worseP.name+' carries a '+worseInj.label+' tag worth watching before you commit.');
+  }else if(inj1){
+    clauses.push(p1.name+' carries a '+inj1.label+' tag worth watching before you commit.');
+  }else if(inj2){
+    clauses.push(p2.name+' carries a '+inj2.label+' tag worth watching before you commit.');
+  }
+
+  if(gapCat!=='LARGE'){
+    var idx1=(adpByPos[p1.pos]||[]).findIndex(function(x){return x.key===k1});
+    var idx2=(adpByPos[p2.pos]||[]).findIndex(function(x){return x.key===k2});
+    if(idx1>=0&&idx2>=0){
+      var sc1=sScore(idx1+1,p1.pos),sc2=sScore(idx2+1,p2.pos);
+      if(sCls(sc1)!==sCls(sc2)){
+        var lowerP=sc1>sc2?p1:p2,higherP=(lowerP===p1)?p2:p1;
+        clauses.push(lowerP.name+"'s weekly floor is shakier than "+higherP.name+"'s, beyond what ADP alone shows.");
+      }
+    }
+  }
+
+  var scoringEl=document.getElementById('scoringSel');
+  var scoring=scoringEl?scoringEl.value:'standard';
+  if(scoring!=='standard'&&(gapCat==='TIE'||gapCat==='CLOSE')){
+    var skillInvolved=(p1.pos==='RB'||p1.pos==='WR'||p1.pos==='TE'||p2.pos==='RB'||p2.pos==='WR'||p2.pos==='TE');
+    if(skillInvolved){
+      var scoringLbl=scoring==='ppr'?'PPR':'Half PPR';
+      clauses.push('Under '+scoringLbl+' scoring, reception volume can tip a call this tight beyond what raw ADP shows.');
+    }
+  }
+
+  if(b1===b2&&b1!=='—'){
+    clauses.push('Both land on a Week '+b1+' bye, worth weighing if you are pairing them on your bench.');
+  }
+
+  var chosenClauses=clauses.slice(0,2);
+  document.getElementById('vtxt').textContent=opening+(chosenClauses.length?' '+chosenClauses.join(' '):'');
+
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){document.getElementById('modal').classList.remove('on')}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+initDraftState();
+loadAll();
+</script>
+
+<script>
+// ADDED — grouped dropdown nav toggle
+function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
+  var wasOpen = target.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  if (!wasOpen) target.classList.add('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  }
+});
+</script>
+
+</body>
+</html>
