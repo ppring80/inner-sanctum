@@ -257,7 +257,8 @@ function buildYahooForm() {
   wrap.className = 'provider-form show';
   wrap.innerHTML =
     '<button class="connect-btn" onclick="connectDemo(\'yahoo\', {leagueName:\'The Brotherhood\'})">Connect with Yahoo (Demo)</button>' +
-    '<div class="connect-note">DEMO MODE — loads sample league data. Real Yahoo OAuth is pending Yahoo enabling Fantasy Sports API access on our account.</div>';
+    '<div class="connect-note">DEMO MODE — loads sample league data. Real Yahoo OAuth is pending Yahoo enabling Fantasy Sports API access on our account.</div>' +
+    '<div class="result-box" id="yahooResult"></div>';
   return wrap;
 }
 
@@ -328,6 +329,16 @@ function togglePfHelp(btn) {
 function connectDemo(provider, data) {
   LeagueConnection.connect(provider, data);
   afterConnect();
+  // Added — afterConnect() re-renders providerForms (rebuilding a fresh,
+  // empty result box each time), so the confirmation is set AFTER that
+  // render, on the freshly-created element, same result-box pattern the
+  // ESPN flow already uses below.
+  var box = document.getElementById(provider + 'Result');
+  if (box) {
+    box.className = 'result-box success show';
+    box.innerHTML = '✓ Connected — sample "' + (data && data.leagueName ? data.leagueName : 'demo') +
+      '" league loaded. <a href="/power-rankings" style="color:#a8d5a8;text-decoration:underline">View your Power Rankings →</a>';
+  }
 }
 
 function connectSleeper() {
