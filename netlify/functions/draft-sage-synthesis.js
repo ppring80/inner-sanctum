@@ -543,6 +543,98 @@
     }
 
     // -----------------------------------
+    // STRONG + NOW EXPLANATION
+    // -----------------------------------
+
+    // Preserve the existing recommendation logic while making the headline
+    // explanation reflect the evidence that actually produced NOW pressure.
+    // No new score, threshold, ranking rule, or recommendation branch is added.
+    function buildStrongNowExplanation(
+      opportunity,
+      market,
+      scarcity
+    ) {
+      var opportunityLead;
+
+      if (
+        opportunity.direction ===
+          'Increasing Role'
+      ) {
+        opportunityLead =
+          'High-volume opportunity is paired with an increasing role';
+      } else if (
+        opportunity.direction ===
+          'Stable Role'
+      ) {
+        opportunityLead =
+          'High-volume opportunity is backed by a stable role';
+      } else if (
+        opportunity.direction ===
+          'Softening Role'
+      ) {
+        opportunityLead =
+          'Workload remains high even though the recent role has softened';
+      } else {
+        opportunityLead =
+          'The opportunity profile is strong';
+      }
+
+      var marketNow =
+        marketPushesNow(
+          market
+        );
+
+      var scarcityNow =
+        scarcityPushesNow(
+          scarcity
+        );
+
+      if (
+        marketNow &&
+        scarcityNow
+      ) {
+        return (
+          opportunityLead +
+          ', while both the market and positional scarcity make waiting risky.'
+        );
+      }
+
+      if (
+        market.outlook ===
+          'Market Leans Gone'
+      ) {
+        return (
+          opportunityLead +
+          ', and his ADP suggests he is unlikely to reach your next pick.'
+        );
+      }
+
+      if (
+        market.value ===
+          'Discount'
+      ) {
+        return (
+          opportunityLead +
+          ', and he is already available later than his ADP.'
+        );
+      }
+
+      if (
+        scarcityNow
+      ) {
+        return (
+          opportunityLead +
+          ', and comparable positional opportunity is unlikely to remain at your next turn.'
+        );
+      }
+
+      return (
+        opportunityLead +
+        ', and waiting carries meaningful timing risk.'
+      );
+    }
+
+    // -----------------------------------
     // SYNTHESIS
     // -----------------------------------
 
@@ -704,7 +796,11 @@
           'take-now';
 
         explanation =
-          'Strong opportunity is paired with meaningful risk in waiting.';
+          buildStrongNowExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else if (
