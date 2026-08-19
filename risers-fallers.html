@@ -30,7 +30,29 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .status-dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
-.main{max-width:900px;margin:0 auto;padding:28px 24px}
+.main{max-width:1020px;margin:0 auto;padding:28px 24px}
+
+/* ── DESKTOP RISERS/FALLERS LAYOUT (added) ── */
+.rf-grid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
+@media(min-width:981px){
+  .rf-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
+}
+@media(max-width:980px){
+  .rf-grid{grid-template-columns:1fr}
+}
+.rf-main{min-width:0}
+.rf-side{min-width:0}
+
+/* ── MARKET SNAPSHOT PANEL (added) ── */
+.market-snapshot-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.market-snapshot-title{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:0.5px;margin-bottom:10px}
+.market-snapshot-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.market-snapshot-item:last-child{border-bottom:none;padding-bottom:0}
+.market-snapshot-item:first-child{padding-top:0}
+.market-snapshot-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.market-snapshot-value{font-family:'Cinzel',serif;font-size:14px;color:var(--ink)}
+.market-snapshot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+
 
 .intro{text-align:center;margin-bottom:24px}
 .intro-icon{font-size:36px;margin-bottom:10px}
@@ -290,14 +312,24 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 
   <div id="fullListsArea" style="display:none">
-    <div class="pos-filter-bar" id="posFilterBar">
-      <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
-      <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
-      <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
-      <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
-      <button class="hide-top50-toggle" id="hideTop50Btn" onclick="toggleHideTop50()">🙈 Hide Top 50 ADP</button>
+    <div class="rf-grid">
+      <div class="rf-main">
+        <div class="pos-filter-bar" id="posFilterBar">
+          <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
+          <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
+          <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
+          <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+          <button class="hide-top50-toggle" id="hideTop50Btn" onclick="toggleHideTop50()">🙈 Hide Top 50 ADP</button>
+        </div>
+        <div class="lists-grid" id="listsGrid"></div>
+      </div>
+      <div class="rf-side">
+        <div class="market-snapshot-panel" id="marketSnapshotPanel">
+          <div class="market-snapshot-title">📊 Market Snapshot</div>
+          <div id="marketSnapshotList"></div>
+        </div>
+      </div>
     </div>
-    <div class="lists-grid" id="listsGrid"></div>
   </div>
 
 </div>
@@ -397,6 +429,93 @@ function renderTeaser(data) {
       pct(f.previous.targetSharePct) + ' → ' + pct(f.current.targetSharePct) + ' (' + pct(f.targetShareDelta) + ')';
     setTeaserAdpBadge(document.getElementById('teaserFallerAdpBadge'), f);
   }
+
+  renderMarketSnapshot(data);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MARKET SNAPSHOT (added) — derived entirely from the same `data`
+// object renderTeaser()/renderFullLists() already render from
+// (data.risers, data.fallers, data.playerCount). No new fetches, no
+// new calculations — Biggest Riser/Faller reuse the same risers[0]/
+// fallers[0] the teaser cards already show, "Most X By Position" is
+// a plain count over the existing pos field, and Market Activity
+// reuses the same playerCount the status bar already displays.
+// Reads the FULL risers/fallers arrays (not the pos-filter/hide-
+// top50-filtered subset), same way the teaser cards above don't
+// change with those filters either — this is a page-level snapshot,
+// not a filtered view. Called from renderTeaser(), which already
+// runs on every fresh-data render.
+// ═══════════════════════════════════════════════════════════
+function topPositionCount(list) {
+  var counts = {};
+  list.forEach(function (e) { counts[e.pos] = (counts[e.pos] || 0) + 1; });
+  var bestPos = null, bestCount = 0;
+  Object.keys(counts).forEach(function (pos) {
+    if (counts[pos] > bestCount) { bestCount = counts[pos]; bestPos = pos; }
+  });
+  return bestPos ? { pos: bestPos, count: bestCount } : null;
+}
+
+function renderMarketSnapshot(data) {
+  var panel = document.getElementById('marketSnapshotList');
+  if (!panel) return;
+  if (!data || (!data.risers.length && !data.fallers.length)) {
+    panel.innerHTML = '';
+    return;
+  }
+
+  var html = '';
+
+  if (data.risers.length) {
+    var topRiser = data.risers[0];
+    html +=
+      '<div class="market-snapshot-item">' +
+        '<div class="market-snapshot-label">Biggest Riser</div>' +
+        '<div class="market-snapshot-value">' + topRiser.longName + '</div>' +
+        '<div class="market-snapshot-sub">' + topRiser.pos + ' · +' + pct(topRiser.targetShareDelta) + '</div>' +
+      '</div>';
+  }
+
+  if (data.fallers.length) {
+    var topFaller = data.fallers[0];
+    html +=
+      '<div class="market-snapshot-item">' +
+        '<div class="market-snapshot-label">Biggest Faller</div>' +
+        '<div class="market-snapshot-value">' + topFaller.longName + '</div>' +
+        '<div class="market-snapshot-sub">' + topFaller.pos + ' · ' + pct(topFaller.targetShareDelta) + '</div>' +
+      '</div>';
+  }
+
+  var riserPos = topPositionCount(data.risers);
+  if (riserPos) {
+    html +=
+      '<div class="market-snapshot-item">' +
+        '<div class="market-snapshot-label">Most Risers By Position</div>' +
+        '<div class="market-snapshot-value">' + riserPos.pos + '</div>' +
+        '<div class="market-snapshot-sub">' + riserPos.count + ' qualifying ' + (riserPos.count === 1 ? 'riser' : 'risers') + '</div>' +
+      '</div>';
+  }
+
+  var fallerPos = topPositionCount(data.fallers);
+  if (fallerPos) {
+    html +=
+      '<div class="market-snapshot-item">' +
+        '<div class="market-snapshot-label">Most Fallers By Position</div>' +
+        '<div class="market-snapshot-value">' + fallerPos.pos + '</div>' +
+        '<div class="market-snapshot-sub">' + fallerPos.count + ' qualifying ' + (fallerPos.count === 1 ? 'faller' : 'fallers') + '</div>' +
+      '</div>';
+  }
+
+  if (typeof data.playerCount === 'number') {
+    html +=
+      '<div class="market-snapshot-item">' +
+        '<div class="market-snapshot-label">Market Activity</div>' +
+        '<div class="market-snapshot-value">' + data.playerCount + ' players compared</div>' +
+      '</div>';
+  }
+
+  panel.innerHTML = html;
 }
 
 function playerRow(entry, direction) {
