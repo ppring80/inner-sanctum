@@ -151,8 +151,15 @@ function makeSandbox(sageFetchImpl) {
   return sandbox;
 }
 
-function runScript(sandbox) {
+async function runScript(sandbox) {
   vm.runInContext(mainScript, sandbox);
+  // Let the script's own bottom-of-file initDraftState()/loadAll() auto-
+  // run fully settle before the caller configures its own scenario.
+  // loadAll() explicitly refreshes SAGE on its success path -- draftState
+  // .teams is still empty at this exact moment, so that call correctly
+  // no-ops (draftSetupComplete() is false), but only if the test's own
+  // state setup happens strictly AFTER this settles, not concurrently.
+  await new Promise((r) => setTimeout(r, 20));
 }
 
 // Values created INSIDE the vm context (e.g. anything returned by a
@@ -253,14 +260,101 @@ test('toSagePlayer: strips a full board player object down to name/pos/adp/team 
 // the real fetch call it constructs, proving the hard safety boundary
 // and the required failure-message behavior.
 // ─────────────────────────────────────────────────────────
+// Builds a real 12-team snake draft with `picksLogged` dummy picks
+// already made (so nextPickNumber() returns picksLogged+1), the user
+// in slot 12 (last slot -- the case where the wraparound/back-to-back
+// turn actually occurs). Team ownership of the filler picks doesn't
+// affect nextPickNumber()/distanceToMySlot() at all, so every filler
+// entry is just logged against team-01 for simplicity.
+function configureTwelveTeamSnake(sandbox, picksLogged) {
+  var teams = [];
+  for (var i = 1; i <= 12; i++) teams.push({ id: 'team-' + String(i).padStart(2, '0'), name: 'Team ' + i });
+  var draftLog = [];
+  for (var p = 1; p <= picksLogged; p++) {
+    draftLog.push({ id: p, pickNumber: p, player: 'Filler Player ' + p, pos: 'RB', teamId: 'team-01' });
+  }
+  sandbox.draftState = { schemaVersion: 1, teams: teams, myTeamId: 'team-12', draftLog: draftLog, nextPickId: picksLogged + 1, draftType: 'snake', numRounds: 20 };
+  sandbox.adpByPos = { RB: [{ name: 'Available Player', pos: 'RB', team: 'SF', adp: 1, key: sandbox.playerKey('Available Player', 'RB') }] };
+  sandbox.ready = true;
+  sandbox.sageInitialRefreshDone = true;
+}
+
+// Captures the real request body refreshSageRecommendations() sends,
+// via the real handler -- not a reimplementation of its logic.
+async function captureSageRequestBody(sandbox) {
+  var capturedBody = null;
+  sandbox.fetch = function (url, opts) {
+    if (typeof url === 'string' && url.indexOf('/.netlify/functions/sage-recommend') === 0) {
+      capturedBody = JSON.parse(opts.body);
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ recommendations: [] }); } });
+    }
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ players: [] }); } });
+  };
+  sandbox.refreshSageRecommendations();
+  await new Promise(function (r) { setTimeout(r, 10); });
+  return capturedBody;
+}
+
 async function runBehavioralTests() {
+  await testAsync('Snake-turn fix: Pick 11, Slot 12 -> nextUserPick 12 (away!==0, unchanged existing behavior)', async () => {
+    const sandbox = makeSandbox();
+    await runScript(sandbox);
+    configureTwelveTeamSnake(sandbox, 10); // 10 logged -> nextPickNumber() = 11
+    const body = await captureSageRequestBody(sandbox);
+    assert.strictEqual(body.currentPick, 11);
+    assert.strictEqual(body.nextUserPick, 12, 'slot 12 is not yet on the clock at pick 11 -- next turn is the very next pick, same as before this fix');
+  });
+
+  await testAsync('Snake-turn fix: Pick 12, Slot 12 -> nextUserPick 13 (on the clock now; immediate back-to-back wraparound turn)', async () => {
+    const sandbox = makeSandbox();
+    await runScript(sandbox);
+    configureTwelveTeamSnake(sandbox, 11); // 11 logged -> nextPickNumber() = 12
+    const body = await captureSageRequestBody(sandbox);
+    assert.strictEqual(body.currentPick, 12);
+    assert.strictEqual(body.nextUserPick, 13, 'this is the exact bug: before the fix this was 12, identical to currentPick');
+  });
+
+  await testAsync('Snake-turn fix: Pick 13, Slot 12 -> nextUserPick 36 (on the clock again from the wraparound; next real turn is far into round 3)', async () => {
+    const sandbox = makeSandbox();
+    await runScript(sandbox);
+    configureTwelveTeamSnake(sandbox, 12); // 12 logged -> nextPickNumber() = 13
+    const body = await captureSageRequestBody(sandbox);
+    assert.strictEqual(body.currentPick, 13);
+    assert.strictEqual(body.nextUserPick, 36, 'pick 13 is ALSO slot 12 (the wraparound) -- the next real turn after that is round 3\'s slot 12 pick, #36');
+  });
+
+  await testAsync('Snake-turn fix: nextTurnPool skip distance matches the corrected nextUserPick gap, not the raw away value', async () => {
+    const sandbox = makeSandbox();
+    await runScript(sandbox);
+    configureTwelveTeamSnake(sandbox, 11); // pick 12, on the clock -> corrected gap should be 1 (picks 12->13), not 0
+    var capturedBody = null;
+    sandbox.fetch = function (url, opts) {
+      if (typeof url === 'string' && url.indexOf('/.netlify/functions/sage-recommend') === 0) {
+        capturedBody = JSON.parse(opts.body);
+        return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ recommendations: [] }); } });
+      }
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ players: [] }); } });
+    };
+    // deriveNextTurnPool is pure and already covered elsewhere -- this
+    // test just confirms refreshSageRecommendations() passes it the
+    // CORRECTED distance (1), not the raw away value (0), by checking
+    // the real function directly with the same inputs it used.
+    sandbox.refreshSageRecommendations();
+    await new Promise((r) => setTimeout(r, 10));
+    var available = sandbox.buildAvailablePlayersSortedByAdp();
+    var poolWithRawAway = sandbox.deriveNextTurnPool(available, 0).map(sandbox.toSagePlayer);
+    var poolWithCorrectedAway = sandbox.deriveNextTurnPool(available, 1).map(sandbox.toSagePlayer);
+    assert.deepStrictEqual(crossRealm(capturedBody.nextTurnPool), crossRealm(poolWithCorrectedAway));
+    assert.notDeepStrictEqual(crossRealm(capturedBody.nextTurnPool), crossRealm(poolWithRawAway));
+  });
+
   await testAsync('refreshSageRecommendations sends a POST with the expected request shape', async () => {
     let capturedUrl = null, capturedOpts = null;
     const sandbox = makeSandbox((url, opts) => {
       capturedUrl = url; capturedOpts = opts;
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [] }) });
     });
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
     sandbox.refreshSageRecommendations();
     await new Promise((r) => setTimeout(r, 10));
@@ -280,7 +374,7 @@ async function runBehavioralTests() {
       capturedOpts = opts;
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [] }) });
     });
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
     // Add 30 more RBs beyond the SAGE_MAX_CANDIDATES=25 cap, all with
     // worse ADP than everything already in the fixture, so they sort
@@ -305,7 +399,7 @@ async function runBehavioralTests() {
 
   await testAsync('HARD SAFETY: refreshSageRecommendations never mutates draftState/draftLog, success or failure', async () => {
     const sandbox = makeSandbox(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [{ player: { name: 'Player A', pos: 'RB' }, adp: 1, recommendation: 'Take Now', code: 'take-now', explanation: 'x', reasons: [] }] }) }));
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
     const before = JSON.parse(JSON.stringify(sandbox.draftState));
 
@@ -317,7 +411,7 @@ async function runBehavioralTests() {
 
   await testAsync('on fetch rejection, sageError is set to the exact required message and the panel reflects it', async () => {
     const sandbox = makeSandbox(() => Promise.reject(new Error('network down')));
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
 
     sandbox.refreshSageRecommendations();
@@ -329,7 +423,7 @@ async function runBehavioralTests() {
 
   await testAsync('on a non-ok HTTP response, the same required message is shown (not a raw error/stack)', async () => {
     const sandbox = makeSandbox(() => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Internal detail nobody should see' }) }));
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
 
     sandbox.refreshSageRecommendations();
@@ -340,7 +434,7 @@ async function runBehavioralTests() {
 
   await testAsync('logDraftPick still logs a real pick correctly with SAGE wired in (afterDraftMutation calls both render() and refreshSageRecommendations() without interfering with either)', async () => {
     const sandbox = makeSandbox(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [] }) }));
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
 
     sandbox.logDraftPick('Player A', 'RB');
@@ -353,7 +447,7 @@ async function runBehavioralTests() {
 
   await testAsync('a SAGE failure does not prevent a subsequent pick from being logged (rest of the page keeps functioning)', async () => {
     const sandbox = makeSandbox(() => Promise.reject(new Error('SAGE is down')));
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
 
     sandbox.logDraftPick('Player A', 'RB'); // triggers afterDraftMutation -> refreshSageRecommendations, which will fail
@@ -378,7 +472,7 @@ async function runBehavioralTests() {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [{ player: { name: 'Second Call Player', pos: 'RB' }, adp: 1, recommendation: 'Take Now', code: 'take-now', explanation: 'x', reasons: [] }] }) });
     });
-    runScript(sandbox);
+    await runScript(sandbox);
     configureMinimalDraft(sandbox);
 
     sandbox.refreshSageRecommendations(); // first call, hangs
@@ -397,7 +491,7 @@ async function runBehavioralTests() {
   await testAsync('refreshSageRecommendations no-ops cleanly (no fetch call) when draft setup is not complete', async () => {
     let fetchCalled = false;
     const sandbox = makeSandbox(() => { fetchCalled = true; return Promise.resolve({ ok: true, json: () => Promise.resolve({ recommendations: [] }) }); });
-    runScript(sandbox);
+    await runScript(sandbox);
     sandbox.draftState = { schemaVersion: 1, teams: [], myTeamId: null, draftLog: [], nextPickId: 1, draftType: 'snake', numRounds: 16 };
     sandbox.adpByPos = {};
     sandbox.ready = true;
