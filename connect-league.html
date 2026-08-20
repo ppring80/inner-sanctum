@@ -804,6 +804,22 @@ document.addEventListener(
 var selectedProvider =
   "cbs";
 
+/*
+  CBS browser-handoff state.
+
+  startCbsConnect() opens CBS in a script-created tab/window and keeps
+  the WindowProxy here. When the CBS bookmarklet finishes captureAll(),
+  it can post the sanitized result back to this exact opener window.
+*/
+var cbsConnectWindow =
+  null;
+
+var CBS_CAPTURE_MESSAGE =
+  "INNER_SANCTUM_CBS_CAPTURE_RESULT";
+
+var CBS_FANTASY_ORIGIN =
+  /^https:\/\/[^.]+\.football\.cbssports\.com$/i;
+
 var STATUS_LABELS = {
   live:
     "Live",
@@ -1256,26 +1272,22 @@ function buildEspnForm() {
   CBS
   ================================================================
 
-  CBS is no longer treated as blocked.
+  CBS uses a browser-assisted, READ-ONLY connection.
 
-  The browser-assisted connector has been proven against a real
-  authenticated CBS Commissioner fantasy-football league.
+  Customer flow:
 
-  IMPORTANT:
+    1. Inner Sanctum opens CBS in a new browser tab.
+    2. Customer signs into CBS normally and opens their league.
+    3. Customer clicks the Inner Sanctum CBS bookmark.
+    4. The bookmarklet runs CBSBrowserConnector.captureAll() inside
+       the authenticated CBS page.
+    5. The sanitized capture is sent directly back to this opener
+       window with window.postMessage().
+    6. receiveCbsConnection() stores the safe league context through
+       LeagueConnection.
 
-  connect-league.html runs on theinnersanctum.xyz.
-
-  cbs-browser-connector.js must run inside the authenticated CBS
-  fantasy page context.
-
-  Therefore this page does NOT pretend that clicking a button here
-  can directly inspect a CBS tab.
-
-  The final consumer transport/helper is the next integration layer.
-
-  This screen accurately represents the current beta state and can
-  also recognize CBS connection data after that helper hands the
-  sanitized capture back to LeagueConnection.
+  No CBS password, cookies, session tokens, or write operations are
+  part of this flow.
 */
 
 function buildCbsForm() {
@@ -1371,11 +1383,11 @@ function buildCbsForm() {
   }
 
   wrap.innerHTML =
-    '<div class="beta-pill">Browser Connect · Beta</div>' +
+    '<div class="beta-pill">CBS Connect · Beta</div>' +
 
     '<div class="pf-info">' +
-      '<strong>CBS connection is now supported in beta.</strong><br>' +
-      'CBS uses a browser-assisted connection. You sign into CBS normally in your own browser; The Inner Sanctum does not ask for your CBS password.' +
+      '<strong>Connect CBS without sharing your CBS password.</strong><br>' +
+      'Inner Sanctum opens CBS in a separate tab. You sign into CBS normally, open your fantasy league, and use the Inner Sanctum CBS bookmark to send back read-only league information.' +
     '</div>' +
 
     '<div class="cbs-feature-grid">' +
@@ -1390,7 +1402,7 @@ function buildCbsForm() {
     '<div class="pf-help">' +
 
       '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-        '📖 How CBS Browser Connect works ' +
+        '📖 How CBS Connect works ' +
         '<span class="pf-help-icon">▼</span>' +
       '</button>' +
 
@@ -1398,17 +1410,17 @@ function buildCbsForm() {
 
         '<div class="pf-step">' +
           '<span class="pf-step-num">1</span>' +
-          '<span>Sign into CBS Sports normally and open your fantasy-football league.</span>' +
+          '<span>Click Connect CBS League below. CBS opens in a separate browser tab.</span>' +
         '</div>' +
 
         '<div class="pf-step">' +
           '<span class="pf-step-num">2</span>' +
-          '<span>The Inner Sanctum CBS browser helper reads the fantasy-league information already available to your authenticated browser.</span>' +
+          '<span>Sign into CBS normally if needed, then open the fantasy-football league you want to connect.</span>' +
         '</div>' +
 
         '<div class="pf-step">' +
           '<span class="pf-step-num">3</span>' +
-          '<span>The sanitized league package is connected to The Inner Sanctum and becomes available to supported tools.</span>' +
+          '<span>Click your Inner Sanctum CBS bookmark on the CBS league page. The sanitized read-only capture returns directly to this Inner Sanctum tab.</span>' +
         '</div>' +
 
       '</div>' +
@@ -1429,7 +1441,7 @@ function buildCbsForm() {
     '</button>' +
 
     '<div class="connect-note">' +
-      'CBS Browser Connect is in beta while we expand testing across additional CBS league configurations. No CBS password is stored by The Inner Sanctum.' +
+      'CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.' +
     '</div>' +
 
     '<div class="result-box" id="cbsResult"></div>';
@@ -1845,16 +1857,13 @@ function connectEspn() {
   CBS CONNECTION ENTRY POINT
   ================================================================
 
-  This function intentionally does NOT attempt to scrape CBS from
-  theinnersanctum.xyz.
+  Inner Sanctum cannot inspect CBS directly because CBS is a
+  different origin. Instead, this page opens CBS and retains the
+  WindowProxy returned by window.open().
 
-  Browser security prevents this page from directly reading another
-  authenticated site's DOM/session.
-
-  The next layer is the consumer CBS browser helper/extension.
-
-  When that transport exists, it should deliver the sanitized
-  capture back through receiveCbsConnection() below.
+  The CBS bookmarklet later executes inside the authenticated CBS
+  league page and can safely send the sanitized capture back to this
+  opener with window.opener.postMessage().
 */
 
 function startCbsConnect() {
@@ -1863,27 +1872,41 @@ function startCbsConnect() {
       "cbsResult"
     );
 
+  /*
+    Open the normal CBS Fantasy Football entry point.
+
+    Customers authenticate with CBS directly. Inner Sanctum never
+    receives the CBS username/password or browser session.
+  */
+  cbsConnectWindow =
+    window.open(
+      "https://www.cbssports.com/fantasy/football/",
+      "innerSanctumCbsConnect"
+    );
+
+  if (!cbsConnectWindow) {
+    box.className =
+      "result-box error show";
+
+    box.textContent =
+      "⚠️ CBS could not be opened. Allow pop-ups for The Inner Sanctum and try again.";
+
+    return;
+  }
+
+  try {
+    cbsConnectWindow.focus();
+  } catch (e) {
+    // Focus is optional. The connection can still proceed.
+  }
+
   box.className =
     "result-box loading show";
 
   box.innerHTML =
-    '<strong>CBS Browser Connect is ready for the browser-helper step.</strong><br>' +
-    'Open your CBS fantasy league in the same browser and sign in normally. ' +
-    'The Inner Sanctum browser helper will handle the secure read-only sync.';
-
-  /*
-    FUTURE CONSUMER TRANSPORT:
-
-    This is where we will invoke/detect the CBS browser helper.
-
-    Examples could include:
-
-      - browser extension messaging
-      - helper-installed custom event
-      - controlled handoff between CBS and Inner Sanctum
-
-    Do NOT replace this with server-side CBS username/password login.
-  */
+    '<strong>CBS opened in a separate tab.</strong><br>' +
+    'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
+    'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
 }
 
 /*
@@ -2139,6 +2162,73 @@ window.receiveCbsConnection =
       throw err;
     }
   };
+
+/*
+  ================================================================
+  CBS CROSS-ORIGIN MESSAGE RECEIVER
+  ================================================================
+
+  Accept only the exact capture message sent from an authenticated
+  CBS Fantasy league origin.
+
+  Security boundaries:
+
+    - event.origin must be a *.football.cbssports.com HTTPS origin
+    - if startCbsConnect() opened a CBS window, event.source must be
+      that exact WindowProxy
+    - message type must match CBS_CAPTURE_MESSAGE
+    - payload is still validated again by receiveCbsConnection()
+*/
+
+window.addEventListener(
+  "message",
+  function (event) {
+    if (
+      !CBS_FANTASY_ORIGIN.test(
+        event.origin ||
+        ""
+      )
+    ) {
+      return;
+    }
+
+    if (
+      cbsConnectWindow &&
+      event.source !==
+        cbsConnectWindow
+    ) {
+      return;
+    }
+
+    var message =
+      event.data;
+
+    if (
+      !message ||
+      typeof message !==
+        "object" ||
+      message.type !==
+        CBS_CAPTURE_MESSAGE ||
+      !message.capture
+    ) {
+      return;
+    }
+
+    try {
+      window.receiveCbsConnection(
+        message.capture
+      );
+
+      cbsConnectWindow =
+        null;
+    } catch (err) {
+      console.error(
+        "CBS connection handoff failed:",
+        err
+      );
+    }
+  }
+);
 
 /*
   ================================================================
