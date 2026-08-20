@@ -1371,49 +1371,22 @@ function buildCbsForm() {
     '</a>' +
     '<span class="cbs-bookmark-tip">Bookmarks bar hidden? Press Ctrl+Shift+B on Windows or ⌘+Shift+B on Mac.</span>';
 
-  var bookmarkMarkup =
-    existing
-      ? (
-          '<div class="pf-help">' +
-            '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-              '🔖 Need the CBS bookmark? ' +
-              '<span class="pf-help-icon">▼</span>' +
-            '</button>' +
-
-            '<div class="pf-help-body">' +
-              '<div class="cbs-bookmark-install" style="margin-bottom:0;">' +
-                '<strong>Reinstall the CBS bookmark</strong>' +
-                '<p>Only use this if the Inner Sanctum CBS Connect bookmark is missing from your browser. Drag the gold button below to your bookmarks bar.</p>' +
-                bookmarkButtonMarkup +
-              '</div>' +
-            '</div>' +
-          '</div>'
-        )
-      : (
-          '<div class="cbs-bookmark-install">' +
-            '<strong>Install once before your first CBS connection</strong>' +
-            '<p>Drag the gold button below to your browser bookmarks bar. Do not click it here — drag it.</p>' +
-            bookmarkButtonMarkup +
-          '</div>'
-        );
-
   var actionMarkup =
     '<button class="connect-btn" onclick="startCbsConnect()">' +
       (
         existing
           ? 'Sync CBS League'
-          : 'Connect CBS League'
+          : 'Open CBS Fantasy'
       ) +
     '</button>';
 
-  wrap.innerHTML =
-    '<div class="beta-pill">CBS Connect · Beta</div>' +
-
+  var trustMarkup =
     '<div class="pf-info">' +
       '<strong>Connect CBS without sharing your CBS password.</strong><br>' +
-      'Inner Sanctum opens CBS in a separate tab. You sign into CBS normally, open your fantasy league, and use the Inner Sanctum CBS bookmark to send back read-only league information.' +
-    '</div>' +
+      'You sign into CBS directly. Inner Sanctum only receives the read-only fantasy league information you choose to send with CBS Connect.' +
+    '</div>';
 
+  var featureGridMarkup =
     '<div class="cbs-feature-grid">' +
       '<div class="cbs-feature">League & team</div>' +
       '<div class="cbs-feature">Roster</div>' +
@@ -1421,61 +1394,106 @@ function buildCbsForm() {
       '<div class="cbs-feature">Schedule</div>' +
       '<div class="cbs-feature">Scoring rules</div>' +
       '<div class="cbs-feature">League settings</div>' +
+    '</div>';
+
+  var readOnlyMarkup =
+    '<div class="pf-info">' +
+      '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
+    '</div>';
+
+  var betaNoteMarkup =
+    '<div class="connect-note">' +
+      'CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.' +
+    '</div>';
+
+  // FIRST-TIME journey — always visible, not collapsed behind help.
+  var firstTimeStepsMarkup =
+    '<div class="pf-step">' +
+      '<span class="pf-step-num">1</span>' +
+      '<span><strong>Install CBS Connect once.</strong> Drag the gold Inner Sanctum CBS Connect button below to your browser bookmarks bar. You only need to do this once.</span>' +
     '</div>' +
 
-    (
-      existing
-        ? actionMarkup +
-          bookmarkMarkup
-        : bookmarkMarkup
-    ) +
+    '<div class="cbs-bookmark-install">' +
+      bookmarkButtonMarkup +
+    '</div>' +
+
+    '<div class="pf-step">' +
+      '<span class="pf-step-num">2</span>' +
+      '<span><strong>Open CBS Fantasy.</strong> Click Open CBS Fantasy, sign into CBS normally if needed, and open the league you want to connect.</span>' +
+    '</div>' +
+
+    actionMarkup +
+
+    '<div class="pf-step">' +
+      '<span class="pf-step-num">3</span>' +
+      '<span><strong>Send your league.</strong> While you are on your CBS league page, click Inner Sanctum CBS Connect in your bookmarks bar.</span>' +
+    '</div>' +
+
+    '<div class="pf-step">' +
+      '<span class="pf-step-num">4</span>' +
+      '<span><strong>Return to Inner Sanctum.</strong> When CBS Connect finishes, click Return to Inner Sanctum. Your league and team will be confirmed here.</span>' +
+    '</div>';
+
+  // RETURNING-USER journey — main button up top, everything else
+  // tucked behind two collapsed help sections.
+  var returningMarkup =
+    actionMarkup +
 
     '<div class="pf-help">' +
-
       '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-        '📖 How CBS Connect works ' +
+        '🔖 Need CBS Connect again? ' +
         '<span class="pf-help-icon">▼</span>' +
       '</button>' +
 
       '<div class="pf-help-body">' +
+        '<div class="cbs-bookmark-install" style="margin-bottom:0;">' +
+          '<strong>Reinstall the CBS Connect bookmark</strong>' +
+          '<p>Only use this if the Inner Sanctum CBS Connect bookmark is missing from your browser. Drag the gold button below to your bookmarks bar.</p>' +
+          bookmarkButtonMarkup +
+        '</div>' +
+      '</div>' +
+    '</div>' +
 
+    '<div class="pf-help">' +
+      '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
+        '📖 How CBS sync works ' +
+        '<span class="pf-help-icon">▼</span>' +
+      '</button>' +
+
+      '<div class="pf-help-body">' +
         '<div class="pf-step">' +
           '<span class="pf-step-num">1</span>' +
-          '<span>Click ' +
-            (
-              existing
-                ? 'Sync'
-                : 'Connect'
-            ) +
-            ' CBS League. CBS opens in a separate browser tab.</span>' +
+          '<span>Click Sync CBS League. Inner Sanctum opens your connected CBS league.</span>' +
         '</div>' +
 
         '<div class="pf-step">' +
           '<span class="pf-step-num">2</span>' +
-          '<span>Sign into CBS normally if needed, then open the fantasy-football league you want to connect.</span>' +
+          '<span>Click Inner Sanctum CBS Connect in your bookmarks bar.</span>' +
         '</div>' +
 
         '<div class="pf-step">' +
           '<span class="pf-step-num">3</span>' +
-          '<span>Click your Inner Sanctum CBS bookmark on the CBS league page. The sanitized read-only capture returns directly to this Inner Sanctum tab.</span>' +
+          '<span>When the CBS Connect panel says your league was sent, click Return to Inner Sanctum.</span>' +
         '</div>' +
-
       '</div>' +
-    '</div>' +
+    '</div>';
 
-    '<div class="pf-info">' +
-      '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
-    '</div>' +
+  wrap.innerHTML =
+    '<div class="beta-pill">CBS Connect · Beta</div>' +
+
+    trustMarkup +
+
+    featureGridMarkup +
 
     (
       existing
-        ? ''
-        : actionMarkup
+        ? returningMarkup
+        : firstTimeStepsMarkup
     ) +
 
-    '<div class="connect-note">' +
-      'CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.' +
-    '</div>' +
+    readOnlyMarkup +
+
+    betaNoteMarkup +
 
     '<div class="result-box" id="cbsResult"></div>';
 
