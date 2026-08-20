@@ -805,9 +805,8 @@
       .toLowerCase();
   }
 
-  // Header-region bounds used both by the diagnostic scan and by
-  // findCbsAccountControl() below, so "plausible top-header candidate"
-  // means the same thing in both places.
+  // Header-region bounds used by findCbsAccountControl() below, so
+  // "plausible top-header candidate" is defined in one place.
   const HEADER_REGION_MIN_TOP =
     -20;
 
@@ -825,33 +824,6 @@
       rect.width > 0 &&
       rect.height > 0
     );
-  }
-
-  function clip(
-    text,
-    max
-  ) {
-    const t =
-      String(
-        text || ""
-      )
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .trim();
-
-    const limit =
-      max ||
-      60;
-
-    return t.length >
-      limit
-      ? t.slice(
-          0,
-          limit
-        ) + "…"
-      : t;
   }
 
   function elementSignalText(
@@ -983,254 +955,8 @@
       .join(" ");
   }
 
-  function describeCandidateForDiagnostics(
-    el
-  ) {
-    const rect =
-      el.getBoundingClientRect();
-
-    const img =
-      el.querySelector(
-        "img[alt]"
-      );
-
-    const svg =
-      el.querySelector(
-        "svg"
-      );
-
-    const svgTitleEl =
-      svg
-        ? svg.querySelector(
-            "title"
-          )
-        : null;
-
-    const use =
-      el.querySelector(
-        "use"
-      );
-
-    const useHref =
-      use
-        ? use.getAttribute(
-            "href"
-          ) ||
-          use.getAttribute(
-            "xlink:href"
-          ) ||
-          use.getAttributeNS(
-            "http://www.w3.org/1999/xlink",
-            "href"
-          ) ||
-          ""
-        : "";
-
-    return {
-      tagName:
-        el.tagName,
-
-      text: clip(
-        el.textContent
-      ),
-
-      ariaLabel:
-        el.getAttribute(
-          "aria-label"
-        ) ||
-        "",
-
-      title:
-        el.getAttribute(
-          "title"
-        ) ||
-        "",
-
-      id:
-        el.id ||
-        "",
-
-      className:
-        typeof el.className ===
-          "string"
-          ? el.className
-          : "",
-
-      role:
-        el.getAttribute(
-          "role"
-        ) ||
-        "",
-
-      ariaHaspopup:
-        el.getAttribute(
-          "aria-haspopup"
-        ) ||
-        "",
-
-      dataTestId:
-        el.getAttribute(
-          "data-testid"
-        ) ||
-        "",
-
-      href:
-        el.getAttribute(
-          "href"
-        ) ||
-        "",
-
-      top: Math.round(
-        rect.top
-      ),
-
-      left: Math.round(
-        rect.left
-      ),
-
-      right: Math.round(
-        rect.right
-      ),
-
-      bottom: Math.round(
-        rect.bottom
-      ),
-
-      width: Math.round(
-        rect.width
-      ),
-
-      height: Math.round(
-        rect.height
-      ),
-
-      imgAlt:
-        img
-          ? img.getAttribute(
-              "alt"
-            ) ||
-            ""
-          : "",
-
-      svgAriaLabel:
-        svg
-          ? svg.getAttribute(
-              "aria-label"
-            ) ||
-            ""
-          : "",
-
-      svgTitle:
-        svgTitleEl
-          ? clip(
-              svgTitleEl.textContent
-            )
-          : "",
-
-      useHref:
-        useHref,
-
-      element:
-        el,
-    };
-  }
-
   const ACCOUNT_HEADER_CANDIDATE_SELECTOR =
     'button, a, [role="button"], [aria-haspopup], [tabindex]';
-
-  /*
-    ================================================================
-    TEMPORARY DIAGNOSTIC — CBS TOP-HEADER CONTROL INVENTORY
-    ================================================================
-
-    Read-only. Does not click, focus, or dispatch anything. Logs
-    metadata for every plausible top-header interactive control so
-    the real profile/account control's actual DOM characteristics
-    are visible in the console, instead of guessing blind. Safe to
-    remove once findCbsAccountControl() is confirmed reliable — also
-    exposed on window for manual comparison (e.g. run it once with
-    the account panel closed and once with it manually opened, and
-    diff the two console.table outputs).
-  */
-  function logCbsHeaderCandidates() {
-    const seen =
-      new Set();
-
-    const rows =
-      [];
-
-    Array.prototype.slice
-      .call(
-        document.querySelectorAll(
-          ACCOUNT_HEADER_CANDIDATE_SELECTOR
-        )
-      )
-      .forEach(
-        function (el) {
-          if (
-            seen.has(
-              el
-            )
-          ) {
-            return;
-          }
-
-          seen.add(
-            el
-          );
-
-          if (
-            !isInHeaderRegion(
-              el.getBoundingClientRect()
-            )
-          ) {
-            return;
-          }
-
-          rows.push(
-            describeCandidateForDiagnostics(
-              el
-            )
-          );
-        }
-      );
-
-    console.log(
-      `${PREFIX} [diagnostic] ${rows.length} top-header candidate(s) found (read-only — nothing was clicked).`
-    );
-
-    if (rows.length) {
-      console.table(
-        rows.map(
-          function (row) {
-            const copy =
-              Object.assign(
-                {},
-                row
-              );
-
-            delete copy.element;
-
-            return copy;
-          }
-        )
-      );
-    }
-
-    console.log(
-      `${PREFIX} [diagnostic] Raw elements, in the same order as the table above:`,
-      rows.map(
-        function (row) {
-          return row.element;
-        }
-      )
-    );
-
-    return rows;
-  }
-
-  window.__innerSanctumCbsDiagnostics =
-    logCbsHeaderCandidates;
 
   function findCbsAccountControl() {
     const seen =
@@ -1799,16 +1525,7 @@
         );
 
         const accountControl =
-          (function () {
-            // Temporary diagnostic — read-only, logs candidate
-            // metadata before findCbsAccountControl() picks (or
-            // declines to pick) one. See logCbsHeaderCandidates()
-            // above; also callable manually as
-            // window.__innerSanctumCbsDiagnostics().
-            logCbsHeaderCandidates();
-
-            return findCbsAccountControl();
-          })();
+          findCbsAccountControl();
 
         if (accountControl) {
           console.log(
