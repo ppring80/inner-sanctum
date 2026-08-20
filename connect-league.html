@@ -1429,6 +1429,8 @@ function buildCbsForm() {
 
   // FIRST-TIME journey — always visible, not collapsed behind help.
   var firstTimeStepsMarkup =
+    '<span class="cbs-bookmark-tip" style="display:block;margin:0 0 14px">Click CBS Connect once to find your league, then once more after your league opens to finish connecting.</span>' +
+
     '<div class="pf-step">' +
       '<span class="pf-step-num">1</span>' +
       '<span><strong>Install CBS Connect once.</strong> Drag the gold Inner Sanctum CBS Connect button below to your browser bookmarks bar. You only need to do this once.</span>' +
@@ -1440,19 +1442,19 @@ function buildCbsForm() {
 
     '<div class="pf-step">' +
       '<span class="pf-step-num">2</span>' +
-      '<span><strong>Open CBS Fantasy.</strong> Click Open CBS Fantasy, sign into CBS normally if needed, and open the league you want to connect.</span>' +
+      '<span><strong>Open CBS Fantasy.</strong> Click Open CBS Fantasy and sign into CBS normally if needed. Inner Sanctum will help find your CBS Fantasy Football league.</span>' +
     '</div>' +
 
     actionMarkup +
 
     '<div class="pf-step">' +
       '<span class="pf-step-num">3</span>' +
-      '<span><strong>Send your league.</strong> While you are on your CBS league page, click Inner Sanctum CBS Connect in your bookmarks bar.</span>' +
+      '<span><strong>Find your league.</strong> On the CBS Fantasy page, click Inner Sanctum CBS Connect in your bookmarks bar. Inner Sanctum will automatically find your CBS Fantasy Football league and open it. If you have more than one CBS league, Inner Sanctum will let you choose which one to connect.</span>' +
     '</div>' +
 
     '<div class="pf-step">' +
       '<span class="pf-step-num">4</span>' +
-      '<span><strong>Return to Inner Sanctum.</strong> When CBS Connect finishes, click Return to Inner Sanctum. Your league and team will be confirmed here.</span>' +
+      '<span><strong>Connect your league.</strong> After CBS opens your league, click Inner Sanctum CBS Connect in your bookmarks bar one more time. Inner Sanctum will securely send your read-only league information back and confirm the connection.</span>' +
     '</div>';
 
   // RETURNING-USER journey — main button up top, everything else
