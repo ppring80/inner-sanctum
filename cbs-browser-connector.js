@@ -3,31 +3,34 @@
   ------------------------------------------------
   Browser-assisted, READ-ONLY CBS Fantasy connector.
 
-  VERSION 0.2.1
+  VERSION 0.3.0
 
-  PURPOSE
+  DESIGN PRINCIPLE
   ------------------------------------------------
-  Collects fantasy-football league information that CBS already
-  exposes to a user who is normally authenticated in their own
-  CBS Fantasy Football league.
+  Reliability before completeness.
 
-  PROVEN DATA SURFACES
+  CBS already renders league information to an authenticated user.
+  This connector collects only fantasy-football data CBS has already
+  exposed to that user's browser.
+
+  PROVEN CBS SURFACES
   ------------------------------------------------
+
   /teams
     - league identity
-    - user team identity
+    - user's team identity
     - roster
     - CBS player IDs
     - actual player positions
     - NFL teams
-    - active / reserve status
+    - active / reserve / injured status
 
   /standings/overall
-    - all league teams
     - CBS team IDs
+    - team names
     - divisions
-    - wins / losses / ties
-    - winning percentage
+    - W/L/T
+    - percentage
     - games back
     - streak
     - division record
@@ -35,74 +38,64 @@
     - points against
 
   /schedule/team
-    - weekly opponent
+    - week
+    - opponent
     - opponent CBS team ID
     - home / away
     - result
-    - team record
+    - resulting team record
 
   /rules
     - team count
     - division count
     - roster limits
     - starting lineup requirements
-    - lineup policies
-    - waiver policies
+    - waiver / lineup policies
     - draft settings
-    - custom scoring rules
-    - scoring format
+    - scoring rules
+    - derived scoring profile
     - playoff structure
 
   /scoring/preview
-    - team matchup projections
-    - starter comparison projections
-    - player projection rows where CBS exposes them
+    - overall matchup projection
+    - CBS player projections when CBS exposes a reliable player ID
+      or an unambiguous two-player comparison container
 
-  SECURITY BOUNDARY
+  SECURITY
   ------------------------------------------------
   This connector:
 
-    - DOES NOT collect CBS usernames
-    - DOES NOT collect CBS passwords
-    - DOES NOT read browser cookies
+    - DOES NOT collect CBS username/password
+    - DOES NOT inspect browser cookies
     - DOES NOT return browser cookies
-    - DOES NOT read Authorization headers
-    - DOES NOT return CBS access/session tokens
-    - DOES NOT solve or bypass CAPTCHA
-    - DOES NOT perform transactions
+    - DOES NOT collect CBS access/session tokens
+    - DOES NOT inspect Authorization headers
+    - DOES NOT bypass CAPTCHA
     - DOES NOT change lineups
+    - DOES NOT perform transactions
     - DOES NOT add/drop players
     - DOES NOT collect league entry fees
     - DOES NOT collect league email addresses
 
-  The connector performs GET-only requests against the SAME CBS
-  league origin that the user is already authenticated into.
+  All background requests are GET-only and remain on the user's
+  current authenticated CBS Fantasy league origin.
 
   PUBLIC API
   ------------------------------------------------
 
-      CBSBrowserConnector.capture()
+    CBSBrowserConnector.capture()
 
-        Synchronous current-page roster capture.
-        Primarily retained for compatibility/testing.
+      Basic current-page roster capture.
 
-      await CBSBrowserConnector.captureAll()
+    await CBSBrowserConnector.captureAll()
 
-        Full multi-page league capture.
-
-  Intended downstream usage:
-
-      const raw =
-        await CBSBrowserConnector.captureAll();
-
-      const normalized =
-        normalizeLeagueData("cbs", raw);
+      Full multi-page CBS league capture.
 */
 
 (function () {
   "use strict";
 
-  const VERSION = "0.2.1";
+  const VERSION = "0.3.0";
 
   const CBS_HOST_RE =
     /^([^.]+)\.football\.cbssports\.com$/i;
@@ -125,6 +118,13 @@
     return String(value ?? "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  function normalizeName(value) {
+    return clean(value)
+      .toLowerCase()
+      .replace(/[’]/g, "'")
+      .replace(/[^a-z0-9']/g, "");
   }
 
   function numberOrNull(value) {
@@ -152,6 +152,26 @@
       numberOrNull(value);
 
     return Number.isInteger(n)
+      ? n
+      : null;
+  }
+
+  function parseFlexibleNumber(value) {
+    const text = clean(value);
+
+    const match =
+      text.match(
+        /-?(?:\d+(?:\.\d+)?|\.\d+)/
+      );
+
+    if (!match) {
+      return null;
+    }
+
+    const n =
+      Number(match[0]);
+
+    return Number.isFinite(n)
       ? n
       : null;
   }
@@ -221,22 +241,78 @@
 
   /*
     ================================================================
-    LEAGUE / TEAM IDENTITY HELPERS
+    SAME-ORIGIN CBS FETCH
+    ================================================================
+  */
+
+  async function fetchLeagueDocument(path) {
+    assertCbsFantasyPage();
+
+    const url =
+      new URL(
+        path,
+        location.origin
+      );
+
+    if (
+      url.origin !==
+      location.origin
+    ) {
+      throw new Error(
+        "CBS connector refused a cross-origin request."
+      );
+    }
+
+    const response =
+      await fetch(
+        url.href,
+        {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+
+          headers: {
+            Accept: "text/html",
+          },
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "CBS returned " +
+        response.status +
+        " for " +
+        path
+      );
+    }
+
+    const html =
+      await response.text();
+
+    return {
+      url: url.href,
+      html,
+      doc: parseHtml(html),
+    };
+  }
+
+  /*
+    ================================================================
+    LEAGUE / TEAM IDENTITY
     ================================================================
   */
 
   function getSeasonFromDocument(doc) {
-    /*
-      First look for an explicitly-selected season control.
-    */
-
     const selects =
-      [...doc.querySelectorAll("select")];
+      [...doc.querySelectorAll(
+        "select"
+      )];
 
     for (const select of selects) {
       const selected =
         clean(
-          select.selectedOptions?.[0]
+          select
+            .selectedOptions?.[0]
             ?.textContent
         );
 
@@ -244,10 +320,6 @@
         return Number(selected);
       }
     }
-
-    /*
-      CBS often initializes the fantasy year in page JavaScript.
-    */
 
     for (const script of doc.scripts) {
       const text =
@@ -259,20 +331,18 @@
         );
 
       if (match) {
-        return Number(match[1]);
+        return Number(
+          match[1]
+        );
       }
     }
-
-    /*
-      If this is the actual live page, CBS may expose the year
-      on FantasyGlobalChatJson.
-    */
 
     if (doc === document) {
       try {
         const year =
           Number(
-            window.FantasyGlobalChatJson
+            window
+              .FantasyGlobalChatJson
               ?.year
           );
 
@@ -284,11 +354,12 @@
           return year;
         }
       } catch (e) {
-        // Safe fallback below.
+        // Fall through.
       }
     }
 
-    return new Date().getFullYear();
+    return new Date()
+      .getFullYear();
   }
 
   function getLeagueNameFromDocument(doc) {
@@ -300,7 +371,8 @@
     for (const selector of selectors) {
       const value =
         clean(
-          doc.querySelector(selector)
+          doc
+            .querySelector(selector)
             ?.textContent
         );
 
@@ -309,10 +381,6 @@
       }
     }
 
-    /*
-      /rules fallback.
-    */
-
     for (
       const row of
       doc.querySelectorAll("tr")
@@ -320,11 +388,13 @@
       const cells =
         [...row.querySelectorAll(
           "th,td"
-        )].map(function (cell) {
-          return clean(
-            cell.textContent
-          );
-        });
+        )].map(
+          function (cell) {
+            return clean(
+              cell.textContent
+            );
+          }
+        );
 
       if (
         clean(cells[0])
@@ -349,7 +419,8 @@
     for (const selector of selectors) {
       const value =
         clean(
-          doc.querySelector(selector)
+          doc
+            .querySelector(selector)
             ?.textContent
         );
 
@@ -358,17 +429,14 @@
       }
     }
 
-    /*
-      Schedule pages often expose:
-        The Vanilla Gorilla (0-0-0)
-    */
-
-    const rows =
-      [...doc.querySelectorAll("tr")];
-
-    for (const row of rows) {
+    for (
+      const row of
+      doc.querySelectorAll("tr")
+    ) {
       const text =
-        clean(row.textContent);
+        clean(
+          row.textContent
+        );
 
       const match =
         text.match(
@@ -399,7 +467,8 @@
 
     try {
       const id =
-        window.FantasyGlobalChatJson
+        window
+          .FantasyGlobalChatJson
           ?.userAuth
           ?.attrib
           ?.team
@@ -412,7 +481,7 @@
         return clean(id);
       }
     } catch (e) {
-      // Ignore and fall through.
+      // Fall through.
     }
 
     return null;
@@ -420,98 +489,98 @@
 
   /*
     ================================================================
-    SAFE SAME-ORIGIN PAGE FETCH
+    EXACT CBS PLAYER OBJECT EXTRACTION
     ================================================================
+
+    Previous versions used a broad text window around each player ID.
+    That could accidentally borrow metadata from the neighboring CBS
+    player object.
+
+    0.3.0 instead locates the exact:
+
+        "PLAYER_ID": { ... }
+
+    object and uses brace balancing to isolate that player's object
+    before reading status/position/team fields.
   */
 
-  async function fetchLeagueDocument(path) {
-    assertCbsFantasyPage();
-
-    const url =
-      new URL(
-        path,
-        location.origin
+  function extractBalancedObject(
+    text,
+    objectStart
+  ) {
+    const braceStart =
+      text.indexOf(
+        "{",
+        objectStart
       );
 
-    if (
-      url.origin !==
-      location.origin
+    if (braceStart < 0) {
+      return null;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (
+      let i = braceStart;
+      i < text.length;
+      i++
     ) {
-      throw new Error(
-        "CBS connector refused a cross-origin request."
-      );
-    }
+      const ch =
+        text[i];
 
-    const response =
-      await fetch(
-        url.href,
-        {
-          method: "GET",
-
-          /*
-            Browser sends its existing CBS authentication normally.
-            The connector never inspects or returns cookie values.
-          */
-          credentials:
-            "same-origin",
-
-          cache:
-            "no-store",
-
-          headers: {
-            Accept:
-              "text/html",
-          },
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
         }
-      );
 
-    if (!response.ok) {
-      throw new Error(
-        "CBS returned " +
-        response.status +
-        " for " +
-        path
-      );
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = false;
+        }
+
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (ch === "{") {
+        depth++;
+        continue;
+      }
+
+      if (ch === "}") {
+        depth--;
+
+        if (depth === 0) {
+          return text.slice(
+            braceStart,
+            i + 1
+          );
+        }
+      }
     }
 
-    const html =
-      await response.text();
-
-    return {
-      url:
-        url.href,
-
-      html,
-
-      doc:
-        parseHtml(html),
-    };
+    return null;
   }
 
-  /*
-    ================================================================
-    CBS EMBEDDED PLAYER METADATA
-    ================================================================
-
-    When /teams is fetched in the background, the JavaScript in that
-    fetched page does not execute in our current window.
-
-    CBS does, however, place useful roster metadata inside script text.
-
-    We inspect those scripts ONLY for safe fantasy metadata:
-
-      - CBS player ID
-      - full name
-      - roster status
-      - NFL team
-      - current position
-
-    We intentionally do NOT collect tokens, auth IDs or other
-    credential/session values from those scripts.
-  */
-
-  function extractEmbeddedPlayerMeta(doc) {
-    const playerMeta = {};
+  function findExactEmbeddedPlayerObject(
+    doc,
+    playerId
+  ) {
+    const keyPattern =
+      '"' +
+      String(playerId) +
+      '"';
 
     for (const script of doc.scripts) {
       const text =
@@ -519,129 +588,159 @@
 
       if (
         !text.includes(
-          '"fullName"'
-        ) ||
-        !text.includes(
-          '"status"'
+          keyPattern
         )
       ) {
         continue;
       }
 
-      const idRegex =
-        /"id"\s*:\s*"(\d+)"/g;
+      let searchFrom = 0;
 
-      let match;
-
-      while (
-        (
-          match =
-            idRegex.exec(text)
-        ) !== null
-      ) {
-        const playerId =
-          match[1];
-
-        /*
-          CBS player objects are compact enough that a bounded text
-          window around the ID reliably contains the player's safe
-          metadata without requiring us to evaluate CBS JavaScript.
-        */
-
-        const start =
-          Math.max(
-            0,
-            match.index - 1400
+      while (true) {
+        const keyIndex =
+          text.indexOf(
+            keyPattern,
+            searchFrom
           );
 
-        const end =
-          Math.min(
-            text.length,
-            match.index + 2000
+        if (keyIndex < 0) {
+          break;
+        }
+
+        const colonIndex =
+          text.indexOf(
+            ":",
+            keyIndex +
+              keyPattern.length
           );
 
-        const block =
+        if (colonIndex < 0) {
+          break;
+        }
+
+        const between =
           text.slice(
-            start,
-            end
+            keyIndex +
+              keyPattern.length,
+            colonIndex
           );
-
-        const nameMatch =
-          block.match(
-            /"fullName"\s*:\s*"([^"]+)"/
-          );
-
-        const statusMatch =
-          block.match(
-            /"status"\s*:\s*"([^"]+)"/
-          );
-
-        const teamMatches =
-          [...block.matchAll(
-            /"team"\s*:\s*"([^"]+)"/g
-          )];
-
-        const currPosMatch =
-          block.match(
-            /"currPos"\s*:\s*"([^"]+)"/
-          );
-
-        const teamMatch =
-          teamMatches.length
-            ? teamMatches[
-                teamMatches.length - 1
-              ]
-            : null;
 
         if (
-          !nameMatch &&
-          !statusMatch &&
-          !teamMatch &&
-          !currPosMatch
+          between.trim() !==
+          ""
         ) {
+          searchFrom =
+            keyIndex + 1;
+
           continue;
         }
 
-        playerMeta[playerId] = {
-          cbsPlayerId:
-            playerId,
+        const objectText =
+          extractBalancedObject(
+            text,
+            colonIndex
+          );
 
-          fullName:
-            clean(
-              nameMatch?.[1]
-            ),
+        if (
+          objectText &&
+          objectText.includes(
+            '"id"'
+          ) &&
+          objectText.includes(
+            String(playerId)
+          )
+        ) {
+          return objectText;
+        }
 
-          status:
-            clean(
-              statusMatch?.[1]
-            ) || null,
-
-          team:
-            clean(
-              teamMatch?.[1]
-            ),
-
-          position:
-            clean(
-              currPosMatch?.[1]
-            ),
-        };
+        searchFrom =
+          keyIndex + 1;
       }
     }
 
-    return playerMeta;
+    return null;
+  }
+
+  function extractExactEmbeddedPlayerMeta(
+    doc,
+    playerId
+  ) {
+    const block =
+      findExactEmbeddedPlayerObject(
+        doc,
+        playerId
+      );
+
+    if (!block) {
+      return {
+        status: null,
+        position: "",
+        team: "",
+      };
+    }
+
+    const statusMatch =
+      block.match(
+        /"status"\s*:\s*"([^"]+)"/
+      );
+
+    const currPosMatch =
+      block.match(
+        /"currPos"\s*:\s*"([^"]+)"/
+      );
+
+    const teamMatches =
+      [...block.matchAll(
+        /"team"\s*:\s*"([^"]+)"/g
+      )];
+
+    const teamMatch =
+      teamMatches.length
+        ? teamMatches[
+            teamMatches.length - 1
+          ]
+        : null;
+
+    return {
+      status:
+        clean(
+          statusMatch?.[1]
+        ) || null,
+
+      position:
+        clean(
+          currPosMatch?.[1]
+        ),
+
+      team:
+        clean(
+          teamMatch?.[1]
+        ),
+    };
   }
 
   /*
     ================================================================
     ROSTER COLLECTOR
     ================================================================
+
+    IMPORTANT:
+
+    Player identity comes from the rendered CBS roster row.
+
+    Embedded CBS script metadata is NEVER allowed to overwrite:
+      - player's name
+      - rendered actual football position
+      - rendered NFL team
+
+    Embedded metadata is used primarily for roster status.
   */
 
-  function getRosterMap() {
+  function getLiveRosterMap() {
     try {
       return (
-        window.lineupBuilder
+        window
+          .lineupBuilder
           ?.rosterMap
           ?.slot || {}
       );
@@ -650,10 +749,10 @@
     }
   }
 
-  function findRosterMapPlayer(
+  function findLiveRosterPlayer(
     rosterMap,
     row,
-    cbsPlayerId
+    playerId
   ) {
     if (
       row?.id &&
@@ -666,7 +765,7 @@
         String(
           candidate?.id ?? ""
         ) ===
-        String(cbsPlayerId)
+        String(playerId)
       ) {
         return candidate;
       }
@@ -681,122 +780,57 @@
             String(
               player?.id ?? ""
             ) ===
-            String(cbsPlayerId)
+            String(playerId)
           );
         }
       ) || {}
     );
   }
 
-  function getActualPosition(
-    row,
-    playerData
+  function parseRenderedPositionAndTeam(
+    row
   ) {
-    /*
-      CBS lineup slot may be FLEX/RB-WR-TE.
-      CBS eligibility current position is preferred.
-    */
-
-    const eligibilityPosition =
-      clean(
-        playerData
-          ?.elig
-          ?.currPos
-      );
-
-    if (
-      eligibilityPosition &&
-      !eligibilityPosition.includes(
-        "-"
-      )
-    ) {
-      return eligibilityPosition;
-    }
-
-    /*
-      Common display:
-        QB • JAC
-        RB • BAL
-        WR • DEN
-    */
-
-    const playerMeta =
+    const metadata =
       clean(
         row.querySelector(
           ".playerPositionAndTeam"
         )?.textContent
       );
 
-    if (playerMeta) {
+    let position = "";
+    let nflTeam = "";
+
+    if (metadata) {
       const parts =
-        playerMeta
+        metadata
           .split(/[•·]/)
           .map(clean)
           .filter(Boolean);
 
       if (parts[0]) {
-        return parts[0];
+        position =
+          parts[0];
+      }
+
+      if (parts[1]) {
+        nflTeam =
+          parts[1];
       }
     }
 
-    /*
-      Separate position column fallback.
-    */
-
-    const tablePosition =
-      clean(
-        row.querySelector(
-          ".playerPosition"
-        )?.textContent
-      );
-
-    if (
-      tablePosition &&
-      !tablePosition.includes(
-        "-"
-      )
-    ) {
-      return tablePosition;
+    if (!position) {
+      position =
+        clean(
+          row.querySelector(
+            ".playerPosition"
+          )?.textContent
+        );
     }
 
-    return clean(
-      playerData?.pos
-    );
-  }
-
-  function getNflTeam(
-    row,
-    playerData
-  ) {
-    const structuredTeam =
-      clean(
-        playerData?.team
-      );
-
-    if (structuredTeam) {
-      return structuredTeam;
-    }
-
-    const playerMeta =
-      clean(
-        row.querySelector(
-          ".playerPositionAndTeam"
-        )?.textContent
-      );
-
-    if (!playerMeta) {
-      return "";
-    }
-
-    const parts =
-      playerMeta
-        .split(/[•·]/)
-        .map(clean)
-        .filter(Boolean);
-
-    return parts.length > 1
-      ? parts[1]
-      : "";
+    return {
+      position,
+      nflTeam,
+    };
   }
 
   function extractRosterFromDocument(
@@ -805,15 +839,8 @@
   ) {
     const rosterMap =
       useLiveRosterMap
-        ? getRosterMap()
+        ? getLiveRosterMap()
         : {};
-
-    const embeddedMeta =
-      useLiveRosterMap
-        ? {}
-        : extractEmbeddedPlayerMeta(
-            doc
-          );
 
     const roster = [];
 
@@ -822,141 +849,154 @@
 
     doc.querySelectorAll(
       "tr.playerRow"
-    ).forEach(function (row) {
-      const link =
-        row.querySelector(
-          'a.playerLink[href*="/players/playerpage/"]'
+    ).forEach(
+      function (row) {
+        const link =
+          row.querySelector(
+            'a.playerLink[href*="/players/playerpage/"]'
+          );
+
+        if (!link) {
+          return;
+        }
+
+        const playerId =
+          parsePlayerIdFromHref(
+            link.href
+          );
+
+        if (
+          !playerId ||
+          seen.has(playerId)
+        ) {
+          return;
+        }
+
+        seen.add(
+          playerId
         );
 
-      if (!link) {
-        return;
-      }
+        /*
+          The rendered CBS row is authoritative for identity.
+        */
 
-      const cbsPlayerId =
-        parsePlayerIdFromHref(
-          link.href
-        );
+        const name =
+          clean(
+            link.textContent
+          );
 
-      if (
-        !cbsPlayerId ||
-        seen.has(cbsPlayerId)
-      ) {
-        return;
-      }
+        if (!name) {
+          return;
+        }
 
-      seen.add(
-        cbsPlayerId
-      );
+        const rendered =
+          parseRenderedPositionAndTeam(
+            row
+          );
 
-      const playerData =
-        findRosterMapPlayer(
-          rosterMap,
-          row,
-          cbsPlayerId
-        );
+        const livePlayer =
+          useLiveRosterMap
+            ? findLiveRosterPlayer(
+                rosterMap,
+                row,
+                playerId
+              )
+            : {};
 
-      const embedded =
-        embeddedMeta[
-          cbsPlayerId
-        ] || {};
+        const embedded =
+          useLiveRosterMap
+            ? {}
+            : extractExactEmbeddedPlayerMeta(
+                doc,
+                playerId
+              );
 
-      const name =
-        clean(
-          playerData
-            ?.fullName
-        ) ||
-        clean(
-          embedded.fullName
-        ) ||
-        clean(
-          link.textContent
-        );
+        /*
+          Position:
+          rendered player metadata first.
 
-      if (!name) {
-        return;
-      }
+          CBS lineup-slot columns can display RB-WR-TE.
+          If so, use exact CBS currPos when safely available.
+        */
 
-      let position =
-        getActualPosition(
-          row,
-          playerData
-        );
+        let position =
+          rendered.position;
 
-      /*
-        When rosterMap does not exist because /teams was fetched
-        in the background, prefer CBS's embedded actual position.
-      */
+        const exactPosition =
+          clean(
+            livePlayer
+              ?.elig
+              ?.currPos
+          ) ||
+          clean(
+            embedded.position
+          );
 
-      if (
-        (
-          !position ||
-          position.includes(
+        if (
+          (
+            !position ||
+            position.includes(
+              "-"
+            )
+          ) &&
+          exactPosition &&
+          !exactPosition.includes(
             "-"
           )
-        ) &&
-        embedded.position
-      ) {
-        position =
-          embedded.position;
+        ) {
+          position =
+            exactPosition;
+        }
+
+        /*
+          NFL team:
+          rendered row first, exact CBS player object fallback.
+        */
+
+        let nflTeam =
+          rendered.nflTeam;
+
+        if (!nflTeam) {
+          nflTeam =
+            clean(
+              livePlayer?.team
+            ) ||
+            clean(
+              embedded.team
+            );
+        }
+
+        /*
+          Roster status:
+          exact player-specific metadata only.
+        */
+
+        const status =
+          clean(
+            livePlayer?.status
+          ) ||
+          clean(
+            embedded.status
+          ) ||
+          null;
+
+        roster.push({
+          cbsPlayerId:
+            playerId,
+
+          name,
+
+          position,
+
+          nflTeam,
+
+          status,
+
+          projectedPoints:
+            0,
+        });
       }
-
-      /*
-        If the DOM gave us a FLEX-style slot but CBS's embedded
-        metadata knows the real player position, use the real one.
-      */
-
-      if (
-        position.includes(
-          "-"
-        ) &&
-        embedded.position &&
-        !embedded.position.includes(
-          "-"
-        )
-      ) {
-        position =
-          embedded.position;
-      }
-
-      let nflTeam =
-        getNflTeam(
-          row,
-          playerData
-        );
-
-      if (
-        !nflTeam &&
-        embedded.team
-      ) {
-        nflTeam =
-          embedded.team;
-      }
-
-      const status =
-        clean(
-          playerData
-            ?.status
-        ) ||
-        clean(
-          embedded.status
-        ) ||
-        null;
-
-      roster.push({
-        cbsPlayerId,
-
-        name,
-
-        position,
-
-        nflTeam,
-
-        status,
-
-        projectedPoints:
-          0,
-      });
-    });
+    );
 
     return roster;
   }
@@ -972,7 +1012,7 @@
 
     if (!roster.length) {
       throw new Error(
-        "No CBS roster players were found on this page. Open the CBS My Team roster page before running the basic capture."
+        "No CBS roster players were found on the current page."
       );
     }
 
@@ -981,7 +1021,7 @@
 
   /*
     ================================================================
-    STANDINGS COLLECTOR
+    STANDINGS
     ================================================================
   */
 
@@ -998,177 +1038,165 @@
 
     doc.querySelectorAll(
       "tr"
-    ).forEach(function (row) {
-      const rawCells =
-        [...row.querySelectorAll(
-          "th,td"
-        )].map(function (cell) {
-          return clean(
-            cell.textContent
-          );
-        });
-
-      if (!rawCells.length) {
-        return;
-      }
-
-      /*
-        Division headings:
-          KFC Division
-          AFC Division
-          NFC Division
-      */
-
-      if (
-        rawCells.length === 1 &&
-        /division$/i.test(
-          rawCells[0]
-        )
-      ) {
-        currentDivision =
-          rawCells[0]
-            .replace(
-              /\s+division$/i,
-              ""
-            )
-            .trim();
-
-        return;
-      }
-
-      /*
-        Header row.
-      */
-
-      if (
-        rawCells[0]
-          ?.toLowerCase() ===
-          "team" &&
-        rawCells.some(
-          function (value) {
-            return (
-              value.toUpperCase() ===
-              "PF"
-            );
-          }
-        )
-      ) {
-        headers =
-          rawCells.map(
-            function (header) {
+    ).forEach(
+      function (row) {
+        const cells =
+          [...row.querySelectorAll(
+            "th,td"
+          )].map(
+            function (cell) {
               return clean(
-                header
+                cell.textContent
               );
             }
           );
 
-        return;
-      }
-
-      const teamLink =
-        row.querySelector(
-          'a[href*="/teams/"]'
-        );
-
-      if (!teamLink) {
-        return;
-      }
-
-      const teamId =
-        parseTeamIdFromHref(
-          teamLink.href
-        );
-
-      if (!teamId) {
-        return;
-      }
-
-      const values = {};
-
-      headers.forEach(
-        function (
-          header,
-          index
-        ) {
-          values[header] =
-            rawCells[index] ?? "";
+        if (!cells.length) {
+          return;
         }
-      );
 
-      standings.push({
-        teamId,
+        if (
+          cells.length === 1 &&
+          /division$/i.test(
+            cells[0]
+          )
+        ) {
+          currentDivision =
+            cells[0]
+              .replace(
+                /\s+division$/i,
+                ""
+              )
+              .trim();
 
-        teamName:
-          clean(
-            teamLink.textContent
-          ),
+          return;
+        }
 
-        division:
-          currentDivision,
+        if (
+          cells[0]
+            ?.toLowerCase() ===
+            "team" &&
+          cells.some(
+            function (value) {
+              return (
+                value
+                  .toUpperCase() ===
+                "PF"
+              );
+            }
+          )
+        ) {
+          headers =
+            cells;
 
-        wins:
-          integerOrNull(
-            values.W
-          ) ?? 0,
+          return;
+        }
 
-        losses:
-          integerOrNull(
-            values.L
-          ) ?? 0,
+        const teamLink =
+          row.querySelector(
+            'a[href*="/teams/"]'
+          );
 
-        ties:
-          integerOrNull(
-            values.T
-          ) ?? 0,
+        if (!teamLink) {
+          return;
+        }
 
-        percentage:
-          numberOrNull(
-            values.PCT
-          ),
+        const teamId =
+          parseTeamIdFromHref(
+            teamLink.href
+          );
 
-        gamesBack:
-          numberOrNull(
-            values.GB
-          ),
+        if (!teamId) {
+          return;
+        }
 
-        streak:
-          clean(
-            values.Streak
-          ) || null,
+        const values = {};
 
-        divisionRecord:
-          clean(
-            values.Div
-          ) || null,
+        headers.forEach(
+          function (
+            header,
+            index
+          ) {
+            values[header] =
+              cells[index] ?? "";
+          }
+        );
 
-        weeks:
-          integerOrNull(
-            values.Wks
-          ),
+        standings.push({
+          teamId,
 
-        pointsFor:
-          numberOrNull(
-            values.PF
-          ),
+          teamName:
+            clean(
+              teamLink.textContent
+            ),
 
-        back:
-          numberOrNull(
-            values.Back
-          ),
+          division:
+            currentDivision,
 
-        pointsAgainst:
-          numberOrNull(
-            values.PA
-          ),
-      });
-    });
+          wins:
+            integerOrNull(
+              values.W
+            ) ?? 0,
+
+          losses:
+            integerOrNull(
+              values.L
+            ) ?? 0,
+
+          ties:
+            integerOrNull(
+              values.T
+            ) ?? 0,
+
+          percentage:
+            numberOrNull(
+              values.PCT
+            ),
+
+          gamesBack:
+            numberOrNull(
+              values.GB
+            ),
+
+          streak:
+            clean(
+              values.Streak
+            ) || null,
+
+          divisionRecord:
+            clean(
+              values.Div
+            ) || null,
+
+          weeks:
+            integerOrNull(
+              values.Wks
+            ),
+
+          pointsFor:
+            numberOrNull(
+              values.PF
+            ),
+
+          back:
+            numberOrNull(
+              values.Back
+            ),
+
+          pointsAgainst:
+            numberOrNull(
+              values.PA
+            ),
+        });
+      }
+    );
 
     return standings;
   }
 
   /*
     ================================================================
-    SCHEDULE COLLECTOR
+    SCHEDULE
     ================================================================
   */
 
@@ -1179,88 +1207,86 @@
 
     doc.querySelectorAll(
       "tr"
-    ).forEach(function (row) {
-      const cells =
-        [...row.querySelectorAll(
-          "th,td"
-        )].map(function (cell) {
-          return clean(
-            cell.textContent
+    ).forEach(
+      function (row) {
+        const cells =
+          [...row.querySelectorAll(
+            "th,td"
+          )].map(
+            function (cell) {
+              return clean(
+                cell.textContent
+              );
+            }
           );
+
+        if (
+          cells.length < 2
+        ) {
+          return;
+        }
+
+        const week =
+          integerOrNull(
+            cells[0]
+          );
+
+        if (!week) {
+          return;
+        }
+
+        const opponentLink =
+          row.querySelector(
+            'a[href*="/teams/"]'
+          );
+
+        if (!opponentLink) {
+          return;
+        }
+
+        const rawOpponent =
+          clean(
+            cells[1]
+          );
+
+        schedule.push({
+          week,
+
+          opponentId:
+            parseTeamIdFromHref(
+              opponentLink.href
+            ),
+
+          opponentName:
+            clean(
+              opponentLink.textContent
+            ),
+
+          homeAway:
+            rawOpponent
+              .startsWith("@")
+              ? "away"
+              : "home",
+
+          result:
+            clean(
+              cells[2]
+            ) || null,
+
+          teamRecord:
+            clean(
+              cells[3]
+            ) || null,
         });
-
-      if (
-        cells.length < 2
-      ) {
-        return;
       }
-
-      const week =
-        integerOrNull(
-          cells[0]
-        );
-
-      if (!week) {
-        return;
-      }
-
-      const opponentLink =
-        row.querySelector(
-          'a[href*="/teams/"]'
-        );
-
-      if (!opponentLink) {
-        return;
-      }
-
-      const opponentId =
-        parseTeamIdFromHref(
-          opponentLink.href
-        );
-
-      const rawOpponent =
-        clean(
-          cells[1]
-        );
-
-      const isAway =
-        rawOpponent
-          .startsWith("@");
-
-      schedule.push({
-        week,
-
-        opponentId,
-
-        opponentName:
-          clean(
-            opponentLink
-              .textContent
-          ),
-
-        homeAway:
-          isAway
-            ? "away"
-            : "home",
-
-        result:
-          clean(
-            cells[2]
-          ) || null,
-
-        teamRecord:
-          clean(
-            cells[3]
-          ) || null,
-      });
-    });
+    );
 
     return schedule;
   }
 
   /*
     ================================================================
-    RULES / SETTINGS COLLECTOR
+    RULE / TABLE HELPERS
     ================================================================
   */
 
@@ -1270,22 +1296,24 @@
         "tr"
       ),
     ]
-      .map(function (row) {
-        const cells =
-          [...row.querySelectorAll(
-            "th,td"
-          )].map(function (cell) {
-            return clean(
-              cell.textContent
+      .map(
+        function (row) {
+          const cells =
+            [...row.querySelectorAll(
+              "th,td"
+            )].map(
+              function (cell) {
+                return clean(
+                  cell.textContent
+                );
+              }
             );
-          });
 
-        return cells.some(
-          Boolean
-        )
-          ? cells
-          : null;
-      })
+          return cells.some(Boolean)
+            ? cells
+            : null;
+        }
+      )
       .filter(Boolean);
   }
 
@@ -1369,9 +1397,8 @@
           );
 
         if (
-          /^(offensive|defensive)$/i.test(
-            first
-          ) &&
+          /^(offensive|defensive)$/i
+            .test(first) &&
           second.toLowerCase() ===
             "name"
         ) {
@@ -1425,6 +1452,14 @@
     );
   }
 
+  /*
+    Handles:
+      4 points
+      -2 points
+      .5 points
+      0.5 points
+  */
+
   function parseLeadingPoints(
     setting
   ) {
@@ -1437,7 +1472,7 @@
 
     const match =
       text.match(
-        /^(-?\d+(?:\.\d+)?)\s*points?/i
+        /^(-?(?:\d+(?:\.\d+)?|\.\d+))\s*points?/i
       );
 
     return match
@@ -1446,6 +1481,12 @@
         )
       : null;
   }
+
+  /*
+    Handles:
+      0+ PaYds = .05 points for every 1 PaYd
+      0+ RuYds = .1 points for every 1 RuYd
+  */
 
   function parsePerYardPoints(
     setting
@@ -1459,10 +1500,7 @@
 
     const match =
       text.match(
-        /=\s*(-?\d+(?:\.\d+)?)\s*points?\s+for\s+every\s+1\s+\w*yd/i
-      ) ||
-      text.match(
-        /(-?\d+(?:\.\d+)?)\s*points?\s+for\s+every\s+1\s+\w*yd/i
+        /=\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*points?\s+for\s+every\s+1\s+\w*yd/i
       );
 
     return match
@@ -1502,51 +1540,40 @@
       format =
         "half-ppr";
     } else if (
-      receptionPoints === 0 ||
-      receptionPoints === null
+      receptionPoints === 0
     ) {
       format =
         "standard";
     }
 
-    const passingYards =
-      getScoringRule(
-        scoringRules,
-        "PaYd"
-      );
-
-    const rushingYards =
-      getScoringRule(
-        scoringRules,
-        "RuYd"
-      );
-
-    const receivingYards =
-      getScoringRule(
-        scoringRules,
-        "ReYd"
-      );
+    /*
+      Missing reception rule does NOT automatically mean standard.
+      It means we have insufficient evidence, so keep "custom".
+    */
 
     const passingYardPoints =
-      passingYards
-        ? parsePerYardPoints(
-            passingYards.setting
-          )
-        : null;
+      parsePerYardPoints(
+        getScoringRule(
+          scoringRules,
+          "PaYd"
+        )?.setting
+      );
 
     const rushingYardPoints =
-      rushingYards
-        ? parsePerYardPoints(
-            rushingYards.setting
-          )
-        : null;
+      parsePerYardPoints(
+        getScoringRule(
+          scoringRules,
+          "RuYd"
+        )?.setting
+      );
 
     const receivingYardPoints =
-      receivingYards
-        ? parsePerYardPoints(
-            receivingYards.setting
-          )
-        : null;
+      parsePerYardPoints(
+        getScoringRule(
+          scoringRules,
+          "ReYd"
+        )?.setting
+      );
 
     return {
       format,
@@ -1735,7 +1762,7 @@
         "table"
       )];
 
-    const allRows =
+    const rowsByTable =
       tables.map(
         getTableRows
       );
@@ -1750,11 +1777,8 @@
       },
 
       policies: {},
-
       draft: {},
-
       competition: {},
-
       playoffs: {},
 
       scoringRules: [],
@@ -1763,7 +1787,7 @@
         null,
     };
 
-    allRows.forEach(
+    rowsByTable.forEach(
       function (rows) {
         if (!rows.length) {
           return;
@@ -1782,11 +1806,8 @@
             .toLowerCase();
 
         /*
-          LEAGUE IDENTITY
-
-          Deliberately ignore:
-            League E-mail Address
-            League Entry Fee
+          League identity.
+          Do NOT retain fee or league email.
         */
 
         if (
@@ -1826,7 +1847,7 @@
         }
 
         /*
-          ROSTER LIMITS
+          Roster configuration.
         */
 
         if (
@@ -1865,7 +1886,8 @@
               }
 
               if (
-                cells.length === 1
+                cells.length ===
+                1
               ) {
                 settings
                   .roster
@@ -1880,7 +1902,8 @@
               if (
                 mode ===
                   "status" &&
-                cells.length >= 3
+                cells.length >=
+                  3
               ) {
                 settings
                   .roster
@@ -1904,7 +1927,8 @@
               if (
                 mode ===
                   "position" &&
-                cells.length >= 4
+                cells.length >=
+                  4
               ) {
                 settings
                   .roster
@@ -1937,12 +1961,15 @@
         }
 
         /*
-          CUSTOM SCORING RULES
+          Scoring.
         */
 
         if (
           flat.includes(
             "passing td"
+          ) &&
+          flat.includes(
+            "reception"
           ) &&
           flat.includes(
             "receiving yards"
@@ -1961,10 +1988,6 @@
             rows
           );
 
-        /*
-          LINEUP / WAIVER / TRANSACTION POLICIES
-        */
-
         if (
           map[
             "Lineup Policy"
@@ -1982,10 +2005,6 @@
           return;
         }
 
-        /*
-          DRAFT SETTINGS
-        */
-
         if (
           map[
             "Draft Format"
@@ -1996,10 +2015,6 @@
 
           return;
         }
-
-        /*
-          COMPETITION / SCORING TYPE
-        */
 
         if (
           map[
@@ -2014,10 +2029,6 @@
 
           return;
         }
-
-        /*
-          PLAYOFF / STANDINGS STRUCTURE
-        */
 
         if (
           map[
@@ -2043,35 +2054,196 @@
 
   /*
     ================================================================
-    SCORING PREVIEW HELPERS
+    CBS SCORING PREVIEW
     ================================================================
+
+    0.3.0 intentionally refuses ambiguous player associations.
+
+    If a comparison container cannot be tied to EXACTLY two unique
+    CBS player links, those individual scores are left unassigned.
+
+    This prevents bad fantasy data from entering SAGE.
   */
+
+  function getUniquePlayerLinks(
+    node
+  ) {
+    const output = [];
+
+    const seen =
+      new Set();
+
+    node
+      .querySelectorAll(
+        'a[href*="/players/playerpage/"]'
+      )
+      .forEach(
+        function (link) {
+          const id =
+            parsePlayerIdFromHref(
+              link.href
+            );
+
+          if (
+            !id ||
+            seen.has(id)
+          ) {
+            return;
+          }
+
+          seen.add(id);
+
+          output.push({
+            cbsPlayerId:
+              id,
+
+            name:
+              clean(
+                link.textContent
+              ),
+          });
+        }
+      );
+
+    return output;
+  }
+
+  function findExactPreviewPlayerPair(
+    table
+  ) {
+    let node =
+      table.parentElement;
+
+    for (
+      let depth = 0;
+      depth < 6 &&
+      node;
+      depth++
+    ) {
+      const players =
+        getUniquePlayerLinks(
+          node
+        );
+
+      if (
+        players.length ===
+        2
+      ) {
+        return players;
+      }
+
+      /*
+        More than two means the container is too broad.
+        Do not guess.
+      */
+
+      if (
+        players.length > 2
+      ) {
+        return [];
+      }
+
+      node =
+        node.parentElement;
+    }
+
+    return [];
+  }
+
+  function getUniqueTeamLinks(
+    node
+  ) {
+    const output = [];
+
+    const seen =
+      new Set();
+
+    node
+      .querySelectorAll(
+        'a[href*="/teams/"]'
+      )
+      .forEach(
+        function (link) {
+          const id =
+            parseTeamIdFromHref(
+              link.href
+            );
+
+          if (
+            !id ||
+            seen.has(id)
+          ) {
+            return;
+          }
+
+          seen.add(id);
+
+          output.push({
+            teamId:
+              id,
+
+            teamName:
+              clean(
+                link.textContent
+              ),
+          });
+        }
+      );
+
+    return output;
+  }
+
+  function findExactPreviewTeamPair(
+    table
+  ) {
+    let node =
+      table.parentElement;
+
+    for (
+      let depth = 0;
+      depth < 7 &&
+      node;
+      depth++
+    ) {
+      const teams =
+        getUniqueTeamLinks(
+          node
+        );
+
+      if (
+        teams.length === 2
+      ) {
+        return teams;
+      }
+
+      if (
+        teams.length > 2
+      ) {
+        return [];
+      }
+
+      node =
+        node.parentElement;
+    }
+
+    return [];
+  }
 
   function parsePreviewPlayerText(
     text
   ) {
-    const cleaned =
+    const value =
       clean(text);
 
-    if (!cleaned) {
-      return null;
-    }
-
-    /*
-      Common CBS player text:
-        Trevor LawrenceQB • JAC
-        Trevor Lawrence QB • JAC
-    */
-
     const match =
-      cleaned.match(
+      value.match(
         /^(.*?)(QB|RB|WR|TE|K|DST)\s*[•·]\s*([A-Z]{2,3})$/i
       );
 
     if (!match) {
       return {
         name:
-          cleaned,
+          value,
 
         position:
           "",
@@ -2097,166 +2269,6 @@
     };
   }
 
-  function findNearbyPreviewPlayers(
-    table
-  ) {
-    /*
-      CBS starter comparisons are rendered inside larger containers.
-      Walk upward until exactly-relevant player links can be located.
-
-      We de-duplicate by CBS player ID and preserve DOM order.
-    */
-
-    let node =
-      table;
-
-    for (
-      let depth = 0;
-      depth < 7 &&
-      node;
-      depth++
-    ) {
-      const links =
-        [...node.querySelectorAll(
-          'a[href*="/players/playerpage/"]'
-        )];
-
-      const unique = [];
-
-      const seen =
-        new Set();
-
-      links.forEach(
-        function (link) {
-          const id =
-            parsePlayerIdFromHref(
-              link.href
-            );
-
-          if (
-            !id ||
-            seen.has(id)
-          ) {
-            return;
-          }
-
-          seen.add(id);
-
-          unique.push({
-            cbsPlayerId:
-              id,
-
-            text:
-              clean(
-                link.textContent
-              ),
-
-            link,
-          });
-        }
-      );
-
-      /*
-        The immediate comparison container should resolve to two
-        relevant players. If a larger parent contains many players,
-        continue cautiously rather than incorrectly pairing distant
-        roster entries.
-      */
-
-      if (
-        unique.length === 2
-      ) {
-        return unique;
-      }
-
-      if (
-        unique.length > 2
-      ) {
-        /*
-          Try to identify the closest links physically before/after
-          the comparison table.
-        */
-
-        const ordered =
-          unique.filter(
-            function (item) {
-              return Boolean(
-                item.link
-              );
-            }
-          );
-
-        if (
-          ordered.length >= 2
-        ) {
-          return [
-            ordered[0],
-            ordered[
-              ordered.length - 1
-            ],
-          ];
-        }
-      }
-
-      node =
-        node.parentElement;
-    }
-
-    return [];
-  }
-
-  function getSelectedMatchupLabel(
-    doc
-  ) {
-    const selects =
-      [...doc.querySelectorAll(
-        "select"
-      )];
-
-    for (const select of selects) {
-      const value =
-        clean(
-          select.selectedOptions?.[0]
-            ?.textContent
-        );
-
-      if (
-        value &&
-        value.includes("@")
-      ) {
-        return value;
-      }
-    }
-
-    /*
-      CBS custom-control fallback.
-    */
-
-    const bodyText =
-      clean(
-        doc.body?.textContent
-      );
-
-    const match =
-      bodyText.match(
-        /([A-Za-z0-9'&.\- ]+)\s+@\s+([A-Za-z0-9'&.\- ]+)/
-      );
-
-    return match
-      ? clean(
-          match[1] +
-          " @ " +
-          match[2]
-        )
-      : null;
-  }
-
-  /*
-    ================================================================
-    SCORING PREVIEW COLLECTOR
-    ================================================================
-  */
-
   function capturePreviewFromDocument(
     doc
   ) {
@@ -2271,12 +2283,10 @@
     const comparisonScores =
       [];
 
-    /*
-      Keep projections by player ID whenever possible.
-      Name fallback is supported for CBS rows that don't expose IDs.
-    */
+    const projectionById =
+      new Map();
 
-    const playerProjectionMap =
+    const projectionByName =
       new Map();
 
     tables.forEach(
@@ -2293,18 +2303,13 @@
           return;
         }
 
-        /*
-          CBS graphical comparison rows look like:
-
-            105 | EVEN | 128
-
-          First score comparison = team matchup projection.
-
-          Later score comparisons = starter-vs-starter projections.
-        */
-
         const first =
           rows[0];
+
+        /*
+          Graphical CBS comparison:
+            105 | EVEN | 128
+        */
 
         if (
           first?.length >= 3 &&
@@ -2329,96 +2334,107 @@
               first[2]
             );
 
-          const comparison = {
+          comparisonScores.push({
             tableIndex,
-
             left,
-
             right,
-          };
-
-          comparisonScores.push(
-            comparison
-          );
+          });
 
           if (!teamProjection) {
-            teamProjection = {
-              tableIndex,
-
-              left,
-
-              right,
-            };
-          } else {
-            /*
-              Subsequent comparison tables should correspond to the
-              two player cards around the table.
-            */
-
-            const nearbyPlayers =
-              findNearbyPreviewPlayers(
+            const teams =
+              findExactPreviewTeamPair(
                 table
               );
 
-            if (
-              nearbyPlayers.length ===
-              2
-            ) {
-              const leftPlayer =
-                nearbyPlayers[0];
+            teamProjection = {
+              leftProjected:
+                left,
 
-              const rightPlayer =
-                nearbyPlayers[1];
+              rightProjected:
+                right,
 
-              playerProjectionMap.set(
-                "id:" +
-                  leftPlayer
+              leftTeamId:
+                teams[0]
+                  ?.teamId ||
+                null,
+
+              leftTeamName:
+                teams[0]
+                  ?.teamName ||
+                "",
+
+              rightTeamId:
+                teams[1]
+                  ?.teamId ||
+                null,
+
+              rightTeamName:
+                teams[1]
+                  ?.teamName ||
+                "",
+            };
+
+            return;
+          }
+
+          /*
+            Individual comparison:
+            use only if exactly two CBS player IDs are found.
+          */
+
+          const players =
+            findExactPreviewPlayerPair(
+              table
+            );
+
+          if (
+            players.length === 2
+          ) {
+            projectionById.set(
+              players[0]
+                .cbsPlayerId,
+              {
+                cbsPlayerId:
+                  players[0]
                     .cbsPlayerId,
-                {
-                  cbsPlayerId:
-                    leftPlayer
-                      .cbsPlayerId,
 
-                  name:
-                    leftPlayer.text,
+                name:
+                  players[0]
+                    .name,
 
-                  projectedPoints:
-                    left,
+                projectedPoints:
+                  left,
 
-                  source:
-                    "starter-comparison",
-                }
-              );
+                source:
+                  "starter-comparison",
+              }
+            );
 
-              playerProjectionMap.set(
-                "id:" +
-                  rightPlayer
+            projectionById.set(
+              players[1]
+                .cbsPlayerId,
+              {
+                cbsPlayerId:
+                  players[1]
                     .cbsPlayerId,
-                {
-                  cbsPlayerId:
-                    rightPlayer
-                      .cbsPlayerId,
 
-                  name:
-                    rightPlayer.text,
+                name:
+                  players[1]
+                    .name,
 
-                  projectedPoints:
-                    right,
+                projectedPoints:
+                  right,
 
-                  source:
-                    "starter-comparison",
-                }
-              );
-            }
+                source:
+                  "starter-comparison",
+              }
+            );
           }
         }
 
         /*
-          CBS additionally exposes normal player rows:
-
+          Normal CBS player projection table:
             PLAYER | NEWS | MATCHUP | PTS
-
-          Commonly useful for reserves / bench.
         */
 
         const header =
@@ -2431,178 +2447,146 @@
           );
 
         if (
-          header.includes(
+          !header.includes(
             "PLAYER"
-          ) &&
-          header.includes(
+          ) ||
+          !header.includes(
             "PTS"
           )
         ) {
-          const playerIndex =
-            header.indexOf(
-              "PLAYER"
-            );
+          return;
+        }
 
-          const matchupIndex =
-            header.indexOf(
-              "MATCHUP"
-            );
+        const playerIndex =
+          header.indexOf(
+            "PLAYER"
+          );
 
-          const pointsIndex =
-            header.indexOf(
-              "PTS"
-            );
+        const matchupIndex =
+          header.indexOf(
+            "MATCHUP"
+          );
 
-          const domRows =
-            [...table.querySelectorAll(
-              "tr"
-            )];
+        const pointsIndex =
+          header.indexOf(
+            "PTS"
+          );
 
-          rows
-            .slice(1)
-            .forEach(
-              function (
-                cells,
-                logicalIndex
+        const domRows =
+          [...table.querySelectorAll(
+            "tr"
+          )];
+
+        rows
+          .slice(1)
+          .forEach(
+            function (
+              cells,
+              logicalIndex
+            ) {
+              const points =
+                numberOrNull(
+                  cells[
+                    pointsIndex
+                  ]
+                );
+
+              if (
+                points === null
               ) {
-                const pts =
-                  numberOrNull(
-                    cells[
-                      pointsIndex
-                    ]
+                return;
+              }
+
+              const domRow =
+                domRows[
+                  logicalIndex + 1
+                ];
+
+              const playerLink =
+                domRow
+                  ?.querySelector(
+                    'a[href*="/players/playerpage/"]'
                   );
 
-                if (
-                  pts === null
-                ) {
-                  return;
-                }
+              const playerId =
+                playerLink
+                  ? parsePlayerIdFromHref(
+                      playerLink.href
+                    )
+                  : null;
 
-                const domRow =
-                  domRows[
-                    logicalIndex + 1
-                  ];
+              const parsed =
+                parsePreviewPlayerText(
+                  cells[
+                    playerIndex
+                  ]
+                );
 
-                const playerLink =
-                  domRow
-                    ?.querySelector(
-                      'a[href*="/players/playerpage/"]'
-                    );
+              if (!parsed.name) {
+                return;
+              }
 
-                const cbsPlayerId =
-                  playerLink
-                    ? parsePlayerIdFromHref(
-                        playerLink.href
+              const projection = {
+                cbsPlayerId:
+                  playerId,
+
+                name:
+                  parsed.name,
+
+                position:
+                  parsed.position,
+
+                nflTeam:
+                  parsed.nflTeam,
+
+                matchup:
+                  matchupIndex >= 0
+                    ? clean(
+                        cells[
+                          matchupIndex
+                        ]
                       )
-                    : null;
+                    : "",
 
-                const parsed =
-                  parsePreviewPlayerText(
-                    cells[
-                      playerIndex
-                    ]
-                  );
+                projectedPoints:
+                  points,
 
-                if (
-                  !parsed?.name
-                ) {
-                  return;
-                }
+                source:
+                  "player-table",
+              };
 
-                const projection = {
-                  cbsPlayerId,
-
-                  name:
-                    parsed.name,
-
-                  position:
-                    parsed.position,
-
-                  nflTeam:
-                    parsed.nflTeam,
-
-                  matchup:
-                    matchupIndex >= 0
-                      ? clean(
-                          cells[
-                            matchupIndex
-                          ]
-                        )
-                      : "",
-
-                  projectedPoints:
-                    pts,
-
-                  source:
-                    "player-table",
-                };
-
-                const key =
-                  cbsPlayerId
-                    ? "id:" +
-                      cbsPlayerId
-                    : "name:" +
-                      clean(
-                        parsed.name
-                      ).toLowerCase();
-
-                playerProjectionMap.set(
-                  key,
+              if (playerId) {
+                projectionById.set(
+                  playerId,
+                  projection
+                );
+              } else {
+                projectionByName.set(
+                  normalizeName(
+                    parsed.name
+                  ),
                   projection
                 );
               }
-            );
-        }
+            }
+          );
       }
     );
 
-    const matchupLabel =
-      getSelectedMatchupLabel(
-        doc
-      );
-
-    let awayTeamName =
-      "";
-
-    let homeTeamName =
-      "";
-
-    if (matchupLabel) {
-      const pieces =
-        matchupLabel
-          .split("@")
-          .map(clean);
-
-      awayTeamName =
-        pieces[0] || "";
-
-      homeTeamName =
-        pieces[1] || "";
-    }
-
     return {
-      matchupLabel,
-
-      awayTeamName,
-
-      homeTeamName,
-
-      teamProjection:
-        teamProjection
-          ? {
-              awayProjected:
-                teamProjection.left,
-
-              homeProjected:
-                teamProjection.right,
-            }
-          : null,
+      teamProjection,
 
       comparisonScores,
 
-      playerProjections:
+      playerProjectionsById:
         [
-          ...playerProjectionMap
+          ...projectionById
+            .values(),
+        ],
+
+      playerProjectionsByName:
+        [
+          ...projectionByName
             .values(),
         ],
     };
@@ -2610,54 +2594,37 @@
 
   /*
     ================================================================
-    BASIC CURRENT-PAGE CAPTURE
+    BASIC CAPTURE
     ================================================================
   */
 
   function capture() {
     assertCbsFantasyPage();
 
-    const leagueId =
-      getLeagueId();
-
-    const leagueName =
-      getLeagueNameFromDocument(
-        document
-      );
-
-    const teamId =
-      getTeamIdFromLivePage();
-
-    const teamName =
-      getTeamNameFromDocument(
-        document
-      );
-
-    const season =
-      getSeasonFromDocument(
-        document
-      );
-
-    const roster =
-      captureCurrentRoster();
-
     return {
       league: {
         id:
-          leagueId,
+          getLeagueId(),
 
         name:
-          leagueName,
+          getLeagueNameFromDocument(
+            document
+          ),
 
-        season,
+        season:
+          getSeasonFromDocument(
+            document
+          ),
       },
 
       team: {
         id:
-          teamId,
+          getTeamIdFromLivePage(),
 
         name:
-          teamName,
+          getTeamNameFromDocument(
+            document
+          ),
 
         wins:
           0,
@@ -2672,7 +2639,8 @@
           null,
       },
 
-      roster,
+      roster:
+        captureCurrentRoster(),
 
       matchup:
         null,
@@ -2705,7 +2673,7 @@
 
   /*
     ================================================================
-    FULL MULTI-PAGE CAPTURE
+    FULL CAPTURE
     ================================================================
   */
 
@@ -2714,15 +2682,6 @@
 
     const leagueId =
       getLeagueId();
-
-    /*
-      Load CBS pages in parallel.
-
-      Every request is:
-        - GET only
-        - same CBS league origin
-        - browser-authenticated normally
-    */
 
     const results =
       await Promise.allSettled([
@@ -2774,15 +2733,7 @@
       fulfilled(4);
 
     /*
-      ------------------------------------------------
       ROSTER
-      ------------------------------------------------
-
-      If user happens to be on /teams, use the live structured
-      LineupBuilder.
-
-      Otherwise parse the fetched /teams document plus safe embedded
-      player metadata.
     */
 
     let roster = [];
@@ -2790,9 +2741,10 @@
     if (
       location.pathname ===
         "/teams" ||
-      /^\/teams\/?\d*$/i.test(
-        location.pathname
-      )
+      /^\/teams\/\d+\/?$/i
+        .test(
+          location.pathname
+        )
     ) {
       roster =
         extractRosterFromDocument(
@@ -2813,9 +2765,7 @@
     }
 
     /*
-      ------------------------------------------------
       STANDINGS
-      ------------------------------------------------
     */
 
     const standings =
@@ -2826,9 +2776,7 @@
         : [];
 
     /*
-      ------------------------------------------------
       SCHEDULE
-      ------------------------------------------------
     */
 
     const schedule =
@@ -2839,9 +2787,7 @@
         : [];
 
     /*
-      ------------------------------------------------
-      SETTINGS / SCORING
-      ------------------------------------------------
+      RULES
     */
 
     const settings =
@@ -2852,9 +2798,7 @@
         : null;
 
     /*
-      ------------------------------------------------
-      PROJECTIONS / MATCHUP
-      ------------------------------------------------
+      PREVIEW
     */
 
     const projections =
@@ -2865,9 +2809,7 @@
         : null;
 
     /*
-      ------------------------------------------------
       LEAGUE IDENTITY
-      ------------------------------------------------
     */
 
     const leagueName =
@@ -2891,9 +2833,7 @@
       );
 
     /*
-      ------------------------------------------------
       USER TEAM IDENTITY
-      ------------------------------------------------
     */
 
     let teamId =
@@ -2907,10 +2847,6 @@
         document
       );
 
-    /*
-      CBS standings provide an authoritative team ID/name mapping.
-    */
-
     if (
       teamId &&
       standings.length
@@ -2922,9 +2858,7 @@
               String(
                 team.teamId
               ) ===
-              String(
-                teamId
-              )
+              String(teamId)
             );
           }
         );
@@ -2944,12 +2878,12 @@
         standings.find(
           function (team) {
             return (
-              clean(
+              normalizeName(
                 team.teamName
-              ).toLowerCase() ===
-              clean(
+              ) ===
+              normalizeName(
                 teamName
-              ).toLowerCase()
+              )
             );
           }
         );
@@ -2961,47 +2895,36 @@
     }
 
     /*
-      ------------------------------------------------
       USER STANDING
-      ------------------------------------------------
     */
 
-    let myStanding =
-      null;
-
-    if (standings.length) {
-      myStanding =
-        standings.find(
-          function (team) {
-            if (
-              teamId &&
-              String(
-                team.teamId
-              ) ===
-                String(
-                  teamId
-                )
-            ) {
-              return true;
-            }
-
-            return Boolean(
-              teamName &&
-              clean(
-                team.teamName
-              ).toLowerCase() ===
-                clean(
-                  teamName
-                ).toLowerCase()
-            );
+    const myStanding =
+      standings.find(
+        function (team) {
+          if (
+            teamId &&
+            String(
+              team.teamId
+            ) ===
+              String(teamId)
+          ) {
+            return true;
           }
-        ) || null;
-    }
+
+          return (
+            teamName &&
+            normalizeName(
+              team.teamName
+            ) ===
+            normalizeName(
+              teamName
+            )
+          );
+        }
+      ) || null;
 
     /*
-      CBS renders teams in an order even before games have been played.
-
-      Do NOT manufacture a preseason league rank from that order.
+      Do not manufacture preseason ranks.
     */
 
     const seasonHasResults =
@@ -3036,187 +2959,113 @@
         }
       );
 
-    const standingRank =
-      myStanding &&
-      seasonHasResults
-        ? standings
-            .slice()
-            .sort(
-              function (
-                a,
-                b
-              ) {
-                const aPct =
-                  a.percentage ??
-                  0;
-
-                const bPct =
-                  b.percentage ??
-                  0;
-
-                if (
-                  bPct !==
-                  aPct
-                ) {
-                  return (
-                    bPct -
-                    aPct
-                  );
-                }
-
-                return (
-                  (
-                    b.pointsFor ??
-                    0
-                  ) -
-                  (
-                    a.pointsFor ??
-                    0
-                  )
-                );
-              }
-            )
-            .findIndex(
-              function (team) {
-                return (
-                  team.teamId ===
-                  myStanding.teamId
-                );
-              }
-            ) + 1
-        : null;
-
-    /*
-      ------------------------------------------------
-      MATCHUP
-      ------------------------------------------------
-    */
-
-    let matchup =
+    let standingRank =
       null;
 
     if (
-      projections
-        ?.teamProjection
+      myStanding &&
+      seasonHasResults
     ) {
-      const myIsHome =
-        Boolean(
-          teamName &&
-          projections
-            .homeTeamName &&
-          clean(
-            projections
-              .homeTeamName
-          ).toLowerCase() ===
-            clean(
-              teamName
-            ).toLowerCase()
+      const ordered =
+        standings
+          .slice()
+          .sort(
+            function (a, b) {
+              const pctDiff =
+                (
+                  b.percentage ??
+                  0
+                ) -
+                (
+                  a.percentage ??
+                  0
+                );
+
+              if (pctDiff) {
+                return pctDiff;
+              }
+
+              return (
+                (
+                  b.pointsFor ??
+                  0
+                ) -
+                (
+                  a.pointsFor ??
+                  0
+                )
+              );
+            }
+          );
+
+      const index =
+        ordered.findIndex(
+          function (team) {
+            return (
+              String(
+                team.teamId
+              ) ===
+              String(
+                myStanding.teamId
+              )
+            );
+          }
         );
 
-      const myIsAway =
-        Boolean(
-          teamName &&
-          projections
-            .awayTeamName &&
-          clean(
-            projections
-              .awayTeamName
-          ).toLowerCase() ===
-            clean(
-              teamName
-            ).toLowerCase()
-        );
-
-      if (
-        myIsHome ||
-        myIsAway
-      ) {
-        const myProjected =
-          myIsHome
-            ? projections
-                .teamProjection
-                .homeProjected
-            : projections
-                .teamProjection
-                .awayProjected;
-
-        const opponentProjected =
-          myIsHome
-            ? projections
-                .teamProjection
-                .awayProjected
-            : projections
-                .teamProjection
-                .homeProjected;
-
-        matchup = {
-          opponentName:
-            myIsHome
-              ? projections
-                  .awayTeamName
-              : projections
-                  .homeTeamName,
-
-          myProjected,
-
-          opponentProjected,
-
-          /*
-            Sanctum should not pretend CBS projection difference
-            equals a calibrated win probability.
-          */
-          winProbability:
-            null,
-        };
-      }
+      standingRank =
+        index >= 0
+          ? index + 1
+          : null;
     }
 
     /*
-      ------------------------------------------------
       PLAYER PROJECTION JOIN
-      ------------------------------------------------
 
-      CBS player ID = primary join key.
-      Name = fallback only.
+      Exact CBS player ID first.
+      Normalized name only when CBS gave no ID.
+
+      Never let projection data alter player identity/position/team.
     */
 
     if (
       roster.length &&
       projections
-        ?.playerProjections
-        ?.length
     ) {
-      const projectionById =
+      const byId =
         new Map();
 
-      const projectionByName =
+      const byName =
         new Map();
 
       projections
-        .playerProjections
-        .forEach(
-          function (player) {
+        .playerProjectionsById
+        ?.forEach(
+          function (projection) {
             if (
-              player
+              projection
                 .cbsPlayerId
             ) {
-              projectionById.set(
+              byId.set(
                 String(
-                  player
+                  projection
                     .cbsPlayerId
                 ),
-                player
+                projection
               );
             }
+          }
+        );
 
-            if (player.name) {
-              projectionByName.set(
-                clean(
-                  player.name
-                ).toLowerCase(),
-                player
-              );
-            }
+      projections
+        .playerProjectionsByName
+        ?.forEach(
+          function (projection) {
+            byName.set(
+              normalizeName(
+                projection.name
+              ),
+              projection
+            );
           }
         );
 
@@ -3224,43 +3073,117 @@
         roster.map(
           function (player) {
             const projection =
-              projectionById.get(
+              byId.get(
                 String(
-                  player
-                    .cbsPlayerId
+                  player.cbsPlayerId
                 )
               ) ||
-              projectionByName.get(
-                clean(
+              byName.get(
+                normalizeName(
                   player.name
-                ).toLowerCase()
+                )
               );
 
-            return projection
-              ? {
-                  ...player,
+            if (!projection) {
+              return player;
+            }
 
-                  projectedPoints:
-                    projection
-                      .projectedPoints,
-                }
-              : player;
+            return {
+              ...player,
+
+              projectedPoints:
+                projection
+                  .projectedPoints,
+            };
           }
         );
     }
 
     /*
-      ------------------------------------------------
-      COLLECTION WARNINGS
-      ------------------------------------------------
+      MATCHUP
 
-      A noncritical CBS page failure should not destroy an otherwise
-      valid connection. Record the warning and allow caller/UI to
-      decide how to handle partial data.
+      Use CBS team IDs whenever preview page exposes a reliable
+      two-team comparison container.
+
+      If team identity cannot be established safely, matchup stays
+      null rather than guessing.
     */
 
-    const warnings =
-      [];
+    let matchup =
+      null;
+
+    const teamProjection =
+      projections
+        ?.teamProjection;
+
+    if (
+      teamProjection &&
+      teamId
+    ) {
+      const isLeft =
+        String(
+          teamProjection
+            .leftTeamId ??
+          ""
+        ) ===
+        String(teamId);
+
+      const isRight =
+        String(
+          teamProjection
+            .rightTeamId ??
+          ""
+        ) ===
+        String(teamId);
+
+      if (isLeft) {
+        matchup = {
+          opponentName:
+            teamProjection
+              .rightTeamName,
+
+          opponentId:
+            teamProjection
+              .rightTeamId,
+
+          myProjected:
+            teamProjection
+              .leftProjected,
+
+          opponentProjected:
+            teamProjection
+              .rightProjected,
+
+          winProbability:
+            null,
+        };
+      } else if (isRight) {
+        matchup = {
+          opponentName:
+            teamProjection
+              .leftTeamName,
+
+          opponentId:
+            teamProjection
+              .leftTeamId,
+
+          myProjected:
+            teamProjection
+              .rightProjected,
+
+          opponentProjected:
+            teamProjection
+              .leftProjected,
+
+          winProbability:
+            null,
+        };
+      }
+    }
+
+    /*
+      WARNINGS
+    */
 
     const labels = [
       "roster",
@@ -3269,6 +3192,9 @@
       "rules",
       "scoring preview",
     ];
+
+    const warnings =
+      [];
 
     results.forEach(
       function (
@@ -3293,15 +3219,30 @@
     );
 
     /*
-      ------------------------------------------------
       DATA QUALITY
-      ------------------------------------------------
-
-      Makes connector health explicit without exposing credentials.
-
-      This will eventually be very useful in the consumer connection
-      screen and for diagnosing CBS layout changes.
     */
+
+    const uniqueRosterIds =
+      new Set(
+        roster.map(
+          function (player) {
+            return (
+              player
+                .cbsPlayerId
+            );
+          }
+        )
+      );
+
+    const duplicateRosterIds =
+      uniqueRosterIds.size !==
+      roster.length;
+
+    const scoringFormat =
+      settings
+        ?.scoringProfile
+        ?.format ||
+      null;
 
     const dataQuality = {
       leagueIdentity:
@@ -3322,25 +3263,25 @@
       rosterCount:
         roster.length,
 
+      duplicateRosterIds,
+
       rosterStatuses:
-        roster.some(
+        roster.filter(
           function (player) {
             return Boolean(
               player.status
             );
           }
-        ),
+        ).length,
 
       standings:
-        standings.length >
-        0,
+        standings.length > 0,
 
       standingsCount:
         standings.length,
 
       schedule:
-        schedule.length >
-        0,
+        schedule.length > 0,
 
       scheduleCount:
         schedule.length,
@@ -3358,20 +3299,11 @@
           ?.length ||
         0,
 
-      scoringFormat:
-        settings
-          ?.scoringProfile
-          ?.format ||
-        null,
+      scoringFormat,
 
       matchupProjection:
         Boolean(
-          matchup &&
-          matchup.myProjected !==
-            null &&
           matchup
-            .opponentProjected !==
-            null
         ),
 
       playerProjections:
@@ -3393,6 +3325,7 @@
           teamId &&
           teamName &&
           roster.length &&
+          !duplicateRosterIds &&
           standings.length &&
           schedule.length &&
           settings
@@ -3400,12 +3333,6 @@
             ?.length
         ),
     };
-
-    /*
-      ==============================================================
-      FINAL SAFE CBS OBJECT
-      ==============================================================
-    */
 
     return {
       league: {
@@ -3545,20 +3472,10 @@
 
     isCbsFantasyPage,
 
-    /*
-      Synchronous roster-only capture.
-    */
     capture,
 
-    /*
-      Full multi-page capture.
-    */
     captureAll,
 
-    /*
-      Exposed for diagnostics/testing.
-      All collectors remain READ ONLY.
-    */
     collectors: {
       standings:
         captureStandingsFromDocument,
