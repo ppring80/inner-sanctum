@@ -491,6 +491,59 @@ body{
   font-family:'JetBrains Mono',monospace;
 }
 
+.cbs-bookmark-install{
+  background:rgba(201,168,76,0.07);
+  border:1px solid rgba(201,168,76,0.28);
+  border-radius:8px;
+  padding:14px;
+  margin-bottom:16px;
+  text-align:center;
+}
+
+.cbs-bookmark-install strong{
+  display:block;
+  color:#e1c36a;
+  font-family:'Cinzel',serif;
+  font-size:12px;
+  letter-spacing:0.5px;
+  margin-bottom:6px;
+}
+
+.cbs-bookmark-install p{
+  color:#a08a5a;
+  font-size:11px;
+  line-height:1.6;
+  margin:0 0 10px;
+}
+
+.cbs-bookmark-link{
+  display:inline-block;
+  background:linear-gradient(135deg,#c9a84c,#8b6914);
+  color:#0a0600;
+  font-family:'Cinzel',serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:0.6px;
+  text-decoration:none;
+  border-radius:7px;
+  padding:10px 14px;
+  cursor:grab;
+  user-select:none;
+}
+
+.cbs-bookmark-link:active{
+  cursor:grabbing;
+}
+
+.cbs-bookmark-tip{
+  display:block;
+  margin-top:9px;
+  color:#7a6a45;
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;
+  line-height:1.5;
+}
+
 .connect-btn{
   width:100%;
   padding:14px 20px;
@@ -1305,6 +1358,9 @@ function buildCbsForm() {
         "cbs"
       );
 
+  var cbsBookmarklet =
+    "javascript:(function(){var s=document.createElement('script');s.src='https://theinnersanctum.xyz/cbs-poc.js?ts='+Date.now();s.async=true;document.head.appendChild(s);}());";
+
   wrap.innerHTML =
     '<div class="beta-pill">CBS Connect · Beta</div>' +
 
@@ -1320,6 +1376,19 @@ function buildCbsForm() {
       '<div class="cbs-feature">Schedule</div>' +
       '<div class="cbs-feature">Scoring rules</div>' +
       '<div class="cbs-feature">League settings</div>' +
+    '</div>' +
+
+    '<div class="cbs-bookmark-install">' +
+      '<strong>Install once before your first CBS connection</strong>' +
+      '<p>Drag the gold button below to your browser bookmarks bar. Do not click it here — drag it.</p>' +
+      '<a class="cbs-bookmark-link" href="' +
+        escapeHtml(
+          cbsBookmarklet
+        ) +
+        '" onclick="alert(\'Drag this button to your browser bookmarks bar to install it.\'); return false;">' +
+        'Inner Sanctum CBS Connect' +
+      '</a>' +
+      '<span class="cbs-bookmark-tip">Bookmarks bar hidden? Press Ctrl+Shift+B on Windows or ⌘+Shift+B on Mac.</span>' +
     '</div>' +
 
     '<div class="pf-help">' +
