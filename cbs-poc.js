@@ -1,55 +1,73 @@
 /*
   THE INNER SANCTUM — cbs-poc.js
   -------------------------------------------
-  CBS bookmarklet proof of concept.
+  CBS browser-handoff proof of concept.
 
   PURPOSE
   -------------------------------------------
-  Prove that code launched by a bookmarklet on an authenticated
-  CBS Fantasy Football league page can:
+  Prove the complete customer-side CBS flow:
 
-    1. load the existing production cbs-browser-connector.js
-    2. execute CBSBrowserConnector.captureAll()
-    3. display a validated capture summary
-    4. POST the sanitized capture to The Inner Sanctum
-    5. receive a safe validation response from cbs-ingest
+    1. Inner Sanctum opens CBS in a separate tab/window.
+    2. Customer signs into CBS normally.
+    3. Customer opens their CBS Fantasy Football league.
+    4. Customer clicks the Inner Sanctum CBS bookmark.
+    5. This script loads the proven production
+       cbs-browser-connector.js.
+    6. CBSBrowserConnector.captureAll() collects the sanitized,
+       READ-ONLY fantasy league package.
+    7. The sanitized capture is sent directly back to the
+       Inner Sanctum opener window with window.postMessage().
+    8. connect-league.html receives the message and hands it to:
 
-  THIS POC
+         window.receiveCbsConnection(captured)
+
+    9. LeagueConnection stores the connected CBS league context.
+
+  SECURITY
   -------------------------------------------
-  This version:
+  This script:
 
-    - does NOT collect CBS credentials
-    - does NOT read/export CBS cookies
-    - does NOT store CBS session tokens
+    - does NOT collect CBS username/password
+    - does NOT read/export browser cookies
+    - does NOT export CBS session tokens
+    - does NOT bypass CAPTCHA
     - does NOT modify CBS data
-    - does NOT perform CBS transactions
-    - does NOT persist CBS league data yet
-    - does NOT associate the capture with a customer account yet
+    - does NOT submit lineups
+    - does NOT add/drop players
+    - does NOT submit waivers
+    - does NOT perform trades
     - is READ ONLY
+
+  DATA TRANSPORT
+  -------------------------------------------
+  The captured fantasy-league object is sent only to the
+  Inner Sanctum browser window that opened CBS.
+
+  This version does NOT require the CBS ingest endpoint for the
+  normal direct browser handoff.
 
   NETWORK BEHAVIOR
   -------------------------------------------
-  The only outbound requests are:
+  GET:
 
-    GET
-      https://theinnersanctum.xyz/cbs-browser-connector.js
+    https://theinnersanctum.xyz/cbs-browser-connector.js
 
-    POST
-      https://theinnersanctum.xyz/.netlify/functions/cbs-ingest
-
-  The POST contains only the sanitized object returned by:
-
-      CBSBrowserConnector.captureAll()
-
-  The current cbs-ingest POC validates the payload and returns a
-  safe summary. It does not persist league data.
+  The CBS fantasy capture itself remains inside the user's browser
+  until it is sent directly to the originating Inner Sanctum tab
+  through window.postMessage().
 */
 
 (async function () {
   "use strict";
 
+  /*
+    ================================================================
+    CONSTANTS
+    ================================================================
+  */
+
   const PREFIX =
-    "[Inner Sanctum CBS POC]";
+    "[Inner Sanctum CBS Connect]";
 
   const PANEL_ID =
     "inner-sanctum-cbs-poc";
@@ -57,8 +75,14 @@
   const CONNECTOR_URL =
     "https://theinnersanctum.xyz/cbs-browser-connector.js";
 
-  const INGEST_URL =
-    "https://theinnersanctum.xyz/.netlify/functions/cbs-ingest";
+  const MESSAGE_TYPE =
+    "INNER_SANCTUM_CBS_CAPTURE_RESULT";
+
+  const ALLOWED_SANCTUM_ORIGINS =
+    new Set([
+      "https://theinnersanctum.xyz",
+      "https://www.theinnersanctum.xyz",
+    ]);
 
 
   /*
@@ -95,7 +119,7 @@
       "top:20px",
       "right:20px",
       "z-index:2147483647",
-      "width:430px",
+      "width:440px",
       "max-width:calc(100vw - 40px)",
       "max-height:calc(100vh - 40px)",
       "overflow:auto",
@@ -310,7 +334,7 @@
 
     if (!valid) {
       throw new Error(
-        "This test must be run from an authenticated CBS Fantasy Football league page."
+        "This bookmark must be run from an authenticated CBS Fantasy Football league page."
       );
     }
   }
@@ -360,7 +384,7 @@
           function () {
             reject(
               new Error(
-                "CBS blocked or failed to load cbs-browser-connector.js from The Inner Sanctum."
+                "CBS blocked or failed to load the Inner Sanctum CBS connector."
               )
             );
           };
@@ -379,7 +403,7 @@
         "function"
     ) {
       throw new Error(
-        "cbs-browser-connector.js loaded, but CBSBrowserConnector.captureAll() is not available."
+        "The CBS connector loaded, but CBSBrowserConnector.captureAll() is unavailable."
       );
     }
   }
@@ -449,6 +473,108 @@
 
   /*
     ================================================================
+    INNER SANCTUM ORIGIN DETECTION
+    ================================================================
+
+    CBS was opened by connect-league.html.
+
+    Modern browsers normally expose the opener's origin through
+    document.referrer when navigating cross-origin.
+
+    We accept only the two known Inner Sanctum HTTPS origins.
+
+    If CBS strips the referrer, we fall back to the canonical
+    production origin.
+  */
+
+  function getSanctumTargetOrigin() {
+    try {
+      if (
+        document.referrer
+      ) {
+        const referrerUrl =
+          new URL(
+            document.referrer
+          );
+
+        if (
+          ALLOWED_SANCTUM_ORIGINS.has(
+            referrerUrl.origin
+          )
+        ) {
+          return referrerUrl.origin;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `${PREFIX} Could not parse document.referrer.`,
+        error
+      );
+    }
+
+    return "https://theinnersanctum.xyz";
+  }
+
+
+  /*
+    ================================================================
+    DIRECT BROWSER HANDOFF
+    ================================================================
+  */
+
+  function sendCaptureToSanctum(
+    result
+  ) {
+    if (
+      !window.opener
+    ) {
+      throw new Error(
+        "No Inner Sanctum opener window was found. Start CBS Connect from the Inner Sanctum Link Your League page, then use this bookmark."
+      );
+    }
+
+    if (
+      window.opener.closed
+    ) {
+      throw new Error(
+        "The Inner Sanctum connection tab was closed. Reopen Link Your League and start CBS Connect again."
+      );
+    }
+
+    const targetOrigin =
+      getSanctumTargetOrigin();
+
+    if (
+      !ALLOWED_SANCTUM_ORIGINS.has(
+        targetOrigin
+      )
+    ) {
+      throw new Error(
+        "The Inner Sanctum target origin could not be verified."
+      );
+    }
+
+    window.opener.postMessage(
+      {
+        type:
+          MESSAGE_TYPE,
+
+        capture:
+          result
+      },
+      targetOrigin
+    );
+
+    console.log(
+      `${PREFIX} CBS capture sent to ${targetOrigin}.`
+    );
+
+    return targetOrigin;
+  }
+
+
+  /*
+    ================================================================
     COPY JSON
     ================================================================
   */
@@ -460,7 +586,7 @@
     const copyButton =
       createButton(
         "Copy JSON",
-        "primary"
+        "secondary"
       );
 
     copyButton.onclick =
@@ -506,140 +632,47 @@
 
   /*
     ================================================================
-    INGEST POST
+    RETURN-TO-SANCTUM BUTTON
     ================================================================
   */
 
-  function addSendButton(
-    ui,
-    result
+  function addReturnButton(
+    ui
   ) {
-    const sendButton =
+    if (
+      !window.opener ||
+      window.opener.closed
+    ) {
+      return;
+    }
+
+    const returnButton =
       createButton(
-        "Send Test to Inner Sanctum",
-        "secondary"
+        "Return to Inner Sanctum",
+        "primary"
       );
 
-    sendButton.onclick =
-      async function () {
+    returnButton.onclick =
+      function () {
         try {
-          sendButton.disabled =
-            true;
-
-          sendButton.style.opacity =
-            "0.6";
-
-          sendButton.textContent =
-            "Sending…";
-
-          const response =
-            await fetch(
-              INGEST_URL,
-              {
-                method:
-                  "POST",
-
-                headers: {
-                  "Content-Type":
-                    "application/json"
-                },
-
-                body:
-                  JSON.stringify({
-                    capture:
-                      result
-                  })
-              }
-            );
-
-          let data =
-            null;
-
-          try {
-            data =
-              await response.json();
-          } catch (parseError) {
-            throw new Error(
-              "Inner Sanctum returned a non-JSON response."
-            );
-          }
-
-          if (
-            !response.ok ||
-            !data?.success
-          ) {
-            throw new Error(
-              data?.error ||
-              "CBS ingest test failed."
-            );
-          }
-
-          console.log(
-            `${PREFIX} ingest response:`,
-            data
-          );
-
-          sendButton.textContent =
-            "Sent ✓";
-
-          sendButton.style.opacity =
-            "1";
-
-          addStatusBox(
-            ui,
-            [
-              "✅ Inner Sanctum received the CBS capture.",
-              "",
-              `League: ${data.summary?.league?.name || "Unknown"}`,
-              `Team: ${data.summary?.team?.name || "Unknown"}`,
-              `Roster: ${data.summary?.counts?.roster ?? 0}`,
-              `Standings: ${data.summary?.counts?.standings ?? 0}`,
-              `Schedule: ${data.summary?.counts?.schedule ?? 0}`,
-              `Scoring: ${data.summary?.scoringFormat || "Unknown"}`,
-              "",
-              "POC ONLY — nothing was persisted."
-            ].join("\n"),
-            "success"
-          );
+          window.opener.focus();
         } catch (error) {
-          console.error(
-            `${PREFIX} ingest failed:`,
+          console.warn(
+            `${PREFIX} Could not focus Inner Sanctum tab.`,
             error
-          );
-
-          sendButton.disabled =
-            false;
-
-          sendButton.style.opacity =
-            "1";
-
-          sendButton.textContent =
-            "Send failed — retry";
-
-          addStatusBox(
-            ui,
-            [
-              "❌ Inner Sanctum ingest failed.",
-              "",
-              String(
-                error?.message ||
-                error
-              )
-            ].join("\n"),
-            "error"
           );
         }
       };
 
     ui.buttons.appendChild(
-      sendButton
+      returnButton
     );
   }
 
 
   /*
     ================================================================
-    MAIN POC FLOW
+    MAIN FLOW
     ================================================================
   */
 
@@ -647,19 +680,29 @@
     createPanel();
 
   try {
+    /*
+      Confirm this is CBS Fantasy.
+    */
+
     assertCbsPage();
 
     console.log(
-      `${PREFIX} Bookmarklet bootstrap successfully reached CBS.`
+      `${PREFIX} Bookmarklet successfully reached CBS.`
     );
 
     setPanelState(
       ui,
-      "Inner Sanctum CBS POC",
+      "Inner Sanctum CBS Connect",
       "Loading CBS connector…"
     );
 
+
+    /*
+      Load the proven production CBS connector.
+    */
+
     await ensureConnectorLoaded();
+
 
     const version =
       window
@@ -671,18 +714,21 @@
       `${PREFIX} Connector v${version} loaded.`
     );
 
+
     setPanelState(
       ui,
-      "Inner Sanctum CBS POC",
+      "Inner Sanctum CBS Connect",
       [
         `Connector v${version} loaded.`,
         "",
-        "Capturing league data…"
+        "Reading your CBS fantasy league…"
       ].join("\n")
     );
 
+
     /*
-      Execute the exact production connector already proven manually.
+      Perform the exact READ-ONLY capture already proven against
+      real CBS league data.
     */
 
     const result =
@@ -690,20 +736,26 @@
         .CBSBrowserConnector
         .captureAll();
 
-    /*
-      Keep the complete sanitized capture available in-page for
-      debugging.
 
-      No network transmission has happened at this point.
+    /*
+      Keep the result locally available for debugging.
+
+      This does not transmit anything.
     */
 
     window.__innerSanctumCbsPocResult =
       result;
 
+
     console.log(
       `${PREFIX} captureAll() result:`,
       result
     );
+
+
+    /*
+      Build compact customer-facing summary.
+    */
 
     const summary =
       buildCaptureSummary(
@@ -711,9 +763,25 @@
         version
       );
 
+
+    /*
+      Send the sanitized capture directly back to the Inner Sanctum
+      window that opened CBS.
+    */
+
+    const targetOrigin =
+      sendCaptureToSanctum(
+        result
+      );
+
+
+    /*
+      Update the CBS page UI.
+    */
+
     setPanelState(
       ui,
-      "✅ Inner Sanctum CBS Capture Worked",
+      "✅ CBS League Sent to Inner Sanctum",
       [
         `Connector: v${summary.version}`,
         `League: ${summary.leagueName}`,
@@ -723,37 +791,42 @@
         `Schedule entries: ${summary.scheduleCount}`,
         `Scoring: ${summary.scoringFormat}`,
         "",
-        "Full capture is available in:",
-        "window.__innerSanctumCbsPocResult",
+        "Your sanitized league information was sent",
+        "directly back to the Inner Sanctum tab.",
         "",
-        "Capture complete.",
-        "Nothing is persisted unless you click",
-        "\"Send Test to Inner Sanctum\" below."
+        "No CBS password or browser cookie was shared."
       ].join("\n"),
       "success"
     );
 
+
+    addStatusBox(
+      ui,
+      [
+        "✓ Browser handoff complete",
+        "",
+        `Destination: ${targetOrigin}`,
+        "",
+        "Return to Inner Sanctum to confirm the league is connected."
+      ].join("\n"),
+      "success"
+    );
+
+
     /*
-      Add POC action controls.
-
-      COPY JSON
-        Local clipboard only.
-
-      SEND TEST
-        POSTs sanitized capture to cbs-ingest.
-        Current ingest endpoint validates and returns a summary only.
-        It does not persist league data.
+      Optional customer controls.
     */
+
+    addReturnButton(
+      ui
+    );
 
     addCopyButton(
       ui,
       result
     );
 
-    addSendButton(
-      ui,
-      result
-    );
+
   } catch (error) {
     console.error(
       `${PREFIX} FAILED`,
@@ -762,11 +835,24 @@
 
     setPanelState(
       ui,
-      "Inner Sanctum CBS POC — FAILED",
+      "Inner Sanctum CBS Connect — FAILED",
       String(
         error?.message ||
         error
       ),
+      "error"
+    );
+
+
+    addStatusBox(
+      ui,
+      [
+        "CBS league capture could not be returned to Inner Sanctum.",
+        "",
+        "If the league itself was captured successfully, keep this CBS tab open and restart CBS Connect from:",
+        "",
+        "The Inner Sanctum → Link Your League → CBS"
+      ].join("\n"),
       "error"
     );
   }
