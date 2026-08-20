@@ -775,6 +775,36 @@
   const ACCOUNT_CONTROL_EXCLUDE =
     /sign\s*out|log\s*out|logout|delete|remove|cancel/i;
 
+  /*
+    Proven against real CBS DOM evidence (diagnostic scan on
+    /fantasy/games/): the actual profile control is a <span
+    role="button"> whose textContent reads "Close Menu User Menu" —
+    none of its own attributes or descendant icon metadata carry any
+    signal, the phrase "User Menu" in its visible/accessible text is
+    the only real marker. A sibling control with the same role and
+    className reads "Close Menu All Sports Menu" and must be rejected
+    even though it shares every other structural trait.
+  */
+  const USER_MENU_TEXT_HINT =
+    /\buser\s*menu\b/i;
+
+  const NON_ACCOUNT_TEXT_EXCLUDE =
+    /all\s*sports/i;
+
+  function normalizeText(
+    text
+  ) {
+    return String(
+      text || ""
+    )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim()
+      .toLowerCase();
+  }
+
   // Header-region bounds used both by the diagnostic scan and by
   // findCbsAccountControl() below, so "plausible top-header candidate"
   // means the same thing in both places.
@@ -1250,10 +1280,16 @@
               el
             );
 
+          const elementText =
+            normalizeText(
+              el.textContent
+            );
+
           const combinedSignal =
             [
               ownSignal,
               descendantSignal,
+              elementText,
             ]
               .filter(
                 Boolean
@@ -1265,6 +1301,9 @@
           if (
             ACCOUNT_CONTROL_EXCLUDE.test(
               combinedSignal
+            ) ||
+            NON_ACCOUNT_TEXT_EXCLUDE.test(
+              elementText
             )
           ) {
             return;
@@ -1289,6 +1328,14 @@
           }
 
           if (
+            ACCOUNT_CONTROL_HINT.test(
+              elementText
+            )
+          ) {
+            score += 2;
+          }
+
+          if (
             el.hasAttribute(
               "aria-haspopup"
             )
@@ -1296,11 +1343,29 @@
             score += 1;
           }
 
+          /*
+            Decisive signal, proven against real CBS DOM evidence:
+            visible/accessible text containing the phrase "user menu"
+            is treated as strong positive account-control evidence —
+            weighted high enough to outrank the generic keyword/
+            geometry signals above rather than just nudging the score.
+          */
+          const isUserMenuText =
+            USER_MENU_TEXT_HINT.test(
+              elementText
+            );
+
+          if (isUserMenuText) {
+            score += 10;
+          }
+
           candidates.push(
             {
               el: el,
               score: score,
               signal: combinedSignal,
+              text: elementText,
+              isUserMenuText: isUserMenuText,
               rect: rect,
             }
           );
@@ -1351,13 +1416,25 @@
       candidates[0];
 
     if (best.score > 0) {
-      console.log(
-        `${PREFIX} findCbsAccountControl(): selected by semantic match (score ${best.score}).`,
-        {
-          element: best.el,
-          signal: best.signal,
-        }
-      );
+      if (best.isUserMenuText) {
+        console.log(
+          `${PREFIX} [CBS account discovery] selected User Menu control.`,
+          {
+            element: best.el,
+            score: best.score,
+            text: best.text,
+            signal: best.signal,
+          }
+        );
+      } else {
+        console.log(
+          `${PREFIX} findCbsAccountControl(): selected by semantic match (score ${best.score}).`,
+          {
+            element: best.el,
+            signal: best.signal,
+          }
+        );
+      }
 
       return best.el;
     }
