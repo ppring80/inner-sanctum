@@ -873,6 +873,27 @@ var CBS_CAPTURE_MESSAGE =
 var CBS_FANTASY_ORIGIN =
   /^https:\/\/[^.]+\.football\.cbssports\.com$/i;
 
+/*
+  Added for account-level CBS league discovery (Phase 1). Kept
+  separate from CBS_CAPTURE_MESSAGE/CBS_FANTASY_ORIGIN above so the
+  existing capture-message security checks are not loosened — the
+  discovery branch in the message listener below only ever accepts
+  CBS_DISCOVERY_MESSAGE from CBS_ACCOUNT_ORIGIN, never the reverse.
+*/
+var CBS_DISCOVERY_MESSAGE =
+  "INNER_SANCTUM_CBS_DISCOVERY_RESULT";
+
+var CBS_ACCOUNT_ORIGIN =
+  /^https:\/\/(www\.)?cbssports\.com$/i;
+
+/*
+  Holds the leagues discoverLeagues() found, so the multi-league
+  selector's click handler can navigate using the exact URL CBS
+  itself returned — never a URL built from user input.
+*/
+var discoveredCbsLeagues =
+  [];
+
 var STATUS_LABELS = {
   live:
     "Live",
@@ -1960,7 +1981,7 @@ function startCbsConnect() {
       ? "https://" +
         leagueId +
         ".football.cbssports.com/"
-      : "https://www.cbssports.com/fantasy/football/";
+      : "https://www.cbssports.com/fantasy/games/";
 
   cbsConnectWindow =
     window.open(
@@ -1993,8 +2014,8 @@ function startCbsConnect() {
         'Click your Inner Sanctum CBS bookmark on the league page. ' +
         'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.'
       : '<strong>CBS opened in a separate tab.</strong><br>' +
-        'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
-        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
+        'Sign into CBS normally if needed, then click your Inner Sanctum CBS bookmark — Inner Sanctum will find your league automatically. ' +
+        'Keep this Inner Sanctum tab open.';
 }
 
 /*
@@ -2271,6 +2292,50 @@ window.receiveCbsConnection =
 window.addEventListener(
   "message",
   function (event) {
+    /*
+      Discovery-phase branch (added). Handled and returned separately
+      from the capture-message checks below so the proven capture
+      path's origin/window/type validation is not touched or loosened.
+    */
+    if (
+      CBS_ACCOUNT_ORIGIN.test(
+        event.origin ||
+        ""
+      ) &&
+      (
+        !cbsConnectWindow ||
+        event.source ===
+          cbsConnectWindow
+      )
+    ) {
+      var discoveryMessage =
+        event.data;
+
+      if (
+        discoveryMessage &&
+        typeof discoveryMessage ===
+          "object" &&
+        discoveryMessage.type ===
+          CBS_DISCOVERY_MESSAGE &&
+        Array.isArray(
+          discoveryMessage.leagues
+        )
+      ) {
+        try {
+          handleCbsDiscoveryResult(
+            discoveryMessage.leagues
+          );
+        } catch (err) {
+          console.error(
+            "CBS discovery handoff failed:",
+            err
+          );
+        }
+
+        return;
+      }
+    }
+
     if (
       !CBS_FANTASY_ORIGIN.test(
         event.origin ||
@@ -2317,6 +2382,186 @@ window.addEventListener(
     }
   }
 );
+
+/*
+  ================================================================
+  CBS DISCOVERY RESULT HANDLER (added)
+  ================================================================
+
+  Receives the leagues discoverLeagues() found on the CBS account
+  page. Never touches LeagueConnection — that only happens once a
+  real capture comes back through receiveCbsConnection() above.
+
+    - Exactly one league: navigate the CBS tab straight to it.
+      Cross-origin assignment to an opened window's .location is
+      permitted by the browser for the window's opener; reading
+      that window's location cross-origin is not, which is why this
+      whole discovery round-trip goes through postMessage instead.
+    - More than one league: show a minimal selector. Each option's
+      URL comes directly from the discovered league object, never
+      from reconstructing a URL out of user input.
+    - Zero leagues: show a plain explanation and a retry control.
+*/
+function cbsDiscoveredLeagueLabel(
+  league
+) {
+  var name =
+    league.leagueName ||
+    league.rawText ||
+    league.leagueId ||
+    "CBS league";
+
+  var team =
+    league.teamName;
+
+  return team
+    ? name + " — " + team
+    : name;
+}
+
+function handleCbsDiscoveryResult(
+  leagues
+) {
+  var box =
+    document.getElementById(
+      "cbsResult"
+    );
+
+  if (!box) {
+    return;
+  }
+
+  if (
+    !leagues ||
+    leagues.length ===
+      0
+  ) {
+    box.className =
+      "result-box error show";
+
+    box.innerHTML =
+      "⚠️ We couldn't find a CBS Fantasy Football league on this account. " +
+      "Make sure you're signed into the CBS account that owns or participates in your fantasy league." +
+      '<br><br><button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
+
+    return;
+  }
+
+  if (leagues.length === 1) {
+    box.className =
+      "result-box loading show";
+
+    box.innerHTML =
+      "<strong>Found " +
+      escapeHtml(
+        cbsDiscoveredLeagueLabel(
+          leagues[0]
+        )
+      ) +
+      ".</strong><br>Opening your league…";
+
+    if (
+      cbsConnectWindow &&
+      !cbsConnectWindow.closed
+    ) {
+      cbsConnectWindow.location.href =
+        leagues[0].url;
+    } else {
+      box.className =
+        "result-box error show";
+
+      box.innerHTML =
+        "⚠️ The CBS tab was closed before your league could open. " +
+        '<button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
+    }
+
+    return;
+  }
+
+  discoveredCbsLeagues =
+    leagues;
+
+  var optionsHtml =
+    leagues
+      .map(
+        function (
+          league,
+          index
+        ) {
+          return (
+            '<button class="connect-btn" style="display:block;width:100%;margin-top:6px" ' +
+            'onclick="selectDiscoveredCbsLeague(' +
+            index +
+            ')">' +
+            escapeHtml(
+              cbsDiscoveredLeagueLabel(
+                league
+              )
+            ) +
+            "</button>"
+          );
+        }
+      )
+      .join("");
+
+  box.className =
+    "result-box loading show";
+
+  box.innerHTML =
+    "<strong>Select your CBS league</strong>" +
+    optionsHtml;
+}
+
+function selectDiscoveredCbsLeague(
+  index
+) {
+  var league =
+    discoveredCbsLeagues[
+      index
+    ];
+
+  var box =
+    document.getElementById(
+      "cbsResult"
+    );
+
+  if (!league) {
+    return;
+  }
+
+  if (
+    !cbsConnectWindow ||
+    cbsConnectWindow.closed
+  ) {
+    if (box) {
+      box.className =
+        "result-box error show";
+
+      box.innerHTML =
+        "⚠️ The CBS tab was closed before your league could open. " +
+        '<button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
+    }
+
+    return;
+  }
+
+  if (box) {
+    box.className =
+      "result-box loading show";
+
+    box.innerHTML =
+      "<strong>Opening " +
+      escapeHtml(
+        cbsDiscoveredLeagueLabel(
+          league
+        )
+      ) +
+      "…</strong>";
+  }
+
+  cbsConnectWindow.location.href =
+    league.url;
+}
 
 /*
   ================================================================
