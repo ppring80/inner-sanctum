@@ -639,13 +639,6 @@
   function addReturnButton(
     ui
   ) {
-    if (
-      !window.opener ||
-      window.opener.closed
-    ) {
-      return;
-    }
-
     const returnButton =
       createButton(
         "Return to Inner Sanctum",
@@ -657,47 +650,15 @@
         const targetOrigin =
           getSanctumTargetOrigin();
 
-        try {
-          window.opener.focus();
-        } catch (error) {
-          console.warn(
-            `${PREFIX} Could not focus Inner Sanctum tab.`,
-            error
-          );
-        }
-
         /*
-          CBS was opened by Inner Sanctum with window.open(), so the
-          browser should allow this tab/window to close.
+          Navigate this CBS tab directly back to Inner Sanctum.
 
-          Closing the CBS tab naturally returns the customer to the
-          original Inner Sanctum connection tab.
-
-          Some browsers may refuse window.close(). In that case,
-          navigate this CBS tab back to the Inner Sanctum connection
-          page as a customer-friendly fallback.
+          This is deterministic and does not depend on browser tab
+          focus behavior or which tab Chrome chooses after closing CBS.
         */
-        try {
-          window.close();
-        } catch (error) {
-          console.warn(
-            `${PREFIX} Could not close CBS tab.`,
-            error
-          );
-        }
-
-        setTimeout(
-          function () {
-            if (
-              !window.closed
-            ) {
-              window.location.href =
-                targetOrigin +
-                "/connect-league";
-            }
-          },
-          150
-        );
+        window.location.href =
+          targetOrigin +
+          "/connect-league";
       };
 
     ui.buttons.appendChild(
