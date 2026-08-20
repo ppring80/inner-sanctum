@@ -79,9 +79,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 @media(min-width:981px){
   .weekly-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
 }
+
 @media(max-width:980px){
   .weekly-grid{grid-template-columns:1fr}
 }
+
 .weekly-main{min-width:0}
 .weekly-side{min-width:0}
 
@@ -175,6 +177,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 @media(max-width:820px){.nav-dropdown-menu{left:0;transform:none}}
 
 </style>
+
 <!-- Meta Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s)
@@ -192,6 +195,7 @@ fbq('track', 'PageView');
 src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 /></noscript>
 <!-- End Meta Pixel Code -->
+
 </head>
 <body>
 
@@ -214,6 +218,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
+
 <script>
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
@@ -235,6 +240,7 @@ function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
   var entered = input.value.trim().toUpperCase();
+
   if (entered === ALLOWLIST_PASSCODE) {
     unlockGate();
   } else {
@@ -255,6 +261,7 @@ function checkOAuthSession() {
         unlockGate();
         return true;
       }
+
       return false;
     })
     .catch(function () {
@@ -267,16 +274,17 @@ function checkOAuthSession() {
     document.getElementById('gateOverlay').style.display = 'none';
     return;
   }
+
   checkOAuthSession();
 })();
 </script>
-<!-- ═══ END ACOLYTE ACCESS GATE ═══ -->
 
 <div class="hdr">
   <div>
     <span class="hdr-eyebrow">The Inner Sanctum</span>
     <h1 class="hdr-title">📅 Weekly Rankings</h1>
   </div>
+
   <div class="hdr-right">
     <span class="lock-badge">🔒 Acolyte Feature</span>
     <a href="/" class="nav-link">🏠 Home</a>
@@ -285,11 +293,12 @@ function checkOAuthSession() {
       <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">
         🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span>
       </button>
+
       <div class="nav-dropdown-menu">
-      <a href="/draft">📋 Draft Command Center</a>
-      <a href="/compare">🆚 Compare</a>
-      <a href="/auction">⚔️ Auction War Room</a>
-      <a href="/tiers">🏆 Oracle Tier List</a>
+        <a href="/draft">📋 Draft Command Center</a>
+        <a href="/compare">🆚 Compare</a>
+        <a href="/auction">⚔️ Auction War Room</a>
+        <a href="/tiers">🏆 Oracle Tier List</a>
       </div>
     </div>
 
@@ -297,11 +306,12 @@ function checkOAuthSession() {
       <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">
         📅 Season Tools <span class="nav-dropdown-caret">▼</span>
       </button>
+
       <div class="nav-dropdown-menu">
-      <a href="/power-rankings">📊 League Power Rankings</a>
-      <a href="/risers-fallers">📈 Risers & Fallers</a>
-      <a href="/survivor">☠️ Survivor Pool</a>
-      <a href="/connect-league">🔗 Link Your League</a>
+        <a href="/power-rankings">📊 League Power Rankings</a>
+        <a href="/risers-fallers">📈 Risers & Fallers</a>
+        <a href="/survivor">☠️ Survivor Pool</a>
+        <a href="/connect-league">🔗 Link Your League</a>
       </div>
     </div>
 
@@ -322,19 +332,24 @@ function checkOAuthSession() {
 
 <div class="toggle-bar">
   <span class="toggle-label">Verdict Voice</span>
+
   <div class="persona-toggle">
     <button class="persona-btn oracle active" id="pbtn-oracle" onclick="setPersona('oracle')"><span class="pe">🔮</span> Oracle</button>
     <button class="persona-btn trash" id="pbtn-trash" onclick="setPersona('trash')"><span class="pe">🔥</span> Trash Lord</button>
     <button class="persona-btn analyst" id="pbtn-analyst" onclick="setPersona('analyst')"><span class="pe">📊</span> Analyst</button>
   </div>
+
   <div class="week-select-wrap">
     <span class="toggle-label">Scoring</span>
+
     <select class="week-select" id="scoringSelect" onchange="renderTable()">
       <option value="ppr">PPR</option>
       <option value="half">Half PPR</option>
       <option value="standard">Standard</option>
     </select>
+
     <span class="toggle-label">Week</span>
+
     <select class="week-select" id="weekSelect" onchange="renderTable()">
       <option value="1">Week 1 (preview)</option>
     </select>
@@ -343,6 +358,7 @@ function checkOAuthSession() {
 
 <div class="filter-bar">
   <input type="text" class="search-input" id="searchInput" placeholder="Search players or teams..." oninput="renderTable()"/>
+
   <div class="pos-filter-group" id="posFilterGroup">
     <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
     <button class="pos-filter-btn" data-pos="QB" onclick="setPosFilter('QB')">QB</button>
@@ -354,6 +370,7 @@ function checkOAuthSession() {
     <button class="pos-filter-btn" data-pos="K" onclick="setPosFilter('K')">K</button>
     <button class="pos-filter-btn" data-pos="DEF" onclick="setPosFilter('DEF')">DEF</button>
   </div>
+
   <button class="my-roster-toggle" id="myRosterToggle" onclick="toggleMyRoster()">🏈 My Roster Only</button>
 </div>
 
@@ -371,13 +388,16 @@ function checkOAuthSession() {
             <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
           </tr>
         </thead>
+
         <tbody id="rankTableBody"></tbody>
       </table>
+
       <div class="empty-state" id="emptyState" style="display:none">
         <div class="empty-state-icon">🔍</div>
         <div>No players match your search or filters.</div>
       </div>
     </div>
+
     <div class="weekly-side">
       <div class="week-snapshot-panel" id="weekSnapshotPanel">
         <div class="week-snapshot-title">📊 Week Snapshot</div>
@@ -396,66 +416,146 @@ var FLEX_ELIGIBLE = {
 };
 
 var MOCK_RANKINGS = [
-  { name:'Patrick Mahomes', pos:'QB', team:'KC', opp:'BUF', injury:'healthy',
-    proj:{ppr:24.8, half:24.8, standard:24.8}, call:{ppr:'start', half:'start', standard:'start'},
+  {
+    name:'Patrick Mahomes',
+    pos:'QB',
+    team:'KC',
+    opp:'BUF',
+    injury:'healthy',
+    proj:{ppr:24.8, half:24.8, standard:24.8},
+    call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"The signal caller faces no obstacle the stars cannot illuminate — start him with the confidence of 38 seasons behind you.",
       trash:"It's Mahomes against a banged-up secondary. Even YOUR lineup decisions can't mess this one up. START HIM.",
-      analyst:"4,200+ proj pass yds pace, opponent allows 24.1 fantasy pts/gm to QBs (8th-most). Clear start." } },
-  { name:'Christian McCaffrey', pos:'RB', team:'SF', opp:'SEA', injury:'questionable',
-    proj:{ppr:20.6, half:19.4, standard:18.2}, call:{ppr:'start', half:'flex', standard:'flex'},
+      analyst:"4,200+ proj pass yds pace, opponent allows 24.1 fantasy pts/gm to QBs (8th-most). Clear start."
+    }
+  },
+  {
+    name:'Christian McCaffrey',
+    pos:'RB',
+    team:'SF',
+    opp:'SEA',
+    injury:'questionable',
+    proj:{ppr:20.6, half:19.4, standard:18.2},
+    call:{ppr:'start', half:'flex', standard:'flex'},
     verdicts:{
       oracle:"In PPR leagues his hands alone are worth the risk — elsewhere, a flex play until the injury report clears.",
       trash:"PPR? He's basically a WR with this catch volume, start him. Standard? Questionable tag has me side-eyeing this one.",
-      analyst:"6.2 targets/gm (PPR-relevant), 67% snap share last healthy game. PPR: start-caliber floor. Standard: flex pending injury report." } },
-  { name:"Ja'Marr Chase", pos:'WR', team:'CIN', opp:'PIT', injury:'healthy',
-    proj:{ppr:19.4, half:17.1, standard:14.8}, call:{ppr:'start', half:'start', standard:'start'},
+      analyst:"6.2 targets/gm (PPR-relevant), 67% snap share last healthy game. PPR: start-caliber floor. Standard: flex pending injury report."
+    }
+  },
+  {
+    name:"Ja'Marr Chase",
+    pos:'WR',
+    team:'CIN',
+    opp:'PIT',
+    injury:'healthy',
+    proj:{ppr:19.4, half:17.1, standard:14.8},
+    call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"Against this secondary, the receiver's path to glory is foretold in any format — start with conviction.",
       trash:"Pittsburgh's corners have given up the 3rd-most fantasy points to WRs. Chase is about to feast, any scoring system.",
-      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start across all formats." } },
-  { name:'Travis Kelce', pos:'TE', team:'KC', opp:'BUF', injury:'healthy',
-    proj:{ppr:15.8, half:14.4, standard:13.1}, call:{ppr:'start', half:'start', standard:'start'},
+      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start across all formats."
+    }
+  },
+  {
+    name:'Travis Kelce',
+    pos:'TE',
+    team:'KC',
+    opp:'BUF',
+    injury:'healthy',
+    proj:{ppr:15.8, half:14.4, standard:13.1},
+    call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"Even as seasons pass, the tight end's bond with his quarterback remains unbroken — a steady start, any format.",
       trash:"Kelce's still getting targets like it's 2019. Start him and stop overthinking it, PPR or not.",
-      analyst:"22% target share in red zone, consistent floor regardless of format. Start." } },
-  { name:'Justin Tucker', pos:'K', team:'BAL', opp:'CLE', injury:'healthy',
-    proj:{ppr:8.4, half:8.4, standard:8.4}, call:{ppr:'flex', half:'flex', standard:'flex'},
+      analyst:"22% target share in red zone, consistent floor regardless of format. Start."
+    }
+  },
+  {
+    name:'Justin Tucker',
+    pos:'K',
+    team:'BAL',
+    opp:'CLE',
+    injury:'healthy',
+    proj:{ppr:8.4, half:8.4, standard:8.4},
+    call:{ppr:'flex', half:'flex', standard:'flex'},
     verdicts:{
       oracle:"Even the most reliable leg faces uncertainty in the wind — a fine streamer, nothing more, no matter the format.",
       trash:"It's a kicker. Scoring format doesn't matter. Calm down. Streamable, not a priority.",
-      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play, format-agnostic." } },
-  { name:'San Francisco 49ers', pos:'DEF', team:'SF', opp:'SEA', injury:'healthy',
-    proj:{ppr:9.2, half:9.2, standard:9.2}, call:{ppr:'start', half:'start', standard:'start'},
+      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play, format-agnostic."
+    }
+  },
+  {
+    name:'San Francisco 49ers',
+    pos:'DEF',
+    team:'SF',
+    opp:'SEA',
+    injury:'healthy',
+    proj:{ppr:9.2, half:9.2, standard:9.2},
+    call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"The defense stands as a wall against a wounded offense — start with confidence, format aside.",
       trash:"Seattle's offensive line is falling apart. This defense is about to feast, no matter how you score it.",
-      analyst:"Opponent allows 2.1 sacks/gm allowed, high pressure-rate matchup. Strong start." } },
-  { name:'Tua Tagovailoa', pos:'QB', team:'MIA', opp:'NYJ', injury:'doubtful',
-    proj:{ppr:11.5, half:11.5, standard:11.5}, call:{ppr:'sit', half:'sit', standard:'sit'},
+      analyst:"Opponent allows 2.1 sacks/gm allowed, high pressure-rate matchup. Strong start."
+    }
+  },
+  {
+    name:'Tua Tagovailoa',
+    pos:'QB',
+    team:'MIA',
+    opp:'NYJ',
+    injury:'doubtful',
+    proj:{ppr:11.5, half:11.5, standard:11.5},
+    call:{ppr:'sit', half:'sit', standard:'sit'},
     verdicts:{
       oracle:"The path is shrouded in doubt this week — better to seek wisdom elsewhere until the fog clears.",
       trash:"Doubtful tag plus a tough Jets D? Bench him and don't think twice.",
-      analyst:"Doubtful per Friday report, opponent allows 16.2 fantasy pts/gm to QBs (4th-fewest). Sit." } },
-  { name:'Breece Hall', pos:'RB', team:'NYJ', opp:'MIA', injury:'healthy',
-    proj:{ppr:19.6, half:18.2, standard:16.8}, call:{ppr:'start', half:'start', standard:'start'},
+      analyst:"Doubtful per Friday report, opponent allows 16.2 fantasy pts/gm to QBs (4th-fewest). Sit."
+    }
+  },
+  {
+    name:'Breece Hall',
+    pos:'RB',
+    team:'NYJ',
+    opp:'MIA',
+    injury:'healthy',
+    proj:{ppr:19.6, half:18.2, standard:16.8},
+    call:{ppr:'start', half:'start', standard:'start'},
     verdicts:{
       oracle:"The path opens wide for the swift — a clear start against a defense that cannot contain him, in any format.",
       trash:"Miami's run D is Swiss cheese. Breece is about to run wild, PPR or standard, doesn't matter. START.",
-      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start regardless of scoring." } },
-  { name:'Mike Evans', pos:'WR', team:'TB', opp:'NO', injury:'healthy',
-    proj:{ppr:14.6, half:12.8, standard:10.9}, call:{ppr:'flex', half:'flex', standard:'sit'},
+      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start regardless of scoring."
+    }
+  },
+  {
+    name:'Mike Evans',
+    pos:'WR',
+    team:'TB',
+    opp:'NO',
+    injury:'healthy',
+    proj:{ppr:14.6, half:12.8, standard:10.9},
+    call:{ppr:'flex', half:'flex', standard:'sit'},
     verdicts:{
       oracle:"A solid offering in PPR, though in standard formats the path dims — know your league before you commit.",
       trash:"PPR, he's a fine flex. Standard? His catch volume doesn't pay off — bench-able in deeper leagues.",
-      analyst:"19% target share but middling yards-after-catch. PPR: flex floor. Standard: matchup-dependent sit candidate." } },
-  { name:'George Kittle', pos:'TE', team:'SF', opp:'SEA', injury:'out',
-    proj:{ppr:0, half:0, standard:0}, call:{ppr:'sit', half:'sit', standard:'sit'},
+      analyst:"19% target share but middling yards-after-catch. PPR: flex floor. Standard: matchup-dependent sit candidate."
+    }
+  },
+  {
+    name:'George Kittle',
+    pos:'TE',
+    team:'SF',
+    opp:'SEA',
+    injury:'out',
+    proj:{ppr:0, half:0, standard:0},
+    call:{ppr:'sit', half:'sit', standard:'sit'},
     verdicts:{
       oracle:"The path is closed this week, seeker — find another route to glory, in any format.",
       trash:"He's OUT. As in, not playing. Bench him, this isn't complicated, no matter how your league scores.",
-      analyst:"Ruled out per Friday injury report. Do not start, any format." } }
+      analyst:"Ruled out per Friday injury report. Do not start, any format."
+    }
+  }
 ];
 
 var state = {
@@ -468,176 +568,533 @@ var state = {
 };
 
 function injuryLabel(code) {
-  return { healthy:'Healthy', questionable:'Questionable', doubtful:'Doubtful', out:'Out' }[code] || code;
+  return {
+    healthy:'Healthy',
+    questionable:'Questionable',
+    doubtful:'Doubtful',
+    out:'Out'
+  }[code] || code;
 }
 
 function callTag(call) {
-  var labels = { start:'START', flex:'FLEX', sit:'SIT' };
+  var labels = {
+    start:'START',
+    flex:'FLEX',
+    sit:'SIT'
+  };
+
   return '<span class="verdict-tag ' + call + '">' + labels[call] + '</span>';
 }
 
 function setPersona(p) {
   state.persona = p;
-  document.querySelectorAll('.persona-btn').forEach(function(b){ b.classList.remove('active'); });
-  document.getElementById('pbtn-' + p).classList.add('active');
 
-  document.querySelectorAll('.cell-verdict').forEach(function(el){ el.classList.add('fading'); });
+  document
+    .querySelectorAll('.persona-btn')
+    .forEach(function(b){
+      b.classList.remove('active');
+    });
+
+  document
+    .getElementById('pbtn-' + p)
+    .classList.add('active');
+
+  document
+    .querySelectorAll('.cell-verdict')
+    .forEach(function(el){
+      el.classList.add('fading');
+    });
+
   setTimeout(function(){
     renderTable();
-    document.querySelectorAll('.cell-verdict').forEach(function(el){ el.classList.remove('fading'); });
+
+    document
+      .querySelectorAll('.cell-verdict')
+      .forEach(function(el){
+        el.classList.remove('fading');
+      });
   }, 150);
 }
 
 function setPosFilter(pos) {
   state.posFilter = pos;
-  document.querySelectorAll('.pos-filter-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.pos === pos); });
+
+  document
+    .querySelectorAll('.pos-filter-btn')
+    .forEach(function(b){
+      b.classList.toggle(
+        'active',
+        b.dataset.pos === pos
+      );
+    });
+
   renderTable();
 }
 
 function toggleMyRoster() {
-  state.myRosterOnly = !state.myRosterOnly;
-  document.getElementById('myRosterToggle').classList.toggle('active', state.myRosterOnly);
+  state.myRosterOnly =
+    !state.myRosterOnly;
+
+  document
+    .getElementById('myRosterToggle')
+    .classList.toggle(
+      'active',
+      state.myRosterOnly
+    );
+
   renderTable();
 }
 
 function setSort(key) {
   if (state.sortKey === key) {
-    state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+    state.sortDir =
+      state.sortDir === 'asc'
+        ? 'desc'
+        : 'asc';
   } else {
     state.sortKey = key;
     state.sortDir = 'asc';
   }
-  document.querySelectorAll('.rank-table thead th').forEach(function(th){ th.classList.remove('sorted'); });
-  var th = document.getElementById('th-' + key);
-  if (th) th.classList.add('sorted');
+
+  document
+    .querySelectorAll('.rank-table thead th')
+    .forEach(function(th){
+      th.classList.remove('sorted');
+    });
+
+  var th =
+    document.getElementById(
+      'th-' + key
+    );
+
+  if (th) {
+    th.classList.add('sorted');
+  }
+
   renderTable();
 }
 
 function getScoringFormat() {
-  var el = document.getElementById('scoringSelect');
-  return el ? el.value : 'ppr';
+  var el =
+    document.getElementById(
+      'scoringSelect'
+    );
+
+  return el
+    ? el.value
+    : 'ppr';
 }
 
 function getFilteredSorted() {
-  var q = document.getElementById('searchInput').value.trim().toLowerCase();
-  var fmt = getScoringFormat();
-  var rows = MOCK_RANKINGS.filter(function(p){
-    if (state.posFilter !== 'ALL') {
-      var eligible = FLEX_ELIGIBLE[state.posFilter];
-      if (eligible) {
-        if (eligible.indexOf(p.pos) === -1) return false;
-      } else if (p.pos !== state.posFilter) {
-        return false;
-      }
-    }
-    if (state.myRosterOnly && state.myRosterNames.indexOf(p.name) === -1) return false;
-    if (q && !p.name.toLowerCase().includes(q) && !p.team.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  var q =
+    document
+      .getElementById(
+        'searchInput'
+      )
+      .value
+      .trim()
+      .toLowerCase();
 
-  rows.sort(function(a, b){
-    var av, bv;
-    switch (state.sortKey) {
-      case 'name': av = a.name; bv = b.name; break;
-      case 'pos': av = POS_ORDER.indexOf(a.pos); bv = POS_ORDER.indexOf(b.pos); break;
-      case 'opp': av = a.opp; bv = b.opp; break;
-      case 'injury': av = a.injury; bv = b.injury; break;
-      case 'proj': default: av = a.proj[fmt]; bv = b.proj[fmt]; break;
+  var fmt =
+    getScoringFormat();
+
+  var rows =
+    MOCK_RANKINGS.filter(
+      function(p) {
+        if (
+          state.posFilter !==
+          'ALL'
+        ) {
+          var eligible =
+            FLEX_ELIGIBLE[
+              state.posFilter
+            ];
+
+          if (eligible) {
+            if (
+              eligible.indexOf(
+                p.pos
+              ) === -1
+            ) {
+              return false;
+            }
+          } else if (
+            p.pos !==
+            state.posFilter
+          ) {
+            return false;
+          }
+        }
+
+        if (
+          state.myRosterOnly &&
+          state.myRosterNames.indexOf(
+            p.name
+          ) === -1
+        ) {
+          return false;
+        }
+
+        if (
+          q &&
+          !p.name
+            .toLowerCase()
+            .includes(q) &&
+          !p.team
+            .toLowerCase()
+            .includes(q)
+        ) {
+          return false;
+        }
+
+        return true;
+      }
+    );
+
+  rows.sort(
+    function(a, b) {
+      var av;
+      var bv;
+
+      switch (
+        state.sortKey
+      ) {
+        case 'name':
+          av = a.name;
+          bv = b.name;
+          break;
+
+        case 'pos':
+          av =
+            POS_ORDER.indexOf(
+              a.pos
+            );
+
+          bv =
+            POS_ORDER.indexOf(
+              b.pos
+            );
+          break;
+
+        case 'opp':
+          av = a.opp;
+          bv = b.opp;
+          break;
+
+        case 'injury':
+          av = a.injury;
+          bv = b.injury;
+          break;
+
+        case 'proj':
+        default:
+          av = a.proj[fmt];
+          bv = b.proj[fmt];
+          break;
+      }
+
+      if (av < bv) {
+        return state.sortDir === 'asc'
+          ? -1
+          : 1;
+      }
+
+      if (av > bv) {
+        return state.sortDir === 'asc'
+          ? 1
+          : -1;
+      }
+
+      return 0;
     }
-    if (av < bv) return state.sortDir === 'asc' ? -1 : 1;
-    if (av > bv) return state.sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
+  );
 
   return rows;
 }
 
 function renderTable() {
-  var rows = getFilteredSorted();
-  var fmt = getScoringFormat();
-  var tbody = document.getElementById('rankTableBody');
-  var empty = document.getElementById('emptyState');
+  var rows =
+    getFilteredSorted();
+
+  var fmt =
+    getScoringFormat();
+
+  var tbody =
+    document.getElementById(
+      'rankTableBody'
+    );
+
+  var empty =
+    document.getElementById(
+      'emptyState'
+    );
 
   if (!rows.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
+    renderWeekSnapshot();
     return;
   }
-  empty.style.display = 'none';
 
-  tbody.innerHTML = rows.map(function(p){
-    var isMine = state.myRosterNames.indexOf(p.name) !== -1;
-    var verdictText = p.verdicts[state.persona] || '';
-    var proj = p.proj[fmt];
-    var call = p.call[fmt];
-    return (
-      '<tr class="' + (isMine ? 'is-mine' : '') + '">' +
-        '<td><div class="cell-player">' +
-          (isMine ? '<span class="cell-mine-dot" title="On your roster"></span>' : '') +
-          '<span class="cell-name">' + p.name + '</span>' +
-        '</div></td>' +
-        '<td><span class="pos-pill ' + p.pos + '">' + p.pos + '</span> <span class="cell-team">' + p.team + '</span></td>' +
-        '<td><span class="cell-opp"><span class="vs">vs</span>' + p.opp + '</span></td>' +
-        '<td><span class="injury-pill ' + p.injury + '">' + injuryLabel(p.injury) + '</span></td>' +
-        '<td><div class="cell-verdict">' + callTag(call) + verdictText + '</div></td>' +
-        '<td class="cell-proj">' + (proj > 0 ? proj.toFixed(1) : '—') + '</td>' +
-      '</tr>'
-    );
-  }).join('');
+  empty.style.display =
+    'none';
+
+  tbody.innerHTML =
+    rows
+      .map(
+        function(p) {
+          var isMine =
+            state
+              .myRosterNames
+              .indexOf(
+                p.name
+              ) !== -1;
+
+          var verdictText =
+            p.verdicts[
+              state.persona
+            ] || '';
+
+          var proj =
+            p.proj[
+              fmt
+            ];
+
+          var call =
+            p.call[
+              fmt
+            ];
+
+          return (
+            '<tr class="' +
+              (
+                isMine
+                  ? 'is-mine'
+                  : ''
+              ) +
+            '">' +
+
+              '<td>' +
+                '<div class="cell-player">' +
+                  (
+                    isMine
+                      ? '<span class="cell-mine-dot" title="On your roster"></span>'
+                      : ''
+                  ) +
+                  '<span class="cell-name">' +
+                    p.name +
+                  '</span>' +
+                '</div>' +
+              '</td>' +
+
+              '<td>' +
+                '<span class="pos-pill ' +
+                  p.pos +
+                '">' +
+                  p.pos +
+                '</span> ' +
+                '<span class="cell-team">' +
+                  p.team +
+                '</span>' +
+              '</td>' +
+
+              '<td>' +
+                '<span class="cell-opp">' +
+                  '<span class="vs">vs</span>' +
+                  p.opp +
+                '</span>' +
+              '</td>' +
+
+              '<td>' +
+                '<span class="injury-pill ' +
+                  p.injury +
+                '">' +
+                  injuryLabel(
+                    p.injury
+                  ) +
+                '</span>' +
+              '</td>' +
+
+              '<td>' +
+                '<div class="cell-verdict">' +
+                  callTag(
+                    call
+                  ) +
+                  verdictText +
+                '</div>' +
+              '</td>' +
+
+              '<td class="cell-proj">' +
+                (
+                  proj > 0
+                    ? proj.toFixed(1)
+                    : '—'
+                ) +
+              '</td>' +
+
+            '</tr>'
+          );
+        }
+      )
+      .join('');
 
   renderWeekSnapshot();
 }
 
-// ═══════════════════════════════════════════════════════════
-// WEEK SNAPSHOT (added) — derived entirely from MOCK_RANKINGS and
-// existing state (scoring format, week selector, myRosterNames).
-// No new data fetching, no new ranking/injury/call computation —
-// this just picks out max/best entries across fields the table
-// already renders from. Intentionally reads the FULL dataset (not
-// getFilteredSorted()'s result), same way the table's own filters
-// don't change what "this week" looks like overall. Called at the
-// end of renderTable(), so it stays in sync with every trigger that
-// already re-renders the table (persona, scoring format, week,
-// search, position filter, My Roster Only, sort).
-// ═══════════════════════════════════════════════════════════
+/*
+  ═══════════════════════════════════════════════════════════
+  WEEK SNAPSHOT
+  ═══════════════════════════════════════════════════════════
+*/
+
 function renderWeekSnapshot() {
-  var panel = document.getElementById('weekSnapshotList');
-  if (!panel) return;
-  var fmt = getScoringFormat();
+  var panel =
+    document.getElementById(
+      'weekSnapshotList'
+    );
 
-  var withProj = MOCK_RANKINGS.filter(function (p) { return p.proj[fmt] > 0; });
-  var topProjected = withProj.length
-    ? withProj.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; })
-    : null;
+  if (!panel) {
+    return;
+  }
 
-  var severity = { out: 3, doubtful: 2, questionable: 1, healthy: 0 };
-  var withConcern = MOCK_RANKINGS.filter(function (p) { return p.injury !== 'healthy'; });
-  var biggestConcern = withConcern.length
-    ? withConcern.reduce(function (a, b) {
-        var sa = severity[a.injury] || 0, sb = severity[b.injury] || 0;
-        if (sb !== sa) return sb > sa ? b : a;
-        return b.proj[fmt] > a.proj[fmt] ? b : a;
-      })
-    : null;
+  var fmt =
+    getScoringFormat();
 
-  var starters = MOCK_RANKINGS.filter(function (p) { return p.call[fmt] === 'start'; });
-  var bestStart = starters.length
-    ? starters.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; })
-    : null;
+  var withProj =
+    MOCK_RANKINGS.filter(
+      function(p) {
+        return p.proj[fmt] > 0;
+      }
+    );
 
-  var myTop = null;
-  if (state.myRosterNames && state.myRosterNames.length) {
-    var mine = MOCK_RANKINGS.filter(function (p) { return state.myRosterNames.indexOf(p.name) !== -1; });
+  var topProjected =
+    withProj.length
+      ? withProj.reduce(
+          function(a, b) {
+            return b.proj[fmt] >
+              a.proj[fmt]
+              ? b
+              : a;
+          }
+        )
+      : null;
+
+  var severity = {
+    out: 3,
+    doubtful: 2,
+    questionable: 1,
+    healthy: 0
+  };
+
+  var withConcern =
+    MOCK_RANKINGS.filter(
+      function(p) {
+        return p.injury !==
+          'healthy';
+      }
+    );
+
+  var biggestConcern =
+    withConcern.length
+      ? withConcern.reduce(
+          function(a, b) {
+            var sa =
+              severity[
+                a.injury
+              ] || 0;
+
+            var sb =
+              severity[
+                b.injury
+              ] || 0;
+
+            if (sb !== sa) {
+              return sb > sa
+                ? b
+                : a;
+            }
+
+            return b.proj[fmt] >
+              a.proj[fmt]
+              ? b
+              : a;
+          }
+        )
+      : null;
+
+  var starters =
+    MOCK_RANKINGS.filter(
+      function(p) {
+        return p.call[fmt] ===
+          'start';
+      }
+    );
+
+  var bestStart =
+    starters.length
+      ? starters.reduce(
+          function(a, b) {
+            return b.proj[fmt] >
+              a.proj[fmt]
+              ? b
+              : a;
+          }
+        )
+      : null;
+
+  var myTop =
+    null;
+
+  if (
+    state.myRosterNames &&
+    state.myRosterNames.length
+  ) {
+    var mine =
+      MOCK_RANKINGS.filter(
+        function(p) {
+          return state
+            .myRosterNames
+            .indexOf(
+              p.name
+            ) !== -1;
+        }
+      );
+
     if (mine.length) {
-      myTop = mine.reduce(function (a, b) { return b.proj[fmt] > a.proj[fmt] ? b : a; });
+      myTop =
+        mine.reduce(
+          function(a, b) {
+            return b.proj[fmt] >
+              a.proj[fmt]
+              ? b
+              : a;
+          }
+        );
     }
   }
 
-  var weekSelect = document.getElementById('weekSelect');
-  var weekLabel = (weekSelect && weekSelect.options[weekSelect.selectedIndex])
-    ? weekSelect.options[weekSelect.selectedIndex].textContent
-    : '';
-  var fmtLabel = { ppr: 'PPR', half: 'Half PPR', standard: 'Standard' }[fmt] || fmt;
+  var weekSelect =
+    document.getElementById(
+      'weekSelect'
+    );
+
+  var weekLabel =
+    (
+      weekSelect &&
+      weekSelect.options[
+        weekSelect.selectedIndex
+      ]
+    )
+      ? weekSelect.options[
+          weekSelect.selectedIndex
+        ].textContent
+      : '';
+
+  var fmtLabel = {
+    ppr: 'PPR',
+    half: 'Half PPR',
+    standard: 'Standard'
+  }[fmt] || fmt;
 
   var html = '';
 
@@ -645,8 +1102,15 @@ function renderWeekSnapshot() {
     html +=
       '<div class="week-snapshot-item">' +
         '<div class="week-snapshot-label">Top Projected</div>' +
-        '<div class="week-snapshot-value">' + topProjected.name + '</div>' +
-        '<div class="week-snapshot-sub">' + topProjected.pos + ' · ' + topProjected.proj[fmt].toFixed(1) + ' pts</div>' +
+        '<div class="week-snapshot-value">' +
+          topProjected.name +
+        '</div>' +
+        '<div class="week-snapshot-sub">' +
+          topProjected.pos +
+          ' · ' +
+          topProjected.proj[fmt].toFixed(1) +
+          ' pts' +
+        '</div>' +
       '</div>';
   }
 
@@ -654,8 +1118,16 @@ function renderWeekSnapshot() {
     html +=
       '<div class="week-snapshot-item">' +
         '<div class="week-snapshot-label">Biggest Injury Concern</div>' +
-        '<div class="week-snapshot-value">' + biggestConcern.name + '</div>' +
-        '<div class="week-snapshot-sub">' + injuryLabel(biggestConcern.injury) + ' · ' + biggestConcern.pos + '</div>' +
+        '<div class="week-snapshot-value">' +
+          biggestConcern.name +
+        '</div>' +
+        '<div class="week-snapshot-sub">' +
+          injuryLabel(
+            biggestConcern.injury
+          ) +
+          ' · ' +
+          biggestConcern.pos +
+        '</div>' +
       '</div>';
   }
 
@@ -663,8 +1135,16 @@ function renderWeekSnapshot() {
     html +=
       '<div class="week-snapshot-item">' +
         '<div class="week-snapshot-label">Strongest Start Signal</div>' +
-        '<div class="week-snapshot-value">' + bestStart.name + '</div>' +
-        '<div class="week-snapshot-sub">vs ' + bestStart.opp + ' · ' + bestStart.proj[fmt].toFixed(1) + ' pts</div>' +
+        '<div class="week-snapshot-value">' +
+          bestStart.name +
+        '</div>' +
+        '<div class="week-snapshot-sub">' +
+          'vs ' +
+          bestStart.opp +
+          ' · ' +
+          bestStart.proj[fmt].toFixed(1) +
+          ' pts' +
+        '</div>' +
       '</div>';
   }
 
@@ -672,52 +1152,356 @@ function renderWeekSnapshot() {
     html +=
       '<div class="week-snapshot-item">' +
         '<div class="week-snapshot-label">Top On My Roster</div>' +
-        '<div class="week-snapshot-value">' + myTop.name + '</div>' +
-        '<div class="week-snapshot-sub">' + myTop.pos + ' · ' + myTop.proj[fmt].toFixed(1) + ' pts</div>' +
+        '<div class="week-snapshot-value">' +
+          myTop.name +
+        '</div>' +
+        '<div class="week-snapshot-sub">' +
+          myTop.pos +
+          ' · ' +
+          myTop.proj[fmt].toFixed(1) +
+          ' pts' +
+        '</div>' +
       '</div>';
   }
 
   html +=
     '<div class="week-snapshot-item">' +
       '<div class="week-snapshot-label">Format &amp; Week</div>' +
-      '<div class="week-snapshot-value">' + fmtLabel + (weekLabel ? ' · ' + weekLabel : '') + '</div>' +
+      '<div class="week-snapshot-value">' +
+        fmtLabel +
+        (
+          weekLabel
+            ? ' · ' + weekLabel
+            : ''
+        ) +
+      '</div>' +
     '</div>';
 
-  panel.innerHTML = html;
+  panel.innerHTML =
+    html;
 }
 
-document.getElementById('th-proj').classList.add('sorted');
+document
+  .getElementById(
+    'th-proj'
+  )
+  .classList.add(
+    'sorted'
+  );
+
 renderTable();
 </script>
 
 <script>
-// ADDED — grouped dropdown nav toggle
 function toggleNavDropdown(id) {
-  var target = document.getElementById(id);
-  var wasOpen = target.classList.contains('open');
-  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
-  if (!wasOpen) target.classList.add('open');
-}
-document.addEventListener('click', function (e) {
-  if (!e.target.closest('.nav-dropdown')) {
-    document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  var target =
+    document.getElementById(
+      id
+    );
+
+  var wasOpen =
+    target.classList.contains(
+      'open'
+    );
+
+  document
+    .querySelectorAll(
+      '.nav-dropdown.open'
+    )
+    .forEach(
+      function(d) {
+        d.classList.remove(
+          'open'
+        );
+      }
+    );
+
+  if (!wasOpen) {
+    target.classList.add(
+      'open'
+    );
   }
-});
+}
+
+document.addEventListener(
+  'click',
+  function(e) {
+    if (
+      !e.target.closest(
+        '.nav-dropdown'
+      )
+    ) {
+      document
+        .querySelectorAll(
+          '.nav-dropdown.open'
+        )
+        .forEach(
+          function(d) {
+            d.classList.remove(
+              'open'
+            );
+          }
+        );
+    }
+  }
+);
 </script>
 
 <script src="/league-connection.js"></script>
+
 <script>
-(function showConnectionBanner() {
-  if (typeof LeagueConnection === 'undefined') return;
-  var active = LeagueConnection.getActiveProvider();
-  if (!active) return;
-  var label = LeagueConnection.PROVIDERS[active] ? LeagueConnection.PROVIDERS[active].label : active;
-  var banner = document.getElementById('connectionBanner');
-  var text = document.getElementById('connectionBannerText');
-  if (!banner || !text) return;
-  text.textContent = '🔗 Connected to ' + label + ' — rankings below aren\'t personalized to your roster yet, but your connection is recognized site-wide.';
-  banner.classList.add('show');
+(function applyConnectedLeagueContext() {
+  if (
+    typeof LeagueConnection ===
+    'undefined'
+  ) {
+    return;
+  }
+
+  var connection =
+    LeagueConnection
+      .getActiveConnection();
+
+  if (!connection) {
+    return;
+  }
+
+  var provider =
+    connection.provider ||
+    LeagueConnection
+      .getActiveProvider();
+
+  var providerLabel =
+    provider &&
+    LeagueConnection.PROVIDERS &&
+    LeagueConnection.PROVIDERS[
+      provider
+    ]
+      ? LeagueConnection.PROVIDERS[
+          provider
+        ].label
+      : (
+          provider ||
+          'league'
+        );
+
+  /*
+    Load the connected roster names into the existing Weekly
+    Rankings roster state.
+
+    CBS roster records currently contain:
+
+      {
+        cbsPlayerId,
+        name,
+        nflTeam,
+        position,
+        projectedPoints,
+        status
+      }
+
+    No ranking/projection data is replaced here.
+  */
+  if (
+    Array.isArray(
+      connection.roster
+    )
+  ) {
+    state.myRosterNames =
+      connection.roster
+        .map(
+          function(player) {
+            return (
+              player &&
+              player.name
+            )
+              ? player
+                  .name
+                  .trim()
+              : '';
+          }
+        )
+        .filter(
+          function(name) {
+            return (
+              name.length >
+              0
+            );
+          }
+        );
+  }
+
+  /*
+    Map the shared connection scoring format to the values already
+    used by Weekly Rankings.
+  */
+  var scoringMap = {
+    'ppr':
+      'ppr',
+
+    'half-ppr':
+      'half',
+
+    'half_ppr':
+      'half',
+
+    'half':
+      'half',
+
+    'standard':
+      'standard'
+  };
+
+  var connectedScoring =
+    scoringMap[
+      String(
+        connection
+          .scoringFormat ||
+        ''
+      )
+        .toLowerCase()
+    ];
+
+  var scoringSelect =
+    document.getElementById(
+      'scoringSelect'
+    );
+
+  if (
+    connectedScoring &&
+    scoringSelect
+  ) {
+    scoringSelect.value =
+      connectedScoring;
+  }
+
+  /*
+    Show actual connected-league context in the existing green
+    connection banner.
+  */
+  var banner =
+    document.getElementById(
+      'connectionBanner'
+    );
+
+  var bannerText =
+    document.getElementById(
+      'connectionBannerText'
+    );
+
+  if (
+    banner &&
+    bannerText
+  ) {
+    var leagueName =
+      connection.leagueName ||
+      (
+        connection.league &&
+        connection.league.name
+      ) ||
+      '';
+
+    var teamName =
+      connection.teamName ||
+      (
+        connection.team &&
+        connection.team.name
+      ) ||
+      '';
+
+    var teamCount =
+      connection.teamCount ||
+      (
+        connection.league &&
+        connection.league.teamCount
+      ) ||
+      null;
+
+    var scoringLabel = {
+      ppr:
+        'PPR',
+
+      half:
+        'Half PPR',
+
+      standard:
+        'Standard'
+    }[
+      connectedScoring
+    ] || '';
+
+    var contextParts =
+      [];
+
+    if (leagueName) {
+      contextParts.push(
+        leagueName
+      );
+    }
+
+    if (teamName) {
+      contextParts.push(
+        teamName
+      );
+    }
+
+    if (teamCount) {
+      contextParts.push(
+        teamCount +
+        ' teams'
+      );
+    }
+
+    if (scoringLabel) {
+      contextParts.push(
+        scoringLabel
+      );
+    }
+
+    if (
+      state
+        .myRosterNames
+        .length
+    ) {
+      contextParts.push(
+        state
+          .myRosterNames
+          .length +
+        ' roster players'
+      );
+    }
+
+    bannerText.textContent =
+      '🔗 Connected to ' +
+      providerLabel +
+      (
+        contextParts.length
+          ? ' — ' +
+            contextParts.join(
+              ' · '
+            )
+          : ''
+      );
+
+    banner.classList.add(
+      'show'
+    );
+  }
+
+  /*
+    Re-render using the existing preview-ranking engine.
+
+    This activates:
+      - connected scoring format
+      - roster dots
+      - My Roster Only
+      - Top On My Roster when a preview player matches the CBS roster
+
+    MOCK_RANKINGS remains unchanged.
+  */
+  renderTable();
 })();
 </script>
+
 </body>
 </html>
