@@ -3,7 +3,7 @@
   ------------------------------------------------
   Browser-assisted, READ-ONLY CBS Fantasy connector.
 
-  VERSION 0.3.0
+  VERSION 0.3.1
 
   DESIGN PRINCIPLE
   ------------------------------------------------
@@ -90,12 +90,19 @@
     await CBSBrowserConnector.captureAll()
 
       Full multi-page CBS league capture.
+
+    CBSBrowserConnector.discoverLeagues()
+
+      Synchronous, read-only scan of the CURRENT page's DOM for
+      *.football.cbssports.com league links (e.g. on the CBS
+      Fantasy & Games account hub). Does not fetch, navigate, or
+      require an authenticated league subdomain to be loaded.
 */
 
 (function () {
   "use strict";
 
-  const VERSION = "0.3.0";
+  const VERSION = "0.3.1";
 
   const CBS_HOST_RE =
     /^([^.]+)\.football\.cbssports\.com$/i;
@@ -3462,6 +3469,175 @@
 
   /*
     ================================================================
+    ACCOUNT-LEVEL LEAGUE DISCOVERY (added in 0.3.1)
+    ================================================================
+
+    discoverLeagues() is intentionally decoupled from the
+    league-scoped capture path above. It is meant to run on a CBS
+    account/hub page such as https://www.cbssports.com/fantasy/games/
+    — NOT a *.football.cbssports.com league subdomain — so it does
+    NOT call assertCbsFantasyPage()/isCbsFantasyPage(). It reads only
+    the anchors already rendered in the current page's DOM: no fetch,
+    no navigation, no postMessage, no writes, no cookies/tokens.
+
+    "Reliability before completeness": this first pass uses only the
+    league links CBS already exposes on the current page. It does not
+    guess at undocumented CBS endpoints, and it will not invent a
+    leagueName/teamName split that the DOM doesn't clearly support —
+    those fields come back null rather than guessed when CBS hasn't
+    exposed enough structure to separate them reliably.
+  */
+
+  function parseLeagueAnchor(anchor) {
+    const href =
+      anchor.getAttribute(
+        "href"
+      );
+
+    if (!href) {
+      return null;
+    }
+
+    let resolved;
+
+    try {
+      resolved = new URL(
+        href,
+        location.href
+      );
+    } catch (e) {
+      return null;
+    }
+
+    const hostMatch =
+      resolved.hostname.match(
+        CBS_HOST_RE
+      );
+
+    if (!hostMatch) {
+      return null;
+    }
+
+    const leagueId =
+      hostMatch[1].toLowerCase();
+
+    const url =
+      resolved.origin + "/";
+
+    const rawText =
+      clean(
+        anchor.textContent
+      );
+
+    // Conservative leagueName/teamName extraction: only trust a
+    // split when the DOM gives an unambiguous structural signal.
+    // Otherwise leave both null rather than guess at a text split.
+    let leagueName = null;
+    let teamName = null;
+
+    const titleAttr =
+      clean(
+        anchor.getAttribute(
+          "title"
+        ) || ""
+      );
+
+    if (
+      titleAttr &&
+      titleAttr !== rawText
+    ) {
+      leagueName = titleAttr;
+    }
+
+    const nestedTextNodes =
+      Array.prototype.slice
+        .call(
+          anchor.querySelectorAll(
+            "span, small, em, strong"
+          )
+        )
+        .map(function (el) {
+          return clean(
+            el.textContent
+          );
+        })
+        .filter(Boolean);
+
+    if (nestedTextNodes.length === 2) {
+      teamName =
+        teamName || nestedTextNodes[0];
+
+      leagueName =
+        leagueName || nestedTextNodes[1];
+    }
+
+    if (!rawText && !leagueName) {
+      return null;
+    }
+
+    return {
+      leagueId,
+      leagueName,
+      teamName,
+      url,
+      rawText: rawText || null,
+    };
+  }
+
+  function discoverLeagues() {
+    console.log(
+      "[CBSBrowserConnector.discoverLeagues] scanning current page for CBS Fantasy Football league links…"
+    );
+
+    const anchors =
+      Array.prototype.slice.call(
+        document.querySelectorAll(
+          "a[href]"
+        )
+      );
+
+    const byLeagueId =
+      new Map();
+
+    for (const anchor of anchors) {
+      const league =
+        parseLeagueAnchor(
+          anchor
+        );
+
+      if (!league) {
+        continue;
+      }
+
+      if (
+        !byLeagueId.has(
+          league.leagueId
+        )
+      ) {
+        byLeagueId.set(
+          league.leagueId,
+          league
+        );
+      }
+    }
+
+    const leagues =
+      Array.from(
+        byLeagueId.values()
+      );
+
+    console.log(
+      "[CBSBrowserConnector.discoverLeagues] found " +
+        leagues.length +
+        " unique league(s) after dedup",
+      leagues
+    );
+
+    return leagues;
+  }
+
+  /*
+    ================================================================
     PUBLIC API
     ================================================================
   */
@@ -3475,6 +3651,8 @@
     capture,
 
     captureAll,
+
+    discoverLeagues,
 
     collectors: {
       standings:
