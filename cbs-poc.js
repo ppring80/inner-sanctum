@@ -770,12 +770,63 @@
   */
 
   const ACCOUNT_CONTROL_HINT =
-    /account|profile|my\s*cbs|user\s*menu|avatar/i;
+    /account|profile|person|avatar|\buser\b|my\s*cbs/i;
 
   const ACCOUNT_CONTROL_EXCLUDE =
     /sign\s*out|log\s*out|logout|delete|remove|cancel/i;
 
-  function elementSignalText(el) {
+  // Header-region bounds used both by the diagnostic scan and by
+  // findCbsAccountControl() below, so "plausible top-header candidate"
+  // means the same thing in both places.
+  const HEADER_REGION_MIN_TOP =
+    -20;
+
+  const HEADER_REGION_MAX_TOP =
+    160;
+
+  function isInHeaderRegion(
+    rect
+  ) {
+    return (
+      rect.top >=
+        HEADER_REGION_MIN_TOP &&
+      rect.top <=
+        HEADER_REGION_MAX_TOP &&
+      rect.width > 0 &&
+      rect.height > 0
+    );
+  }
+
+  function clip(
+    text,
+    max
+  ) {
+    const t =
+      String(
+        text || ""
+      )
+        .replace(
+          /\s+/g,
+          " "
+        )
+        .trim();
+
+    const limit =
+      max ||
+      60;
+
+    return t.length >
+      limit
+      ? t.slice(
+          0,
+          limit
+        ) + "…"
+      : t;
+  }
+
+  function elementSignalText(
+    el
+  ) {
     return [
       el.getAttribute(
         "aria-label"
@@ -801,83 +852,537 @@
       .join(" ");
   }
 
-  function findCbsAccountControl() {
-    // Ordered from most to least semantically specific, so the first
-    // real match wins rather than scanning the whole page at the
-    // broadest, least reliable level.
-    const candidateSelectors = [
-      '[aria-haspopup="true"], [aria-haspopup="menu"], [aria-haspopup="listbox"]',
-      "button[aria-label], a[aria-label]",
-      "button[title], a[title]",
-      '[role="button"]',
-    ];
+  /*
+    CBS may put the only meaningful semantics for an icon-only button
+    on a descendant — an <img alt>, an inline <svg>'s own aria-label
+    or nested <title>, or a sprite reference like
+    <use href="#icon-person-24">. This inspects those, not just the
+    button/anchor's own attributes.
+  */
+  function descendantSignalText(
+    el
+  ) {
+    const parts =
+      [];
 
-    const seen =
-      new Set();
+    const img =
+      el.querySelector(
+        "img[alt]"
+      );
 
-    for (const selector of candidateSelectors) {
-      const elements =
-        Array.prototype.slice.call(
-          document.querySelectorAll(
-            selector
-          )
+    if (img) {
+      parts.push(
+        img.getAttribute(
+          "alt"
+        )
+      );
+    }
+
+    const svg =
+      el.querySelector(
+        "svg"
+      );
+
+    if (svg) {
+      const svgLabel =
+        svg.getAttribute(
+          "aria-label"
         );
 
-      for (const el of elements) {
-        if (
-          seen.has(
-            el
-          )
-        ) {
-          continue;
-        }
+      if (svgLabel) {
+        parts.push(
+          svgLabel
+        );
+      }
 
-        seen.add(
-          el
+      const svgTitle =
+        svg.querySelector(
+          "title"
         );
 
-        const signal =
-          elementSignalText(
-            el
-          );
-
-        if (!signal) {
-          continue;
-        }
-
-        if (
-          ACCOUNT_CONTROL_EXCLUDE.test(
-            signal
-          )
-        ) {
-          continue;
-        }
-
-        if (
-          ACCOUNT_CONTROL_HINT.test(
-            signal
-          )
-        ) {
-          return el;
-        }
+      if (
+        svgTitle &&
+        svgTitle.textContent
+      ) {
+        parts.push(
+          svgTitle.textContent
+        );
       }
     }
 
-    // Fallback: an avatar-style profile image is a very common
-    // account-menu affordance even when nothing else on the trigger
-    // element carries a matching label.
-    const avatarImg =
-      document.querySelector(
-        'img[alt*="avatar" i], img[alt*="profile" i]'
+    const use =
+      el.querySelector(
+        "use"
       );
 
-    if (avatarImg) {
-      return (
-        avatarImg.closest(
-          'button, a, [role="button"]'
-        ) || avatarImg
+    if (use) {
+      const useHref =
+        use.getAttribute(
+          "href"
+        ) ||
+        use.getAttribute(
+          "xlink:href"
+        ) ||
+        use.getAttributeNS(
+          "http://www.w3.org/1999/xlink",
+          "href"
+        ) ||
+        "";
+
+      if (useHref) {
+        // "/sprite.svg#icon-person-24" -> "icon person 24" — turn the
+        // fragment id into space-separated words the keyword regex
+        // can actually match against.
+        const fragment =
+          useHref
+            .split("#")
+            .pop() ||
+          useHref;
+
+        parts.push(
+          fragment.replace(
+            /[-_]/g,
+            " "
+          )
+        );
+      }
+    }
+
+    return parts
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function describeCandidateForDiagnostics(
+    el
+  ) {
+    const rect =
+      el.getBoundingClientRect();
+
+    const img =
+      el.querySelector(
+        "img[alt]"
+      );
+
+    const svg =
+      el.querySelector(
+        "svg"
+      );
+
+    const svgTitleEl =
+      svg
+        ? svg.querySelector(
+            "title"
+          )
+        : null;
+
+    const use =
+      el.querySelector(
+        "use"
+      );
+
+    const useHref =
+      use
+        ? use.getAttribute(
+            "href"
+          ) ||
+          use.getAttribute(
+            "xlink:href"
+          ) ||
+          use.getAttributeNS(
+            "http://www.w3.org/1999/xlink",
+            "href"
+          ) ||
+          ""
+        : "";
+
+    return {
+      tagName:
+        el.tagName,
+
+      text: clip(
+        el.textContent
+      ),
+
+      ariaLabel:
+        el.getAttribute(
+          "aria-label"
+        ) ||
+        "",
+
+      title:
+        el.getAttribute(
+          "title"
+        ) ||
+        "",
+
+      id:
+        el.id ||
+        "",
+
+      className:
+        typeof el.className ===
+          "string"
+          ? el.className
+          : "",
+
+      role:
+        el.getAttribute(
+          "role"
+        ) ||
+        "",
+
+      ariaHaspopup:
+        el.getAttribute(
+          "aria-haspopup"
+        ) ||
+        "",
+
+      dataTestId:
+        el.getAttribute(
+          "data-testid"
+        ) ||
+        "",
+
+      href:
+        el.getAttribute(
+          "href"
+        ) ||
+        "",
+
+      top: Math.round(
+        rect.top
+      ),
+
+      left: Math.round(
+        rect.left
+      ),
+
+      right: Math.round(
+        rect.right
+      ),
+
+      bottom: Math.round(
+        rect.bottom
+      ),
+
+      width: Math.round(
+        rect.width
+      ),
+
+      height: Math.round(
+        rect.height
+      ),
+
+      imgAlt:
+        img
+          ? img.getAttribute(
+              "alt"
+            ) ||
+            ""
+          : "",
+
+      svgAriaLabel:
+        svg
+          ? svg.getAttribute(
+              "aria-label"
+            ) ||
+            ""
+          : "",
+
+      svgTitle:
+        svgTitleEl
+          ? clip(
+              svgTitleEl.textContent
+            )
+          : "",
+
+      useHref:
+        useHref,
+
+      element:
+        el,
+    };
+  }
+
+  const ACCOUNT_HEADER_CANDIDATE_SELECTOR =
+    'button, a, [role="button"], [aria-haspopup], [tabindex]';
+
+  /*
+    ================================================================
+    TEMPORARY DIAGNOSTIC — CBS TOP-HEADER CONTROL INVENTORY
+    ================================================================
+
+    Read-only. Does not click, focus, or dispatch anything. Logs
+    metadata for every plausible top-header interactive control so
+    the real profile/account control's actual DOM characteristics
+    are visible in the console, instead of guessing blind. Safe to
+    remove once findCbsAccountControl() is confirmed reliable — also
+    exposed on window for manual comparison (e.g. run it once with
+    the account panel closed and once with it manually opened, and
+    diff the two console.table outputs).
+  */
+  function logCbsHeaderCandidates() {
+    const seen =
+      new Set();
+
+    const rows =
+      [];
+
+    Array.prototype.slice
+      .call(
+        document.querySelectorAll(
+          ACCOUNT_HEADER_CANDIDATE_SELECTOR
+        )
+      )
+      .forEach(
+        function (el) {
+          if (
+            seen.has(
+              el
+            )
+          ) {
+            return;
+          }
+
+          seen.add(
+            el
+          );
+
+          if (
+            !isInHeaderRegion(
+              el.getBoundingClientRect()
+            )
+          ) {
+            return;
+          }
+
+          rows.push(
+            describeCandidateForDiagnostics(
+              el
+            )
+          );
+        }
+      );
+
+    console.log(
+      `${PREFIX} [diagnostic] ${rows.length} top-header candidate(s) found (read-only — nothing was clicked).`
+    );
+
+    if (rows.length) {
+      console.table(
+        rows.map(
+          function (row) {
+            const copy =
+              Object.assign(
+                {},
+                row
+              );
+
+            delete copy.element;
+
+            return copy;
+          }
+        )
       );
     }
+
+    console.log(
+      `${PREFIX} [diagnostic] Raw elements, in the same order as the table above:`,
+      rows.map(
+        function (row) {
+          return row.element;
+        }
+      )
+    );
+
+    return rows;
+  }
+
+  window.__innerSanctumCbsDiagnostics =
+    logCbsHeaderCandidates;
+
+  function findCbsAccountControl() {
+    const seen =
+      new Set();
+
+    const candidates =
+      [];
+
+    Array.prototype.slice
+      .call(
+        document.querySelectorAll(
+          ACCOUNT_HEADER_CANDIDATE_SELECTOR
+        )
+      )
+      .forEach(
+        function (el) {
+          if (
+            seen.has(
+              el
+            )
+          ) {
+            return;
+          }
+
+          seen.add(
+            el
+          );
+
+          const rect =
+            el.getBoundingClientRect();
+
+          if (
+            !isInHeaderRegion(
+              rect
+            )
+          ) {
+            return;
+          }
+
+          const ownSignal =
+            elementSignalText(
+              el
+            );
+
+          const descendantSignal =
+            descendantSignalText(
+              el
+            );
+
+          const combinedSignal =
+            [
+              ownSignal,
+              descendantSignal,
+            ]
+              .filter(
+                Boolean
+              )
+              .join(
+                " "
+              );
+
+          if (
+            ACCOUNT_CONTROL_EXCLUDE.test(
+              combinedSignal
+            )
+          ) {
+            return;
+          }
+
+          let score = 0;
+
+          if (
+            ACCOUNT_CONTROL_HINT.test(
+              ownSignal
+            )
+          ) {
+            score += 2;
+          }
+
+          if (
+            ACCOUNT_CONTROL_HINT.test(
+              descendantSignal
+            )
+          ) {
+            score += 2;
+          }
+
+          if (
+            el.hasAttribute(
+              "aria-haspopup"
+            )
+          ) {
+            score += 1;
+          }
+
+          candidates.push(
+            {
+              el: el,
+              score: score,
+              signal: combinedSignal,
+              rect: rect,
+            }
+          );
+        }
+      );
+
+    if (!candidates.length) {
+      console.log(
+        `${PREFIX} No CBS account/profile control could be identified on this page.`
+      );
+
+      return null;
+    }
+
+    const topRightDistance =
+      function (rect) {
+        return (
+          rect.top +
+          (window.innerWidth -
+            rect.right)
+        );
+      };
+
+    candidates.sort(
+      function (a, b) {
+        if (
+          b.score !==
+          a.score
+        ) {
+          return (
+            b.score -
+            a.score
+          );
+        }
+
+        return (
+          topRightDistance(
+            a.rect
+          ) -
+          topRightDistance(
+            b.rect
+          )
+        );
+      }
+    );
+
+    const best =
+      candidates[0];
+
+    if (best.score > 0) {
+      console.log(
+        `${PREFIX} findCbsAccountControl(): selected by semantic match (score ${best.score}).`,
+        {
+          element: best.el,
+          signal: best.signal,
+        }
+      );
+
+      return best.el;
+    }
+
+    /*
+      No candidate carried any keyword/aria-haspopup signal at all.
+      Only fall back to pure top-right position when the header-region
+      pool is small enough that picking one is not really a guess —
+      per the instruction not to select on geometry alone when there
+      are many ambiguous controls.
+    */
+    if (candidates.length <= 4) {
+      console.log(
+        `${PREFIX} findCbsAccountControl(): no keyword signal found; selected by top-right position among ${candidates.length} unlabeled header candidate(s).`,
+        {
+          element: best.el,
+        }
+      );
+
+      return best.el;
+    }
+
+    console.log(
+      `${PREFIX} No CBS account/profile control could be identified on this page.`
+    );
 
     return null;
   }
@@ -1217,7 +1722,16 @@
         );
 
         const accountControl =
-          findCbsAccountControl();
+          (function () {
+            // Temporary diagnostic — read-only, logs candidate
+            // metadata before findCbsAccountControl() picks (or
+            // declines to pick) one. See logCbsHeaderCandidates()
+            // above; also callable manually as
+            // window.__innerSanctumCbsDiagnostics().
+            logCbsHeaderCandidates();
+
+            return findCbsAccountControl();
+          })();
 
         if (accountControl) {
           console.log(
@@ -1250,9 +1764,9 @@
             leagues
           );
         } else {
-          console.log(
-            `${PREFIX} No CBS account/profile control could be identified on this page.`
-          );
+          // findCbsAccountControl() already logs why nothing was
+          // selected (including the "no candidates at all" and
+          // "candidates existed but none matched" cases separately).
         }
       }
 
