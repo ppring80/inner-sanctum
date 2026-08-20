@@ -1305,83 +1305,6 @@ function buildCbsForm() {
         "cbs"
       );
 
-  var connectedMarkup =
-    "";
-
-  if (existing) {
-    var leagueName =
-      existing.leagueName ||
-      existing
-        ?.league
-        ?.name ||
-      "CBS League";
-
-    var teamName =
-      existing.teamName ||
-      existing
-        ?.team
-        ?.name ||
-      "";
-
-    var teamCount =
-      existing.teamCount ||
-      existing
-        ?.league
-        ?.teamCount ||
-      null;
-
-    var scoringFormat =
-      existing.scoringFormat ||
-      existing
-        ?.settings
-        ?.scoringProfile
-        ?.format ||
-      "";
-
-    var details = [];
-
-    if (teamName) {
-      details.push(
-        teamName
-      );
-    }
-
-    if (teamCount) {
-      details.push(
-        teamCount +
-        " teams"
-      );
-    }
-
-    if (scoringFormat) {
-      details.push(
-        formatScoringLabel(
-          scoringFormat
-        )
-      );
-    }
-
-    connectedMarkup =
-      '<div class="result-box success show">' +
-        '<strong>✓ ' +
-          escapeHtml(
-            leagueName
-          ) +
-        ' connected</strong>' +
-
-        (
-          details.length
-            ? '<br>' +
-              escapeHtml(
-                details.join(
-                  " · "
-                )
-              )
-            : ""
-        ) +
-      '</div>';
-  }
-
   wrap.innerHTML =
     '<div class="beta-pill">CBS Connect · Beta</div>' +
 
@@ -1429,8 +1352,6 @@ function buildCbsForm() {
     '<div class="pf-info">' +
       '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
     '</div>' +
-
-    connectedMarkup +
 
     '<button class="connect-btn" onclick="startCbsConnect()">' +
       (
