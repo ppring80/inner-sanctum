@@ -1379,7 +1379,6 @@ function buildCbsForm() {
               '🔖 Need the CBS bookmark? ' +
               '<span class="pf-help-icon">▼</span>' +
             '</button>' +
-
             '<div class="pf-help-body">' +
               '<div class="cbs-bookmark-install" style="margin-bottom:0;">' +
                 '<strong>Reinstall the CBS bookmark</strong>' +
@@ -1425,8 +1424,7 @@ function buildCbsForm() {
 
     (
       existing
-        ? actionMarkup +
-          bookmarkMarkup
+        ? actionMarkup + bookmarkMarkup
         : bookmarkMarkup
     ) +
 
@@ -1442,11 +1440,7 @@ function buildCbsForm() {
         '<div class="pf-step">' +
           '<span class="pf-step-num">1</span>' +
           '<span>Click ' +
-            (
-              existing
-                ? 'Sync'
-                : 'Connect'
-            ) +
+            (existing ? 'Sync' : 'Connect') +
             ' CBS League. CBS opens in a separate browser tab.</span>' +
         '</div>' +
 
@@ -1905,15 +1899,48 @@ function startCbsConnect() {
       "cbsResult"
     );
 
+  var existing =
+    LeagueConnection
+      .getConnection(
+        "cbs"
+      );
+
+  var leagueId =
+    existing &&
+    (
+      existing.leagueId ||
+      existing
+        ?.league
+        ?.id
+    );
+
+  var directLeague =
+    typeof leagueId ===
+      "string" &&
+    /^[a-z0-9-]+$/i.test(
+      leagueId
+    );
+
+  var cbsUrl =
+    directLeague
+      ? "https://" +
+        leagueId +
+        ".football.cbssports.com/home"
+      : "https://www.cbssports.com/fantasy/football/";
+
   /*
-    Open the normal CBS Fantasy Football entry point.
+    Returning CBS users go directly to their stored league when the
+    captured CBS league ID is safe to use as the CBS league subdomain.
+
+    First-time connections, or any connection missing a valid league
+    ID, fall back to the normal CBS Fantasy Football entry point.
 
     Customers authenticate with CBS directly. Inner Sanctum never
     receives the CBS username/password or browser session.
   */
   cbsConnectWindow =
     window.open(
-      "https://www.cbssports.com/fantasy/football/",
+      cbsUrl,
       "innerSanctumCbsConnect"
     );
 
@@ -1937,9 +1964,13 @@ function startCbsConnect() {
     "result-box loading show";
 
   box.innerHTML =
-    '<strong>CBS opened in a separate tab.</strong><br>' +
-    'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
-    'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
+    directLeague
+      ? '<strong>Your CBS league opened in a separate tab.</strong><br>' +
+        'Sign into CBS normally if needed, then click your Inner Sanctum CBS bookmark. ' +
+        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.'
+      : '<strong>CBS opened in a separate tab.</strong><br>' +
+        'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
+        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
 }
 
 /*
@@ -2187,115 +2218,3 @@ window.receiveCbsConnection =
         box.textContent =
           "⚠️ " +
           (
-            err.message ||
-            "CBS connection failed."
-          );
-      }
-
-      throw err;
-    }
-  };
-
-/*
-  ================================================================
-  CBS CROSS-ORIGIN MESSAGE RECEIVER
-  ================================================================
-
-  Accept only the exact capture message sent from an authenticated
-  CBS Fantasy league origin.
-
-  Security boundaries:
-
-    - event.origin must be a *.football.cbssports.com HTTPS origin
-    - if startCbsConnect() opened a CBS window, event.source must be
-      that exact WindowProxy
-    - message type must match CBS_CAPTURE_MESSAGE
-    - payload is still validated again by receiveCbsConnection()
-*/
-
-window.addEventListener(
-  "message",
-  function (event) {
-    if (
-      !CBS_FANTASY_ORIGIN.test(
-        event.origin ||
-        ""
-      )
-    ) {
-      return;
-    }
-
-    if (
-      cbsConnectWindow &&
-      event.source !==
-        cbsConnectWindow
-    ) {
-      return;
-    }
-
-    var message =
-      event.data;
-
-    if (
-      !message ||
-      typeof message !==
-        "object" ||
-      message.type !==
-        CBS_CAPTURE_MESSAGE ||
-      !message.capture
-    ) {
-      return;
-    }
-
-    try {
-      window.receiveCbsConnection(
-        message.capture
-      );
-
-      cbsConnectWindow =
-        null;
-    } catch (err) {
-      console.error(
-        "CBS connection handoff failed:",
-        err
-      );
-    }
-  }
-);
-
-/*
-  ================================================================
-  POST-CONNECTION REFRESH
-  ================================================================
-*/
-
-function afterConnect() {
-  renderPlatformRow();
-  renderConnectedBanner();
-  renderProviderForm();
-}
-
-/*
-  ================================================================
-  INITIALIZE
-  ================================================================
-*/
-
-(function init() {
-  var active =
-    LeagueConnection
-      .getActiveProvider();
-
-  if (active) {
-    selectedProvider =
-      active;
-  }
-
-  renderPlatformRow();
-  renderConnectedBanner();
-  renderProviderForm();
-})();
-</script>
-
-</body>
-</html>
