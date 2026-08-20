@@ -1,210 +1,763 @@
 /*
   THE INNER SANCTUM — league-connection.js
   -------------------------------------------
-  Shared connection state, following the same pattern as
-  shared-player-data.js. Include this on any page that needs to
-  know which fantasy platform (if any) the user has connected.
+  Shared fantasy-league connection state.
 
-  <script src="league-connection.js"></script>
+  Include this file on any Inner Sanctum page that needs to know:
 
-  Flip a provider's status from "pending"/"planned"/"beta" to "live"
-  once the real authentication + provider adapter has been proven
-  reliable in production.
+    - whether a fantasy league has been connected
+    - which provider is active
+    - safe connection metadata for that provider
 
-  Provider strategy:
+  <script src="/league-connection.js"></script>
+
+  IMPORTANT ARCHITECTURE
+  -------------------------------------------
+
+  This file is ONLY the shared connection-state layer.
+
+  It does NOT:
+
+    - authenticate with fantasy providers
+    - call provider APIs
+    - inspect browser cookies
+    - store provider passwords
+    - store OAuth secrets
+    - normalize provider league data
+
+  Provider-specific authentication/data collection belongs elsewhere:
+
+    Sleeper
+      Existing Sleeper integration.
+
+    Yahoo
+      Official Yahoo API/OAuth path when access is available.
+
+    ESPN
+      ESPN backend integration.
+
+    CBS
+      cbs-browser-connector.js
+      Browser-assisted, read-only CBS league capture.
+
+  Provider normalization belongs in:
+
+      provider-adapters.js
+
+
+  PROVIDER STATUS MEANINGS
+  -------------------------------------------
+
+  live
+    Production-supported and considered broadly reliable.
+
+  beta
+    Real integration exists and has been proven against real league
+    data, but still needs broader production testing across additional
+    leagues/configurations.
+
+  pending
+    Integration depends on external approval/access before it can be
+    completed.
+
+  planned
+    Product/integration direction exists but the functional connection
+    mechanism has not yet been proven.
+
+
+  CURRENT PROVIDER STRATEGY
+  -------------------------------------------
 
   Sleeper
-    - Live.
+    - LIVE
+    - Existing supported integration.
 
   Yahoo
-    - Pending official API access / approval.
+    - PENDING
+    - Waiting on official Yahoo Fantasy API access/approval.
+    - Should use supported Yahoo OAuth/API rather than unofficial
+      browser/session workarounds.
 
   ESPN
-    - Beta.
-    - Real backend integration exists, but remains beta until it is
-      proven across a broader range of real leagues.
+    - BETA
+    - Real backend integration exists.
+    - Remains beta until proven across a broader range of ESPN leagues.
 
   CBS
-    - Planned.
-    - IMPORTANT: CBS is NOT blocked as a platform.
-    - The earlier server-side username/password login experiment was
-      abandoned because CBS login is protected by browser/reCAPTCHA
-      flows that should not be bypassed.
-    - Current integration direction is browser-assisted authentication:
-        1. User logs into CBS normally in their browser.
-        2. Inner Sanctum recognizes the authenticated CBS fantasy league.
-        3. Read-only league context is collected from data CBS already
-           exposes to the authenticated browser.
-        4. CBS data is normalized through provider-adapters.js.
-    - Initial CBS scope is READ ONLY:
+    - BETA
+    - Browser-assisted, READ-ONLY integration has been proven against
+      a real CBS Commissioner fantasy-football league.
+    - CBS users authenticate normally with CBS in their own browser.
+    - Inner Sanctum reads only fantasy information CBS has already
+      exposed to that authenticated browser session.
+    - Proven CBS data surfaces include:
         league identity
-        team identity
-        rosters
-        scoring/settings
-        standings/schedule
-        transactions
-        draft state/results if available
+        fantasy team identity
+        roster
+        CBS player IDs
+        player positions
+        NFL teams
+        roster status
+        standings
+        divisions
+        points for / points against
+        schedule
+        opponent CBS team IDs
+        home / away
+        roster settings
+        lineup requirements
+        scoring rules
+        scoring format
+        playoff structure
+    - CBS connection is intentionally READ ONLY.
     - No CBS password collection.
+    - No cookie extraction into LeagueConnection state.
     - No CAPTCHA bypass.
-    - No write operations to CBS in Phase 1.
+    - No lineup or transaction writes.
+    - Remains beta until tested across additional CBS league formats
+      and configurations.
+
+
+  SECURITY RULE
+  -------------------------------------------
+
+  localStorage contains ONLY safe connection metadata and sanitized
+  league data needed by Inner Sanctum.
+
+  NEVER store secrets here, including:
+
+    - provider passwords
+    - browser cookies
+    - CBS session/access tokens
+    - ESPN espn_s2
+    - ESPN SWID
+    - Yahoo OAuth access tokens
+    - Yahoo refresh tokens
+    - authorization headers
+    - CAPTCHA data
 */
 
 (function () {
+  "use strict";
+
+  /*
+    ================================================================
+    PROVIDER REGISTRY
+    ================================================================
+  */
+
   const PROVIDERS = {
     sleeper: {
       label: "Sleeper",
       status: "live",
       icon: "🏈",
+      connectionMode: "provider",
+      readOnly: true,
     },
 
     yahoo: {
       label: "Yahoo",
       status: "pending",
       icon: "🟣",
+      connectionMode: "oauth",
+      readOnly: true,
     },
 
-    // Real backend exists (espn-league.js), but remains beta until
-    // battle-tested across a wider range of real ESPN leagues.
+    /*
+      ESPN integration exists and works, but remains beta until it is
+      battle-tested against a broader range of real ESPN leagues.
+    */
+
     espn: {
       label: "ESPN",
       status: "beta",
       icon: "🔴",
+      connectionMode: "backend",
+      readOnly: true,
     },
 
-    // CBS proof-of-concept path confirmed:
-    //
-    // Authenticated CBS fantasy league pages expose league-specific
-    // information to the user's browser, including structured roster
-    // state and CBS fantasy API plumbing.
-    //
-    // We are therefore pursuing a browser-assisted READ-ONLY connector
-    // rather than attempting server-side CBS username/password login.
-    //
-    // The connection/auth transport and CBS normalization layer still
-    // need to be built, so this remains "planned" until functional.
+    /*
+      CBS browser-assisted integration has now been proven against a
+      real CBS Commissioner league.
+
+      The user logs into CBS normally.
+
+      cbs-browser-connector.js performs a READ-ONLY collection of
+      sanitized fantasy league data exposed to that browser session.
+
+      No CBS credential or session secret belongs in this state layer.
+    */
+
     cbs: {
       label: "CBS",
-      status: "planned",
+      status: "beta",
       icon: "🔵",
+      connectionMode: "browser-assisted",
+      readOnly: true,
     },
   };
 
-  const STORAGE_KEY = "innerSanctum_leagueConnections";
+  /*
+    ================================================================
+    STORAGE
+    ================================================================
+  */
+
+  const STORAGE_KEY =
+    "innerSanctum_leagueConnections";
+
+  function emptyState() {
+    return {
+      activeProvider: null,
+      connections: {},
+    };
+  }
 
   function readState() {
     /*
-      TODO:
-      Once user accounts are backend-tracked, replace or supplement this
-      local state with a fetch to a Netlify function such as:
+      FUTURE:
+      Once Inner Sanctum user accounts persist league connections on
+      the backend, this local state can become a cache/fallback around
+      an account-level endpoint such as:
 
         /.netlify/functions/get-league-connections
 
-      Provider authentication/session material must NOT be stored here.
-      localStorage should contain connection metadata only.
+      Until then, localStorage is the shared site-wide connection state.
     */
 
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw =
+        localStorage.getItem(
+          STORAGE_KEY
+        );
 
-      return raw
-        ? JSON.parse(raw)
-        : {
-            activeProvider: null,
-            connections: {},
-          };
-    } catch (e) {
+      if (!raw) {
+        return emptyState();
+      }
+
+      const parsed =
+        JSON.parse(raw);
+
+      /*
+        Defensive validation so a damaged/localStorage value does not
+        break every connected-league page.
+      */
+
+      if (
+        !parsed ||
+        typeof parsed !== "object"
+      ) {
+        return emptyState();
+      }
+
       return {
-        activeProvider: null,
-        connections: {},
+        activeProvider:
+          typeof parsed.activeProvider ===
+          "string"
+            ? parsed.activeProvider
+            : null,
+
+        connections:
+          parsed.connections &&
+          typeof parsed.connections ===
+            "object"
+            ? parsed.connections
+            : {},
       };
+    } catch (e) {
+      return emptyState();
     }
   }
 
   function writeState(state) {
     /*
-      TODO:
-      Pair this with a backend save-league-connection function once
-      account-level connection persistence is implemented.
-
       SECURITY:
-      Never store provider passwords, CBS access tokens, cookies,
-      ESPN session cookies, Yahoo OAuth secrets, or other sensitive
-      authentication material in this localStorage object.
 
-      Store only safe connection metadata such as:
+      This function must never be used to persist provider secrets.
+
+      Safe examples:
+
         provider
         leagueId
         leagueName
         teamId
         teamName
         season
-        connectedAt
+        scoringFormat
+        teamCount
         connectionMode
+        connectedAt
+        syncedAt
+        sanitized league/roster data
+
+      Unsafe examples:
+
+        password
+        cookie
+        token
+        accessToken
+        refreshToken
+        espn_s2
+        SWID
+        authorization header
     */
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(state)
+    );
   }
+
+  /*
+    ================================================================
+    SAFE CONNECTION SANITIZATION
+    ================================================================
+
+    LeagueConnection should not rely on every provider flow remembering
+    to remove secrets.
+
+    Strip known secret-shaped fields before anything reaches storage.
+
+    This is defense-in-depth, not a substitute for provider-specific
+    secure handling.
+  */
+
+  const BLOCKED_KEYS = new Set([
+    "password",
+    "pass",
+    "passwd",
+
+    "cookie",
+    "cookies",
+
+    "token",
+    "accessToken",
+    "access_token",
+    "refreshToken",
+    "refresh_token",
+
+    "authorization",
+    "Authorization",
+
+    "espn_s2",
+    "espnS2",
+
+    "SWID",
+    "swid",
+
+    "session",
+    "sessionId",
+    "session_id",
+
+    "cbsToken",
+    "cbsSession",
+  ]);
+
+  function sanitizeValue(value) {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(
+        sanitizeValue
+      );
+    }
+
+    if (
+      typeof value !==
+      "object"
+    ) {
+      return value;
+    }
+
+    const output = {};
+
+    Object.keys(value).forEach(
+      function (key) {
+        if (
+          BLOCKED_KEYS.has(key)
+        ) {
+          return;
+        }
+
+        output[key] =
+          sanitizeValue(
+            value[key]
+          );
+      }
+    );
+
+    return output;
+  }
+
+  /*
+    ================================================================
+    CONNECTION OBJECT
+    ================================================================
+  */
 
   const LeagueConnection = {
     PROVIDERS,
 
+    /*
+      ------------------------------------------------
+      READS
+      ------------------------------------------------
+    */
+
     getActiveProvider() {
-      return readState().activeProvider;
+      return (
+        readState()
+          .activeProvider
+      );
     },
 
     getConnections() {
-      return readState().connections;
+      return (
+        readState()
+          .connections
+      );
     },
 
     getConnection(provider) {
-      return readState().connections[provider] || null;
+      return (
+        readState()
+          .connections[
+            provider
+          ] || null
+      );
     },
 
     isConnected(provider) {
-      return Boolean(readState().connections[provider]);
+      return Boolean(
+        readState()
+          .connections[
+            provider
+          ]
+      );
     },
 
     hasAnyConnection() {
-      return Object.keys(readState().connections).length > 0;
+      return (
+        Object.keys(
+          readState()
+            .connections
+        ).length > 0
+      );
     },
+
+    /*
+      Returns the currently active connection object or null.
+    */
+
+    getActiveConnection() {
+      const state =
+        readState();
+
+      if (
+        !state.activeProvider
+      ) {
+        return null;
+      }
+
+      return (
+        state.connections[
+          state.activeProvider
+        ] || null
+      );
+    },
+
+    /*
+      ------------------------------------------------
+      CONNECTION WRITE
+      ------------------------------------------------
+
+      data may contain safe metadata and sanitized league information.
+
+      Provider secrets are removed before persistence.
+    */
 
     connect(provider, data) {
-      if (!PROVIDERS[provider]) {
-        throw new Error(`Unknown league provider: ${provider}`);
+      if (
+        !PROVIDERS[
+          provider
+        ]
+      ) {
+        throw new Error(
+          "Unknown league provider: " +
+          provider
+        );
       }
 
-      const state = readState();
+      if (
+        !data ||
+        typeof data !==
+          "object"
+      ) {
+        throw new Error(
+          "LeagueConnection.connect requires connection data."
+        );
+      }
 
-      state.connections[provider] = {
-        ...data,
+      const state =
+        readState();
+
+      const safeData =
+        sanitizeValue(
+          data
+        );
+
+      const existing =
+        state.connections[
+          provider
+        ] || {};
+
+      const now =
+        new Date()
+          .toISOString();
+
+      state.connections[
+        provider
+      ] = {
+        ...existing,
+        ...safeData,
+
         provider,
-        connectedAt: data?.connectedAt || new Date().toISOString(),
+
+        connectionMode:
+          safeData
+            .connectionMode ||
+          PROVIDERS[
+            provider
+          ].connectionMode ||
+          null,
+
+        readOnly:
+          safeData
+            .readOnly ??
+          PROVIDERS[
+            provider
+          ].readOnly ??
+          true,
+
+        connectedAt:
+          existing
+            .connectedAt ||
+          safeData
+            .connectedAt ||
+          now,
+
+        syncedAt:
+          safeData
+            .syncedAt ||
+          now,
       };
 
-      state.activeProvider = provider;
+      state.activeProvider =
+        provider;
 
-      writeState(state);
+      writeState(
+        state
+      );
+
+      return state.connections[
+        provider
+      ];
     },
 
-    disconnect(provider) {
-      const state = readState();
+    /*
+      ------------------------------------------------
+      SYNC EXISTING CONNECTION
+      ------------------------------------------------
 
-      delete state.connections[provider];
+      Used when a provider such as CBS refreshes its sanitized league
+      data after the original connection.
 
-      if (state.activeProvider === provider) {
-        state.activeProvider = null;
+      connectedAt is preserved.
+      syncedAt is refreshed.
+    */
+
+    update(provider, data) {
+      if (
+        !PROVIDERS[
+          provider
+        ]
+      ) {
+        throw new Error(
+          "Unknown league provider: " +
+          provider
+        );
       }
 
-      writeState(state);
+      const state =
+        readState();
+
+      const existing =
+        state.connections[
+          provider
+        ];
+
+      if (!existing) {
+        throw new Error(
+          "Cannot update provider that is not connected: " +
+          provider
+        );
+      }
+
+      const safeData =
+        sanitizeValue(
+          data || {}
+        );
+
+      state.connections[
+        provider
+      ] = {
+        ...existing,
+        ...safeData,
+
+        provider,
+
+        connectedAt:
+          existing
+            .connectedAt,
+
+        syncedAt:
+          new Date()
+            .toISOString(),
+      };
+
+      writeState(
+        state
+      );
+
+      return state.connections[
+        provider
+      ];
+    },
+
+    /*
+      ------------------------------------------------
+      ACTIVE PROVIDER
+      ------------------------------------------------
+    */
+
+    setActiveProvider(provider) {
+      if (
+        provider !== null &&
+        !PROVIDERS[
+          provider
+        ]
+      ) {
+        throw new Error(
+          "Unknown league provider: " +
+          provider
+        );
+      }
+
+      const state =
+        readState();
+
+      if (
+        provider &&
+        !state.connections[
+          provider
+        ]
+      ) {
+        throw new Error(
+          "Cannot activate a provider that is not connected: " +
+          provider
+        );
+      }
+
+      state.activeProvider =
+        provider;
+
+      writeState(
+        state
+      );
+    },
+
+    /*
+      ------------------------------------------------
+      DISCONNECT
+      ------------------------------------------------
+    */
+
+    disconnect(provider) {
+      const state =
+        readState();
+
+      delete state.connections[
+        provider
+      ];
+
+      if (
+        state.activeProvider ===
+        provider
+      ) {
+        const remaining =
+          Object.keys(
+            state.connections
+          );
+
+        state.activeProvider =
+          remaining.length
+            ? remaining[0]
+            : null;
+      }
+
+      writeState(
+        state
+      );
     },
 
     disconnectAll() {
-      writeState({
-        activeProvider: null,
-        connections: {},
-      });
+      writeState(
+        emptyState()
+      );
+    },
+
+    /*
+      ------------------------------------------------
+      DIAGNOSTICS
+      ------------------------------------------------
+
+      Returns safe provider/connection metadata useful for debugging
+      the Link League screen.
+
+      No blocked credential fields are returned because those fields
+      should never have entered storage.
+    */
+
+    getSummary() {
+      const state =
+        readState();
+
+      return {
+        activeProvider:
+          state.activeProvider,
+
+        connectedProviders:
+          Object.keys(
+            state.connections
+          ),
+
+        providers:
+          PROVIDERS,
+      };
     },
   };
 
-  window.LeagueConnection = LeagueConnection;
+  /*
+    ================================================================
+    PUBLIC API
+    ================================================================
+  */
+
+  window.LeagueConnection =
+    LeagueConnection;
 })();
