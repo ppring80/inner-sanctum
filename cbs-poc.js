@@ -654,6 +654,9 @@
 
     returnButton.onclick =
       function () {
+        const targetOrigin =
+          getSanctumTargetOrigin();
+
         try {
           window.opener.focus();
         } catch (error) {
@@ -662,6 +665,39 @@
             error
           );
         }
+
+        /*
+          CBS was opened by Inner Sanctum with window.open(), so the
+          browser should allow this tab/window to close.
+
+          Closing the CBS tab naturally returns the customer to the
+          original Inner Sanctum connection tab.
+
+          Some browsers may refuse window.close(). In that case,
+          navigate this CBS tab back to the Inner Sanctum connection
+          page as a customer-friendly fallback.
+        */
+        try {
+          window.close();
+        } catch (error) {
+          console.warn(
+            `${PREFIX} Could not close CBS tab.`,
+            error
+          );
+        }
+
+        setTimeout(
+          function () {
+            if (
+              !window.closed
+            ) {
+              window.location.href =
+                targetOrigin +
+                "/connect-league";
+            }
+          },
+          150
+        );
       };
 
     ui.buttons.appendChild(
