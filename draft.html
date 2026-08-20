@@ -98,6 +98,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .pbadge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;letter-spacing:1px;color:#fff}
 .pbadge.QB{background:#1a5280}.pbadge.RB{background:#2a6e2a}.pbadge.WR{background:#8a7010}
 .pbadge.TE{background:#a06010}.pbadge.K{background:#6a6a6a}.pbadge.DEF{background:#8a2020}
+.pbadge.FLEX{background:#6a1b9a}.pbadge.SUPERFLEX{background:#7a3010}
 .ptitle{font-family:'Cinzel',serif;font-size:14px;color:var(--text)}
 .pcount{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto}
 .oracle-box{background:#fffbf0;border-left:3px solid var(--gold);padding:8px 14px;font-style:italic;font-size:12px;color:#5a4a1a;line-height:1.7;border-bottom:1px solid #f0e8c0}
@@ -263,6 +264,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .sage-showmore-btn:hover{border-color:var(--gold);color:var(--gold)}
 .sage-rec-extra{margin-top:6px}
 .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.setup-collapse{display:none}
+.setup-collapse.open{display:block}
 .setup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
 .setup-field input,.setup-field select{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:Lora,serif;font-size:13px}
 .draft-ctrl-group{display:inline-flex;align-items:center;gap:8px;padding-left:12px;margin-left:4px;border-left:1px solid #3d2a12}
@@ -562,6 +565,11 @@ function checkOAuthSession() {
     </div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Select your draft slot. This determines when you're on the clock in the snake draft.</p>
     <p style="font-size:12px;color:var(--text3);margin-bottom:14px" id="setupDraftTypeNote">Draft slot order matches the team order above (Team 1 picks first). Straight snake — no 3rd-round reversal in this version.</p>
+    <button type="button" class="roster-toggle" style="margin-bottom:10px" onclick="toggleRosterConstruction()" id="rosterConstructionToggleBtn">⚙ Roster Construction ▾</button>
+    <div class="setup-collapse" id="rosterConstructionSection">
+      <div class="setup-grid" id="setupRosterGrid"></div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Total roster spots: <strong id="setupRosterTotal">—</strong>. SAGE uses these to know how many starters your league needs at each position — FLEX and Superflex are tracked separately, so a 2-QB league and a 1-QB-plus-Superflex league are never treated as the same thing.</p>
+    </div>
     <div class="btn-row" style="display:flex;gap:10px">
       <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="saveSetup()">Save Setup</button>
@@ -721,6 +729,15 @@ var DRAFT_SAVE_KEY='sanctum_draft_command_v1';
 var DRAFT_SAVE_SCHEMA_VERSION=1;
 var LEGACY_ISD_KEY='isd';
 
+// Default roster construction, taken directly from auction.html's own
+// existing roster default ({QB:1,RB:2,WR:2,TE:1,FLEX:1,K:0,DEF:1,BENCH:6})
+// -- the one authoritative roster-shape default already in this codebase
+// -- with SUPERFLEX:0 added since auction.html has no equivalent field.
+// This is also exactly what "no roster configured yet" behaves as, so
+// existing saves/behavior are unchanged until a user explicitly opens
+// Roster Construction and changes something.
+var DEFAULT_ROSTER_CONSTRUCTION={QB:1,RB:2,WR:2,TE:1,FLEX:1,SUPERFLEX:0,K:0,DEF:1,BENCH:6};
+
 var draftState={
   schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,
   teams:[],
@@ -728,7 +745,8 @@ var draftState={
   draftLog:[],
   nextPickId:1,
   draftType:'snake',
-  numRounds:16
+  numRounds:16,
+  rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION
 };
 var currentReassignId=null;
 var pendingManualPick=null;
@@ -764,6 +782,13 @@ function readSavedDraftState(){
     // schema-version bump or migration required.
     if(!parsed.draftType) parsed.draftType='snake';
     if(!parsed.numRounds) parsed.numRounds=16;
+    // rosterConstruction is likewise additive. Older saved states default
+    // to the same standard-league shape SAGE has always implicitly
+    // assumed, so nobody who never opens Roster Construction sees any
+    // change in behavior.
+    if(!parsed.rosterConstruction||typeof parsed.rosterConstruction!=='object'){
+      parsed.rosterConstruction=DEFAULT_ROSTER_CONSTRUCTION;
+    }
     return parsed;
   }catch(e){
     return null;
@@ -776,7 +801,7 @@ function initDraftState(){
     draftState=saved;
     return;
   }
-  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16};
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16,rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION};
   // No valid new-schema data on this browser. Check for legacy 'isd' data
   // ONLY to decide whether to show the one-time notice — it is never read
   // into draftState and never modified or deleted.
@@ -1069,7 +1094,8 @@ function refreshSageRecommendations(){
       nextTurnPool:nextTurnPool,
       currentPick:currentPick,
       nextUserPick:nextUserPick,
-      scoring:scoringEl?scoringEl.value:undefined
+      scoring:scoringEl?scoringEl.value:undefined,
+      rosterContext:computeRosterNeed()
     })
   })
     .then(function(res){ return res.json().catch(function(){return {};}).then(function(data){ return {ok:res.ok,data:data}; }); })
@@ -1228,6 +1254,7 @@ function openSetupModal(){
   document.getElementById('setupDraftType').value=draftState.draftType||'snake';
   updateSetupDraftTypeNote();
   renderSetupTeamNames();
+  renderSetupRosterFields();
   document.getElementById('setupModalBg').classList.add('on');
 }
 function updateSetupDraftTypeNote(){
@@ -1268,6 +1295,63 @@ function renderSetupTeamNames(){
     if(curIdx!==-1 && curIdx<n) mySel.value='slot-'+(curIdx+1);
   }
 }
+
+// ─── Roster Construction section of the Setup modal (added) ───
+// Visual/interaction pattern modeled on auction.html's Step 2 "Roster
+// Construction" screen (numeric input per position + a short hint line),
+// but built from draft.html's OWN existing .setup-field/.setup-grid CSS
+// rather than importing a second, competing set of classes.
+var ROSTER_SLOT_FIELDS=[
+  {key:'QB',label:'Quarterbacks',hint:'starting QBs'},
+  {key:'RB',label:'Running Backs',hint:'starting RBs'},
+  {key:'WR',label:'Wide Receivers',hint:'starting WRs'},
+  {key:'TE',label:'Tight Ends',hint:'starting TEs'},
+  {key:'FLEX',label:'Flex',hint:'RB/WR/TE flex'},
+  {key:'SUPERFLEX',label:'Superflex',hint:'QB/RB/WR/TE flex'},
+  {key:'K',label:'Kicker',hint:'kicker spots'},
+  {key:'DEF',label:'Defense',hint:'D/ST spots'},
+  {key:'BENCH',label:'Bench',hint:'bench players'}
+];
+var rosterConstructionOpen=false;
+function toggleRosterConstruction(){
+  rosterConstructionOpen=!rosterConstructionOpen;
+  var section=document.getElementById('rosterConstructionSection');
+  var btn=document.getElementById('rosterConstructionToggleBtn');
+  if(section)section.classList.toggle('open',rosterConstructionOpen);
+  if(btn)btn.textContent='⚙ Roster Construction '+(rosterConstructionOpen?'▴':'▾');
+}
+function renderSetupRosterFields(){
+  var grid=document.getElementById('setupRosterGrid');
+  if(!grid)return;
+  var current=draftState.rosterConstruction||DEFAULT_ROSTER_CONSTRUCTION;
+  grid.innerHTML=ROSTER_SLOT_FIELDS.map(function(f){
+    var val=(typeof current[f.key]==='number')?current[f.key]:DEFAULT_ROSTER_CONSTRUCTION[f.key];
+    return '<div class="setup-field">'+
+        '<label>'+f.label+' <span class="pbadge '+f.key+'" style="margin-left:4px">'+f.key+'</span></label>'+
+        '<input type="number" id="setupRoster-'+f.key+'" value="'+val+'" min="0" max="12" onchange="updateSetupRosterTotal()"/>'+
+        '<p style="font-size:10px;color:var(--text3);margin-top:3px;margin-bottom:0">'+f.hint+'</p>'+
+      '</div>';
+  }).join('');
+  updateSetupRosterTotal();
+}
+function updateSetupRosterTotal(){
+  var total=0;
+  ROSTER_SLOT_FIELDS.forEach(function(f){
+    var el=document.getElementById('setupRoster-'+f.key);
+    total+=el?(parseInt(el.value,10)||0):0;
+  });
+  var totalEl=document.getElementById('setupRosterTotal');
+  if(totalEl)totalEl.textContent=String(total);
+}
+function readSetupRosterFields(){
+  var obj={};
+  ROSTER_SLOT_FIELDS.forEach(function(f){
+    var el=document.getElementById('setupRoster-'+f.key);
+    var v=el?parseInt(el.value,10):NaN;
+    obj[f.key]=(isNaN(v)||v<0)?DEFAULT_ROSTER_CONSTRUCTION[f.key]:v;
+  });
+  return obj;
+}
 function saveSetup(){
   var n=parseInt(document.getElementById('setupNumTeams').value);
   var newTeams=[];
@@ -1295,6 +1379,7 @@ function saveSetup(){
   draftState.myTeamId=newTeams[mySlotIdx]?newTeams[mySlotIdx].id:null;
   draftState.draftType=document.getElementById('setupDraftType').value||'snake';
   draftState.numRounds=parseInt(document.getElementById('setupNumRounds').value)||16;
+  draftState.rosterConstruction=readSetupRosterFields();
   saveDraftState();
   closeSetupModal();
   sageInitialRefreshDone=true; // this call refreshes SAGE explicitly below; prevent render()'s own one-time auto-check from also firing
@@ -1428,6 +1513,94 @@ function renderSetupSummaryButton(){
 // Compact, grouped by position by default; an optional expandable
 // detail view lists every pick with its pick number. ───
 var ROSTER_POS_ORDER=['QB','RB','WR','TE','K','DEF'];
+
+// ─── Roster construction — pure functions, no DOM access ───
+// Tells SAGE the league's actual configured roster shape instead of
+// letting it silently assume a fixed one.
+var FLEX_ELIGIBLE_POS=['RB','WR','TE'];
+var SUPERFLEX_ELIGIBLE_POS=['QB','RB','WR','TE'];
+
+// Exact deterministic slot allocation for the drafted-but-not-yet-
+// dedicated-slotted leftover players, maximizing total filled legal
+// starter slots (dedicated positions are handled separately, before
+// this runs, since a dedicated slot can only ever be filled by its own
+// position -- there's no choice to optimize there).
+//
+// Given only two flexible slot types where SUPERFLEX eligibility is a
+// strict superset of FLEX eligibility (FLEX = RB/WR/TE, SUPERFLEX =
+// QB/RB/WR/TE), the exact optimum is reached by a simple two-step
+// greedy, not a general matching solver:
+//   1. Leftover QB can ONLY ever fill a SUPERFLEX slot -- nothing else
+//      can use a leftover QB, so assigning it to SUPERFLEX first can
+//      never be wrong (an exchange argument: swapping a leftover
+//      RB/WR/TE into SUPERFLEX instead, to "save" the QB, only ever
+//      loses a fill, since that RB/WR/TE could have filled FLEX
+//      instead, while the QB would then have nowhere left to go).
+//   2. Whatever RB/WR/TE leftover remains is then free to fill EITHER
+//      FLEX or any SUPERFLEX slots QB didn't use -- since both slot
+//      types accept it equally, filling FLEX first and spilling any
+//      remainder into leftover SUPERFLEX capacity fills the same
+//      total count either order, and reports FLEX need first, which
+//      is the more specific (narrower-eligibility) slot type.
+// This is provably optimal for this structure, not an approximation.
+function allocateFlexSlots(leftoverByPos,flexSlots,superflexSlots){
+  var superflexFromQB=Math.min(leftoverByPos.QB||0,superflexSlots);
+  var superflexSlotsAfterQB=superflexSlots-superflexFromQB;
+
+  var flexEligiblePool=FLEX_ELIGIBLE_POS.reduce(function(sum,pos){
+    return sum+(leftoverByPos[pos]||0);
+  },0);
+
+  var usedFlex=Math.min(flexEligiblePool,flexSlots);
+  var remainingFlex=flexSlots-usedFlex;
+  var poolAfterFlex=flexEligiblePool-usedFlex;
+
+  var usedSuperflexFromPool=Math.min(poolAfterFlex,superflexSlotsAfterQB);
+  var remainingSuperflex=superflexSlotsAfterQB-usedSuperflexFromPool;
+
+  return {remainingFlex:remainingFlex,remainingSuperflex:remainingSuperflex};
+}
+
+function computeRosterNeed(){
+  var cfg=draftState.rosterConstruction||DEFAULT_ROSTER_CONSTRUCTION;
+  var numTeams=draftState.teams.length||0;
+
+  var filled={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};
+  if(draftState.myTeamId){
+    draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;}).forEach(function(e){
+      if(Object.prototype.hasOwnProperty.call(filled,e.pos)) filled[e.pos]++;
+    });
+  }
+
+  // Dedicated slots first -- unambiguous, only the matching position
+  // can ever fill them, so there's nothing to optimize here.
+  var remainingDedicated={};
+  var leftover={};
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    var used=Math.min(filled[pos]||0,cfg[pos]||0);
+    remainingDedicated[pos]=Math.max(0,(cfg[pos]||0)-used);
+    leftover[pos]=Math.max(0,(filled[pos]||0)-used);
+  });
+
+  var flexAllocation=allocateFlexSlots(leftover,cfg.FLEX||0,cfg.SUPERFLEX||0);
+
+  var leagueStarterDemand={};
+  ['QB','RB','WR','TE','K','DEF','FLEX','SUPERFLEX'].forEach(function(pos){
+    leagueStarterDemand[pos]=(cfg[pos]||0)*numTeams;
+  });
+
+  return {
+    configured:cfg,
+    filled:filled,
+    remainingDedicated:remainingDedicated,
+    remainingFlex:flexAllocation.remainingFlex,
+    remainingSuperflex:flexAllocation.remainingSuperflex,
+    flexEligible:FLEX_ELIGIBLE_POS,
+    superflexEligible:SUPERFLEX_ELIGIBLE_POS,
+    leagueStarterDemand:leagueStarterDemand,
+    numTeams:numTeams
+  };
+}
 var rosterDetailOpen=false;
 function toggleRosterDetail(){
   rosterDetailOpen=!rosterDetailOpen;
