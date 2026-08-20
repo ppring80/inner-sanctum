@@ -78,6 +78,9 @@
   const MESSAGE_TYPE =
     "INNER_SANCTUM_CBS_CAPTURE_RESULT";
 
+  const DISCOVERY_MESSAGE_TYPE =
+    "INNER_SANCTUM_CBS_DISCOVERY_RESULT";
+
   const ALLOWED_SANCTUM_ORIGINS =
     new Set([
       "https://theinnersanctum.xyz",
@@ -317,6 +320,23 @@
     CBS PAGE VALIDATION
     ================================================================
   */
+
+  function isLeagueSubdomain() {
+    const hostname =
+      String(
+        window.location.hostname ||
+        ""
+      ).toLowerCase();
+
+    return (
+      hostname ===
+        "football.cbssports.com" ||
+      hostname.endsWith(
+        ".football.cbssports.com"
+      )
+    );
+  }
+
 
   function assertCbsPage() {
     const hostname =
@@ -575,6 +595,69 @@
 
   /*
     ================================================================
+    DISCOVERY HANDOFF (added — Phase 1)
+    ================================================================
+
+    Mirrors sendCaptureToSanctum() exactly, but for the account-level
+    league-discovery result instead of a completed league capture.
+    Reuses getSanctumTargetOrigin() unchanged. Sent only from the CBS
+    account/hub page (not a league subdomain) — see isLeagueSubdomain()
+    branch in the main flow below.
+  */
+
+  function sendDiscoveryToSanctum(
+    leagues
+  ) {
+    if (
+      !window.opener
+    ) {
+      throw new Error(
+        "No Inner Sanctum opener window was found. Start CBS Connect from the Inner Sanctum Link Your League page, then use this bookmark."
+      );
+    }
+
+    if (
+      window.opener.closed
+    ) {
+      throw new Error(
+        "The Inner Sanctum connection tab was closed. Reopen Link Your League and start CBS Connect again."
+      );
+    }
+
+    const targetOrigin =
+      getSanctumTargetOrigin();
+
+    if (
+      !ALLOWED_SANCTUM_ORIGINS.has(
+        targetOrigin
+      )
+    ) {
+      throw new Error(
+        "The Inner Sanctum target origin could not be verified."
+      );
+    }
+
+    window.opener.postMessage(
+      {
+        type:
+          DISCOVERY_MESSAGE_TYPE,
+
+        leagues:
+          leagues
+      },
+      targetOrigin
+    );
+
+    console.log(
+      `${PREFIX} Discovered ${leagues.length} league(s), sent to ${targetOrigin}.`
+    );
+
+    return targetOrigin;
+  }
+
+
+  /*
+    ================================================================
     COPY JSON
     ================================================================
   */
@@ -677,6 +760,14 @@
     createPanel();
 
   try {
+    // Branch by hostname: Phase 2 (league capture, proven, unchanged
+    // below) runs on a *.football.cbssports.com league subdomain.
+    // Phase 1 (new — account-level discovery) runs everywhere else,
+    // e.g. https://www.cbssports.com/fantasy/games/. The existing
+    // Phase 2 block below is left at its original indentation
+    // on purpose, to keep this diff to the minimum necessary rather
+    // than reflowing ~180 already-proven lines for cosmetic nesting.
+    if (isLeagueSubdomain()) {
     /*
       Confirm this is CBS Fantasy.
     */
@@ -823,6 +914,118 @@
       result
     );
 
+    } else {
+      /*
+        ==============================================================
+        PHASE 1 — ACCOUNT-LEVEL LEAGUE DISCOVERY (added)
+        ==============================================================
+        Runs on the CBS account/hub page (not a league subdomain).
+        Uses the existing, unmodified
+        CBSBrowserConnector.discoverLeagues() (v0.3.1) — no new CBS
+        endpoints, no speculative scraping. Sends the discovered
+        leagues back to the Inner Sanctum opener; the opener decides
+        whether to auto-continue (exactly one league) or ask the
+        customer to choose (more than one) — see
+        handleCbsDiscoveryResult() in connect-league.html. This CBS
+        tab does not navigate itself; if the opener continues it, the
+        opener does that via cbsConnectWindow.location, which is
+        permitted cross-origin for a window it opened.
+      */
+
+      setPanelState(
+        ui,
+        "Inner Sanctum CBS Connect",
+        "Loading CBS connector…"
+      );
+
+      await ensureConnectorLoaded();
+
+      const version =
+        window
+          .CBSBrowserConnector
+          .version ||
+        "unknown";
+
+      console.log(
+        `${PREFIX} Connector v${version} loaded.`
+      );
+
+      setPanelState(
+        ui,
+        "Inner Sanctum CBS Connect",
+        [
+          `Connector v${version} loaded.`,
+          "",
+          "Looking for your CBS Fantasy Football league…"
+        ].join("\n")
+      );
+
+      const leagues =
+        window
+          .CBSBrowserConnector
+          .discoverLeagues();
+
+      console.log(
+        `${PREFIX} discoverLeagues() found ${leagues.length} league(s).`,
+        leagues
+      );
+
+      const targetOrigin =
+        sendDiscoveryToSanctum(
+          leagues
+        );
+
+      if (leagues.length === 0) {
+        setPanelState(
+          ui,
+          "No CBS league found",
+          [
+            "We couldn't find a CBS Fantasy Football league on this account.",
+            "",
+            "Make sure you're signed into the CBS account that owns or participates in your fantasy league, then try again from the Inner Sanctum tab."
+          ].join("\n"),
+          "error"
+        );
+      } else if (leagues.length === 1) {
+        setPanelState(
+          ui,
+          "✅ League found",
+          [
+            (leagues[0].leagueName || leagues[0].rawText || leagues[0].leagueId),
+            "",
+            "Continuing to your league automatically…"
+          ].join("\n"),
+          "success"
+        );
+      } else {
+        setPanelState(
+          ui,
+          "✅ Leagues found",
+          [
+            `Found ${leagues.length} CBS leagues.`,
+            "",
+            "Choose one on the Inner Sanctum tab to continue."
+          ].join("\n"),
+          "success"
+        );
+      }
+
+      addStatusBox(
+        ui,
+        [
+          "✓ League discovery sent to Inner Sanctum",
+          "",
+          `Destination: ${targetOrigin}`,
+          "",
+          "No CBS password or browser cookie was shared."
+        ].join("\n"),
+        "success"
+      );
+
+      addReturnButton(
+        ui
+      );
+    }
 
   } catch (error) {
     console.error(
