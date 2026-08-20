@@ -1906,14 +1906,47 @@ function startCbsConnect() {
     );
 
   /*
-    Open the normal CBS Fantasy Football entry point.
+    If CBS has already been connected, use the stored CBS league ID
+    to reopen that league directly. For a first-time connection, or
+    if the stored ID is not a safe CBS hostname label, fall back to
+    the normal CBS Fantasy Football entry point.
 
     Customers authenticate with CBS directly. Inner Sanctum never
     receives the CBS username/password or browser session.
   */
+  var existing =
+    LeagueConnection
+      .getConnection(
+        "cbs"
+      );
+
+  var leagueId =
+    String(
+      existing
+        ?.leagueId ||
+      existing
+        ?.league
+        ?.id ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  var isSafeLeagueId =
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+      leagueId
+    );
+
+  var cbsUrl =
+    isSafeLeagueId
+      ? "https://" +
+        leagueId +
+        ".football.cbssports.com/"
+      : "https://www.cbssports.com/fantasy/football/";
+
   cbsConnectWindow =
     window.open(
-      "https://www.cbssports.com/fantasy/football/",
+      cbsUrl,
       "innerSanctumCbsConnect"
     );
 
@@ -1937,9 +1970,13 @@ function startCbsConnect() {
     "result-box loading show";
 
   box.innerHTML =
-    '<strong>CBS opened in a separate tab.</strong><br>' +
-    'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
-    'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
+    isSafeLeagueId
+      ? '<strong>Your CBS league opened in a separate tab.</strong><br>' +
+        'Click your Inner Sanctum CBS bookmark on the league page. ' +
+        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.'
+      : '<strong>CBS opened in a separate tab.</strong><br>' +
+        'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
+        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
 }
 
 /*
