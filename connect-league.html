@@ -2381,6 +2381,30 @@ window.addEventListener(
         "CBS connection handoff failed:",
         err
       );
+
+      // Added — previously this failure was console-only, so a
+      // customer whose CBS tab reported success would see nothing
+      // happen here with no explanation. receiveCbsConnection()
+      // itself already sets this same box on its OWN internal
+      // validation failures; this covers the case where it throws
+      // before reaching its own try/catch, or where a caller checks
+      // #cbsResult and finds it never updated.
+      var handoffErrorBox =
+        document.getElementById(
+          "cbsResult"
+        );
+
+      if (handoffErrorBox) {
+        handoffErrorBox.className =
+          "result-box error show";
+
+        handoffErrorBox.textContent =
+          "⚠️ " +
+          (
+            (err && err.message) ||
+            "CBS sent your league, but Inner Sanctum could not save the connection. Try Sync CBS League again."
+          );
+      }
     }
   }
 );
