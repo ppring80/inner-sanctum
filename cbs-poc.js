@@ -752,6 +752,241 @@
 
   /*
     ================================================================
+    CBS ACCOUNT MENU TRIGGER (added)
+    ================================================================
+
+    discoverLeagues() only sees links CBS has already rendered into
+    the DOM. On https://www.cbssports.com/fantasy/games/ those league
+    links live inside the profile/account dropdown, which CBS only
+    renders while that menu is open — and it closes as soon as the
+    mouse leaves it, before a customer could ever reach the bookmarks
+    bar. This section finds and opens that menu structurally (no
+    hardcoded league/profile names, no CBS class names assumed) and
+    then gives discoverLeagues() a short bounded window to find the
+    now-rendered links. It never inspects cookies/tokens, never calls
+    a private CBS API, and never touches CBS account data — it only
+    clicks/hovers a control already visible on the page, the same way
+    a customer's own mouse would.
+  */
+
+  const ACCOUNT_CONTROL_HINT =
+    /account|profile|my\s*cbs|user\s*menu|avatar/i;
+
+  const ACCOUNT_CONTROL_EXCLUDE =
+    /sign\s*out|log\s*out|logout|delete|remove|cancel/i;
+
+  function elementSignalText(el) {
+    return [
+      el.getAttribute(
+        "aria-label"
+      ),
+      el.getAttribute(
+        "title"
+      ),
+      el.getAttribute(
+        "id"
+      ),
+      el.getAttribute(
+        "name"
+      ),
+      el.getAttribute(
+        "data-testid"
+      ),
+      typeof el.className ===
+        "string"
+        ? el.className
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function findCbsAccountControl() {
+    // Ordered from most to least semantically specific, so the first
+    // real match wins rather than scanning the whole page at the
+    // broadest, least reliable level.
+    const candidateSelectors = [
+      '[aria-haspopup="true"], [aria-haspopup="menu"], [aria-haspopup="listbox"]',
+      "button[aria-label], a[aria-label]",
+      "button[title], a[title]",
+      '[role="button"]',
+    ];
+
+    const seen =
+      new Set();
+
+    for (const selector of candidateSelectors) {
+      const elements =
+        Array.prototype.slice.call(
+          document.querySelectorAll(
+            selector
+          )
+        );
+
+      for (const el of elements) {
+        if (
+          seen.has(
+            el
+          )
+        ) {
+          continue;
+        }
+
+        seen.add(
+          el
+        );
+
+        const signal =
+          elementSignalText(
+            el
+          );
+
+        if (!signal) {
+          continue;
+        }
+
+        if (
+          ACCOUNT_CONTROL_EXCLUDE.test(
+            signal
+          )
+        ) {
+          continue;
+        }
+
+        if (
+          ACCOUNT_CONTROL_HINT.test(
+            signal
+          )
+        ) {
+          return el;
+        }
+      }
+    }
+
+    // Fallback: an avatar-style profile image is a very common
+    // account-menu affordance even when nothing else on the trigger
+    // element carries a matching label.
+    const avatarImg =
+      document.querySelector(
+        'img[alt*="avatar" i], img[alt*="profile" i]'
+      );
+
+    if (avatarImg) {
+      return (
+        avatarImg.closest(
+          'button, a, [role="button"]'
+        ) || avatarImg
+      );
+    }
+
+    return null;
+  }
+
+  function dispatchSyntheticEvent(
+    el,
+    type
+  ) {
+    try {
+      const EventCtor =
+        typeof PointerEvent !==
+          "undefined" &&
+        /^pointer/.test(
+          type
+        )
+          ? PointerEvent
+          : MouseEvent;
+
+      el.dispatchEvent(
+        new EventCtor(
+          type,
+          {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          }
+        )
+      );
+    } catch (e) {
+      // Best-effort only — a single unsupported event type should
+      // never break the rest of the trigger sequence.
+    }
+  }
+
+  function triggerAccountControl(
+    el
+  ) {
+    try {
+      el.focus(
+        { preventScroll: true }
+      );
+    } catch (e) {
+      // Focus is a nice-to-have, not a requirement.
+    }
+
+    [
+      "pointerover",
+      "pointerenter",
+      "mouseover",
+      "mouseenter",
+    ].forEach(
+      function (type) {
+        dispatchSyntheticEvent(
+          el,
+          type
+        );
+      }
+    );
+
+    try {
+      el.click();
+    } catch (e) {
+      // If click() itself throws, the hover events above are still
+      // a legitimate attempt at opening a hover-triggered menu.
+    }
+  }
+
+  function delay(ms) {
+    return new Promise(
+      function (resolve) {
+        setTimeout(
+          resolve,
+          ms
+        );
+      }
+    );
+  }
+
+  async function pollForDiscoveredLeagues(
+    maxWaitMs,
+    intervalMs
+  ) {
+    let elapsed = 0;
+    let leagues = [];
+
+    while (elapsed < maxWaitMs) {
+      await delay(
+        intervalMs
+      );
+
+      elapsed +=
+        intervalMs;
+
+      leagues =
+        window
+          .CBSBrowserConnector
+          .discoverLeagues();
+
+      if (leagues.length > 0) {
+        return leagues;
+      }
+    }
+
+    return leagues;
+  }
+
+
+  /*
+    ================================================================
     MAIN FLOW
     ================================================================
   */
@@ -960,15 +1195,66 @@
         ].join("\n")
       );
 
-      const leagues =
+      let leagues =
         window
           .CBSBrowserConnector
           .discoverLeagues();
 
       console.log(
-        `${PREFIX} discoverLeagues() found ${leagues.length} league(s).`,
+        `${PREFIX} discoverLeagues() found ${leagues.length} league(s) on the first attempt.`,
         leagues
       );
+
+      if (leagues.length === 0) {
+        setPanelState(
+          ui,
+          "Inner Sanctum CBS Connect",
+          [
+            `Connector v${version} loaded.`,
+            "",
+            "Opening your CBS account menu…"
+          ].join("\n")
+        );
+
+        const accountControl =
+          findCbsAccountControl();
+
+        if (accountControl) {
+          console.log(
+            `${PREFIX} Found a likely CBS account/profile control, triggering it.`,
+            accountControl
+          );
+
+          triggerAccountControl(
+            accountControl
+          );
+
+          setPanelState(
+            ui,
+            "Inner Sanctum CBS Connect",
+            [
+              `Connector v${version} loaded.`,
+              "",
+              "Looking for your CBS Fantasy Football league…"
+            ].join("\n")
+          );
+
+          leagues =
+            await pollForDiscoveredLeagues(
+              2400,
+              150
+            );
+
+          console.log(
+            `${PREFIX} discoverLeagues() found ${leagues.length} league(s) after opening the account menu.`,
+            leagues
+          );
+        } else {
+          console.log(
+            `${PREFIX} No CBS account/profile control could be identified on this page.`
+          );
+        }
+      }
 
       const targetOrigin =
         sendDiscoveryToSanctum(
