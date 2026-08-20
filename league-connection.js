@@ -7,68 +7,141 @@
 
   <script src="league-connection.js"></script>
 
-  Flip a provider's status from "pending"/"planned" to "live" the
-  moment real credentials/backend land — every page using this file
-  picks it up automatically, no other edits needed for the
-  connection layer itself (though the actual fetch/auth flow for
-  that provider still needs building — see provider-adapters.js and
-  the connect-league.html reference page).
+  Flip a provider's status from "pending"/"planned"/"beta" to "live"
+  once the real authentication + provider adapter has been proven
+  reliable in production.
 
-  UPDATED (added CBS): now tracks four providers instead of three.
-  ESPN and CBS both ship as "planned" — connect-league.html still
-  lets a visitor walk through their connect form and store a
-  connection locally (status: "demo"), same pattern Yahoo already
-  used on power-rankings.html, so the UI/UX is provable before the
-  real backend proxy exists for either.
+  Provider strategy:
+
+  Sleeper
+    - Live.
+
+  Yahoo
+    - Pending official API access / approval.
+
+  ESPN
+    - Beta.
+    - Real backend integration exists, but remains beta until it is
+      proven across a broader range of real leagues.
+
+  CBS
+    - Planned.
+    - IMPORTANT: CBS is NOT blocked as a platform.
+    - The earlier server-side username/password login experiment was
+      abandoned because CBS login is protected by browser/reCAPTCHA
+      flows that should not be bypassed.
+    - Current integration direction is browser-assisted authentication:
+        1. User logs into CBS normally in their browser.
+        2. Inner Sanctum recognizes the authenticated CBS fantasy league.
+        3. Read-only league context is collected from data CBS already
+           exposes to the authenticated browser.
+        4. CBS data is normalized through provider-adapters.js.
+    - Initial CBS scope is READ ONLY:
+        league identity
+        team identity
+        rosters
+        scoring/settings
+        standings/schedule
+        transactions
+        draft state/results if available
+    - No CBS password collection.
+    - No CAPTCHA bypass.
+    - No write operations to CBS in Phase 1.
 */
 
 (function () {
   const PROVIDERS = {
-    sleeper: { label: "Sleeper", status: "live", icon: "🏈" },
-    yahoo: { label: "Yahoo", status: "pending", icon: "🟣" },
-    // "beta" — real backend now built (espn-league.js), but not yet
-    // battle-tested against a wide range of real leagues, so kept
-    // distinct from "live" until it's proven reliable.
-    espn: { label: "ESPN", status: "beta", icon: "🔴" },
-    // CBS status "blocked" (not "planned") — deliberately distinct.
-    // INVESTIGATED AND RULED OUT (added after real testing): CBS's
-    // login flow now runs through Google reCAPTCHA before it will
-    // accept credentials at all (confirmed via live browser Network
-    // tab — requests to reCAPTCHA's reload/verify-recaptcha endpoints
-    // fire before CBS's own login call). Their login page has also
-    // been rebuilt as a client-rendered Next.js app (no server-side
-    // HTML to scrape a token out of even if the CAPTCHA weren't
-    // there), which is why the earlier scrape-a-token-from-HTML
-    // approach (based on a once-working community reference
-    // implementation) stopped working. A server-side function has no
-    // browser and cannot solve a CAPTCHA — this is not a "not built
-    // yet" gap like ESPN, it's an active block requiring either a
-    // paid CAPTCHA-solving service (real cost, real fragility, and
-    // ethically dubious — deliberately circumventing a company's own
-    // bot protection) or CBS granting real API access (they have no
-    // supported program for that). See connect-league.html's CBS tile
-    // for the same explanation surfaced to users, and cbs-login.js's
-    // header comment for the full technical writeup.
-    cbs: { label: "CBS", status: "blocked", icon: "🔵" },
+    sleeper: {
+      label: "Sleeper",
+      status: "live",
+      icon: "🏈",
+    },
+
+    yahoo: {
+      label: "Yahoo",
+      status: "pending",
+      icon: "🟣",
+    },
+
+    // Real backend exists (espn-league.js), but remains beta until
+    // battle-tested across a wider range of real ESPN leagues.
+    espn: {
+      label: "ESPN",
+      status: "beta",
+      icon: "🔴",
+    },
+
+    // CBS proof-of-concept path confirmed:
+    //
+    // Authenticated CBS fantasy league pages expose league-specific
+    // information to the user's browser, including structured roster
+    // state and CBS fantasy API plumbing.
+    //
+    // We are therefore pursuing a browser-assisted READ-ONLY connector
+    // rather than attempting server-side CBS username/password login.
+    //
+    // The connection/auth transport and CBS normalization layer still
+    // need to be built, so this remains "planned" until functional.
+    cbs: {
+      label: "CBS",
+      status: "planned",
+      icon: "🔵",
+    },
   };
 
   const STORAGE_KEY = "innerSanctum_leagueConnections";
 
   function readState() {
-    // TODO: once user accounts are backend-tracked (tied to Patreon
-    // login), replace this with a fetch to a Netlify function, e.g.
-    // /.netlify/functions/get-league-connections
+    /*
+      TODO:
+      Once user accounts are backend-tracked, replace or supplement this
+      local state with a fetch to a Netlify function such as:
+
+        /.netlify/functions/get-league-connections
+
+      Provider authentication/session material must NOT be stored here.
+      localStorage should contain connection metadata only.
+    */
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : { activeProvider: null, connections: {} };
+
+      return raw
+        ? JSON.parse(raw)
+        : {
+            activeProvider: null,
+            connections: {},
+          };
     } catch (e) {
-      return { activeProvider: null, connections: {} };
+      return {
+        activeProvider: null,
+        connections: {},
+      };
     }
   }
 
   function writeState(state) {
-    // TODO: pair with a POST to a save-league-connection Netlify
-    // function once this is backend-tracked instead of local-only.
+    /*
+      TODO:
+      Pair this with a backend save-league-connection function once
+      account-level connection persistence is implemented.
+
+      SECURITY:
+      Never store provider passwords, CBS access tokens, cookies,
+      ESPN session cookies, Yahoo OAuth secrets, or other sensitive
+      authentication material in this localStorage object.
+
+      Store only safe connection metadata such as:
+        provider
+        leagueId
+        leagueName
+        teamId
+        teamName
+        season
+        connectedAt
+        connectionMode
+    */
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
@@ -96,21 +169,40 @@
     },
 
     connect(provider, data) {
+      if (!PROVIDERS[provider]) {
+        throw new Error(`Unknown league provider: ${provider}`);
+      }
+
       const state = readState();
-      state.connections[provider] = data;
+
+      state.connections[provider] = {
+        ...data,
+        provider,
+        connectedAt: data?.connectedAt || new Date().toISOString(),
+      };
+
       state.activeProvider = provider;
+
       writeState(state);
     },
 
     disconnect(provider) {
       const state = readState();
+
       delete state.connections[provider];
-      if (state.activeProvider === provider) state.activeProvider = null;
+
+      if (state.activeProvider === provider) {
+        state.activeProvider = null;
+      }
+
       writeState(state);
     },
 
     disconnectAll() {
-      writeState({ activeProvider: null, connections: {} });
+      writeState({
+        activeProvider: null,
+        connections: {},
+      });
     },
   };
 
