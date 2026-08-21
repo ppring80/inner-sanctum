@@ -1388,29 +1388,41 @@ function buildCbsForm() {
       "data-inner-sanctum-cbs-extension"
     );
 
-  // Fix: on initial page load, init() (bottom of this file) can call
-  // renderProviderForm() -> buildCbsForm() synchronously, as soon as
-  // this page's own script finishes parsing -- but a document_idle
-  // content script's injection isn't guaranteed to complete before
-  // that. If this check loses that race, the extension marker isn't
-  // there YET, not never -- so if it's missing, re-check shortly
-  // after and re-render once if it has since appeared. A no-op when
-  // the extension truly isn't installed, or when this render was
-  // already triggered by a later, non-racing user click.
+ // The extension content script may mark the page after this form
+  // renders. Watch for that marker instead of relying on a single
+  // timing-sensitive retry.
   if (!extensionInstalled) {
+    var extensionObserver =
+      new MutationObserver(
+        function () {
+          if (
+            selectedProvider === "cbs" &&
+            document.documentElement.hasAttribute(
+              "data-inner-sanctum-cbs-extension"
+            )
+          ) {
+            extensionObserver.disconnect();
+            renderProviderForm();
+          }
+        }
+      );
+
+    extensionObserver.observe(
+      document.documentElement,
+      {
+        attributes: true,
+        attributeFilter: [
+          "data-inner-sanctum-cbs-extension"
+        ],
+      }
+    );
+
+    // Safety cleanup if the extension is genuinely not installed.
     setTimeout(
       function () {
-        if (
-          selectedProvider ===
-            "cbs" &&
-          document.documentElement.hasAttribute(
-            "data-inner-sanctum-cbs-extension"
-          )
-        ) {
-          renderProviderForm();
-        }
+        extensionObserver.disconnect();
       },
-      200
+      5000
     );
   }
 
