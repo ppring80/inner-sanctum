@@ -71,6 +71,23 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .my-roster-toggle{padding:7px 14px;border-radius:16px;border:1px solid rgba(21,101,192,0.3);background:rgba(21,101,192,0.06);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap}
 .my-roster-toggle.active{background:var(--blue);color:#fff}
 
+/* ── LEAGUE LINEUP SETUP (added) — same visual pattern as Draft
+   Command Center's Roster Construction section: a small collapsible
+   toggle button plus a compact field grid, not nine permanent inputs
+   in the toolbar. */
+.lineup-toggle{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;padding:6px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap}
+.lineup-toggle:hover{border-color:var(--gold);color:var(--gold)}
+.lineup-panel{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px}
+.lineup-panel.open{display:block}
+.lineup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px}
+.lineup-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);font-family:'JetBrains Mono',monospace;display:block;margin-bottom:4px}
+.lineup-field input{width:100%;padding:6px 9px;border:1px solid var(--border);border-radius:4px;font-family:Lora,serif;font-size:13px}
+.lineup-pbadge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 7px;border-radius:3px;letter-spacing:1px;color:#fff;margin-left:4px}
+.lineup-pbadge.QB{background:#1a5280}.lineup-pbadge.RB{background:#2a6e2a}.lineup-pbadge.WR{background:#8a7010}
+.lineup-pbadge.TE{background:#a06010}.lineup-pbadge.K{background:#6a6a6a}.lineup-pbadge.DEF{background:#8a2020}
+.lineup-pbadge.FLEX{background:#6a1b9a}.lineup-pbadge.SUPERFLEX{background:#7a3010}.lineup-pbadge.BENCH{background:#6a6a64}
+.lineup-total{font-size:12px;color:var(--muted)}
+
 /* ── TABLE ── */
 .table-wrap{max-width:1480px;margin:0 auto;padding:20px 24px 60px}
 
@@ -353,7 +370,14 @@ function checkOAuthSession() {
     <select class="week-select" id="weekSelect" onchange="renderTable()">
       <option value="1">Week 1 (preview)</option>
     </select>
+
+    <button class="lineup-toggle" id="lineupToggleBtn" onclick="toggleLineupPanel()">⚙ League Lineup Setup ▾</button>
   </div>
+</div>
+
+<div class="lineup-panel" id="lineupPanel">
+  <div class="lineup-grid" id="lineupGrid"></div>
+  <div class="lineup-total">Total roster spots: <strong id="lineupTotal">—</strong></div>
 </div>
 
 <div class="filter-bar">
@@ -414,6 +438,82 @@ var FLEX_ELIGIBLE = {
   FLEX: ['RB', 'WR', 'TE'],
   SFLEX: ['QB', 'RB', 'WR', 'TE']
 };
+
+// ─── League Lineup Setup (added) ───
+// Same normalized roster shape and default values used by Draft
+// Command Center's Roster Construction, so customers see one
+// consistent interface rather than two different ones. FLEX/
+// SUPERFLEX eligibility below reuses the existing FLEX_ELIGIBLE
+// constant above rather than duplicating the RB/WR/TE and
+// QB/RB/WR/TE lists a second time.
+var DEFAULT_LINEUP_CONSTRUCTION = {
+  QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SUPERFLEX: 0, K: 1, DEF: 1, BENCH: 6
+};
+
+var LINEUP_FIELDS = [
+  {key:'QB', label:'Quarterbacks', hint:'starting QBs'},
+  {key:'RB', label:'Running Backs', hint:'starting RBs'},
+  {key:'WR', label:'Wide Receivers', hint:'starting WRs'},
+  {key:'TE', label:'Tight Ends', hint:'starting TEs'},
+  {key:'FLEX', label:'Flex', hint:FLEX_ELIGIBLE.FLEX.join('/') + ' flex'},
+  {key:'SUPERFLEX', label:'Superflex', hint:FLEX_ELIGIBLE.SFLEX.join('/') + ' flex'},
+  {key:'K', label:'Kicker', hint:'kicker spots'},
+  {key:'DEF', label:'Defense', hint:'D/ST spots'},
+  {key:'BENCH', label:'Bench', hint:'bench players'}
+];
+
+var lineupPanelOpen = false;
+
+function toggleLineupPanel(){
+  lineupPanelOpen = !lineupPanelOpen;
+  var panel = document.getElementById('lineupPanel');
+  var btn = document.getElementById('lineupToggleBtn');
+  if (panel) panel.classList.toggle('open', lineupPanelOpen);
+  if (btn) btn.textContent = '⚙ League Lineup Setup ' + (lineupPanelOpen ? '▴' : '▾');
+}
+
+function renderLineupFields(){
+  var grid = document.getElementById('lineupGrid');
+  if (!grid) return;
+  var current = state.lineupConstruction || DEFAULT_LINEUP_CONSTRUCTION;
+  grid.innerHTML = LINEUP_FIELDS.map(function(f){
+    var val = (typeof current[f.key] === 'number') ? current[f.key] : DEFAULT_LINEUP_CONSTRUCTION[f.key];
+    return '<div class="lineup-field">' +
+        '<label>' + f.label + ' <span class="lineup-pbadge ' + f.key + '">' + f.key + '</span></label>' +
+        '<input type="number" id="lineup-' + f.key + '" value="' + val + '" min="0" max="12" onchange="updateLineupConstruction()"/>' +
+        '<p style="font-size:10px;color:var(--dim);margin-top:3px">' + f.hint + '</p>' +
+      '</div>';
+  }).join('');
+  updateLineupTotal();
+}
+
+function updateLineupTotal(){
+  var total = 0;
+  LINEUP_FIELDS.forEach(function(f){
+    var el = document.getElementById('lineup-' + f.key);
+    total += el ? (parseInt(el.value, 10) || 0) : 0;
+  });
+  var totalEl = document.getElementById('lineupTotal');
+  if (totalEl) totalEl.textContent = String(total);
+}
+
+function updateLineupConstruction(){
+  var obj = {};
+  LINEUP_FIELDS.forEach(function(f){
+    var el = document.getElementById('lineup-' + f.key);
+    var v = el ? parseInt(el.value, 10) : NaN;
+    obj[f.key] = (isNaN(v) || v < 0) ? DEFAULT_LINEUP_CONSTRUCTION[f.key] : v;
+  });
+  state.lineupConstruction = obj;
+  updateLineupTotal();
+  // Intentionally does NOT call renderTable() or touch rankings/
+  // verdicts/projections in any way -- storage only, per this pass's
+  // explicit scope.
+}
+
+function getWeeklyLineupConstruction(){
+  return state.lineupConstruction || DEFAULT_LINEUP_CONSTRUCTION;
+}
 
 var MOCK_RANKINGS = [
   {
@@ -564,7 +664,8 @@ var state = {
   myRosterOnly: false,
   sortKey: 'proj',
   sortDir: 'desc',
-  myRosterNames: []
+  myRosterNames: [],
+  lineupConstruction: DEFAULT_LINEUP_CONSTRUCTION
 };
 
 function injuryLabel(code) {
@@ -1190,6 +1291,7 @@ document
   );
 
 renderTable();
+renderLineupFields();
 </script>
 
 <script>
