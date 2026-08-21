@@ -1379,6 +1379,27 @@ function buildCbsForm() {
         "cbs"
       );
 
+  // Standard, documented extension-detection pattern: the extension's
+  // own sanctum-content-bridge.js content script marks the page as
+  // soon as it loads, only when actually installed. No fake
+  // detection, no new permission -- this IS the supported signal.
+  var extensionInstalled =
+    document.documentElement.hasAttribute(
+      "data-inner-sanctum-cbs-extension"
+    );
+
+  var leagueId =
+    String(
+      existing
+        ?.leagueId ||
+      existing
+        ?.league
+        ?.id ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
   var cbsBookmarklet =
     "javascript:(function(){var s=document.createElement('script');s.src='https://theinnersanctum.xyz/cbs-poc.js?ts='+Date.now();s.async=true;document.head.appendChild(s);}());";
 
@@ -1401,33 +1422,17 @@ function buildCbsForm() {
       ) +
     '</button>';
 
-  var trustMarkup =
-    '<div class="pf-info">' +
-      '<strong>Connect CBS without sharing your CBS password.</strong><br>' +
-      'You sign into CBS directly. Inner Sanctum only receives the read-only fantasy league information you choose to send with CBS Connect.' +
-    '</div>';
-
-  var featureGridMarkup =
-    '<div class="cbs-feature-grid">' +
-      '<div class="cbs-feature">League & team</div>' +
-      '<div class="cbs-feature">Roster</div>' +
-      '<div class="cbs-feature">Standings</div>' +
-      '<div class="cbs-feature">Schedule</div>' +
-      '<div class="cbs-feature">Scoring rules</div>' +
-      '<div class="cbs-feature">League settings</div>' +
-    '</div>';
-
   var readOnlyMarkup =
     '<div class="pf-info">' +
       '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
     '</div>';
 
-  var betaNoteMarkup =
-    '<div class="connect-note">' +
-      'CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.' +
-    '</div>';
-
-  // FIRST-TIME journey — always visible, not collapsed behind help.
+  // Bookmarklet journeys — byte-preserved from the proven manual-
+  // connect flow. Not rewritten, only relocated: see
+  // bookmarkletFallbackMarkup below, which tucks this behind a
+  // "Having trouble?" disclosure once the extension is the primary
+  // path, and shows it directly (as before) when the extension isn't
+  // detected at all.
   var firstTimeStepsMarkup =
     '<span class="cbs-bookmark-tip" style="display:block;margin:0 0 14px;font-size:12px;line-height:1.6;color:#c9a84c;font-weight:600">Click CBS Connect once to find your league, then once more after your league opens to finish connecting.</span>' +
 
@@ -1457,8 +1462,6 @@ function buildCbsForm() {
       '<span><strong>Connect your league.</strong> After CBS opens your league, click Inner Sanctum CBS Connect in your bookmarks bar one more time. Inner Sanctum will securely send your read-only league information back and confirm the connection.</span>' +
     '</div>';
 
-  // RETURNING-USER journey — main button up top, everything else
-  // tucked behind two collapsed help sections.
   var returningMarkup =
     actionMarkup +
 
@@ -1501,27 +1504,151 @@ function buildCbsForm() {
       '</div>' +
     '</div>';
 
-  wrap.innerHTML =
-    '<div class="beta-pill">CBS Connect · Beta</div>' +
+  var bookmarkletJourneyMarkup =
+    existing
+      ? returningMarkup
+      : firstTimeStepsMarkup;
 
-    trustMarkup +
+  // Primary extension-driven UI (added). This is the customer's
+  // main path whenever the extension is detected — a single button,
+  // no bookmark install, no second click, no manual navigation.
+  var primaryMarkup;
 
-    featureGridMarkup +
-
-    (
+  if (extensionInstalled) {
+    var primaryButtonMarkup =
       existing
-        ? returningMarkup
-        : firstTimeStepsMarkup
-    ) +
+        ? '<button class="connect-btn" id="cbsSyncBtn" data-league-id="' +
+          escapeHtml(
+            leagueId
+          ) +
+          '">SYNC CBS LEAGUE</button>'
+        : '<button class="connect-btn" id="cbsConnectBtn">CONNECT CBS LEAGUE</button>';
+
+    var supportingLineMarkup =
+      existing
+        ? '<p style="font-size:12px;color:var(--text3);margin:8px 0 14px">Opens your connected CBS league in a new tab and refreshes your data automatically. Keep this Inner Sanctum tab open.</p>'
+        : '<p style="font-size:12px;color:var(--text3);margin:8px 0 14px">You\'ll sign into CBS directly if needed. Keep this Inner Sanctum tab open while we connect your league.</p>';
+
+    var bookmarkletFallbackMarkup =
+      '<div class="pf-help">' +
+        '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
+          '🔧 Having trouble? Use the manual connect method ' +
+          '<span class="pf-help-icon">▼</span>' +
+        '</button>' +
+
+        '<div class="pf-help-body">' +
+          bookmarkletJourneyMarkup +
+        '</div>' +
+      '</div>';
+
+    primaryMarkup =
+      primaryButtonMarkup +
+      supportingLineMarkup +
+      bookmarkletFallbackMarkup;
+  } else {
+    // Extension not detected: the bookmarklet flow is the only thing
+    // that actually works right now, so it's shown directly rather
+    // than hidden behind a fallback disclosure.
+    primaryMarkup =
+      '<div class="pf-info">' +
+        '<strong>The Inner Sanctum CBS Connect browser extension is required for one-click CBS connection.</strong><br>' +
+        'Installation instructions are coming soon. In the meantime, you can connect manually below.' +
+      '</div>' +
+      bookmarkletJourneyMarkup;
+  }
+
+  wrap.innerHTML =
+    '<div class="beta-pill">CBS CONNECT</div>' +
+
+    '<div class="pf-info">' +
+      '<strong>Connect CBS without sharing your CBS password.</strong><br>' +
+      'Inner Sanctum opens CBS in a separate tab and securely reads the fantasy league information needed for your tools.' +
+    '</div>' +
+
+    '<div class="cbs-feature-grid">' +
+      '<div class="cbs-feature">League & team</div>' +
+      '<div class="cbs-feature">Roster</div>' +
+      '<div class="cbs-feature">Standings</div>' +
+      '<div class="cbs-feature">Schedule</div>' +
+      '<div class="cbs-feature">Scoring rules</div>' +
+      '<div class="cbs-feature">League settings</div>' +
+    '</div>' +
+
+    primaryMarkup +
 
     readOnlyMarkup +
-
-    betaNoteMarkup +
 
     '<div class="result-box" id="cbsResult"></div>';
 
   return wrap;
 }
+
+/*
+  ================================================================
+  EXTENSION MULTI-LEAGUE SELECTION (added)
+  ================================================================
+  Called by the extension's service worker (via
+  chrome.scripting.executeScript, MAIN world) when
+  discoverLeagues() finds more than one CBS league. Reuses
+  cbsDiscoveredLeagueLabel() unchanged -- the same label logic the
+  bookmarklet's own multi-league selector already uses. Rendered
+  choices carry the EXACT discovered URL as a data attribute;
+  sanctum-content-bridge.js relays whichever one the customer clicks
+  to the service worker. This never constructs a URL itself.
+*/
+window.handleExtensionCbsLeagues =
+  function (leagues) {
+    var box =
+      document.getElementById(
+        "cbsResult"
+      );
+
+    if (!box) {
+      return;
+    }
+
+    if (
+      !leagues ||
+      !leagues.length
+    ) {
+      box.className =
+        "result-box error show";
+
+      box.textContent =
+        "⚠️ No CBS leagues were found.";
+
+      return;
+    }
+
+    var optionsHtml =
+      leagues
+        .map(
+          function (league) {
+            return (
+              '<button class="connect-btn cbs-extension-league-choice" style="display:block;width:100%;margin-top:6px" data-league-url="' +
+              escapeHtml(
+                league.url ||
+                ""
+              ) +
+              '">' +
+              escapeHtml(
+                cbsDiscoveredLeagueLabel(
+                  league
+                )
+              ) +
+              '</button>'
+            );
+          }
+        )
+        .join("");
+
+    box.className =
+      "result-box loading show";
+
+    box.innerHTML =
+      "<strong>Select your CBS league</strong>" +
+      optionsHtml;
+  };
 
 /*
   ================================================================
