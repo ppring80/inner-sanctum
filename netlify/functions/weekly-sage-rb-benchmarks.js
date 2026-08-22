@@ -22,9 +22,10 @@
 //   1. Get the target RB's validated player-season evidence.
 //   2. Discover RB peers from Tank01 getNFLPlayerList.
 //   3. Build the same no-look-ahead player-season evidence for each peer.
-//   4. Apply a minimum-sample / meaningful-usage population filter.
-//   5. Calculate percentile ranks for Role and Production metrics.
-//   6. Return the full population so we can inspect it before scoring.
+//   4. Ensure the independently validated target is represented.
+//   5. Apply a minimum-sample / meaningful-usage population filter.
+//   6. Calculate percentile ranks for Role and Production metrics.
+//   7. Return the full population so we can inspect it before scoring.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -321,6 +322,11 @@ function playerPositionOf(player) {
   );
 }
 
+/*
+  Midrank percentile rank.
+
+  Tied values receive the same percentile treatment.
+*/
 function percentileRank(
   values,
   target
@@ -521,11 +527,10 @@ function describeDistribution(
 // ═══════════════════════════════════════════════════════════════════════
 // TANK01 PLAYER LIST
 //
-// RapidAPI documents this endpoint as:
+// RapidAPI endpoint:
 //
 //   /getNFLPlayerList?all=true
 //
-// "all=true" is REQUIRED for the full player population.
 // ═══════════════════════════════════════════════════════════════════════
 
 async function fetchPlayerList() {
@@ -1150,6 +1155,11 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
+      /*
+        STEP 1
+        ------
+        Validate the requested target independently.
+      */
       const targetEvidence =
         await fetchPlayerSeason({
           baseUrl,
@@ -1180,6 +1190,11 @@ exports.handler =
         );
       }
 
+      /*
+        STEP 2
+        ------
+        Retrieve the full Tank01 player universe.
+      */
       const allPlayers =
         await fetchPlayerList();
 
@@ -1214,6 +1229,9 @@ exports.handler =
               player.playerID
           );
 
+      /*
+        De-duplicate Tank01 player list records by playerID.
+      */
       const uniqueMap =
         new Map();
 
@@ -1238,6 +1256,11 @@ exports.handler =
           ...uniqueMap.values()
         ];
 
+      /*
+        STEP 3
+        ------
+        Build identical no-look-ahead evidence for every RB candidate.
+      */
       const peerResults =
         await mapWithConcurrency(
           uniqueCandidates,
@@ -1299,6 +1322,43 @@ exports.handler =
             result.record
         );
 
+      /*
+        Build the independently validated target record.
+
+        Tank01's getNFLPlayerList may occasionally omit a player or
+        represent the player differently from getNFLPlayerInfo.
+
+        The target already passed our validated player-season pipeline,
+        so ensure that exact record exists in the candidate universe.
+
+        IMPORTANT:
+        The target STILL has to satisfy the same eligibility rules as
+        every other RB.
+      */
+      const rawTarget =
+        buildRBRecord(
+          targetEvidence
+        );
+
+      const targetAlreadyPresent =
+        allRBRecords.some(
+          player =>
+            player.playerID ===
+            playerID
+        );
+
+      if (!targetAlreadyPresent) {
+        allRBRecords.push(
+          rawTarget
+        );
+      }
+
+      /*
+        STEP 4
+        ------
+        Apply the population eligibility rules to EVERY RB, including
+        the requested target.
+      */
       const population =
         allRBRecords.filter(
           populationEligible
@@ -1309,11 +1369,6 @@ exports.handler =
           player =>
             player.playerID ===
             playerID
-        );
-
-      const rawTarget =
-        buildRBRecord(
-          targetEvidence
         );
 
       if (!target) {
@@ -1348,12 +1403,24 @@ exports.handler =
                 population.length,
 
               failures:
-                failed.length
+                failed.length,
+
+              targetInjected:
+                !targetAlreadyPresent
             }
           }
         );
       }
 
+      /*
+        STEP 5
+        ------
+        Calculate player-relative percentiles.
+
+        Still no Role Score.
+        Still no Production Score.
+        Still no final SAGE score.
+      */
       const benchmarks =
         buildTargetBenchmarks(
           population,
@@ -1379,7 +1446,7 @@ exports.handler =
             "weekly-sage-rb-benchmarks",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -1418,6 +1485,9 @@ exports.handler =
                 MIN_OPPORTUNITIES_PER_GAME
             },
 
+            targetHandling:
+              "The independently validated requested RB is inserted into the peer universe if Tank01 getNFLPlayerList omits or represents the player differently. The player must still satisfy the same population rules.",
+
             percentileMethod:
               "midrank",
 
@@ -1441,6 +1511,14 @@ exports.handler =
             playerSeasonFailures:
               failed.length,
 
+            rbRecordsBeforeTargetCheck:
+              successful.length,
+
+            targetAlreadyPresent,
+
+            targetInjected:
+              !targetAlreadyPresent,
+
             rbRecordsWithEvidence:
               allRBRecords.length,
 
@@ -1462,6 +1540,13 @@ exports.handler =
 
           benchmarks,
 
+          /*
+            Intentionally return the complete eligible population during
+            methodology validation.
+
+            We need to inspect who SAGE considers a relevant RB peer
+            before turning percentiles into component scores.
+          */
           population:
             sortedPopulation,
 
@@ -1507,7 +1592,7 @@ exports.handler =
               null,
 
             reason:
-              "Validate the RB peer population and metric distributions before assigning component weights."
+              "Validate the RB peer population and metric distributions before assigning component scores."
           }
         },
 
