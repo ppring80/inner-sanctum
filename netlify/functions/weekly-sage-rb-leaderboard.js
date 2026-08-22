@@ -4,24 +4,30 @@
 //
 // PURPOSE
 // -------
-// Build the weekly SAGE RB ranking board from the already-validated
+// Build the weekly SAGE RB ranking board from the validated
 // final RB scoring pipeline.
 //
-// This function:
+// This version distinguishes:
 //
-// 1. Reads the cached Weekly SAGE RB snapshot.
-// 2. Gets the eligible RB population.
-// 3. Calls weekly-sage-rb-final-score for each eligible RB.
-// 4. Sorts players by final SAGE score.
-// 5. Returns one validation-friendly leaderboard.
+//   ACTIVE PLAYER
+//   -> final SAGE score
+//   -> included in weekly rankings
+//
+//   BYE / NO SCHEDULED GAME
+//   -> no SAGE score
+//   -> not included in weekly rankings
+//   -> NOT treated as a processing failure
+//
+//   TRUE PROCESSING FAILURE
+//   -> reported separately in failures
 //
 // IMPORTANT
 // ---------
 // This function does NOT:
 // - rebuild the RB population
 // - call Tank01 directly
-// - create START / FLEX / SIT recommendations
 // - change Role / Production / Matchup methodology
+// - create START / FLEX / SIT recommendations
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -100,7 +106,17 @@ function buildUrl({
   );
 }
 
-async function fetchJson(url) {
+/*
+  Unlike the previous fetchJson(), this helper preserves the
+  HTTP status and error body.
+
+  That allows the leaderboard to distinguish:
+
+    "No game found for team in requested week."
+
+  from a genuine processing failure.
+*/
+async function fetchJsonWithStatus(url) {
   const response =
     await fetch(
       url,
@@ -123,23 +139,40 @@ async function fetchJson(url) {
     data = null;
   }
 
-  if (!response.ok) {
+  return {
+    ok:
+      response.ok,
+
+    status:
+      response.status,
+
+    data
+  };
+}
+
+async function fetchJson(url) {
+  const result =
+    await fetchJsonWithStatus(
+      url
+    );
+
+  if (!result.ok) {
     const detail =
-      data &&
+      result.data &&
       (
-        data.detail ||
-        data.error
+        result.data.detail ||
+        result.data.error
       )
         ? (
-            data.detail ||
-            data.error
+            result.data.detail ||
+            result.data.error
           )
-        : `HTTP ${response.status}`;
+        : `HTTP ${result.status}`;
 
     throw new Error(detail);
   }
 
-  return data;
+  return result.data;
 }
 
 function jsonResponse(
@@ -168,14 +201,6 @@ function jsonResponse(
   };
 }
 
-/*
-  Snapshot schemas can evolve.
-
-  Keep population extraction intentionally tolerant so the
-  leaderboard is not tightly coupled to one property name.
-
-  We only accept arrays containing player-like objects.
-*/
 function findPlayerArray(snapshot) {
   const candidates = [
     snapshot.eligiblePlayers,
@@ -197,9 +222,6 @@ function findPlayerArray(snapshot) {
     }
   }
 
-  /*
-    Some snapshot versions may wrap the population one level down.
-  */
   const nestedObjects = [
     snapshot.population,
     snapshot.snapshot,
@@ -278,6 +300,22 @@ function playerNameFromRecord(player) {
   );
 }
 
+function playerTeamFromRecord(player) {
+  if (
+    !player ||
+    typeof player !== "object"
+  ) {
+    return null;
+  }
+
+  return (
+    player.team ||
+    player.teamAbv ||
+    player.teamAbbreviation ||
+    null
+  );
+}
+
 async function fetchSnapshot({
   baseUrl,
   season,
@@ -315,6 +353,12 @@ async function fetchSnapshot({
   return data;
 }
 
+/*
+  Return a structured result instead of immediately throwing.
+
+  That lets the caller classify "no game" as a weekly inactive
+  state instead of a leaderboard failure.
+*/
 async function fetchFinalScore({
   baseUrl,
   season,
@@ -338,20 +382,99 @@ async function fetchFinalScore({
       }
     });
 
-  const data =
-    await fetchJson(url);
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-rb-final-score"
-  ) {
-    throw new Error(
-      "Unexpected final RB score schema."
+  const result =
+    await fetchJsonWithStatus(
+      url
     );
+
+  if (!result.ok) {
+    return {
+      ok: false,
+
+      status:
+        result.status,
+
+      data:
+        result.data
+    };
   }
 
-  return data;
+  if (
+    !result.data ||
+    result.data.evidenceType !==
+      "weekly-sage-rb-final-score"
+  ) {
+    return {
+      ok: false,
+
+      status: 502,
+
+      data: {
+        error:
+          "Unexpected final RB score schema."
+      }
+    };
+  }
+
+  return {
+    ok: true,
+
+    status: 200,
+
+    data:
+      result.data
+  };
+}
+
+/*
+  Determine whether the downstream failure means that the
+  player's team simply does not have a game in the target week.
+
+  We are deliberately narrow here.
+
+  We do NOT turn every error into a bye.
+
+  Only the known schedule condition is classified as
+  weekly inactive.
+*/
+function isNoScheduledGame(result) {
+  if (
+    !result ||
+    result.ok
+  ) {
+    return false;
+  }
+
+  const data =
+    result.data || {};
+
+  const message =
+    String(
+      data.detail ||
+      data.error ||
+      ""
+    ).toLowerCase();
+
+  return (
+    message.includes(
+      "no game found for team in requested week"
+    )
+  );
+}
+
+function errorMessage(result) {
+  if (!result) {
+    return "Unknown scoring failure.";
+  }
+
+  const data =
+    result.data || {};
+
+  return (
+    data.detail ||
+    data.error ||
+    `HTTP ${result.status}`
+  );
 }
 
 function leaderboardRecord(result) {
@@ -390,6 +513,12 @@ function leaderboardRecord(result) {
       player.position ||
       "RB",
 
+    status:
+      "active",
+
+    eligibleForWeeklyRanking:
+      true,
+
     opponent:
       matchup.opponent ||
       (
@@ -421,10 +550,14 @@ function leaderboardRecord(result) {
 
     production: {
       rawScore:
-        num(production.rawScore),
+        num(
+          production.rawScore
+        ),
 
       adjustedScore:
-        num(production.adjustedScore),
+        num(
+          production.adjustedScore
+        ),
 
       confidence:
         num(
@@ -438,7 +571,9 @@ function leaderboardRecord(result) {
         num(matchup.rawScore),
 
       adjustedScore:
-        num(matchup.adjustedScore),
+        num(
+          matchup.adjustedScore
+        ),
 
       confidence:
         num(
@@ -483,6 +618,56 @@ function leaderboardRecord(result) {
   };
 }
 
+function inactiveRecord(player) {
+  return {
+    playerID:
+      player.playerID,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      player.team ||
+      null,
+
+    position:
+      "RB",
+
+    status:
+      "bye",
+
+    eligibleForWeeklyRanking:
+      false,
+
+    opponent:
+      null,
+
+    location:
+      null,
+
+    sage: {
+      score:
+        null,
+
+      label:
+        null,
+
+      confidence:
+        null,
+
+      confidenceLabel:
+        null
+    },
+
+    recommendation:
+      null,
+
+    reason:
+      "No scheduled game found for the player's team in the requested week."
+  };
+}
+
 function compareLeaderboard(a, b) {
   const scoreA =
     num(
@@ -517,10 +702,6 @@ function compareLeaderboard(a, b) {
     return scoreB - scoreA;
   }
 
-  /*
-    Tie breaker #1:
-    higher confidence.
-  */
   const confidenceA =
     num(
       a &&
@@ -545,13 +726,6 @@ function compareLeaderboard(a, b) {
     );
   }
 
-  /*
-    Tie breaker #2:
-    alphabetical player name.
-
-    This is deterministic only.
-    It has no football meaning.
-  */
   return String(
     a.name || ""
   ).localeCompare(
@@ -705,9 +879,7 @@ exports.handler =
       /*
         STEP 1
         ------
-        Read the cached RB snapshot.
-
-        This is the population source.
+        Read cached RB snapshot.
       */
       const snapshot =
         await fetchSnapshot({
@@ -744,10 +916,7 @@ exports.handler =
       /*
         STEP 2
         ------
-        Deduplicate player IDs.
-
-        The snapshot remains authoritative about who belongs
-        in this week's eligible RB population.
+        Deduplicate players.
       */
       const playerMap =
         new Map();
@@ -777,6 +946,11 @@ exports.handler =
               name:
                 playerNameFromRecord(
                   player
+                ),
+
+              team:
+                playerTeamFromRecord(
+                  player
                 )
             }
           );
@@ -803,16 +977,10 @@ exports.handler =
       /*
         STEP 3
         ------
-        Score every eligible RB.
-
-        Population size is intentionally small because the
-        snapshot already applied our eligibility rules.
-
-        Promise.allSettled means one player failure will not
-        destroy the entire leaderboard.
+        Run final score pipeline for each eligible snapshot RB.
       */
       const results =
-        await Promise.allSettled(
+        await Promise.all(
           players.map(
             player =>
               fetchFinalScore({
@@ -829,6 +997,9 @@ exports.handler =
       const leaderboard =
         [];
 
+      const inactive =
+        [];
+
       const failures =
         [];
 
@@ -840,19 +1011,43 @@ exports.handler =
           const requestedPlayer =
             players[index];
 
-          if (
-            result.status ===
-            "fulfilled"
-          ) {
+          /*
+            Normal successful score.
+          */
+          if (result.ok) {
             leaderboard.push(
               leaderboardRecord(
-                result.value
+                result.data
               )
             );
 
             return;
           }
 
+          /*
+            No scheduled game is NOT a scoring failure.
+
+            Record the player as a bye/inactive player and
+            remove him from the weekly ranking population.
+          */
+          if (
+            isNoScheduledGame(
+              result
+            )
+          ) {
+            inactive.push(
+              inactiveRecord(
+                requestedPlayer
+              )
+            );
+
+            return;
+          }
+
+          /*
+            Everything else remains a genuine failure so
+            problems cannot be silently hidden.
+          */
           failures.push({
             playerID:
               requestedPlayer.playerID,
@@ -860,14 +1055,13 @@ exports.handler =
             name:
               requestedPlayer.name,
 
+            team:
+              requestedPlayer.team,
+
             error:
-              result.reason &&
-              result.reason.message
-                ? result.reason.message
-                : String(
-                    result.reason ||
-                    "Unknown scoring failure."
-                  )
+              errorMessage(
+                result
+              )
           });
         }
       );
@@ -875,7 +1069,7 @@ exports.handler =
       /*
         STEP 4
         ------
-        Rank by final SAGE score.
+        Rank active players only.
       */
       leaderboard.sort(
         compareLeaderboard
@@ -902,9 +1096,7 @@ exports.handler =
       /*
         STEP 5
         ------
-        Return validation board.
-
-        Still NO recommendation thresholds.
+        Return active rankings + inactive players separately.
       */
       return jsonResponse(
         200,
@@ -913,7 +1105,7 @@ exports.handler =
             "weekly-sage-rb-leaderboard",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -934,6 +1126,9 @@ exports.handler =
               "Higher overall SAGE confidence",
               "Alphabetical player name for deterministic ordering only"
             ],
+
+            byeHandling:
+              "Players without a scheduled game in the target week are excluded from the weekly ranking and reported separately as inactive.",
 
             recommendationThresholdsApplied:
               false,
@@ -963,8 +1158,11 @@ exports.handler =
             uniquePlayerIDs:
               players.length,
 
-            successfullyScored:
+            activePlayersScored:
               leaderboard.length,
+
+            inactivePlayers:
+              inactive.length,
 
             failures:
               failures.length
@@ -975,6 +1173,8 @@ exports.handler =
 
           leaderboard,
 
+          inactive,
+
           failures,
 
           recommendation:
@@ -982,10 +1182,13 @@ exports.handler =
 
           nextStep: {
             ready:
-              leaderboard.length > 0,
+              leaderboard.length > 0 &&
+              failures.length === 0,
 
             reason:
-              "Inspect the complete Week SAGE score distribution and natural score separation before defining consumer-facing recommendation tiers."
+              failures.length === 0
+                ? "Active RBs were scored successfully and players without a scheduled game were separated from the weekly ranking."
+                : "Resolve remaining true processing failures before defining recommendation tiers."
           },
 
           provenance: {
