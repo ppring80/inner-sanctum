@@ -14,11 +14,25 @@
 // Target Week 8 may use ONLY Weeks 1-7.
 // The target week's game must never be included.
 //
-// This function:
-// - resolves player information from Tank01
-// - retrieves prior weekly player game stats
-// - aggregates season-to-date production
-// - exposes position-relevant usage metrics
+// Tank01 getNFLGamesForPlayer returns:
+//
+//   body: {
+//     "GAME_ID": { player game stats },
+//     ...
+//   }
+//
+// Those objects do NOT contain NFL week numbers.
+//
+// Therefore:
+//
+//   getNFLGamesForPlayer
+//          +
+//   weekly-sage-schedule for Weeks 1 through targetWeek - 1
+//
+// are joined by gameID.
+//
+// This makes our own schedule layer the authoritative source for the
+// no-look-ahead boundary.
 //
 // This function DOES NOT:
 // - calculate defensive matchup scores
@@ -36,9 +50,14 @@ const DEFAULT_SEASON_TYPE = "reg";
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
+const SCHEDULE_CONCURRENCY = 4;
+
 function num(value) {
   const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+
+  return Number.isFinite(n)
+    ? n
+    : 0;
 }
 
 function round(value, digits = 2) {
@@ -47,7 +66,10 @@ function round(value, digits = 2) {
 
   return (
     Math.round(
-      (num(value) + Number.EPSILON) *
+      (
+        num(value) +
+        Number.EPSILON
+      ) *
       factor
     ) / factor
   );
@@ -55,8 +77,12 @@ function round(value, digits = 2) {
 
 function tank01Headers() {
   return {
-    "Content-Type": "application/json",
-    "x-rapidapi-host": TANK01_HOST,
+    "Content-Type":
+      "application/json",
+
+    "x-rapidapi-host":
+      TANK01_HOST,
+
     "x-rapidapi-key":
       process.env.TANK01_API_KEY
   };
@@ -78,7 +104,8 @@ async function tank01Fetch(
   const response =
     await fetch(url, {
       method: "GET",
-      headers: tank01Headers()
+      headers:
+        tank01Headers()
     });
 
   let data = null;
@@ -91,17 +118,28 @@ async function tank01Fetch(
   }
 
   if (!response.ok) {
-    const detail =
+    let detail =
+      `HTTP ${response.status}`;
+
+    if (
       data &&
-      (
-        data.message ||
-        data.error
-      )
-        ? (
-            data.message ||
-            data.error
-          )
-        : `HTTP ${response.status}`;
+      data.message
+    ) {
+      detail =
+        data.message;
+    } else if (
+      data &&
+      data.error
+    ) {
+      detail =
+        data.error;
+    } else if (
+      data &&
+      typeof data.body === "string"
+    ) {
+      detail =
+        data.body;
+    }
 
     throw new Error(
       `Tank01 ${endpoint} failed: ${detail}`
@@ -112,7 +150,17 @@ async function tank01Fetch(
 }
 
 function normalizePosition(value) {
-  return String(value || "")
+  return String(
+    value || ""
+  )
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeTeam(value) {
+  return String(
+    value || ""
+  )
     .trim()
     .toUpperCase();
 }
@@ -139,29 +187,62 @@ function extractPlayerInfo(data) {
   return null;
 }
 
-function extractGames(data) {
-  if (!data) {
+/*
+  Tank01's ACTUAL getNFLGamesForPlayer shape is:
+
+  body: {
+    "20250907_TB@ATL": {
+      Receiving: {...},
+      Rushing: {...},
+      longName: "...",
+      playerID: "...",
+      snapCounts: {...},
+      team: "...",
+      teamAbv: "ATL",
+      teamID: "...",
+      gameID: "20250907_TB@ATL"
+    },
+    ...
+  }
+
+  Convert that object to a normal array while preserving gameID.
+*/
+function extractPlayerGames(data) {
+  if (
+    !data ||
+    !data.body
+  ) {
     return [];
   }
 
-  if (Array.isArray(data.body)) {
+  if (
+    Array.isArray(data.body)
+  ) {
     return data.body;
   }
 
   if (
-    data.body &&
-    Array.isArray(data.body.games)
+    typeof data.body === "object"
   ) {
-    return data.body.games;
-  }
+    return Object.entries(
+      data.body
+    ).map(
+      function ([
+        gameID,
+        game
+      ]) {
+        return {
+          ...(game || {}),
 
-  if (
-    data.body &&
-    Array.isArray(
-      data.body.gameStats
-    )
-  ) {
-    return data.body.gameStats;
+          gameID:
+            (
+              game &&
+              game.gameID
+            ) ||
+            gameID
+        };
+      }
+    );
   }
 
   return [];
@@ -284,6 +365,30 @@ function receivingStats(game) {
   };
 }
 
+function snapStats(game) {
+  const stats =
+    statBlock(
+      game,
+      "snapCounts"
+    );
+
+  return {
+    offense:
+      num(
+        stats.offense ??
+        stats.offensiveSnaps ??
+        stats.offSnaps
+      ),
+
+    offensePct:
+      num(
+        stats.offensePct ??
+        stats.offensiveSnapPct ??
+        stats.offSnapPct
+      )
+  };
+}
+
 function aggregateGames(games) {
   const totals = {
     games: 0,
@@ -307,10 +412,18 @@ function aggregateGames(games) {
       receptions: 0,
       yards: 0,
       touchdowns: 0
+    },
+
+    snaps: {
+      offense: 0,
+      offensePctTotal: 0,
+      offensePctGames: 0
     }
   };
 
-  for (const game of games) {
+  for (
+    const game of games
+  ) {
     const passing =
       passingStats(game);
 
@@ -320,11 +433,16 @@ function aggregateGames(games) {
     const receiving =
       receivingStats(game);
 
+    const snaps =
+      snapStats(game);
+
     totals.games += 1;
 
     for (
       const key of
-      Object.keys(totals.passing)
+      Object.keys(
+        totals.passing
+      )
     ) {
       totals.passing[key] +=
         passing[key];
@@ -332,7 +450,9 @@ function aggregateGames(games) {
 
     for (
       const key of
-      Object.keys(totals.rushing)
+      Object.keys(
+        totals.rushing
+      )
     ) {
       totals.rushing[key] +=
         rushing[key];
@@ -340,10 +460,28 @@ function aggregateGames(games) {
 
     for (
       const key of
-      Object.keys(totals.receiving)
+      Object.keys(
+        totals.receiving
+      )
     ) {
       totals.receiving[key] +=
         receiving[key];
+    }
+
+    totals.snaps.offense +=
+      snaps.offense;
+
+    if (
+      snaps.offensePct > 0
+    ) {
+      totals
+        .snaps
+        .offensePctTotal +=
+          snaps.offensePct;
+
+      totals
+        .snaps
+        .offensePctGames += 1;
     }
   }
 
@@ -371,7 +509,17 @@ function buildDerived(totals) {
       attemptsPerGame:
         games
           ? round(
-              passAttempts / games
+              passAttempts /
+              games
+            )
+          : 0,
+
+      completionsPerGame:
+        games
+          ? round(
+              totals.passing
+                .completions /
+              games
             )
           : 0,
 
@@ -398,7 +546,8 @@ function buildDerived(totals) {
                 totals.passing
                   .completions /
                 passAttempts
-              ) * 100,
+              ) *
+              100,
               1
             )
           : 0,
@@ -426,7 +575,8 @@ function buildDerived(totals) {
       carriesPerGame:
         games
           ? round(
-              carries / games
+              carries /
+              games
             )
           : 0,
 
@@ -460,14 +610,16 @@ function buildDerived(totals) {
       targetsPerGame:
         games
           ? round(
-              targets / games
+              targets /
+              games
             )
           : 0,
 
       receptionsPerGame:
         games
           ? round(
-              receptions / games
+              receptions /
+              games
             )
           : 0,
 
@@ -501,7 +653,8 @@ function buildDerived(totals) {
               (
                 receptions /
                 targets
-              ) * 100,
+              ) *
+              100,
               1
             )
           : 0,
@@ -512,6 +665,31 @@ function buildDerived(totals) {
               totals.receiving
                 .touchdowns /
               games
+            )
+          : 0
+    },
+
+    snaps: {
+      offensePerGame:
+        games
+          ? round(
+              totals.snaps.offense /
+              games
+            )
+          : 0,
+
+      offensePct:
+        totals
+          .snaps
+          .offensePctGames > 0
+          ? round(
+              totals
+                .snaps
+                .offensePctTotal /
+              totals
+                .snaps
+                .offensePctGames,
+              1
             )
           : 0
     }
@@ -552,7 +730,11 @@ function buildUsageProfile(
 
         rushYardsPerGame:
           derived.rushing
-            .yardsPerGame
+            .yardsPerGame,
+
+        offensiveSnapPct:
+          derived.snaps
+            .offensePct
       };
 
     case "RB":
@@ -583,7 +765,11 @@ function buildUsageProfile(
 
         receivingYardsPerGame:
           derived.receiving
-            .yardsPerGame
+            .yardsPerGame,
+
+        offensiveSnapPct:
+          derived.snaps
+            .offensePct
       };
 
     case "WR":
@@ -623,7 +809,11 @@ function buildUsageProfile(
 
         rushYardsPerGame:
           derived.rushing
-            .yardsPerGame
+            .yardsPerGame,
+
+        offensiveSnapPct:
+          derived.snaps
+            .offensePct
       };
 
     default:
@@ -631,53 +821,343 @@ function buildUsageProfile(
   }
 }
 
-function gameWeekNumber(game) {
-  const candidates = [
-    game.gameWeek,
-    game.week,
-    game.gameWeekNumber
-  ];
+function getBaseUrl(event) {
+  const headers =
+    event.headers || {};
+
+  const proto =
+    headers[
+      "x-forwarded-proto"
+    ] ||
+    headers[
+      "X-Forwarded-Proto"
+    ] ||
+    "https";
+
+  const host =
+    headers.host ||
+    headers.Host;
+
+  if (!host) {
+    throw new Error(
+      "Could not determine host."
+    );
+  }
+
+  return `${proto}://${host}`;
+}
+
+async function fetchJson(url) {
+  const response =
+    await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept:
+          "application/json"
+      }
+    });
+
+  let data = null;
+
+  try {
+    data =
+      await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const detail =
+      data &&
+      (
+        data.detail ||
+        data.error
+      )
+        ? (
+            data.detail ||
+            data.error
+          )
+        : `HTTP ${response.status}`;
+
+    throw new Error(
+      detail
+    );
+  }
+
+  return data;
+}
+
+async function fetchScheduleWeek({
+  baseUrl,
+  season,
+  week,
+  seasonType
+}) {
+  const url =
+    `${baseUrl}/.netlify/functions/weekly-sage-schedule` +
+    `?season=${encodeURIComponent(season)}` +
+    `&week=${encodeURIComponent(week)}` +
+    `&seasonType=${encodeURIComponent(seasonType)}`;
+
+  const data =
+    await fetchJson(url);
+
+  return {
+    week,
+    games:
+      Array.isArray(
+        data.games
+      )
+        ? data.games
+        : []
+  };
+}
+
+async function mapWithConcurrency(
+  items,
+  limit,
+  worker
+) {
+  const results =
+    new Array(
+      items.length
+    );
+
+  let nextIndex = 0;
+
+  async function runner() {
+    while (true) {
+      const index =
+        nextIndex++;
+
+      if (
+        index >=
+        items.length
+      ) {
+        return;
+      }
+
+      results[index] =
+        await worker(
+          items[index],
+          index
+        );
+    }
+  }
+
+  const runnerCount =
+    Math.min(
+      limit,
+      items.length
+    );
+
+  const runners = [];
 
   for (
-    const candidate of
-    candidates
+    let i = 0;
+    i < runnerCount;
+    i += 1
   ) {
-    if (
-      candidate === undefined ||
-      candidate === null
+    runners.push(
+      runner()
+    );
+  }
+
+  await Promise.all(
+    runners
+  );
+
+  return results;
+}
+
+async function buildPriorWeekScheduleMap({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
+  if (
+    targetWeek <= 1
+  ) {
+    return {
+      weeksIncluded: [],
+      gameMap:
+        new Map()
+    };
+  }
+
+  const weeksIncluded =
+    Array.from(
+      {
+        length:
+          targetWeek - 1
+      },
+      function (_, index) {
+        return index + 1;
+      }
+    );
+
+  const schedules =
+    await mapWithConcurrency(
+      weeksIncluded,
+      SCHEDULE_CONCURRENCY,
+      function (week) {
+        return fetchScheduleWeek({
+          baseUrl,
+          season,
+          week,
+          seasonType
+        });
+      }
+    );
+
+  const gameMap =
+    new Map();
+
+  for (
+    const schedule of
+    schedules
+  ) {
+    for (
+      const game of
+      schedule.games
     ) {
-      continue;
-    }
+      if (!game.gameID) {
+        continue;
+      }
 
-    const match =
-      String(candidate)
-        .match(/\d+/);
+      gameMap.set(
+        game.gameID,
+        {
+          week:
+            schedule.week,
 
-    if (match) {
-      return Number(match[0]);
+          gameID:
+            game.gameID,
+
+          away:
+            normalizeTeam(
+              game.away
+            ),
+
+          home:
+            normalizeTeam(
+              game.home
+            ),
+
+          gameDate:
+            game.gameDate ||
+            null,
+
+          gameTime:
+            game.gameTime ||
+            null,
+
+          gameStatus:
+            game.gameStatus ||
+            null
+        }
+      );
     }
+  }
+
+  return {
+    weeksIncluded,
+    gameMap
+  };
+}
+
+function opponentFromSchedule(
+  scheduleGame,
+  team
+) {
+  if (!scheduleGame) {
+    return null;
+  }
+
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  if (
+    scheduleGame.away ===
+    normalizedTeam
+  ) {
+    return (
+      scheduleGame.home ||
+      null
+    );
+  }
+
+  if (
+    scheduleGame.home ===
+    normalizedTeam
+  ) {
+    return (
+      scheduleGame.away ||
+      null
+    );
   }
 
   return null;
 }
 
-function filterPriorGames(
-  games,
-  targetWeek
+function attachScheduleContext(
+  playerGames,
+  gameMap,
+  team
 ) {
-  return games.filter(game => {
-    const week =
-      gameWeekNumber(game);
+  const games = [];
 
-    if (week === null) {
-      return false;
+  for (
+    const game of
+    playerGames
+  ) {
+    const schedule =
+      gameMap.get(
+        game.gameID
+      );
+
+    /*
+      This automatically enforces no-look-ahead:
+      gameMap contains ONLY Weeks 1 through targetWeek - 1.
+    */
+    if (!schedule) {
+      continue;
     }
 
-    return (
-      week >= 1 &&
-      week < targetWeek
-    );
-  });
+    games.push({
+      ...game,
+
+      sageWeek:
+        schedule.week,
+
+      sageOpponent:
+        opponentFromSchedule(
+          schedule,
+          team
+        ),
+
+      sageGameDate:
+        schedule.gameDate,
+
+      sageGameTime:
+        schedule.gameTime,
+
+      sageGameStatus:
+        schedule.gameStatus
+    });
+  }
+
+  games.sort(
+    function (a, b) {
+      return (
+        num(a.sageWeek) -
+        num(b.sageWeek)
+      );
+    }
+  );
+
+  return games;
 }
 
 function compactGame(game) {
@@ -687,11 +1167,19 @@ function compactGame(game) {
       null,
 
     week:
-      gameWeekNumber(game),
+      game.sageWeek ||
+      null,
 
     opponent:
-      game.opponent ||
-      game.opp ||
+      game.sageOpponent ||
+      null,
+
+    gameDate:
+      game.sageGameDate ||
+      null,
+
+    gameStatus:
+      game.sageGameStatus ||
       null,
 
     Passing:
@@ -704,6 +1192,10 @@ function compactGame(game) {
 
     Receiving:
       game.Receiving ||
+      null,
+
+    snapCounts:
+      game.snapCounts ||
       null
   };
 }
@@ -762,13 +1254,15 @@ exports.handler =
     }
 
     const query =
-      event.queryStringParameters ||
+      event
+        .queryStringParameters ||
       {};
 
     const season =
       String(
         query.season ||
-        new Date().getFullYear()
+        new Date()
+          .getFullYear()
       );
 
     const targetWeek =
@@ -815,18 +1309,37 @@ exports.handler =
     }
 
     try {
-      /*
-        We already validated getNFLPlayerInfo earlier in the
-        Weekly SAGE work, so player identity stays on the
-        same Tank01 data path.
-      */
-      const playerInfoResult =
-        await tank01Fetch(
-          "getNFLPlayerInfo",
-          {
-            playerID
-          }
-        );
+      const baseUrl =
+        getBaseUrl(event);
+
+      const [
+        playerInfoResult,
+        gameStatsResult,
+        scheduleContext
+      ] =
+        await Promise.all([
+          tank01Fetch(
+            "getNFLPlayerInfo",
+            {
+              playerID
+            }
+          ),
+
+          tank01Fetch(
+            "getNFLGamesForPlayer",
+            {
+              playerID,
+              season
+            }
+          ),
+
+          buildPriorWeekScheduleMap({
+            baseUrl,
+            season,
+            targetWeek,
+            seasonType
+          })
+        ]);
 
       const player =
         extractPlayerInfo(
@@ -845,36 +1358,28 @@ exports.handler =
         );
       }
 
-      /*
-        Tank01's player game stats endpoint.
-
-        IMPORTANT:
-        We intentionally retrieve the season and then enforce
-        targetWeek exclusion ourselves below.
-
-        That makes the no-look-ahead rule visible and testable
-        in our own code rather than trusting an implicit API
-        behavior.
-      */
-      const gameStatsResult =
-        await tank01Fetch(
-          "getNFLGamesForPlayer",
-          {
-            playerID,
-            season,
-            seasonType
-          }
-        );
-
-      const allGames =
-        extractGames(
+      const allPlayerGames =
+        extractPlayerGames(
           gameStatsResult
         );
 
+      const team =
+        normalizeTeam(
+          player.teamAbv ||
+          player.team
+        );
+
+      const position =
+        normalizePosition(
+          player.pos ||
+          player.position
+        );
+
       const priorGames =
-        filterPriorGames(
-          allGames,
-          targetWeek
+        attachScheduleContext(
+          allPlayerGames,
+          scheduleContext.gameMap,
+          team
         );
 
       const totals =
@@ -887,12 +1392,6 @@ exports.handler =
           totals
         );
 
-      const position =
-        normalizePosition(
-          player.pos ||
-          player.position
-        );
-
       const usageProfile =
         buildUsageProfile(
           position,
@@ -900,17 +1399,24 @@ exports.handler =
           derived
         );
 
-      const weeksIncluded =
+      const actualWeeksIncluded =
         priorGames
-          .map(gameWeekNumber)
+          .map(
+            function (game) {
+              return game.sageWeek;
+            }
+          )
           .filter(
-            week =>
-              Number.isInteger(
+            function (week) {
+              return Number.isInteger(
                 week
-              )
+              );
+            }
           )
           .sort(
-            (a, b) => a - b
+            function (a, b) {
+              return a - b;
+            }
           );
 
       return jsonResponse(
@@ -919,7 +1425,7 @@ exports.handler =
           evidenceType:
             "weekly-sage-player-season",
 
-          schemaVersion: 1,
+          schemaVersion: 2,
 
           generatedAt:
             new Date()
@@ -939,24 +1445,35 @@ exports.handler =
               player.name ||
               null,
 
-            team:
-              player.team ||
-              player.teamAbv ||
-              null,
+            team,
 
             position
           },
 
           noLookAhead: {
             rule:
-              `Only games before Week ${targetWeek} are included.`,
+              `Only games from Weeks 1 through ${targetWeek - 1} are eligible.`,
 
-            weeksIncluded,
+            scheduleWeeksQueried:
+              scheduleContext
+                .weeksIncluded,
+
+            weeksIncluded:
+              actualWeeksIncluded,
 
             targetWeekExcluded:
-              !weeksIncluded.includes(
-                targetWeek
-              )
+              !actualWeeksIncluded
+                .includes(
+                  targetWeek
+                )
+          },
+
+          sourceSummary: {
+            playerGamesReturned:
+              allPlayerGames.length,
+
+            priorScheduleGamesMatched:
+              priorGames.length
           },
 
           gamesUsed:
@@ -969,11 +1486,6 @@ exports.handler =
 
           usageProfile,
 
-          /*
-            Keep compact source games for diagnostics.
-            This makes validation much easier before we
-            trust the aggregation in SAGE.
-          */
           sourceGames:
             priorGames.map(
               compactGame
