@@ -4,7 +4,7 @@
 //
 // PURPOSE
 // -------
-// Convert the validated season-to-date defensive evidence into
+// Convert validated season-to-date defensive evidence into
 // league-relative matchup signals.
 //
 // Example:
@@ -35,6 +35,41 @@ const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
 const MIN_GAMES_FOR_FULL_CONFIDENCE = 4;
+
+const TEAM_NAMES = {
+  ARI: "Arizona",
+  ATL: "Atlanta",
+  BAL: "Baltimore",
+  BUF: "Buffalo",
+  CAR: "Carolina",
+  CHI: "Chicago",
+  CIN: "Cincinnati",
+  CLE: "Cleveland",
+  DAL: "Dallas",
+  DEN: "Denver",
+  DET: "Detroit",
+  GB: "Green Bay",
+  HOU: "Houston",
+  IND: "Indianapolis",
+  JAX: "Jacksonville",
+  KC: "Kansas City",
+  LAC: "Los Angeles Chargers",
+  LAR: "Los Angeles Rams",
+  LV: "Las Vegas",
+  MIA: "Miami",
+  MIN: "Minnesota",
+  NE: "New England",
+  NO: "New Orleans",
+  NYG: "New York Giants",
+  NYJ: "New York Jets",
+  PHI: "Philadelphia",
+  PIT: "Pittsburgh",
+  SEA: "Seattle",
+  SF: "San Francisco",
+  TB: "Tampa Bay",
+  TEN: "Tennessee",
+  WSH: "Washington"
+};
 
 /*
   Metric weights intentionally sum to 1.00.
@@ -92,11 +127,6 @@ const PASS_METRICS = [
     weight: 0.10,
     direction: "higher_is_easier"
   },
-
-  /*
-    More sacks and interceptions produced by the defense make the
-    matchup HARDER for the offense, so these are reversed.
-  */
   {
     path: ["perGame", "sacks"],
     weight: 0.05,
@@ -176,12 +206,6 @@ function median(values) {
   return sorted[middle];
 }
 
-/*
-  Percentile rank from 0 to 100.
-
-  Ties receive the midpoint of the tied range so identical defensive
-  performance receives identical treatment.
-*/
 function percentileRank(
   value,
   leagueValues
@@ -287,6 +311,385 @@ function signalLabel(signal) {
   }
 }
 
+function matchupOpening(
+  signal,
+  type
+) {
+  const label =
+    type === "run"
+      ? "rushing"
+      : "passing";
+
+  switch (signal) {
+    case "strong_positive":
+      return `Excellent ${label} matchup.`;
+
+    case "positive":
+      return `Favorable ${label} matchup.`;
+
+    case "negative":
+      return `Difficult ${label} matchup.`;
+
+    case "strong_negative":
+      return `Very difficult ${label} matchup.`;
+
+    default:
+      return `Neutral ${label} matchup.`;
+  }
+}
+
+function teamDisplayName(team) {
+  return (
+    TEAM_NAMES[team] ||
+    team
+  );
+}
+
+function earlySeasonQualifier(
+  confidence,
+  games
+) {
+  if (
+    !confidence ||
+    confidence.level === "full"
+  ) {
+    return "";
+  }
+
+  return (
+    ` Early-season sample: based on ${games} ` +
+    `game${games === 1 ? "" : "s"}.`
+  );
+}
+
+function percentilePhrase(
+  percentile,
+  favorableType
+) {
+  if (percentile >= 90) {
+    return favorableType === "positive"
+      ? "among the most favorable marks in the league"
+      : "among the strongest marks in the league";
+  }
+
+  if (percentile >= 75) {
+    return favorableType === "positive"
+      ? "well above the league norm for offensive opportunity"
+      : "well above the league norm defensively";
+  }
+
+  if (percentile <= 10) {
+    return favorableType === "positive"
+      ? "among the least favorable marks in the league"
+      : "among the weakest marks in the league";
+  }
+
+  if (percentile <= 25) {
+    return favorableType === "positive"
+      ? "below the league norm for offensive opportunity"
+      : "below the league norm defensively";
+  }
+
+  return "near the league norm";
+}
+
+function findComponent(
+  profile,
+  metric
+) {
+  if (
+    !profile ||
+    !Array.isArray(
+      profile.components
+    )
+  ) {
+    return null;
+  }
+
+  return (
+    profile.components.find(
+      component =>
+        component.metric === metric
+    ) ||
+    null
+  );
+}
+
+function buildRunExplanation({
+  team,
+  run,
+  defense
+}) {
+  const displayName =
+    teamDisplayName(team);
+
+  const games =
+    numberValue(
+      defense.games
+    );
+
+  const rushYards =
+    numberValue(
+      defense.perGame &&
+      defense.perGame
+        .rushYardsAllowed
+    );
+
+  const yardsPerCarry =
+    numberValue(
+      defense.runDefense &&
+      defense.runDefense
+        .yardsPerCarryAllowed
+    );
+
+  const rushTD =
+    numberValue(
+      defense.perGame &&
+      defense.perGame
+        .rushTDAllowed
+    );
+
+  const rushYardsComponent =
+    findComponent(
+      run,
+      "perGame.rushYardsAllowed"
+    );
+
+  const ypcComponent =
+    findComponent(
+      run,
+      "runDefense.yardsPerCarryAllowed"
+    );
+
+  const opening =
+    matchupOpening(
+      run.signal,
+      "run"
+    );
+
+  let detail = "";
+
+  if (
+    run.signal === "strong_positive" ||
+    run.signal === "positive"
+  ) {
+    const rushYardsPhrase =
+      rushYardsComponent
+        ? percentilePhrase(
+            rushYardsComponent
+              .favorablePercentile,
+            "positive"
+          )
+        : "a favorable league-relative mark";
+
+    const ypcPhrase =
+      ypcComponent
+        ? percentilePhrase(
+            ypcComponent
+              .favorablePercentile,
+            "positive"
+          )
+        : "a favorable league-relative mark";
+
+    detail =
+      `${displayName} has allowed ${rushYards.toFixed(1)} rushing yards ` +
+      `per game and ${yardsPerCarry.toFixed(2)} yards per carry. ` +
+      `Those measures are ${rushYardsPhrase} and ${ypcPhrase}, respectively.`;
+
+    if (rushTD >= 1) {
+      detail +=
+        ` The defense has also allowed ${rushTD.toFixed(2)} rushing ` +
+        `touchdowns per game.`;
+    }
+  } else if (
+    run.signal === "strong_negative" ||
+    run.signal === "negative"
+  ) {
+    detail =
+      `${displayName} has allowed only ${rushYards.toFixed(1)} rushing yards ` +
+      `per game and ${yardsPerCarry.toFixed(2)} yards per carry, indicating ` +
+      `a stronger-than-average run defense.`;
+
+    if (rushTD < 1) {
+      detail +=
+        ` It has allowed ${rushTD.toFixed(2)} rushing touchdowns per game.`;
+    }
+  } else {
+    detail =
+      `${displayName} has allowed ${rushYards.toFixed(1)} rushing yards ` +
+      `per game and ${yardsPerCarry.toFixed(2)} yards per carry, placing ` +
+      `the matchup near the middle of the league.`;
+  }
+
+  return (
+    `${opening} ${detail}` +
+    earlySeasonQualifier(
+      run.confidence,
+      games
+    )
+  );
+}
+
+function buildPassExplanation({
+  team,
+  pass,
+  defense
+}) {
+  const displayName =
+    teamDisplayName(team);
+
+  const games =
+    numberValue(
+      defense.games
+    );
+
+  const passYards =
+    numberValue(
+      defense.perGame &&
+      defense.perGame
+        .passYardsAllowed
+    );
+
+  const yardsPerAttempt =
+    numberValue(
+      defense.passDefense &&
+      defense.passDefense
+        .yardsPerAttemptAllowed
+    );
+
+  const passTD =
+    numberValue(
+      defense.perGame &&
+      defense.perGame
+        .passTDAllowed
+    );
+
+  const sacks =
+    numberValue(
+      defense.perGame &&
+      defense.perGame.sacks
+    );
+
+  const interceptions =
+    numberValue(
+      defense.perGame &&
+      defense.perGame
+        .interceptions
+    );
+
+  const passYardsComponent =
+    findComponent(
+      pass,
+      "perGame.passYardsAllowed"
+    );
+
+  const ypaComponent =
+    findComponent(
+      pass,
+      "passDefense.yardsPerAttemptAllowed"
+    );
+
+  const sacksComponent =
+    findComponent(
+      pass,
+      "perGame.sacks"
+    );
+
+  const interceptionsComponent =
+    findComponent(
+      pass,
+      "perGame.interceptions"
+    );
+
+  const opening =
+    matchupOpening(
+      pass.signal,
+      "pass"
+    );
+
+  let detail = "";
+
+  if (
+    pass.signal === "strong_positive" ||
+    pass.signal === "positive"
+  ) {
+    detail =
+      `${displayName} has allowed ${passYards.toFixed(1)} passing yards ` +
+      `and ${passTD.toFixed(2)} passing touchdowns per game while ` +
+      `surrendering ${yardsPerAttempt.toFixed(2)} yards per attempt.`;
+
+    const yardsHighlyFavorable =
+      passYardsComponent &&
+      passYardsComponent
+        .favorablePercentile >= 80;
+
+    const efficiencyHighlyFavorable =
+      ypaComponent &&
+      ypaComponent
+        .favorablePercentile >= 80;
+
+    if (
+      yardsHighlyFavorable &&
+      efficiencyHighlyFavorable
+    ) {
+      detail +=
+        " Both volume and efficiency point to one of the league's more favorable passing environments.";
+    } else if (
+      yardsHighlyFavorable
+    ) {
+      detail +=
+        " Passing volume allowed has been especially favorable relative to the league.";
+    } else if (
+      efficiencyHighlyFavorable
+    ) {
+      detail +=
+        " Opposing passing attacks have also produced efficiently relative to the league.";
+    }
+  } else if (
+    pass.signal === "strong_negative" ||
+    pass.signal === "negative"
+  ) {
+    detail =
+      `${displayName} has allowed only ${passYards.toFixed(1)} passing yards ` +
+      `per game and ${yardsPerAttempt.toFixed(2)} yards per attempt, ` +
+      `indicating a stronger-than-average pass defense.`;
+
+    const strongSackPressure =
+      sacksComponent &&
+      sacksComponent
+        .favorablePercentile <= 20;
+
+    const strongTurnoverPressure =
+      interceptionsComponent &&
+      interceptionsComponent
+        .favorablePercentile <= 20;
+
+    if (strongSackPressure) {
+      detail +=
+        ` The defense is also producing ${sacks.toFixed(2)} sacks per game.`;
+    }
+
+    if (strongTurnoverPressure) {
+      detail +=
+        ` It is averaging ${interceptions.toFixed(2)} interceptions per game.`;
+    }
+  } else {
+    detail =
+      `${displayName} has allowed ${passYards.toFixed(1)} passing yards ` +
+      `per game, ${passTD.toFixed(2)} passing touchdowns per game, and ` +
+      `${yardsPerAttempt.toFixed(2)} yards per attempt, producing a ` +
+      `league-average overall passing matchup.`;
+  }
+
+  return (
+    `${opening} ${detail}` +
+    earlySeasonQualifier(
+      pass.confidence,
+      games
+    )
+  );
+}
+
 function confidenceFromGames(games) {
   if (games >= MIN_GAMES_FOR_FULL_CONFIDENCE) {
     return {
@@ -322,22 +725,6 @@ function confidenceFromGames(games) {
   };
 }
 
-/*
-  Early-season evidence should not be treated as equally certain as a
-  seven-game sample.
-
-  We shrink low-sample matchup scores toward league-neutral 50.
-
-  Example:
-      raw score 90
-      one game
-      confidence weight .50
-
-      adjusted = 50 + (90 - 50) * .50
-               = 70
-
-  The evidence still matters, but SAGE does not overreact to one game.
-*/
 function applyConfidence(
   rawScore,
   confidence
@@ -490,19 +877,20 @@ function buildExplanation({
   pass,
   defense
 }) {
-  const games =
-    numberValue(
-      defense.games
-    );
-
   return {
     run:
-      `${team} run matchup is ${run.label.toLowerCase()} ` +
-      `based on ${games} game${games === 1 ? "" : "s"} of prior evidence.`,
+      buildRunExplanation({
+        team,
+        run,
+        defense
+      }),
 
     pass:
-      `${team} pass matchup is ${pass.label.toLowerCase()} ` +
-      `based on ${games} game${games === 1 ? "" : "s"} of prior evidence.`
+      buildPassExplanation({
+        team,
+        pass,
+        defense
+      })
   };
 }
 
@@ -696,9 +1084,6 @@ exports.handler =
         evidence.defenses ||
         {};
 
-      /*
-        Week 1 intentionally has no current-season evidence.
-      */
       if (
         Object.keys(defenses)
           .length === 0
@@ -717,8 +1102,10 @@ exports.handler =
                 .toISOString(),
 
             season,
+
             targetWeek:
               week,
+
             seasonType,
 
             weeksIncluded:
@@ -728,8 +1115,10 @@ exports.handler =
             methodology: {
               basis:
                 "league-relative percentile scoring",
+
               earlySeasonAdjustment:
                 "low-sample scores are shrunk toward league-neutral 50",
+
               positiveMeaning:
                 "favorable for the offensive fantasy player"
             },
@@ -821,8 +1210,10 @@ exports.handler =
               rawEvidence: {
                 runDefense:
                   defense.runDefense,
+
                 passDefense:
                   defense.passDefense,
+
                 perGame:
                   defense.perGame
               }
@@ -861,10 +1252,13 @@ exports.handler =
             runWeights: {
               rushYardsAllowedPerGame:
                 0.40,
+
               yardsPerCarryAllowed:
                 0.30,
+
               rushTDAllowedPerGame:
                 0.20,
+
               rushAttemptsAllowedPerGame:
                 0.10
             },
@@ -872,14 +1266,19 @@ exports.handler =
             passWeights: {
               passYardsAllowedPerGame:
                 0.35,
+
               yardsPerAttemptAllowed:
                 0.25,
+
               passTDAllowedPerGame:
                 0.20,
+
               completionPctAllowed:
                 0.10,
+
               sacksPerGame:
                 0.05,
+
               interceptionsPerGame:
                 0.05
             },
@@ -887,12 +1286,16 @@ exports.handler =
             thresholds: {
               strongPositive:
                 "80-100",
+
               positive:
                 "60-79.9",
+
               neutral:
                 "40.1-59.9",
+
               negative:
                 "20.1-40",
+
               strongNegative:
                 "0-20"
             },
