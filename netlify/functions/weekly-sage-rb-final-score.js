@@ -6,9 +6,22 @@
 // -------
 // Compose the validated Weekly SAGE RB components:
 //
+//   ROLE        55%
+//   PRODUCTION  40%
+//   MATCHUP      5%
+//
+// RB SAGE v2
+// ----------
+// Selected after historical sensitivity testing on the frozen
+// 2025 Weeks 5-17 RB backtest (124 clean player-week observations).
+//
+// RB SAGE v1 remains preserved as the historical baseline:
 //   ROLE        45%
 //   PRODUCTION  35%
 //   MATCHUP     20%
+//
+// v2 status:
+//   Provisional pending broader multi-season / out-of-sample validation.
 //
 // using confidence-adjusted component scores.
 //
@@ -49,7 +62,17 @@ const DEFAULT_SEASON_TYPE = "reg";
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
+const SAGE_MODEL_VERSION =
+  "rb-sage-v2";
+
 const FINAL_WEIGHTS = {
+  role: 0.55,
+  production: 0.40,
+  matchup: 0.05
+};
+
+const PREVIOUS_WEIGHTS = {
+  version: "rb-sage-v1",
   role: 0.45,
   production: 0.35,
   matchup: 0.20
@@ -446,7 +469,7 @@ function overallConfidence({
   matchup
 }) {
   /*
-    Confidence follows the same 45 / 35 / 20 influence
+    Confidence follows the same 55 / 40 / 5 influence
     structure as the SAGE score itself.
 
     This is NOT another score adjustment.
@@ -501,8 +524,8 @@ function buildExplanation({
     `${roleAdjusted} for Role, ` +
     `${productionAdjusted} for Production, and ` +
     `${matchupAdjusted} for the matchup against ${opponent}. ` +
-    `Role and Production account for 80% of the model, ` +
-    `while matchup contributes 20%.`
+    `Role and Production account for 95% of the model, ` +
+    `while matchup contributes 5%.`
   );
 }
 
@@ -819,7 +842,7 @@ exports.handler =
             "weekly-sage-rb-final-score",
 
           schemaVersion:
-            2,
+            3,
 
           generatedAt:
             new Date()
@@ -857,8 +880,28 @@ exports.handler =
             null,
 
           methodology: {
+            modelVersion:
+              SAGE_MODEL_VERSION,
+
             weights:
               FINAL_WEIGHTS,
+
+            previousBaseline:
+              PREVIOUS_WEIGHTS,
+
+            validationBasis: {
+              season:
+                "2025",
+
+              weeks:
+                "5-17",
+
+              cleanPlayerWeekObservations:
+                124,
+
+              status:
+                "Provisional pending broader multi-season / out-of-sample validation."
+            },
 
             neutralBaseline:
               NEUTRAL_BASELINE,
@@ -1013,6 +1056,9 @@ exports.handler =
           },
 
           architecture: {
+            modelVersion:
+              SAGE_MODEL_VERSION,
+
             rbPopulationSource:
               "weekly-sage-rb-snapshot",
 
@@ -1033,6 +1079,12 @@ exports.handler =
           },
 
           provenance: {
+            modelVersion:
+              SAGE_MODEL_VERSION,
+
+            historicalWeightBaseline:
+              PREVIOUS_WEIGHTS,
+
             rawRoleAndProduction:
               "weekly-sage-rb-component-scores",
 
