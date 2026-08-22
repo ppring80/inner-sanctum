@@ -13,6 +13,20 @@
 // That matters because Weekly SAGE must know NEXT WEEK'S opponent
 // before the game has been played.
 //
+// REGULAR-SEASON TEAM STATE
+// -------------------------
+// This endpoint also identifies:
+//
+//   activeTeams
+//     Teams appearing in a game during the requested week.
+//
+//   byeTeams
+//     NFL teams not appearing in a game during the requested
+//     regular-season week.
+//
+// This centralizes bye-week knowledge so downstream SAGE
+// functions do not have to infer or hard-code bye logic.
+//
 // It does NOT:
 // - calculate matchup scores
 // - calculate player recommendations
@@ -27,23 +41,96 @@
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
-const DEFAULT_SEASON_TYPE = "reg";
+const DEFAULT_SEASON_TYPE =
+  "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
+/*
+  Canonical NFL team abbreviations.
+
+  Used only to determine regular-season bye teams.
+
+  Keep this list centralized here rather than duplicating
+  bye logic across RB / WR / QB / TE SAGE functions.
+*/
+const NFL_TEAMS = [
+  "ARI",
+  "ATL",
+  "BAL",
+  "BUF",
+  "CAR",
+  "CHI",
+  "CIN",
+  "CLE",
+  "DAL",
+  "DEN",
+  "DET",
+  "GB",
+  "HOU",
+  "IND",
+  "JAX",
+  "KC",
+  "LV",
+  "LAC",
+  "LAR",
+  "MIA",
+  "MIN",
+  "NE",
+  "NO",
+  "NYG",
+  "NYJ",
+  "PHI",
+  "PIT",
+  "SEA",
+  "SF",
+  "TB",
+  "TEN",
+  "WSH"
+];
+
 function tank01Headers() {
   return {
-    "Content-Type": "application/json",
-    "x-rapidapi-host": TANK01_HOST,
-    "x-rapidapi-key": process.env.TANK01_API_KEY
+    "Content-Type":
+      "application/json",
+
+    "x-rapidapi-host":
+      TANK01_HOST,
+
+    "x-rapidapi-key":
+      process.env.TANK01_API_KEY
   };
 }
 
 function normalizeTeam(value) {
-  return String(value || "")
-    .trim()
-    .toUpperCase();
+  const raw =
+    String(
+      value || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  /*
+    Normalize common alternate abbreviations in case an
+    upstream source uses one of them.
+  */
+  const aliases = {
+    JAC: "JAX",
+    GBP: "GB",
+    KAN: "KC",
+    LVR: "LV",
+    NEP: "NE",
+    NOR: "NO",
+    SFO: "SF",
+    TBB: "TB",
+    WAS: "WSH"
+  };
+
+  return (
+    aliases[raw] ||
+    raw
+  );
 }
 
 async function tank01Fetch(
@@ -57,13 +144,22 @@ async function tank01Fetch(
 
   const url =
     `https://${TANK01_HOST}/${endpoint}` +
-    (query ? `?${query}` : "");
+    (
+      query
+        ? `?${query}`
+        : ""
+    );
 
   const response =
-    await fetch(url, {
-      method: "GET",
-      headers: tank01Headers()
-    });
+    await fetch(
+      url,
+      {
+        method: "GET",
+
+        headers:
+          tank01Headers()
+      }
+    );
 
   let data = null;
 
@@ -87,13 +183,16 @@ async function tank01Fetch(
     } else if (
       data &&
       data.body &&
-      typeof data.body === "string"
+      typeof data.body ===
+        "string"
     ) {
       message =
         data.body;
     }
 
-    throw new Error(message);
+    throw new Error(
+      message
+    );
   }
 
   return data;
@@ -102,31 +201,40 @@ async function tank01Fetch(
 function normalizeGame(game) {
   return {
     gameID:
-      game.gameID || null,
+      game.gameID ||
+      null,
 
     season:
-      game.season || null,
+      game.season ||
+      null,
 
     seasonType:
-      game.seasonType || null,
+      game.seasonType ||
+      null,
 
     gameWeek:
-      game.gameWeek || null,
+      game.gameWeek ||
+      null,
 
     gameDate:
-      game.gameDate || null,
+      game.gameDate ||
+      null,
 
     gameTime:
-      game.gameTime || null,
+      game.gameTime ||
+      null,
 
     gameTime_epoch:
-      game.gameTime_epoch || null,
+      game.gameTime_epoch ||
+      null,
 
     gameStatus:
-      game.gameStatus || null,
+      game.gameStatus ||
+      null,
 
     gameStatusCode:
-      game.gameStatusCode || null,
+      game.gameStatusCode ||
+      null,
 
     away:
       normalizeTeam(
@@ -139,17 +247,90 @@ function normalizeGame(game) {
       ),
 
     teamIDAway:
-      game.teamIDAway || null,
+      game.teamIDAway ||
+      null,
 
     teamIDHome:
-      game.teamIDHome || null,
+      game.teamIDHome ||
+      null,
 
     neutralSite:
-      game.neutralSite || null,
+      game.neutralSite ||
+      null,
 
     espnID:
-      game.espnID || null
+      game.espnID ||
+      null
   };
+}
+
+/*
+  Return all unique teams participating in this week's games.
+*/
+function buildActiveTeams(games) {
+  const teams =
+    new Set();
+
+  for (
+    const game of games
+  ) {
+    const away =
+      normalizeTeam(
+        game.away
+      );
+
+    const home =
+      normalizeTeam(
+        game.home
+      );
+
+    if (away) {
+      teams.add(away);
+    }
+
+    if (home) {
+      teams.add(home);
+    }
+  }
+
+  return Array
+    .from(teams)
+    .sort();
+}
+
+/*
+  Bye calculation is meaningful for the regular season only.
+
+  A team absent from the complete regular-season weekly
+  schedule is on bye.
+
+  We intentionally do NOT apply this rule to preseason,
+  postseason, or seasonType=all because absence there does
+  not mean "bye" in the normal NFL regular-season sense.
+*/
+function buildByeTeams(
+  activeTeams,
+  seasonType
+) {
+  if (
+    seasonType !== "reg"
+  ) {
+    return [];
+  }
+
+  const active =
+    new Set(
+      activeTeams.map(
+        normalizeTeam
+      )
+    );
+
+  return NFL_TEAMS
+    .filter(
+      team =>
+        !active.has(team)
+    )
+    .sort();
 }
 
 function jsonResponse(
@@ -165,7 +346,8 @@ function jsonResponse(
         "application/json",
 
       "Cache-Control":
-        cacheControl || "no-store"
+        cacheControl ||
+        "no-store"
     },
 
     body:
@@ -181,7 +363,8 @@ exports.handler =
   async function (event) {
     if (
       event.httpMethod &&
-      event.httpMethod !== "GET"
+      event.httpMethod !==
+        "GET"
     ) {
       return jsonResponse(
         405,
@@ -193,7 +376,8 @@ exports.handler =
     }
 
     if (
-      !process.env.TANK01_API_KEY
+      !process.env
+        .TANK01_API_KEY
     ) {
       return jsonResponse(
         500,
@@ -205,13 +389,15 @@ exports.handler =
     }
 
     const query =
-      event.queryStringParameters ||
+      event
+        .queryStringParameters ||
       {};
 
     const season =
       String(
         query.season ||
-        new Date().getFullYear()
+        new Date()
+          .getFullYear()
       );
 
     const week =
@@ -223,10 +409,14 @@ exports.handler =
       String(
         query.seasonType ||
         DEFAULT_SEASON_TYPE
-      );
+      )
+        .trim()
+        .toLowerCase();
 
     if (
-      !Number.isInteger(week) ||
+      !Number.isInteger(
+        week
+      ) ||
       week < 1 ||
       week > 18
     ) {
@@ -285,13 +475,30 @@ exports.handler =
           normalizeGame
         );
 
+      /*
+        NEW:
+        Derive weekly team-state once here so every downstream
+        SAGE layer consumes the same answer.
+      */
+      const activeTeams =
+        buildActiveTeams(
+          games
+        );
+
+      const byeTeams =
+        buildByeTeams(
+          activeTeams,
+          seasonType
+        );
+
       return jsonResponse(
         200,
         {
           evidenceType:
             "weekly-sage-schedule",
 
-          schemaVersion: 1,
+          schemaVersion:
+            2,
 
           generatedAt:
             new Date()
@@ -305,6 +512,43 @@ exports.handler =
 
           gamesReturned:
             games.length,
+
+          activeTeamsReturned:
+            activeTeams.length,
+
+          byeTeamsReturned:
+            byeTeams.length,
+
+          /*
+            True only for regular-season requests because that
+            is where absence from the weekly NFL schedule means
+            a normal scheduled bye.
+          */
+          byeClassificationAvailable:
+            seasonType === "reg",
+
+          /*
+            Helpful explanation for downstream consumers.
+          */
+          teamState: {
+            rule:
+              seasonType === "reg"
+                ? "Teams appearing in the requested week's games are active. NFL teams absent from the complete regular-season weekly schedule are classified as bye teams."
+                : "Bye classification is not applied outside regular-season requests.",
+
+            nflTeamCount:
+              NFL_TEAMS.length,
+
+            scheduledTeamCount:
+              activeTeams.length,
+
+            byeTeamCount:
+              byeTeams.length
+          },
+
+          activeTeams,
+
+          byeTeams,
 
           games
         },
