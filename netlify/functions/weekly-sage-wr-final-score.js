@@ -63,9 +63,14 @@ const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
 const WR_WEIGHTS = {
-  role: 0.50,
-  production: 0.40,
-  matchup: 0.10
+  role:
+    0.50,
+
+  production:
+    0.40,
+
+  matchup:
+    0.10
 };
 
 const NEUTRAL_BASELINE =
@@ -133,17 +138,6 @@ function clamp(
       value
     )
   );
-}
-
-function normalizeTeam(
-  value
-) {
-  return String(
-    value ||
-    ""
-  )
-    .trim()
-    .toUpperCase();
 }
 
 function getBaseUrl(
@@ -300,7 +294,8 @@ async function fetchMatchup({
   season,
   week,
   seasonType,
-  playerID
+  team,
+  position
 }) {
   const url =
     buildUrl({
@@ -319,7 +314,9 @@ async function fetchMatchup({
 
         seasonType,
 
-        playerID
+        team,
+
+        position
       }
     });
 
@@ -341,320 +338,80 @@ async function fetchMatchup({
   return data;
 }
 
-function matchupScoreFromEvidence(
-  matchup
+/*
+  Apply matchup confidence the same way SAGE handles uncertainty
+  elsewhere:
+
+    adjusted =
+      observed * confidence
+      +
+      neutral baseline * uncertainty
+
+  If matchup confidence is full, the score is unchanged.
+*/
+function confidenceAdjustedScore(
+  rawScore,
+  confidenceWeight,
+  baseline = NEUTRAL_BASELINE
 ) {
-  const directCandidates = [
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.score,
-
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.matchupScore,
-
-    matchup &&
-      matchup.score,
-
-    matchup &&
-      matchup.matchupScore,
-
-    matchup &&
-      matchup.sage &&
-      matchup.sage.score
-  ];
-
-  for (
-    const candidate of
-    directCandidates
-  ) {
-    const value =
-      nullableNum(
-        candidate
-      );
-
-    if (
-      value !==
-      null
-    ) {
-      return clamp(
-        value,
-        0,
-        100
-      );
-    }
-  }
-
-  return null;
-}
-
-function matchupSignal(
-  matchup
-) {
-  const candidates = [
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.signal,
-
-    matchup &&
-      matchup.signal,
-
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.label,
-
-    matchup &&
-      matchup.label
-  ];
-
-  for (
-    const candidate of
-    candidates
-  ) {
-    if (
-      candidate !==
-      null &&
-      candidate !==
-      undefined &&
-      String(
-        candidate
-      ).trim()
-    ) {
-      return String(
-        candidate
-      )
-        .trim()
-        .toLowerCase();
-    }
-  }
-
-  return null;
-}
-
-function matchupLabel(
-  matchup
-) {
-  const candidates = [
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.label,
-
-    matchup &&
-      matchup.label,
-
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.signal,
-
-    matchup &&
-      matchup.signal
-  ];
-
-  for (
-    const candidate of
-    candidates
-  ) {
-    if (
-      candidate !==
-      null &&
-      candidate !==
-      undefined &&
-      String(
-        candidate
-      ).trim()
-    ) {
-      return String(
-        candidate
-      ).trim();
-    }
-  }
-
-  return null;
-}
-
-function matchupExplanation(
-  matchup
-) {
-  const candidates = [
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.explanation,
-
-    matchup &&
-      matchup.explanation,
-
-    matchup &&
-      matchup.sage &&
-      matchup.sage.explanation
-  ];
-
-  for (
-    const candidate of
-    candidates
-  ) {
-    if (
-      candidate !==
-      null &&
-      candidate !==
-      undefined &&
-      String(
-        candidate
-      ).trim()
-    ) {
-      return String(
-        candidate
-      ).trim();
-    }
-  }
-
-  return null;
-}
-
-function matchupOpponent(
-  matchup
-) {
-  const candidates = [
-    matchup &&
-      matchup.upcomingGame &&
-      matchup.upcomingGame.opponent,
-
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.opponent,
-
-    matchup &&
-      matchup.opponent
-  ];
-
-  for (
-    const candidate of
-    candidates
-  ) {
-    const team =
-      normalizeTeam(
-        candidate
-      );
-
-    if (
-      team
-    ) {
-      return team;
-    }
-  }
-
-  return null;
-}
-
-function upcomingGameFromMatchup(
-  matchup
-) {
-  const game =
-    matchup &&
-    matchup.upcomingGame
-      ? matchup.upcomingGame
-      : null;
+  const score =
+    nullableNum(
+      rawScore
+    );
 
   if (
-    !game
+    score ===
+    null
   ) {
     return null;
   }
 
-  return {
-    team:
-      normalizeTeam(
-        game.team
-      ) ||
-      null,
+  const confidence =
+    clamp(
+      nullableNum(
+        confidenceWeight
+      ) ??
+      1,
+      0,
+      1
+    );
 
-    position:
-      game.position ||
-      POSITION,
-
-    opponent:
-      normalizeTeam(
-        game.opponent
-      ) ||
-      null,
-
-    location:
-      game.location ||
-      null,
-
-    gameID:
-      game.gameID ||
-      null,
-
-    gameDate:
-      game.gameDate ||
-      null,
-
-    gameTime:
-      game.gameTime ||
-      null
-  };
+  return round(
+    (
+      score *
+      confidence
+    ) +
+    (
+      baseline *
+      (
+        1 -
+        confidence
+      )
+    ),
+    1
+  );
 }
 
-function isByeWeek(
-  matchup
+function contribution(
+  score,
+  weight
 ) {
-  const candidates = [
-    matchup &&
-      matchup.byeWeek,
-
-    matchup &&
-      matchup.isBye,
-
-    matchup &&
-      matchup.upcomingGame &&
-      matchup.upcomingGame.isBye,
-
-    matchup &&
-      matchup.schedule &&
-      matchup.schedule.isBye
-  ];
+  const value =
+    nullableNum(
+      score
+    );
 
   if (
-    candidates.some(
-      function (
-        value
-      ) {
-        return (
-          value ===
-          true
-        );
-      }
-    )
+    value ===
+    null
   ) {
-    return true;
+    return null;
   }
 
-  const statusCandidates = [
-    matchup &&
-      matchup.status,
-
-    matchup &&
-      matchup.matchup &&
-      matchup.matchup.status,
-
-    matchup &&
-      matchup.scheduleStatus
-  ];
-
-  return statusCandidates.some(
-    function (
-      value
-    ) {
-      return (
-        String(
-          value ||
-          ""
-        )
-          .trim()
-          .toLowerCase() ===
-        "bye"
-      );
-    }
+  return round(
+    value *
+    weight,
+    2
   );
 }
 
@@ -675,42 +432,42 @@ function sageLabel(
 
   if (
     value >=
-    85
+    90
   ) {
     return "Elite";
   }
 
   if (
     value >=
-    75
+    80
+  ) {
+    return "Very Strong";
+  }
+
+  if (
+    value >=
+    70
   ) {
     return "Strong";
   }
 
   if (
     value >=
-    65
-  ) {
-    return "Very Good";
-  }
-
-  if (
-    value >=
-    55
+    60
   ) {
     return "Above Average";
   }
 
   if (
     value >=
-    45
+    40
   ) {
     return "Average";
   }
 
   if (
     value >=
-    35
+    25
   ) {
     return "Below Average";
   }
@@ -772,77 +529,60 @@ function confidenceLabel(
 }
 
 function overallConfidence({
-  roleConfidence,
-  productionConfidence
-}) {
-  const role =
-    nullableNum(
-      roleConfidence
-    );
-
-  const production =
-    nullableNum(
-      productionConfidence
-    );
-
-  if (
-    role ===
-    null ||
-    production ===
-    null
-  ) {
-    return null;
-  }
-
-  /*
-    Matchup evidence is treated as full confidence once the matchup
-    endpoint has successfully returned a valid matchup score.
-
-    Overall confidence therefore mirrors the final model weights.
-  */
-  return round(
-    (
-      role *
-      WR_WEIGHTS.role
-    ) +
-    (
-      production *
-      WR_WEIGHTS.production
-    ) +
-    WR_WEIGHTS.matchup,
-    3
-  );
-}
-
-function finalScore({
   role,
   production,
   matchup
 }) {
+  const roleValue =
+    nullableNum(
+      role
+    );
+
+  const productionValue =
+    nullableNum(
+      production
+    );
+
+  const matchupValue =
+    nullableNum(
+      matchup
+    );
+
+  if (
+    roleValue ===
+      null ||
+    productionValue ===
+      null ||
+    matchupValue ===
+      null
+  ) {
+    return null;
+  }
+
   return round(
     (
-      role *
+      roleValue *
       WR_WEIGHTS.role
     ) +
     (
-      production *
+      productionValue *
       WR_WEIGHTS.production
     ) +
     (
-      matchup *
+      matchupValue *
       WR_WEIGHTS.matchup
     ),
-    1
+    3
   );
 }
 
 function buildExplanation({
   player,
-  score,
-  role,
-  production,
-  matchup,
-  opponent
+  finalScore,
+  roleAdjusted,
+  productionAdjusted,
+  matchupAdjusted,
+  matchup
 }) {
   const name =
     player &&
@@ -850,17 +590,19 @@ function buildExplanation({
       ? player.name
       : "Player";
 
-  const opponentText =
-    opponent
-      ? ` against ${opponent}`
-      : "";
+  const opponent =
+    matchup &&
+    matchup.opponent
+      ? matchup.opponent
+      : "the opponent";
 
   return (
-    `${name} has a Weekly SAGE WR Score of ${score}. ` +
-    `The confidence-adjusted components are ${role} for Role, ` +
-    `${production} for Production, and ${matchup} for the matchup${opponentText}. ` +
-    `This provisional WR model weights Role at 50%, Production at 40%, ` +
-    `and Matchup at 10%.`
+    `${name} has a Weekly SAGE WR Score of ${finalScore}. ` +
+    `The confidence-adjusted components are ${roleAdjusted} for Role, ` +
+    `${productionAdjusted} for Production, and ${matchupAdjusted} ` +
+    `for the matchup against ${opponent}. ` +
+    `This provisional WR model weights Role at 50%, ` +
+    `Production at 40%, and Matchup at 10%.`
   );
 }
 
@@ -1030,106 +772,50 @@ exports.handler =
         );
       }
 
+      if (
+        !player.team
+      ) {
+        throw new Error(
+          "WR confidence evidence did not include team."
+        );
+      }
+
       /*
         STEP 2
         ------
         Retrieve target-week matchup evidence.
+
+        IMPORTANT:
+        weekly-sage-player-matchup requires TEAM + POSITION.
+
+        Do not pass playerID here.
       */
-      const matchupEvidence =
+      const matchupData =
         await fetchMatchup({
           baseUrl,
           season,
           week:
             targetWeek,
           seasonType,
-          playerID
+          team:
+            player.team,
+          position:
+            POSITION
         });
 
+      const matchup =
+        matchupData
+          .matchupEvidence ||
+        {};
+
       /*
-        STEP 3
-        ------
-        Protect against bye weeks.
-
-        A player without a target-week game should not receive a
-        normal Weekly SAGE forecast.
+        ROLE
       */
-      if (
-        isByeWeek(
-          matchupEvidence
-        )
-      ) {
-        return jsonResponse(
-          200,
-          {
-            evidenceType:
-              "weekly-sage-wr-final-score",
-
-            schemaVersion:
-              1,
-
-            generatedAt:
-              new Date()
-                .toISOString(),
-
-            season,
-
-            targetWeek,
-
-            seasonType,
-
-            player,
-
-            status:
-              "bye",
-
-            upcomingGame:
-              null,
-
-            sage:
-              null,
-
-            recommendation:
-              null,
-
-            recommendationStatus: {
-              ready:
-                false,
-
-              reason:
-                "Player team is on bye in the target week."
-            }
-          },
-
-          CACHE_CONTROL
-        );
-      }
-
-      const roleAdjusted =
-        nullableNum(
-          confidence &&
-          confidence.role &&
-          confidence.role.adjustedScore
-        );
-
-      const productionAdjusted =
-        nullableNum(
-          confidence &&
-          confidence.production &&
-          confidence.production.adjustedScore
-        );
-
-      const roleRaw =
+      const rawRoleScore =
         nullableNum(
           confidence &&
           confidence.role &&
           confidence.role.rawScore
-        );
-
-      const productionRaw =
-        nullableNum(
-          confidence &&
-          confidence.production &&
-          confidence.production.rawScore
         );
 
       const roleConfidence =
@@ -1140,6 +826,23 @@ exports.handler =
           confidence.role.confidence.weight
         );
 
+      const adjustedRoleScore =
+        nullableNum(
+          confidence &&
+          confidence.role &&
+          confidence.role.adjustedScore
+        );
+
+      /*
+        PRODUCTION
+      */
+      const rawProductionScore =
+        nullableNum(
+          confidence &&
+          confidence.production &&
+          confidence.production.rawScore
+        );
+
       const productionConfidence =
         nullableNum(
           confidence &&
@@ -1148,87 +851,111 @@ exports.handler =
           confidence.production.confidence.weight
         );
 
-      const matchupRaw =
-        matchupScoreFromEvidence(
-          matchupEvidence
+      const adjustedProductionScore =
+        nullableNum(
+          confidence &&
+          confidence.production &&
+          confidence.production.adjustedScore
+        );
+
+      /*
+        MATCHUP
+      */
+      const rawMatchupScore =
+        nullableNum(
+          matchup.score
+        );
+
+      const matchupConfidence =
+        clamp(
+          nullableNum(
+            matchup &&
+            matchup.confidence &&
+            matchup.confidence.weight
+          ) ??
+          1,
+          0,
+          1
+        );
+
+      const adjustedMatchupScore =
+        confidenceAdjustedScore(
+          rawMatchupScore,
+          matchupConfidence
         );
 
       if (
-        roleAdjusted ===
+        adjustedRoleScore ===
           null ||
-        productionAdjusted ===
+        adjustedProductionScore ===
+          null ||
+        adjustedMatchupScore ===
           null
       ) {
         return jsonResponse(
           422,
           {
             error:
-              "WR confidence-adjusted component evidence is incomplete.",
+              "One or more WR SAGE components are not ready for final composition.",
 
-            playerID,
+            components: {
+              role:
+                adjustedRoleScore,
 
-            roleAdjusted,
+              production:
+                adjustedProductionScore,
 
-            productionAdjusted
+              matchup:
+                adjustedMatchupScore
+            }
           }
         );
       }
 
-      if (
-        matchupRaw ===
-        null
-      ) {
-        return jsonResponse(
-          422,
-          {
-            error:
-              "WR matchup score could not be resolved from matchup evidence.",
-
-            playerID,
-
-            matchupEvidenceType:
-              matchupEvidence &&
-              matchupEvidence.evidenceType
-                ? matchupEvidence.evidenceType
-                : null,
-
-            detail:
-              "Inspect weekly-sage-player-matchup output before changing final-score logic."
-          }
+      /*
+        STEP 3
+        ------
+        Weighted first-pass WR SAGE composition.
+      */
+      const roleContribution =
+        contribution(
+          adjustedRoleScore,
+          WR_WEIGHTS.role
         );
-      }
 
-      const matchupAdjusted =
-        matchupRaw;
+      const productionContribution =
+        contribution(
+          adjustedProductionScore,
+          WR_WEIGHTS.production
+        );
 
-      const score =
-        finalScore({
+      const matchupContribution =
+        contribution(
+          adjustedMatchupScore,
+          WR_WEIGHTS.matchup
+        );
+
+      const finalScore =
+        round(
+          roleContribution +
+          productionContribution +
+          matchupContribution,
+          1
+        );
+
+      const finalConfidence =
+        overallConfidence({
           role:
-            roleAdjusted,
+            roleConfidence ??
+            0,
 
           production:
-            productionAdjusted,
+            productionConfidence ??
+            0,
 
           matchup:
-            matchupAdjusted
+            matchupConfidence
         });
-
-      const combinedConfidence =
-        overallConfidence({
-          roleConfidence,
-
-          productionConfidence
-        });
-
-      const opponent =
-        matchupOpponent(
-          matchupEvidence
-        );
-
-      const upcomingGame =
-        upcomingGameFromMatchup(
-          matchupEvidence
-        );
 
       return jsonResponse(
         200,
@@ -1282,7 +1009,9 @@ exports.handler =
             confidence.noLookAhead ||
             null,
 
-          upcomingGame,
+          upcomingGame:
+            matchupData.playerContext ||
+            null,
 
           methodology: {
             modelVersion:
@@ -1304,13 +1033,13 @@ exports.handler =
               "Score what the evidence says. Weight how much SAGE trusts the evidence.",
 
             important:
-              "The final score uses confidence-adjusted Role and Production. Matchup is a contextual target-week adjustment. Final WR weights are not yet validated."
+              "The final score uses confidence-adjusted Role, Production, and Matchup components. Final WR weights are not yet validated."
           },
 
           components: {
             role: {
               rawScore:
-                roleRaw,
+                rawRoleScore,
 
               confidence: {
                 weight:
@@ -1323,22 +1052,18 @@ exports.handler =
               },
 
               adjustedScore:
-                roleAdjusted,
+                adjustedRoleScore,
 
               weight:
                 WR_WEIGHTS.role,
 
               weightedContribution:
-                round(
-                  roleAdjusted *
-                  WR_WEIGHTS.role,
-                  2
-                )
+                roleContribution
             },
 
             production: {
               rawScore:
-                productionRaw,
+                rawProductionScore,
 
               confidence: {
                 weight:
@@ -1351,92 +1076,86 @@ exports.handler =
               },
 
               adjustedScore:
-                productionAdjusted,
+                adjustedProductionScore,
 
               weight:
                 WR_WEIGHTS.production,
 
               weightedContribution:
-                round(
-                  productionAdjusted *
-                  WR_WEIGHTS.production,
-                  2
-                )
+                productionContribution
             },
 
             matchup: {
               rawScore:
-                matchupRaw,
+                rawMatchupScore,
 
               confidence: {
                 weight:
-                  1,
+                  matchupConfidence,
 
                 label:
-                  "Full"
+                  confidenceLabel(
+                    matchupConfidence
+                  )
               },
 
               adjustedScore:
-                matchupAdjusted,
+                adjustedMatchupScore,
 
               weight:
                 WR_WEIGHTS.matchup,
 
               weightedContribution:
-                round(
-                  matchupAdjusted *
-                  WR_WEIGHTS.matchup,
-                  2
-                ),
+                matchupContribution,
 
-              opponent,
+              opponent:
+                matchup.opponent ||
+                null,
 
               signal:
-                matchupSignal(
-                  matchupEvidence
-                ),
+                matchup.signal ||
+                null,
 
               label:
-                matchupLabel(
-                  matchupEvidence
-                ),
+                matchup.label ||
+                null,
 
               explanation:
-                matchupExplanation(
-                  matchupEvidence
-                )
+                matchup.explanation ||
+                null
             }
           },
 
           sage: {
-            score,
+            score:
+              finalScore,
 
             label:
               sageLabel(
-                score
+                finalScore
               ),
 
             confidence: {
               weight:
-                combinedConfidence,
+                finalConfidence,
 
               label:
                 confidenceLabel(
-                  combinedConfidence
+                  finalConfidence
                 )
             },
 
             explanation:
               buildExplanation({
                 player,
-                score,
-                role:
-                  roleAdjusted,
-                production:
-                  productionAdjusted,
-                matchup:
-                  matchupAdjusted,
-                opponent
+                finalScore,
+                roleAdjusted:
+                  adjustedRoleScore,
+                productionAdjusted:
+                  adjustedProductionScore,
+                matchupAdjusted:
+                  adjustedMatchupScore,
+                matchup
               })
           },
 
@@ -1456,7 +1175,7 @@ exports.handler =
               true,
 
             reason:
-              "Generate WR historical player-week observations and compare provisional SAGE scores against actual fantasy outcomes before locking final weights."
+              "Validate provisional WR SAGE scores against historical outcomes before locking Role / Production / Matchup weights."
           },
 
           architecture: {
