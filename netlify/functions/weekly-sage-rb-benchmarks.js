@@ -518,6 +518,16 @@ function describeDistribution(
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// TANK01 PLAYER LIST
+//
+// RapidAPI documents this endpoint as:
+//
+//   /getNFLPlayerList?all=true
+//
+// "all=true" is REQUIRED for the full player population.
+// ═══════════════════════════════════════════════════════════════════════
+
 async function fetchPlayerList() {
   if (
     !process.env.TANK01_API_KEY
@@ -530,7 +540,9 @@ async function fetchPlayerList() {
   const data =
     await tank01Fetch(
       "getNFLPlayerList",
-      {}
+      {
+        all: "true"
+      }
     );
 
   const players =
