@@ -23,6 +23,29 @@
 // This preserves the original SAGE prediction and uses the
 // target-week result strictly as POST-GAME validation.
 //
+// PARTICIPATION STATES
+// --------------------
+//
+// PLAYED
+//   -> target-week player-game exists
+//   -> included in validation correlations
+//
+// BYE
+//   -> historical team is explicitly listed in schedule.byeTeams
+//   -> excluded from validation correlations
+//
+// DID NOT PLAY
+//   -> historical team had a scheduled game
+//   -> player has no target-week player-game
+//   -> excluded from validation correlations
+//
+// MISSING OUTCOME
+//   -> no player-game and historical team cannot be reconciled
+//   -> data-quality issue
+//
+// FAILURE
+//   -> downstream retrieval/function error
+//
 // IMPORTANT
 // ---------
 // This function does NOT:
@@ -43,7 +66,8 @@
 //
 // ═══════════════════════════════════════════════════════════════════════
 
-const DEFAULT_SEASON_TYPE = "reg";
+const DEFAULT_SEASON_TYPE =
+  "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
@@ -58,7 +82,8 @@ const SCHEDULE_FUNCTION =
   "weekly-sage-schedule";
 
 function num(value) {
-  const n = Number(value);
+  const n =
+    Number(value);
 
   return Number.isFinite(n)
     ? n
@@ -66,26 +91,37 @@ function num(value) {
 }
 
 function nullableNum(value) {
-  const n = Number(value);
+  const n =
+    Number(value);
 
   return Number.isFinite(n)
     ? n
     : null;
 }
 
-function round(value, digits = 2) {
-  const n = Number(value);
+function round(
+  value,
+  digits = 2
+) {
+  const n =
+    Number(value);
 
   if (!Number.isFinite(n)) {
     return null;
   }
 
   const factor =
-    Math.pow(10, digits);
+    Math.pow(
+      10,
+      digits
+    );
 
   return (
     Math.round(
-      (n + Number.EPSILON) *
+      (
+        n +
+        Number.EPSILON
+      ) *
       factor
     ) / factor
   );
@@ -96,8 +132,12 @@ function getBaseUrl(event) {
     event.headers || {};
 
   const proto =
-    headers["x-forwarded-proto"] ||
-    headers["X-Forwarded-Proto"] ||
+    headers[
+      "x-forwarded-proto"
+    ] ||
+    headers[
+      "X-Forwarded-Proto"
+    ] ||
     "https";
 
   const host =
@@ -129,12 +169,15 @@ function buildUrl({
   );
 }
 
-async function fetchJsonWithStatus(url) {
+async function fetchJsonWithStatus(
+  url
+) {
   const response =
     await fetch(
       url,
       {
-        method: "GET",
+        method:
+          "GET",
 
         headers: {
           Accept:
@@ -182,7 +225,9 @@ async function fetchJson(url) {
           )
         : `HTTP ${result.status}`;
 
-    throw new Error(detail);
+    throw new Error(
+      detail
+    );
   }
 
   return result.data;
@@ -214,94 +259,6 @@ function jsonResponse(
   };
 }
 
-async function fetchLeaderboard({
-  baseUrl,
-  season,
-  week,
-  seasonType
-}) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        LEADERBOARD_FUNCTION,
-
-      params: {
-        season,
-        week:
-          String(week),
-        seasonType
-      }
-    });
-
-  const data =
-    await fetchJson(url);
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-rb-leaderboard"
-  ) {
-    throw new Error(
-      "Unexpected Weekly SAGE RB leaderboard schema."
-    );
-  }
-
-  return data;
-}
-
-/*
-  TARGET-WEEK SCHEDULE
-  --------------------
-
-  We use the schedule only for POST-GAME participation
-  classification.
-
-  If the player's historical team had a scheduled game but
-  getNFLGamesForPlayer contains no target-week game for that
-  player, we classify the player as Did Not Play.
-
-  DNP players are NOT assigned zero fantasy points.
-  They are excluded from validation correlations.
-*/
-async function fetchTargetWeekSchedule({
-  baseUrl,
-  season,
-  targetWeek,
-  seasonType
-}) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        SCHEDULE_FUNCTION,
-
-      params: {
-        season,
-        week:
-          String(targetWeek),
-        seasonType
-      }
-    });
-
-  const data =
-    await fetchJson(url);
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-schedule"
-  ) {
-    throw new Error(
-      "Unexpected Weekly SAGE schedule schema."
-    );
-  }
-
-  return data;
-}
-
 function normalizeTeam(value) {
   const raw =
     String(
@@ -328,12 +285,139 @@ function normalizeTeam(value) {
   );
 }
 
+async function fetchLeaderboard({
+  baseUrl,
+  season,
+  week,
+  seasonType
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        LEADERBOARD_FUNCTION,
+
+      params: {
+        season,
+
+        week:
+          String(week),
+
+        seasonType
+      }
+    });
+
+  const data =
+    await fetchJson(
+      url
+    );
+
+  if (
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-rb-leaderboard"
+  ) {
+    throw new Error(
+      "Unexpected Weekly SAGE RB leaderboard schema."
+    );
+  }
+
+  return data;
+}
+
+async function fetchTargetWeekSchedule({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        SCHEDULE_FUNCTION,
+
+      params: {
+        season,
+
+        week:
+          String(
+            targetWeek
+          ),
+
+        seasonType
+      }
+    });
+
+  const data =
+    await fetchJson(
+      url
+    );
+
+  if (
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-schedule"
+  ) {
+    throw new Error(
+      "Unexpected Weekly SAGE schedule schema."
+    );
+  }
+
+  return data;
+}
+
+/*
+  BYE CLASSIFICATION
+  ------------------
+
+  The schedule layer is authoritative.
+
+  A historical team is considered on bye ONLY when the
+  schedule endpoint explicitly includes it in byeTeams.
+
+  We do not infer bye from absence here.
+*/
+function isByeTeam(
+  schedule,
+  team
+) {
+  const normalizedTeam =
+    normalizeTeam(
+      team
+    );
+
+  if (!normalizedTeam) {
+    return false;
+  }
+
+  const byeTeams =
+    schedule &&
+    Array.isArray(
+      schedule.byeTeams
+    )
+      ? schedule.byeTeams
+      : [];
+
+  return byeTeams
+    .map(
+      normalizeTeam
+    )
+    .includes(
+      normalizedTeam
+    );
+}
+
 function findScheduleGameForTeam(
   schedule,
   team
 ) {
   const normalizedTeam =
-    normalizeTeam(team);
+    normalizeTeam(
+      team
+    );
 
   if (!normalizedTeam) {
     return null;
@@ -381,7 +465,9 @@ function scheduleContextForTeam(
   }
 
   const normalizedTeam =
-    normalizeTeam(team);
+    normalizeTeam(
+      team
+    );
 
   const away =
     normalizeTeam(
@@ -394,14 +480,16 @@ function scheduleContextForTeam(
     );
 
   if (
-    normalizedTeam === away
+    normalizedTeam ===
+    away
   ) {
     return {
       team:
         normalizedTeam,
 
       opponent:
-        home || null,
+        home ||
+        null,
 
       location:
         "away",
@@ -421,14 +509,16 @@ function scheduleContextForTeam(
   }
 
   if (
-    normalizedTeam === home
+    normalizedTeam ===
+    home
   ) {
     return {
       team:
         normalizedTeam,
 
       opponent:
-        away || null,
+        away ||
+        null,
 
       location:
         "home",
@@ -482,11 +572,14 @@ async function fetchPlayerOutcomeSource({
 
       params: {
         season,
+
         week:
           String(
             outcomeEvidenceWeek
           ),
+
         seasonType,
+
         playerID
       }
     });
@@ -498,7 +591,8 @@ async function fetchPlayerOutcomeSource({
 
   if (!result.ok) {
     return {
-      ok: false,
+      ok:
+        false,
 
       status:
         result.status,
@@ -514,9 +608,11 @@ async function fetchPlayerOutcomeSource({
       "weekly-sage-player-season"
   ) {
     return {
-      ok: false,
+      ok:
+        false,
 
-      status: 502,
+      status:
+        502,
 
       data: {
         error:
@@ -526,9 +622,11 @@ async function fetchPlayerOutcomeSource({
   }
 
   return {
-    ok: true,
+    ok:
+      true,
 
-    status: 200,
+    status:
+      200,
 
     data:
       result.data
@@ -537,7 +635,9 @@ async function fetchPlayerOutcomeSource({
 
 function errorMessage(result) {
   if (!result) {
-    return "Unknown outcome retrieval failure.";
+    return (
+      "Unknown outcome retrieval failure."
+    );
   }
 
   const data =
@@ -553,7 +653,8 @@ function errorMessage(result) {
 function gameWeek(game) {
   if (
     !game ||
-    typeof game !== "object"
+    typeof game !==
+      "object"
   ) {
     return null;
   }
@@ -598,12 +699,15 @@ function statBlock(
 ) {
   if (
     !game ||
-    typeof game !== "object"
+    typeof game !==
+      "object"
   ) {
     return {};
   }
 
-  for (const name of names) {
+  for (
+    const name of names
+  ) {
     if (
       game[name] &&
       typeof game[name] ===
@@ -833,7 +937,9 @@ function fantasyPoints(stats) {
       round(
         base +
         (
-          stats.receiving.receptions *
+          stats
+            .receiving
+            .receptions *
           0.5
         ),
         2
@@ -842,7 +948,9 @@ function fantasyPoints(stats) {
     ppr:
       round(
         base +
-        stats.receiving.receptions,
+        stats
+          .receiving
+          .receptions,
         2
       )
   };
@@ -853,10 +961,14 @@ function actualOutcome({
   player
 }) {
   const stats =
-    actualStats(game);
+    actualStats(
+      game
+    );
 
   const fantasy =
-    fantasyPoints(stats);
+    fantasyPoints(
+      stats
+    );
 
   return {
     playerID:
@@ -877,7 +989,9 @@ function actualOutcome({
         null,
 
       week:
-        gameWeek(game),
+        gameWeek(
+          game
+        ),
 
       gameDate:
         game.gameDate ||
@@ -944,13 +1058,15 @@ function validationRecord({
       production:
         nullableNum(
           player.production &&
-          player.production.adjustedScore
+          player.production
+            .adjustedScore
         ),
 
       matchup:
         nullableNum(
           player.matchup &&
-          player.matchup.adjustedScore
+          player.matchup
+            .adjustedScore
         )
     },
 
@@ -959,31 +1075,58 @@ function validationRecord({
         outcome.fantasyPoints,
 
       rushingYards:
-        outcome.stats.rushing.yards,
+        outcome
+          .stats
+          .rushing
+          .yards,
 
       rushingTD:
-        outcome.stats.rushing.touchdowns,
+        outcome
+          .stats
+          .rushing
+          .touchdowns,
 
       receptions:
-        outcome.stats.receiving.receptions,
+        outcome
+          .stats
+          .receiving
+          .receptions,
 
       receivingYards:
-        outcome.stats.receiving.yards,
+        outcome
+          .stats
+          .receiving
+          .yards,
 
       receivingTD:
-        outcome.stats.receiving.touchdowns,
+        outcome
+          .stats
+          .receiving
+          .touchdowns,
 
       scrimmageYards:
-        outcome.stats.scrimmage.yards,
+        outcome
+          .stats
+          .scrimmage
+          .yards,
 
       touches:
-        outcome.stats.scrimmage.touches,
+        outcome
+          .stats
+          .scrimmage
+          .touches,
 
       opportunities:
-        outcome.stats.scrimmage.opportunities,
+        outcome
+          .stats
+          .scrimmage
+          .opportunities,
 
       totalTD:
-        outcome.stats.scrimmage.touchdowns
+        outcome
+          .stats
+          .scrimmage
+          .touchdowns
     },
 
     targetGame:
@@ -996,24 +1139,30 @@ function rankActual(
   scoringKey
 ) {
   const sorted =
-    [...records].sort(
+    [
+      ...records
+    ].sort(
       (a, b) => {
         const aPoints =
           nullableNum(
             a.actual &&
-            a.actual.fantasyPoints &&
-            a.actual.fantasyPoints[
-              scoringKey
-            ]
+            a.actual
+              .fantasyPoints &&
+            a.actual
+              .fantasyPoints[
+                scoringKey
+              ]
           );
 
         const bPoints =
           nullableNum(
             b.actual &&
-            b.actual.fantasyPoints &&
-            b.actual.fantasyPoints[
-              scoringKey
-            ]
+            b.actual
+              .fantasyPoints &&
+            b.actual
+              .fantasyPoints[
+                scoringKey
+              ]
           );
 
         if (
@@ -1023,11 +1172,15 @@ function rankActual(
           return 0;
         }
 
-        if (aPoints === null) {
+        if (
+          aPoints === null
+        ) {
           return 1;
         }
 
-        if (bPoints === null) {
+        if (
+          bPoints === null
+        ) {
           return -1;
         }
 
@@ -1056,19 +1209,6 @@ function rankActual(
   return ranks;
 }
 
-/*
-  Pearson correlation.
-
-  This answers:
-
-    As SAGE score rises,
-    do actual fantasy points tend to rise too?
-
-  Range:
-    +1 = perfect positive relationship
-     0 = no linear relationship
-    -1 = inverse relationship
-*/
 function pearsonCorrelation(
   records,
   scoringKey
@@ -1085,10 +1225,12 @@ function pearsonCorrelation(
           y:
             nullableNum(
               record.actual &&
-              record.actual.fantasyPoints &&
-              record.actual.fantasyPoints[
-                scoringKey
-              ]
+              record.actual
+                .fantasyPoints &&
+              record.actual
+                .fantasyPoints[
+                  scoringKey
+                ]
             )
         })
       )
@@ -1106,7 +1248,10 @@ function pearsonCorrelation(
 
   const meanX =
     pairs.reduce(
-      (sum, pair) =>
+      (
+        sum,
+        pair
+      ) =>
         sum + pair.x,
       0
     ) /
@@ -1114,22 +1259,34 @@ function pearsonCorrelation(
 
   const meanY =
     pairs.reduce(
-      (sum, pair) =>
+      (
+        sum,
+        pair
+      ) =>
         sum + pair.y,
       0
     ) /
     pairs.length;
 
-  let numerator = 0;
-  let denominatorX = 0;
-  let denominatorY = 0;
+  let numerator =
+    0;
 
-  for (const pair of pairs) {
+  let denominatorX =
+    0;
+
+  let denominatorY =
+    0;
+
+  for (
+    const pair of pairs
+  ) {
     const dx =
-      pair.x - meanX;
+      pair.x -
+      meanX;
 
     const dy =
-      pair.y - meanY;
+      pair.y -
+      meanY;
 
     numerator +=
       dx * dy;
@@ -1160,17 +1317,9 @@ function pearsonCorrelation(
   );
 }
 
-/*
-  Spearman rank correlation.
-
-  For fantasy rankings this is especially useful because we
-  care whether SAGE generally orders players correctly, not
-  merely whether score differences map linearly to point
-  differences.
-
-  This implementation uses average ranks for ties.
-*/
-function averageRanks(values) {
+function averageRanks(
+  values
+) {
   const indexed =
     values.map(
       (
@@ -1184,7 +1333,8 @@ function averageRanks(values) {
 
   indexed.sort(
     (a, b) =>
-      a.value - b.value
+      a.value -
+      b.value
   );
 
   const ranks =
@@ -1192,28 +1342,25 @@ function averageRanks(values) {
       values.length
     );
 
-  let i = 0;
+  let i =
+    0;
 
   while (
-    i < indexed.length
+    i <
+    indexed.length
   ) {
     let j =
       i + 1;
 
     while (
-      j < indexed.length &&
+      j <
+        indexed.length &&
       indexed[j].value ===
         indexed[i].value
     ) {
       j++;
     }
 
-    /*
-      Ranks are 1-based.
-
-      If positions 2,3,4 are tied:
-      average rank = 3.
-    */
     const averageRank =
       (
         (i + 1) +
@@ -1231,7 +1378,8 @@ function averageRanks(values) {
         averageRank;
     }
 
-    i = j;
+    i =
+      j;
   }
 
   return ranks;
@@ -1242,7 +1390,8 @@ function pearsonArrays(
   ys
 ) {
   if (
-    xs.length !== ys.length ||
+    xs.length !==
+      ys.length ||
     xs.length < 2
   ) {
     return null;
@@ -1250,7 +1399,10 @@ function pearsonArrays(
 
   const meanX =
     xs.reduce(
-      (sum, value) =>
+      (
+        sum,
+        value
+      ) =>
         sum + value,
       0
     ) /
@@ -1258,15 +1410,23 @@ function pearsonArrays(
 
   const meanY =
     ys.reduce(
-      (sum, value) =>
+      (
+        sum,
+        value
+      ) =>
         sum + value,
       0
     ) /
     ys.length;
 
-  let numerator = 0;
-  let denominatorX = 0;
-  let denominatorY = 0;
+  let numerator =
+    0;
+
+  let denominatorX =
+    0;
+
+  let denominatorY =
+    0;
 
   for (
     let i = 0;
@@ -1274,10 +1434,12 @@ function pearsonArrays(
     i++
   ) {
     const dx =
-      xs[i] - meanX;
+      xs[i] -
+      meanX;
 
     const dy =
-      ys[i] - meanY;
+      ys[i] -
+      meanY;
 
     numerator +=
       dx * dy;
@@ -1323,10 +1485,12 @@ function spearmanCorrelation(
           actual:
             nullableNum(
               record.actual &&
-              record.actual.fantasyPoints &&
-              record.actual.fantasyPoints[
-                scoringKey
-              ]
+              record.actual
+                .fantasyPoints &&
+              record.actual
+                .fantasyPoints[
+                  scoringKey
+                ]
             )
         })
       )
@@ -1370,12 +1534,14 @@ function spearmanCorrelation(
       actualRanks
     );
 
-  return correlation === null
-    ? null
-    : round(
-        correlation,
-        3
-      );
+  return (
+    correlation === null
+      ? null
+      : round(
+          correlation,
+          3
+        )
+  );
 }
 
 function averageFantasyPoints(
@@ -1388,10 +1554,12 @@ function averageFantasyPoints(
         record =>
           nullableNum(
             record.actual &&
-            record.actual.fantasyPoints &&
-            record.actual.fantasyPoints[
-              scoringKey
-            ]
+            record.actual
+              .fantasyPoints &&
+            record.actual
+              .fantasyPoints[
+                scoringKey
+              ]
           )
       )
       .filter(
@@ -1407,7 +1575,10 @@ function averageFantasyPoints(
 
   return round(
     values.reduce(
-      (sum, value) =>
+      (
+        sum,
+        value
+      ) =>
         sum + value,
       0
     ) /
@@ -1416,7 +1587,9 @@ function averageFantasyPoints(
   );
 }
 
-function groupBySageBand(records) {
+function groupBySageBand(
+  records
+) {
   const definitions = [
     {
       key:
@@ -1577,7 +1750,8 @@ exports.handler =
     }
 
     const query =
-      event.queryStringParameters ||
+      event
+        .queryStringParameters ||
       {};
 
     const season =
@@ -1623,18 +1797,20 @@ exports.handler =
 
     try {
       const baseUrl =
-        getBaseUrl(event);
+        getBaseUrl(
+          event
+        );
 
       /*
         STEP 1
         ------
-        Get the PRE-GAME Weekly SAGE leaderboard AND the
-        target-week schedule.
+        Retrieve:
 
-        The leaderboard is the prediction side.
+          1. Frozen pre-game SAGE leaderboard
+          2. Target-week schedule
 
-        The target-week schedule is used only AFTER the prediction
-        is frozen, for participation/DNP classification.
+        Schedule data is used only for POST-GAME participation
+        classification.
       */
       const [
         leaderboard,
@@ -1665,7 +1841,8 @@ exports.handler =
           : [];
 
       if (
-        activePlayers.length === 0
+        activePlayers.length ===
+        0
       ) {
         return jsonResponse(
           422,
@@ -1679,13 +1856,7 @@ exports.handler =
       /*
         STEP 2
         ------
-        Retrieve target-week outcomes.
-
-        For targetWeek 5 we request player-season targetWeek 6,
-        then extract ONLY Week 5.
-
-        This is post-game validation data and never changes the
-        original Week 5 SAGE prediction.
+        Retrieve post-game player-season evidence.
       */
       const outcomeResults =
         await Promise.all(
@@ -1696,6 +1867,7 @@ exports.handler =
                 season,
                 targetWeek,
                 seasonType,
+
                 playerID:
                   player.playerID
               })
@@ -1703,6 +1875,9 @@ exports.handler =
         );
 
       const validation =
+        [];
+
+      const bye =
         [];
 
       const didNotPlay =
@@ -1720,8 +1895,13 @@ exports.handler =
           index
         ) => {
           const player =
-            activePlayers[index];
+            activePlayers[
+              index
+            ];
 
+          /*
+            TRUE RETRIEVAL FAILURE
+          */
           if (!result.ok) {
             failures.push({
               playerID:
@@ -1742,25 +1922,18 @@ exports.handler =
             return;
           }
 
+          /*
+            PLAYED
+            ------
+
+            Actual target-week player-game exists.
+          */
           const game =
             findTargetGame(
               result.data,
               targetWeek
             );
 
-          /*
-            PLAYER PLAYED
-            -------------
-
-            A target-week historical player-game exists.
-
-            This player enters:
-              - actual fantasy-point calculation
-              - actual rankings
-              - Pearson correlation
-              - Spearman correlation
-              - diagnostic SAGE score bands
-          */
           if (game) {
             const outcome =
               actualOutcome({
@@ -1779,26 +1952,8 @@ exports.handler =
           }
 
           /*
-            NO TARGET-WEEK PLAYER-GAME RECORD
-            ---------------------------------
-
-            Do NOT:
-              - assign zero fantasy points
-              - automatically call this missing data
-              - automatically call this DNP
-
-            Instead, reconcile the player's HISTORICAL team from
-            weekly-sage-player-season against the target-week
-            schedule.
-
-            weekly-sage-player-season schema v3 returns:
-
-              player.team
-
-            as the historical team entering the target week.
-
-            That protects historical validation from current-team
-            metadata changes.
+            Historical team comes from player-season schema v3,
+            NOT the current roster team shown in the prediction.
           */
           const historicalTeam =
             normalizeTeam(
@@ -1807,6 +1962,67 @@ exports.handler =
               result.data.player.team
             );
 
+          /*
+            BYE
+            ---
+
+            Explicit schedule.byeTeams is authoritative.
+
+            Example:
+              Kenneth Walker
+              historicalTeam = SEA
+              Week 8 byeTeams includes SEA
+
+            This player:
+              - is not DNP
+              - is not missing data
+              - gets no fantasy-point zero
+              - is excluded from correlations
+          */
+          if (
+            isByeTeam(
+              targetWeekSchedule,
+              historicalTeam
+            )
+          ) {
+            bye.push({
+              playerID:
+                player.playerID,
+
+              name:
+                player.name,
+
+              predictionTeam:
+                player.team ||
+                null,
+
+              historicalTeam:
+                historicalTeam ||
+                null,
+
+              status:
+                "bye",
+
+              eligibleForOutcomeValidation:
+                false,
+
+              fantasyPoints:
+                null,
+
+              reason:
+                `Historical team ${historicalTeam} is explicitly listed as a Week ${targetWeek} bye team by weekly-sage-schedule. Player excluded from outcome validation.`
+            });
+
+            return;
+          }
+
+          /*
+            DID NOT PLAY
+            ------------
+
+            Historical team definitely had a scheduled game,
+            but no target-week player-game exists.
+          */
           const scheduledGame =
             findScheduleGameForTeam(
               targetWeekSchedule,
@@ -1819,19 +2035,9 @@ exports.handler =
               historicalTeam
             );
 
-          /*
-            DID NOT PLAY
-            ------------
-
-            Historical team definitely had a target-week game,
-            but the player has no player-game record for that game.
-
-            Therefore:
-              - classify DNP
-              - exclude from correlations
-              - do NOT score as zero
-          */
-          if (scheduleContext) {
+          if (
+            scheduleContext
+          ) {
             didNotPlay.push({
               playerID:
                 player.playerID,
@@ -1870,13 +2076,11 @@ exports.handler =
             TRUE UNRESOLVED OUTCOME
             -----------------------
 
-            We have no target-week player-game record AND cannot
-            reconcile the historical team to the target-week
-            schedule.
+            No player-game.
+            Not a confirmed bye.
+            Historical team cannot be reconciled to a game.
 
-            This remains a data-quality problem.
-
-            We deliberately do NOT silently turn it into DNP.
+            Leave visible as a data-quality problem.
           */
           missingOutcomes.push({
             playerID:
@@ -1897,7 +2101,7 @@ exports.handler =
               "unresolved",
 
             reason:
-              `No Week ${targetWeek} player-game record was found, and the historical team could not be reconciled to the target-week schedule.`
+              `No Week ${targetWeek} player-game record was found, historical team ${historicalTeam || "unknown"} is not listed as a bye team, and the team could not be reconciled to a target-week game.`
           });
         }
       );
@@ -1905,10 +2109,10 @@ exports.handler =
       /*
         STEP 3
         ------
-        Add actual finish ranks for all three scoring systems.
+        Rank ACTUAL played outcomes.
 
-        DNP and unresolved players are NOT in validation[] and
-        therefore cannot affect these ranks.
+        BYE / DNP / missing / failure players never enter
+        these calculations.
       */
       const standardRanks =
         rankActual(
@@ -1953,11 +2157,7 @@ exports.handler =
       );
 
       /*
-        Keep output ordered by the original SAGE ranking.
-
-        This makes visual validation easy:
-        SAGE #1, #2, #3...
-        compared directly with actual finish.
+        Keep output in original SAGE forecast order.
       */
       validation.sort(
         (a, b) =>
@@ -1968,15 +2168,9 @@ exports.handler =
       /*
         STEP 4
         ------
-        Calculate predictive relationships.
+        Forecast-vs-actual correlations.
 
-        Pearson:
-          SAGE score vs actual fantasy points
-
-        Spearman:
-          SAGE ordering vs actual ordering
-
-        Only PLAYED players are included.
+        ONLY players who actually played are included.
       */
       const correlations = {
         standard: {
@@ -2023,14 +2217,9 @@ exports.handler =
       };
 
       /*
-        These bands are diagnostic only.
+        Diagnostic only.
 
-        They are NOT recommendation thresholds.
-
-        We simply want to observe whether higher SAGE bands
-        produce higher actual fantasy output.
-
-        Again, DNP players are excluded.
+        These are NOT recommendation thresholds.
       */
       const scoreBands =
         groupBySageBand(
@@ -2044,7 +2233,7 @@ exports.handler =
             "weekly-sage-rb-validation",
 
           schemaVersion:
-            2,
+            3,
 
           generatedAt:
             new Date()
@@ -2067,7 +2256,15 @@ exports.handler =
               "Target-week actual results are used only after the frozen SAGE prediction has been retrieved. Actual results do not alter Role, Production, Matchup, Confidence, or the final SAGE score.",
 
             participationHandling:
-              "A player with no target-week player-game record is classified as Did Not Play only when the player's historical team is independently confirmed on the target-week schedule. DNP players are excluded from correlations and are never assigned zero fantasy points.",
+              "Played players are validated against actual fantasy outcomes. Historical teams explicitly listed in weekly-sage-schedule.byeTeams are classified as BYE. Players whose historical team played but who have no player-game record are classified as Did Not Play. BYE and DNP players are excluded from correlations and are never assigned zero fantasy points.",
+
+            participationStates: [
+              "played",
+              "bye",
+              "did_not_play",
+              "unresolved",
+              "failure"
+            ],
 
             fantasyScoring: {
               standard: {
@@ -2130,6 +2327,9 @@ exports.handler =
             outcomesMatched:
               validation.length,
 
+            bye:
+              bye.length,
+
             didNotPlay:
               didNotPlay.length,
 
@@ -2146,6 +2346,8 @@ exports.handler =
 
           validation,
 
+          bye,
+
           didNotPlay,
 
           missingOutcomes,
@@ -2158,13 +2360,19 @@ exports.handler =
           nextStep: {
             ready:
               validation.length > 0 &&
-              missingOutcomes.length === 0 &&
-              failures.length === 0,
+              missingOutcomes.length ===
+                0 &&
+              failures.length ===
+                0,
 
             reason:
-              missingOutcomes.length === 0 &&
-              failures.length === 0
-                ? "Played RBs were validated, DNP players were excluded from outcome correlations, and no unresolved outcome-data problems remain."
+              (
+                missingOutcomes.length ===
+                  0 &&
+                failures.length ===
+                  0
+              )
+                ? "Played RBs were validated, bye and DNP players were excluded from outcome correlations, and no unresolved outcome-data problems remain."
                 : "Resolve missing outcomes or true retrieval failures before expanding historical validation."
           },
 
@@ -2177,6 +2385,9 @@ exports.handler =
 
             participationSchedule:
               "weekly-sage-schedule",
+
+            byeClassification:
+              "weekly-sage-schedule.byeTeams",
 
             outcomeWeekExtraction:
               `Week ${targetWeek} source game only`
