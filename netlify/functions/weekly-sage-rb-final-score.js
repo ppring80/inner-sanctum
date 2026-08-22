@@ -1,34 +1,50 @@
 // netlify/functions/weekly-sage-rb-final-score.js
 //
-// WEEKLY SAGE — RB FINAL SCORE COMPOSITION
+// WEEKLY SAGE — FINAL RB SCORE
 //
 // PURPOSE
 // -------
-// Compose the three independently validated Weekly SAGE RB components:
+// Compose the validated Weekly SAGE RB components:
 //
 //   ROLE        45%
 //   PRODUCTION  35%
 //   MATCHUP     20%
 //
-// into the first complete Weekly SAGE player score.
+// using confidence-adjusted component scores.
+//
+// ARCHITECTURE
+// ------------
+//
+// weekly-sage-rb-snapshot
+//          ↓
+// weekly-sage-rb-benchmarks
+//          ↓
+// weekly-sage-rb-component-scores
+//          ↓
+// weekly-sage-rb-confidence
+//          ↓
+// THIS FUNCTION
+//
+// Matchup comes from:
+//
+// weekly-sage-player-matchup
 //
 // IMPORTANT
 // ---------
 // This function DOES NOT:
 // - create START / FLEX / SIT recommendations
-// - modify weekly.html
-// - recalculate Role
-// - recalculate Production
-// - recalculate Matchup
+// - rebuild the RB population
+// - call Tank01 for the entire RB universe
+// - change Role or Production methodology
 //
-// It only composes already-validated component scores.
-//
-// Recommendation thresholds will be designed and validated separately.
+// PRINCIPLE
+// ---------
+// Score what the evidence says.
+// Weight how much SAGE trusts the evidence.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
-const DEFAULT_SEASON_TYPE =
-  "reg";
+const DEFAULT_SEASON_TYPE = "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
@@ -38,6 +54,14 @@ const FINAL_WEIGHTS = {
   production: 0.35,
   matchup: 0.20
 };
+
+const CONFIDENCE_FUNCTION =
+  "weekly-sage-rb-confidence";
+
+const MATCHUP_FUNCTION =
+  "weekly-sage-player-matchup";
+
+const NEUTRAL_BASELINE = 50;
 
 function num(value) {
   const n =
@@ -74,8 +98,21 @@ function round(
         Number.EPSILON
       ) *
       factor
-    ) /
-    factor
+    ) / factor
+  );
+}
+
+function clamp(
+  value,
+  min,
+  max
+) {
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
   );
 }
 
@@ -145,131 +182,306 @@ async function fetchJson(url) {
   return data;
 }
 
-async function fetchRBComponentScores({
+function buildUrl({
+  baseUrl,
+  functionName,
+  params
+}) {
+  const query =
+    new URLSearchParams(
+      params
+    ).toString();
+
+  return (
+    `${baseUrl}/.netlify/functions/${functionName}` +
+    `?${query}`
+  );
+}
+
+async function fetchConfidence({
   baseUrl,
   season,
   week,
-  playerID,
-  seasonType
+  seasonType,
+  playerID
 }) {
   const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-rb-component-scores` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&playerID=${encodeURIComponent(playerID)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        CONFIDENCE_FUNCTION,
+
+      params: {
+        season,
+        week:
+          String(week),
+        seasonType,
+        playerID
+      }
+    });
 
   const data =
-    await fetchJson(
-      url
-    );
+    await fetchJson(url);
 
   if (
     !data ||
     data.evidenceType !==
-      "weekly-sage-rb-component-scores"
+      "weekly-sage-rb-confidence"
   ) {
     throw new Error(
-      "Unexpected RB component-score schema."
+      "Unexpected RB confidence schema."
     );
   }
 
   return data;
 }
 
-async function fetchPlayerEvidence({
+async function fetchMatchup({
   baseUrl,
   season,
   week,
-  playerID,
-  seasonType
+  seasonType,
+  team,
+  position
 }) {
   const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-player-evidence` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&playerID=${encodeURIComponent(playerID)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        MATCHUP_FUNCTION,
+
+      params: {
+        season,
+        week:
+          String(week),
+        seasonType,
+        team,
+        position
+      }
+    });
 
   const data =
-    await fetchJson(
-      url
-    );
+    await fetchJson(url);
 
   if (
     !data ||
     data.evidenceType !==
-      "weekly-sage-player-evidence"
+      "weekly-sage-player-matchup"
   ) {
     throw new Error(
-      "Unexpected player-evidence schema."
+      "Unexpected player-matchup schema."
     );
   }
 
   return data;
 }
 
-function finalScoreLabel(score) {
+/*
+  Matchup already provides its own evidence-confidence weight.
+
+  Apply the same SAGE uncertainty principle:
+
+    adjusted =
+      observed × confidence
+      +
+      neutral baseline × uncertainty
+
+  If confidence is full (1.0), nothing changes.
+
+  If matchup confidence is lower, the matchup moves toward 50
+  rather than being allowed to over-influence the final score.
+*/
+function confidenceAdjustedScore(
+  rawScore,
+  confidenceWeight,
+  baseline = NEUTRAL_BASELINE
+) {
+  const score =
+    num(rawScore);
+
   if (
-    score === null ||
-    score === undefined
+    score === null
   ) {
     return null;
   }
 
-  if (score >= 90) {
+  const confidence =
+    clamp(
+      num(confidenceWeight) ??
+      1,
+      0,
+      1
+    );
+
+  return round(
+    score * confidence +
+    baseline *
+      (
+        1 -
+        confidence
+      ),
+    1
+  );
+}
+
+function contribution(
+  score,
+  weight
+) {
+  const value =
+    num(score);
+
+  if (
+    value === null
+  ) {
+    return null;
+  }
+
+  return round(
+    value *
+    weight,
+    2
+  );
+}
+
+function scoreLabel(score) {
+  const value =
+    num(score);
+
+  if (
+    value === null
+  ) {
+    return null;
+  }
+
+  if (
+    value >= 90
+  ) {
     return "Elite";
   }
 
-  if (score >= 80) {
+  if (
+    value >= 80
+  ) {
     return "Very Strong";
   }
 
-  if (score >= 70) {
+  if (
+    value >= 70
+  ) {
     return "Strong";
   }
 
-  if (score >= 60) {
+  if (
+    value >= 60
+  ) {
     return "Above Average";
   }
 
-  if (score >= 40) {
+  if (
+    value >= 40
+  ) {
     return "Average";
   }
 
-  if (score >= 25) {
+  if (
+    value >= 25
+  ) {
     return "Below Average";
   }
 
   return "Weak";
 }
 
-function buildContribution(
-  score,
+function confidenceLabel(
   weight
 ) {
+  const value =
+    num(weight);
+
   if (
-    !Number.isFinite(
-      score
-    )
+    value === null
   ) {
     return null;
   }
 
+  if (
+    value >= 0.95
+  ) {
+    return "Full";
+  }
+
+  if (
+    value >= 0.80
+  ) {
+    return "High";
+  }
+
+  if (
+    value >= 0.60
+  ) {
+    return "Moderate";
+  }
+
+  if (
+    value >= 0.40
+  ) {
+    return "Limited";
+  }
+
+  if (
+    value > 0
+  ) {
+    return "Very Limited";
+  }
+
+  return "Insufficient";
+}
+
+function overallConfidence({
+  role,
+  production,
+  matchup
+}) {
+  /*
+    Confidence follows the same 45 / 35 / 20 influence
+    structure as the SAGE score itself.
+
+    This is NOT another score adjustment.
+
+    It is simply a user-facing measure of how mature the
+    evidence behind the final score is.
+  */
+
+  const value =
+    (
+      role *
+      FINAL_WEIGHTS.role
+    ) +
+    (
+      production *
+      FINAL_WEIGHTS.production
+    ) +
+    (
+      matchup *
+      FINAL_WEIGHTS.matchup
+    );
+
   return round(
-    score *
-    weight,
-    2
+    value,
+    3
   );
 }
 
-function buildScoreExplanation({
+function buildExplanation({
   player,
-  roleScore,
-  productionScore,
-  matchupScore,
   finalScore,
-  matchupEvidence
+  roleAdjusted,
+  productionAdjusted,
+  matchupAdjusted,
+  matchup
 }) {
   const name =
     player &&
@@ -278,18 +490,19 @@ function buildScoreExplanation({
       : "Player";
 
   const opponent =
-    matchupEvidence &&
-    matchupEvidence.opponent
-      ? matchupEvidence.opponent
+    matchup &&
+    matchup.opponent
+      ? matchup.opponent
       : "the opponent";
 
   return (
     `${name} has a Weekly SAGE Score of ${finalScore}. ` +
-    `The score combines a ${roleScore} Role Score, ` +
-    `${productionScore} Production Score, and ` +
-    `${matchupScore} matchup score against ${opponent}. ` +
+    `The confidence-adjusted components are ` +
+    `${roleAdjusted} for Role, ` +
+    `${productionAdjusted} for Production, and ` +
+    `${matchupAdjusted} for the matchup against ${opponent}. ` +
     `Role and Production account for 80% of the model, ` +
-    `while Matchup contributes 20%.`
+    `while matchup contributes 20%.`
   );
 }
 
@@ -323,7 +536,8 @@ exports.handler =
   async function (event) {
     if (
       event.httpMethod &&
-      event.httpMethod !== "GET"
+      event.httpMethod !==
+        "GET"
     ) {
       return jsonResponse(
         405,
@@ -335,7 +549,8 @@ exports.handler =
     }
 
     const query =
-      event.queryStringParameters ||
+      event
+        .queryStringParameters ||
       {};
 
     const season =
@@ -393,114 +608,185 @@ exports.handler =
         getBaseUrl(event);
 
       /*
-        Fetch the two independently validated evidence paths in parallel.
+        STEP 1
+        ------
+        Fetch confidence-adjusted Role + Production.
 
-        COMPONENT SCORES:
-          Role + Production
-
-        PLAYER EVIDENCE:
-          Player-specific upcoming matchup
+        This path now uses the snapshot-backed benchmark layer,
+        so it does NOT rebuild the 68-player RB universe.
       */
-      const [
-        componentData,
-        playerEvidence
-      ] =
-        await Promise.all([
-          fetchRBComponentScores({
-            baseUrl,
-            season,
-            week,
-            playerID,
-            seasonType
-          }),
-
-          fetchPlayerEvidence({
-            baseUrl,
-            season,
-            week,
-            playerID,
-            seasonType
-          })
-        ]);
+      const confidence =
+        await fetchConfidence({
+          baseUrl,
+          season,
+          week,
+          seasonType,
+          playerID
+        });
 
       const player =
-        componentData.player ||
-        playerEvidence.player ||
+        confidence.player ||
         {};
 
       if (
-        player.position !== "RB"
+        player.position !==
+        "RB"
       ) {
         return jsonResponse(
           400,
           {
             error:
-              "Step 8A currently supports RB final-score composition only."
+              "Final RB SAGE scoring requires an RB."
           }
         );
       }
 
-      const roleScore =
-        num(
-          componentData.role &&
-          componentData.role.score
+      if (
+        !player.team
+      ) {
+        throw new Error(
+          "RB confidence evidence did not include team."
         );
+      }
 
-      const productionScore =
-        num(
-          componentData.production &&
-          componentData.production.score
-        );
+      /*
+        STEP 2
+        ------
+        Fetch only this player's Week matchup.
 
-      const matchupEvidence =
-        playerEvidence.matchupEvidence ||
+        No RB-universe population rebuild occurs here.
+      */
+      const matchupData =
+        await fetchMatchup({
+          baseUrl,
+          season,
+          week,
+          seasonType,
+          team:
+            player.team,
+          position:
+            player.position
+        });
+
+      const matchup =
+        matchupData
+          .matchupEvidence ||
         {};
 
-      const matchupScore =
+      /*
+        ROLE
+      */
+      const rawRoleScore =
         num(
-          matchupEvidence.score
+          confidence.role &&
+          confidence.role.rawScore
+        );
+
+      const roleConfidence =
+        num(
+          confidence.role &&
+          confidence.role.confidence &&
+          confidence.role.confidence.weight
+        );
+
+      const adjustedRoleScore =
+        num(
+          confidence.role &&
+          confidence.role.adjustedScore
+        );
+
+      /*
+        PRODUCTION
+      */
+      const rawProductionScore =
+        num(
+          confidence.production &&
+          confidence.production.rawScore
+        );
+
+      const productionConfidence =
+        num(
+          confidence.production &&
+          confidence.production.confidence &&
+          confidence.production.confidence.weight
+        );
+
+      const adjustedProductionScore =
+        num(
+          confidence.production &&
+          confidence.production.adjustedScore
+        );
+
+      /*
+        MATCHUP
+      */
+      const rawMatchupScore =
+        num(
+          matchup.score
+        );
+
+      const matchupConfidence =
+        clamp(
+          num(
+            matchup.confidence &&
+            matchup.confidence.weight
+          ) ??
+          1,
+          0,
+          1
+        );
+
+      const adjustedMatchupScore =
+        confidenceAdjustedScore(
+          rawMatchupScore,
+          matchupConfidence
         );
 
       if (
-        roleScore === null ||
-        productionScore === null ||
-        matchupScore === null
+        adjustedRoleScore === null ||
+        adjustedProductionScore === null ||
+        adjustedMatchupScore === null
       ) {
         return jsonResponse(
           422,
           {
             error:
-              "One or more required SAGE components are not ready.",
+              "One or more SAGE components are not ready for final composition.",
 
             components: {
               role:
-                roleScore,
+                adjustedRoleScore,
 
               production:
-                productionScore,
+                adjustedProductionScore,
 
               matchup:
-                matchupScore
+                adjustedMatchupScore
             }
           }
         );
       }
 
+      /*
+        STEP 3
+        ------
+        Weighted SAGE composition.
+      */
       const roleContribution =
-        buildContribution(
-          roleScore,
+        contribution(
+          adjustedRoleScore,
           FINAL_WEIGHTS.role
         );
 
       const productionContribution =
-        buildContribution(
-          productionScore,
+        contribution(
+          adjustedProductionScore,
           FINAL_WEIGHTS.production
         );
 
       const matchupContribution =
-        buildContribution(
-          matchupScore,
+        contribution(
+          adjustedMatchupScore,
           FINAL_WEIGHTS.matchup
         );
 
@@ -512,6 +798,20 @@ exports.handler =
           1
         );
 
+      const finalConfidence =
+        overallConfidence({
+          role:
+            roleConfidence ??
+            0,
+
+          production:
+            productionConfidence ??
+            0,
+
+          matchup:
+            matchupConfidence
+        });
+
       return jsonResponse(
         200,
         {
@@ -519,7 +819,7 @@ exports.handler =
             "weekly-sage-rb-final-score",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -546,89 +846,98 @@ exports.handler =
               null,
 
             position:
-              player.position ||
               "RB"
           },
 
           noLookAhead:
-            playerEvidence.noLookAhead ||
-            componentData.noLookAhead,
+            confidence.noLookAhead,
 
           upcomingGame:
-            playerEvidence.upcomingGame ||
+            matchupData.playerContext ||
             null,
 
           methodology: {
-            hierarchy: [
-              "role",
-              "production",
-              "matchup"
-            ],
-
             weights:
               FINAL_WEIGHTS,
 
+            neutralBaseline:
+              NEUTRAL_BASELINE,
+
             philosophy:
-              "Role and Production establish the player's baseline and account for 80% of the Weekly SAGE Score. Matchup adjusts that baseline with a 20% influence.",
+              "Role establishes the baseline, Production measures conversion of opportunity, and Matchup adjusts the outlook. Confidence determines how strongly SAGE trusts each observed component.",
+
+            confidencePrinciple:
+              "Score what the evidence says. Weight how much SAGE trusts the evidence.",
 
             important:
-              "This score is not yet mapped to START, FLEX, or SIT recommendations."
+              "The final score uses confidence-adjusted components. Raw component scores remain preserved for transparency."
           },
 
           components: {
             role: {
-              score:
-                roleScore,
+              rawScore:
+                rawRoleScore,
+
+              confidence: {
+                weight:
+                  roleConfidence,
+
+                label:
+                  confidenceLabel(
+                    roleConfidence
+                  )
+              },
+
+              adjustedScore:
+                adjustedRoleScore,
 
               weight:
                 FINAL_WEIGHTS.role,
 
               weightedContribution:
-                roleContribution,
-
-              label:
-                componentData.role
-                  ? componentData
-                      .role
-                      .label
-                  : null,
-
-              explanation:
-                componentData.role
-                  ? componentData
-                      .role
-                      .explanation
-                  : null
+                roleContribution
             },
 
             production: {
-              score:
-                productionScore,
+              rawScore:
+                rawProductionScore,
+
+              confidence: {
+                weight:
+                  productionConfidence,
+
+                label:
+                  confidenceLabel(
+                    productionConfidence
+                  )
+              },
+
+              adjustedScore:
+                adjustedProductionScore,
 
               weight:
                 FINAL_WEIGHTS.production,
 
               weightedContribution:
-                productionContribution,
-
-              label:
-                componentData.production
-                  ? componentData
-                      .production
-                      .label
-                  : null,
-
-              explanation:
-                componentData.production
-                  ? componentData
-                      .production
-                      .explanation
-                  : null
+                productionContribution
             },
 
             matchup: {
-              score:
-                matchupScore,
+              rawScore:
+                rawMatchupScore,
+
+              confidence: {
+                weight:
+                  matchupConfidence,
+
+                label:
+                  confidenceLabel(
+                    matchupConfidence
+                  )
+              },
+
+              adjustedScore:
+                adjustedMatchupScore,
 
               weight:
                 FINAL_WEIGHTS.matchup,
@@ -636,20 +945,20 @@ exports.handler =
               weightedContribution:
                 matchupContribution,
 
-              label:
-                matchupEvidence.label ||
+              opponent:
+                matchup.opponent ||
                 null,
 
               signal:
-                matchupEvidence.signal ||
+                matchup.signal ||
                 null,
 
-              opponent:
-                matchupEvidence.opponent ||
+              label:
+                matchup.label ||
                 null,
 
               explanation:
-                matchupEvidence.explanation ||
+                matchup.explanation ||
                 null
             }
           },
@@ -659,30 +968,38 @@ exports.handler =
               finalScore,
 
             label:
-              finalScoreLabel(
+              scoreLabel(
                 finalScore
               ),
 
+            confidence: {
+              weight:
+                finalConfidence,
+
+              label:
+                confidenceLabel(
+                  finalConfidence
+                )
+            },
+
             explanation:
-              buildScoreExplanation({
+              buildExplanation({
                 player,
-
-                roleScore,
-
-                productionScore,
-
-                matchupScore,
-
                 finalScore,
-
-                matchupEvidence
+                roleAdjusted:
+                  adjustedRoleScore,
+                productionAdjusted:
+                  adjustedProductionScore,
+                matchupAdjusted:
+                  adjustedMatchupScore,
+                matchup
               })
           },
 
           /*
-            Intentionally still null.
+            Intentionally not activated yet.
 
-            Recommendation mapping is the NEXT validation stage.
+            We validate several final RB scores first.
           */
           recommendation:
             null,
@@ -692,24 +1009,41 @@ exports.handler =
               false,
 
             reason:
-              "Validate final SAGE scores across multiple RB archetypes before defining START / FLEX / SIT thresholds."
+              "Validate final confidence-adjusted SAGE scores across multiple RB profiles before mapping scores to START / FLEX / SIT recommendations."
+          },
+
+          architecture: {
+            rbPopulationSource:
+              "weekly-sage-rb-snapshot",
+
+            benchmarkSource:
+              "weekly-sage-rb-benchmarks",
+
+            componentSource:
+              "weekly-sage-rb-component-scores",
+
+            confidenceSource:
+              "weekly-sage-rb-confidence",
+
+            matchupSource:
+              "weekly-sage-player-matchup",
+
+            populationRebuiltForThisPlayer:
+              false
           },
 
           provenance: {
-            roleAndProduction:
+            rawRoleAndProduction:
               "weekly-sage-rb-component-scores",
 
+            sampleConfidence:
+              "weekly-sage-rb-confidence",
+
             matchup:
-              "weekly-sage-player-evidence",
+              "weekly-sage-player-matchup",
 
-            roleBenchmark:
-              "weekly-sage-rb-benchmarks",
-
-            playerProduction:
-              "weekly-sage-player-season",
-
-            defensiveMatchup:
-              "weekly-sage-matchup-defense"
+            peerPopulation:
+              "weekly-sage-rb-snapshot"
           }
         },
 
@@ -725,7 +1059,7 @@ exports.handler =
         502,
         {
           error:
-            "Could not compose Weekly SAGE RB final score.",
+            "Could not compose final Weekly SAGE RB score.",
 
           detail:
             error.message
