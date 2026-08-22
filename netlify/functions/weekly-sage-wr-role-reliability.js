@@ -10,52 +10,58 @@
 // CORE QUESTION
 // -------------
 // Does higher WR Role correspond to a more reliable weekly fantasy
-// floor and a greater probability of producing a startable result?
+// floor and a greater probability of producing a usable PPR result?
 //
-// SOURCE
-// ------
+// MODES
+// -----
 //
-//   weekly-sage-wr-backtest
+// GET
+//   Existing convenience mode.
 //
-// IMPORTANT
-// ---------
-// This is a DIAGNOSTIC endpoint.
+//   Example:
+//   /.netlify/functions/weekly-sage-wr-role-reliability
+//     ?season=2025
+//     &week=5
+//     &seasonType=reg
 //
-// It DOES NOT:
+//   GET retrieves one weekly-sage-wr-backtest result.
+//
+// POST
+//   Preferred evidence-ingestion mode.
+//
+//   Supply an already-generated weekly-sage-wr-backtest payload:
+//
+//   {
+//     "backtest": {
+//       ...weekly-sage-wr-backtest JSON...
+//     }
+//   }
+//
+//   POST makes ZERO downstream function calls.
+//
+// WHY POST MODE EXISTS
+// --------------------
+// Rebuilding:
+//
+//   role-reliability
+//     -> backtest
+//       -> validation
+//         -> leaderboard
+//           -> final-score / player-season
+//
+// caused Netlify timeout / 504 failures.
+//
+// Historical evidence should be generated once and reused.
+//
+// THIS ENDPOINT DOES NOT
+// ----------------------
 // - change WR SAGE
 // - change Role methodology
 // - change Production methodology
 // - change Matchup methodology
 // - change confidence
 // - optimize weights
-// - create final START / FLEX / SIT thresholds
-//
-// FIRST-PASS RELIABILITY MEASURES
-// -------------------------------
-//
-// FLOOR / BUST
-//   < 5 PPR
-//   < 10 PPR
-//
-// USABLE OUTCOMES
-//   >= 10 PPR
-//   >= 12 PPR
-//   >= 15 PPR
-//
-// CEILING
-//   >= 20 PPR
-//   >= 25 PPR
-//
-// ROLE BANDS
-// ----------
-//
-//   85+
-//   75-84.9
-//   65-74.9
-//   55-64.9
-//   45-54.9
-//   35-44.9
-//   Below 35
+// - create recommendation thresholds
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -67,6 +73,9 @@ const DEFAULT_SEASON_TYPE =
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
+
+const EXPECTED_BACKTEST_TYPE =
+  "weekly-sage-wr-backtest";
 
 function nullableNum(
   value
@@ -122,18 +131,20 @@ function average(
   values
 ) {
   const clean =
-    values.filter(
-      function (
-        value
-      ) {
-        return (
-          nullableNum(
-            value
-          ) !==
-          null
-        );
-      }
-    );
+    values
+      .map(
+        nullableNum
+      )
+      .filter(
+        function (
+          value
+        ) {
+          return (
+            value !==
+            null
+          );
+        }
+      );
 
   if (
     clean.length ===
@@ -164,20 +175,18 @@ function median(
 ) {
   const clean =
     values
+      .map(
+        nullableNum
+      )
       .filter(
         function (
           value
         ) {
           return (
-            nullableNum(
-              value
-            ) !==
+            value !==
             null
           );
         }
-      )
-      .map(
-        Number
       )
       .sort(
         function (
@@ -221,9 +230,11 @@ function median(
     2;
   }
 
-  return clean[
-    midpoint
-  ];
+  return (
+    clean[
+      midpoint
+    ]
+  );
 }
 
 function percentage(
@@ -244,6 +255,55 @@ function percentage(
     100,
     1
   );
+}
+
+function countWhere(
+  values,
+  predicate
+) {
+  return values.filter(
+    predicate
+  ).length;
+}
+
+function safeJsonParse(
+  value
+) {
+  try {
+    return JSON.parse(
+      value
+    );
+  } catch (
+    error
+  ) {
+    return null;
+  }
+}
+
+function jsonResponse(
+  statusCode,
+  body,
+  cacheControl
+) {
+  return {
+    statusCode,
+
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        cacheControl ||
+        "no-store"
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
 }
 
 function getBaseUrl(
@@ -357,32 +417,6 @@ function errorMessage(
     data.error ||
     `HTTP ${result.status}`
   );
-}
-
-function jsonResponse(
-  statusCode,
-  body,
-  cacheControl
-) {
-  return {
-    statusCode,
-
-    headers: {
-      "Content-Type":
-        "application/json",
-
-      "Cache-Control":
-        cacheControl ||
-        "no-store"
-    },
-
-    body:
-      JSON.stringify(
-        body,
-        null,
-        2
-      )
-  };
 }
 
 function roleBandDefinitions() {
@@ -516,15 +550,6 @@ function actualPPR(
   );
 }
 
-function countWhere(
-  values,
-  predicate
-) {
-  return values.filter(
-    predicate
-  ).length;
-}
-
 function analyzeBand(
   observations,
   definition
@@ -630,26 +655,61 @@ function analyzeBand(
       },
 
       reliability: {
-        below5:
-          null,
+        below5: {
+          count:
+            0,
 
-        below10:
-          null,
+          percent:
+            null
+        },
 
-        atLeast10:
-          null,
+        below10: {
+          count:
+            0,
 
-        atLeast12:
-          null,
+          percent:
+            null
+        },
 
-        atLeast15:
-          null,
+        atLeast10: {
+          count:
+            0,
 
-        atLeast20:
-          null,
+          percent:
+            null
+        },
 
-        atLeast25:
-          null
+        atLeast12: {
+          count:
+            0,
+
+          percent:
+            null
+        },
+
+        atLeast15: {
+          count:
+            0,
+
+          percent:
+            null
+        },
+
+        atLeast20: {
+          count:
+            0,
+
+          percent:
+            null
+        },
+
+        atLeast25: {
+          count:
+            0,
+
+          percent:
+            null
+        }
       },
 
       reliabilityScore:
@@ -748,28 +808,6 @@ function analyzeBand(
       }
     );
 
-  /*
-    FIRST-PASS RELIABILITY SCORE
-
-    This is NOT part of SAGE.
-
-    It is a diagnostic 0-100 summary of how often this Role band
-    produces a usable PPR outcome.
-
-    50% weight:
-      >= 10 PPR
-
-    30% weight:
-      >= 12 PPR
-
-    20% weight:
-      avoids < 5 PPR
-
-    The diagnostic is intentionally floor-oriented.
-
-    It must NOT be used as a recommendation score until
-    multi-week validation demonstrates that it is useful.
-  */
   const pctAtLeast10 =
     percentage(
       atLeast10,
@@ -789,6 +827,18 @@ function analyzeBand(
       count
     );
 
+  /*
+    DIAGNOSTIC ONLY.
+
+    50%:
+      >=10 PPR
+
+    30%:
+      >=12 PPR
+
+    20%:
+      avoids <5 PPR
+  */
   const reliabilityScore =
     round(
       (
@@ -938,13 +988,13 @@ function monotonicComparison(
       ) {
         return (
           band.count >
-          0 &&
+            0 &&
           nullableNum(
             selector(
               band
             )
           ) !==
-          null
+            null
         );
       }
     );
@@ -961,6 +1011,9 @@ function monotonicComparison(
         0,
 
       rate:
+        null,
+
+      percent:
         null
     };
   }
@@ -1167,6 +1220,23 @@ function buildReliabilityTest(
         "lower"
       ),
 
+    severeBustRateRisesAsRoleDeclines:
+      monotonicComparison(
+        bands,
+
+        function (
+          band
+        ) {
+          return (
+            band.reliability
+              .below5
+              .percent
+          );
+        },
+
+        "lower"
+      ),
+
     diagnosticReliabilityScoreDeclinesWithRole:
       monotonicComparison(
         bands,
@@ -1187,6 +1257,9 @@ function buildReliabilityTest(
 function sampleWarning(
   bands
 ) {
+  const preferredMinimum =
+    10;
+
   const smallBands =
     bands
       .filter(
@@ -1197,7 +1270,7 @@ function sampleWarning(
             band.count >
               0 &&
             band.count <
-              10
+              preferredMinimum
           );
         }
       )
@@ -1217,7 +1290,7 @@ function sampleWarning(
 
   return {
     minimumPreferredBandSample:
-      10,
+      preferredMinimum,
 
     bandsBelowPreferredSample:
       smallBands,
@@ -1230,20 +1303,475 @@ function sampleWarning(
   };
 }
 
+function validateBacktest(
+  backtest
+) {
+  if (
+    !backtest ||
+    typeof backtest !==
+      "object"
+  ) {
+    return {
+      valid:
+        false,
+
+      reason:
+        "backtest must be an object."
+    };
+  }
+
+  if (
+    backtest.evidenceType !==
+    EXPECTED_BACKTEST_TYPE
+  ) {
+    return {
+      valid:
+        false,
+
+      reason:
+        `Expected evidenceType ${EXPECTED_BACKTEST_TYPE}.`
+    };
+  }
+
+  if (
+    !Array.isArray(
+      backtest.observations
+    )
+  ) {
+    return {
+      valid:
+        false,
+
+      reason:
+        "backtest is missing observations."
+    };
+  }
+
+  return {
+    valid:
+      true
+  };
+}
+
+function determineWeek(
+  backtest
+) {
+  const requestedWindow =
+    backtest &&
+    backtest.requestedWindow
+      ? backtest.requestedWindow
+      : {};
+
+  const startWeek =
+    nullableNum(
+      requestedWindow.startWeek
+    );
+
+  const endWeek =
+    nullableNum(
+      requestedWindow.endWeek
+    );
+
+  if (
+    startWeek !==
+      null &&
+    endWeek !==
+      null &&
+    startWeek ===
+      endWeek
+  ) {
+    return (
+      startWeek
+    );
+  }
+
+  const uniqueWeeks =
+    Array.from(
+      new Set(
+        (
+          Array.isArray(
+            backtest.observations
+          )
+            ? backtest.observations
+            : []
+        )
+          .map(
+            function (
+              observation
+            ) {
+              return nullableNum(
+                observation.seasonWeek
+              );
+            }
+          )
+          .filter(
+            function (
+              week
+            ) {
+              return (
+                week !==
+                null
+              );
+            }
+          )
+      )
+    );
+
+  if (
+    uniqueWeeks.length ===
+    1
+  ) {
+    return (
+      uniqueWeeks[
+        0
+      ]
+    );
+  }
+
+  return null;
+}
+
+function buildReliabilityResponse({
+  backtest,
+  sourceMode
+}) {
+  const observations =
+    Array.isArray(
+      backtest.observations
+    )
+      ? backtest.observations
+      : [];
+
+  const week =
+    determineWeek(
+      backtest
+    );
+
+  const season =
+    backtest.season ||
+    null;
+
+  const seasonType =
+    backtest.seasonType ||
+    DEFAULT_SEASON_TYPE;
+
+  const roleBands =
+    roleBandDefinitions()
+      .map(
+        function (
+          definition
+        ) {
+          return analyzeBand(
+            observations,
+            definition
+          );
+        }
+      );
+
+  const reliabilityTest =
+    buildReliabilityTest(
+      roleBands
+    );
+
+  const sampleSize =
+    sampleWarning(
+      roleBands
+    );
+
+  const sourceReady =
+    Boolean(
+      backtest.nextStep &&
+      backtest.nextStep.ready ===
+        true
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-wr-role-reliability",
+
+    schemaVersion:
+      2,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season,
+
+    week,
+
+    seasonType,
+
+    methodology: {
+      modelVersion:
+        "wr-sage-v1",
+
+      analysisVersion:
+        "wr-role-reliability-v2",
+
+      hypothesis:
+        "Higher pre-game WR Role should correspond to a more dependable fantasy floor and a greater probability of producing a usable weekly PPR result.",
+
+      roleBandBasis:
+        "Confidence-adjusted pre-game WR Role Score.",
+
+      outcome:
+        "Actual target-week PPR fantasy points.",
+
+      floorMeasures: [
+        "Below 5 PPR",
+        "Below 10 PPR"
+      ],
+
+      usableOutcomeMeasures: [
+        "At least 10 PPR",
+        "At least 12 PPR",
+        "At least 15 PPR"
+      ],
+
+      ceilingMeasures: [
+        "At least 20 PPR",
+        "At least 25 PPR"
+      ],
+
+      diagnosticReliabilityScore:
+        "50% >=10 PPR rate + 30% >=12 PPR rate + 20% avoidance of <5 PPR. This score is diagnostic only and is not part of Weekly SAGE.",
+
+      leakageProtection:
+        "Role comes from frozen pre-game evidence. Actual target-week PPR is used only for retrospective reliability analysis.",
+
+      important:
+        "This analysis measures reliability, not raw statistical variance. A low-role WR can have low variance simply because he consistently scores few fantasy points."
+    },
+
+    source: {
+      mode:
+        sourceMode,
+
+      backtestEvidenceType:
+        backtest.evidenceType,
+
+      backtestGeneratedAt:
+        backtest.generatedAt ||
+        null,
+
+      downstreamFunctionCalls:
+        sourceMode ===
+        "posted_backtest"
+          ? 0
+          : 1
+    },
+
+    population: {
+      cleanPlayerWeekObservations:
+        observations.length,
+
+      sourceWeeksRequested:
+        backtest.population &&
+        backtest.population
+          .weeksRequested !==
+          undefined
+          ? backtest.population
+              .weeksRequested
+          : null,
+
+      sourceWeeksRetrieved:
+        backtest.population &&
+        backtest.population
+          .weeksRetrieved !==
+          undefined
+          ? backtest.population
+              .weeksRetrieved
+          : null,
+
+      sourceRetrievalFailures:
+        backtest.population &&
+        backtest.population
+          .retrievalFailures !==
+          undefined
+          ? backtest.population
+              .retrievalFailures
+          : null
+    },
+
+    roleBands,
+
+    reliabilityTest,
+
+    sampleSize,
+
+    sourceDiagnostics:
+      backtest.diagnostics ||
+      null,
+
+    recommendation:
+      null,
+
+    nextStep: {
+      ready:
+        sourceReady &&
+        observations.length >
+          0,
+
+      reason:
+        sourceReady &&
+        observations.length >
+          0
+          ? "Compare this Role-reliability evidence across additional independently generated weeks. Then pool the compact weekly reliability results with weekly-sage-wr-role-reliability-summary."
+          : "The supplied WR backtest is not clean enough to interpret Role reliability."
+    },
+
+    architecture: {
+      modelVersion:
+        "wr-sage-v1",
+
+      analysisVersion:
+        "wr-role-reliability-v2",
+
+      supportsPostedBacktest:
+        true,
+
+      changesSageWeights:
+        false,
+
+      changesRecommendations:
+        false,
+
+      directTank01Calls:
+        0
+    },
+
+    provenance: {
+      historicalObservations:
+        "weekly-sage-wr-backtest",
+
+      role:
+        "weekly-sage-wr-confidence",
+
+      sage:
+        "weekly-sage-wr-final-score",
+
+      outcomes:
+        "weekly-sage-player-season"
+    }
+  };
+}
+
 exports.handler =
   async function (
     event
   ) {
-    if (
-      event.httpMethod &&
-      event.httpMethod !==
+    const method =
+      String(
+        event.httpMethod ||
         "GET"
+      ).toUpperCase();
+
+    /*
+      ═══════════════════════════════════════════════════════════════
+      POST MODE — PREFERRED
+      ═══════════════════════════════════════════════════════════════
+
+      Accept already-generated backtest evidence.
+
+      ZERO downstream calls.
+    */
+    if (
+      method ===
+      "POST"
+    ) {
+      const body =
+        safeJsonParse(
+          event.body ||
+          ""
+        );
+
+      if (
+        !body ||
+        typeof body !==
+          "object"
+      ) {
+        return jsonResponse(
+          400,
+          {
+            error:
+              "Request body must be valid JSON."
+          }
+        );
+      }
+
+      /*
+        Accept either:
+
+          { "backtest": { ... } }
+
+        or the raw backtest object itself.
+      */
+      const backtest =
+        body.backtest &&
+        typeof body.backtest ===
+          "object"
+          ? body.backtest
+          : body;
+
+      const validation =
+        validateBacktest(
+          backtest
+        );
+
+      if (
+        !validation.valid
+      ) {
+        return jsonResponse(
+          400,
+          {
+            error:
+              "Invalid WR backtest evidence.",
+
+            detail:
+              validation.reason
+          }
+        );
+      }
+
+      return jsonResponse(
+        200,
+        buildReliabilityResponse({
+          backtest,
+
+          sourceMode:
+            "posted_backtest"
+        }),
+
+        "no-store"
+      );
+    }
+
+    /*
+      ═══════════════════════════════════════════════════════════════
+      GET MODE — CONVENIENCE / LEGACY
+      ═══════════════════════════════════════════════════════════════
+
+      Retrieve one weekly backtest.
+
+      This can still timeout for heavier weeks.
+
+      POST mode is preferred whenever backtest evidence already exists.
+    */
+    if (
+      method !==
+      "GET"
     ) {
       return jsonResponse(
         405,
         {
           error:
-            "Method not allowed."
+            "Method not allowed.",
+
+          allowedMethods: [
+            "GET",
+            "POST"
+          ]
         }
       );
     }
@@ -1271,12 +1799,6 @@ exports.handler =
         DEFAULT_SEASON_TYPE
       );
 
-    /*
-      Single-week only by design.
-
-      This avoids reproducing the heavy nested multi-week
-      validation fan-out that caused 504s.
-    */
     if (
       !Number.isInteger(
         week
@@ -1320,9 +1842,6 @@ exports.handler =
           event
         );
 
-      /*
-        Request exactly ONE WR backtest week.
-      */
       const url =
         buildUrl({
           baseUrl,
@@ -1370,7 +1889,10 @@ exports.handler =
               ),
 
             sourceStatus:
-              result.status
+              result.status,
+
+            recommendation:
+              "If you already have the weekly-sage-wr-backtest JSON, POST that evidence directly to this endpoint instead of rebuilding it."
           }
         );
       }
@@ -1378,252 +1900,34 @@ exports.handler =
       const backtest =
         result.data;
 
+      const validation =
+        validateBacktest(
+          backtest
+        );
+
       if (
-        !backtest ||
-        backtest.evidenceType !==
-          "weekly-sage-wr-backtest"
+        !validation.valid
       ) {
         return jsonResponse(
           502,
           {
             error:
-              "Unexpected Weekly SAGE WR backtest schema."
+              "Unexpected Weekly SAGE WR backtest schema.",
+
+            detail:
+              validation.reason
           }
         );
       }
-
-      const observations =
-        Array.isArray(
-          backtest.observations
-        )
-          ? backtest.observations
-          : [];
-
-      const sourceReady =
-        Boolean(
-          backtest.nextStep &&
-          backtest.nextStep.ready ===
-            true
-        );
-
-      if (
-        observations.length ===
-        0
-      ) {
-        return jsonResponse(
-          200,
-          {
-            evidenceType:
-              "weekly-sage-wr-role-reliability",
-
-            schemaVersion:
-              1,
-
-            generatedAt:
-              new Date()
-                .toISOString(),
-
-            season,
-
-            week,
-
-            seasonType,
-
-            population: {
-              cleanPlayerWeekObservations:
-                0
-            },
-
-            roleBands:
-              [],
-
-            reliabilityTest:
-              null,
-
-            nextStep: {
-              ready:
-                false,
-
-              reason:
-                "No clean WR player-week observations were returned by the source backtest."
-            },
-
-            sourceDiagnostics:
-              backtest.diagnostics ||
-              null
-          },
-
-          CACHE_CONTROL
-        );
-      }
-
-      const roleBands =
-        roleBandDefinitions()
-          .map(
-            function (
-              definition
-            ) {
-              return analyzeBand(
-                observations,
-                definition
-              );
-            }
-          );
-
-      const reliabilityTest =
-        buildReliabilityTest(
-          roleBands
-        );
-
-      const sampleSize =
-        sampleWarning(
-          roleBands
-        );
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-wr-role-reliability",
+        buildReliabilityResponse({
+          backtest,
 
-          schemaVersion:
-            1,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          week,
-
-          seasonType,
-
-          methodology: {
-            modelVersion:
-              "wr-sage-v1",
-
-            analysisVersion:
-              "wr-role-reliability-v1",
-
-            hypothesis:
-              "Higher pre-game WR Role should correspond to a more dependable fantasy floor and a greater probability of producing a usable weekly PPR result.",
-
-            roleBandBasis:
-              "Confidence-adjusted pre-game WR Role Score.",
-
-            outcome:
-              "Actual target-week PPR fantasy points.",
-
-            floorMeasures: [
-              "Below 5 PPR",
-              "Below 10 PPR"
-            ],
-
-            usableOutcomeMeasures: [
-              "At least 10 PPR",
-              "At least 12 PPR",
-              "At least 15 PPR"
-            ],
-
-            ceilingMeasures: [
-              "At least 20 PPR",
-              "At least 25 PPR"
-            ],
-
-            diagnosticReliabilityScore:
-              "50% >=10 PPR rate + 30% >=12 PPR rate + 20% avoidance of <5 PPR. This score is diagnostic only and is not part of Weekly SAGE.",
-
-            leakageProtection:
-              "Role comes from frozen pre-game evidence. Actual target-week PPR is used only for retrospective reliability analysis.",
-
-            important:
-              "This analysis measures reliability, not raw statistical variance. A low-role WR can have low variance simply because he consistently scores few fantasy points."
-          },
-
-          population: {
-            cleanPlayerWeekObservations:
-              observations.length,
-
-            sourceWeeksRetrieved:
-              backtest.population &&
-              backtest.population
-                .weeksRetrieved !==
-                undefined
-                ? backtest.population
-                    .weeksRetrieved
-                : null,
-
-            sourceRetrievalFailures:
-              backtest.population &&
-              backtest.population
-                .retrievalFailures !==
-                undefined
-                ? backtest.population
-                    .retrievalFailures
-                : null
-          },
-
-          roleBands,
-
-          reliabilityTest,
-
-          sampleSize,
-
-          sourceDiagnostics:
-            backtest.diagnostics ||
-            null,
-
-          recommendation:
-            null,
-
-          nextStep: {
-            ready:
-              sourceReady,
-
-            reason:
-              sourceReady
-                ? "Compare this same Role-reliability analysis across additional weeks. If higher Role repeatedly produces stronger floor and usable-outcome rates, aggregate the compact weekly reliability summaries before deciding whether Role should influence WR recommendation confidence."
-                : "The underlying WR backtest is not clean enough to interpret Role reliability."
-          },
-
-          architecture: {
-            modelVersion:
-              "wr-sage-v1",
-
-            analysisVersion:
-              "wr-role-reliability-v1",
-
-            source:
-              BACKTEST_FUNCTION,
-
-            singleWeekByDesign:
-              true,
-
-            changesSageWeights:
-              false,
-
-            changesRecommendations:
-              false,
-
-            directTank01Calls:
-              0
-          },
-
-          provenance: {
-            historicalObservations:
-              BACKTEST_FUNCTION,
-
-            role:
-              "weekly-sage-wr-confidence",
-
-            sage:
-              "weekly-sage-wr-final-score",
-
-            outcomes:
-              "weekly-sage-player-season"
-          }
-        },
+          sourceMode:
+            "live_backtest"
+        }),
 
         CACHE_CONTROL
       );
