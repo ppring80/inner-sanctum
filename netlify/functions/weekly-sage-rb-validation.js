@@ -54,6 +54,9 @@ const LEADERBOARD_FUNCTION =
 const PLAYER_SEASON_FUNCTION =
   "weekly-sage-player-season";
 
+const SCHEDULE_FUNCTION =
+  "weekly-sage-schedule";
+
 function num(value) {
   const n = Number(value);
 
@@ -246,6 +249,205 @@ async function fetchLeaderboard({
   }
 
   return data;
+}
+
+/*
+  TARGET-WEEK SCHEDULE
+  --------------------
+
+  We use the schedule only for POST-GAME participation
+  classification.
+
+  If the player's historical team had a scheduled game but
+  getNFLGamesForPlayer contains no target-week game for that
+  player, we classify the player as Did Not Play.
+
+  DNP players are NOT assigned zero fantasy points.
+  They are excluded from validation correlations.
+*/
+async function fetchTargetWeekSchedule({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        SCHEDULE_FUNCTION,
+
+      params: {
+        season,
+        week:
+          String(targetWeek),
+        seasonType
+      }
+    });
+
+  const data =
+    await fetchJson(url);
+
+  if (
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-schedule"
+  ) {
+    throw new Error(
+      "Unexpected Weekly SAGE schedule schema."
+    );
+  }
+
+  return data;
+}
+
+function normalizeTeam(value) {
+  const raw =
+    String(
+      value || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const aliases = {
+    JAC: "JAX",
+    GBP: "GB",
+    KAN: "KC",
+    LVR: "LV",
+    NEP: "NE",
+    NOR: "NO",
+    SFO: "SF",
+    TBB: "TB",
+    WAS: "WSH"
+  };
+
+  return (
+    aliases[raw] ||
+    raw
+  );
+}
+
+function findScheduleGameForTeam(
+  schedule,
+  team
+) {
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  if (!normalizedTeam) {
+    return null;
+  }
+
+  const games =
+    schedule &&
+    Array.isArray(
+      schedule.games
+    )
+      ? schedule.games
+      : [];
+
+  return (
+    games.find(
+      game => {
+        const away =
+          normalizeTeam(
+            game.away
+          );
+
+        const home =
+          normalizeTeam(
+            game.home
+          );
+
+        return (
+          away ===
+            normalizedTeam ||
+          home ===
+            normalizedTeam
+        );
+      }
+    ) ||
+    null
+  );
+}
+
+function scheduleContextForTeam(
+  scheduleGame,
+  team
+) {
+  if (!scheduleGame) {
+    return null;
+  }
+
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  const away =
+    normalizeTeam(
+      scheduleGame.away
+    );
+
+  const home =
+    normalizeTeam(
+      scheduleGame.home
+    );
+
+  if (
+    normalizedTeam === away
+  ) {
+    return {
+      team:
+        normalizedTeam,
+
+      opponent:
+        home || null,
+
+      location:
+        "away",
+
+      gameID:
+        scheduleGame.gameID ||
+        null,
+
+      gameDate:
+        scheduleGame.gameDate ||
+        null,
+
+      gameStatus:
+        scheduleGame.gameStatus ||
+        null
+    };
+  }
+
+  if (
+    normalizedTeam === home
+  ) {
+    return {
+      team:
+        normalizedTeam,
+
+      opponent:
+        away || null,
+
+      location:
+        "home",
+
+      gameID:
+        scheduleGame.gameID ||
+        null,
+
+      gameDate:
+        scheduleGame.gameDate ||
+        null,
+
+      gameStatus:
+        scheduleGame.gameStatus ||
+        null
+    };
+  }
+
+  return null;
 }
 
 /*
@@ -1426,18 +1628,34 @@ exports.handler =
       /*
         STEP 1
         ------
-        Get the PRE-GAME Weekly SAGE leaderboard.
+        Get the PRE-GAME Weekly SAGE leaderboard AND the
+        target-week schedule.
 
-        This is the prediction side.
+        The leaderboard is the prediction side.
+
+        The target-week schedule is used only AFTER the prediction
+        is frozen, for participation/DNP classification.
       */
-      const leaderboard =
-        await fetchLeaderboard({
-          baseUrl,
-          season,
-          week:
+      const [
+        leaderboard,
+        targetWeekSchedule
+      ] =
+        await Promise.all([
+          fetchLeaderboard({
+            baseUrl,
+            season,
+            week:
+              targetWeek,
+            seasonType
+          }),
+
+          fetchTargetWeekSchedule({
+            baseUrl,
+            season,
             targetWeek,
-          seasonType
-        });
+            seasonType
+          })
+        ]);
 
       const activePlayers =
         Array.isArray(
@@ -1487,6 +1705,9 @@ exports.handler =
       const validation =
         [];
 
+      const didNotPlay =
+        [];
+
       const missingOutcomes =
         [];
 
@@ -1527,36 +1748,157 @@ exports.handler =
               targetWeek
             );
 
-          if (!game) {
-            missingOutcomes.push({
+          /*
+            PLAYER PLAYED
+            -------------
+
+            A target-week historical player-game exists.
+
+            This player enters:
+              - actual fantasy-point calculation
+              - actual rankings
+              - Pearson correlation
+              - Spearman correlation
+              - diagnostic SAGE score bands
+          */
+          if (game) {
+            const outcome =
+              actualOutcome({
+                game,
+                player
+              });
+
+            validation.push(
+              validationRecord({
+                player,
+                outcome
+              })
+            );
+
+            return;
+          }
+
+          /*
+            NO TARGET-WEEK PLAYER-GAME RECORD
+            ---------------------------------
+
+            Do NOT:
+              - assign zero fantasy points
+              - automatically call this missing data
+              - automatically call this DNP
+
+            Instead, reconcile the player's HISTORICAL team from
+            weekly-sage-player-season against the target-week
+            schedule.
+
+            weekly-sage-player-season schema v3 returns:
+
+              player.team
+
+            as the historical team entering the target week.
+
+            That protects historical validation from current-team
+            metadata changes.
+          */
+          const historicalTeam =
+            normalizeTeam(
+              result.data &&
+              result.data.player &&
+              result.data.player.team
+            );
+
+          const scheduledGame =
+            findScheduleGameForTeam(
+              targetWeekSchedule,
+              historicalTeam
+            );
+
+          const scheduleContext =
+            scheduleContextForTeam(
+              scheduledGame,
+              historicalTeam
+            );
+
+          /*
+            DID NOT PLAY
+            ------------
+
+            Historical team definitely had a target-week game,
+            but the player has no player-game record for that game.
+
+            Therefore:
+              - classify DNP
+              - exclude from correlations
+              - do NOT score as zero
+          */
+          if (scheduleContext) {
+            didNotPlay.push({
               playerID:
                 player.playerID,
 
               name:
                 player.name,
 
-              team:
-                player.team,
+              predictionTeam:
+                player.team ||
+                null,
+
+              historicalTeam:
+                historicalTeam ||
+                null,
+
+              status:
+                "did_not_play",
+
+              eligibleForOutcomeValidation:
+                false,
+
+              fantasyPoints:
+                null,
+
+              scheduledGame:
+                scheduleContext,
 
               reason:
-                `No Week ${targetWeek} source game found in post-game player evidence.`
+                `Historical team ${historicalTeam} had a Week ${targetWeek} game, but no player-game record exists for this player in the post-game evidence. Classified as Did Not Play and excluded from validation correlations.`
             });
 
             return;
           }
 
-          const outcome =
-            actualOutcome({
-              game,
-              player
-            });
+          /*
+            TRUE UNRESOLVED OUTCOME
+            -----------------------
 
-          validation.push(
-            validationRecord({
-              player,
-              outcome
-            })
-          );
+            We have no target-week player-game record AND cannot
+            reconcile the historical team to the target-week
+            schedule.
+
+            This remains a data-quality problem.
+
+            We deliberately do NOT silently turn it into DNP.
+          */
+          missingOutcomes.push({
+            playerID:
+              player.playerID,
+
+            name:
+              player.name,
+
+            predictionTeam:
+              player.team ||
+              null,
+
+            historicalTeam:
+              historicalTeam ||
+              null,
+
+            status:
+              "unresolved",
+
+            reason:
+              `No Week ${targetWeek} player-game record was found, and the historical team could not be reconciled to the target-week schedule.`
+          });
         }
       );
 
@@ -1564,6 +1906,9 @@ exports.handler =
         STEP 3
         ------
         Add actual finish ranks for all three scoring systems.
+
+        DNP and unresolved players are NOT in validation[] and
+        therefore cannot affect these ranks.
       */
       const standardRanks =
         rankActual(
@@ -1623,13 +1968,15 @@ exports.handler =
       /*
         STEP 4
         ------
-        Calculate basic predictive relationships.
+        Calculate predictive relationships.
 
         Pearson:
-          score vs actual fantasy points
+          SAGE score vs actual fantasy points
 
         Spearman:
-          ordering vs ordering
+          SAGE ordering vs actual ordering
+
+        Only PLAYED players are included.
       */
       const correlations = {
         standard: {
@@ -1682,6 +2029,8 @@ exports.handler =
 
         We simply want to observe whether higher SAGE bands
         produce higher actual fantasy output.
+
+        Again, DNP players are excluded.
       */
       const scoreBands =
         groupBySageBand(
@@ -1695,7 +2044,7 @@ exports.handler =
             "weekly-sage-rb-validation",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -1716,6 +2065,9 @@ exports.handler =
 
             leakageProtection:
               "Target-week actual results are used only after the frozen SAGE prediction has been retrieved. Actual results do not alter Role, Production, Matchup, Confidence, or the final SAGE score.",
+
+            participationHandling:
+              "A player with no target-week player-game record is classified as Did Not Play only when the player's historical team is independently confirmed on the target-week schedule. DNP players are excluded from correlations and are never assigned zero fantasy points.",
 
             fantasyScoring: {
               standard: {
@@ -1778,6 +2130,9 @@ exports.handler =
             outcomesMatched:
               validation.length,
 
+            didNotPlay:
+              didNotPlay.length,
+
             missingOutcomes:
               missingOutcomes.length,
 
@@ -1791,6 +2146,8 @@ exports.handler =
 
           validation,
 
+          didNotPlay,
+
           missingOutcomes,
 
           failures,
@@ -1801,10 +2158,14 @@ exports.handler =
           nextStep: {
             ready:
               validation.length > 0 &&
+              missingOutcomes.length === 0 &&
               failures.length === 0,
 
             reason:
-              "Compare SAGE scores with actual fantasy outcomes across multiple historical weeks before defining recommendation thresholds."
+              missingOutcomes.length === 0 &&
+              failures.length === 0
+                ? "Played RBs were validated, DNP players were excluded from outcome correlations, and no unresolved outcome-data problems remain."
+                : "Resolve missing outcomes or true retrieval failures before expanding historical validation."
           },
 
           provenance: {
@@ -1813,6 +2174,9 @@ exports.handler =
 
             outcomeEvidence:
               "weekly-sage-player-season",
+
+            participationSchedule:
+              "weekly-sage-schedule",
 
             outcomeWeekExtraction:
               `Week ${targetWeek} source game only`
