@@ -14,6 +14,35 @@
 // Target Week 8 may use ONLY Weeks 1-7.
 // The target week's game must never be included.
 //
+// HISTORICAL TEAM RULE
+// --------------------
+// Historical games must use the player's team AT THE TIME OF THE GAME.
+//
+// Never apply the player's current roster team to all historical games.
+//
+// Resolution order for each historical game:
+//
+//   1. Historical player-game team/teamAbv
+//   2. Current player metadata ONLY if that team actually appears
+//      in the historical game's schedule
+//   3. Otherwise leave historical team unresolved rather than inventing it
+//
+// This protects backtesting when a player changes teams.
+//
+// Example:
+//
+//   Current metadata: Kenneth Walker III — KC
+//   Historical 2025 game: TB @ SEA
+//
+// Historical SAGE context must resolve:
+//
+//   team: SEA
+//   opponent: TB
+//
+// NOT:
+//
+//   team: KC
+//
 // Tank01 getNFLGamesForPlayer returns:
 //
 //   body: {
@@ -31,8 +60,11 @@
 //
 // are joined by gameID.
 //
-// This makes our own schedule layer the authoritative source for the
-// no-look-ahead boundary.
+// This makes our own schedule layer authoritative for:
+// - NFL week
+// - game date/time/status
+// - historical opponent
+// - historical home/away location
 //
 // This function DOES NOT:
 // - calculate defensive matchup scores
@@ -45,24 +77,33 @@
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
-const DEFAULT_SEASON_TYPE = "reg";
+const DEFAULT_SEASON_TYPE =
+  "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-const SCHEDULE_CONCURRENCY = 4;
+const SCHEDULE_CONCURRENCY =
+  4;
 
 function num(value) {
-  const n = Number(value);
+  const n =
+    Number(value);
 
   return Number.isFinite(n)
     ? n
     : 0;
 }
 
-function round(value, digits = 2) {
+function round(
+  value,
+  digits = 2
+) {
   const factor =
-    Math.pow(10, digits);
+    Math.pow(
+      10,
+      digits
+    );
 
   return (
     Math.round(
@@ -99,14 +140,22 @@ async function tank01Fetch(
 
   const url =
     `https://${TANK01_HOST}/${endpoint}` +
-    (query ? `?${query}` : "");
+    (
+      query
+        ? `?${query}`
+        : ""
+    );
 
   const response =
-    await fetch(url, {
-      method: "GET",
-      headers:
-        tank01Headers()
-    });
+    await fetch(
+      url,
+      {
+        method: "GET",
+
+        headers:
+          tank01Headers()
+      }
+    );
 
   let data = null;
 
@@ -135,7 +184,8 @@ async function tank01Fetch(
         data.error;
     } else if (
       data &&
-      typeof data.body === "string"
+      typeof data.body ===
+        "string"
     ) {
       detail =
         data.body;
@@ -158,11 +208,32 @@ function normalizePosition(value) {
 }
 
 function normalizeTeam(value) {
-  return String(
-    value || ""
-  )
-    .trim()
-    .toUpperCase();
+  const raw =
+    String(
+      value || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  /*
+    Keep common API aliases normalized consistently.
+  */
+  const aliases = {
+    JAC: "JAX",
+    GBP: "GB",
+    KAN: "KC",
+    LVR: "LV",
+    NEP: "NE",
+    NOR: "NO",
+    SFO: "SF",
+    TBB: "TB",
+    WAS: "WSH"
+  };
+
+  return (
+    aliases[raw] ||
+    raw
+  );
 }
 
 function extractPlayerInfo(data) {
@@ -172,13 +243,17 @@ function extractPlayerInfo(data) {
 
   if (
     data.body &&
-    !Array.isArray(data.body)
+    !Array.isArray(
+      data.body
+    )
   ) {
     return data.body;
   }
 
   if (
-    Array.isArray(data.body) &&
+    Array.isArray(
+      data.body
+    ) &&
     data.body.length
   ) {
     return data.body[0];
@@ -196,13 +271,16 @@ function extractPlayerGames(data) {
   }
 
   if (
-    Array.isArray(data.body)
+    Array.isArray(
+      data.body
+    )
   ) {
     return data.body;
   }
 
   if (
-    typeof data.body === "object"
+    typeof data.body ===
+      "object"
   ) {
     return Object.entries(
       data.body
@@ -235,7 +313,8 @@ function statBlock(
   if (
     !game ||
     !game[key] ||
-    typeof game[key] !== "object"
+    typeof game[key] !==
+      "object"
   ) {
     return {};
   }
@@ -369,9 +448,10 @@ function snapStats(game) {
 
   /*
     Tank01 returns offensive snap percentage as a decimal:
+
       "0.83" = 83%
 
-    Normalize it to the customer/SAGE-friendly 0-100 scale.
+    Normalize to SAGE-friendly 0-100 scale.
   */
   if (
     offensePct > 0 &&
@@ -478,7 +558,8 @@ function aggregateGames(games) {
 
       totals
         .snaps
-        .offensePctGames += 1;
+        .offensePctGames +=
+          1;
     }
   }
 
@@ -514,7 +595,8 @@ function buildDerived(totals) {
       completionsPerGame:
         games
           ? round(
-              totals.passing
+              totals
+                .passing
                 .completions /
               games
             )
@@ -523,7 +605,9 @@ function buildDerived(totals) {
       yardsPerGame:
         games
           ? round(
-              totals.passing.yards /
+              totals
+                .passing
+                .yards /
               games
             )
           : 0,
@@ -531,7 +615,9 @@ function buildDerived(totals) {
       yardsPerAttempt:
         passAttempts
           ? round(
-              totals.passing.yards /
+              totals
+                .passing
+                .yards /
               passAttempts
             )
           : 0,
@@ -540,7 +626,8 @@ function buildDerived(totals) {
         passAttempts
           ? round(
               (
-                totals.passing
+                totals
+                  .passing
                   .completions /
                 passAttempts
               ) *
@@ -552,7 +639,8 @@ function buildDerived(totals) {
       touchdownsPerGame:
         games
           ? round(
-              totals.passing
+              totals
+                .passing
                 .touchdowns /
               games
             )
@@ -561,7 +649,8 @@ function buildDerived(totals) {
       interceptionsPerGame:
         games
           ? round(
-              totals.passing
+              totals
+                .passing
                 .interceptions /
               games
             )
@@ -580,7 +669,9 @@ function buildDerived(totals) {
       yardsPerGame:
         games
           ? round(
-              totals.rushing.yards /
+              totals
+                .rushing
+                .yards /
               games
             )
           : 0,
@@ -588,7 +679,9 @@ function buildDerived(totals) {
       yardsPerCarry:
         carries
           ? round(
-              totals.rushing.yards /
+              totals
+                .rushing
+                .yards /
               carries
             )
           : 0,
@@ -596,7 +689,8 @@ function buildDerived(totals) {
       touchdownsPerGame:
         games
           ? round(
-              totals.rushing
+              totals
+                .rushing
                 .touchdowns /
               games
             )
@@ -623,7 +717,9 @@ function buildDerived(totals) {
       yardsPerGame:
         games
           ? round(
-              totals.receiving.yards /
+              totals
+                .receiving
+                .yards /
               games
             )
           : 0,
@@ -631,7 +727,9 @@ function buildDerived(totals) {
       yardsPerTarget:
         targets
           ? round(
-              totals.receiving.yards /
+              totals
+                .receiving
+                .yards /
               targets
             )
           : 0,
@@ -639,7 +737,9 @@ function buildDerived(totals) {
       yardsPerReception:
         receptions
           ? round(
-              totals.receiving.yards /
+              totals
+                .receiving
+                .yards /
               receptions
             )
           : 0,
@@ -659,7 +759,8 @@ function buildDerived(totals) {
       touchdownsPerGame:
         games
           ? round(
-              totals.receiving
+              totals
+                .receiving
                 .touchdowns /
               games
             )
@@ -670,7 +771,9 @@ function buildDerived(totals) {
       offensePerGame:
         games
           ? round(
-              totals.snaps.offense /
+              totals
+                .snaps
+                .offense /
               games
             )
           : 0,
@@ -702,70 +805,86 @@ function buildUsageProfile(
     case "QB":
       return {
         passAttemptsPerGame:
-          derived.passing
+          derived
+            .passing
             .attemptsPerGame,
 
         passYardsPerGame:
-          derived.passing
+          derived
+            .passing
             .yardsPerGame,
 
         yardsPerAttempt:
-          derived.passing
+          derived
+            .passing
             .yardsPerAttempt,
 
         passTDPerGame:
-          derived.passing
+          derived
+            .passing
             .touchdownsPerGame,
 
         interceptionsPerGame:
-          derived.passing
+          derived
+            .passing
             .interceptionsPerGame,
 
         carriesPerGame:
-          derived.rushing
+          derived
+            .rushing
             .carriesPerGame,
 
         rushYardsPerGame:
-          derived.rushing
+          derived
+            .rushing
             .yardsPerGame,
 
         offensiveSnapPct:
-          derived.snaps
+          derived
+            .snaps
             .offensePct
       };
 
     case "RB":
       return {
         carriesPerGame:
-          derived.rushing
+          derived
+            .rushing
             .carriesPerGame,
 
         rushYardsPerGame:
-          derived.rushing
+          derived
+            .rushing
             .yardsPerGame,
 
         yardsPerCarry:
-          derived.rushing
+          derived
+            .rushing
             .yardsPerCarry,
 
         rushTDPerGame:
-          derived.rushing
+          derived
+            .rushing
             .touchdownsPerGame,
 
         targetsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .targetsPerGame,
 
         receptionsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .receptionsPerGame,
 
         receivingYardsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .yardsPerGame,
 
         offensiveSnapPct:
-          derived.snaps
+          derived
+            .snaps
             .offensePct
       };
 
@@ -773,43 +892,53 @@ function buildUsageProfile(
     case "TE":
       return {
         targetsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .targetsPerGame,
 
         receptionsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .receptionsPerGame,
 
         receivingYardsPerGame:
-          derived.receiving
+          derived
+            .receiving
             .yardsPerGame,
 
         yardsPerTarget:
-          derived.receiving
+          derived
+            .receiving
             .yardsPerTarget,
 
         yardsPerReception:
-          derived.receiving
+          derived
+            .receiving
             .yardsPerReception,
 
         catchRate:
-          derived.receiving
+          derived
+            .receiving
             .catchRate,
 
         receivingTDPerGame:
-          derived.receiving
+          derived
+            .receiving
             .touchdownsPerGame,
 
         carriesPerGame:
-          derived.rushing
+          derived
+            .rushing
             .carriesPerGame,
 
         rushYardsPerGame:
-          derived.rushing
+          derived
+            .rushing
             .yardsPerGame,
 
         offensiveSnapPct:
-          derived.snaps
+          derived
+            .snaps
             .offensePct
       };
 
@@ -846,13 +975,17 @@ function getBaseUrl(event) {
 
 async function fetchJson(url) {
   const response =
-    await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept:
-          "application/json"
+    await fetch(
+      url,
+      {
+        method: "GET",
+
+        headers: {
+          Accept:
+            "application/json"
+        }
       }
-    });
+    );
 
   let data = null;
 
@@ -901,6 +1034,7 @@ async function fetchScheduleWeek({
 
   return {
     week,
+
     games:
       Array.isArray(
         data.games
@@ -978,6 +1112,7 @@ async function buildPriorWeekScheduleMap({
   ) {
     return {
       weeksIncluded: [],
+
       gameMap:
         new Map()
     };
@@ -989,7 +1124,10 @@ async function buildPriorWeekScheduleMap({
         length:
           targetWeek - 1
       },
-      function (_, index) {
+      function (
+        _,
+        index
+      ) {
         return index + 1;
       }
     );
@@ -1012,8 +1150,7 @@ async function buildPriorWeekScheduleMap({
     new Map();
 
   for (
-    const schedule of
-    schedules
+    const schedule of schedules
   ) {
     for (
       const game of
@@ -1064,11 +1201,164 @@ async function buildPriorWeekScheduleMap({
   };
 }
 
+/*
+  HISTORICAL TEAM FROM PLAYER GAME
+  --------------------------------
+
+  Tank01 player-game objects commonly contain:
+
+    teamAbv
+    team
+
+  That historical game-level value is authoritative when it
+  matches one of the two teams in the historical schedule.
+*/
+function historicalTeamFromPlayerGame(
+  game
+) {
+  if (
+    !game ||
+    typeof game !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const candidates = [
+    game.teamAbv,
+    game.team,
+    game.teamAbbreviation,
+    game.playerTeam,
+    game.playerTeamAbv
+  ];
+
+  for (
+    const candidate of
+    candidates
+  ) {
+    const team =
+      normalizeTeam(
+        candidate
+      );
+
+    if (team) {
+      return team;
+    }
+  }
+
+  return null;
+}
+
+function teamParticipates(
+  scheduleGame,
+  team
+) {
+  if (
+    !scheduleGame ||
+    !team
+  ) {
+    return false;
+  }
+
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  return (
+    scheduleGame.away ===
+      normalizedTeam ||
+    scheduleGame.home ===
+      normalizedTeam
+  );
+}
+
+/*
+  Resolve the player's team for THIS HISTORICAL GAME.
+
+  Critical rule:
+  historical game metadata wins over current roster metadata.
+*/
+function resolveHistoricalTeam({
+  game,
+  scheduleGame,
+  currentTeam
+}) {
+  const historicalGameTeam =
+    historicalTeamFromPlayerGame(
+      game
+    );
+
+  /*
+    Best source:
+    player-game historical team.
+  */
+  if (
+    historicalGameTeam &&
+    teamParticipates(
+      scheduleGame,
+      historicalGameTeam
+    )
+  ) {
+    return {
+      team:
+        historicalGameTeam,
+
+      source:
+        "player_game"
+    };
+  }
+
+  /*
+    Safe fallback:
+    current player metadata may only be used if that team is
+    actually one of the teams in this historical game.
+
+    This prevents current KC metadata from being applied to a
+    historical SEA game.
+  */
+  const normalizedCurrentTeam =
+    normalizeTeam(
+      currentTeam
+    );
+
+  if (
+    normalizedCurrentTeam &&
+    teamParticipates(
+      scheduleGame,
+      normalizedCurrentTeam
+    )
+  ) {
+    return {
+      team:
+        normalizedCurrentTeam,
+
+      source:
+        "current_player_metadata_schedule_verified"
+    };
+  }
+
+  /*
+    Do not guess.
+
+    The game is still retained because gameID/week matching is
+    valid, but team/opponent remain unresolved.
+  */
+  return {
+    team:
+      null,
+
+    source:
+      "unresolved"
+  };
+}
+
 function opponentFromSchedule(
   scheduleGame,
   team
 ) {
-  if (!scheduleGame) {
+  if (
+    !scheduleGame ||
+    !team
+  ) {
     return null;
   }
 
@@ -1098,10 +1388,41 @@ function opponentFromSchedule(
   return null;
 }
 
+function locationFromSchedule(
+  scheduleGame,
+  team
+) {
+  if (
+    !scheduleGame ||
+    !team
+  ) {
+    return null;
+  }
+
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  if (
+    scheduleGame.away ===
+    normalizedTeam
+  ) {
+    return "away";
+  }
+
+  if (
+    scheduleGame.home ===
+    normalizedTeam
+  ) {
+    return "home";
+  }
+
+  return null;
+}
+
 function attachScheduleContext(
   playerGames,
   gameMap,
-  team
+  currentTeam
 ) {
   const games = [];
 
@@ -1122,14 +1443,41 @@ function attachScheduleContext(
       continue;
     }
 
+    const historicalTeam =
+      resolveHistoricalTeam({
+        game,
+        scheduleGame:
+          schedule,
+        currentTeam
+      });
+
+    const team =
+      historicalTeam.team;
+
     games.push({
       ...game,
 
       sageWeek:
         schedule.week,
 
+      /*
+        NEW:
+        historical team is determined separately for every game.
+      */
+      sageTeam:
+        team,
+
+      sageTeamSource:
+        historicalTeam.source,
+
       sageOpponent:
         opponentFromSchedule(
+          schedule,
+          team
+        ),
+
+      sageLocation:
+        locationFromSchedule(
           schedule,
           team
         ),
@@ -1148,8 +1496,12 @@ function attachScheduleContext(
   games.sort(
     function (a, b) {
       return (
-        num(a.sageWeek) -
-        num(b.sageWeek)
+        num(
+          a.sageWeek
+        ) -
+        num(
+          b.sageWeek
+        )
       );
     }
   );
@@ -1167,12 +1519,31 @@ function compactGame(game) {
       game.sageWeek ||
       null,
 
+    /*
+      NEW HISTORICAL IDENTITY FIELDS
+    */
+    team:
+      game.sageTeam ||
+      null,
+
+    teamSource:
+      game.sageTeamSource ||
+      null,
+
     opponent:
       game.sageOpponent ||
       null,
 
+    location:
+      game.sageLocation ||
+      null,
+
     gameDate:
       game.sageGameDate ||
+      null,
+
+    gameTime:
+      game.sageGameTime ||
       null,
 
     gameStatus:
@@ -1195,6 +1566,73 @@ function compactGame(game) {
       game.snapCounts ||
       null
   };
+}
+
+/*
+  The player's historical team entering the target week should
+  be the team from his most recent prior game.
+
+  If no prior game exists, fall back to current roster metadata.
+*/
+function historicalTeamEnteringWeek(
+  priorGames,
+  currentTeam
+) {
+  if (
+    Array.isArray(
+      priorGames
+    ) &&
+    priorGames.length
+  ) {
+    for (
+      let index =
+        priorGames.length - 1;
+      index >= 0;
+      index -= 1
+    ) {
+      const team =
+        normalizeTeam(
+          priorGames[index]
+            .sageTeam
+        );
+
+      if (team) {
+        return team;
+      }
+    }
+  }
+
+  return (
+    normalizeTeam(
+      currentTeam
+    ) ||
+    null
+  );
+}
+
+function historicalTeamsUsed(
+  priorGames
+) {
+  const teams =
+    new Set();
+
+  for (
+    const game of
+    priorGames
+  ) {
+    const team =
+      normalizeTeam(
+        game.sageTeam
+      );
+
+    if (team) {
+      teams.add(team);
+    }
+  }
+
+  return [
+    ...teams
+  ];
 }
 
 function jsonResponse(
@@ -1227,7 +1665,8 @@ exports.handler =
   async function (event) {
     if (
       event.httpMethod &&
-      event.httpMethod !== "GET"
+      event.httpMethod !==
+        "GET"
     ) {
       return jsonResponse(
         405,
@@ -1239,7 +1678,8 @@ exports.handler =
     }
 
     if (
-      !process.env.TANK01_API_KEY
+      !process.env
+        .TANK01_API_KEY
     ) {
       return jsonResponse(
         500,
@@ -1360,7 +1800,12 @@ exports.handler =
           gameStatsResult
         );
 
-      const team =
+      /*
+        Current roster metadata is retained for transparency.
+
+        It is NOT blindly applied to historical games anymore.
+      */
+      const currentTeam =
         normalizeTeam(
           player.teamAbv ||
           player.team
@@ -1372,11 +1817,26 @@ exports.handler =
           player.position
         );
 
+      /*
+        HISTORICAL FIX:
+        each prior game independently resolves its historical team.
+      */
       const priorGames =
         attachScheduleContext(
           allPlayerGames,
           scheduleContext.gameMap,
-          team
+          currentTeam
+        );
+
+      const team =
+        historicalTeamEnteringWeek(
+          priorGames,
+          currentTeam
+        );
+
+      const teamsUsed =
+        historicalTeamsUsed(
+          priorGames
         );
 
       const totals =
@@ -1416,13 +1876,20 @@ exports.handler =
             }
           );
 
+      const unresolvedHistoricalTeams =
+        priorGames.filter(
+          game =>
+            !game.sageTeam
+        ).length;
+
       return jsonResponse(
         200,
         {
           evidenceType:
             "weekly-sage-player-season",
 
-          schemaVersion: 2,
+          schemaVersion:
+            3,
 
           generatedAt:
             new Date()
@@ -1442,14 +1909,45 @@ exports.handler =
               player.name ||
               null,
 
+            /*
+              Historical team entering the target week.
+            */
             team,
+
+            /*
+              Current roster metadata retained separately so
+              historical and current identity cannot be confused.
+            */
+            currentTeam:
+              currentTeam ||
+              null,
 
             position
           },
 
+          historicalIdentity: {
+            rule:
+              "Historical player-game team is authoritative. Current roster team is used only when schedule-verified for that historical game.",
+
+            teamEnteringTargetWeek:
+              team,
+
+            currentRosterTeam:
+              currentTeam ||
+              null,
+
+            teamsUsedInEvidence:
+              teamsUsed,
+
+            unresolvedHistoricalGames:
+              unresolvedHistoricalTeams
+          },
+
           noLookAhead: {
             rule:
-              `Only games from Weeks 1 through ${targetWeek - 1} are eligible.`,
+              targetWeek > 1
+                ? `Only games from Weeks 1 through ${targetWeek - 1} are eligible.`
+                : "No prior-week games are eligible for Week 1.",
 
             scheduleWeeksQueried:
               scheduleContext
@@ -1470,7 +1968,14 @@ exports.handler =
               allPlayerGames.length,
 
             priorScheduleGamesMatched:
-              priorGames.length
+              priorGames.length,
+
+            historicalTeamsResolved:
+              priorGames.length -
+              unresolvedHistoricalTeams,
+
+            historicalTeamsUnresolved:
+              unresolvedHistoricalTeams
           },
 
           gamesUsed:
@@ -1483,6 +1988,12 @@ exports.handler =
 
           usageProfile,
 
+          /*
+            Every source game now exposes its own historical:
+              team
+              opponent
+              location
+          */
           sourceGames:
             priorGames.map(
               compactGame
