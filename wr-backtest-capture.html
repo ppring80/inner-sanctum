@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>WR Backtest Evidence Capture</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    .card {
+      background: white;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.10);
+      margin-bottom: 24px;
+    }
+
+    h1,
+    h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      margin-top: 18px;
+      margin-right: 10px;
+      padding: 12px 18px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #111;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+
+    .secondary {
+      background: #eee;
+      color: #111;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+    }
+
+    .status {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #f1f1f1;
+      font-weight: bold;
+    }
+
+    pre {
+      background: #111;
+      color: #eee;
+      padding: 16px;
+      border-radius: 8px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 600px;
+      min-height: 80px;
+    }
+
+    .note {
+      background: #fff8d8;
+      padding: 14px;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    .success {
+      background: #e9f7ed;
+    }
+
+    .error {
+      background: #fdeaea;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+
+    <h1>Weekly SAGE WR Evidence Capture</h1>
+
+    <div class="note">
+      This page bypasses the WR backtest Netlify function.
+      It retrieves one weekly WR validation result, converts the
+      played WR records into backtest observations in your browser,
+      and can send that evidence directly to WR Role Reliability.
+    </div>
+
+    <label for="season">
+      Season
+    </label>
+
+    <input
+      id="season"
+      value="2025"
+    >
+
+    <label for="week">
+      Week
+    </label>
+
+    <input
+      id="week"
+      type="number"
+      value="6"
+      min="2"
+      max="17"
+    >
+
+    <label for="seasonType">
+      Season Type
+    </label>
+
+    <input
+      id="seasonType"
+      value="reg"
+    >
+
+    <button
+      id="loadValidation"
+      class="primary"
+      type="button"
+    >
+      1. Load WR Validation
+    </button>
+
+    <button
+      id="runReliability"
+      class="secondary"
+      type="button"
+      disabled
+    >
+      2. Run Role Reliability
+    </button>
+
+    <button
+      id="copyBacktest"
+      class="secondary"
+      type="button"
+      disabled
+    >
+      Copy Backtest JSON
+    </button>
+
+    <div
+      id="status"
+      class="status"
+    >
+      Waiting...
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>
+      Captured Backtest Evidence
+    </h2>
+
+    <pre id="backtestResult">
+Waiting...
+    </pre>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>
+      Role Reliability Result
+    </h2>
+
+    <pre id="reliabilityResult">
+Waiting...
+    </pre>
+
+  </div>
+
+
+<script>
+
+let capturedBacktest =
+  null;
+
+const loadValidationButton =
+  document.getElementById(
+    "loadValidation"
+  );
+
+const runReliabilityButton =
+  document.getElementById(
+    "runReliability"
+  );
+
+const copyBacktestButton =
+  document.getElementById(
+    "copyBacktest"
+  );
+
+const statusBox =
+  document.getElementById(
+    "status"
+  );
+
+const backtestResult =
+  document.getElementById(
+    "backtestResult"
+  );
+
+const reliabilityResult =
+  document.getElementById(
+    "reliabilityResult"
+  );
+
+
+function setStatus(
+  message,
+  type
+) {
+  statusBox.textContent =
+    message;
+
+  statusBox.className =
+    "status";
+
+  if (
+    type ===
+    "success"
+  ) {
+    statusBox.classList.add(
+      "success"
+    );
+  }
+
+  if (
+    type ===
+    "error"
+  ) {
+    statusBox.classList.add(
+      "error"
+    );
+  }
+}
+
+
+function nullableNumber(
+  value
+) {
+  const n =
+    Number(
+      value
+    );
+
+  return Number.isFinite(
+    n
+  )
+    ? n
+    : null;
+}
+
+
+function buildObservation(
+  record,
+  week
+) {
+  return {
+    seasonWeek:
+      week,
+
+    playerID:
+      record.playerID ||
+      null,
+
+    name:
+      record.name ||
+      null,
+
+    team:
+      record.team ||
+      null,
+
+    currentTeam:
+      record.currentTeam ||
+      null,
+
+    opponent:
+      record.opponent ||
+      null,
+
+    sageRank:
+      nullableNumber(
+        record.sageRank
+      ),
+
+    sageScore:
+      nullableNumber(
+        record.sageScore
+      ),
+
+    sageLabel:
+      record.sageLabel ||
+      null,
+
+    sageConfidence:
+      nullableNumber(
+        record.sageConfidence
+      ),
+
+    components: {
+      role:
+        nullableNumber(
+          record.components &&
+          record.components.role
+        ),
+
+      production:
+        nullableNumber(
+          record.components &&
+          record.components.production
+        ),
+
+      matchup:
+        nullableNumber(
+          record.components &&
+          record.components.matchup
+        )
+    },
+
+    actual: {
+      standard:
+        nullableNumber(
+          record.actual &&
+          record.actual.fantasyPoints &&
+          record.actual.fantasyPoints.standard
+        ),
+
+      halfPPR:
+        nullableNumber(
+          record.actual &&
+          record.actual.fantasyPoints &&
+          record.actual.fantasyPoints.halfPPR
+        ),
+
+      ppr:
+        nullableNumber(
+          record.actual &&
+          record.actual.fantasyPoints &&
+          record.actual.fantasyPoints.ppr
+        ),
+
+      targets:
+        nullableNumber(
+          record.actual &&
+          record.actual.targets
+        ),
+
+      receptions:
+        nullableNumber(
+          record.actual &&
+          record.actual.receptions
+        ),
+
+      receivingYards:
+        nullableNumber(
+          record.actual &&
+          record.actual.receivingYards
+        ),
+
+      receivingTD:
+        nullableNumber(
+          record.actual &&
+          record.actual.receivingTD
+        ),
+
+      rushingYards:
+        nullableNumber(
+          record.actual &&
+          record.actual.rushingYards
+        ),
+
+      rushingTD:
+        nullableNumber(
+          record.actual &&
+          record.actual.rushingTD
+        ),
+
+      scrimmageYards:
+        nullableNumber(
+          record.actual &&
+          record.actual.scrimmageYards
+        ),
+
+      opportunities:
+        nullableNumber(
+          record.actual &&
+          record.actual.opportunities
+        ),
+
+      totalTD:
+        nullableNumber(
+          record.actual &&
+          record.actual.totalTD
+        )
+    }
+  };
+}
+
+
+function buildBacktestFromValidation(
+  validation
+) {
+  const records =
+    Array.isArray(
+      validation.validation
+    )
+      ? validation.validation
+      : [];
+
+  const week =
+    Number(
+      validation.targetWeek
+    );
+
+  const observations =
+    records
+      .map(
+        function (
+          record
+        ) {
+          return buildObservation(
+            record,
+            week
+          );
+        }
+      )
+      .filter(
+        function (
+          observation
+        ) {
+          return (
+            observation.sageScore !== null &&
+            observation.components.role !== null &&
+            observation.components.production !== null &&
+            observation.components.matchup !== null &&
+            observation.actual.standard !== null &&
+            observation.actual.halfPPR !== null &&
+            observation.actual.ppr !== null
+          );
+        }
+      );
+
+  const validationPopulation =
+    validation.population ||
+    {};
+
+  const validationFailures =
+    Array.isArray(
+      validation.failures
+    )
+      ? validation.failures
+      : [];
+
+  const sourceReady =
+    Boolean(
+      validation.nextStep &&
+      validation.nextStep.ready === true
+    );
+
+  const ready =
+    sourceReady &&
+    validationFailures.length === 0 &&
+    observations.length > 0;
+
+  return {
+    evidenceType:
+      "weekly-sage-wr-backtest",
+
+    schemaVersion:
+      2,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season:
+      validation.season,
+
+    seasonType:
+      validation.seasonType,
+
+    requestedWindow: {
+      startWeek:
+        week,
+
+      endWeek:
+        week,
+
+      weeks: [
+        week
+      ]
+    },
+
+    methodology: {
+      modelVersion:
+        "wr-sage-v1",
+
+      evidenceConstruction:
+        "Browser evidence capture from weekly-sage-wr-validation.",
+
+      unitOfObservation:
+        "One WR player-week in which the player actually participated in the target-week game.",
+
+      prediction:
+        "Frozen pre-game Weekly SAGE WR score.",
+
+      outcome:
+        "Actual target-week fantasy points.",
+
+      leakageProtection:
+        "The supplied weekly validation endpoint already separates pre-game SAGE evidence from post-game target-week outcomes.",
+
+      important:
+        "This browser-generated backtest payload does not recalculate historical SAGE and makes no additional player-level evidence calls."
+    },
+
+    population: {
+      weeksRequested:
+        1,
+
+      weeksRetrieved:
+        1,
+
+      cleanPlayerWeekObservations:
+        observations.length,
+
+      byeExcluded:
+        nullableNumber(
+          validationPopulation.byeExcluded
+        ) || 0,
+
+      didNotPlayExcluded:
+        nullableNumber(
+          validationPopulation.didNotPlayExcluded
+        ) || 0,
+
+      weeklyFailures:
+        validationFailures.length,
+
+      retrievalFailures:
+        0
+    },
+
+    observations,
+
+    diagnostics: {
+      retrievalFailures:
+        [],
+
+      unreadyWeeks:
+        ready
+          ? []
+          : [
+              {
+                week,
+
+                reason:
+                  "Source weekly validation was not ready."
+              }
+            ]
+    },
+
+    nextStep: {
+      ready,
+
+      reason:
+        ready
+          ? "Browser-captured WR backtest evidence is clean and ready for downstream reliability analysis."
+          : "Source weekly validation was not clean enough for downstream analysis."
+    },
+
+    architecture: {
+      modelVersion:
+        "wr-sage-v1",
+
+      source:
+        "weekly-sage-wr-validation",
+
+      generatedInBrowser:
+        true,
+
+      downstreamPlayerEvidenceCalls:
+        0,
+
+      recalculatesHistoricalSage:
+        false
+    },
+
+    provenance: {
+      weeklyValidation:
+        "weekly-sage-wr-validation",
+
+      transformation:
+        "wr-backtest-capture.html"
+    }
+  };
+}
+
+
+loadValidationButton.addEventListener(
+  "click",
+  async function () {
+
+    capturedBacktest =
+      null;
+
+    runReliabilityButton.disabled =
+      true;
+
+    copyBacktestButton.disabled =
+      true;
+
+    reliabilityResult.textContent =
+      "Waiting...";
+
+    const season =
+      document
+        .getElementById(
+          "season"
+        )
+        .value
+        .trim();
+
+    const week =
+      document
+        .getElementById(
+          "week"
+        )
+        .value
+        .trim();
+
+    const seasonType =
+      document
+        .getElementById(
+          "seasonType"
+        )
+        .value
+        .trim();
+
+    if (
+      !season ||
+      !week ||
+      !seasonType
+    ) {
+      setStatus(
+        "Season, week, and season type are required.",
+        "error"
+      );
+
+      return;
+    }
+
+    const endpoint =
+      "/.netlify/functions/weekly-sage-wr-validation" +
+      "?season=" +
+      encodeURIComponent(
+        season
+      ) +
+      "&week=" +
+      encodeURIComponent(
+        week
+      ) +
+      "&seasonType=" +
+      encodeURIComponent(
+        seasonType
+      );
+
+    setStatus(
+      "Loading Week " +
+      week +
+      " WR validation...",
+      ""
+    );
+
+    backtestResult.textContent =
+      "Loading validation...";
+
+    try {
+
+      const response =
+        await fetch(
+          endpoint,
+          {
+            method:
+              "GET",
+
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      const text =
+        await response.text();
+
+      let validation;
+
+      try {
+        validation =
+          JSON.parse(
+            text
+          );
+      } catch (
+        error
+      ) {
+        setStatus(
+          "Validation did not return JSON. HTTP " +
+          response.status +
+          ".",
+          "error"
+        );
+
+        backtestResult.textContent =
+          text;
+
+        return;
+      }
+
+      if (
+        !response.ok
+      ) {
+        setStatus(
+          "Validation failed with HTTP " +
+          response.status +
+          ".",
+          "error"
+        );
+
+        backtestResult.textContent =
+          JSON.stringify(
+            validation,
+            null,
+            2
+          );
+
+        return;
+      }
+
+      if (
+        validation.evidenceType !==
+        "weekly-sage-wr-validation"
+      ) {
+        setStatus(
+          "Unexpected validation schema.",
+          "error"
+        );
+
+        backtestResult.textContent =
+          JSON.stringify(
+            validation,
+            null,
+            2
+          );
+
+        return;
+      }
+
+      capturedBacktest =
+        buildBacktestFromValidation(
+          validation
+        );
+
+      backtestResult.textContent =
+        JSON.stringify(
+          capturedBacktest,
+          null,
+          2
+        );
+
+      if (
+        capturedBacktest.nextStep.ready
+      ) {
+        setStatus(
+          "Success — captured " +
+          capturedBacktest.population
+            .cleanPlayerWeekObservations +
+          " clean Week " +
+          week +
+          " WR observations.",
+          "success"
+        );
+
+        runReliabilityButton.disabled =
+          false;
+
+        copyBacktestButton.disabled =
+          false;
+      } else {
+        setStatus(
+          "Validation loaded, but the captured evidence is not ready.",
+          "error"
+        );
+      }
+
+    } catch (
+      error
+    ) {
+
+      setStatus(
+        "Validation request failed.",
+        "error"
+      );
+
+      backtestResult.textContent =
+        error.stack ||
+        error.message ||
+        String(
+          error
+        );
+    }
+  }
+);
+
+
+runReliabilityButton.addEventListener(
+  "click",
+  async function () {
+
+    if (
+      !capturedBacktest
+    ) {
+      setStatus(
+        "Load WR validation first.",
+        "error"
+      );
+
+      return;
+    }
+
+    const endpoint =
+      "/.netlify/functions/weekly-sage-wr-role-reliability";
+
+    setStatus(
+      "Running Role Reliability from captured evidence...",
+      ""
+    );
+
+    reliabilityResult.textContent =
+      "Running...";
+
+    try {
+
+      const response =
+        await fetch(
+          endpoint,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                backtest:
+                  capturedBacktest
+              })
+          }
+        );
+
+      const text =
+        await response.text();
+
+      let data;
+
+      try {
+        data =
+          JSON.parse(
+            text
+          );
+
+        reliabilityResult.textContent =
+          JSON.stringify(
+            data,
+            null,
+            2
+          );
+      } catch (
+        error
+      ) {
+        reliabilityResult.textContent =
+          text;
+      }
+
+      if (
+        response.ok
+      ) {
+        setStatus(
+          "Success — Role Reliability completed from captured evidence.",
+          "success"
+        );
+      } else {
+        setStatus(
+          "Role Reliability failed with HTTP " +
+          response.status +
+          ".",
+          "error"
+        );
+      }
+
+    } catch (
+      error
+    ) {
+
+      setStatus(
+        "Role Reliability request failed.",
+        "error"
+      );
+
+      reliabilityResult.textContent =
+        error.stack ||
+        error.message ||
+        String(
+          error
+        );
+    }
+  }
+);
+
+
+copyBacktestButton.addEventListener(
+  "click",
+  async function () {
+
+    if (
+      !capturedBacktest
+    ) {
+      return;
+    }
+
+    const text =
+      JSON.stringify(
+        capturedBacktest,
+        null,
+        2
+      );
+
+    try {
+
+      await navigator
+        .clipboard
+        .writeText(
+          text
+        );
+
+      setStatus(
+        "Backtest JSON copied to clipboard.",
+        "success"
+      );
+
+    } catch (
+      error
+    ) {
+
+      setStatus(
+        "Could not copy automatically. Select the JSON manually.",
+        "error"
+      );
+    }
+  }
+);
+
+</script>
+
+</body>
+</html>
