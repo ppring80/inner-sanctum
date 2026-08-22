@@ -20,7 +20,7 @@
 // Instead:
 //
 //   1. Get the target RB's validated player-season evidence.
-//   2. Discover RB peers from Tank01 player information.
+//   2. Discover RB peers from Tank01 getNFLPlayerList.
 //   3. Build the same no-look-ahead player-season evidence for each peer.
 //   4. Apply a minimum-sample / meaningful-usage population filter.
 //   5. Calculate percentile ranks for Role and Production metrics.
@@ -28,48 +28,19 @@
 //
 // ═══════════════════════════════════════════════════════════════════════
 
+const TANK01_HOST =
+  "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+
 const DEFAULT_SEASON_TYPE = "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-/*
-  Population controls.
-
-  We want fantasy-relevant RBs, not every player who happened to record
-  one carry.
-
-  These are POPULATION ELIGIBILITY rules, not SAGE scoring thresholds.
-
-  For an in-season benchmark:
-  - player must have at least 2 games of evidence
-  - player must average at least 5 opportunities per game
-
-  Opportunity = carries + targets.
-
-  We will inspect this population before locking the methodology.
-*/
 const MIN_GAMES = 2;
 const MIN_OPPORTUNITIES_PER_GAME = 5;
 
-/*
-  Avoid hammering internal Netlify functions all at once.
-*/
 const CONCURRENCY = 6;
 
-/*
-  Tank01 endpoint used earlier in the project to resolve player
-  information.
-
-  If your existing Tank01 player-info function has a different filename,
-  ONLY change this constant.
-*/
-const PLAYER_INFO_FUNCTION =
-  "tank01-get-nfl-player-list";
-
-/*
-  Internal validated evidence endpoint.
-*/
 const PLAYER_SEASON_FUNCTION =
   "weekly-sage-player-season";
 
@@ -110,6 +81,83 @@ function normalizeTeam(value) {
   )
     .trim()
     .toUpperCase();
+}
+
+function tank01Headers() {
+  return {
+    "Content-Type":
+      "application/json",
+
+    "x-rapidapi-host":
+      TANK01_HOST,
+
+    "x-rapidapi-key":
+      process.env.TANK01_API_KEY
+  };
+}
+
+async function tank01Fetch(
+  endpoint,
+  params
+) {
+  const query =
+    new URLSearchParams(
+      params || {}
+    ).toString();
+
+  const url =
+    `https://${TANK01_HOST}/${endpoint}` +
+    (query ? `?${query}` : "");
+
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
+        headers:
+          tank01Headers()
+      }
+    );
+
+  let data = null;
+
+  try {
+    data =
+      await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    let detail =
+      `HTTP ${response.status}`;
+
+    if (
+      data &&
+      data.message
+    ) {
+      detail =
+        data.message;
+    } else if (
+      data &&
+      data.error
+    ) {
+      detail =
+        data.error;
+    } else if (
+      data &&
+      typeof data.body === "string"
+    ) {
+      detail =
+        data.body;
+    }
+
+    throw new Error(
+      `Tank01 ${endpoint} failed: ${detail}`
+    );
+  }
+
+  return data;
 }
 
 function getBaseUrl(event) {
@@ -176,18 +224,6 @@ async function fetchJson(url) {
   return data;
 }
 
-/*
-  Tank01 wrappers sometimes return:
-
-      {
-        statusCode: 200,
-        body: [...]
-      }
-
-  while some internal functions return the array directly.
-
-  Normalize both.
-*/
 function unwrapBody(data) {
   if (
     data &&
@@ -207,7 +243,7 @@ function unwrapBody(data) {
         body =
           JSON.parse(body);
       } catch (error) {
-        // Leave it unchanged.
+        // Leave unchanged.
       }
     }
 
@@ -285,24 +321,6 @@ function playerPositionOf(player) {
   );
 }
 
-/*
-  Midrank percentile rank.
-
-  Example:
-
-      values = [10, 20, 20, 30]
-      target = 20
-
-      below = 1
-      equal = 2
-
-      percentile =
-        (1 + 0.5 * 2) / 4
-        = 50
-
-  This prevents tied players from receiving artificially different
-  percentile ranks.
-*/
 function percentileRank(
   values,
   target
@@ -364,14 +382,6 @@ function percentileRank(
   );
 }
 
-/*
-  Linear-interpolation distribution percentile.
-
-  Used only to SHOW population landmarks such as median, P25, P75,
-  and P90.
-
-  This does not score players.
-*/
 function distributionPercentile(
   values,
   percentile
@@ -508,21 +518,27 @@ function describeDistribution(
   };
 }
 
-async function fetchPlayerList(
-  baseUrl
-) {
-  const url =
-    `${baseUrl}/.netlify/functions/${PLAYER_INFO_FUNCTION}`;
+async function fetchPlayerList() {
+  if (
+    !process.env.TANK01_API_KEY
+  ) {
+    throw new Error(
+      "TANK01_API_KEY is not configured."
+    );
+  }
 
   const data =
-    await fetchJson(url);
+    await tank01Fetch(
+      "getNFLPlayerList",
+      {}
+    );
 
   const players =
     extractPlayers(data);
 
   if (!players.length) {
     throw new Error(
-      `No players returned by ${PLAYER_INFO_FUNCTION}.`
+      "Tank01 getNFLPlayerList returned no players."
     );
   }
 
@@ -1122,11 +1138,6 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      /*
-        STEP 1
-        ------
-        Validate the target player first.
-      */
       const targetEvidence =
         await fetchPlayerSeason({
           baseUrl,
@@ -1157,18 +1168,8 @@ exports.handler =
         );
       }
 
-      /*
-        STEP 2
-        ------
-        Get the player universe and isolate RBs.
-
-        We intentionally do NOT use preseason ranking, ADP, or fantasy
-        reputation to decide who belongs in the peer population.
-      */
       const allPlayers =
-        await fetchPlayerList(
-          baseUrl
-        );
+        await fetchPlayerList();
 
       const rbCandidates =
         allPlayers
@@ -1201,9 +1202,6 @@ exports.handler =
               player.playerID
           );
 
-      /*
-        De-duplicate by playerID.
-      */
       const uniqueMap =
         new Map();
 
@@ -1228,15 +1226,6 @@ exports.handler =
           ...uniqueMap.values()
         ];
 
-      /*
-        STEP 3
-        ------
-        Build identical no-look-ahead player-season evidence for every
-        RB candidate.
-
-        Failed / inactive / zero-data players are recorded diagnostically
-        rather than crashing the whole benchmark.
-      */
       const peerResults =
         await mapWithConcurrency(
           uniqueCandidates,
@@ -1298,22 +1287,11 @@ exports.handler =
             result.record
         );
 
-      /*
-        STEP 4
-        ------
-        Apply the explicit population eligibility rules.
-      */
       const population =
         allRBRecords.filter(
           populationEligible
         );
 
-      /*
-        Guarantee that the target is represented if it qualifies.
-
-        If it does not qualify, return diagnostics instead of silently
-        benchmarking it against a population from which it was excluded.
-      */
       const target =
         population.find(
           player =>
@@ -1364,14 +1342,6 @@ exports.handler =
         );
       }
 
-      /*
-        STEP 5
-        ------
-        Calculate the target player's percentile position for every
-        relevant RB metric.
-
-        Still NO Role Score and NO Production Score.
-      */
       const benchmarks =
         buildTargetBenchmarks(
           population,
@@ -1480,14 +1450,6 @@ exports.handler =
 
           benchmarks,
 
-          /*
-            Return the entire eligible population during validation.
-
-            This is deliberate.
-
-            We want to SEE who SAGE considers the RB peer group before
-            turning these percentiles into scoring components.
-          */
           population:
             sortedPopulation,
 
