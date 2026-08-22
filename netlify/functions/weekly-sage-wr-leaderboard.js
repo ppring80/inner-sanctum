@@ -10,43 +10,36 @@
 // -------
 //
 //   weekly-sage-wr-snapshot
+//   weekly-sage-schedule
 //   weekly-sage-wr-final-score
 //
 // ARCHITECTURE
 // ------------
 // The snapshot defines the eligible WR population.
 //
-// This function then calls weekly-sage-wr-final-score for each WR.
+// The weekly schedule determines whether each player's historical
+// team is ACTIVE or on BYE in the target week.
 //
-// It DOES NOT:
+// Only active WRs are sent to weekly-sage-wr-final-score.
+//
+// This prevents bye weeks from being incorrectly reported as
+// scoring failures and avoids unnecessary downstream function calls.
+//
+// This function DOES NOT:
 // - call Tank01 directly
-// - rebuild player evidence
-// - recalculate WR benchmarks
-// - recalculate component formulas
+// - rebuild WR evidence
+// - recalculate benchmarks
+// - recalculate WR components
 // - duplicate confidence logic
 // - duplicate matchup logic
-// - define START / FLEX / SIT thresholds
-//
-// WHY THIS EXISTS
-// ---------------
-// Individual-player testing is useful for architecture validation.
-//
-// Historical model validation requires a complete weekly population:
-//
-//   WR population
-//      ↓
-//   final SAGE score for each WR
-//      ↓
-//   ranked weekly leaderboard
-//      ↓
-//   compare forecast against actual fantasy outcome
+// - create START / FLEX / SIT thresholds
 //
 // IMPORTANT
 // ---------
-// The WR final-score weights are still provisional.
+// WR SAGE v1 weights remain provisional.
 //
-// This leaderboard exposes the scores.
-// It does not validate the weights.
+// This leaderboard exposes the current forecast population for
+// historical validation. It does not validate or optimize weights.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -59,18 +52,15 @@ const POSITION =
 const SNAPSHOT_FUNCTION =
   "weekly-sage-wr-snapshot";
 
+const SCHEDULE_FUNCTION =
+  "weekly-sage-schedule";
+
 const FINAL_SCORE_FUNCTION =
   "weekly-sage-wr-final-score";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-/*
-  Keep concurrency modest.
-
-  We do not want a leaderboard request to hammer downstream
-  Netlify functions all at once.
-*/
 const DEFAULT_CONCURRENCY =
   5;
 
@@ -333,6 +323,49 @@ async function fetchSnapshot({
   return data;
 }
 
+async function fetchSchedule({
+  baseUrl,
+  season,
+  week,
+  seasonType
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        SCHEDULE_FUNCTION,
+
+      params: {
+        season,
+
+        week:
+          String(
+            week
+          ),
+
+        seasonType
+      }
+    });
+
+  const data =
+    await fetchJson(
+      url
+    );
+
+  if (
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-schedule"
+  ) {
+    throw new Error(
+      "Unexpected Weekly SAGE schedule schema."
+    );
+  }
+
+  return data;
+}
+
 async function fetchFinalScore({
   baseUrl,
   season,
@@ -366,28 +399,18 @@ async function fetchFinalScore({
   );
 }
 
-/*
-  Snapshot schema helper.
-
-  The current WR snapshot may expose its population under
-  players, rows, population, or receivers depending on the
-  exact implementation version.
-
-  We resolve known array locations explicitly instead of
-  silently inventing player records.
-*/
 function extractSnapshotPlayers(
   snapshot
 ) {
   const candidates = [
     snapshot &&
+      snapshot.population,
+
+    snapshot &&
       snapshot.players,
 
     snapshot &&
       snapshot.rows,
-
-    snapshot &&
-      snapshot.population,
 
     snapshot &&
       snapshot.receivers,
@@ -460,6 +483,15 @@ function normalizeSnapshotPlayer(
     return null;
   }
 
+  /*
+    IMPORTANT:
+    row.team is the historical team entering the target week.
+
+    currentTeam is preserved separately.
+
+    Historical team is authoritative for historical schedule
+    classification.
+  */
   return {
     playerID,
 
@@ -471,7 +503,12 @@ function normalizeSnapshotPlayer(
 
     team:
       normalizeTeam(
-        row.team ||
+        row.team
+      ) ||
+      null,
+
+    currentTeam:
+      normalizeTeam(
         row.currentTeam
       ) ||
       null,
@@ -531,6 +568,176 @@ function dedupePlayers(
   }
 
   return result;
+}
+
+function buildScheduleState(
+  schedule
+) {
+  const activeTeams =
+    new Set();
+
+  const byeTeams =
+    new Set();
+
+  const games =
+    Array.isArray(
+      schedule.games
+    )
+      ? schedule.games
+      : [];
+
+  for (
+    const game of
+    games
+  ) {
+    const away =
+      normalizeTeam(
+        game.away
+      );
+
+    const home =
+      normalizeTeam(
+        game.home
+      );
+
+    if (
+      away
+    ) {
+      activeTeams.add(
+        away
+      );
+    }
+
+    if (
+      home
+    ) {
+      activeTeams.add(
+        home
+      );
+    }
+  }
+
+  if (
+    Array.isArray(
+      schedule.activeTeams
+    )
+  ) {
+    for (
+      const team of
+      schedule.activeTeams
+    ) {
+      const normalized =
+        normalizeTeam(
+          team
+        );
+
+      if (
+        normalized
+      ) {
+        activeTeams.add(
+          normalized
+        );
+      }
+    }
+  }
+
+  if (
+    Array.isArray(
+      schedule.byeTeams
+    )
+  ) {
+    for (
+      const team of
+      schedule.byeTeams
+    ) {
+      const normalized =
+        normalizeTeam(
+          team
+        );
+
+      if (
+        normalized
+      ) {
+        byeTeams.add(
+          normalized
+        );
+      }
+    }
+  }
+
+  return {
+    activeTeams,
+
+    byeTeams
+  };
+}
+
+function classifyPlayerSchedule(
+  player,
+  scheduleState
+) {
+  const team =
+    normalizeTeam(
+      player.team
+    );
+
+  if (
+    !team
+  ) {
+    return {
+      status:
+        "unresolved",
+
+      reason:
+        "Historical team entering the target week is unavailable."
+    };
+  }
+
+  if (
+    scheduleState
+      .activeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "active",
+
+      reason:
+        null
+    };
+  }
+
+  if (
+    scheduleState
+      .byeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "bye",
+
+      reason:
+        "Player's historical team is on bye in the requested week."
+    };
+  }
+
+  /*
+    For a complete regular-season weekly schedule, absence means bye.
+
+    However, we only infer that when the schedule endpoint explicitly
+    says bye classification is available.
+  */
+  return {
+    status:
+      "unresolved",
+
+    reason:
+      "Player team does not appear in the active schedule and was not explicitly classified as a bye team."
+  };
 }
 
 async function mapWithConcurrency(
@@ -593,6 +800,13 @@ async function mapWithConcurrency(
       concurrency,
       items.length
     );
+
+  if (
+    workerCount <=
+    0
+  ) {
+    return results;
+  }
 
   await Promise.all(
     Array.from(
@@ -678,8 +892,20 @@ function leaderboardRow(
       ) ||
       null,
 
+    currentTeam:
+      normalizeTeam(
+        player.currentTeam
+      ) ||
+      null,
+
     position:
       POSITION,
+
+    status:
+      "active",
+
+    eligibleForWeeklyRanking:
+      true,
 
     gamesUsed:
       nullableNum(
@@ -812,6 +1038,95 @@ function leaderboardRow(
   };
 }
 
+function inactiveRow(
+  player,
+  reason
+) {
+  return {
+    playerID:
+      player.playerID,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      player.team ||
+      null,
+
+    currentTeam:
+      player.currentTeam ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "bye",
+
+    eligibleForWeeklyRanking:
+      false,
+
+    opponent:
+      null,
+
+    location:
+      null,
+
+    sage: {
+      score:
+        null,
+
+      label:
+        null,
+
+      confidence:
+        null,
+
+      confidenceLabel:
+        null
+    },
+
+    recommendation:
+      null,
+
+    reason
+  };
+}
+
+function unresolvedRow(
+  player,
+  reason
+) {
+  return {
+    playerID:
+      player.playerID,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      player.team ||
+      null,
+
+    currentTeam:
+      player.currentTeam ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "unresolved",
+
+    eligibleForWeeklyRanking:
+      false,
+
+    reason
+  };
+}
+
 function sortLeaderboard(
   rows
 ) {
@@ -820,20 +1135,6 @@ function sortLeaderboard(
       a,
       b
     ) {
-      /*
-        Primary:
-        higher SAGE score
-
-        Secondary:
-        higher confidence
-
-        Tertiary:
-        higher Role
-
-        Final:
-        alphabetical name for deterministic output
-      */
-
       const scoreDiff =
         (
           nullableNum(
@@ -961,24 +1262,6 @@ function applyRanks(
 function summarizeScores(
   rows
 ) {
-  if (
-    !rows.length
-  ) {
-    return {
-      minimum:
-        null,
-
-      maximum:
-        null,
-
-      average:
-        null,
-
-      median:
-        null
-    };
-  }
-
   const scores =
     rows
       .map(
@@ -1016,6 +1299,9 @@ function summarizeScores(
     !scores.length
   ) {
     return {
+      count:
+        0,
+
       minimum:
         null,
 
@@ -1069,6 +1355,9 @@ function summarizeScores(
         ];
 
   return {
+    count:
+      scores.length,
+
     minimum:
       round(
         scores[
@@ -1247,16 +1536,29 @@ exports.handler =
       /*
         STEP 1
         ------
-        Retrieve the target week's pre-game WR population.
+        Retrieve WR peer population and target-week schedule ONCE.
       */
-      const snapshot =
-        await fetchSnapshot({
-          baseUrl,
-          season,
-          week:
-            targetWeek,
-          seasonType
-        });
+      const [
+        snapshot,
+        schedule
+      ] =
+        await Promise.all([
+          fetchSnapshot({
+            baseUrl,
+            season,
+            week:
+              targetWeek,
+            seasonType
+          }),
+
+          fetchSchedule({
+            baseUrl,
+            season,
+            week:
+              targetWeek,
+            seasonType
+          })
+        ]);
 
       const rawPlayers =
         extractSnapshotPlayers(
@@ -1270,14 +1572,7 @@ exports.handler =
           422,
           {
             error:
-              "WR snapshot did not expose a recognizable player population.",
-
-            evidenceType:
-              snapshot.evidenceType ||
-              null,
-
-            detail:
-              "Inspect weekly-sage-wr-snapshot output before changing leaderboard scoring logic."
+              "WR snapshot did not expose a recognizable player population."
           }
         );
       }
@@ -1297,12 +1592,7 @@ exports.handler =
         players.length;
 
       /*
-        Optional limit is useful for endpoint testing.
-
-        Example:
-          ?season=2025&week=8&limit=10
-
-        Historical validation should normally run without limit.
+        limit remains useful for cheap architecture tests.
       */
       if (
         requestedLimit !==
@@ -1315,17 +1605,78 @@ exports.handler =
           );
       }
 
+      const scheduleState =
+        buildScheduleState(
+          schedule
+        );
+
       /*
         STEP 2
         ------
-        Calculate final SAGE for each WR.
+        Classify ACTIVE / BYE / UNRESOLVED before scoring.
 
-        Failures are isolated to the individual player so one bad
-        player record does not destroy the entire leaderboard.
+        Bye players never call final-score.
+      */
+      const activePlayers =
+        [];
+
+      const inactive =
+        [];
+
+      const unresolved =
+        [];
+
+      for (
+        const player of
+        players
+      ) {
+        const classification =
+          classifyPlayerSchedule(
+            player,
+            scheduleState
+          );
+
+        if (
+          classification.status ===
+          "active"
+        ) {
+          activePlayers.push(
+            player
+          );
+
+          continue;
+        }
+
+        if (
+          classification.status ===
+          "bye"
+        ) {
+          inactive.push(
+            inactiveRow(
+              player,
+              classification.reason
+            )
+          );
+
+          continue;
+        }
+
+        unresolved.push(
+          unresolvedRow(
+            player,
+            classification.reason
+          )
+        );
+      }
+
+      /*
+        STEP 3
+        ------
+        Only active WRs invoke final-score.
       */
       const results =
         await mapWithConcurrency(
-          players,
+          activePlayers,
           concurrency,
           async function (
             player
@@ -1390,11 +1741,6 @@ exports.handler =
           }
         );
 
-      /*
-        STEP 3
-        ------
-        Separate successful rows from failures.
-      */
       const rows =
         [];
 
@@ -1418,32 +1764,35 @@ exports.handler =
             playerID:
               result &&
               result.player
-                ? result.player.playerID ||
+                ? result
+                    .player
+                    .playerID ||
                   null
                 : null,
 
             name:
               result &&
               result.player
-                ? result.player.name ||
+                ? result
+                    .player
+                    .name ||
                   null
                 : null,
 
             team:
               result &&
               result.player
-                ? result.player.team ||
+                ? result
+                    .player
+                    .team ||
                   null
                 : null,
 
             error:
               result &&
               result.error
-                ? (
-                    result.error.message ||
-                    String(
-                      result.error
-                    )
+                ? String(
+                    result.error
                   )
                 : "Unknown leaderboard scoring failure."
           });
@@ -1453,7 +1802,7 @@ exports.handler =
       /*
         STEP 4
         ------
-        Rank successful WR forecasts.
+        Rank active scored WRs.
       */
       const leaderboard =
         applyRanks(
@@ -1467,6 +1816,14 @@ exports.handler =
           leaderboard
         );
 
+      const ready =
+        leaderboard.length >
+          0 &&
+        failures.length ===
+          0 &&
+        unresolved.length ===
+          0;
+
       return jsonResponse(
         200,
         {
@@ -1474,7 +1831,7 @@ exports.handler =
             "weekly-sage-wr-leaderboard",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -1505,42 +1862,14 @@ exports.handler =
               "Player name"
             ],
 
+            byeHandling:
+              "Players whose historical target-week team is on bye are excluded before final-score execution and reported separately as inactive.",
+
+            historicalIdentity:
+              "The WR snapshot's historical team entering the target week is authoritative for schedule classification.",
+
             important:
-              "This endpoint ranks existing WR final scores. It does not independently calculate or alter the SAGE methodology."
-          },
-
-          population: {
-            snapshotPlayersReturned:
-              populationReturned,
-
-            playersRequested:
-              players.length,
-
-            scoresReturned:
-              leaderboard.length,
-
-            failuresReturned:
-              failures.length,
-
-            limitApplied:
-              requestedLimit,
-
-            concurrency
-          },
-
-          scoreSummary,
-
-          leaderboard,
-
-          failures,
-
-          nextStep: {
-            ready:
-              leaderboard.length >
-              0,
-
-            reason:
-              "Use weekly WR leaderboard observations as the forecast population for historical outcome validation and Role / Production / Matchup weight sensitivity."
+              "This endpoint ranks existing WR final scores. It does not independently calculate or alter SAGE methodology."
           },
 
           architecture: {
@@ -1550,19 +1879,102 @@ exports.handler =
             populationSource:
               SNAPSHOT_FUNCTION,
 
+            scheduleSource:
+              SCHEDULE_FUNCTION,
+
             scoringSource:
               FINAL_SCORE_FUNCTION,
+
+            populationRebuiltByLeaderboard:
+              false,
 
             directTank01Calls:
               0,
 
-            populationRebuiltForEachPlayer:
-              false
+            byePlayersSentToFinalScore:
+              0
+          },
+
+          population: {
+            snapshotPlayersReturned:
+              populationReturned,
+
+            playersRequested:
+              players.length,
+
+            activePlayers:
+              activePlayers.length,
+
+            activePlayersScored:
+              leaderboard.length,
+
+            inactiveByePlayers:
+              inactive.length,
+
+            unresolvedPlayers:
+              unresolved.length,
+
+            failures:
+              failures.length,
+
+            limitApplied:
+              requestedLimit,
+
+            concurrency
+          },
+
+          scheduleClassification: {
+            activeTeamsReturned:
+              scheduleState
+                .activeTeams
+                .size,
+
+            byeTeamsReturned:
+              scheduleState
+                .byeTeams
+                .size,
+
+            activeTeams:
+              Array.from(
+                scheduleState
+                  .activeTeams
+              ).sort(),
+
+            byeTeams:
+              Array.from(
+                scheduleState
+                  .byeTeams
+              ).sort()
+          },
+
+          scoreSummary,
+
+          leaderboard,
+
+          inactive,
+
+          unresolved,
+
+          failures,
+
+          recommendation:
+            null,
+
+          nextStep: {
+            ready,
+
+            reason:
+              ready
+                ? "Active WRs were scored successfully and bye-week WRs were excluded from the ranking before final-score execution. The weekly population is ready for historical validation."
+                : "Resolve unresolved players or true scoring failures before using this weekly leaderboard for historical validation."
           },
 
           provenance: {
             peerPopulation:
               SNAPSHOT_FUNCTION,
+
+            participation:
+              SCHEDULE_FUNCTION,
 
             finalScore:
               FINAL_SCORE_FUNCTION,
