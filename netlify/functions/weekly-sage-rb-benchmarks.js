@@ -4,58 +4,60 @@
 //
 // PURPOSE
 // -------
-// Build a no-look-ahead peer population of NFL running backs and
-// benchmark a target RB against that population.
+// Consume the reusable weekly RB snapshot:
+//
+//   weekly-sage-rb-snapshot
+//
+// and benchmark one target RB against that population.
 //
 // IMPORTANT
 // ---------
-// This is a DIAGNOSTIC / BENCHMARK layer.
-//
-// It DOES NOT:
+// This function DOES NOT:
+// - call Tank01
+// - rebuild the RB population
 // - calculate the final SAGE score
-// - create START/SIT recommendations
-// - modify weekly-sage-player-assessment
-// - invent fixed "elite/good/bad" thresholds
+// - create START / FLEX / SIT recommendations
 //
-// Instead:
+// ARCHITECTURE
+// ------------
 //
-//   1. Get the target RB's validated player-season evidence.
-//   2. Discover RB peers from Tank01 getNFLPlayerList.
-//   3. Build the same no-look-ahead player-season evidence for each peer.
-//   4. Ensure the independently validated target is represented.
-//   5. Apply a minimum-sample / meaningful-usage population filter.
-//   6. Calculate percentile ranks for Role and Production metrics.
-//   7. Return the full population so we can inspect it before scoring.
+// weekly-sage-rb-snapshot
+//          ↓
+// cached weekly RB peer population
+//          ↓
+// weekly-sage-rb-benchmarks
+//          ↓
+// target-player percentiles
 //
 // ═══════════════════════════════════════════════════════════════════════
 
-const TANK01_HOST =
-  "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
-
-const DEFAULT_SEASON_TYPE = "reg";
+const DEFAULT_SEASON_TYPE =
+  "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-const MIN_GAMES = 2;
-const MIN_OPPORTUNITIES_PER_GAME = 5;
-
-const CONCURRENCY = 6;
-
-const PLAYER_SEASON_FUNCTION =
-  "weekly-sage-player-season";
+const SNAPSHOT_FUNCTION =
+  "weekly-sage-rb-snapshot";
 
 function num(value) {
-  const n = Number(value);
+  const n =
+    Number(value);
 
   return Number.isFinite(n)
     ? n
     : 0;
 }
 
-function round(value, digits = 2) {
+function round(
+  value,
+  digits = 2
+) {
   const factor =
-    Math.pow(10, digits);
+    Math.pow(
+      10,
+      digits
+    );
 
   return (
     Math.round(
@@ -66,99 +68,6 @@ function round(value, digits = 2) {
       factor
     ) / factor
   );
-}
-
-function normalizePosition(value) {
-  return String(
-    value || ""
-  )
-    .trim()
-    .toUpperCase();
-}
-
-function normalizeTeam(value) {
-  return String(
-    value || ""
-  )
-    .trim()
-    .toUpperCase();
-}
-
-function tank01Headers() {
-  return {
-    "Content-Type":
-      "application/json",
-
-    "x-rapidapi-host":
-      TANK01_HOST,
-
-    "x-rapidapi-key":
-      process.env.TANK01_API_KEY
-  };
-}
-
-async function tank01Fetch(
-  endpoint,
-  params
-) {
-  const query =
-    new URLSearchParams(
-      params || {}
-    ).toString();
-
-  const url =
-    `https://${TANK01_HOST}/${endpoint}` +
-    (query ? `?${query}` : "");
-
-  const response =
-    await fetch(
-      url,
-      {
-        method: "GET",
-        headers:
-          tank01Headers()
-      }
-    );
-
-  let data = null;
-
-  try {
-    data =
-      await response.json();
-  } catch (error) {
-    data = null;
-  }
-
-  if (!response.ok) {
-    let detail =
-      `HTTP ${response.status}`;
-
-    if (
-      data &&
-      data.message
-    ) {
-      detail =
-        data.message;
-    } else if (
-      data &&
-      data.error
-    ) {
-      detail =
-        data.error;
-    } else if (
-      data &&
-      typeof data.body === "string"
-    ) {
-      detail =
-        data.body;
-    }
-
-    throw new Error(
-      `Tank01 ${endpoint} failed: ${detail}`
-    );
-  }
-
-  return data;
 }
 
 function getBaseUrl(event) {
@@ -219,125 +128,59 @@ async function fetchJson(url) {
           )
         : `HTTP ${response.status}`;
 
-    throw new Error(detail);
+    throw new Error(
+      detail
+    );
   }
 
   return data;
 }
 
-function unwrapBody(data) {
+async function fetchSnapshot({
+  baseUrl,
+  season,
+  week,
+  seasonType
+}) {
+  const url =
+    `${baseUrl}/.netlify/functions/${SNAPSHOT_FUNCTION}` +
+    `?season=${encodeURIComponent(season)}` +
+    `&week=${encodeURIComponent(week)}` +
+    `&seasonType=${encodeURIComponent(seasonType)}`;
+
+  const data =
+    await fetchJson(
+      url
+    );
+
   if (
-    data &&
-    typeof data === "object" &&
-    Object.prototype.hasOwnProperty.call(
-      data,
-      "body"
-    )
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-rb-snapshot"
   ) {
-    let body =
-      data.body;
-
-    if (
-      typeof body === "string"
-    ) {
-      try {
-        body =
-          JSON.parse(body);
-      } catch (error) {
-        // Leave unchanged.
-      }
-    }
-
-    return body;
+    throw new Error(
+      "Unexpected RB snapshot schema."
+    );
   }
 
   return data;
-}
-
-function extractPlayers(data) {
-  const body =
-    unwrapBody(data);
-
-  if (Array.isArray(body)) {
-    return body;
-  }
-
-  if (
-    body &&
-    Array.isArray(body.players)
-  ) {
-    return body.players;
-  }
-
-  if (
-    body &&
-    Array.isArray(body.body)
-  ) {
-    return body.body;
-  }
-
-  if (
-    data &&
-    Array.isArray(data.players)
-  ) {
-    return data.players;
-  }
-
-  return [];
-}
-
-function playerIDOf(player) {
-  return String(
-    player.playerID ??
-    player.playerId ??
-    player.id ??
-    ""
-  ).trim();
-}
-
-function playerNameOf(player) {
-  return (
-    player.longName ??
-    player.name ??
-    player.playerName ??
-    null
-  );
-}
-
-function playerTeamOf(player) {
-  return normalizeTeam(
-    player.team ??
-    player.teamAbv ??
-    player.teamAbbr ??
-    ""
-  );
-}
-
-function playerPositionOf(player) {
-  return normalizePosition(
-    player.pos ??
-    player.position ??
-    player.positionAbv ??
-    ""
-  );
 }
 
 /*
-  Midrank percentile rank.
+  Midrank percentile.
 
-  Tied values receive the same percentile treatment.
+  Ties receive identical treatment.
 */
 function percentileRank(
   values,
   target
 ) {
   const clean =
-    values.filter(
-      value =>
-        Number.isFinite(
-          Number(value)
-        )
-    );
+    values
+      .map(Number)
+      .filter(
+        Number.isFinite
+      );
 
   if (!clean.length) {
     return null;
@@ -358,18 +201,17 @@ function percentileRank(
   let equal = 0;
 
   for (
-    const rawValue
+    const value
     of clean
   ) {
-    const value =
-      Number(rawValue);
-
     if (
-      value < targetNumber
+      value <
+      targetNumber
     ) {
       below += 1;
     } else if (
-      value === targetNumber
+      value ===
+      targetNumber
     ) {
       equal += 1;
     }
@@ -524,319 +366,6 @@ function describeDistribution(
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// TANK01 PLAYER LIST
-//
-// RapidAPI endpoint:
-//
-//   /getNFLPlayerList?all=true
-//
-// ═══════════════════════════════════════════════════════════════════════
-
-async function fetchPlayerList() {
-  if (
-    !process.env.TANK01_API_KEY
-  ) {
-    throw new Error(
-      "TANK01_API_KEY is not configured."
-    );
-  }
-
-  const data =
-    await tank01Fetch(
-      "getNFLPlayerList",
-      {
-        all: "true"
-      }
-    );
-
-  const players =
-    extractPlayers(data);
-
-  if (!players.length) {
-    throw new Error(
-      "Tank01 getNFLPlayerList returned no players."
-    );
-  }
-
-  return players;
-}
-
-async function fetchPlayerSeason({
-  baseUrl,
-  season,
-  week,
-  playerID,
-  seasonType
-}) {
-  const url =
-    `${baseUrl}/.netlify/functions/${PLAYER_SEASON_FUNCTION}` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&playerID=${encodeURIComponent(playerID)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
-
-  const data =
-    await fetchJson(url);
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-player-season"
-  ) {
-    throw new Error(
-      "Unexpected player-season evidence schema."
-    );
-  }
-
-  return data;
-}
-
-function buildRBRecord(
-  evidence
-) {
-  const player =
-    evidence.player ||
-    {};
-
-  const usage =
-    evidence.usageProfile ||
-    {};
-
-  const perGame =
-    evidence.perGame ||
-    {};
-
-  const rushing =
-    perGame.rushing ||
-    {};
-
-  const receiving =
-    perGame.receiving ||
-    {};
-
-  const carriesPerGame =
-    num(
-      usage.carriesPerGame ??
-      rushing.carriesPerGame
-    );
-
-  const targetsPerGame =
-    num(
-      usage.targetsPerGame ??
-      receiving.targetsPerGame
-    );
-
-  const receptionsPerGame =
-    num(
-      usage.receptionsPerGame ??
-      receiving.receptionsPerGame
-    );
-
-  const rushingYardsPerGame =
-    num(
-      usage.rushYardsPerGame ??
-      rushing.yardsPerGame
-    );
-
-  const receivingYardsPerGame =
-    num(
-      usage.receivingYardsPerGame ??
-      receiving.yardsPerGame
-    );
-
-  const rushingTDPerGame =
-    num(
-      usage.rushTDPerGame ??
-      rushing.touchdownsPerGame
-    );
-
-  const receivingTDPerGame =
-    num(
-      receiving.touchdownsPerGame
-    );
-
-  return {
-    playerID:
-      String(
-        player.playerID ||
-        ""
-      ),
-
-    name:
-      player.name ||
-      null,
-
-    team:
-      normalizeTeam(
-        player.team
-      ),
-
-    position:
-      normalizePosition(
-        player.position
-      ),
-
-    gamesUsed:
-      num(
-        evidence.gamesUsed
-      ),
-
-    weeksIncluded:
-      evidence.noLookAhead &&
-      Array.isArray(
-        evidence
-          .noLookAhead
-          .weeksIncluded
-      )
-        ? evidence
-            .noLookAhead
-            .weeksIncluded
-        : [],
-
-    role: {
-      carriesPerGame,
-
-      targetsPerGame,
-
-      receptionsPerGame,
-
-      opportunitiesPerGame:
-        round(
-          carriesPerGame +
-          targetsPerGame
-        ),
-
-      offensiveSnapPct:
-        num(
-          usage.offensiveSnapPct
-        )
-    },
-
-    production: {
-      rushingYardsPerGame,
-
-      yardsPerCarry:
-        num(
-          usage.yardsPerCarry ??
-          rushing.yardsPerCarry
-        ),
-
-      rushingTDPerGame,
-
-      receivingYardsPerGame,
-
-      receivingTDPerGame,
-
-      scrimmageYardsPerGame:
-        round(
-          rushingYardsPerGame +
-          receivingYardsPerGame
-        ),
-
-      totalTDPerGame:
-        round(
-          rushingTDPerGame +
-          receivingTDPerGame
-        )
-    }
-  };
-}
-
-function populationEligible(
-  record
-) {
-  if (
-    record.position !== "RB"
-  ) {
-    return false;
-  }
-
-  if (
-    record.gamesUsed <
-    MIN_GAMES
-  ) {
-    return false;
-  }
-
-  if (
-    record.role
-      .opportunitiesPerGame <
-    MIN_OPPORTUNITIES_PER_GAME
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-async function mapWithConcurrency(
-  items,
-  limit,
-  worker
-) {
-  const results =
-    new Array(
-      items.length
-    );
-
-  let nextIndex = 0;
-
-  async function runWorker() {
-    while (true) {
-      const index =
-        nextIndex++;
-
-      if (
-        index >=
-        items.length
-      ) {
-        return;
-      }
-
-      try {
-        results[index] =
-          await worker(
-            items[index],
-            index
-          );
-      } catch (error) {
-        results[index] = {
-          ok: false,
-          error:
-            error.message,
-          item:
-            items[index]
-        };
-      }
-    }
-  }
-
-  const workers = [];
-
-  const workerCount =
-    Math.min(
-      limit,
-      items.length
-    );
-
-  for (
-    let i = 0;
-    i < workerCount;
-    i += 1
-  ) {
-    workers.push(
-      runWorker()
-    );
-  }
-
-  await Promise.all(
-    workers
-  );
-
-  return results;
-}
-
 function metricValues(
   population,
   section,
@@ -845,6 +374,7 @@ function metricValues(
   return population
     .map(
       player =>
+        player &&
         player[section]
           ? player[section][metric]
           : null
@@ -1034,10 +564,14 @@ function sortPopulation(
   ].sort(
     (a, b) => {
       const opportunityDiff =
-        b.role
-          .opportunitiesPerGame -
-        a.role
-          .opportunitiesPerGame;
+        num(
+          b.role &&
+          b.role.opportunitiesPerGame
+        ) -
+        num(
+          a.role &&
+          a.role.opportunitiesPerGame
+        );
 
       if (
         opportunityDiff !== 0
@@ -1046,13 +580,105 @@ function sortPopulation(
       }
 
       return (
-        b.production
-          .scrimmageYardsPerGame -
-        a.production
-          .scrimmageYardsPerGame
+        num(
+          b.production &&
+          b.production
+            .scrimmageYardsPerGame
+        ) -
+        num(
+          a.production &&
+          a.production
+            .scrimmageYardsPerGame
+        )
       );
     }
   );
+}
+
+function normalizeName(value) {
+  return String(
+    value || ""
+  )
+    .trim()
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]/g,
+      ""
+    );
+}
+
+function findTarget(
+  population,
+  playerID,
+  playerName
+) {
+  /*
+    First choice:
+    exact Tank01 playerID.
+  */
+  const byID =
+    population.find(
+      player =>
+        String(
+          player.playerID ||
+          ""
+        ) ===
+        String(
+          playerID ||
+          ""
+        )
+    );
+
+  if (byID) {
+    return {
+      target:
+        byID,
+
+      resolution:
+        "playerID"
+    };
+  }
+
+  /*
+    Optional fallback:
+    normalized player name.
+
+    Useful during historical testing when the Tank01 player-list
+    representation is inconsistent.
+  */
+  if (playerName) {
+    const normalizedTarget =
+      normalizeName(
+        playerName
+      );
+
+    const byName =
+      population.find(
+        player =>
+          normalizeName(
+            player.name
+          ) ===
+          normalizedTarget
+      );
+
+    if (byName) {
+      return {
+        target:
+          byName,
+
+        resolution:
+          "name"
+      };
+    }
+  }
+
+  return {
+    target:
+      null,
+
+    resolution:
+      null
+  };
 }
 
 function jsonResponse(
@@ -1085,7 +711,8 @@ exports.handler =
   async function (event) {
     if (
       event.httpMethod &&
-      event.httpMethod !== "GET"
+      event.httpMethod !==
+        "GET"
     ) {
       return jsonResponse(
         405,
@@ -1119,6 +746,12 @@ exports.handler =
         ""
       ).trim();
 
+    const playerName =
+      String(
+        query.playerName ||
+        ""
+      ).trim();
+
     const seasonType =
       String(
         query.seasonType ||
@@ -1136,17 +769,20 @@ exports.handler =
         400,
         {
           error:
-            "week must be an integer from 2 through 18 for positional benchmarking."
+            "week must be an integer from 2 through 18."
         }
       );
     }
 
-    if (!playerID) {
+    if (
+      !playerID &&
+      !playerName
+    ) {
       return jsonResponse(
         400,
         {
           error:
-            "playerID is required."
+            "playerID or playerName is required."
         }
       );
     }
@@ -1156,287 +792,97 @@ exports.handler =
         getBaseUrl(event);
 
       /*
-        STEP 1
-        ------
-        Validate the requested target independently.
+        One cached snapshot request.
+
+        NO Tank01 work happens in this function.
       */
-      const targetEvidence =
-        await fetchPlayerSeason({
+      const snapshot =
+        await fetchSnapshot({
           baseUrl,
           season,
           week,
-          playerID,
           seasonType
         });
 
-      const targetPosition =
-        normalizePosition(
-          targetEvidence.player &&
-          targetEvidence.player.position
-        );
-
-      if (
-        targetPosition !== "RB"
-      ) {
-        return jsonResponse(
-          400,
-          {
-            error:
-              "Step 7A currently supports RB benchmarking only.",
-
-            player:
-              targetEvidence.player
-          }
-        );
-      }
-
-      /*
-        STEP 2
-        ------
-        Retrieve the full Tank01 player universe.
-      */
-      const allPlayers =
-        await fetchPlayerList();
-
-      const rbCandidates =
-        allPlayers
-          .filter(
-            player =>
-              playerPositionOf(
-                player
-              ) === "RB"
-          )
-          .map(
-            player => ({
-              playerID:
-                playerIDOf(
-                  player
-                ),
-
-              name:
-                playerNameOf(
-                  player
-                ),
-
-              team:
-                playerTeamOf(
-                  player
-                )
-            })
-          )
-          .filter(
-            player =>
-              player.playerID
-          );
-
-      /*
-        De-duplicate Tank01 player list records by playerID.
-      */
-      const uniqueMap =
-        new Map();
-
-      for (
-        const player
-        of rbCandidates
-      ) {
-        if (
-          !uniqueMap.has(
-            player.playerID
-          )
-        ) {
-          uniqueMap.set(
-            player.playerID,
-            player
-          );
-        }
-      }
-
-      const uniqueCandidates =
-        [
-          ...uniqueMap.values()
-        ];
-
-      /*
-        STEP 3
-        ------
-        Build identical no-look-ahead evidence for every RB candidate.
-      */
-      const peerResults =
-        await mapWithConcurrency(
-          uniqueCandidates,
-          CONCURRENCY,
-          async candidate => {
-            try {
-              const evidence =
-                candidate.playerID ===
-                playerID
-                  ? targetEvidence
-                  : await fetchPlayerSeason({
-                      baseUrl,
-                      season,
-                      week,
-                      playerID:
-                        candidate.playerID,
-                      seasonType
-                    });
-
-              const record =
-                buildRBRecord(
-                  evidence
-                );
-
-              return {
-                ok: true,
-                candidate,
-                record
-              };
-            } catch (error) {
-              return {
-                ok: false,
-                candidate,
-                error:
-                  error.message
-              };
-            }
-          }
-        );
-
-      const successful =
-        peerResults.filter(
-          result =>
-            result &&
-            result.ok &&
-            result.record
-        );
-
-      const failed =
-        peerResults.filter(
-          result =>
-            !result ||
-            !result.ok
-        );
-
-      const allRBRecords =
-        successful.map(
-          result =>
-            result.record
-        );
-
-      /*
-        Build the independently validated target record.
-
-        Tank01's getNFLPlayerList may occasionally omit a player or
-        represent the player differently from getNFLPlayerInfo.
-
-        The target already passed our validated player-season pipeline,
-        so ensure that exact record exists in the candidate universe.
-
-        IMPORTANT:
-        The target STILL has to satisfy the same eligibility rules as
-        every other RB.
-      */
-      const rawTarget =
-        buildRBRecord(
-          targetEvidence
-        );
-
-      const targetAlreadyPresent =
-        allRBRecords.some(
-          player =>
-            player.playerID ===
-            playerID
-        );
-
-      if (!targetAlreadyPresent) {
-        allRBRecords.push(
-          rawTarget
-        );
-      }
-
-      /*
-        STEP 4
-        ------
-        Apply the population eligibility rules to EVERY RB, including
-        the requested target.
-      */
       const population =
-        allRBRecords.filter(
-          populationEligible
-        );
+        Array.isArray(
+          snapshot.population
+        )
+          ? snapshot.population
+          : [];
 
-      const target =
-        population.find(
-          player =>
-            player.playerID ===
-            playerID
-        );
-
-      if (!target) {
+      if (!population.length) {
         return jsonResponse(
           422,
           {
             error:
-              "Target RB does not meet the current benchmark population eligibility rules.",
+              "RB snapshot contains no eligible peer population.",
 
-            target:
-              rawTarget,
-
-            populationRules: {
-              position:
-                "RB",
-
-              minimumGames:
-                MIN_GAMES,
-
-              minimumOpportunitiesPerGame:
-                MIN_OPPORTUNITIES_PER_GAME
-            },
-
-            diagnostic: {
-              candidatesDiscovered:
-                uniqueCandidates.length,
-
-              playerSeasonResponses:
-                successful.length,
-
-              eligiblePopulation:
-                population.length,
-
-              failures:
-                failed.length,
-
-              targetInjected:
-                !targetAlreadyPresent
-            }
+            snapshotKey:
+              snapshot.snapshotKey ||
+              null
           }
         );
       }
-
-      /*
-        STEP 5
-        ------
-        Calculate player-relative percentiles.
-
-        Still no Role Score.
-        Still no Production Score.
-        Still no final SAGE score.
-      */
-      const benchmarks =
-        buildTargetBenchmarks(
-          population,
-          target
-        );
 
       const sortedPopulation =
         sortPopulation(
           population
         );
 
+      const resolved =
+        findTarget(
+          sortedPopulation,
+          playerID,
+          playerName
+        );
+
+      const target =
+        resolved.target;
+
+      if (!target) {
+        return jsonResponse(
+          404,
+          {
+            error:
+              "Target RB was not found in the cached eligible RB snapshot.",
+
+            playerID:
+              playerID ||
+              null,
+
+            playerName:
+              playerName ||
+              null,
+
+            snapshotKey:
+              snapshot.snapshotKey ||
+              null,
+
+            populationSize:
+              sortedPopulation.length,
+
+            note:
+              "The target may be absent from Tank01 getNFLPlayerList or may not meet current RB snapshot eligibility rules."
+          }
+        );
+      }
+
+      const benchmarks =
+        buildTargetBenchmarks(
+          sortedPopulation,
+          target
+        );
+
       const targetPopulationIndex =
         sortedPopulation.findIndex(
           player =>
-            player.playerID ===
-            playerID
+            String(
+              player.playerID
+            ) ===
+            String(
+              target.playerID
+            )
         );
 
       return jsonResponse(
@@ -1446,7 +892,7 @@ exports.handler =
             "weekly-sage-rb-benchmarks",
 
           schemaVersion:
-            2,
+            3,
 
           generatedAt:
             new Date()
@@ -1459,15 +905,26 @@ exports.handler =
 
           seasonType,
 
-          noLookAhead: {
-            rule:
-              `Only player evidence before Week ${week} is used.`,
+          noLookAhead:
+            snapshot.noLookAhead,
 
-            targetWeekExcluded:
-              true,
-
+          architecture: {
             source:
-              PLAYER_SEASON_FUNCTION
+              "weekly-sage-rb-snapshot",
+
+            snapshotKey:
+              snapshot.snapshotKey ||
+              null,
+
+            snapshotGeneratedAt:
+              snapshot.generatedAt ||
+              null,
+
+            tank01CallsFromThisFunction:
+              0,
+
+            important:
+              "This benchmark request reuses the weekly RB snapshot and does not rebuild the league population."
           },
 
           methodology: {
@@ -1475,18 +932,7 @@ exports.handler =
               "RB",
 
             populationDefinition:
-              "Running backs with sufficient prior-game evidence and meaningful offensive opportunity entering the target week.",
-
-            populationRules: {
-              minimumGames:
-                MIN_GAMES,
-
-              minimumOpportunitiesPerGame:
-                MIN_OPPORTUNITIES_PER_GAME
-            },
-
-            targetHandling:
-              "The independently validated requested RB is inserted into the peer universe if Tank01 getNFLPlayerList omits or represents the player differently. The player must still satisfy the same population rules.",
+              "Eligible running backs from the cached Weekly SAGE RB snapshot.",
 
             percentileMethod:
               "midrank",
@@ -1495,35 +941,47 @@ exports.handler =
               "((players below + 0.5 * players tied) / population size) * 100",
 
             important:
-              "These percentiles describe the peer population. They are not yet the final SAGE Role Score or Production Score."
+              "These percentiles describe the cached peer population. Role and Production component scoring remains downstream."
           },
 
           populationSummary: {
-            nflPlayersReturned:
-              allPlayers.length,
-
-            rbCandidatesDiscovered:
-              uniqueCandidates.length,
-
-            playerSeasonResponses:
-              successful.length,
-
-            playerSeasonFailures:
-              failed.length,
-
-            rbRecordsBeforeTargetCheck:
-              successful.length,
-
-            targetAlreadyPresent,
-
-            targetInjected:
-              !targetAlreadyPresent,
-
-            rbRecordsWithEvidence:
-              allRBRecords.length,
-
             eligibleRBPopulation:
-              population.length
+              sortedPopulation.length,
+
+            snapshotCandidates:
+              snapshot
+                .populationSummary
+                ? snapshot
+                    .populationSummary
+                    .rbCandidatesDiscovered
+                : null,
+
+            snapshotFailures:
+              snapshot
+                .populationSummary
+                ? snapshot
+                    .populationSummary
+                    .playerGameFailures
+                : null
+          },
+
+          targetResolution: {
+            requestedPlayerID:
+              playerID ||
+              null,
+
+            requestedPlayerName:
+              playerName ||
+              null,
+
+            resolvedBy:
+              resolved.resolution,
+
+            resolvedPlayerID:
+              target.playerID,
+
+            resolvedName:
+              target.name
           },
 
           target: {
@@ -1535,51 +993,10 @@ exports.handler =
                 : null,
 
             populationSize:
-              population.length
+              sortedPopulation.length
           },
 
           benchmarks,
-
-          /*
-            Intentionally return the complete eligible population during
-            methodology validation.
-
-            We need to inspect who SAGE considers a relevant RB peer
-            before turning percentiles into component scores.
-          */
-          population:
-            sortedPopulation,
-
-          failures:
-            failed
-              .slice(
-                0,
-                25
-              )
-              .map(
-                result => ({
-                  playerID:
-                    result &&
-                    result.candidate
-                      ? result
-                          .candidate
-                          .playerID
-                      : null,
-
-                  name:
-                    result &&
-                    result.candidate
-                      ? result
-                          .candidate
-                          .name
-                      : null,
-
-                  error:
-                    result
-                      ? result.error
-                      : "Unknown failure"
-                })
-              ),
 
           nextStep: {
             roleScore:
@@ -1592,7 +1009,15 @@ exports.handler =
               null,
 
             reason:
-              "Validate the RB peer population and metric distributions before assigning component scores."
+              "Downstream component scoring can now consume this benchmark result without triggering an RB population rebuild."
+          },
+
+          provenance: {
+            benchmarkPopulation:
+              "weekly-sage-rb-snapshot",
+
+            tank01PopulationRebuild:
+              false
           }
         },
 
@@ -1608,7 +1033,7 @@ exports.handler =
         502,
         {
           error:
-            "Could not build Weekly SAGE RB benchmarks.",
+            "Could not build Weekly SAGE RB benchmarks from snapshot.",
 
           detail:
             error.message
