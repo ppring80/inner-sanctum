@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WR Reliability Test</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    .card {
+      background: white;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.10);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      height: 300px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    pre {
+      background: #111;
+      color: #eee;
+      padding: 16px;
+      border-radius: 8px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 80px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <h1>Weekly SAGE WR Reliability Test</h1>
+
+  <p>
+    Paste the JSON returned by the WR backtest endpoint below.
+    This page will POST it to the WR role reliability function.
+  </p>
+
+  <label for="season">Season</label>
+  <input id="season" value="2025">
+
+  <label for="week">Week</label>
+  <input id="week" type="number" value="6" min="2" max="17">
+
+  <label for="seasonType">Season Type</label>
+  <input id="seasonType" value="reg">
+
+  <label for="jsonInput">WR Backtest JSON</label>
+  <textarea
+    id="jsonInput"
+    placeholder="Paste the complete WR backtest JSON here..."
+  ></textarea>
+
+  <button id="submitButton" type="button">
+    Run WR Reliability Test
+  </button>
+
+  <div id="status"></div>
+
+  <h2>Result</h2>
+
+  <pre id="result">Waiting...</pre>
+
+</div>
+
+<script>
+const button = document.getElementById("submitButton");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+
+button.addEventListener("click", async () => {
+
+  status.textContent = "";
+  result.textContent = "Running...";
+
+  const season = document.getElementById("season").value.trim();
+  const week = document.getElementById("week").value.trim();
+  const seasonType = document.getElementById("seasonType").value.trim();
+  const jsonText = document.getElementById("jsonInput").value.trim();
+
+  if (!jsonText) {
+    status.textContent = "Paste the WR backtest JSON first.";
+    result.textContent = "";
+    return;
+  }
+
+  let backtest;
+
+  try {
+    backtest = JSON.parse(jsonText);
+  } catch (error) {
+    status.textContent = "The pasted text is not valid JSON.";
+    result.textContent = error.message;
+    return;
+  }
+
+  const endpoint =
+    "/.netlify/functions/weekly-sage-wr-role-reliability" +
+    "?season=" + encodeURIComponent(season) +
+    "&week=" + encodeURIComponent(week) +
+    "&seasonType=" + encodeURIComponent(seasonType);
+
+  try {
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(backtest)
+    });
+
+    const text = await response.text();
+
+    let output;
+
+    try {
+      output = JSON.parse(text);
+      result.textContent = JSON.stringify(output, null, 2);
+    } catch {
+      result.textContent = text;
+    }
+
+    if (response.ok) {
+      status.textContent = "Success — reliability analysis completed.";
+    } else {
+      status.textContent =
+        "Request failed with HTTP " + response.status + ".";
+    }
+
+  } catch (error) {
+
+    status.textContent = "Request failed.";
+    result.textContent =
+      error.stack || error.message || String(error);
+
+  }
+
+});
+</script>
+
+</body>
+</html>
