@@ -42,10 +42,29 @@
 //
 // weekly-sage-player-matchup
 //
+// RECOMMENDATIONS
+// ---------------
+// RB SAGE v2 consumer recommendation thresholds:
+//
+//   START  SAGE >= 65
+//   FLEX   SAGE >= 55 and < 65
+//   SIT    SAGE < 55
+//
+// Selected after historical recommendation validation on the frozen
+// 2025 Weeks 5-17 RB backtest (124 clean player-week observations).
+//
+// Recommendation status:
+//   Provisional pending broader multi-season / out-of-sample validation.
+//
 // IMPORTANT
 // ---------
+// SAGE Score and lineup recommendation remain separate concepts.
+//
+// The SAGE Score measures the strength of the underlying evidence.
+// START / FLEX / SIT provides a simple consumer interpretation of
+// that score.
+//
 // This function DOES NOT:
-// - create START / FLEX / SIT recommendations
 // - rebuild the RB population
 // - call Tank01 for the entire RB universe
 // - change Role or Production methodology
@@ -70,6 +89,14 @@ const FINAL_WEIGHTS = {
   production: 0.40,
   matchup: 0.05
 };
+
+const RECOMMENDATION_THRESHOLDS = {
+  start: 65,
+  flex: 55
+};
+
+const RECOMMENDATION_VERSION =
+  "rb-sage-recommendations-v1";
 
 const PREVIOUS_WEIGHTS = {
   version: "rb-sage-v1",
@@ -416,6 +443,60 @@ function scoreLabel(score) {
   }
 
   return "Weak";
+}
+
+function recommendationFromScore(score) {
+  const value =
+    num(score);
+
+  if (
+    value === null
+  ) {
+    return null;
+  }
+
+  if (
+    value >=
+    RECOMMENDATION_THRESHOLDS.start
+  ) {
+    return {
+      recommendation:
+        "START",
+
+      threshold:
+        RECOMMENDATION_THRESHOLDS.start,
+
+      explanation:
+        `SAGE Score ${value} meets the validated START threshold of ${RECOMMENDATION_THRESHOLDS.start}.`
+    };
+  }
+
+  if (
+    value >=
+    RECOMMENDATION_THRESHOLDS.flex
+  ) {
+    return {
+      recommendation:
+        "FLEX",
+
+      threshold:
+        RECOMMENDATION_THRESHOLDS.flex,
+
+      explanation:
+        `SAGE Score ${value} falls in the validated FLEX range of ${RECOMMENDATION_THRESHOLDS.flex} through ${RECOMMENDATION_THRESHOLDS.start - 0.1}.`
+    };
+  }
+
+  return {
+    recommendation:
+      "SIT",
+
+    threshold:
+      RECOMMENDATION_THRESHOLDS.flex,
+
+    explanation:
+      `SAGE Score ${value} is below the validated FLEX threshold of ${RECOMMENDATION_THRESHOLDS.flex}.`
+  };
 }
 
 function confidenceLabel(
@@ -835,6 +916,11 @@ exports.handler =
             matchupConfidence
         });
 
+      const recommendation =
+        recommendationFromScore(
+          finalScore
+        );
+
       return jsonResponse(
         200,
         {
@@ -1039,20 +1125,66 @@ exports.handler =
               })
           },
 
-          /*
-            Intentionally not activated yet.
+          recommendation: {
+            label:
+              recommendation.recommendation,
 
-            We validate several final RB scores first.
-          */
-          recommendation:
-            null,
+            explanation:
+              recommendation.explanation
+          },
 
           recommendationStatus: {
             ready:
-              false,
+              true,
 
-            reason:
-              "Validate final confidence-adjusted SAGE scores across multiple RB profiles before mapping scores to START / FLEX / SIT recommendations."
+            version:
+              RECOMMENDATION_VERSION,
+
+            modelVersion:
+              SAGE_MODEL_VERSION,
+
+            thresholds: {
+              start: {
+                minimum:
+                  RECOMMENDATION_THRESHOLDS.start,
+
+                logic:
+                  `SAGE >= ${RECOMMENDATION_THRESHOLDS.start}`
+              },
+
+              flex: {
+                minimum:
+                  RECOMMENDATION_THRESHOLDS.flex,
+
+                maximumExclusive:
+                  RECOMMENDATION_THRESHOLDS.start,
+
+                logic:
+                  `SAGE >= ${RECOMMENDATION_THRESHOLDS.flex} and < ${RECOMMENDATION_THRESHOLDS.start}`
+              },
+
+              sit: {
+                maximumExclusive:
+                  RECOMMENDATION_THRESHOLDS.flex,
+
+                logic:
+                  `SAGE < ${RECOMMENDATION_THRESHOLDS.flex}`
+              }
+            },
+
+            validationBasis: {
+              season:
+                "2025",
+
+              weeks:
+                "5-17",
+
+              cleanPlayerWeekObservations:
+                124,
+
+              status:
+                "Provisional pending broader multi-season / out-of-sample validation."
+            }
           },
 
           architecture: {
