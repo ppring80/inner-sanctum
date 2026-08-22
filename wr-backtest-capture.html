@@ -24,7 +24,7 @@
       background: white;
       padding: 28px;
       border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.10);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .10);
       margin-bottom: 24px;
     }
 
@@ -40,11 +40,15 @@
       margin-bottom: 6px;
     }
 
-    input {
+    textarea {
       width: 100%;
+      min-height: 320px;
       box-sizing: border-box;
-      padding: 10px;
-      font-size: 16px;
+      padding: 12px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      resize: vertical;
     }
 
     button {
@@ -54,6 +58,11 @@
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
     }
 
     .primary {
@@ -76,6 +85,7 @@
       border-radius: 6px;
       background: #f1f1f1;
       font-weight: bold;
+      line-height: 1.5;
     }
 
     pre {
@@ -104,6 +114,18 @@
     .error {
       background: #fdeaea;
     }
+
+    .summary {
+      background: #f1f1f1;
+      padding: 14px;
+      border-radius: 8px;
+      margin-top: 18px;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 
@@ -111,56 +133,79 @@
 
   <div class="card">
 
-    <h1>Weekly SAGE WR Evidence Capture</h1>
+    <h1>
+      Weekly SAGE WR Evidence Capture
+    </h1>
 
     <div class="note">
-      This page bypasses the WR backtest Netlify function.
-      It retrieves one weekly WR validation result, converts the
-      played WR records into backtest observations in your browser,
-      and can send that evidence directly to WR Role Reliability.
+      <strong>Paste-based evidence mode.</strong>
+      This page does not call Weekly SAGE WR Validation,
+      Backtest, Leaderboard, Final Score, Tank01, or any
+      historical player-evidence function.
+
+      <br><br>
+
+      Paste one already-generated
+      <code>weekly-sage-wr-validation</code>
+      JSON result below. The browser will convert it into
+      compact backtest evidence locally.
+
+      <br><br>
+
+      The only optional network request made by this page is
+      the POST of that already-generated evidence to
+      <code>weekly-sage-wr-role-reliability</code>.
     </div>
 
-    <label for="season">
-      Season
+    <label for="validationInput">
+      Paste Weekly WR Validation JSON
     </label>
 
-    <input
-      id="season"
-      value="2025"
-    >
-
-    <label for="week">
-      Week
-    </label>
-
-    <input
-      id="week"
-      type="number"
-      value="6"
-      min="2"
-      max="17"
-    >
-
-    <label for="seasonType">
-      Season Type
-    </label>
-
-    <input
-      id="seasonType"
-      value="reg"
-    >
+    <textarea
+      id="validationInput"
+      placeholder='Paste the complete weekly-sage-wr-validation JSON here...'
+    ></textarea>
 
     <button
-      id="loadValidation"
+      id="convertValidation"
       class="primary"
       type="button"
     >
-      1. Load WR Validation
+      1. Convert Validation Evidence
     </button>
 
     <button
-      id="runReliability"
+      id="clearInput"
       class="secondary"
+      type="button"
+    >
+      Clear
+    </button>
+
+    <div
+      id="status"
+      class="status"
+    >
+      Waiting for pasted validation JSON.
+    </div>
+
+    <div
+      id="validationSummary"
+      class="summary hidden"
+    ></div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>
+      Captured Backtest Evidence
+    </h2>
+
+    <button
+      id="runReliability"
+      class="primary"
       type="button"
       disabled
     >
@@ -176,25 +221,16 @@
       Copy Backtest JSON
     </button>
 
-    <div
-      id="status"
-      class="status"
+    <button
+      id="saveBacktest"
+      class="secondary"
+      type="button"
+      disabled
     >
-      Waiting...
-    </div>
+      Save Backtest JSON
+    </button>
 
-  </div>
-
-
-  <div class="card">
-
-    <h2>
-      Captured Backtest Evidence
-    </h2>
-
-    <pre id="backtestResult">
-Waiting...
-    </pre>
+    <pre id="backtestResult">Waiting...</pre>
 
   </div>
 
@@ -205,9 +241,25 @@ Waiting...
       Role Reliability Result
     </h2>
 
-    <pre id="reliabilityResult">
-Waiting...
-    </pre>
+    <button
+      id="copyReliability"
+      class="secondary"
+      type="button"
+      disabled
+    >
+      Copy Reliability JSON
+    </button>
+
+    <button
+      id="saveReliability"
+      class="secondary"
+      type="button"
+      disabled
+    >
+      Save Reliability JSON
+    </button>
+
+    <pre id="reliabilityResult">Waiting...</pre>
 
   </div>
 
@@ -217,9 +269,23 @@ Waiting...
 let capturedBacktest =
   null;
 
-const loadValidationButton =
+let capturedReliability =
+  null;
+
+
+const validationInput =
   document.getElementById(
-    "loadValidation"
+    "validationInput"
+  );
+
+const convertValidationButton =
+  document.getElementById(
+    "convertValidation"
+  );
+
+const clearInputButton =
+  document.getElementById(
+    "clearInput"
   );
 
 const runReliabilityButton =
@@ -232,9 +298,29 @@ const copyBacktestButton =
     "copyBacktest"
   );
 
+const saveBacktestButton =
+  document.getElementById(
+    "saveBacktest"
+  );
+
+const copyReliabilityButton =
+  document.getElementById(
+    "copyReliability"
+  );
+
+const saveReliabilityButton =
+  document.getElementById(
+    "saveReliability"
+  );
+
 const statusBox =
   document.getElementById(
     "status"
+  );
+
+const validationSummary =
+  document.getElementById(
+    "validationSummary"
   );
 
 const backtestResult =
@@ -252,6 +338,7 @@ function setStatus(
   message,
   type
 ) {
+
   statusBox.textContent =
     message;
 
@@ -281,6 +368,7 @@ function setStatus(
 function nullableNumber(
   value
 ) {
+
   const n =
     Number(
       value
@@ -294,11 +382,51 @@ function nullableNumber(
 }
 
 
+function resetCapturedEvidence() {
+
+  capturedBacktest =
+    null;
+
+  capturedReliability =
+    null;
+
+  runReliabilityButton.disabled =
+    true;
+
+  copyBacktestButton.disabled =
+    true;
+
+  saveBacktestButton.disabled =
+    true;
+
+  copyReliabilityButton.disabled =
+    true;
+
+  saveReliabilityButton.disabled =
+    true;
+
+  backtestResult.textContent =
+    "Waiting...";
+
+  reliabilityResult.textContent =
+    "Waiting...";
+
+  validationSummary.textContent =
+    "";
+
+  validationSummary.classList.add(
+    "hidden"
+  );
+}
+
+
 function buildObservation(
   record,
   week
 ) {
+
   return {
+
     seasonWeek:
       week,
 
@@ -342,6 +470,7 @@ function buildObservation(
       ),
 
     components: {
+
       role:
         nullableNumber(
           record.components &&
@@ -359,9 +488,11 @@ function buildObservation(
           record.components &&
           record.components.matchup
         )
+
     },
 
     actual: {
+
       standard:
         nullableNumber(
           record.actual &&
@@ -436,7 +567,9 @@ function buildObservation(
           record.actual &&
           record.actual.totalTD
         )
+
     }
+
   };
 }
 
@@ -444,6 +577,7 @@ function buildObservation(
 function buildBacktestFromValidation(
   validation
 ) {
+
   const records =
     Array.isArray(
       validation.validation
@@ -462,16 +596,19 @@ function buildBacktestFromValidation(
         function (
           record
         ) {
+
           return buildObservation(
             record,
             week
           );
+
         }
       )
       .filter(
         function (
           observation
         ) {
+
           return (
             observation.sageScore !== null &&
             observation.components.role !== null &&
@@ -481,6 +618,7 @@ function buildBacktestFromValidation(
             observation.actual.halfPPR !== null &&
             observation.actual.ppr !== null
           );
+
         }
       );
 
@@ -507,6 +645,7 @@ function buildBacktestFromValidation(
     observations.length > 0;
 
   return {
+
     evidenceType:
       "weekly-sage-wr-backtest",
 
@@ -524,6 +663,7 @@ function buildBacktestFromValidation(
       validation.seasonType,
 
     requestedWindow: {
+
       startWeek:
         week,
 
@@ -533,14 +673,16 @@ function buildBacktestFromValidation(
       weeks: [
         week
       ]
+
     },
 
     methodology: {
+
       modelVersion:
         "wr-sage-v1",
 
       evidenceConstruction:
-        "Browser evidence capture from weekly-sage-wr-validation.",
+        "Browser evidence capture from pasted weekly-sage-wr-validation JSON.",
 
       unitOfObservation:
         "One WR player-week in which the player actually participated in the target-week game.",
@@ -552,13 +694,15 @@ function buildBacktestFromValidation(
         "Actual target-week fantasy points.",
 
       leakageProtection:
-        "The supplied weekly validation endpoint already separates pre-game SAGE evidence from post-game target-week outcomes.",
+        "The supplied weekly validation evidence separates frozen pre-game SAGE evidence from post-game target-week outcomes.",
 
       important:
-        "This browser-generated backtest payload does not recalculate historical SAGE and makes no additional player-level evidence calls."
+        "This browser-generated backtest payload does not recalculate historical SAGE and makes no player-level evidence calls."
+
     },
 
     population: {
+
       weeksRequested:
         1,
 
@@ -583,11 +727,13 @@ function buildBacktestFromValidation(
 
       retrievalFailures:
         0
+
     },
 
     observations,
 
     diagnostics: {
+
       retrievalFailures:
         [],
 
@@ -599,260 +745,534 @@ function buildBacktestFromValidation(
                 week,
 
                 reason:
-                  "Source weekly validation was not ready."
+                  "Supplied weekly validation evidence was not ready."
               }
             ]
+
     },
 
     nextStep: {
+
       ready,
 
       reason:
         ready
           ? "Browser-captured WR backtest evidence is clean and ready for downstream reliability analysis."
-          : "Source weekly validation was not clean enough for downstream analysis."
+          : "Supplied weekly validation evidence was not clean enough for downstream analysis."
+
     },
 
     architecture: {
+
       modelVersion:
         "wr-sage-v1",
 
       source:
-        "weekly-sage-wr-validation",
+        "pasted-weekly-sage-wr-validation",
 
       generatedInBrowser:
         true,
+
+      validationNetworkCalls:
+        0,
 
       downstreamPlayerEvidenceCalls:
         0,
 
       recalculatesHistoricalSage:
         false
+
     },
 
     provenance: {
+
       weeklyValidation:
-        "weekly-sage-wr-validation",
+        "User-supplied weekly-sage-wr-validation JSON",
 
       transformation:
         "wr-backtest-capture.html"
+
     }
+
   };
 }
 
 
-loadValidationButton.addEventListener(
+function validateValidationPayload(
+  validation
+) {
+
+  if (
+    !validation ||
+    typeof validation !==
+      "object" ||
+    Array.isArray(
+      validation
+    )
+  ) {
+
+    throw new Error(
+      "The pasted value must be a JSON object."
+    );
+
+  }
+
+
+  if (
+    validation.evidenceType !==
+    "weekly-sage-wr-validation"
+  ) {
+
+    throw new Error(
+      "Unexpected evidenceType. Expected weekly-sage-wr-validation."
+    );
+
+  }
+
+
+  if (
+    !Number.isFinite(
+      Number(
+        validation.targetWeek
+      )
+    )
+  ) {
+
+    throw new Error(
+      "Validation JSON is missing a valid targetWeek."
+    );
+
+  }
+
+
+  if (
+    !validation.season
+  ) {
+
+    throw new Error(
+      "Validation JSON is missing season."
+    );
+
+  }
+
+
+  if (
+    !validation.seasonType
+  ) {
+
+    throw new Error(
+      "Validation JSON is missing seasonType."
+    );
+
+  }
+
+
+  if (
+    !Array.isArray(
+      validation.validation
+    )
+  ) {
+
+    throw new Error(
+      "Validation JSON is missing the validation records array."
+    );
+
+  }
+
+
+  if (
+    validation.validation.length ===
+    0
+  ) {
+
+    throw new Error(
+      "Validation JSON contains no validation records."
+    );
+
+  }
+
+}
+
+
+function showValidationSummary(
+  validation,
+  backtest
+) {
+
+  const population =
+    validation.population ||
+    {};
+
+  const week =
+    validation.targetWeek;
+
+  const season =
+    validation.season;
+
+  const sourceRecords =
+    Array.isArray(
+      validation.validation
+    )
+      ? validation.validation.length
+      : 0;
+
+  const cleanRecords =
+    backtest.population
+      .cleanPlayerWeekObservations;
+
+  const failures =
+    Array.isArray(
+      validation.failures
+    )
+      ? validation.failures.length
+      : 0;
+
+  validationSummary.innerHTML =
+    "<strong>Evidence Summary</strong><br>" +
+    "Season: " +
+    String(
+      season
+    ) +
+    "<br>" +
+    "Week: " +
+    String(
+      week
+    ) +
+    "<br>" +
+    "Validation records supplied: " +
+    String(
+      sourceRecords
+    ) +
+    "<br>" +
+    "Clean backtest observations: " +
+    String(
+      cleanRecords
+    ) +
+    "<br>" +
+    "Bye excluded: " +
+    String(
+      nullableNumber(
+        population.byeExcluded
+      ) || 0
+    ) +
+    "<br>" +
+    "DNP excluded: " +
+    String(
+      nullableNumber(
+        population.didNotPlayExcluded
+      ) || 0
+    ) +
+    "<br>" +
+    "Validation failures: " +
+    String(
+      failures
+    ) +
+    "<br>" +
+    "Live validation calls made by this page: 0";
+
+  validationSummary.classList.remove(
+    "hidden"
+  );
+
+}
+
+
+function makeJsonFilename(
+  prefix,
+  data
+) {
+
+  const season =
+    data &&
+    data.season
+      ? String(
+          data.season
+        )
+      : "unknown-season";
+
+  let week =
+    null;
+
+  if (
+    data &&
+    data.requestedWindow &&
+    Number.isFinite(
+      Number(
+        data.requestedWindow.startWeek
+      )
+    )
+  ) {
+
+    week =
+      Number(
+        data.requestedWindow.startWeek
+      );
+
+  } else if (
+    data &&
+    Number.isFinite(
+      Number(
+        data.targetWeek
+      )
+    )
+  ) {
+
+    week =
+      Number(
+        data.targetWeek
+      );
+
+  }
+
+  return (
+    prefix +
+    "-" +
+    season +
+    "-week-" +
+    String(
+      week !== null
+        ? week
+        : "unknown"
+    ) +
+    ".json"
+  );
+
+}
+
+
+function saveJson(
+  data,
+  filename
+) {
+
+  const text =
+    JSON.stringify(
+      data,
+      null,
+      2
+    );
+
+  const blob =
+    new Blob(
+      [
+        text
+      ],
+      {
+        type:
+          "application/json"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+  link.href =
+    url;
+
+  link.download =
+    filename;
+
+  document.body.appendChild(
+    link
+  );
+
+  link.click();
+
+  document.body.removeChild(
+    link
+  );
+
+  URL.revokeObjectURL(
+    url
+  );
+
+}
+
+
+async function copyJson(
+  data,
+  successMessage
+) {
+
+  const text =
+    JSON.stringify(
+      data,
+      null,
+      2
+    );
+
+  await navigator
+    .clipboard
+    .writeText(
+      text
+    );
+
+  setStatus(
+    successMessage,
+    "success"
+  );
+
+}
+
+
+convertValidationButton.addEventListener(
   "click",
-  async function () {
+  function () {
 
-    capturedBacktest =
-      null;
+    resetCapturedEvidence();
 
-    runReliabilityButton.disabled =
-      true;
-
-    copyBacktestButton.disabled =
-      true;
-
-    reliabilityResult.textContent =
-      "Waiting...";
-
-    const season =
-      document
-        .getElementById(
-          "season"
-        )
-        .value
-        .trim();
-
-    const week =
-      document
-        .getElementById(
-          "week"
-        )
-        .value
-        .trim();
-
-    const seasonType =
-      document
-        .getElementById(
-          "seasonType"
-        )
+    const raw =
+      validationInput
         .value
         .trim();
 
     if (
-      !season ||
-      !week ||
-      !seasonType
+      !raw
     ) {
+
       setStatus(
-        "Season, week, and season type are required.",
+        "Paste a weekly WR validation JSON result first.",
         "error"
       );
 
       return;
+
     }
 
-    const endpoint =
-      "/.netlify/functions/weekly-sage-wr-validation" +
-      "?season=" +
-      encodeURIComponent(
-        season
-      ) +
-      "&week=" +
-      encodeURIComponent(
-        week
-      ) +
-      "&seasonType=" +
-      encodeURIComponent(
-        seasonType
-      );
 
-    setStatus(
-      "Loading Week " +
-      week +
-      " WR validation...",
-      ""
-    );
-
-    backtestResult.textContent =
-      "Loading validation...";
+    let validation;
 
     try {
 
-      const response =
-        await fetch(
-          endpoint,
-          {
-            method:
-              "GET",
-
-            headers: {
-              Accept:
-                "application/json"
-            }
-          }
+      validation =
+        JSON.parse(
+          raw
         );
-
-      const text =
-        await response.text();
-
-      let validation;
-
-      try {
-        validation =
-          JSON.parse(
-            text
-          );
-      } catch (
-        error
-      ) {
-        setStatus(
-          "Validation did not return JSON. HTTP " +
-          response.status +
-          ".",
-          "error"
-        );
-
-        backtestResult.textContent =
-          text;
-
-        return;
-      }
-
-      if (
-        !response.ok
-      ) {
-        setStatus(
-          "Validation failed with HTTP " +
-          response.status +
-          ".",
-          "error"
-        );
-
-        backtestResult.textContent =
-          JSON.stringify(
-            validation,
-            null,
-            2
-          );
-
-        return;
-      }
-
-      if (
-        validation.evidenceType !==
-        "weekly-sage-wr-validation"
-      ) {
-        setStatus(
-          "Unexpected validation schema.",
-          "error"
-        );
-
-        backtestResult.textContent =
-          JSON.stringify(
-            validation,
-            null,
-            2
-          );
-
-        return;
-      }
-
-      capturedBacktest =
-        buildBacktestFromValidation(
-          validation
-        );
-
-      backtestResult.textContent =
-        JSON.stringify(
-          capturedBacktest,
-          null,
-          2
-        );
-
-      if (
-        capturedBacktest.nextStep.ready
-      ) {
-        setStatus(
-          "Success — captured " +
-          capturedBacktest.population
-            .cleanPlayerWeekObservations +
-          " clean Week " +
-          week +
-          " WR observations.",
-          "success"
-        );
-
-        runReliabilityButton.disabled =
-          false;
-
-        copyBacktestButton.disabled =
-          false;
-      } else {
-        setStatus(
-          "Validation loaded, but the captured evidence is not ready.",
-          "error"
-        );
-      }
 
     } catch (
       error
     ) {
 
       setStatus(
-        "Validation request failed.",
+        "The pasted validation evidence is not valid JSON.",
         "error"
       );
 
       backtestResult.textContent =
-        error.stack ||
         error.message ||
         String(
           error
         );
+
+      return;
+
     }
+
+
+    try {
+
+      validateValidationPayload(
+        validation
+      );
+
+    } catch (
+      error
+    ) {
+
+      setStatus(
+        error.message ||
+        "The pasted validation evidence failed schema checks.",
+        "error"
+      );
+
+      backtestResult.textContent =
+        JSON.stringify(
+          validation,
+          null,
+          2
+        );
+
+      return;
+
+    }
+
+
+    capturedBacktest =
+      buildBacktestFromValidation(
+        validation
+      );
+
+
+    backtestResult.textContent =
+      JSON.stringify(
+        capturedBacktest,
+        null,
+        2
+      );
+
+
+    showValidationSummary(
+      validation,
+      capturedBacktest
+    );
+
+
+    if (
+      capturedBacktest.nextStep.ready
+    ) {
+
+      runReliabilityButton.disabled =
+        false;
+
+      copyBacktestButton.disabled =
+        false;
+
+      saveBacktestButton.disabled =
+        false;
+
+      setStatus(
+        "Success — converted Week " +
+        capturedBacktest.requestedWindow.startWeek +
+        " validation into " +
+        capturedBacktest.population.cleanPlayerWeekObservations +
+        " clean WR observations with zero live validation calls.",
+        "success"
+      );
+
+    } else {
+
+      setStatus(
+        "Validation JSON was parsed, but the resulting evidence is not ready for downstream analysis. Check source readiness, failures, and clean observations.",
+        "error"
+      );
+
+    }
+
+  }
+);
+
+
+clearInputButton.addEventListener(
+  "click",
+  function () {
+
+    validationInput.value =
+      "";
+
+    resetCapturedEvidence();
+
+    setStatus(
+      "Waiting for pasted validation JSON.",
+      ""
+    );
+
   }
 );
 
@@ -864,24 +1284,55 @@ runReliabilityButton.addEventListener(
     if (
       !capturedBacktest
     ) {
+
       setStatus(
-        "Load WR validation first.",
+        "Convert pasted WR validation evidence first.",
         "error"
       );
 
       return;
+
     }
+
+
+    if (
+      !capturedBacktest.nextStep ||
+      capturedBacktest.nextStep.ready !==
+        true
+    ) {
+
+      setStatus(
+        "Captured backtest evidence is not marked ready.",
+        "error"
+      );
+
+      return;
+
+    }
+
 
     const endpoint =
       "/.netlify/functions/weekly-sage-wr-role-reliability";
 
+
+    capturedReliability =
+      null;
+
+    copyReliabilityButton.disabled =
+      true;
+
+    saveReliabilityButton.disabled =
+      true;
+
+
     setStatus(
-      "Running Role Reliability from captured evidence...",
+      "Running Role Reliability from already-captured evidence...",
       ""
     );
 
     reliabilityResult.textContent =
       "Running...";
+
 
     try {
 
@@ -894,6 +1345,9 @@ runReliabilityButton.addEventListener(
 
             headers: {
               "Content-Type":
+                "application/json",
+
+              Accept:
                 "application/json"
             },
 
@@ -905,45 +1359,163 @@ runReliabilityButton.addEventListener(
           }
         );
 
+
       const text =
         await response.text();
+
 
       let data;
 
       try {
+
         data =
           JSON.parse(
             text
           );
 
-        reliabilityResult.textContent =
-          JSON.stringify(
-            data,
-            null,
-            2
-          );
       } catch (
         error
       ) {
+
         reliabilityResult.textContent =
           text;
+
+        setStatus(
+          "Role Reliability did not return JSON. HTTP " +
+          response.status +
+          ".",
+          "error"
+        );
+
+        return;
+
       }
 
-      if (
-        response.ok
-      ) {
-        setStatus(
-          "Success — Role Reliability completed from captured evidence.",
-          "success"
+
+      reliabilityResult.textContent =
+        JSON.stringify(
+          data,
+          null,
+          2
         );
-      } else {
+
+
+      if (
+        !response.ok
+      ) {
+
         setStatus(
           "Role Reliability failed with HTTP " +
           response.status +
           ".",
           "error"
         );
+
+        return;
+
       }
+
+
+      capturedReliability =
+        data;
+
+      copyReliabilityButton.disabled =
+        false;
+
+      saveReliabilityButton.disabled =
+        false;
+
+
+      const sourceMode =
+        data &&
+        data.source &&
+        data.source.mode
+          ? data.source.mode
+          : null;
+
+      const downstreamCalls =
+        data &&
+        data.source &&
+        Number.isFinite(
+          Number(
+            data.source.downstreamFunctionCalls
+          )
+        )
+          ? Number(
+              data.source.downstreamFunctionCalls
+            )
+          : null;
+
+
+      let message =
+        "Success — Role Reliability completed from captured evidence.";
+
+      if (
+        sourceMode
+      ) {
+
+        message +=
+          " Source mode: " +
+          sourceMode +
+          ".";
+
+      }
+
+      if (
+        downstreamCalls !==
+        null
+      ) {
+
+        message +=
+          " Downstream function calls: " +
+          downstreamCalls +
+          ".";
+
+      }
+
+
+      if (
+        sourceMode &&
+        sourceMode !==
+          "posted_backtest"
+      ) {
+
+        message +=
+          " WARNING: expected source.mode = posted_backtest.";
+
+      }
+
+
+      if (
+        downstreamCalls !==
+        null &&
+        downstreamCalls !==
+          0
+      ) {
+
+        message +=
+          " WARNING: expected zero downstream function calls.";
+
+      }
+
+
+      setStatus(
+        message,
+        (
+          sourceMode &&
+          sourceMode !==
+            "posted_backtest"
+        ) ||
+        (
+          downstreamCalls !==
+          null &&
+          downstreamCalls !==
+            0
+        )
+          ? "error"
+          : "success"
+      );
+
 
     } catch (
       error
@@ -960,7 +1532,9 @@ runReliabilityButton.addEventListener(
         String(
           error
         );
+
     }
+
   }
 );
 
@@ -975,24 +1549,12 @@ copyBacktestButton.addEventListener(
       return;
     }
 
-    const text =
-      JSON.stringify(
-        capturedBacktest,
-        null,
-        2
-      );
 
     try {
 
-      await navigator
-        .clipboard
-        .writeText(
-          text
-        );
-
-      setStatus(
-        "Backtest JSON copied to clipboard.",
-        "success"
+      await copyJson(
+        capturedBacktest,
+        "Backtest JSON copied to clipboard."
       );
 
     } catch (
@@ -1000,10 +1562,103 @@ copyBacktestButton.addEventListener(
     ) {
 
       setStatus(
-        "Could not copy automatically. Select the JSON manually.",
+        "Could not copy automatically. Select the backtest JSON manually.",
         "error"
       );
+
     }
+
+  }
+);
+
+
+saveBacktestButton.addEventListener(
+  "click",
+  function () {
+
+    if (
+      !capturedBacktest
+    ) {
+      return;
+    }
+
+
+    saveJson(
+      capturedBacktest,
+      makeJsonFilename(
+        "wr-backtest",
+        capturedBacktest
+      )
+    );
+
+
+    setStatus(
+      "Backtest JSON save started.",
+      "success"
+    );
+
+  }
+);
+
+
+copyReliabilityButton.addEventListener(
+  "click",
+  async function () {
+
+    if (
+      !capturedReliability
+    ) {
+      return;
+    }
+
+
+    try {
+
+      await copyJson(
+        capturedReliability,
+        "Role Reliability JSON copied to clipboard."
+      );
+
+    } catch (
+      error
+    ) {
+
+      setStatus(
+        "Could not copy automatically. Select the reliability JSON manually.",
+        "error"
+      );
+
+    }
+
+  }
+);
+
+
+saveReliabilityButton.addEventListener(
+  "click",
+  function () {
+
+    if (
+      !capturedReliability
+    ) {
+      return;
+    }
+
+
+    saveJson(
+      capturedReliability,
+      makeJsonFilename(
+        "wr-role-reliability",
+        capturedBacktest
+      )
+    );
+
+
+    setStatus(
+      "Role Reliability JSON save started.",
+      "success"
+    );
+
   }
 );
 
