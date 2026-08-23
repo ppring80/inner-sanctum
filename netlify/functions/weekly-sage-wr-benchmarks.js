@@ -1060,6 +1060,28 @@ function jsonResponse(
   };
 }
 
+function statusError(
+  status,
+  body
+) {
+  const err =
+    new Error(
+      (
+        body &&
+        body.error
+      ) ||
+      "Request failed."
+    );
+
+  err.status =
+    status;
+
+  err.body =
+    body;
+
+  return err;
+}
+
 exports.handler =
   async function (
     event
@@ -1162,6 +1184,81 @@ exports.handler =
           event
         );
 
+      const body =
+        await buildWrBenchmarks({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType,
+          playerID
+        });
+
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (
+      error
+    ) {
+      if (
+        typeof error.status ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          error.body
+        );
+      }
+
+      console.error(
+        "weekly-sage-wr-benchmarks failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not build Weekly SAGE WR benchmarks.",
+
+          detail:
+            error.message
+        }
+      );
+    }
+  };
+
+/*
+  Core Weekly SAGE WR benchmark computation, extracted additively.
+  exports.handler above is now a thin wrapper around this function
+  and produces byte-identical GET output to before this extraction.
+
+  Returns plain data on success. Early-exit cases throw via
+  statusError(status, body) instead of calling jsonResponse()
+  directly, since this function returns plain data (not an HTTP
+  response) and may be called by weekly-sage-wr-component-scores.js
+  in-process, which needs an ordinary JS error to propagate
+  correctly, not an HTTP envelope. exports.handler above translates
+  any statusError back into the exact same jsonResponse(status,
+  body) shape as before.
+
+  prebuiltSnapshot is OPTIONAL. When supplied (in-process, passed
+  down from weekly-sage-wr-leaderboard.js's own single snapshot
+  build through component-scores/confidence/final-score),
+  fetchSnapshot() is never called. When omitted, this function
+  fetches it itself exactly as it always has, unconditionally, for
+  every existing GET caller and for independent GET requests to
+  this endpoint specifically.
+*/
+async function buildWrBenchmarks({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType,
+  playerID,
+  prebuiltSnapshot
+}) {
       /*
         STEP 1
         ------
@@ -1170,6 +1267,7 @@ exports.handler =
         This endpoint makes no Tank01 calls.
       */
       const snapshot =
+        prebuiltSnapshot ||
         await fetchSnapshot({
           baseUrl,
           season,
@@ -1182,7 +1280,7 @@ exports.handler =
         !snapshot.nextStep ||
         !snapshot.nextStep.ready
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -1206,7 +1304,7 @@ exports.handler =
         population.length ===
         0
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -1245,7 +1343,7 @@ exports.handler =
       if (
         !player
       ) {
-        return jsonResponse(
+        throw statusError(
           404,
           {
             error:
@@ -1282,7 +1380,7 @@ exports.handler =
         player.position !==
         POSITION
       ) {
-        return jsonResponse(
+        throw statusError(
           400,
           {
             error:
@@ -1364,9 +1462,7 @@ exports.handler =
             "scrimmageYardsPerGame"
         });
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-wr-benchmarks",
 
@@ -1624,27 +1720,8 @@ exports.handler =
             benchmarkMethod:
               "midrank peer percentile"
           }
-        },
+        };
+}
 
-        CACHE_CONTROL
-      );
-    } catch (
-      error
-    ) {
-      console.error(
-        "weekly-sage-wr-benchmarks failed:",
-        error
-      );
-
-      return jsonResponse(
-        502,
-        {
-          error:
-            "Could not build Weekly SAGE WR benchmarks.",
-
-          detail:
-            error.message
-        }
-      );
-    }
-  };
+exports.buildWrBenchmarks =
+  buildWrBenchmarks;
