@@ -2939,7 +2939,7 @@ exports.handler =
               "Role, Production, and Matchup are correlated independently against actual fantasy points so their relative predictive signal can be inspected before weight sensitivity testing.",
 
             topCapture:
-              "Predicted Top 12/24/36 sets are frozen from the original pre-game leaderboard. Actual Top 12/24/36 sets are calculated from WRs who actually played. DNP players are not removed from the frozen predicted sets after the fact.",
+              "Predicted Top 12/24/36 sets are frozen from the original pre-game leaderboard. Actual Top 12/24/36 sets are calculated from TEs who actually played. DNP players are not removed from the frozen predicted sets after the fact.",
 
             exclusions: [
               "Fumble penalties",
