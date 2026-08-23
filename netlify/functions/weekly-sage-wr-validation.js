@@ -348,7 +348,7 @@ async function fetchJson(
   if (
     !result.ok
   ) {
-    const detail =
+    const rawDetail =
       result.data &&
       (
         result.data.detail ||
@@ -358,10 +358,62 @@ async function fetchJson(
             result.data.detail ||
             result.data.error
           )
-        : `HTTP ${result.status}`;
+        : null;
+
+    let message;
+
+    if (
+      typeof rawDetail ===
+      "string"
+    ) {
+      /*
+        Unchanged from before: a string detail/error is used exactly
+        as-is, with no HTTP status prefix added.
+      */
+      message =
+        rawDetail;
+    } else if (
+      rawDetail &&
+      typeof rawDetail ===
+        "object"
+    ) {
+      /*
+        FIX: previously `new Error(rawDetail)` coerced an
+        object/array detail (e.g. weekly-sage-wr-leaderboard's
+        {blobStore, blobKey, problems: [...]} diagnostic body) via
+        the default Object.prototype.toString(), producing the
+        literal, useless string "[object Object]". Serialize it
+        safely instead, with the HTTP status folded in since a raw
+        JSON blob alone doesn't otherwise convey why it's an error.
+      */
+      let serialized;
+
+      try {
+        serialized =
+          JSON.stringify(
+            rawDetail
+          );
+      } catch (
+        stringifyError
+      ) {
+        serialized =
+          String(
+            rawDetail
+          );
+      }
+
+      message =
+        `HTTP ${result.status}: ${serialized}`;
+    } else {
+      /*
+        Unchanged from before: no detail/error at all.
+      */
+      message =
+        `HTTP ${result.status}`;
+    }
 
     throw new Error(
-      detail
+      message
     );
   }
 
