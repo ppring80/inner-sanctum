@@ -58,6 +58,24 @@ const SCHEDULE_FUNCTION =
 const FINAL_SCORE_FUNCTION =
   "weekly-sage-wr-final-score";
 
+/*
+  weekly-sage-wr-final-score's core computation (buildWrFinalScore)
+  is required directly, in-process, rather than invoked over HTTP
+  (see fetchFinalScore() below, now unused but left in place for
+  reference). This is the top of the chain: the snapshot this file
+  already fetches exactly once at STEP 1 below is passed down by
+  reference as prebuiltSnapshot to every one of the ~N per-WR calls,
+  instead of each one (through final-score -> confidence ->
+  component-scores -> benchmarks) independently rebuilding the
+  entire WR population snapshot from scratch -- the redundancy this
+  whole fix exists to remove.
+*/
+const {
+  buildWrFinalScore
+} = require(
+  "./weekly-sage-wr-final-score.js"
+);
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -1725,14 +1743,16 @@ exports.handler =
           ) {
             try {
               const finalData =
-                await fetchFinalScore({
+                await buildWrFinalScore({
                   baseUrl,
                   season,
-                  week:
-                    targetWeek,
+                  targetWeek,
                   seasonType,
                   playerID:
-                    player.playerID
+                    player.playerID,
+
+                  prebuiltSnapshot:
+                    snapshot
                 });
 
               const row =
