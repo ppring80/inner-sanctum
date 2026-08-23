@@ -64,6 +64,41 @@ const POSITION =
 const BENCHMARK_FUNCTION =
   "weekly-sage-wr-benchmarks";
 
+/*
+  weekly-sage-wr-benchmarks's core computation (buildWrBenchmarks) is
+  required directly, in-process, rather than invoked over HTTP (see
+  fetchBenchmarks() below, now unused but left in place for
+  reference). This lets an optional prebuilt snapshot be forwarded
+  down to it by reference -- no serialization, no self-fetch.
+*/
+const {
+  buildWrBenchmarks
+} = require(
+  "./weekly-sage-wr-benchmarks.js"
+);
+
+function statusError(
+  status,
+  body
+) {
+  const err =
+    new Error(
+      (
+        body &&
+        body.error
+      ) ||
+      "Request failed."
+    );
+
+  err.status =
+    status;
+
+  err.body =
+    body;
+
+  return err;
+}
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -746,6 +781,70 @@ exports.handler =
           event
         );
 
+      const body =
+        await buildWrComponentScores({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType,
+          playerID
+        });
+
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (
+      error
+    ) {
+      if (
+        typeof error.status ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          error.body
+        );
+      }
+
+      console.error(
+        "weekly-sage-wr-component-scores failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not calculate Weekly SAGE WR component scores.",
+
+          detail:
+            error.message
+        }
+      );
+    }
+  };
+
+/*
+  Core Weekly SAGE WR component-score computation, extracted
+  additively. exports.handler above is now a thin wrapper around
+  this function and produces byte-identical GET output to before
+  this extraction. Mirrors weekly-sage-wr-benchmarks.js's own
+  statusError()/prebuiltSnapshot pattern exactly.
+
+  prebuiltSnapshot is OPTIONAL and forwarded straight through to
+  buildWrBenchmarks() -- this function does not use it directly
+  itself, only passes it one layer further down the chain.
+*/
+async function buildWrComponentScores({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType,
+  playerID,
+  prebuiltSnapshot
+}) {
       /*
         STEP 1
         ------
@@ -754,13 +853,13 @@ exports.handler =
         No direct Tank01 calls occur here.
       */
       const benchmarks =
-        await fetchBenchmarks({
+        await buildWrBenchmarks({
           baseUrl,
           season,
-          week:
-            targetWeek,
+          targetWeek,
           seasonType,
-          playerID
+          playerID,
+          prebuiltSnapshot
         });
 
       const player =
@@ -771,7 +870,7 @@ exports.handler =
         player.position !==
         POSITION
       ) {
-        return jsonResponse(
+        throw statusError(
           400,
           {
             error:
@@ -822,7 +921,7 @@ exports.handler =
         production.score ===
           null
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -835,9 +934,7 @@ exports.handler =
         );
       }
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-wr-component-scores",
 
@@ -1026,27 +1123,8 @@ exports.handler =
             productionFormula:
               PRODUCTION_WEIGHTS
           }
-        },
+        };
+}
 
-        CACHE_CONTROL
-      );
-    } catch (
-      error
-    ) {
-      console.error(
-        "weekly-sage-wr-component-scores failed:",
-        error
-      );
-
-      return jsonResponse(
-        502,
-        {
-          error:
-            "Could not calculate Weekly SAGE WR component scores.",
-
-          detail:
-            error.message
-        }
-      );
-    }
-  };
+exports.buildWrComponentScores =
+  buildWrComponentScores;
