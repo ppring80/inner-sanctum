@@ -1356,6 +1356,58 @@ exports.handler =
           event
         );
 
+      const body =
+        await buildWrSnapshot({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType
+        });
+
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (error) {
+      console.error(
+        "weekly-sage-wr-snapshot failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not build Weekly SAGE WR snapshot.",
+
+          detail:
+            error.message
+        }
+      );
+    }
+  };
+
+/*
+  Core Weekly SAGE WR population-snapshot computation, extracted
+  additively. exports.handler above is now a thin wrapper around
+  this function and produces byte-identical GET output to before
+  this extraction -- same Tank01 endpoints, same concurrency, same
+  population-eligibility rules, same no-look-ahead behavior, same
+  historical-team identity logic, same response fields. Only the
+  wrapping around the computation changed.
+
+  Returns plain data. This function makes no Blobs calls itself and
+  has no dependency on Blobs being configured -- refresh-wr-snapshot.js
+  calls it in-process and is solely responsible for deciding whether
+  the result is complete enough to cache.
+*/
+async function buildWrSnapshot({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
       /*
         Fetch the complete player list and prior-week schedule map
         once. Both are reused for every WR candidate.
@@ -1592,9 +1644,7 @@ exports.handler =
         }
       );
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-wr-snapshot",
 
@@ -1724,25 +1774,8 @@ exports.handler =
               1 +
               wrCandidates.length
           }
-        },
+        };
+}
 
-        CACHE_CONTROL
-      );
-    } catch (error) {
-      console.error(
-        "weekly-sage-wr-snapshot failed:",
-        error
-      );
-
-      return jsonResponse(
-        502,
-        {
-          error:
-            "Could not build Weekly SAGE WR snapshot.",
-
-          detail:
-            error.message
-        }
-      );
-    }
-  };
+exports.buildWrSnapshot =
+  buildWrSnapshot;
