@@ -56,6 +56,46 @@ const POSITION =
 const CONFIDENCE_FUNCTION =
   "weekly-sage-wr-confidence";
 
+/*
+  weekly-sage-wr-confidence's core computation (buildWrConfidence) is
+  required directly, in-process, rather than invoked over HTTP (see
+  fetchConfidence() below, now unused but left in place for
+  reference). This lets an optional prebuilt snapshot be forwarded
+  down through it -- no serialization, no self-fetch.
+
+  fetchMatchup()/weekly-sage-player-matchup is deliberately left
+  UNCHANGED -- matchup evidence has no dependency on the WR
+  population snapshot, so there is nothing to share there, and that
+  file is outside the scope of this fix.
+*/
+const {
+  buildWrConfidence
+} = require(
+  "./weekly-sage-wr-confidence.js"
+);
+
+function statusError(
+  status,
+  body
+) {
+  const err =
+    new Error(
+      (
+        body &&
+        body.error
+      ) ||
+      "Request failed."
+    );
+
+  err.status =
+    status;
+
+  err.body =
+    body;
+
+  return err;
+}
+
 const MATCHUP_FUNCTION =
   "weekly-sage-player-matchup";
 
@@ -734,19 +774,83 @@ exports.handler =
           event
         );
 
+      const body =
+        await buildWrFinalScore({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType,
+          playerID
+        });
+
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (
+      error
+    ) {
+      if (
+        typeof error.status ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          error.body
+        );
+      }
+
+      console.error(
+        "weekly-sage-wr-final-score failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not calculate Weekly SAGE WR final score.",
+
+          detail:
+            error.message
+        }
+      );
+    }
+  };
+
+/*
+  Core Weekly SAGE WR final-score computation, extracted additively.
+  exports.handler above is now a thin wrapper around this function
+  and produces byte-identical GET output to before this extraction.
+  Mirrors weekly-sage-wr-benchmarks.js's own statusError()/
+  prebuiltSnapshot pattern exactly.
+
+  prebuiltSnapshot is OPTIONAL and forwarded to buildWrConfidence()
+  only -- fetchMatchup() below is unrelated to the snapshot and
+  stays exactly as it was.
+*/
+async function buildWrFinalScore({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType,
+  playerID,
+  prebuiltSnapshot
+}) {
       /*
         STEP 1
         ------
         Retrieve confidence-adjusted WR Role and Production.
       */
       const confidence =
-        await fetchConfidence({
+        await buildWrConfidence({
           baseUrl,
           season,
-          week:
-            targetWeek,
+          targetWeek,
           seasonType,
-          playerID
+          playerID,
+          prebuiltSnapshot
         });
 
       const player =
@@ -757,7 +861,7 @@ exports.handler =
         player.position !==
         POSITION
       ) {
-        return jsonResponse(
+        throw statusError(
           400,
           {
             error:
@@ -892,7 +996,7 @@ exports.handler =
         adjustedMatchupScore ===
           null
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -957,9 +1061,7 @@ exports.handler =
             matchupConfidence
         });
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-wr-final-score",
 
@@ -1223,27 +1325,8 @@ exports.handler =
             provisionalWeights:
               WR_WEIGHTS
           }
-        },
+        };
+}
 
-        CACHE_CONTROL
-      );
-    } catch (
-      error
-    ) {
-      console.error(
-        "weekly-sage-wr-final-score failed:",
-        error
-      );
-
-      return jsonResponse(
-        502,
-        {
-          error:
-            "Could not calculate Weekly SAGE WR final score.",
-
-          detail:
-            error.message
-        }
-      );
-    }
-  };
+exports.buildWrFinalScore =
+  buildWrFinalScore;
