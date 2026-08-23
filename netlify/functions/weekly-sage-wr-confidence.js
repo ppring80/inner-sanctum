@@ -78,6 +78,42 @@ const POSITION =
 const COMPONENT_FUNCTION =
   "weekly-sage-wr-component-scores";
 
+/*
+  weekly-sage-wr-component-scores's core computation
+  (buildWrComponentScores) is required directly, in-process, rather
+  than invoked over HTTP (see fetchComponents() below, now unused
+  but left in place for reference). This lets an optional prebuilt
+  snapshot be forwarded down through it -- no serialization, no
+  self-fetch.
+*/
+const {
+  buildWrComponentScores
+} = require(
+  "./weekly-sage-wr-component-scores.js"
+);
+
+function statusError(
+  status,
+  body
+) {
+  const err =
+    new Error(
+      (
+        body &&
+        body.error
+      ) ||
+      "Request failed."
+    );
+
+  err.status =
+    status;
+
+  err.body =
+    body;
+
+  return err;
+}
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -706,14 +742,78 @@ exports.handler =
           event
         );
 
-      const components =
-        await fetchComponents({
+      const body =
+        await buildWrConfidence({
           baseUrl,
           season,
-          week:
-            targetWeek,
+          targetWeek,
           seasonType,
           playerID
+        });
+
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (
+      error
+    ) {
+      if (
+        typeof error.status ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          error.body
+        );
+      }
+
+      console.error(
+        "weekly-sage-wr-confidence failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not apply Weekly SAGE WR confidence adjustment.",
+
+          detail:
+            error.message
+        }
+      );
+    }
+  };
+
+/*
+  Core Weekly SAGE WR confidence computation, extracted additively.
+  exports.handler above is now a thin wrapper around this function
+  and produces byte-identical GET output to before this extraction.
+  Mirrors weekly-sage-wr-benchmarks.js's own statusError()/
+  prebuiltSnapshot pattern exactly.
+
+  prebuiltSnapshot is OPTIONAL and forwarded straight through to
+  buildWrComponentScores() -- this function does not use it directly
+  itself, only passes it one layer further down the chain.
+*/
+async function buildWrConfidence({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType,
+  playerID,
+  prebuiltSnapshot
+}) {
+      const components =
+        await buildWrComponentScores({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType,
+          playerID,
+          prebuiltSnapshot
         });
 
       const player =
@@ -724,7 +824,7 @@ exports.handler =
         player.position !==
         POSITION
       ) {
-        return jsonResponse(
+        throw statusError(
           400,
           {
             error:
@@ -763,7 +863,7 @@ exports.handler =
         !rawRole ||
         !rawProduction
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -808,7 +908,7 @@ exports.handler =
         production.adjustedScore ===
           null
       ) {
-        return jsonResponse(
+        throw statusError(
           422,
           {
             error:
@@ -821,9 +921,7 @@ exports.handler =
         );
       }
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-wr-confidence",
 
@@ -1008,27 +1106,8 @@ exports.handler =
             benchmarkPercentiles:
               "weekly-sage-wr-benchmarks"
           }
-        },
+        };
+}
 
-        CACHE_CONTROL
-      );
-    } catch (
-      error
-    ) {
-      console.error(
-        "weekly-sage-wr-confidence failed:",
-        error
-      );
-
-      return jsonResponse(
-        502,
-        {
-          error:
-            "Could not apply Weekly SAGE WR confidence adjustment.",
-
-          detail:
-            error.message
-        }
-      );
-    }
-  };
+exports.buildWrConfidence =
+  buildWrConfidence;
