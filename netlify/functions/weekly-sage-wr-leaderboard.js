@@ -32,7 +32,7 @@
 // - recalculate WR components
 // - duplicate confidence logic
 // - duplicate matchup logic
-// - create START / FLEX / SIT thresholds
+// - alter the underlying Weekly SAGE score when assigning START / FLEX / SIT
 //
 // IMPORTANT
 // ---------
@@ -66,6 +66,43 @@ const DEFAULT_CONCURRENCY =
 
 const MAX_CONCURRENCY =
   10;
+
+const WR_RECOMMENDATION_THRESHOLDS = {
+  start: 72,
+  flex: 52
+};
+
+function wrRecommendation(
+  score
+) {
+  const value =
+    nullableNum(
+      score
+    );
+
+  if (
+    value ===
+    null
+  ) {
+    return null;
+  }
+
+  if (
+    value >=
+    WR_RECOMMENDATION_THRESHOLDS.start
+  ) {
+    return "START";
+  }
+
+  if (
+    value >=
+    WR_RECOMMENDATION_THRESHOLDS.flex
+  ) {
+    return "FLEX";
+  }
+
+  return "SIT";
+}
 
 function nullableNum(
   value
@@ -937,6 +974,11 @@ function leaderboardRow(
 
     sageScore:
       score,
+
+    recommendation:
+      wrRecommendation(
+        score
+      ),
 
     sageLabel:
       sage.label ||
@@ -1856,6 +1898,28 @@ exports.handler =
             ranking:
               "Descending Weekly SAGE WR Score.",
 
+            recommendationThresholds: {
+              start:
+                WR_RECOMMENDATION_THRESHOLDS.start,
+
+              flex:
+                WR_RECOMMENDATION_THRESHOLDS.flex,
+
+              definitions: {
+                START:
+                  "Weekly SAGE Score >= 72",
+
+                FLEX:
+                  "Weekly SAGE Score >= 52 and < 72",
+
+                SIT:
+                  "Weekly SAGE Score < 52"
+              },
+
+              status:
+                "Initial WR consumer recommendation thresholds calibrated from saved 2025 Week 5 and Week 8 historical evidence."
+            },
+
             tieBreakers: [
               "Higher overall SAGE confidence",
               "Higher confidence-adjusted Role Score",
@@ -1957,16 +2021,27 @@ exports.handler =
 
           failures,
 
-          recommendation:
-            null,
+          recommendation: {
+            enabled:
+              true,
+
+            startThreshold:
+              WR_RECOMMENDATION_THRESHOLDS.start,
+
+            flexThreshold:
+              WR_RECOMMENDATION_THRESHOLDS.flex,
+
+            logic:
+              "START >= 72; FLEX >= 52 and < 72; SIT < 52"
+          },
 
           nextStep: {
             ready,
 
             reason:
               ready
-                ? "Active WRs were scored successfully and bye-week WRs were excluded from the ranking before final-score execution. The weekly population is ready for historical validation."
-                : "Resolve unresolved players or true scoring failures before using this weekly leaderboard for historical validation."
+                ? "Active WRs were scored successfully, bye-week WRs were excluded before final-score execution, and START / FLEX / SIT recommendations were assigned from the calibrated WR SAGE thresholds."
+                : "Resolve unresolved players or true scoring failures before using this weekly leaderboard for consumer recommendations."
           },
 
           provenance: {
