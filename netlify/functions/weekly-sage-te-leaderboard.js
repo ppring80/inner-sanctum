@@ -1,0 +1,2326 @@
+// netlify/functions/weekly-sage-te-leaderboard.js
+//
+// WEEKLY SAGE — TE LEADERBOARD
+//
+// PURPOSE
+// -------
+// Build a complete Weekly SAGE TE leaderboard for one target week.
+//
+// SOURCES
+// -------
+//
+//   weekly-sage-te-snapshot
+//   weekly-sage-schedule
+//   weekly-sage-te-final-score
+//
+// ARCHITECTURE
+// ------------
+// The snapshot defines the eligible TE population.
+//
+// The weekly schedule determines whether each player's historical
+// team is ACTIVE or on BYE in the target week.
+//
+// Only active WRs are sent to weekly-sage-te-final-score.
+//
+// This prevents bye weeks from being incorrectly reported as
+// scoring failures and avoids unnecessary downstream function calls.
+//
+// This function DOES NOT:
+// - call Tank01 directly
+// - rebuild TE evidence
+// - recalculate benchmarks
+// - recalculate TE components
+// - duplicate confidence logic
+// - duplicate matchup logic
+// - alter the underlying Weekly SAGE score when assigning START / FLEX / SIT
+//
+// IMPORTANT
+// ---------
+// TE SAGE v1 weights remain provisional.
+//
+// This leaderboard exposes the current forecast population for
+// historical validation. It does not validate or optimize weights.
+//
+// ═══════════════════════════════════════════════════════════════════════
+
+const DEFAULT_SEASON_TYPE =
+  "reg";
+
+const POSITION =
+  "TE";
+
+const SNAPSHOT_FUNCTION =
+  "weekly-sage-te-snapshot";
+
+/*
+  PHASE 2 — read the Phase 1 cached TE snapshot from Netlify Blobs
+  instead of live-rebuilding it on every leaderboard request.
+
+  Same Blobs pattern already proven in refresh-player-data.js /
+  refresh-risers-fallers.js / player-data.js / refresh-te-snapshot.js:
+  connectLambda(event) must run before any getStore() call -- see
+  exports.handler below.
+
+  Deliberately NO live-rebuild fallback: if the cache is missing,
+  unreadable, or incomplete, this file fails fast (503) rather than
+  ever calling weekly-sage-te-snapshot.js itself. That live rebuild
+  remains available only via refresh-te-snapshot.js's own manual/
+  future-scheduled path -- never from a customer leaderboard request.
+*/
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
+const TE_SNAPSHOT_STORE =
+  "te-snapshot";
+
+const SCHEDULE_FUNCTION =
+  "weekly-sage-schedule";
+
+const FINAL_SCORE_FUNCTION =
+  "weekly-sage-te-final-score";
+
+/*
+  weekly-sage-te-final-score's core computation (buildTeFinalScore)
+  is required directly, in-process, rather than invoked over HTTP
+  (see fetchFinalScore() below, now unused but left in place for
+  reference). This is the top of the chain: the snapshot this file
+  already fetches exactly once at STEP 1 below is passed down by
+  reference as prebuiltSnapshot to every one of the ~N per-TE calls,
+  instead of each one (through final-score -> confidence ->
+  component-scores -> benchmarks) independently rebuilding the
+  entire TE population snapshot from scratch -- the redundancy this
+  whole fix exists to remove.
+*/
+const {
+  buildTeFinalScore
+} = require(
+  "./weekly-sage-te-final-score.js"
+);
+
+const CACHE_CONTROL =
+  "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
+
+const DEFAULT_CONCURRENCY =
+  5;
+
+const MAX_CONCURRENCY =
+  10;
+
+const TE_RECOMMENDATION_THRESHOLDS = {
+  start: 72,
+  flex: 52
+};
+
+function teRecommendation(
+  score
+) {
+  const value =
+    nullableNum(
+      score
+    );
+
+  if (
+    value ===
+    null
+  ) {
+    return null;
+  }
+
+  if (
+    value >=
+    TE_RECOMMENDATION_THRESHOLDS.start
+  ) {
+    return "START";
+  }
+
+  if (
+    value >=
+    TE_RECOMMENDATION_THRESHOLDS.flex
+  ) {
+    return "FLEX";
+  }
+
+  return "SIT";
+}
+
+function nullableNum(
+  value
+) {
+  const n =
+    Number(
+      value
+    );
+
+  return Number.isFinite(
+    n
+  )
+    ? n
+    : null;
+}
+
+function integerOrNull(
+  value
+) {
+  const n =
+    Number(
+      value
+    );
+
+  return Number.isInteger(
+    n
+  )
+    ? n
+    : null;
+}
+
+function round(
+  value,
+  digits = 1
+) {
+  const n =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      n
+    )
+  ) {
+    return null;
+  }
+
+  const factor =
+    Math.pow(
+      10,
+      digits
+    );
+
+  return (
+    Math.round(
+      (
+        n +
+        Number.EPSILON
+      ) *
+      factor
+    ) /
+    factor
+  );
+}
+
+function clamp(
+  value,
+  min,
+  max
+) {
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  );
+}
+
+function normalizeTeam(
+  value
+) {
+  return String(
+    value ||
+    ""
+  )
+    .trim()
+    .toUpperCase();
+}
+
+function normalizePosition(
+  value
+) {
+  return String(
+    value ||
+    ""
+  )
+    .trim()
+    .toUpperCase();
+}
+
+function getBaseUrl(
+  event
+) {
+  const headers =
+    event.headers ||
+    {};
+
+  const proto =
+    headers[
+      "x-forwarded-proto"
+    ] ||
+    headers[
+      "X-Forwarded-Proto"
+    ] ||
+    "https";
+
+  const host =
+    headers.host ||
+    headers.Host;
+
+  if (
+    !host
+  ) {
+    throw new Error(
+      "Could not determine host."
+    );
+  }
+
+  return (
+    `${proto}://${host}`
+  );
+}
+
+function buildUrl({
+  baseUrl,
+  functionName,
+  params
+}) {
+  const query =
+    new URLSearchParams(
+      params
+    ).toString();
+
+  return (
+    `${baseUrl}/.netlify/functions/${functionName}` +
+    `?${query}`
+  );
+}
+
+async function fetchJson(
+  url
+) {
+  const response =
+    await fetch(
+      url,
+      {
+        method:
+          "GET",
+
+        headers: {
+          Accept:
+            "application/json"
+        }
+      }
+    );
+
+  let data =
+    null;
+
+  try {
+    data =
+      await response
+        .json();
+  } catch (
+    error
+  ) {
+    data =
+      null;
+  }
+
+  if (
+    !response.ok
+  ) {
+    const detail =
+      data &&
+      (
+        data.detail ||
+        data.error
+      )
+        ? (
+            data.detail ||
+            data.error
+          )
+        : `HTTP ${response.status}`;
+
+    const err =
+      new Error(
+        detail
+      );
+
+    err.status =
+      response.status;
+
+    err.data =
+      data;
+
+    throw err;
+  }
+
+  return data;
+}
+
+function cacheError(
+  status,
+  reason,
+  detail
+) {
+  const err =
+    new Error(
+      reason
+    );
+
+  err.status =
+    status;
+
+  err.detail =
+    detail ||
+    null;
+
+  return err;
+}
+
+/*
+  Read the Phase 1 cached TE snapshot for this exact
+  season/targetWeek/seasonType. Validates it as strictly as
+  refresh-te-snapshot.js validated it before ever writing it --
+  schema identity, requested-key match, and completeness (non-empty
+  population, zero failures, nextStep.ready === true). Throws a
+  discriminated 503 statusError on ANY problem; never falls back to
+  a live rebuild.
+*/
+async function readCachedSnapshot({
+  season,
+  targetWeek,
+  seasonType
+}) {
+  const key =
+    `week:${season}:${targetWeek}:${seasonType}`;
+
+  let cached =
+    null;
+
+  try {
+    const store =
+      getStore(
+        {
+          name:
+            TE_SNAPSHOT_STORE
+        }
+      );
+
+    cached =
+      await store.get(
+        key,
+        {
+          type:
+            "json"
+        }
+      );
+  } catch (error) {
+    throw cacheError(
+      503,
+      "TE snapshot cache could not be read.",
+      {
+        blobStore:
+          TE_SNAPSHOT_STORE,
+
+        blobKey:
+          key,
+
+        readError:
+          error &&
+          error.message
+            ? error.message
+            : String(
+                error
+              )
+      }
+    );
+  }
+
+  if (
+    !cached ||
+    typeof cached !== "object"
+  ) {
+    throw cacheError(
+      503,
+      "TE snapshot cache is missing for this season/week/seasonType.",
+      {
+        blobStore:
+          TE_SNAPSHOT_STORE,
+
+        blobKey:
+          key
+      }
+    );
+  }
+
+  const problems =
+    [];
+
+  if (
+    cached.evidenceType !==
+    "weekly-sage-te-snapshot"
+  ) {
+    problems.push(
+      `Unexpected evidenceType: ${cached.evidenceType}`
+    );
+  }
+
+  if (
+    String(
+      cached.season
+    ) !==
+    String(
+      season
+    )
+  ) {
+    problems.push(
+      `Cached season (${cached.season}) does not match requested season (${season}).`
+    );
+  }
+
+  if (
+    Number(
+      cached.targetWeek
+    ) !==
+    Number(
+      targetWeek
+    )
+  ) {
+    problems.push(
+      `Cached targetWeek (${cached.targetWeek}) does not match requested week (${targetWeek}).`
+    );
+  }
+
+  if (
+    cached.seasonType !==
+    seasonType
+  ) {
+    problems.push(
+      `Cached seasonType (${cached.seasonType}) does not match requested seasonType (${seasonType}).`
+    );
+  }
+
+  if (
+    !Array.isArray(
+      cached.population
+    ) ||
+    cached.population.length ===
+      0
+  ) {
+    problems.push(
+      "Cached snapshot has an empty or missing population."
+    );
+  }
+
+  if (
+    !Array.isArray(
+      cached.failures
+    ) ||
+    cached.failures.length >
+      0
+  ) {
+    problems.push(
+      "Cached snapshot has one or more player-game failures."
+    );
+  }
+
+  if (
+    !cached.nextStep ||
+    cached.nextStep.ready !==
+      true
+  ) {
+    problems.push(
+      "Cached snapshot's nextStep.ready is not true."
+    );
+  }
+
+  if (
+    problems.length >
+    0
+  ) {
+    throw cacheError(
+      503,
+      "TE snapshot cache is invalid or not ready for use.",
+      {
+        blobStore:
+          TE_SNAPSHOT_STORE,
+
+        blobKey:
+          key,
+
+        problems
+      }
+    );
+  }
+
+  return cached;
+}
+
+async function fetchSchedule({
+  baseUrl,
+  season,
+  week,
+  seasonType
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        SCHEDULE_FUNCTION,
+
+      params: {
+        season,
+
+        week:
+          String(
+            week
+          ),
+
+        seasonType
+      }
+    });
+
+  const data =
+    await fetchJson(
+      url
+    );
+
+  if (
+    !data ||
+    data.evidenceType !==
+      "weekly-sage-schedule"
+  ) {
+    throw new Error(
+      "Unexpected Weekly SAGE schedule schema."
+    );
+  }
+
+  return data;
+}
+
+async function fetchFinalScore({
+  baseUrl,
+  season,
+  week,
+  seasonType,
+  playerID
+}) {
+  const url =
+    buildUrl({
+      baseUrl,
+
+      functionName:
+        FINAL_SCORE_FUNCTION,
+
+      params: {
+        season,
+
+        week:
+          String(
+            week
+          ),
+
+        seasonType,
+
+        playerID
+      }
+    });
+
+  return await fetchJson(
+    url
+  );
+}
+
+function extractSnapshotPlayers(
+  snapshot
+) {
+  const candidates = [
+    snapshot &&
+      snapshot.population,
+
+    snapshot &&
+      snapshot.players,
+
+    snapshot &&
+      snapshot.rows,
+
+    snapshot &&
+      snapshot.receivers,
+
+    snapshot &&
+      snapshot.wrs,
+
+    snapshot &&
+      snapshot.data &&
+      snapshot.data.players,
+
+    snapshot &&
+      snapshot.data &&
+      snapshot.data.rows
+  ];
+
+  for (
+    const candidate of
+    candidates
+  ) {
+    if (
+      Array.isArray(
+        candidate
+      )
+    ) {
+      return candidate;
+    }
+  }
+
+  return [];
+}
+
+function normalizeSnapshotPlayer(
+  row
+) {
+  if (
+    !row ||
+    typeof row !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const playerID =
+    String(
+      row.playerID ||
+      row.playerId ||
+      row.id ||
+      ""
+    ).trim();
+
+  if (
+    !playerID
+  ) {
+    return null;
+  }
+
+  const position =
+    normalizePosition(
+      row.position ||
+      row.pos ||
+      POSITION
+    );
+
+  if (
+    position &&
+    position !==
+      POSITION
+  ) {
+    return null;
+  }
+
+  /*
+    IMPORTANT:
+    row.team is the historical team entering the target week.
+
+    currentTeam is preserved separately.
+
+    Historical team is authoritative for historical schedule
+    classification.
+  */
+  return {
+    playerID,
+
+    name:
+      row.name ||
+      row.longName ||
+      row.playerName ||
+      null,
+
+    team:
+      normalizeTeam(
+        row.team
+      ) ||
+      null,
+
+    currentTeam:
+      normalizeTeam(
+        row.currentTeam
+      ) ||
+      null,
+
+    position:
+      POSITION,
+
+    gamesUsed:
+      nullableNum(
+        row.gamesUsed
+      ),
+
+    weeksIncluded:
+      Array.isArray(
+        row.weeksIncluded
+      )
+        ? row.weeksIncluded
+        : []
+  };
+}
+
+function dedupePlayers(
+  players
+) {
+  const seen =
+    new Set();
+
+  const result =
+    [];
+
+  for (
+    const player of
+    players
+  ) {
+    if (
+      !player ||
+      !player.playerID
+    ) {
+      continue;
+    }
+
+    if (
+      seen.has(
+        player.playerID
+      )
+    ) {
+      continue;
+    }
+
+    seen.add(
+      player.playerID
+    );
+
+    result.push(
+      player
+    );
+  }
+
+  return result;
+}
+
+function buildScheduleState(
+  schedule
+) {
+  const activeTeams =
+    new Set();
+
+  const byeTeams =
+    new Set();
+
+  const games =
+    Array.isArray(
+      schedule.games
+    )
+      ? schedule.games
+      : [];
+
+  for (
+    const game of
+    games
+  ) {
+    const away =
+      normalizeTeam(
+        game.away
+      );
+
+    const home =
+      normalizeTeam(
+        game.home
+      );
+
+    if (
+      away
+    ) {
+      activeTeams.add(
+        away
+      );
+    }
+
+    if (
+      home
+    ) {
+      activeTeams.add(
+        home
+      );
+    }
+  }
+
+  if (
+    Array.isArray(
+      schedule.activeTeams
+    )
+  ) {
+    for (
+      const team of
+      schedule.activeTeams
+    ) {
+      const normalized =
+        normalizeTeam(
+          team
+        );
+
+      if (
+        normalized
+      ) {
+        activeTeams.add(
+          normalized
+        );
+      }
+    }
+  }
+
+  if (
+    Array.isArray(
+      schedule.byeTeams
+    )
+  ) {
+    for (
+      const team of
+      schedule.byeTeams
+    ) {
+      const normalized =
+        normalizeTeam(
+          team
+        );
+
+      if (
+        normalized
+      ) {
+        byeTeams.add(
+          normalized
+        );
+      }
+    }
+  }
+
+  return {
+    activeTeams,
+
+    byeTeams
+  };
+}
+
+function classifyPlayerSchedule(
+  player,
+  scheduleState
+) {
+  const team =
+    normalizeTeam(
+      player.team
+    );
+
+  if (
+    !team
+  ) {
+    return {
+      status:
+        "unresolved",
+
+      reason:
+        "Historical team entering the target week is unavailable."
+    };
+  }
+
+  if (
+    scheduleState
+      .activeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "active",
+
+      reason:
+        null
+    };
+  }
+
+  if (
+    scheduleState
+      .byeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "bye",
+
+      reason:
+        "Player's historical team is on bye in the requested week."
+    };
+  }
+
+  /*
+    For a complete regular-season weekly schedule, absence means bye.
+
+    However, we only infer that when the schedule endpoint explicitly
+    says bye classification is available.
+  */
+  return {
+    status:
+      "unresolved",
+
+    reason:
+      "Player team does not appear in the active schedule and was not explicitly classified as a bye team."
+  };
+}
+
+async function mapWithConcurrency(
+  items,
+  concurrency,
+  mapper
+) {
+  const results =
+    new Array(
+      items.length
+    );
+
+  let nextIndex =
+    0;
+
+  async function worker() {
+    while (
+      true
+    ) {
+      const index =
+        nextIndex;
+
+      nextIndex +=
+        1;
+
+      if (
+        index >=
+        items.length
+      ) {
+        return;
+      }
+
+      try {
+        results[
+          index
+        ] =
+          await mapper(
+            items[
+              index
+            ],
+            index
+          );
+      } catch (
+        error
+      ) {
+        results[
+          index
+        ] = {
+          ok:
+            false,
+
+          error
+        };
+      }
+    }
+  }
+
+  const workerCount =
+    Math.min(
+      concurrency,
+      items.length
+    );
+
+  if (
+    workerCount <=
+    0
+  ) {
+    return results;
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length:
+          workerCount
+      },
+      function () {
+        return worker();
+      }
+    )
+  );
+
+  return results;
+}
+
+function leaderboardRow(
+  finalData
+) {
+  if (
+    !finalData ||
+    finalData.evidenceType !==
+      "weekly-sage-te-final-score"
+  ) {
+    return null;
+  }
+
+  const player =
+    finalData.player ||
+    {};
+
+  const sage =
+    finalData.sage ||
+    {};
+
+  const components =
+    finalData.components ||
+    {};
+
+  const role =
+    components.role ||
+    {};
+
+  const production =
+    components.production ||
+    {};
+
+  const matchup =
+    components.matchup ||
+    {};
+
+  const upcomingGame =
+    finalData.upcomingGame ||
+    {};
+
+  const score =
+    nullableNum(
+      sage.score
+    );
+
+  if (
+    score ===
+    null
+  ) {
+    return null;
+  }
+
+  return {
+    rank:
+      null,
+
+    playerID:
+      player.playerID ||
+      null,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      normalizeTeam(
+        player.team
+      ) ||
+      null,
+
+    currentTeam:
+      normalizeTeam(
+        player.currentTeam
+      ) ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "active",
+
+    eligibleForWeeklyRanking:
+      true,
+
+    gamesUsed:
+      nullableNum(
+        player.gamesUsed
+      ),
+
+    opponent:
+      normalizeTeam(
+        upcomingGame.opponent ||
+        matchup.opponent
+      ) ||
+      null,
+
+    location:
+      upcomingGame.location ||
+      null,
+
+    gameID:
+      upcomingGame.gameID ||
+      null,
+
+    gameDate:
+      upcomingGame.gameDate ||
+      null,
+
+    gameTime:
+      upcomingGame.gameTime ||
+      null,
+
+    sageScore:
+      score,
+
+    recommendation:
+      teRecommendation(
+        score
+      ),
+
+    sageLabel:
+      sage.label ||
+      null,
+
+    sageConfidence:
+      nullableNum(
+        sage &&
+        sage.confidence &&
+        sage.confidence.weight
+      ),
+
+    sageConfidenceLabel:
+      sage &&
+      sage.confidence
+        ? sage.confidence.label ||
+          null
+        : null,
+
+    role: {
+      rawScore:
+        nullableNum(
+          role.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          role.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          role &&
+          role.confidence &&
+          role.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          role.weightedContribution
+        )
+    },
+
+    production: {
+      rawScore:
+        nullableNum(
+          production.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          production.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          production &&
+          production.confidence &&
+          production.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          production.weightedContribution
+        )
+    },
+
+    matchup: {
+      rawScore:
+        nullableNum(
+          matchup.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          matchup.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          matchup &&
+          matchup.confidence &&
+          matchup.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          matchup.weightedContribution
+        ),
+
+      signal:
+        matchup.signal ||
+        null,
+
+      label:
+        matchup.label ||
+        null
+    }
+  };
+}
+
+function inactiveRow(
+  player,
+  reason
+) {
+  return {
+    playerID:
+      player.playerID,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      player.team ||
+      null,
+
+    currentTeam:
+      player.currentTeam ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "bye",
+
+    eligibleForWeeklyRanking:
+      false,
+
+    opponent:
+      null,
+
+    location:
+      null,
+
+    sage: {
+      score:
+        null,
+
+      label:
+        null,
+
+      confidence:
+        null,
+
+      confidenceLabel:
+        null
+    },
+
+    recommendation:
+      null,
+
+    reason
+  };
+}
+
+function unresolvedRow(
+  player,
+  reason
+) {
+  return {
+    playerID:
+      player.playerID,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      player.team ||
+      null,
+
+    currentTeam:
+      player.currentTeam ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "unresolved",
+
+    eligibleForWeeklyRanking:
+      false,
+
+    reason
+  };
+}
+
+function sortLeaderboard(
+  rows
+) {
+  return rows.sort(
+    function (
+      a,
+      b
+    ) {
+      const scoreDiff =
+        (
+          nullableNum(
+            b.sageScore
+          ) ||
+          0
+        ) -
+        (
+          nullableNum(
+            a.sageScore
+          ) ||
+          0
+        );
+
+      if (
+        scoreDiff !==
+        0
+      ) {
+        return scoreDiff;
+      }
+
+      const confidenceDiff =
+        (
+          nullableNum(
+            b.sageConfidence
+          ) ||
+          0
+        ) -
+        (
+          nullableNum(
+            a.sageConfidence
+          ) ||
+          0
+        );
+
+      if (
+        confidenceDiff !==
+        0
+      ) {
+        return confidenceDiff;
+      }
+
+      const roleDiff =
+        (
+          nullableNum(
+            b.role &&
+            b.role.adjustedScore
+          ) ||
+          0
+        ) -
+        (
+          nullableNum(
+            a.role &&
+            a.role.adjustedScore
+          ) ||
+          0
+        );
+
+      if (
+        roleDiff !==
+        0
+      ) {
+        return roleDiff;
+      }
+
+      return String(
+        a.name ||
+        ""
+      ).localeCompare(
+        String(
+          b.name ||
+          ""
+        )
+      );
+    }
+  );
+}
+
+function applyRanks(
+  rows
+) {
+  let previousScore =
+    null;
+
+  let previousRank =
+    0;
+
+  for (
+    let i = 0;
+    i <
+    rows.length;
+    i += 1
+  ) {
+    const row =
+      rows[
+        i
+      ];
+
+    const score =
+      nullableNum(
+        row.sageScore
+      );
+
+    if (
+      i ===
+        0 ||
+      score !==
+        previousScore
+    ) {
+      previousRank =
+        i +
+        1;
+    }
+
+    row.rank =
+      previousRank;
+
+    previousScore =
+      score;
+  }
+
+  return rows;
+}
+
+function summarizeScores(
+  rows
+) {
+  const scores =
+    rows
+      .map(
+        function (
+          row
+        ) {
+          return nullableNum(
+            row.sageScore
+          );
+        }
+      )
+      .filter(
+        function (
+          value
+        ) {
+          return (
+            value !==
+            null
+          );
+        }
+      )
+      .sort(
+        function (
+          a,
+          b
+        ) {
+          return (
+            a -
+            b
+          );
+        }
+      );
+
+  if (
+    !scores.length
+  ) {
+    return {
+      count:
+        0,
+
+      minimum:
+        null,
+
+      maximum:
+        null,
+
+      average:
+        null,
+
+      median:
+        null
+    };
+  }
+
+  const total =
+    scores.reduce(
+      function (
+        sum,
+        value
+      ) {
+        return (
+          sum +
+          value
+        );
+      },
+      0
+    );
+
+  const middle =
+    Math.floor(
+      scores.length /
+      2
+    );
+
+  const median =
+    scores.length %
+      2 ===
+    0
+      ? (
+          scores[
+            middle -
+            1
+          ] +
+          scores[
+            middle
+          ]
+        ) /
+        2
+      : scores[
+          middle
+        ];
+
+  return {
+    count:
+      scores.length,
+
+    minimum:
+      round(
+        scores[
+          0
+        ],
+        1
+      ),
+
+    maximum:
+      round(
+        scores[
+          scores.length -
+          1
+        ],
+        1
+      ),
+
+    average:
+      round(
+        total /
+        scores.length,
+        1
+      ),
+
+    median:
+      round(
+        median,
+        1
+      )
+  };
+}
+
+function jsonResponse(
+  statusCode,
+  body,
+  cacheControl
+) {
+  return {
+    statusCode,
+
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        cacheControl ||
+        "no-store"
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
+}
+
+exports.handler =
+  async function (
+    event
+  ) {
+    // Required for Netlify Blobs in this runtime mode (Lambda
+    // compatibility -- classic exports.handler signature). Must be
+    // called before any getStore() call. Same requirement and same
+    // pattern as refresh-player-data.js / refresh-risers-fallers.js /
+    // refresh-te-snapshot.js.
+    connectLambda(
+      event
+    );
+
+    if (
+      event.httpMethod &&
+      event.httpMethod !==
+        "GET"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "Method not allowed."
+        }
+      );
+    }
+
+    const query =
+      event
+        .queryStringParameters ||
+      {};
+
+    const season =
+      String(
+        query.season ||
+        new Date()
+          .getFullYear()
+      );
+
+    const targetWeek =
+      Number(
+        query.week
+      );
+
+    const seasonType =
+      String(
+        query.seasonType ||
+        DEFAULT_SEASON_TYPE
+      );
+
+    const requestedLimit =
+      integerOrNull(
+        query.limit
+      );
+
+    const requestedConcurrency =
+      integerOrNull(
+        query.concurrency
+      );
+
+    const concurrency =
+      clamp(
+        requestedConcurrency ||
+        DEFAULT_CONCURRENCY,
+        1,
+        MAX_CONCURRENCY
+      );
+
+    if (
+      !Number.isInteger(
+        targetWeek
+      ) ||
+      targetWeek <
+        2 ||
+      targetWeek >
+        18
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "week must be an integer from 2 through 18."
+        }
+      );
+    }
+
+    if (
+      ![
+        "reg",
+        "pre",
+        "post",
+        "all"
+      ].includes(
+        seasonType
+      )
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "seasonType must be reg, pre, post, or all."
+        }
+      );
+    }
+
+    if (
+      requestedLimit !==
+        null &&
+      requestedLimit <
+        1
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "limit must be a positive integer."
+        }
+      );
+    }
+
+    try {
+      const baseUrl =
+        getBaseUrl(
+          event
+        );
+
+      /*
+        STEP 1
+        ------
+        Retrieve TE peer population and target-week schedule ONCE.
+
+        The TE population now comes from the Phase 1 cached snapshot
+        (Netlify Blobs), not a live rebuild -- see readCachedSnapshot()
+        above. fetchSchedule() is unchanged.
+      */
+      const [
+        snapshot,
+        schedule
+      ] =
+        await Promise.all([
+          readCachedSnapshot({
+            season,
+            targetWeek,
+            seasonType
+          }),
+
+          fetchSchedule({
+            baseUrl,
+            season,
+            week:
+              targetWeek,
+            seasonType
+          })
+        ]);
+
+      const rawPlayers =
+        extractSnapshotPlayers(
+          snapshot
+        );
+
+      if (
+        !rawPlayers.length
+      ) {
+        return jsonResponse(
+          422,
+          {
+            error:
+              "TE snapshot did not expose a recognizable player population."
+          }
+        );
+      }
+
+      let players =
+        dedupePlayers(
+          rawPlayers
+            .map(
+              normalizeSnapshotPlayer
+            )
+            .filter(
+              Boolean
+            )
+        );
+
+      const populationReturned =
+        players.length;
+
+      /*
+        limit remains useful for cheap architecture tests.
+      */
+      if (
+        requestedLimit !==
+        null
+      ) {
+        players =
+          players.slice(
+            0,
+            requestedLimit
+          );
+      }
+
+      const scheduleState =
+        buildScheduleState(
+          schedule
+        );
+
+      /*
+        STEP 2
+        ------
+        Classify ACTIVE / BYE / UNRESOLVED before scoring.
+
+        Bye players never call final-score.
+      */
+      const activePlayers =
+        [];
+
+      const inactive =
+        [];
+
+      const unresolved =
+        [];
+
+      for (
+        const player of
+        players
+      ) {
+        const classification =
+          classifyPlayerSchedule(
+            player,
+            scheduleState
+          );
+
+        if (
+          classification.status ===
+          "active"
+        ) {
+          activePlayers.push(
+            player
+          );
+
+          continue;
+        }
+
+        if (
+          classification.status ===
+          "bye"
+        ) {
+          inactive.push(
+            inactiveRow(
+              player,
+              classification.reason
+            )
+          );
+
+          continue;
+        }
+
+        unresolved.push(
+          unresolvedRow(
+            player,
+            classification.reason
+          )
+        );
+      }
+
+      /*
+        STEP 3
+        ------
+        Only active WRs invoke final-score.
+      */
+      const results =
+        await mapWithConcurrency(
+          activePlayers,
+          concurrency,
+          async function (
+            player
+          ) {
+            try {
+              const finalData =
+                await buildTeFinalScore({
+                  baseUrl,
+                  season,
+                  targetWeek,
+                  seasonType,
+                  playerID:
+                    player.playerID,
+
+                  prebuiltSnapshot:
+                    snapshot
+                });
+
+              const row =
+                leaderboardRow(
+                  finalData
+                );
+
+              if (
+                !row
+              ) {
+                return {
+                  ok:
+                    false,
+
+                  player,
+
+                  error:
+                    "Final-score endpoint did not return a usable TE SAGE score."
+                };
+              }
+
+              return {
+                ok:
+                  true,
+
+                player,
+
+                row
+              };
+            } catch (
+              error
+            ) {
+              return {
+                ok:
+                  false,
+
+                player,
+
+                error:
+                  error &&
+                  error.message
+                    ? error.message
+                    : String(
+                        error
+                      )
+              };
+            }
+          }
+        );
+
+      const rows =
+        [];
+
+      const failures =
+        [];
+
+      for (
+        const result of
+        results
+      ) {
+        if (
+          result &&
+          result.ok &&
+          result.row
+        ) {
+          rows.push(
+            result.row
+          );
+        } else {
+          failures.push({
+            playerID:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .playerID ||
+                  null
+                : null,
+
+            name:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .name ||
+                  null
+                : null,
+
+            team:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .team ||
+                  null
+                : null,
+
+            error:
+              result &&
+              result.error
+                ? String(
+                    result.error
+                  )
+                : "Unknown leaderboard scoring failure."
+          });
+        }
+      }
+
+      /*
+        STEP 4
+        ------
+        Rank active scored WRs.
+      */
+      const leaderboard =
+        applyRanks(
+          sortLeaderboard(
+            rows
+          )
+        );
+
+      const scoreSummary =
+        summarizeScores(
+          leaderboard
+        );
+
+      const ready =
+        leaderboard.length >
+          0 &&
+        failures.length ===
+          0 &&
+        unresolved.length ===
+          0;
+
+      return jsonResponse(
+        200,
+        {
+          evidenceType:
+            "weekly-sage-te-leaderboard",
+
+          schemaVersion:
+            2,
+
+          generatedAt:
+            new Date()
+              .toISOString(),
+
+          season,
+
+          targetWeek,
+
+          seasonType,
+
+          position:
+            POSITION,
+
+          methodology: {
+            modelVersion:
+              "te-sage-v1",
+
+            status:
+              "Provisional pending TE historical weight validation. Recommendation thresholds below are inherited placeholders, not TE-calibrated.",
+
+            ranking:
+              "Descending Weekly SAGE TE Score.",
+
+            recommendationThresholds: {
+              start:
+                TE_RECOMMENDATION_THRESHOLDS.start,
+
+              flex:
+                TE_RECOMMENDATION_THRESHOLDS.flex,
+
+              definitions: {
+                START:
+                  "Weekly SAGE Score >= 72",
+
+                FLEX:
+                  "Weekly SAGE Score >= 52 and < 72",
+
+                SIT:
+                  "Weekly SAGE Score < 52"
+              },
+
+              status:
+                "PROVISIONAL: these are the WR-calibrated numeric thresholds (72/52) reused as a placeholder only. No TE historical validation has been performed -- do not represent these as TE-calibrated until a TE backtest across multiple weeks has been run and reviewed, the same way WR's were."
+            },
+
+            tieBreakers: [
+              "Higher overall SAGE confidence",
+              "Higher confidence-adjusted Role Score",
+              "Player name"
+            ],
+
+            byeHandling:
+              "Players whose historical target-week team is on bye are excluded before final-score execution and reported separately as inactive.",
+
+            historicalIdentity:
+              "The TE snapshot's historical team entering the target week is authoritative for schedule classification.",
+
+            important:
+              "This endpoint ranks existing TE final scores. It does not independently calculate or alter SAGE methodology."
+          },
+
+          architecture: {
+            modelVersion:
+              "te-sage-v1",
+
+            populationSource:
+              SNAPSHOT_FUNCTION,
+
+            scheduleSource:
+              SCHEDULE_FUNCTION,
+
+            scoringSource:
+              FINAL_SCORE_FUNCTION,
+
+            populationRebuiltByLeaderboard:
+              false,
+
+            directTank01Calls:
+              0,
+
+            byePlayersSentToFinalScore:
+              0
+          },
+
+          population: {
+            snapshotPlayersReturned:
+              populationReturned,
+
+            playersRequested:
+              players.length,
+
+            activePlayers:
+              activePlayers.length,
+
+            activePlayersScored:
+              leaderboard.length,
+
+            inactiveByePlayers:
+              inactive.length,
+
+            unresolvedPlayers:
+              unresolved.length,
+
+            failures:
+              failures.length,
+
+            limitApplied:
+              requestedLimit,
+
+            concurrency
+          },
+
+          scheduleClassification: {
+            activeTeamsReturned:
+              scheduleState
+                .activeTeams
+                .size,
+
+            byeTeamsReturned:
+              scheduleState
+                .byeTeams
+                .size,
+
+            activeTeams:
+              Array.from(
+                scheduleState
+                  .activeTeams
+              ).sort(),
+
+            byeTeams:
+              Array.from(
+                scheduleState
+                  .byeTeams
+              ).sort()
+          },
+
+          scoreSummary,
+
+          leaderboard,
+
+          inactive,
+
+          unresolved,
+
+          failures,
+
+          recommendation: {
+            enabled:
+              true,
+
+            startThreshold:
+              TE_RECOMMENDATION_THRESHOLDS.start,
+
+            flexThreshold:
+              TE_RECOMMENDATION_THRESHOLDS.flex,
+
+            logic:
+              "START >= 72; FLEX >= 52 and < 72; SIT < 52"
+          },
+
+          nextStep: {
+            ready,
+
+            reason:
+              ready
+                ? "Active TEs were scored successfully, bye-week TEs were excluded before final-score execution, and START / FLEX / SIT recommendations were assigned from the provisional (uncalibrated) TE SAGE thresholds."
+                : "Resolve unresolved players or true scoring failures before using this weekly leaderboard for consumer recommendations."
+          },
+
+          provenance: {
+            peerPopulation:
+              SNAPSHOT_FUNCTION,
+
+            participation:
+              SCHEDULE_FUNCTION,
+
+            finalScore:
+              FINAL_SCORE_FUNCTION,
+
+            componentSource:
+              "weekly-sage-te-component-scores",
+
+            confidenceSource:
+              "weekly-sage-te-confidence",
+
+            matchupSource:
+              "weekly-sage-player-matchup"
+          }
+        },
+
+        CACHE_CONTROL
+      );
+    } catch (
+      error
+    ) {
+      if (
+        typeof (
+          error &&
+          error.status
+        ) ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          {
+            error:
+              error.message,
+
+            detail:
+              error.detail ||
+              null
+          }
+        );
+      }
+
+      console.error(
+        "weekly-sage-te-leaderboard failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not build Weekly SAGE TE leaderboard.",
+
+          detail:
+            error &&
+            error.message
+              ? error.message
+              : String(
+                  error
+                )
+        }
+      );
+    }
+  };
