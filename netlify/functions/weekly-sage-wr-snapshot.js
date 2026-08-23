@@ -6,10 +6,9 @@
 // -------
 // Build the reusable Wide Receiver peer population entering a target week.
 //
-// This version persists completed weekly WR snapshots in Netlify Blobs.
-// Normal customer/leaderboard requests reuse the saved snapshot.
-// Expensive refreshes are triggered explicitly by the background refresh
-// function.
+// This is the WR equivalent of the proven RB snapshot architecture:
+// build the expensive historical peer population ONCE, then let downstream
+// benchmark / component / confidence / final-score functions reuse it.
 //
 // CRITICAL NO-LOOK-AHEAD RULE
 // ---------------------------
@@ -20,60 +19,72 @@
 // ------------------------
 // A player's team in historical evidence is taken from his latest matched
 // pre-target player-game record. The current Tank01 player-list team is kept
-// separately as currentTeam.
+// separately as currentTeam. This prevents current-roster movement from
+// rewriting historical team identity.
+//
+// WR ROLE EVIDENCE
+// ----------------
+// - targets per game
+// - receptions per game
+// - carries per game
+// - total opportunities per game (targets + carries)
+// - offensive snap percentage
+//
+// WR PRODUCTION EVIDENCE
+// ----------------------
+// - receiving yards per game
+// - yards per target
+// - yards per reception
+// - catch rate
+// - receiving TD per game
+// - rushing yards per game
+// - rushing TD per game
+// - scrimmage yards per game
+// - total TD per game
+//
+// POPULATION RULES — FIRST WR PASS
+// --------------------------------
+// - at least 2 prior games
+// - at least 3 targets per game
+//
+// These are population-eligibility rules only. They are NOT SAGE weights,
+// recommendations, or final model assumptions. We will validate the resulting
+// WR peer universe before building WR benchmarks.
+//
+// COST DISCIPLINE
+// ---------------
+// This function makes one getNFLPlayerList call, one prior-week schedule pass,
+// and one getNFLGamesForPlayer call per discovered WR candidate. It does NOT
+// invoke weekly-sage-player-season once per WR, avoiding large Netlify
+// function fan-out during population construction.
 //
 // ═══════════════════════════════════════════════════════════════════════
-
-const {
-  getStore
-} = require(
-  "@netlify/blobs"
-);
-
-const SNAPSHOT_STORE =
-  "weekly-sage-wr-snapshots";
 
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
-const DEFAULT_SEASON_TYPE =
-  "reg";
+const DEFAULT_SEASON_TYPE = "reg";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-const POSITION =
-  "WR";
+const POSITION = "WR";
 
-const MINIMUM_GAMES =
-  2;
+const MINIMUM_GAMES = 2;
 
-const MINIMUM_TARGETS_PER_GAME =
-  3;
+const MINIMUM_TARGETS_PER_GAME = 3;
 
-/*
-  Snapshot generation is intentionally conservative.
+// Keep conservative concurrency so the population build is reliable and
+// doesn't hammer Tank01. We can raise this later if runtime proves safe.
+const PLAYER_CONCURRENCY = 3;
 
-  Since a completed snapshot is persisted and reused, reliability
-  matters more than raw refresh speed.
-*/
-const PLAYER_CONCURRENCY =
-  1;
+const SCHEDULE_CONCURRENCY = 4;
 
-const SCHEDULE_CONCURRENCY =
-  1;
-
-function num(
-  value
-) {
+function num(value) {
   const n =
-    Number(
-      value
-    );
+    Number(value);
 
-  return Number.isFinite(
-    n
-  )
+  return Number.isFinite(n)
     ? n
     : 0;
 }
@@ -83,14 +94,10 @@ function round(
   digits = 2
 ) {
   const n =
-    Number(
-      value
-    );
+    Number(value);
 
   if (
-    !Number.isFinite(
-      n
-    )
+    !Number.isFinite(n)
   ) {
     return null;
   }
@@ -149,52 +156,6 @@ function tank01Headers() {
   };
 }
 
-function sleep(
-  ms
-) {
-  return new Promise(
-    function (
-      resolve
-    ) {
-      setTimeout(
-        resolve,
-        ms
-      );
-    }
-  );
-}
-
-function snapshotBlobKey({
-  season,
-  targetWeek,
-  seasonType
-}) {
-  return (
-    `wr/${season}/${seasonType}/week-${targetWeek}`
-  );
-}
-
-function refreshRequested(
-  value
-) {
-  const normalized =
-    String(
-      value ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
-
-  return [
-    "1",
-    "true",
-    "yes",
-    "refresh"
-  ].includes(
-    normalized
-  );
-}
-
 async function tank01Fetch(
   endpoint,
   params
@@ -213,46 +174,33 @@ async function tank01Fetch(
         : ""
     );
 
-  const maxAttempts =
-    5;
+  const response =
+    await fetch(
+      url,
+      {
+        method:
+          "GET",
 
-  for (
-    let attempt = 1;
-    attempt <= maxAttempts;
-    attempt += 1
-  ) {
-    const response =
-      await fetch(
-        url,
-        {
-          method:
-            "GET",
+        headers:
+          tank01Headers()
+      }
+    );
 
-          headers:
-            tank01Headers()
-        }
-      );
+  let data =
+    null;
 
-    let data =
+  try {
+    data =
+      await response
+        .json();
+  } catch (error) {
+    data =
       null;
+  }
 
-    try {
-      data =
-        await response
-          .json();
-    } catch (
-      error
-    ) {
-      data =
-        null;
-    }
-
-    if (
-      response.ok
-    ) {
-      return data;
-    }
-
+  if (
+    !response.ok
+  ) {
     let detail =
       `HTTP ${response.status}`;
 
@@ -277,48 +225,12 @@ async function tank01Fetch(
         data.body;
     }
 
-    const lowerDetail =
-      String(
-        detail ||
-        ""
-      )
-        .toLowerCase();
-
-    const rateLimited =
-      response.status ===
-        429 ||
-      lowerDetail.includes(
-        "too many requests"
-      );
-
-    if (
-      rateLimited &&
-      attempt <
-        maxAttempts
-    ) {
-      const delayMs =
-        attempt *
-        1500;
-
-      console.warn(
-        `Tank01 rate limit on ${endpoint}. Retry ${attempt}/${maxAttempts - 1} after ${delayMs}ms.`
-      );
-
-      await sleep(
-        delayMs
-      );
-
-      continue;
-    }
-
     throw new Error(
       `Tank01 ${endpoint} failed: ${detail}`
     );
   }
 
-  throw new Error(
-    `Tank01 ${endpoint} failed after retries.`
-  );
+  return data;
 }
 
 function getBaseUrl(
@@ -341,17 +253,13 @@ function getBaseUrl(
     headers.host ||
     headers.Host;
 
-  if (
-    !host
-  ) {
+  if (!host) {
     throw new Error(
       "Could not determine host."
     );
   }
 
-  return (
-    `${proto}://${host}`
-  );
+  return `${proto}://${host}`;
 }
 
 async function fetchJson(
@@ -378,9 +286,7 @@ async function fetchJson(
     data =
       await response
         .json();
-  } catch (
-    error
-  ) {
+  } catch (error) {
     data =
       null;
   }
@@ -451,9 +357,7 @@ async function mapWithConcurrency(
     0;
 
   async function runner() {
-    while (
-      true
-    ) {
+    while (true) {
       const index =
         nextIndex++;
 
@@ -464,13 +368,9 @@ async function mapWithConcurrency(
         return;
       }
 
-      results[
-        index
-      ] =
+      results[index] =
         await worker(
-          items[
-            index
-          ],
+          items[index],
           index
         );
     }
@@ -487,8 +387,7 @@ async function mapWithConcurrency(
 
   for (
     let i = 0;
-    i <
-    runnerCount;
+    i < runnerCount;
     i += 1
   ) {
     runners.push(
@@ -510,8 +409,7 @@ async function buildPriorWeekScheduleMap({
   seasonType
 }) {
   if (
-    targetWeek <=
-    1
+    targetWeek <= 1
   ) {
     return {
       weeksIncluded:
@@ -529,31 +427,27 @@ async function buildPriorWeekScheduleMap({
           targetWeek -
           1
       },
-      function (
+      (
         _,
         index
-      ) {
-        return (
-          index +
-          1
-        );
-      }
+      ) =>
+        index +
+        1
     );
 
   const schedules =
     await mapWithConcurrency(
       weeksIncluded,
       SCHEDULE_CONCURRENCY,
-      function (
+      (
         week
-      ) {
-        return fetchScheduleWeek({
+      ) =>
+        fetchScheduleWeek({
           baseUrl,
           season,
           week,
           seasonType
-        });
-      }
+        })
     );
 
   const gameMap =
@@ -685,20 +579,14 @@ function statBlock(
 ) {
   if (
     !game ||
-    !game[
-      key
-    ] ||
-    typeof game[
-      key
-    ] !==
+    !game[key] ||
+    typeof game[key] !==
       "object"
   ) {
     return {};
   }
 
-  return game[
-    key
-  ];
+  return game[key];
 }
 
 function receivingStats(
@@ -790,11 +678,16 @@ function snapStats(
       stats.offensiveSnapPct
     );
 
+  /*
+    Tank01 commonly returns:
+
+      "0.83"
+
+    meaning 83%.
+  */
   if (
-    offensePct >
-      0 &&
-    offensePct <=
-      1
+    offensePct > 0 &&
+    offensePct <= 1
   ) {
     offensePct *=
       100;
@@ -835,6 +728,12 @@ function attachScheduleContext(
         game.gameID
       );
 
+    /*
+      No schedule match means the game is outside the allowed
+      pre-target week window or otherwise unresolved.
+
+      Excluding it automatically enforces no-look-ahead.
+    */
     if (
       !schedule
     ) {
@@ -1190,6 +1089,10 @@ function buildWRRecord({
         ]
       : null;
 
+  /*
+    Historical team identity comes from the latest eligible
+    player-game, not today's roster.
+  */
   const historicalTeam =
     gameTeam(
       latestGame
@@ -1410,23 +1313,14 @@ exports.handler =
       String(
         query.seasonType ||
         DEFAULT_SEASON_TYPE
-      )
-        .trim()
-        .toLowerCase();
-
-    const forceRefresh =
-      refreshRequested(
-        query.refresh
       );
 
     if (
       !Number.isInteger(
         targetWeek
       ) ||
-      targetWeek <
-        2 ||
-      targetWeek >
-        18
+      targetWeek < 2 ||
+      targetWeek > 18
     ) {
       return jsonResponse(
         400,
@@ -1457,74 +1351,15 @@ exports.handler =
     }
 
     try {
-      const store =
-        getStore(
-          SNAPSHOT_STORE
-        );
-
-      const blobKey =
-        snapshotBlobKey({
-          season,
-          targetWeek,
-          seasonType
-        });
-
-      /*
-        NORMAL PRODUCTION PATH
-        ----------------------
-        Serve the previously completed weekly snapshot.
-
-        No Tank01 calls.
-      */
-      if (
-        !forceRefresh
-      ) {
-        const savedSnapshot =
-          await store.get(
-            blobKey,
-            {
-              type:
-                "json"
-            }
-          );
-
-        if (
-          savedSnapshot
-        ) {
-          return jsonResponse(
-            200,
-            savedSnapshot,
-            CACHE_CONTROL
-          );
-        }
-
-        return jsonResponse(
-          404,
-          {
-            error:
-              "Weekly SAGE WR snapshot has not been generated yet.",
-
-            detail:
-              `No saved WR snapshot exists for ${season} Week ${targetWeek} (${seasonType}). Run weekly-sage-wr-snapshot-refresh-background first.`,
-
-            snapshotKey:
-              blobKey
-          }
-        );
-      }
-
-      /*
-        EXPLICIT REFRESH PATH
-        ---------------------
-        This is intended to be invoked by the background refresh
-        function, not by customer-facing leaderboard traffic.
-      */
-
       const baseUrl =
         getBaseUrl(
           event
         );
 
+      /*
+        Fetch the complete player list and prior-week schedule map
+        once. Both are reused for every WR candidate.
+      */
       const [
         playerListResult,
         scheduleContext
@@ -1625,9 +1460,7 @@ exports.handler =
 
                 record
               };
-            } catch (
-              error
-            ) {
+            } catch (error) {
               return {
                 ok:
                   false,
@@ -1721,6 +1554,12 @@ exports.handler =
         );
       }
 
+      /*
+        Deterministic output order.
+
+        Highest target volume first,
+        then alphabetical player name.
+      */
       population.sort(
         function (
           a,
@@ -1753,160 +1592,143 @@ exports.handler =
         }
       );
 
-      const snapshot = {
-        evidenceType:
-          "weekly-sage-wr-snapshot",
-
-        schemaVersion:
-          1,
-
-        generatedAt:
-          new Date()
-            .toISOString(),
-
-        season,
-
-        targetWeek,
-
-        seasonType,
-
-        snapshotKey:
-          `${season}|${targetWeek}|${seasonType}|WR`,
-
-        noLookAhead: {
-          rule:
-            `Only Weeks 1 through ${targetWeek - 1} are eligible.`,
-
-          weeksQueried:
-            scheduleContext
-              .weeksIncluded,
-
-          targetWeekExcluded:
-            true
-        },
-
-        methodology: {
-          position:
-            POSITION,
-
-          minimumGames:
-            MINIMUM_GAMES,
-
-          minimumTargetsPerGame:
-            MINIMUM_TARGETS_PER_GAME,
-
-          tank01PlayerConcurrency:
-            PLAYER_CONCURRENCY,
-
-          historicalIdentity:
-            "Latest matched pre-target player-game team is authoritative. Current roster team is preserved separately.",
-
-          architecture:
-            "Build the WR population once, persist it, and reuse the completed weekly snapshot for downstream scoring.",
-
-          roleEvidence: [
-            "targetsPerGame",
-            "receptionsPerGame",
-            "carriesPerGame",
-            "opportunitiesPerGame",
-            "offensiveSnapPct"
-          ],
-
-          productionEvidence: [
-            "receivingYardsPerGame",
-            "yardsPerTarget",
-            "yardsPerReception",
-            "catchRate",
-            "receivingTDPerGame",
-            "rushingYardsPerGame",
-            "rushingTDPerGame",
-            "scrimmageYardsPerGame",
-            "totalTDPerGame"
-          ],
-
-          important:
-            "This snapshot contains raw WR peer evidence only. It does not calculate a final SAGE score, weight components, or create recommendations."
-        },
-
-        populationSummary: {
-          nflPlayersReturned:
-            nflPlayers.length,
-
-          wrCandidatesDiscovered:
-            wrCandidates.length,
-
-          successfulPlayerGameResponses:
-            successful.length,
-
-          playerGameFailures:
-            failures.length,
-
-          recordsBuilt:
-            records.length,
-
-          eligibleWRPopulation:
-            population.length,
-
-          ineligible:
-            ineligibleCounts
-        },
-
-        population,
-
-        failures,
-
-        nextStep: {
-          ready:
-            population.length >
-              0 &&
-            failures.length ===
-              0,
-
-          reason:
-            failures.length ===
-            0
-              ? "WR peer snapshot built successfully and persisted for downstream reuse."
-              : "WR snapshot built with one or more player-game failures. Resolve failures before using the population as the WR benchmark universe."
-        },
-
-        provenance: {
-          playerIdentity:
-            "Tank01 getNFLPlayerList",
-
-          playerGames:
-            "Tank01 getNFLGamesForPlayer",
-
-          noLookAheadSchedule:
-            "weekly-sage-schedule",
-
-          persistence:
-            "Netlify Blobs",
-
-          directTank01Calls:
-            1 +
-            wrCandidates.length
-        }
-      };
-
-      /*
-        Persist only the completed snapshot.
-
-        Subsequent normal calls return this JSON directly without
-        rebuilding the population.
-      */
-      await store.setJSON(
-        blobKey,
-        snapshot
-      );
-
       return jsonResponse(
         200,
-        snapshot,
+        {
+          evidenceType:
+            "weekly-sage-wr-snapshot",
+
+          schemaVersion:
+            1,
+
+          generatedAt:
+            new Date()
+              .toISOString(),
+
+          season,
+
+          targetWeek,
+
+          seasonType,
+
+          snapshotKey:
+            `${season}|${targetWeek}|${seasonType}|WR`,
+
+          noLookAhead: {
+            rule:
+              `Only Weeks 1 through ${targetWeek - 1} are eligible.`,
+
+            weeksQueried:
+              scheduleContext
+                .weeksIncluded,
+
+            targetWeekExcluded:
+              true
+          },
+
+          methodology: {
+            position:
+              POSITION,
+
+            minimumGames:
+              MINIMUM_GAMES,
+
+            minimumTargetsPerGame:
+              MINIMUM_TARGETS_PER_GAME,
+
+            tank01PlayerConcurrency:
+              PLAYER_CONCURRENCY,
+
+            historicalIdentity:
+              "Latest matched pre-target player-game team is authoritative. Current roster team is preserved separately.",
+
+            architecture:
+              "Build the WR population once per season/week and reuse the snapshot for player scoring.",
+
+            roleEvidence: [
+              "targetsPerGame",
+              "receptionsPerGame",
+              "carriesPerGame",
+              "opportunitiesPerGame",
+              "offensiveSnapPct"
+            ],
+
+            productionEvidence: [
+              "receivingYardsPerGame",
+              "yardsPerTarget",
+              "yardsPerReception",
+              "catchRate",
+              "receivingTDPerGame",
+              "rushingYardsPerGame",
+              "rushingTDPerGame",
+              "scrimmageYardsPerGame",
+              "totalTDPerGame"
+            ],
+
+            important:
+              "This snapshot contains raw WR peer evidence only. It does not calculate a final SAGE score, weight components, or create recommendations."
+          },
+
+          populationSummary: {
+            nflPlayersReturned:
+              nflPlayers.length,
+
+            wrCandidatesDiscovered:
+              wrCandidates.length,
+
+            successfulPlayerGameResponses:
+              successful.length,
+
+            playerGameFailures:
+              failures.length,
+
+            recordsBuilt:
+              records.length,
+
+            eligibleWRPopulation:
+              population.length,
+
+            ineligible:
+              ineligibleCounts
+          },
+
+          population,
+
+          failures,
+
+          nextStep: {
+            ready:
+              population.length >
+                0 &&
+              failures.length ===
+                0,
+
+            reason:
+              failures.length ===
+              0
+                ? "WR peer snapshot built successfully. Inspect population size and evidence distributions before defining WR benchmark/component scoring."
+                : "WR snapshot built with one or more player-game failures. Resolve failures before using the population as the WR benchmark universe."
+          },
+
+          provenance: {
+            playerIdentity:
+              "Tank01 getNFLPlayerList",
+
+            playerGames:
+              "Tank01 getNFLGamesForPlayer",
+
+            noLookAheadSchedule:
+              "weekly-sage-schedule",
+
+            directTank01Calls:
+              1 +
+              wrCandidates.length
+          }
+        },
+
         CACHE_CONTROL
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       console.error(
         "weekly-sage-wr-snapshot failed:",
         error
@@ -1919,12 +1741,7 @@ exports.handler =
             "Could not build Weekly SAGE WR snapshot.",
 
           detail:
-            error &&
             error.message
-              ? error.message
-              : String(
-                  error
-                )
         }
       );
     }
