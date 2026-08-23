@@ -52,6 +52,31 @@ const POSITION =
 const SNAPSHOT_FUNCTION =
   "weekly-sage-wr-snapshot";
 
+/*
+  PHASE 2 — read the Phase 1 cached WR snapshot from Netlify Blobs
+  instead of live-rebuilding it on every leaderboard request.
+
+  Same Blobs pattern already proven in refresh-player-data.js /
+  refresh-risers-fallers.js / player-data.js / refresh-wr-snapshot.js:
+  connectLambda(event) must run before any getStore() call -- see
+  exports.handler below.
+
+  Deliberately NO live-rebuild fallback: if the cache is missing,
+  unreadable, or incomplete, this file fails fast (503) rather than
+  ever calling weekly-sage-wr-snapshot.js itself. That live rebuild
+  remains available only via refresh-wr-snapshot.js's own manual/
+  future-scheduled path -- never from a customer leaderboard request.
+*/
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
+const WR_SNAPSHOT_STORE =
+  "wr-snapshot";
+
 const SCHEDULE_FUNCTION =
   "weekly-sage-schedule";
 
@@ -335,47 +360,203 @@ async function fetchJson(
   return data;
 }
 
-async function fetchSnapshot({
-  baseUrl,
-  season,
-  week,
-  seasonType
-}) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        SNAPSHOT_FUNCTION,
-
-      params: {
-        season,
-
-        week:
-          String(
-            week
-          ),
-
-        seasonType
-      }
-    });
-
-  const data =
-    await fetchJson(
-      url
+function cacheError(
+  status,
+  reason,
+  detail
+) {
+  const err =
+    new Error(
+      reason
     );
 
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-wr-snapshot"
-  ) {
-    throw new Error(
-      "Unexpected Weekly SAGE WR snapshot schema."
+  err.status =
+    status;
+
+  err.detail =
+    detail ||
+    null;
+
+  return err;
+}
+
+/*
+  Read the Phase 1 cached WR snapshot for this exact
+  season/targetWeek/seasonType. Validates it as strictly as
+  refresh-wr-snapshot.js validated it before ever writing it --
+  schema identity, requested-key match, and completeness (non-empty
+  population, zero failures, nextStep.ready === true). Throws a
+  discriminated 503 statusError on ANY problem; never falls back to
+  a live rebuild.
+*/
+async function readCachedSnapshot({
+  season,
+  targetWeek,
+  seasonType
+}) {
+  const key =
+    `week:${season}:${targetWeek}:${seasonType}`;
+
+  let cached =
+    null;
+
+  try {
+    const store =
+      getStore(
+        {
+          name:
+            WR_SNAPSHOT_STORE
+        }
+      );
+
+    cached =
+      await store.get(
+        key,
+        {
+          type:
+            "json"
+        }
+      );
+  } catch (error) {
+    throw cacheError(
+      503,
+      "WR snapshot cache could not be read.",
+      {
+        blobStore:
+          WR_SNAPSHOT_STORE,
+
+        blobKey:
+          key,
+
+        readError:
+          error &&
+          error.message
+            ? error.message
+            : String(
+                error
+              )
+      }
     );
   }
 
-  return data;
+  if (
+    !cached ||
+    typeof cached !== "object"
+  ) {
+    throw cacheError(
+      503,
+      "WR snapshot cache is missing for this season/week/seasonType.",
+      {
+        blobStore:
+          WR_SNAPSHOT_STORE,
+
+        blobKey:
+          key
+      }
+    );
+  }
+
+  const problems =
+    [];
+
+  if (
+    cached.evidenceType !==
+    "weekly-sage-wr-snapshot"
+  ) {
+    problems.push(
+      `Unexpected evidenceType: ${cached.evidenceType}`
+    );
+  }
+
+  if (
+    String(
+      cached.season
+    ) !==
+    String(
+      season
+    )
+  ) {
+    problems.push(
+      `Cached season (${cached.season}) does not match requested season (${season}).`
+    );
+  }
+
+  if (
+    Number(
+      cached.targetWeek
+    ) !==
+    Number(
+      targetWeek
+    )
+  ) {
+    problems.push(
+      `Cached targetWeek (${cached.targetWeek}) does not match requested week (${targetWeek}).`
+    );
+  }
+
+  if (
+    cached.seasonType !==
+    seasonType
+  ) {
+    problems.push(
+      `Cached seasonType (${cached.seasonType}) does not match requested seasonType (${seasonType}).`
+    );
+  }
+
+  if (
+    !Array.isArray(
+      cached.population
+    ) ||
+    cached.population.length ===
+      0
+  ) {
+    problems.push(
+      "Cached snapshot has an empty or missing population."
+    );
+  }
+
+  if (
+    !Array.isArray(
+      cached.failures
+    ) ||
+    cached.failures.length >
+      0
+  ) {
+    problems.push(
+      "Cached snapshot has one or more player-game failures."
+    );
+  }
+
+  if (
+    !cached.nextStep ||
+    cached.nextStep.ready !==
+      true
+  ) {
+    problems.push(
+      "Cached snapshot's nextStep.ready is not true."
+    );
+  }
+
+  if (
+    problems.length >
+    0
+  ) {
+    throw cacheError(
+      503,
+      "WR snapshot cache is invalid or not ready for use.",
+      {
+        blobStore:
+          WR_SNAPSHOT_STORE,
+
+        blobKey:
+          key,
+
+        problems
+      }
+    );
+  }
+
+  return cached;
 }
 
 async function fetchSchedule({
@@ -1480,6 +1661,15 @@ exports.handler =
   async function (
     event
   ) {
+    // Required for Netlify Blobs in this runtime mode (Lambda
+    // compatibility -- classic exports.handler signature). Must be
+    // called before any getStore() call. Same requirement and same
+    // pattern as refresh-player-data.js / refresh-risers-fallers.js /
+    // refresh-wr-snapshot.js.
+    connectLambda(
+      event
+    );
+
     if (
       event.httpMethod &&
       event.httpMethod !==
@@ -1597,17 +1787,19 @@ exports.handler =
         STEP 1
         ------
         Retrieve WR peer population and target-week schedule ONCE.
+
+        The WR population now comes from the Phase 1 cached snapshot
+        (Netlify Blobs), not a live rebuild -- see readCachedSnapshot()
+        above. fetchSchedule() is unchanged.
       */
       const [
         snapshot,
         schedule
       ] =
         await Promise.all([
-          fetchSnapshot({
-            baseUrl,
+          readCachedSnapshot({
             season,
-            week:
-              targetWeek,
+            targetWeek,
             seasonType
           }),
 
@@ -2090,6 +2282,26 @@ exports.handler =
     } catch (
       error
     ) {
+      if (
+        typeof (
+          error &&
+          error.status
+        ) ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          {
+            error:
+              error.message,
+
+            detail:
+              error.detail ||
+              null
+          }
+        );
+      }
+
       console.error(
         "weekly-sage-wr-leaderboard failed:",
         error
