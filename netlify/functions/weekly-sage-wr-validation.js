@@ -98,37 +98,53 @@ const POSITION =
 const LEADERBOARD_FUNCTION =
   "weekly-sage-wr-leaderboard";
 
+/*
+  Retained as a plain string for output provenance/architecture
+  metadata only (see the "architecture"/"provenance" fields in the
+  response body below) -- this file no longer builds an HTTP URL
+  from it, since weekly-sage-player-season's evidence is now
+  produced by an in-process call instead of a self-fetch.
+*/
 const PLAYER_SEASON_FUNCTION =
   "weekly-sage-player-season";
 
 /*
-  weekly-sage-player-season internally fetches
-  weekly-sage-schedule once per prior week (Weeks 1 through
-  its own internal targetWeek - 1) via buildPriorWeekScheduleMap(),
-  completely independently for EVERY player it is asked about.
+  weekly-sage-player-season's core computation
+  (buildPlayerSeason) and its shared schedule-map builder
+  (buildPriorWeekScheduleMap) are required directly, in-process,
+  rather than invoked over HTTP.
 
-  Since this validation endpoint calls weekly-sage-player-season
-  once per WR at query.week = targetWeek + 1, every one of those
-  calls internally re-requests the SAME Weeks 1 through targetWeek
-  schedule evidence — identical data, requested once per player
-  instead of once per validation run.
+  Previously this file called weekly-sage-player-season once per WR
+  over HTTP, and that function independently rebuilt the SAME Weeks
+  1..targetWeek schedule evidence inside every one of those calls --
+  identical data, redundantly rebuilt once per player instead of
+  once per validation run. An earlier attempt to fix this by
+  pre-warming weekly-sage-schedule's HTTP cache still timed out,
+  since it relied on Netlify response caching working a specific
+  way that could not be confirmed. This eliminates the redundant
+  work directly instead: the schedule map is built exactly once,
+  below, and passed by reference into every in-process
+  buildPlayerSeason() call -- no HTTP self-fetch, no serialization,
+  for either the schedule map or the per-player evidence itself.
 
-  weeklyScheduleFunction responses already carry a long-lived
-  Cache-Control (s-maxage), so a single sequential pre-warm pass
-  below lets the CDN absorb that redundancy instead of every
-  player racing a cold cache for the same weeks simultaneously.
+  weekly-sage-player-season.js's own exports.handler (its GET HTTP
+  contract, used by every other existing caller) is unmodified.
 */
-const SCHEDULE_FUNCTION =
-  "weekly-sage-schedule";
+const {
+  buildPriorWeekScheduleMap,
+  buildPlayerSeason
+} = require(
+  "./weekly-sage-player-season.js"
+);
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
 /*
-  Keep downstream player-season requests controlled.
+  Keep downstream player-season evidence-building controlled.
 
   A full Week 8 WR population is substantially larger than RB,
-  so we do not fire all outcome calls simultaneously.
+  so we do not build all outcomes simultaneously.
 */
 const DEFAULT_CONCURRENCY =
   5;
@@ -444,190 +460,58 @@ async function fetchLeaderboard({
 }
 
 /*
-  Pre-warm shared prior-week schedule evidence.
-
-  weekly-sage-player-season, when called with query.week =
-  targetWeek + 1 (this file's outcomeEvidenceWeek), internally
-  computes its own targetWeek as (targetWeek + 1) and fetches
-  weekly-sage-schedule for Weeks 1 through (targetWeek + 1) - 1,
-  i.e. Weeks 1 through this validation's targetWeek, inclusive.
-
-  That schedule data is identical no matter which player is being
-  evaluated. Fetching it once per WR (as the unmodified downstream
-  function already does internally, unavoidably) is redundant
-  across the full WR population. This pre-warm pass issues the
-  SAME requests, in the SAME shape, exactly once each, sequentially,
-  before the per-player fan-out begins -- relying on
-  weekly-sage-schedule's own existing Cache-Control (s-maxage) to
-  serve the ~N-fold repeat internal requests from cache instead of
-  every player racing a cold cache simultaneously.
-
-  This does not change what data is fetched, only when and how many
-  times. weekly-sage-player-season.js is not modified.
-*/
-async function preWarmScheduleWeeks({
-  baseUrl,
-  season,
-  targetWeek,
-  seasonType
-}) {
-  const weeksToWarm =
-    Array.from(
-      {
-        length:
-          targetWeek
-      },
-      function (
-        _,
-        index
-      ) {
-        return (
-          index +
-          1
-        );
-      }
-    );
-
-  for (
-    const week of
-    weeksToWarm
-  ) {
-    const url =
-      buildUrl({
-        baseUrl,
-
-        functionName:
-          SCHEDULE_FUNCTION,
-
-        params: {
-          season,
-
-          week:
-            String(
-              week
-            ),
-
-          seasonType
-        }
-      });
-
-    const result =
-      await fetchJsonWithStatus(
-        url
-      );
-
-    /*
-      Fail clearly rather than proceeding with partially cold
-      evidence. If a schedule week cannot be pre-warmed, the
-      per-player fan-out would otherwise silently fall back to
-      each player independently re-attempting that same failing
-      request -- multiplying the failure instead of surfacing it
-      once, immediately, here.
-    */
-    if (
-      !result.ok
-    ) {
-      const detail =
-        result.data &&
-        (
-          result.data.detail ||
-          result.data.error
-        )
-          ? (
-              result.data.detail ||
-              result.data.error
-            )
-          : `HTTP ${result.status}`;
-
-      throw new Error(
-        `Schedule pre-warm failed for Week ${week}: ${detail}`
-      );
-    }
-  }
-}
-
-/*
   To observe the actual target-week game while preserving
   no-look-ahead:
 
     Prediction targetWeek = 8
     Outcome evidence week = 9
 
-  weekly-sage-player-season(targetWeek=9) contains games
+  buildPlayerSeason(targetWeek=9) contains games
   from Weeks 1 through 8.
 
   We extract ONLY Week 8.
+
+  This calls buildPlayerSeason() directly, in-process --
+  weekly-sage-player-season.js's core computation is required()
+  above, not fetched over HTTP. The shared scheduleContext (built
+  exactly once for this whole validation run -- see the call site
+  below, right before the per-player fan-out) is passed straight
+  through, so buildPlayerSeason() skips its own internal
+  buildPriorWeekScheduleMap() call entirely for every one of these
+  calls. No HTTP self-fetch and no serialization happen here at all;
+  scheduleContext is the same JS Map, shared by reference.
+
+  Any failure -- including a genuine "player not found" -- throws
+  here rather than returning an {ok:false} shape. mapWithConcurrency's
+  own worker() below already catches any thrown mapper() error and
+  converts it into the same {ok:false, status, data:{error}} shape
+  this function used to return directly over HTTP, so the existing
+  failure-handling loop downstream needs no changes.
 */
 async function fetchPlayerOutcomeSource({
   baseUrl,
   season,
   targetWeek,
   seasonType,
-  playerID
+  playerID,
+  scheduleContext
 }) {
   const outcomeEvidenceWeek =
     targetWeek +
     1;
 
-  const url =
-    buildUrl({
+  const data =
+    await buildPlayerSeason({
       baseUrl,
+      season,
 
-      functionName:
-        PLAYER_SEASON_FUNCTION,
+      targetWeek:
+        outcomeEvidenceWeek,
 
-      params: {
-        season,
-
-        week:
-          String(
-            outcomeEvidenceWeek
-          ),
-
-        seasonType,
-
-        playerID
-      }
+      seasonType,
+      playerID,
+      scheduleContext
     });
-
-  const result =
-    await fetchJsonWithStatus(
-      url
-    );
-
-  if (
-    !result.ok
-  ) {
-    return {
-      ok:
-        false,
-
-      status:
-        result.status,
-
-      data:
-        result.data
-    };
-  }
-
-  if (
-    !result.data ||
-    result.data.evidenceType !==
-      "weekly-sage-player-season"
-  ) {
-    return {
-      ok:
-        false,
-
-      status:
-        502,
-
-      data: {
-        error:
-          "Unexpected player-season schema."
-      }
-    };
-  }
 
   return {
     ok:
@@ -636,8 +520,7 @@ async function fetchPlayerOutcomeSource({
     status:
       200,
 
-    data:
-      result.data
+    data
   };
 }
 
@@ -2701,20 +2584,31 @@ exports.handler =
       /*
         STEP 1.5
         --------
-        Pre-warm shared prior-week schedule evidence ONCE, before
-        the per-player fan-out below causes weekly-sage-player-season
-        to redundantly re-request the same Weeks 1..targetWeek
-        schedule data once per WR. See preWarmScheduleWeeks() above
-        for the exact reasoning. Sequential by design (no new
-        concurrency knob) -- this is a small, fixed number of weeks
-        (at most 17), not the WR population.
+        Build the shared prior-week schedule map ONCE, in-process,
+        before the per-player fan-out below. This is the same
+        buildPriorWeekScheduleMap() weekly-sage-player-season.js
+        already used internally -- required directly from that file
+        (see the top of this file), not called over HTTP. Every
+        active WR's evidence call below reuses this exact same Map
+        object by reference; none of them rebuild it.
+
+        targetWeek + 1 matches player-season's own internal
+        targetWeek convention (its schedule map covers Weeks 1
+        through its own targetWeek - 1, i.e. Weeks 1 through this
+        validation's targetWeek) -- the same arithmetic
+        fetchPlayerOutcomeSource() below already uses.
       */
-      await preWarmScheduleWeeks({
-        baseUrl,
-        season,
-        targetWeek,
-        seasonType
-      });
+      const scheduleContext =
+        await buildPriorWeekScheduleMap({
+          baseUrl,
+          season,
+
+          targetWeek:
+            targetWeek +
+            1,
+
+          seasonType
+        });
 
       /*
         STEP 2
@@ -2726,8 +2620,11 @@ exports.handler =
           -> player-season targetWeek 9
           -> extract ONLY Week 8
 
-        Controlled concurrency keeps this from firing the entire
-        WR universe simultaneously.
+        Controlled concurrency keeps this from building the entire
+        WR universe's evidence simultaneously. No HTTP self-fetch
+        happens here anymore -- fetchPlayerOutcomeSource() below
+        calls buildPlayerSeason() in-process for each player,
+        reusing the single scheduleContext built just above.
       */
       const outcomeResults =
         await mapWithConcurrency(
@@ -2741,6 +2638,7 @@ exports.handler =
               season,
               targetWeek,
               seasonType,
+              scheduleContext,
 
               playerID:
                 player.playerID
