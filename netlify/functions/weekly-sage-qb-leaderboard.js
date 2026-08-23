@@ -2,231 +2,53 @@
 //
 // WEEKLY SAGE — QB LEADERBOARD
 //
-// PURPOSE
-// -------
-// Build a complete Weekly SAGE QB leaderboard for one target week.
-//
-// SOURCES
-// -------
-//
-//   weekly-sage-qb-snapshot
-//   weekly-sage-schedule
-//   weekly-sage-qb-final-score
-//
-// ARCHITECTURE
-// ------------
-// The snapshot defines the eligible QB population.
-//
-// The weekly schedule determines whether each player's historical
-// team is ACTIVE or on BYE in the target week.
-//
-// Only active QBs are sent to weekly-sage-qb-final-score.
-//
-// This prevents bye weeks from being incorrectly reported as
-// scoring failures and avoids unnecessary downstream function calls.
-//
-// This function DOES NOT:
-// - call Tank01 directly
-// - rebuild QB evidence
-// - recalculate benchmarks
-// - recalculate QB components
-// - duplicate confidence logic
-// - duplicate matchup logic
-// - alter the underlying Weekly SAGE score when assigning START / FLEX / SIT
-//
-// IMPORTANT
-// ---------
-// QB SAGE v1 weights remain provisional.
-//
-// This leaderboard exposes the current forecast population for
-// historical validation. It does not validate or optimize weights.
-//
-// ═══════════════════════════════════════════════════════════════════════
+// Reads the cached QB snapshot, removes bye/unresolved players before scoring,
+// scores active QBs through the existing in-process QB chain, and ranks them.
+// Missing/invalid QB snapshot cache fails fast with 503; there is no live rebuild.
+// START/FLEX/SIT thresholds are provisional placeholders until QB validation.
 
-const DEFAULT_SEASON_TYPE =
-  "reg";
+const { connectLambda, getStore } = require("@netlify/blobs");
+const { buildQbFinalScore } = require("./weekly-sage-qb-final-score.js");
 
-const POSITION =
-  "QB";
-
-const SNAPSHOT_FUNCTION =
-  "weekly-sage-qb-snapshot";
-
-/*
-  PHASE 2 — read the Phase 1 cached QB snapshot from Netlify Blobs
-  instead of live-rebuilding it on every leaderboard request.
-
-  Same Blobs pattern already proven in refresh-player-data.js /
-  refresh-risers-fallers.js / player-data.js / refresh-qb-snapshot.js:
-  connectLambda(event) must run before any getStore() call -- see
-  exports.handler below.
-
-  Deliberately NO live-rebuild fallback: if the cache is missing,
-  unreadable, or incomplete, this file fails fast (503) rather than
-  ever calling weekly-sage-qb-snapshot.js itself. That live rebuild
-  remains available only via refresh-qb-snapshot.js's own manual/
-  future-scheduled path -- never from a customer leaderboard request.
-*/
-const {
-  connectLambda,
-  getStore
-} = require(
-  "@netlify/blobs"
-);
-
-const QB_SNAPSHOT_STORE =
-  "qb-snapshot";
-
-const SCHEDULE_FUNCTION =
-  "weekly-sage-schedule";
-
-const FINAL_SCORE_FUNCTION =
-  "weekly-sage-qb-final-score";
-
-/*
-  weekly-sage-qb-final-score's core computation (buildQbFinalScore)
-  is required directly, in-process, rather than invoked over HTTP
-  (see fetchFinalScore() below, now unused but left in place for
-  reference). This is the top of the chain: the snapshot this file
-  already fetches exactly once at STEP 1 below is passed down by
-  reference as prebuiltSnapshot to every one of the ~N per-QB calls,
-  instead of each one (through final-score -> confidence ->
-  component-scores -> benchmarks) independently rebuilding the
-  entire QB population snapshot from scratch -- the redundancy this
-  whole fix exists to remove.
-*/
-const {
-  buildQbFinalScore
-} = require(
-  "./weekly-sage-qb-final-score.js"
-);
-
+const DEFAULT_SEASON_TYPE = "reg";
+const POSITION = "QB";
+const QB_SNAPSHOT_STORE = "qb-snapshot";
+const SCHEDULE_FUNCTION = "weekly-sage-schedule";
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
+const DEFAULT_CONCURRENCY = 5;
+const MAX_CONCURRENCY = 10;
 
-const DEFAULT_CONCURRENCY =
-  5;
-
-const MAX_CONCURRENCY =
-  10;
-
-/*
-  IMPORTANT:
-  These thresholds are inherited placeholders.
-
-  They have NOT yet been calibrated or validated for QB.
-
-  They remain exposed so the leaderboard architecture can be tested
-  end-to-end, but they must not be represented as QB-calibrated until
-  historical QB validation/backtesting has been completed.
-*/
 const QB_RECOMMENDATION_THRESHOLDS = {
   start: 72,
   flex: 52
 };
 
-function qbRecommendation(
-  score
-) {
-  const value =
-    nullableNum(
-      score
-    );
+function nullableNum(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
-  if (
-    value ===
-    null
-  ) {
+function integerOrNull(value) {
+  const n = Number(value);
+  return Number.isInteger(n) ? n : null;
+}
+
+function round(value, digits = 1) {
+  const n = Number(value);
+
+  if (!Number.isFinite(n)) {
     return null;
   }
 
-  if (
-    value >=
-    QB_RECOMMENDATION_THRESHOLDS.start
-  ) {
-    return "START";
-  }
+  const factor = 10 ** digits;
 
-  if (
-    value >=
-    QB_RECOMMENDATION_THRESHOLDS.flex
-  ) {
-    return "FLEX";
-  }
-
-  return "SIT";
+  return Math.round(
+    (n + Number.EPSILON) * factor
+  ) / factor;
 }
 
-function nullableNum(
-  value
-) {
-  const n =
-    Number(
-      value
-    );
-
-  return Number.isFinite(
-    n
-  )
-    ? n
-    : null;
-}
-
-function integerOrNull(
-  value
-) {
-  const n =
-    Number(
-      value
-    );
-
-  return Number.isInteger(
-    n
-  )
-    ? n
-    : null;
-}
-
-function round(
-  value,
-  digits = 1
-) {
-  const n =
-    Number(
-      value
-    );
-
-  if (
-    !Number.isFinite(
-      n
-    )
-  ) {
-    return null;
-  }
-
-  const factor =
-    Math.pow(
-      10,
-      digits
-    );
-
-  return (
-    Math.round(
-      (
-        n +
-        Number.EPSILON
-      ) *
-      factor
-    ) /
-    factor
-  );
-}
-
-function clamp(
-  value,
-  min,
-  max
-) {
+function clamp(value, min, max) {
   return Math.max(
     min,
     Math.min(
@@ -236,80 +58,75 @@ function clamp(
   );
 }
 
-function normalizeTeam(
-  value
-) {
-  return String(
-    value ||
-    ""
-  )
-    .trim()
-    .toUpperCase();
+function normalizeTeam(value) {
+  const raw =
+    String(value || "")
+      .trim()
+      .toUpperCase();
+
+  const aliases = {
+    JAC: "JAX",
+    GBP: "GB",
+    KAN: "KC",
+    LVR: "LV",
+    NEP: "NE",
+    NOR: "NO",
+    SFO: "SF",
+    TBB: "TB",
+    WAS: "WSH"
+  };
+
+  return aliases[raw] || raw;
 }
 
-function normalizePosition(
-  value
-) {
-  return String(
-    value ||
-    ""
-  )
-    .trim()
-    .toUpperCase();
-}
-
-function getBaseUrl(
-  event
-) {
+function getBaseUrl(event) {
   const headers =
-    event.headers ||
-    {};
+    event.headers || {};
 
   const proto =
-    headers[
-      "x-forwarded-proto"
-    ] ||
-    headers[
-      "X-Forwarded-Proto"
-    ] ||
+    headers["x-forwarded-proto"] ||
+    headers["X-Forwarded-Proto"] ||
     "https";
 
   const host =
     headers.host ||
     headers.Host;
 
-  if (
-    !host
-  ) {
+  if (!host) {
     throw new Error(
       "Could not determine host."
     );
   }
 
-  return (
-    `${proto}://${host}`
-  );
+  return `${proto}://${host}`;
 }
 
-function buildUrl({
-  baseUrl,
-  functionName,
-  params
-}) {
-  const query =
-    new URLSearchParams(
-      params
-    ).toString();
-
-  return (
-    `${baseUrl}/.netlify/functions/${functionName}` +
-    `?${query}`
-  );
-}
-
-async function fetchJson(
-  url
+function jsonResponse(
+  statusCode,
+  body,
+  cacheControl = "no-store"
 ) {
+  return {
+    statusCode,
+
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        cacheControl
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
+}
+
+async function fetchJson(url) {
   const response =
     await fetch(
       url,
@@ -329,29 +146,46 @@ async function fetchJson(
 
   try {
     data =
-      await response
-        .json();
-  } catch (
-    error
-  ) {
+      await response.json();
+  } catch (error) {
     data =
       null;
   }
 
-  if (
-    !response.ok
-  ) {
-    const detail =
+  if (!response.ok) {
+    const rawDetail =
       data &&
       (
         data.detail ||
         data.error
-      )
-        ? (
-            data.detail ||
-            data.error
-          )
-        : `HTTP ${response.status}`;
+      );
+
+    let detail =
+      `HTTP ${response.status}`;
+
+    if (
+      typeof rawDetail ===
+      "string"
+    ) {
+      detail =
+        rawDetail;
+    } else if (
+      rawDetail &&
+      typeof rawDetail ===
+        "object"
+    ) {
+      try {
+        detail =
+          JSON.stringify(
+            rawDetail
+          );
+      } catch (error) {
+        detail =
+          String(
+            rawDetail
+          );
+      }
+    }
 
     const err =
       new Error(
@@ -371,7 +205,6 @@ async function fetchJson(
 }
 
 function cacheError(
-  status,
   reason,
   detail
 ) {
@@ -381,24 +214,14 @@ function cacheError(
     );
 
   err.status =
-    status;
+    503;
 
   err.detail =
-    detail ||
-    null;
+    detail || null;
 
   return err;
 }
 
-/*
-  Read the Phase 1 cached QB snapshot for this exact
-  season/targetWeek/seasonType. Validates it as strictly as
-  refresh-qb-snapshot.js validated it before ever writing it --
-  schema identity, requested-key match, and completeness (non-empty
-  population, zero failures, nextStep.ready === true). Throws a
-  discriminated 503 statusError on ANY problem; never falls back to
-  a live rebuild.
-*/
 async function readCachedSnapshot({
   season,
   targetWeek,
@@ -412,12 +235,10 @@ async function readCachedSnapshot({
 
   try {
     const store =
-      getStore(
-        {
-          name:
-            QB_SNAPSHOT_STORE
-        }
-      );
+      getStore({
+        name:
+          QB_SNAPSHOT_STORE
+      });
 
     cached =
       await store.get(
@@ -429,7 +250,6 @@ async function readCachedSnapshot({
       );
   } catch (error) {
     throw cacheError(
-      503,
       "QB snapshot cache could not be read.",
       {
         blobStore:
@@ -451,10 +271,10 @@ async function readCachedSnapshot({
 
   if (
     !cached ||
-    typeof cached !== "object"
+    typeof cached !==
+      "object"
   ) {
     throw cacheError(
-      503,
       "QB snapshot cache is missing for this season/week/seasonType.",
       {
         blobStore:
@@ -548,11 +368,9 @@ async function readCachedSnapshot({
   }
 
   if (
-    problems.length >
-    0
+    problems.length
   ) {
     throw cacheError(
-      503,
       "QB snapshot cache is invalid or not ready for use.",
       {
         blobStore:
@@ -575,24 +393,18 @@ async function fetchSchedule({
   week,
   seasonType
 }) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        SCHEDULE_FUNCTION,
-
-      params: {
-        season,
-
-        week:
-          String(
-            week
-          ),
-
-        seasonType
-      }
+  const params =
+    new URLSearchParams({
+      season,
+      week:
+        String(
+          week
+        ),
+      seasonType
     });
+
+  const url =
+    `${baseUrl}/.netlify/functions/${SCHEDULE_FUNCTION}?${params.toString()}`;
 
   const data =
     await fetchJson(
@@ -610,86 +422,6 @@ async function fetchSchedule({
   }
 
   return data;
-}
-
-async function fetchFinalScore({
-  baseUrl,
-  season,
-  week,
-  seasonType,
-  playerID
-}) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        FINAL_SCORE_FUNCTION,
-
-      params: {
-        season,
-
-        week:
-          String(
-            week
-          ),
-
-        seasonType,
-
-        playerID
-      }
-    });
-
-  return await fetchJson(
-    url
-  );
-}
-
-function extractSnapshotPlayers(
-  snapshot
-) {
-  const candidates = [
-    snapshot &&
-      snapshot.population,
-
-    snapshot &&
-      snapshot.players,
-
-    snapshot &&
-      snapshot.rows,
-
-    snapshot &&
-      snapshot.receivers,
-
-    snapshot &&
-      snapshot.wrs,
-
-    snapshot &&
-      snapshot.qbs,
-
-    snapshot &&
-      snapshot.data &&
-      snapshot.data.players,
-
-    snapshot &&
-      snapshot.data &&
-      snapshot.data.rows
-  ];
-
-  for (
-    const candidate of
-    candidates
-  ) {
-    if (
-      Array.isArray(
-        candidate
-      )
-    ) {
-      return candidate;
-    }
-  }
-
-  return [];
 }
 
 function normalizeSnapshotPlayer(
@@ -711,18 +443,18 @@ function normalizeSnapshotPlayer(
       ""
     ).trim();
 
-  if (
-    !playerID
-  ) {
+  if (!playerID) {
     return null;
   }
 
   const position =
-    normalizePosition(
+    String(
       row.position ||
       row.pos ||
       POSITION
-    );
+    )
+      .trim()
+      .toUpperCase();
 
   if (
     position &&
@@ -732,15 +464,6 @@ function normalizeSnapshotPlayer(
     return null;
   }
 
-  /*
-    IMPORTANT:
-    row.team is the historical team entering the target week.
-
-    currentTeam is preserved separately.
-
-    Historical team is authoritative for historical schedule
-    classification.
-  */
   return {
     playerID,
 
@@ -779,27 +502,33 @@ function normalizeSnapshotPlayer(
   };
 }
 
-function dedupePlayers(
-  players
+function snapshotPlayers(
+  snapshot
 ) {
+  const raw =
+    Array.isArray(
+      snapshot.population
+    )
+      ? snapshot.population
+      : [];
+
   const seen =
     new Set();
 
-  const result =
+  const players =
     [];
 
   for (
-    const player of
-    players
+    const row of
+    raw
   ) {
-    if (
-      !player ||
-      !player.playerID
-    ) {
-      continue;
-    }
+    const player =
+      normalizeSnapshotPlayer(
+        row
+      );
 
     if (
+      !player ||
       seen.has(
         player.playerID
       )
@@ -811,10 +540,1342 @@ function dedupePlayers(
       player.playerID
     );
 
-    result.push(
+    players.push(
       player
     );
   }
 
-  return result;
+  return players;
 }
+
+function buildScheduleState(
+  schedule
+) {
+  const activeTeams =
+    new Set();
+
+  const byeTeams =
+    new Set();
+
+  const games =
+    Array.isArray(
+      schedule.games
+    )
+      ? schedule.games
+      : [];
+
+  for (
+    const game of
+    games
+  ) {
+    const away =
+      normalizeTeam(
+        game.away
+      );
+
+    const home =
+      normalizeTeam(
+        game.home
+      );
+
+    if (away) {
+      activeTeams.add(
+        away
+      );
+    }
+
+    if (home) {
+      activeTeams.add(
+        home
+      );
+    }
+  }
+
+  for (
+    const team of
+    Array.isArray(
+      schedule.activeTeams
+    )
+      ? schedule.activeTeams
+      : []
+  ) {
+    const normalized =
+      normalizeTeam(
+        team
+      );
+
+    if (normalized) {
+      activeTeams.add(
+        normalized
+      );
+    }
+  }
+
+  for (
+    const team of
+    Array.isArray(
+      schedule.byeTeams
+    )
+      ? schedule.byeTeams
+      : []
+  ) {
+    const normalized =
+      normalizeTeam(
+        team
+      );
+
+    if (normalized) {
+      byeTeams.add(
+        normalized
+      );
+    }
+  }
+
+  return {
+    activeTeams,
+    byeTeams
+  };
+}
+
+function classifyPlayerSchedule(
+  player,
+  scheduleState
+) {
+  const team =
+    normalizeTeam(
+      player.team
+    );
+
+  if (!team) {
+    return {
+      status:
+        "unresolved",
+
+      reason:
+        "Historical team entering the target week is unavailable."
+    };
+  }
+
+  if (
+    scheduleState
+      .activeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "active",
+
+      reason:
+        null
+    };
+  }
+
+  if (
+    scheduleState
+      .byeTeams
+      .has(
+        team
+      )
+  ) {
+    return {
+      status:
+        "bye",
+
+      reason:
+        "Player's historical team is on bye in the requested week."
+    };
+  }
+
+  return {
+    status:
+      "unresolved",
+
+    reason:
+      "Player team does not appear in the active schedule and was not explicitly classified as a bye team."
+  };
+}
+
+async function mapWithConcurrency(
+  items,
+  concurrency,
+  mapper
+) {
+  const results =
+    new Array(
+      items.length
+    );
+
+  let nextIndex =
+    0;
+
+  async function worker() {
+    while (true) {
+      const index =
+        nextIndex++;
+
+      if (
+        index >=
+        items.length
+      ) {
+        return;
+      }
+
+      try {
+        results[index] =
+          await mapper(
+            items[index],
+            index
+          );
+      } catch (error) {
+        results[index] = {
+          ok:
+            false,
+
+          error
+        };
+      }
+    }
+  }
+
+  const count =
+    Math.min(
+      concurrency,
+      items.length
+    );
+
+  if (
+    count >
+    0
+  ) {
+    await Promise.all(
+      Array.from(
+        {
+          length:
+            count
+        },
+        () =>
+          worker()
+      )
+    );
+  }
+
+  return results;
+}
+
+function qbRecommendation(
+  score
+) {
+  const value =
+    nullableNum(
+      score
+    );
+
+  if (
+    value ===
+    null
+  ) {
+    return null;
+  }
+
+  if (
+    value >=
+    QB_RECOMMENDATION_THRESHOLDS.start
+  ) {
+    return "START";
+  }
+
+  if (
+    value >=
+    QB_RECOMMENDATION_THRESHOLDS.flex
+  ) {
+    return "FLEX";
+  }
+
+  return "SIT";
+}
+
+function leaderboardRow(
+  finalData
+) {
+  if (
+    !finalData ||
+    finalData.evidenceType !==
+      "weekly-sage-qb-final-score"
+  ) {
+    return null;
+  }
+
+  const player =
+    finalData.player || {};
+
+  const sage =
+    finalData.sage || {};
+
+  const role =
+    (
+      finalData.components &&
+      finalData.components.role
+    ) ||
+    {};
+
+  const production =
+    (
+      finalData.components &&
+      finalData.components.production
+    ) ||
+    {};
+
+  const matchup =
+    (
+      finalData.components &&
+      finalData.components.matchup
+    ) ||
+    {};
+
+  const upcomingGame =
+    finalData.upcomingGame ||
+    {};
+
+  const score =
+    nullableNum(
+      sage.score
+    );
+
+  if (
+    score ===
+    null
+  ) {
+    return null;
+  }
+
+  return {
+    rank:
+      null,
+
+    playerID:
+      player.playerID ||
+      null,
+
+    name:
+      player.name ||
+      null,
+
+    team:
+      normalizeTeam(
+        player.team
+      ) ||
+      null,
+
+    currentTeam:
+      normalizeTeam(
+        player.currentTeam
+      ) ||
+      null,
+
+    position:
+      POSITION,
+
+    status:
+      "active",
+
+    eligibleForWeeklyRanking:
+      true,
+
+    gamesUsed:
+      nullableNum(
+        player.gamesUsed
+      ),
+
+    opponent:
+      normalizeTeam(
+        upcomingGame.opponent ||
+        matchup.opponent
+      ) ||
+      null,
+
+    location:
+      upcomingGame.location ||
+      null,
+
+    gameID:
+      upcomingGame.gameID ||
+      null,
+
+    gameDate:
+      upcomingGame.gameDate ||
+      null,
+
+    gameTime:
+      upcomingGame.gameTime ||
+      null,
+
+    sageScore:
+      score,
+
+    recommendation:
+      qbRecommendation(
+        score
+      ),
+
+    sageLabel:
+      sage.label ||
+      null,
+
+    sageConfidence:
+      nullableNum(
+        sage.confidence &&
+        sage.confidence.weight
+      ),
+
+    sageConfidenceLabel:
+      sage.confidence
+        ? sage.confidence.label ||
+          null
+        : null,
+
+    role: {
+      rawScore:
+        nullableNum(
+          role.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          role.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          role.confidence &&
+          role.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          role.weightedContribution
+        )
+    },
+
+    production: {
+      rawScore:
+        nullableNum(
+          production.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          production.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          production.confidence &&
+          production.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          production.weightedContribution
+        )
+    },
+
+    matchup: {
+      rawScore:
+        nullableNum(
+          matchup.rawScore
+        ),
+
+      adjustedScore:
+        nullableNum(
+          matchup.adjustedScore
+        ),
+
+      confidence:
+        nullableNum(
+          matchup.confidence &&
+          matchup.confidence.weight
+        ),
+
+      weightedContribution:
+        nullableNum(
+          matchup.weightedContribution
+        ),
+
+      signal:
+        matchup.signal ||
+        null,
+
+      label:
+        matchup.label ||
+        null
+    }
+  };
+}
+
+function sortAndRank(
+  rows
+) {
+  rows.sort(
+    (
+      a,
+      b
+    ) => {
+      const scoreDiff =
+        (
+          b.sageScore ||
+          0
+        ) -
+        (
+          a.sageScore ||
+          0
+        );
+
+      if (
+        scoreDiff
+      ) {
+        return scoreDiff;
+      }
+
+      const confidenceDiff =
+        (
+          b.sageConfidence ||
+          0
+        ) -
+        (
+          a.sageConfidence ||
+          0
+        );
+
+      if (
+        confidenceDiff
+      ) {
+        return confidenceDiff;
+      }
+
+      const roleDiff =
+        (
+          (
+            b.role &&
+            b.role.adjustedScore
+          ) ||
+          0
+        ) -
+        (
+          (
+            a.role &&
+            a.role.adjustedScore
+          ) ||
+          0
+        );
+
+      if (
+        roleDiff
+      ) {
+        return roleDiff;
+      }
+
+      return String(
+        a.name ||
+        ""
+      ).localeCompare(
+        String(
+          b.name ||
+          ""
+        )
+      );
+    }
+  );
+
+  let previousScore =
+    null;
+
+  let previousRank =
+    0;
+
+  rows.forEach(
+    (
+      row,
+      index
+    ) => {
+      if (
+        index ===
+          0 ||
+        row.sageScore !==
+          previousScore
+      ) {
+        previousRank =
+          index +
+          1;
+      }
+
+      row.rank =
+        previousRank;
+
+      previousScore =
+        row.sageScore;
+    }
+  );
+
+  return rows;
+}
+
+function summarizeScores(
+  rows
+) {
+  const scores =
+    rows
+      .map(
+        row =>
+          nullableNum(
+            row.sageScore
+          )
+      )
+      .filter(
+        value =>
+          value !==
+          null
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a -
+          b
+      );
+
+  if (
+    !scores.length
+  ) {
+    return {
+      count:
+        0,
+
+      minimum:
+        null,
+
+      maximum:
+        null,
+
+      average:
+        null,
+
+      median:
+        null
+    };
+  }
+
+  const total =
+    scores.reduce(
+      (
+        sum,
+        value
+      ) =>
+        sum +
+        value,
+      0
+    );
+
+  const middle =
+    Math.floor(
+      scores.length /
+      2
+    );
+
+  const median =
+    scores.length %
+      2 ===
+    0
+      ? (
+          scores[
+            middle -
+            1
+          ] +
+          scores[
+            middle
+          ]
+        ) /
+        2
+      : scores[
+          middle
+        ];
+
+  return {
+    count:
+      scores.length,
+
+    minimum:
+      round(
+        scores[0],
+        1
+      ),
+
+    maximum:
+      round(
+        scores[
+          scores.length -
+          1
+        ],
+        1
+      ),
+
+    average:
+      round(
+        total /
+        scores.length,
+        1
+      ),
+
+    median:
+      round(
+        median,
+        1
+      )
+  };
+}
+
+exports.handler =
+  async function (
+    event
+  ) {
+    connectLambda(
+      event
+    );
+
+    if (
+      event.httpMethod &&
+      event.httpMethod !==
+        "GET"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "Method not allowed."
+        }
+      );
+    }
+
+    const query =
+      event.queryStringParameters ||
+      {};
+
+    const season =
+      String(
+        query.season ||
+        new Date()
+          .getFullYear()
+      );
+
+    const targetWeek =
+      Number(
+        query.week
+      );
+
+    const seasonType =
+      String(
+        query.seasonType ||
+        DEFAULT_SEASON_TYPE
+      );
+
+    const requestedLimit =
+      integerOrNull(
+        query.limit
+      );
+
+    const requestedConcurrency =
+      integerOrNull(
+        query.concurrency
+      );
+
+    const concurrency =
+      clamp(
+        requestedConcurrency ||
+        DEFAULT_CONCURRENCY,
+        1,
+        MAX_CONCURRENCY
+      );
+
+    if (
+      !Number.isInteger(
+        targetWeek
+      ) ||
+      targetWeek <
+        2 ||
+      targetWeek >
+        18
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "week must be an integer from 2 through 18."
+        }
+      );
+    }
+
+    if (
+      ![
+        "reg",
+        "pre",
+        "post",
+        "all"
+      ].includes(
+        seasonType
+      )
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "seasonType must be reg, pre, post, or all."
+        }
+      );
+    }
+
+    if (
+      requestedLimit !==
+        null &&
+      requestedLimit <
+        1
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "limit must be a positive integer."
+        }
+      );
+    }
+
+    try {
+      const baseUrl =
+        getBaseUrl(
+          event
+        );
+
+      const [
+        snapshot,
+        schedule
+      ] =
+        await Promise.all([
+          readCachedSnapshot({
+            season,
+            targetWeek,
+            seasonType
+          }),
+
+          fetchSchedule({
+            baseUrl,
+            season,
+            week:
+              targetWeek,
+            seasonType
+          })
+        ]);
+
+      let players =
+        snapshotPlayers(
+          snapshot
+        );
+
+      const populationReturned =
+        players.length;
+
+      if (
+        !players.length
+      ) {
+        return jsonResponse(
+          422,
+          {
+            error:
+              "QB snapshot did not expose a recognizable player population."
+          }
+        );
+      }
+
+      if (
+        requestedLimit !==
+        null
+      ) {
+        players =
+          players.slice(
+            0,
+            requestedLimit
+          );
+      }
+
+      const scheduleState =
+        buildScheduleState(
+          schedule
+        );
+
+      const activePlayers =
+        [];
+
+      const inactive =
+        [];
+
+      const unresolved =
+        [];
+
+      for (
+        const player of
+        players
+      ) {
+        const classification =
+          classifyPlayerSchedule(
+            player,
+            scheduleState
+          );
+
+        if (
+          classification.status ===
+          "active"
+        ) {
+          activePlayers.push(
+            player
+          );
+        } else if (
+          classification.status ===
+          "bye"
+        ) {
+          inactive.push({
+            playerID:
+              player.playerID,
+
+            name:
+              player.name,
+
+            team:
+              player.team,
+
+            currentTeam:
+              player.currentTeam,
+
+            position:
+              POSITION,
+
+            status:
+              "bye",
+
+            eligibleForWeeklyRanking:
+              false,
+
+            recommendation:
+              null,
+
+            reason:
+              classification.reason
+          });
+        } else {
+          unresolved.push({
+            playerID:
+              player.playerID,
+
+            name:
+              player.name,
+
+            team:
+              player.team,
+
+            currentTeam:
+              player.currentTeam,
+
+            position:
+              POSITION,
+
+            status:
+              "unresolved",
+
+            eligibleForWeeklyRanking:
+              false,
+
+            reason:
+              classification.reason
+          });
+        }
+      }
+
+      const results =
+        await mapWithConcurrency(
+          activePlayers,
+          concurrency,
+          async player => {
+            try {
+              const finalData =
+                await buildQbFinalScore({
+                  baseUrl,
+                  season,
+                  targetWeek,
+                  seasonType,
+
+                  playerID:
+                    player.playerID,
+
+                  prebuiltSnapshot:
+                    snapshot
+                });
+
+              const row =
+                leaderboardRow(
+                  finalData
+                );
+
+              return row
+                ? {
+                    ok:
+                      true,
+
+                    player,
+
+                    row
+                  }
+                : {
+                    ok:
+                      false,
+
+                    player,
+
+                    error:
+                      "Final-score computation did not return a usable QB SAGE score."
+                  };
+            } catch (error) {
+              return {
+                ok:
+                  false,
+
+                player,
+
+                error:
+                  error &&
+                  error.message
+                    ? error.message
+                    : String(
+                        error
+                      )
+              };
+            }
+          }
+        );
+
+      const scored =
+        [];
+
+      const failures =
+        [];
+
+      for (
+        const result of
+        results
+      ) {
+        if (
+          result &&
+          result.ok &&
+          result.row
+        ) {
+          scored.push(
+            result.row
+          );
+        } else {
+          failures.push({
+            playerID:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .playerID
+                : null,
+
+            name:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .name
+                : null,
+
+            team:
+              result &&
+              result.player
+                ? result
+                    .player
+                    .team
+                : null,
+
+            error:
+              result &&
+              result.error
+                ? String(
+                    result.error
+                  )
+                : "Unknown leaderboard scoring failure."
+          });
+        }
+      }
+
+      const leaderboard =
+        sortAndRank(
+          scored
+        );
+
+      const ready =
+        leaderboard.length >
+          0 &&
+        failures.length ===
+          0 &&
+        unresolved.length ===
+          0;
+
+      return jsonResponse(
+        200,
+        {
+          evidenceType:
+            "weekly-sage-qb-leaderboard",
+
+          schemaVersion:
+            2,
+
+          generatedAt:
+            new Date()
+              .toISOString(),
+
+          season,
+
+          targetWeek,
+
+          seasonType,
+
+          position:
+            POSITION,
+
+          methodology: {
+            modelVersion:
+              "qb-sage-v1",
+
+            status:
+              "Provisional pending QB historical validation. Recommendation thresholds are placeholders, not QB-calibrated.",
+
+            ranking:
+              "Descending Weekly SAGE QB Score.",
+
+            recommendationThresholds: {
+              start:
+                QB_RECOMMENDATION_THRESHOLDS.start,
+
+              flex:
+                QB_RECOMMENDATION_THRESHOLDS.flex,
+
+              definitions: {
+                START:
+                  "Weekly SAGE Score >= 72",
+
+                FLEX:
+                  "Weekly SAGE Score >= 52 and < 72",
+
+                SIT:
+                  "Weekly SAGE Score < 52"
+              },
+
+              status:
+                "PROVISIONAL: 72/52 are inherited numeric placeholders only."
+            },
+
+            tieBreakers: [
+              "Higher overall SAGE confidence",
+              "Higher confidence-adjusted Role Score",
+              "Player name"
+            ],
+
+            byeHandling:
+              "Bye players are excluded before final-score execution.",
+
+            historicalIdentity:
+              "Historical team entering the target week is authoritative for schedule classification."
+          },
+
+          architecture: {
+            modelVersion:
+              "qb-sage-v1",
+
+            populationSource:
+              "weekly-sage-qb-snapshot",
+
+            snapshotStore:
+              QB_SNAPSHOT_STORE,
+
+            scheduleSource:
+              SCHEDULE_FUNCTION,
+
+            scoringSource:
+              "weekly-sage-qb-final-score",
+
+            populationRebuiltByLeaderboard:
+              false,
+
+            directTank01Calls:
+              0,
+
+            byePlayersSentToFinalScore:
+              0
+          },
+
+          population: {
+            snapshotPlayersReturned:
+              populationReturned,
+
+            playersRequested:
+              players.length,
+
+            activePlayers:
+              activePlayers.length,
+
+            activePlayersScored:
+              leaderboard.length,
+
+            inactiveByePlayers:
+              inactive.length,
+
+            unresolvedPlayers:
+              unresolved.length,
+
+            failures:
+              failures.length,
+
+            limitApplied:
+              requestedLimit,
+
+            concurrency
+          },
+
+          scheduleClassification: {
+            activeTeamsReturned:
+              scheduleState
+                .activeTeams
+                .size,
+
+            byeTeamsReturned:
+              scheduleState
+                .byeTeams
+                .size,
+
+            activeTeams:
+              Array.from(
+                scheduleState
+                  .activeTeams
+              ).sort(),
+
+            byeTeams:
+              Array.from(
+                scheduleState
+                  .byeTeams
+              ).sort()
+          },
+
+          scoreSummary:
+            summarizeScores(
+              leaderboard
+            ),
+
+          leaderboard,
+
+          inactive,
+
+          unresolved,
+
+          failures,
+
+          recommendation: {
+            enabled:
+              true,
+
+            startThreshold:
+              QB_RECOMMENDATION_THRESHOLDS.start,
+
+            flexThreshold:
+              QB_RECOMMENDATION_THRESHOLDS.flex,
+
+            logic:
+              "START >= 72; FLEX >= 52 and < 72; SIT < 52"
+          },
+
+          nextStep: {
+            ready,
+
+            reason:
+              ready
+                ? "Active QBs were scored successfully and bye-week QBs were excluded before scoring."
+                : "Resolve unresolved players or true scoring failures before using this leaderboard."
+          },
+
+          provenance: {
+            peerPopulation:
+              "weekly-sage-qb-snapshot",
+
+            participation:
+              SCHEDULE_FUNCTION,
+
+            finalScore:
+              "weekly-sage-qb-final-score",
+
+            componentSource:
+              "weekly-sage-qb-component-scores",
+
+            confidenceSource:
+              "weekly-sage-qb-confidence",
+
+            matchupSource:
+              "weekly-sage-player-matchup"
+          }
+        },
+
+        CACHE_CONTROL
+      );
+    } catch (error) {
+      if (
+        typeof (
+          error &&
+          error.status
+        ) ===
+        "number"
+      ) {
+        return jsonResponse(
+          error.status,
+          {
+            error:
+              error.message,
+
+            detail:
+              error.detail !==
+                undefined
+                ? error.detail
+                : error.data ||
+                  null
+          }
+        );
+      }
+
+      console.error(
+        "weekly-sage-qb-leaderboard failed:",
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          error:
+            "Could not build Weekly SAGE QB leaderboard.",
+
+          detail:
+            error &&
+            error.message
+              ? error.message
+              : String(
+                  error
+                )
+        }
+      );
+    }
+  };
