@@ -101,6 +101,26 @@ const LEADERBOARD_FUNCTION =
 const PLAYER_SEASON_FUNCTION =
   "weekly-sage-player-season";
 
+/*
+  weekly-sage-player-season internally fetches
+  weekly-sage-schedule once per prior week (Weeks 1 through
+  its own internal targetWeek - 1) via buildPriorWeekScheduleMap(),
+  completely independently for EVERY player it is asked about.
+
+  Since this validation endpoint calls weekly-sage-player-season
+  once per WR at query.week = targetWeek + 1, every one of those
+  calls internally re-requests the SAME Weeks 1 through targetWeek
+  schedule evidence — identical data, requested once per player
+  instead of once per validation run.
+
+  weeklyScheduleFunction responses already carry a long-lived
+  Cache-Control (s-maxage), so a single sequential pre-warm pass
+  below lets the CDN absorb that redundancy instead of every
+  player racing a cold cache for the same weeks simultaneously.
+*/
+const SCHEDULE_FUNCTION =
+  "weekly-sage-schedule";
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -421,6 +441,109 @@ async function fetchLeaderboard({
   }
 
   return data;
+}
+
+/*
+  Pre-warm shared prior-week schedule evidence.
+
+  weekly-sage-player-season, when called with query.week =
+  targetWeek + 1 (this file's outcomeEvidenceWeek), internally
+  computes its own targetWeek as (targetWeek + 1) and fetches
+  weekly-sage-schedule for Weeks 1 through (targetWeek + 1) - 1,
+  i.e. Weeks 1 through this validation's targetWeek, inclusive.
+
+  That schedule data is identical no matter which player is being
+  evaluated. Fetching it once per WR (as the unmodified downstream
+  function already does internally, unavoidably) is redundant
+  across the full WR population. This pre-warm pass issues the
+  SAME requests, in the SAME shape, exactly once each, sequentially,
+  before the per-player fan-out begins -- relying on
+  weekly-sage-schedule's own existing Cache-Control (s-maxage) to
+  serve the ~N-fold repeat internal requests from cache instead of
+  every player racing a cold cache simultaneously.
+
+  This does not change what data is fetched, only when and how many
+  times. weekly-sage-player-season.js is not modified.
+*/
+async function preWarmScheduleWeeks({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
+  const weeksToWarm =
+    Array.from(
+      {
+        length:
+          targetWeek
+      },
+      function (
+        _,
+        index
+      ) {
+        return (
+          index +
+          1
+        );
+      }
+    );
+
+  for (
+    const week of
+    weeksToWarm
+  ) {
+    const url =
+      buildUrl({
+        baseUrl,
+
+        functionName:
+          SCHEDULE_FUNCTION,
+
+        params: {
+          season,
+
+          week:
+            String(
+              week
+            ),
+
+          seasonType
+        }
+      });
+
+    const result =
+      await fetchJsonWithStatus(
+        url
+      );
+
+    /*
+      Fail clearly rather than proceeding with partially cold
+      evidence. If a schedule week cannot be pre-warmed, the
+      per-player fan-out would otherwise silently fall back to
+      each player independently re-attempting that same failing
+      request -- multiplying the failure instead of surfacing it
+      once, immediately, here.
+    */
+    if (
+      !result.ok
+    ) {
+      const detail =
+        result.data &&
+        (
+          result.data.detail ||
+          result.data.error
+        )
+          ? (
+              result.data.detail ||
+              result.data.error
+            )
+          : `HTTP ${result.status}`;
+
+      throw new Error(
+        `Schedule pre-warm failed for Week ${week}: ${detail}`
+      );
+    }
+  }
 }
 
 /*
@@ -2574,6 +2697,24 @@ exports.handler =
           }
         );
       }
+
+      /*
+        STEP 1.5
+        --------
+        Pre-warm shared prior-week schedule evidence ONCE, before
+        the per-player fan-out below causes weekly-sage-player-season
+        to redundantly re-request the same Weeks 1..targetWeek
+        schedule data once per WR. See preWarmScheduleWeeks() above
+        for the exact reasoning. Sequential by design (no new
+        concurrency knob) -- this is a small, fixed number of weeks
+        (at most 17), not the WR population.
+      */
+      await preWarmScheduleWeeks({
+        baseUrl,
+        season,
+        targetWeek,
+        seasonType
+      });
 
       /*
         STEP 2
