@@ -2882,7 +2882,7 @@ exports.handler =
               "Target-week actual results are retrieved only after the frozen pre-game SAGE leaderboard. Actual results never alter historical Role, Production, Matchup, Confidence, or SAGE scores.",
 
             participationHandling:
-              "Leaderboard bye players remain excluded. Active-team WRs with a target-week player-game record are classified as played. Active-team WRs with no target-week player-game record are classified as Did Not Play and are never assigned zero fantasy points.",
+              "Leaderboard bye players remain excluded. Active-team TEs with a target-week player-game record are classified as played. Active-team TEs with no target-week player-game record are classified as Did Not Play and are never assigned zero fantasy points.",
 
             participationStates: [
               "played",
