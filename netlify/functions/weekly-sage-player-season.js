@@ -1661,6 +1661,301 @@ function jsonResponse(
   };
 }
 
+class PlayerNotFoundError extends Error {
+  constructor(playerID) {
+    super("Player not found.");
+
+    this.name =
+      "PlayerNotFoundError";
+
+    this.status = 404;
+
+    this.playerID = playerID;
+  }
+}
+
+/*
+  Core Weekly SAGE player-season computation, extracted additively.
+
+  exports.handler below is now a thin wrapper around this function
+  and produces byte-identical GET output to before this extraction
+  -- every line inside is copied unchanged from the previous handler
+  body, only the wrapping around it changed.
+
+  scheduleContext is OPTIONAL. When supplied, buildPriorWeekScheduleMap()
+  is never called -- the caller is responsible for having built an
+  identically-shaped {weeksIncluded, gameMap} context (see the
+  additive export of buildPriorWeekScheduleMap itself, below). When
+  omitted, this function builds it internally exactly as it always
+  has, unconditionally, for every existing GET caller.
+
+  "Player not found" is now a thrown, discriminated error rather than
+  a direct jsonResponse() call, since this function returns plain
+  data, not an HTTP response -- exports.handler translates it back to
+  the same 404 shape as before; weekly-sage-wr-validation.js's
+  existing per-worker catch already treats any thrown error as a
+  failure entry, so no new handling was needed there either.
+*/
+async function buildPlayerSeason({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType,
+  playerID,
+  scheduleContext:
+    prebuiltScheduleContext
+}) {
+  const scheduleContextPromise =
+    prebuiltScheduleContext
+      ? Promise.resolve(
+          prebuiltScheduleContext
+        )
+      : buildPriorWeekScheduleMap({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType
+        });
+
+  const [
+    playerInfoResult,
+    gameStatsResult,
+    scheduleContext
+  ] =
+    await Promise.all([
+      tank01Fetch(
+        "getNFLPlayerInfo",
+        {
+          playerID
+        }
+      ),
+
+      tank01Fetch(
+        "getNFLGamesForPlayer",
+        {
+          playerID,
+          season
+        }
+      ),
+
+      scheduleContextPromise
+    ]);
+
+  const player =
+    extractPlayerInfo(
+      playerInfoResult
+    );
+
+  if (!player) {
+    throw new PlayerNotFoundError(
+      playerID
+    );
+  }
+
+  const allPlayerGames =
+    extractPlayerGames(
+      gameStatsResult
+    );
+
+  /*
+    Current roster metadata is retained for transparency.
+
+    It is NOT blindly applied to historical games anymore.
+  */
+  const currentTeam =
+    normalizeTeam(
+      player.teamAbv ||
+      player.team
+    );
+
+  const position =
+    normalizePosition(
+      player.pos ||
+      player.position
+    );
+
+  /*
+    HISTORICAL FIX:
+    each prior game independently resolves its historical team.
+  */
+  const priorGames =
+    attachScheduleContext(
+      allPlayerGames,
+      scheduleContext.gameMap,
+      currentTeam
+    );
+
+  const team =
+    historicalTeamEnteringWeek(
+      priorGames,
+      currentTeam
+    );
+
+  const teamsUsed =
+    historicalTeamsUsed(
+      priorGames
+    );
+
+  const totals =
+    aggregateGames(
+      priorGames
+    );
+
+  const derived =
+    buildDerived(
+      totals
+    );
+
+  const usageProfile =
+    buildUsageProfile(
+      position,
+      totals,
+      derived
+    );
+
+  const actualWeeksIncluded =
+    priorGames
+      .map(
+        function (game) {
+          return game.sageWeek;
+        }
+      )
+      .filter(
+        function (week) {
+          return Number.isInteger(
+            week
+          );
+        }
+      )
+      .sort(
+        function (a, b) {
+          return a - b;
+        }
+      );
+
+  const unresolvedHistoricalTeams =
+    priorGames.filter(
+      game =>
+        !game.sageTeam
+    ).length;
+
+  return {
+    evidenceType:
+      "weekly-sage-player-season",
+
+    schemaVersion:
+      3,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season,
+
+    targetWeek,
+
+    seasonType,
+
+    player: {
+      playerID,
+
+      name:
+        player.longName ||
+        player.name ||
+        null,
+
+      /*
+        Historical team entering the target week.
+      */
+      team,
+
+      /*
+        Current roster metadata retained separately so
+        historical and current identity cannot be confused.
+      */
+      currentTeam:
+        currentTeam ||
+        null,
+
+      position
+    },
+
+    historicalIdentity: {
+      rule:
+        "Historical player-game team is authoritative. Current roster team is used only when schedule-verified for that historical game.",
+
+      teamEnteringTargetWeek:
+        team,
+
+      currentRosterTeam:
+        currentTeam ||
+        null,
+
+      teamsUsedInEvidence:
+        teamsUsed,
+
+      unresolvedHistoricalGames:
+        unresolvedHistoricalTeams
+    },
+
+    noLookAhead: {
+      rule:
+        targetWeek > 1
+          ? `Only games from Weeks 1 through ${targetWeek - 1} are eligible.`
+          : "No prior-week games are eligible for Week 1.",
+
+      scheduleWeeksQueried:
+        scheduleContext
+          .weeksIncluded,
+
+      weeksIncluded:
+        actualWeeksIncluded,
+
+      targetWeekExcluded:
+        !actualWeeksIncluded
+          .includes(
+            targetWeek
+          )
+    },
+
+    sourceSummary: {
+      playerGamesReturned:
+        allPlayerGames.length,
+
+      priorScheduleGamesMatched:
+        priorGames.length,
+
+      historicalTeamsResolved:
+        priorGames.length -
+        unresolvedHistoricalTeams,
+
+      historicalTeamsUnresolved:
+        unresolvedHistoricalTeams
+    },
+
+    gamesUsed:
+      priorGames.length,
+
+    totals,
+
+    perGame:
+      derived,
+
+    usageProfile,
+
+    /*
+      Every source game now exposes its own historical:
+        team
+        opponent
+        location
+    */
+    sourceGames:
+      priorGames.map(
+        compactGame
+      )
+  };
+}
+
 exports.handler =
   async function (event) {
     if (
@@ -1749,260 +2044,37 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      const [
-        playerInfoResult,
-        gameStatsResult,
-        scheduleContext
-      ] =
-        await Promise.all([
-          tank01Fetch(
-            "getNFLPlayerInfo",
-            {
-              playerID
-            }
-          ),
+      const body =
+        await buildPlayerSeason({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType,
+          playerID
+        });
 
-          tank01Fetch(
-            "getNFLGamesForPlayer",
-            {
-              playerID,
-              season
-            }
-          ),
-
-          buildPriorWeekScheduleMap({
-            baseUrl,
-            season,
-            targetWeek,
-            seasonType
-          })
-        ]);
-
-      const player =
-        extractPlayerInfo(
-          playerInfoResult
-        );
-
-      if (!player) {
+      return jsonResponse(
+        200,
+        body,
+        CACHE_CONTROL
+      );
+    } catch (error) {
+      if (
+        error instanceof
+        PlayerNotFoundError
+      ) {
         return jsonResponse(
           404,
           {
             error:
-              "Player not found.",
+              error.message,
 
-            playerID
+            playerID:
+              error.playerID
           }
         );
       }
 
-      const allPlayerGames =
-        extractPlayerGames(
-          gameStatsResult
-        );
-
-      /*
-        Current roster metadata is retained for transparency.
-
-        It is NOT blindly applied to historical games anymore.
-      */
-      const currentTeam =
-        normalizeTeam(
-          player.teamAbv ||
-          player.team
-        );
-
-      const position =
-        normalizePosition(
-          player.pos ||
-          player.position
-        );
-
-      /*
-        HISTORICAL FIX:
-        each prior game independently resolves its historical team.
-      */
-      const priorGames =
-        attachScheduleContext(
-          allPlayerGames,
-          scheduleContext.gameMap,
-          currentTeam
-        );
-
-      const team =
-        historicalTeamEnteringWeek(
-          priorGames,
-          currentTeam
-        );
-
-      const teamsUsed =
-        historicalTeamsUsed(
-          priorGames
-        );
-
-      const totals =
-        aggregateGames(
-          priorGames
-        );
-
-      const derived =
-        buildDerived(
-          totals
-        );
-
-      const usageProfile =
-        buildUsageProfile(
-          position,
-          totals,
-          derived
-        );
-
-      const actualWeeksIncluded =
-        priorGames
-          .map(
-            function (game) {
-              return game.sageWeek;
-            }
-          )
-          .filter(
-            function (week) {
-              return Number.isInteger(
-                week
-              );
-            }
-          )
-          .sort(
-            function (a, b) {
-              return a - b;
-            }
-          );
-
-      const unresolvedHistoricalTeams =
-        priorGames.filter(
-          game =>
-            !game.sageTeam
-        ).length;
-
-      return jsonResponse(
-        200,
-        {
-          evidenceType:
-            "weekly-sage-player-season",
-
-          schemaVersion:
-            3,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          targetWeek,
-
-          seasonType,
-
-          player: {
-            playerID,
-
-            name:
-              player.longName ||
-              player.name ||
-              null,
-
-            /*
-              Historical team entering the target week.
-            */
-            team,
-
-            /*
-              Current roster metadata retained separately so
-              historical and current identity cannot be confused.
-            */
-            currentTeam:
-              currentTeam ||
-              null,
-
-            position
-          },
-
-          historicalIdentity: {
-            rule:
-              "Historical player-game team is authoritative. Current roster team is used only when schedule-verified for that historical game.",
-
-            teamEnteringTargetWeek:
-              team,
-
-            currentRosterTeam:
-              currentTeam ||
-              null,
-
-            teamsUsedInEvidence:
-              teamsUsed,
-
-            unresolvedHistoricalGames:
-              unresolvedHistoricalTeams
-          },
-
-          noLookAhead: {
-            rule:
-              targetWeek > 1
-                ? `Only games from Weeks 1 through ${targetWeek - 1} are eligible.`
-                : "No prior-week games are eligible for Week 1.",
-
-            scheduleWeeksQueried:
-              scheduleContext
-                .weeksIncluded,
-
-            weeksIncluded:
-              actualWeeksIncluded,
-
-            targetWeekExcluded:
-              !actualWeeksIncluded
-                .includes(
-                  targetWeek
-                )
-          },
-
-          sourceSummary: {
-            playerGamesReturned:
-              allPlayerGames.length,
-
-            priorScheduleGamesMatched:
-              priorGames.length,
-
-            historicalTeamsResolved:
-              priorGames.length -
-              unresolvedHistoricalTeams,
-
-            historicalTeamsUnresolved:
-              unresolvedHistoricalTeams
-          },
-
-          gamesUsed:
-            priorGames.length,
-
-          totals,
-
-          perGame:
-            derived,
-
-          usageProfile,
-
-          /*
-            Every source game now exposes its own historical:
-              team
-              opponent
-              location
-          */
-          sourceGames:
-            priorGames.map(
-              compactGame
-            )
-        },
-
-        CACHE_CONTROL
-      );
-    } catch (error) {
       console.error(
         "weekly-sage-player-season failed:",
         error
@@ -2020,3 +2092,17 @@ exports.handler =
       );
     }
   };
+
+/*
+  Additive exports for in-process reuse (e.g. by
+  weekly-sage-wr-validation.js). exports.handler above is unaffected
+  by these -- Netlify only ever invokes exports.handler for HTTP
+  requests to this function; these extra properties are inert to
+  that invocation path and only matter to a caller that explicitly
+  requires() this file directly.
+*/
+exports.buildPriorWeekScheduleMap =
+  buildPriorWeekScheduleMap;
+
+exports.buildPlayerSeason =
+  buildPlayerSeason;
