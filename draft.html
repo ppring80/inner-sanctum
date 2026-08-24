@@ -1044,29 +1044,47 @@ function renderSagePanel(){
   }
   // SAGE ROSTER WATCH (Phase 2): a separate, roster-LEVEL notice -- not
   // attached to any individual recommendation card above. Deliberately
-  // styled with the same non-alarmist gold/cream treatment as the "SAGE
-  // Phase 1" note below (never the red .sage-code-caution/.sage-code-wait
+  // styled with the same non-alarmist gold/cream treatment as the
+  // footer line below (never the red .sage-code-caution/.sage-code-wait
   // palette used for individual PASS-type recommendation labels), per
   // explicit product requirement: this must never read as an error or
   // warning. Renders only when the most recent successful fetch actually
   // returned advisory entries -- absent/empty produces no extra markup.
+  //
+  // Progressive disclosure (UI-only -- no change to what
+  // draft-roster-advisory.js computes or returns): early in a draft,
+  // rosterAdvisory can legitimately contain 3-4 SAFE_TO_WAIT entries
+  // (QB/RB/WR/TE all still open, none actually urgent yet). Showing all
+  // four full cards is correct information but clutters the panel with
+  // nothing actionable. Compact mode collapses that specific case to
+  // one line. The instant ANY entry is MONITOR or PRIORITY_NOW, compact
+  // mode is off entirely -- every entry (including any still-SAFE_TO_WAIT
+  // ones alongside it) renders in full detail, so real urgency can never
+  // end up visually diminished by sitting next to a collapsed summary.
   if(sageRosterAdvisory&&sageRosterAdvisory.length){
-    function renderRosterWatchItem(a){
-      var optsHtml=(a.representativeOptions&&a.representativeOptions.length)
-        ?('<div class="sage-roster-watch-options">Available options: '+a.representativeOptions.map(escText).join(', ')+'</div>')
-        :'';
-      return '<div class="sage-roster-watch-item">'+
-        '<span class="sage-roster-watch-pos">'+escText(a.pos)+' remains open</span>'+
-        '<span class="sage-roster-watch-label">'+escText(a.label||'')+'</span>'+
-        '<div class="sage-roster-watch-msg">'+escText(a.message||'')+'</div>'+
-        optsHtml+
+    var hasMeaningfulUrgency=sageRosterAdvisory.some(function(a){return a.classification==='MONITOR'||a.classification==='PRIORITY_NOW';});
+    var useCompactSummary=sageRosterAdvisory.length>=3&&!hasMeaningfulUrgency;
+
+    if(useCompactSummary){
+      html+='<div class="sage-roster-watch"><div class="sage-roster-watch-hdr">🔎 SAGE ROSTER WATCH — Building your core roster • No positional urgency detected</div></div>';
+    }else{
+      function renderRosterWatchItem(a){
+        var optsHtml=(a.representativeOptions&&a.representativeOptions.length)
+          ?('<div class="sage-roster-watch-options">Available options: '+a.representativeOptions.map(escText).join(', ')+'</div>')
+          :'';
+        return '<div class="sage-roster-watch-item">'+
+          '<span class="sage-roster-watch-pos">'+escText(a.pos)+' remains open</span>'+
+          '<span class="sage-roster-watch-label">'+escText(a.label||'')+'</span>'+
+          '<div class="sage-roster-watch-msg">'+escText(a.message||'')+'</div>'+
+          optsHtml+
+          '</div>';
+      }
+      html+='<div class="sage-roster-watch"><div class="sage-roster-watch-hdr">🔎 SAGE Roster Watch</div>'+
+        sageRosterAdvisory.map(renderRosterWatchItem).join('')+
         '</div>';
     }
-    html+='<div class="sage-roster-watch"><div class="sage-roster-watch-hdr">🔎 SAGE Roster Watch</div>'+
-      sageRosterAdvisory.map(renderRosterWatchItem).join('')+
-      '</div>';
   }
-  html+='<div style="margin-top:8px;padding:7px 10px;background:#fffbf0;border-left:3px solid var(--gold);border-radius:0 4px 4px 0;font-family:Lora,serif;font-size:11px;line-height:1.5;color:#6a5a32"><strong style="color:#8a6a10">SAGE Phase 1:</strong> SAGE focuses its recommendations on QB, RB, WR and TE throughout the draft. Kicker recommendations are intentionally suppressed, while defense recommendations may begin appearing as the draft progresses. Be sure to complete your starting K and DEF positions before your draft ends.</div>';
+  html+='<div style="margin-top:8px;font-family:Lora,serif;font-size:10px;color:var(--text3);font-style:italic">SAGE ranks QB/RB/WR/TE only — don\'t forget K and DEF before your draft ends.</div>';
   el.style.display='block';
   el.innerHTML=html;
 }
