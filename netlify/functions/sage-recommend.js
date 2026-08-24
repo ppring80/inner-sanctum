@@ -95,8 +95,31 @@
 //       },
 //       ... up to 5
 //     ],
-//     degraded: [ {name, pos, missing: ["opportunity"|"context", ...]} ]
+//     degraded: [ {name, pos, missing: ["opportunity"|"context", ...]} ],
+//     rosterAdvisory: [
+//       {
+//         pos: "TE",
+//         classification: "SAFE_TO_WAIT" | "MONITOR" | "PRIORITY_NOW",
+//         label: "Comfortable Waiting" | "Keep Monitoring" |
+//                "Consider Addressing Soon",
+//         message: "...",
+//         representativeOptions: ["...", "...", "..."],
+//         remainingAtPosition: number,
+//         remainingDedicatedNeeded: number
+//       },
+//       ... one entry per meaningful open position, or [] if none
+//     ]
 //   }
+//
+// rosterAdvisory (Phase 2 addition) is a SEPARATE, roster-LEVEL field --
+// not attached to any individual recommendation, and computed entirely
+// independently of `evaluated`/`recommendations`/`degraded` above. It
+// NEVER changes ranking, code, explanation, or reasons for any player.
+// See netlify/functions/draft-roster-advisory.js for the full design
+// rationale. Empty array whenever rosterContext is absent/malformed or
+// every starting position is already filled -- same backward-
+// compatibility guarantee Phase 1's rosterContextNote already
+// established for missing rosterContext.
 //
 // rosterContextNote (Phase 1 addition) is a SEPARATE, purely additive
 // field -- never merged into `reasons`, never allowed to influence
@@ -183,6 +206,15 @@ const {
 const {
   buildRecommendation
 } = require("./draft-sage-synthesis");
+
+// Phase 2 addition: roster-LEVEL strategy advisory, entirely separate
+// from the per-player synthesis above. Pure, synchronous, no Blobs
+// dependency of its own -- see draft-roster-advisory.js's own header
+// for the full design rationale (why raw currentPool, why not a direct
+// buildDraftScarcityProfile call here).
+const {
+  buildRosterAdvisory
+} = require("./draft-roster-advisory");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -1065,6 +1097,20 @@ exports.handler =
             }
           );
 
+      // Phase 2 addition: roster-level strategy advisory. Computed
+      // once per request, entirely separate from `evaluated`/
+      // `recommendations` above -- reads only rosterContext (already
+      // parsed) and currentPoolInput (the raw, unenriched pool, NOT
+      // the Opportunity-enriched `currentPool` used by Scarcity calls
+      // above -- see draft-roster-advisory.js's header for why).
+      // Never throws; returns [] for any missing/malformed input.
+      const rosterAdvisory =
+        buildRosterAdvisory({
+          rosterContext,
+          currentPool:
+            currentPoolInput
+        });
+
       return jsonResponse(
         200,
         {
@@ -1079,7 +1125,10 @@ exports.handler =
             recommendations,
 
           degraded:
-            degraded
+            degraded,
+
+          rosterAdvisory:
+            rosterAdvisory
         }
       );
     } catch (err) {
