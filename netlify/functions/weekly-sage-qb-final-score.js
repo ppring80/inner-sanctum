@@ -12,27 +12,30 @@
 //   weekly-sage-qb-confidence
 //   weekly-sage-player-matchup
 //
-// FIRST-PASS QB FINAL WEIGHTS
-// ---------------------------
+// QB SAGE v2 FINAL WEIGHTS (validated)
+// -------------------------------------
 //
-//   Role        55%
-//   Production  40%
-//   Matchup      5%
+//   Role        25%
+//   Production  55%
+//   Matchup     20%
 //
 // IMPORTANT
 // ---------
-// These final QB weights are PROVISIONAL.
+// QB SAGE v2 weights were selected after historical held-out robustness
+// validation using 2025 regular-season QB player-week data. Forward
+// weekly performance remains the production validation layer.
 //
-// They are a starting hypothesis for historical validation, not a
-// QB-calibrated or backtested result.
+// Validation source: weekly-sage-qb-weight-robustness
+//   Season 2025, seasonType reg, Weeks 4-17
+//   405 clean QB player-week observations
+//   Full-sample Spearman: control 0.2097 -> candidate 0.2484 (+0.0387)
+//   Average held-out Spearman delta: +0.0333 across 5/5 predetermined splits
+//   0 materially worse held-out splits; decision bar passed
 //
-// We will validate:
-//
-//   - Role / Production / Matchup weight sensitivity
-//   - relationship between SAGE score and actual fantasy outcome
-//   - ranking quality
-//   - score calibration
-//   - recommendation thresholds
+// The prior QB SAGE v1 control (Role 55% / Production 40% / Matchup 5%)
+// is preserved below as historical provenance only -- see
+// QB_PREVIOUS_CONTROL and the previousControl field in the response
+// body. It is no longer used in active scoring.
 //
 // The final score uses CONFIDENCE-ADJUSTED Role and Production.
 //
@@ -101,23 +104,102 @@ const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
 /*
-  PROVISIONAL QB V1 FINAL COMPOSITION.
+  QB SAGE v2 FINAL COMPOSITION -- validated weights.
 
-  Frozen before historical QB validation.
+  Selected after historical held-out robustness testing against the
+  frozen 2025 regular-season Weeks 4-17 QB backtest population (405
+  clean player-week observations) via weekly-sage-qb-weight-robustness.
+  The 25/55/20 candidate beat the qb-sage-v1 control (55/40/5) on
+  full-sample Spearman (+0.0387) and on every one of 5 predetermined
+  held-out splits (average delta +0.0333, 0 material collapses).
 
-  Do not tune these weights in response to individual historical
-  players or weeks. Revisit only after the QB validation/backtest
-  evidence set is complete.
+  See QB_PREVIOUS_CONTROL and QB_VALIDATION_EVIDENCE below for the
+  full audit trail. Forward weekly performance remains the production
+  validation layer -- do not tune these weights further without a new
+  robustness pass.
 */
 const QB_WEIGHTS = {
   role:
-    0.55,
+    0.25,
 
   production:
-    0.40,
+    0.55,
 
   matchup:
-    0.05
+    0.20
+};
+
+/*
+  Historical QB SAGE v1 control, preserved for audit provenance only.
+  No longer used in active scoring.
+*/
+const QB_PREVIOUS_CONTROL = {
+  modelVersion:
+    "qb-sage-v1",
+
+  status:
+    "historical provisional baseline",
+
+  weights: {
+    role:
+      0.55,
+
+    production:
+      0.40,
+
+    matchup:
+      0.05
+  }
+};
+
+/*
+  Validation provenance for the QB SAGE v1 -> v2 transition, sourced
+  directly from a weekly-sage-qb-weight-robustness run against the
+  2025 regular season (Weeks 4-17, 405 clean QB player-week
+  observations, 5 predetermined held-out splits). See that endpoint
+  for the full underlying evidence (per-split, per-week detail).
+*/
+const QB_VALIDATION_EVIDENCE = {
+  method:
+    "weekly-sage-qb-weight-robustness",
+
+  season:
+    "2025",
+
+  seasonType:
+    "reg",
+
+  weeks:
+    "4-17",
+
+  observations:
+    405,
+
+  selectedWeights: {
+    role:
+      0.25,
+
+    production:
+      0.55,
+
+    matchup:
+      0.20
+  },
+
+  fullSpearmanDelta:
+    0.0387,
+
+  averageHeldOutSpearmanDelta:
+    0.0333,
+
+  positiveHeldOutSplits:
+    "5/5",
+
+  materiallyWorseHeldOutSplits:
+    0,
+
+  decisionBarPassed:
+    true
 };
 
 const NEUTRAL_BASELINE =
@@ -671,8 +753,9 @@ function buildExplanation({
     `The confidence-adjusted components are ${roleAdjusted} for Role, ` +
     `${productionAdjusted} for Production, and ${matchupAdjusted} ` +
     `for the matchup against ${opponent}. ` +
-    `This provisional QB model weights Role at 55%, ` +
-    `Production at 40%, and Matchup at 5%.`
+    `This QB SAGE v2 model weights Role at 25%, ` +
+    `Production at 55%, and Matchup at 20%, selected after historical ` +
+    `held-out robustness validation.`
   );
 }
 
@@ -1047,7 +1130,7 @@ async function buildQbFinalScore({
   /*
     STEP 3
     ------
-    Weighted first-pass QB SAGE composition.
+    Weighted QB SAGE v2 composition.
   */
   const roleContribution =
     contribution(
@@ -1145,10 +1228,10 @@ async function buildQbFinalScore({
 
     methodology: {
       modelVersion:
-        "qb-sage-v1",
+        "qb-sage-v2",
 
       status:
-        "Provisional pending QB historical weight validation.",
+        "QB SAGE v2 weights were selected after historical held-out robustness validation using 2025 regular-season QB player-week data. Forward weekly performance remains the production validation layer.",
 
       weights:
         QB_WEIGHTS,
@@ -1163,8 +1246,14 @@ async function buildQbFinalScore({
         "Score what the evidence says. Weight how much SAGE trusts the evidence.",
 
       important:
-        "The final score uses confidence-adjusted Role, Production, and Matchup components. Final QB weights are not yet validated -- 55/40/5 is the Phase 1 provisional starting hypothesis, not a backtested result."
+        "The final score uses confidence-adjusted Role, Production, and Matchup components. QB SAGE v2 weights (25/55/20) replaced the qb-sage-v1 control (55/40/5) after the control was outperformed on full-sample and held-out Spearman correlation across all 5 predetermined robustness splits. Forward weekly performance remains the production validation layer -- see validationEvidence and previousControl below for the full audit trail."
     },
+
+    previousControl:
+      QB_PREVIOUS_CONTROL,
+
+    validationEvidence:
+      QB_VALIDATION_EVIDENCE,
 
     components: {
       role: {
@@ -1297,7 +1386,7 @@ async function buildQbFinalScore({
         false,
 
       reason:
-        "Validate QB final-score weights and historical outcomes before mapping scores to START / FLEX / SIT recommendations."
+        "QB SAGE v2 weights have completed historical robustness validation. START / FLEX / SIT recommendation thresholds have not yet been calibrated for v2 and remain a separate, still-open task."
     },
 
     nextStep: {
@@ -1305,12 +1394,12 @@ async function buildQbFinalScore({
         true,
 
       reason:
-        "Validate provisional QB SAGE scores against historical outcomes before locking Role / Production / Matchup weights."
+        "QB SAGE v2 weights (25/55/20) reflect completed historical robustness validation against 2025 regular-season Weeks 4-17 data. Forward weekly performance remains the production validation layer -- monitor forward results before any further weight changes."
     },
 
     architecture: {
       modelVersion:
-        "qb-sage-v1",
+        "qb-sage-v2",
 
       populationSource:
         "weekly-sage-qb-snapshot",
@@ -1336,7 +1425,7 @@ async function buildQbFinalScore({
 
     provenance: {
       modelVersion:
-        "qb-sage-v1",
+        "qb-sage-v2",
 
       rawRoleAndProduction:
         "weekly-sage-qb-component-scores",
@@ -1350,8 +1439,14 @@ async function buildQbFinalScore({
       peerPopulation:
         "weekly-sage-qb-snapshot",
 
-      provisionalWeights:
-        QB_WEIGHTS
+      activeWeights:
+        QB_WEIGHTS,
+
+      previousControl:
+        QB_PREVIOUS_CONTROL,
+
+      validationEvidence:
+        QB_VALIDATION_EVIDENCE
     }
   };
 }
