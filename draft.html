@@ -222,6 +222,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 
 /* ── DRAFT COMMAND CENTER — team-aware tracking (added Aug 2026) ── */
 .own-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);color:var(--text3);cursor:pointer;margin-left:6px;white-space:nowrap}
+.own-badge.keeper-badge{cursor:default;background:rgba(201,168,76,0.14);border-color:rgba(201,168,76,0.4);color:#8a6a10}
+.prow.keeper,.pcard.keeper{background:rgba(201,168,76,0.06)}
 .own-badge:hover{border-color:var(--gold);color:var(--gold)}
 .own-badge.mine{background:rgba(201,168,76,0.18);border-color:var(--gold-lt);color:#8a6a10;font-weight:600}
 .clock-bar{background:#1a1108;border-bottom:1px solid rgba(201,168,76,0.3);padding:10px 24px;font-family:'JetBrains Mono',monospace;color:#e8d9a8;transition:background 0.2s}
@@ -251,6 +253,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-detail{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;gap:6px}
 .roster-detail.open{display:flex}
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
+.roster-chip-keeper{border-style:dashed;font-weight:600}
 .sage-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:none}
 .sage-panel-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .sage-status{font-family:Lora,serif;font-size:12px;color:var(--text3);font-style:italic}
@@ -584,6 +587,22 @@ function checkOAuthSession() {
       <div class="setup-grid" id="setupRosterGrid"></div>
       <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Total roster spots: <strong id="setupRosterTotal">—</strong>. SAGE uses these to know how many starters your league needs at each position — FLEX and Superflex are tracked separately, so a 2-QB league and a 1-QB-plus-Superflex league are never treated as the same thing.</p>
     </div>
+
+    <button type="button" class="roster-toggle setup-section-toggle" style="margin-bottom:10px" onclick="toggleKeeperSection()" id="keeperSectionToggleBtn">🔒 Keeper Players ▾</button>
+    <div class="setup-collapse" id="keeperSection">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Keepers are unavailable in the live draft from the start, count as already rostered for their team, and consume that team's selection in the specified round. Any number of keepers per team is supported — there's no fixed limit.</p>
+      <div id="keeperListContainer" style="margin-bottom:12px"></div>
+      <div class="setup-grid" style="grid-template-columns:1.2fr 1.2fr 0.8fr 0.7fr auto;align-items:end">
+        <div class="setup-field"><label>Team</label><select id="keeperFormTeam"></select></div>
+        <div class="setup-field"><label>Player</label><input type="text" id="keeperFormPlayer" placeholder="Player name"/></div>
+        <div class="setup-field"><label>Position</label><select id="keeperFormPos"><option>QB</option><option>RB</option><option selected>WR</option><option>TE</option><option>K</option><option>DEF</option></select></div>
+        <div class="setup-field"><label>Round</label><input type="number" id="keeperFormRound" min="1" value="1"/></div>
+        <div class="setup-field"><button type="button" class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt);white-space:nowrap" onclick="addKeeperFromForm()" id="keeperFormSubmitBtn">Add Keeper</button></div>
+      </div>
+      <p id="keeperFormError" style="font-size:12px;color:#c0392b;margin-top:6px;display:none"></p>
+      <p style="font-size:11px;color:var(--text3);margin-top:8px;margin-bottom:14px" id="keeperFormHint"></p>
+    </div>
+
     <div class="btn-row" style="display:flex;gap:10px">
       <button class="hdr-btn" onclick="closeSetupModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="saveSetup()">Save Setup</button>
@@ -760,7 +779,9 @@ var draftState={
   nextPickId:1,
   draftType:'snake',
   numRounds:16,
-  rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION
+  rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION,
+  keepers:[],
+  nextKeeperId:1
 };
 var currentReassignId=null;
 var pendingManualPick=null;
@@ -803,6 +824,17 @@ function readSavedDraftState(){
     if(!parsed.rosterConstruction||typeof parsed.rosterConstruction!=='object'){
       parsed.rosterConstruction=DEFAULT_ROSTER_CONSTRUCTION;
     }
+    // keepers/nextKeeperId are likewise additive (keeper/frozen-player
+    // support). Older saved states default to keepers=[] -- identical
+    // to today's behavior for any league that doesn't use keepers, no
+    // schema-version bump required, same pattern as every prior
+    // additive field above.
+    if(!Array.isArray(parsed.keepers)) parsed.keepers=[];
+    if(!Number.isFinite(parsed.nextKeeperId)||parsed.nextKeeperId<1){
+      var maxKeeperId=0;
+      parsed.keepers.forEach(function(k){ if(k&&k.id>maxKeeperId)maxKeeperId=k.id; });
+      parsed.nextKeeperId=maxKeeperId+1;
+    }
     return parsed;
   }catch(e){
     return null;
@@ -815,7 +847,7 @@ function initDraftState(){
     draftState=saved;
     return;
   }
-  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16,rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION};
+  draftState={schemaVersion:DRAFT_SAVE_SCHEMA_VERSION,teams:[],myTeamId:null,draftLog:[],nextPickId:1,draftType:'snake',numRounds:16,rosterConstruction:DEFAULT_ROSTER_CONSTRUCTION,keepers:[],nextKeeperId:1};
   // No valid new-schema data on this browser. Check for legacy 'isd' data
   // ONLY to decide whether to show the one-time notice — it is never read
   // into draftState and never modified or deleted.
@@ -876,15 +908,93 @@ function resolveSlotForPick(pickNumber,numTeams,draftType,maxPickNumber){
   return computeSlotForPick(pickNumber,numTeams);
 }
 
+// ─── Keeper/frozen-player support: inverse of the slot resolution above ───
+//
+// Given a (round, slot) pair, return the overall pick number that slot
+// occupies. This is the direct algebraic inverse of computeSlotForPick/
+// computeSlotForPickLinear -- neither of those functions is modified;
+// this is new, separate math alongside them. Used ONLY to translate a
+// configured keeper's (team, round) into the specific pick number it
+// consumes -- never used for live pick-order resolution itself, which
+// remains entirely the job of resolveSlotForPick()/teamOnClock().
+//
+// Manual has no deterministic draft order at all (see resolveSlotForPick
+// above), so a keeper round has no meaningful overall-pick translation
+// in Manual mode -- returns null, same convention as the rest of the
+// engine uses for "not applicable in Manual."
+function pickNumberForRoundAndSlot(round,slot,numTeams,draftType){
+  if(!numTeams||!round||!slot||round<1||slot<1||slot>numTeams)return null;
+  if(draftType==='manual')return null;
+  var posInRound;
+  if(draftType==='linear'){
+    posInRound=slot;
+  }else{
+    // Snake (default): identical odd/even-round reversal rule as
+    // computeSlotForPick, applied in reverse.
+    posInRound=(round%2===1)?slot:(numTeams-slot+1);
+  }
+  return (round-1)*numTeams+posInRound;
+}
+
+// Resolves a single keeper entry's (teamId, round) to its overall pick
+// number. Null if the team can't be found (e.g. a stale keeper left
+// over after a team-count change) or if pickNumberForRoundAndSlot
+// itself returns null (Manual draft type, or invalid round/slot).
+function keeperPickNumber(keeperEntry){
+  if(!keeperEntry)return null;
+  var slot=draftState.teams.findIndex(function(t){return t.id===keeperEntry.teamId;})+1;
+  if(!slot)return null;
+  return pickNumberForRoundAndSlot(keeperEntry.round,slot,draftState.teams.length,draftState.draftType);
+}
+
+// Set of overall pick numbers currently claimed by ANY team's keeper,
+// keyed by pick number -> the keeper entry itself. Rebuilt fresh each
+// time it's needed (draft.html's established pattern -- see
+// buildDraftIndex() above -- rather than incrementally maintained).
+function buildKeeperPickNumberSet(){
+  var set={};
+  (draftState.keepers||[]).forEach(function(k){
+    var pn=keeperPickNumber(k);
+    if(pn)set[pn]=k;
+  });
+  return set;
+}
+
+// Player-identity index for keepers, in the same playerKey(name,pos)
+// keying scheme buildDraftIndex() already uses for draftLog. This
+// stays a separate helper (buildDraftIndex() below is ALSO updated to
+// fold keeper players into its own returned index, for player-
+// availability purposes specifically) -- see buildDraftIndex()'s
+// updated comment for why that unification happens there.
+function buildKeeperPlayerIndex(){
+  var idx={};
+  (draftState.keepers||[]).forEach(function(k){
+    idx[playerKey(k.player,k.pos)]=k;
+  });
+  return idx;
+}
+
 // Deliberately the MAX stored pickNumber + 1, not draftLog.length + 1 —
 // a Correct Historical Pick removal can leave a gap in the array without
 // renumbering anything after it, and the next live pick must still land
 // on the true next number, not silently reuse the gap.
+// Keeper-aware: the base candidate is still max(existing pickNumbers)+1
+// (unchanged formula), but a candidate that lands on ANY team's keeper
+// slot is not a real next live decision -- advance past it. Bounded by
+// totalDraftPicks() so a saved keeper referencing a round beyond the
+// current draft length (e.g. after Number of Rounds was reduced) can
+// never cause this to run away; it simply stops advancing at the
+// configured draft length, same as the rest of the engine already does.
 function nextPickNumber(){
-  if(!draftState.draftLog.length)return 1;
   var max=0;
   draftState.draftLog.forEach(function(e){ if(e.pickNumber>max)max=e.pickNumber; });
-  return max+1;
+  var candidate=max+1;
+  var keeperSlots=buildKeeperPickNumberSet();
+  var total=totalDraftPicks();
+  while(candidate<=total&&keeperSlots[candidate]){
+    candidate++;
+  }
+  return candidate;
 }
 // Configured draft length (Rounds feature). Applies identically to Snake,
 // Linear, and Manual — Manual still uses this to know when the draft is
@@ -912,6 +1022,17 @@ function teamOnClock(pickNumber){
 // again (0 = on the clock right now). Null if setup/my-team isn't set, if
 // draftType is 'manual' (no deterministic turn order to count against),
 // or if that many picks would fall beyond the configured draft length.
+// Keeper-aware: a pick number that resolves to my slot but is occupied
+// by a keeper (necessarily one of MY OWN keepers -- a keeper always
+// occupies its own team's slot, never another team's) is not a real
+// live turn. Skip past it and keep looking, same as the user's-own-
+// keeper example in the product spec ("your mathematically next turn
+// is your Round 4 keeper -- that is NOT your next live decision").
+// The loop bound is widened (never shrunk below the original numTeams*2)
+// to guarantee enough lookahead even when many keeper rounds are
+// scattered close together -- with no hard-coded max keeper count, a
+// team could in principle have more keepers than fit in the original
+// window before its next live turn resolves.
 function distanceToMySlot(fromPickNumber){
   if(!draftState.myTeamId||!draftState.teams.length)return null;
   if(draftState.draftType==='manual')return null;
@@ -919,20 +1040,61 @@ function distanceToMySlot(fromPickNumber){
   if(!mySlot)return null;
   var numTeams=draftState.teams.length;
   var total=totalDraftPicks();
-  for(var offset=0;offset<numTeams*2;offset++){
-    if(resolveSlotForPick(fromPickNumber+offset,numTeams,draftState.draftType,total)===mySlot)return offset;
+  var keeperSlots=buildKeeperPickNumberSet();
+  var maxOffset=Math.max(numTeams*2,total-fromPickNumber+1);
+  for(var offset=0;offset<maxOffset;offset++){
+    var pn=fromPickNumber+offset;
+    if(keeperSlots[pn])continue;
+    if(resolveSlotForPick(pn,numTeams,draftState.draftType,total)===mySlot)return offset;
   }
   return null;
 }
 
 // ─── draftLog lookup index — rebuilt once per render pass, so every
 // board row does an O(1) lookup instead of a scan. ───
+// Keeper-aware: folds keepers into the SAME returned index draftLog
+// entries already populate, using a synthetic id (a string, never a
+// real draftLog numeric id -- see nextPickId's usage -- so it can never
+// collide with or be mistaken for one) and isKeeper:true so every
+// existing consumer (board rows, availability filtering, the
+// logDraftPick existing-player check) sees a keeper player as
+// "unavailable" for free, without each needing its own separate keeper
+// lookup. draftState.keepers itself is NOT touched or duplicated here --
+// this is a transient, always-freshly-built lookup structure, same as
+// this function already was for draftLog alone.
 function buildDraftIndex(){
   var idx={};
   draftState.draftLog.forEach(function(e){
     idx[playerKey(e.player,e.pos)]=e;
   });
+  (draftState.keepers||[]).forEach(function(k){
+    var key=playerKey(k.player,k.pos);
+    if(idx[key])return; // a real draftLog entry always wins if one somehow exists for this identity
+    idx[key]={
+      id:'keeper-'+k.id,
+      pickNumber:keeperPickNumber(k),
+      player:k.player,
+      pos:k.pos,
+      teamId:k.teamId,
+      isKeeper:true,
+      round:k.round
+    };
+  });
   return idx;
+}
+
+// Shared by the List/Cards/Search board views (previously each inlined
+// its own identical ownership-badge markup -- extracted here, not
+// behaviorally changed for the non-keeper case, purely to add the
+// keeper branch in exactly one place). A keeper entry renders as a
+// plain, non-clickable label -- it must never wire up
+// openReassignModal(), which expects a real draftLog id.
+function renderOwnershipBadge(entry,isMine){
+  if(!entry)return '';
+  if(entry.isKeeper){
+    return '<span class="own-badge keeper-badge">\uD83D\uDD12 Keeper R'+entry.round+'</span>';
+  }
+  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
 }
 function teamNameById(id){
   var t=draftState.teams.find(function(x){return x.id===id;});
@@ -1206,6 +1368,14 @@ function logDraftPick(name,pos){
   var idx=buildDraftIndex();
   var k=playerKey(name,pos);
   var existing=idx[k];
+  if(existing&&existing.isKeeper){
+    // Keeper rows never render a clickable draft/own-badge action (see
+    // renderOwnershipBadge()), so this path shouldn't normally be
+    // reachable -- kept as a defensive no-op rather than falling into
+    // removePickById(), which has no real draftLog entry to remove for
+    // a keeper's synthetic id.
+    return;
+  }
   if(existing){
     removePickById(existing.id);
     return;
@@ -1319,6 +1489,8 @@ function openSetupModal(){
   updateSetupDraftTypeNote();
   renderSetupTeamNames();
   renderSetupRosterFields();
+  keeperEditingId=null;
+  renderKeeperSection();
   document.getElementById('setupModalBg').classList.add('on');
 }
 function updateSetupDraftTypeNote(){
@@ -1415,6 +1587,149 @@ function readSetupRosterFields(){
     obj[f.key]=(isNaN(v)||v<0)?DEFAULT_ROSTER_CONSTRUCTION[f.key]:v;
   });
   return obj;
+}
+
+// ─── Keeper Players section of the Setup modal (keeper/frozen-player
+// support) ───
+//
+// Deliberately edits draftState.keepers IMMEDIATELY on Add/Remove
+// (with its own saveDraftState() call), rather than staging changes
+// in the modal and committing only on "Save Setup" the way
+// teams/numRounds/rosterConstruction do. An unbounded, freely-growing
+// list of keepers doesn't fit that staging pattern cleanly, and keeper
+// entries are independent of each other (unlike the team list, where
+// changing team count requires reconciling against existing draftLog
+// entries) -- there's nothing to reconcile by deferring the write.
+var keeperEditingId=null;
+var keeperSectionOpen=false;
+function toggleKeeperSection(){
+  keeperSectionOpen=!keeperSectionOpen;
+  var section=document.getElementById('keeperSection');
+  var btn=document.getElementById('keeperSectionToggleBtn');
+  if(section)section.classList.toggle('open',keeperSectionOpen);
+  if(btn)btn.textContent='\uD83D\uDD12 Keeper Players '+(keeperSectionOpen?'\u25B4':'\u25BE');
+}
+function keeperFormTeamOptions(){
+  var sel=document.getElementById('keeperFormTeam');
+  if(!sel)return;
+  sel.innerHTML='';
+  draftState.teams.forEach(function(t){
+    var o=document.createElement('option');
+    o.value=t.id;o.textContent=t.name+(t.id===draftState.myTeamId?' (Me)':'');
+    sel.appendChild(o);
+  });
+}
+function setKeeperFormError(msg){
+  var el=document.getElementById('keeperFormError');
+  if(!el)return;
+  if(msg){ el.textContent=msg; el.style.display='block'; }
+  else{ el.style.display='none'; el.textContent=''; }
+}
+// Returns an error string, or null if the candidate keeper is valid.
+// excludeId lets an in-progress edit (Remove-then-refill) validate
+// against every OTHER keeper without tripping over its own prior entry.
+function keeperValidationError(candidate,excludeId){
+  var name=(candidate.player||'').trim();
+  if(!name)return 'Player name is required.';
+  if(!candidate.teamId)return 'A team is required.';
+  if(!Number.isFinite(candidate.round)||candidate.round<1){
+    return 'Keeper round must be a positive number.';
+  }
+  var maxRound=draftState.numRounds||16;
+  if(candidate.round>maxRound){
+    return 'Round '+candidate.round+' is beyond this league\'s configured draft length ('+maxRound+' rounds).';
+  }
+  var candKey=playerKey(name,candidate.pos);
+  var alreadyDrafted=draftState.draftLog.some(function(e){return playerKey(e.player,e.pos)===candKey;});
+  if(alreadyDrafted){
+    return name+' is already a live draftLog selection and cannot also be a keeper.';
+  }
+  var duplicatePlayer=(draftState.keepers||[]).some(function(k){
+    return k.id!==excludeId&&playerKey(k.player,k.pos)===candKey;
+  });
+  if(duplicatePlayer){
+    return name+' ('+candidate.pos+') is already assigned as a keeper to another team.';
+  }
+  var duplicateSlot=(draftState.keepers||[]).some(function(k){
+    return k.id!==excludeId&&k.teamId===candidate.teamId&&k.round===candidate.round;
+  });
+  if(duplicateSlot){
+    return 'This team already has a keeper assigned to Round '+candidate.round+'.';
+  }
+  return null;
+}
+function addKeeperFromForm(){
+  setKeeperFormError(null);
+  var teamId=document.getElementById('keeperFormTeam').value;
+  var player=document.getElementById('keeperFormPlayer').value.trim();
+  var pos=document.getElementById('keeperFormPos').value;
+  var round=parseInt(document.getElementById('keeperFormRound').value,10);
+  var candidate={teamId:teamId,player:player,pos:pos,round:round};
+  var err=keeperValidationError(candidate,keeperEditingId);
+  if(err){ setKeeperFormError(err); return; }
+  draftState.keepers.push({id:draftState.nextKeeperId++,teamId:teamId,player:player,pos:pos,round:round});
+  saveDraftState();
+  keeperEditingId=null;
+  document.getElementById('keeperFormPlayer').value='';
+  document.getElementById('keeperFormRound').value='1';
+  document.getElementById('keeperFormSubmitBtn').textContent='Add Keeper';
+  renderKeeperSection();
+  render();
+  refreshSageRecommendations();
+}
+function removeKeeper(id){
+  draftState.keepers=draftState.keepers.filter(function(k){return k.id!==id;});
+  saveDraftState();
+  if(keeperEditingId===id)keeperEditingId=null;
+  renderKeeperSection();
+  render();
+  refreshSageRecommendations();
+}
+// "Edit" = prefill the add-row from the existing entry and remove it --
+// the user adjusts and re-submits via the same Add Keeper action. Kept
+// deliberately simple (no separate edit modal) for the same reason the
+// rest of this section stays minimal: keeper entries are independent,
+// small, and don't need a heavier editing flow.
+function startEditKeeper(id){
+  var k=draftState.keepers.find(function(x){return x.id===id;});
+  if(!k)return;
+  keeperEditingId=id;
+  document.getElementById('keeperFormTeam').value=k.teamId;
+  document.getElementById('keeperFormPlayer').value=k.player;
+  document.getElementById('keeperFormPos').value=k.pos;
+  document.getElementById('keeperFormRound').value=String(k.round);
+  document.getElementById('keeperFormSubmitBtn').textContent='Save Changes';
+  draftState.keepers=draftState.keepers.filter(function(x){return x.id!==id;});
+  renderKeeperSection();
+}
+function renderKeeperSection(){
+  var container=document.getElementById('keeperListContainer');
+  if(!container)return;
+  keeperFormTeamOptions();
+  if(!draftState.teams.length){
+    container.innerHTML='<p style="font-size:12px;color:var(--text3)">Save your team names above first, then add keepers.</p>';
+    document.getElementById('keeperFormSubmitBtn').disabled=true;
+    return;
+  }
+  document.getElementById('keeperFormSubmitBtn').disabled=false;
+  var list=(draftState.keepers||[]).slice().sort(function(a,b){
+    if(a.teamId!==b.teamId)return a.teamId<b.teamId?-1:1;
+    return a.round-b.round;
+  });
+  if(!list.length){
+    container.innerHTML='<p style="font-size:12px;color:var(--text3)">No keepers configured for this league.</p>';
+    return;
+  }
+  container.innerHTML=list.map(function(k){
+    var teamName=teamNameById(k.teamId)||'(unknown team)';
+    var pn=keeperPickNumber(k);
+    var pickLabel=(typeof pn==='number')?(' · overall #'+pn):'';
+    return '<div class="keeper-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">'+
+      '<span style="flex:1">'+escAttr(teamName)+' — '+escAttr(k.player)+' ('+k.pos+') · Round '+k.round+pickLabel+'</span>'+
+      '<button type="button" class="hdr-btn" style="padding:3px 8px;font-size:10px" onclick="startEditKeeper('+k.id+')">Edit</button>'+
+      '<button type="button" class="hdr-btn" style="padding:3px 8px;font-size:10px;color:#c0392b;border-color:#ef9a9a" onclick="removeKeeper('+k.id+')">Remove</button>'+
+      '</div>';
+  }).join('');
 }
 function saveSetup(){
   var n=parseInt(document.getElementById('setupNumTeams').value);
@@ -1634,6 +1949,12 @@ function computeRosterNeed(){
     draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;}).forEach(function(e){
       if(Object.prototype.hasOwnProperty.call(filled,e.pos)) filled[e.pos]++;
     });
+    // Keepers count as already rostered from the very start of the
+    // draft -- this is what lets SAGE Roster Watch understand from
+    // Pick 1 that a kept position is already (partially) filled.
+    (draftState.keepers||[]).filter(function(k){return k.teamId===draftState.myTeamId;}).forEach(function(k){
+      if(Object.prototype.hasOwnProperty.call(filled,k.pos)) filled[k.pos]++;
+    });
   }
 
   // Dedicated slots first -- unambiguous, only the matching position
@@ -1670,12 +1991,26 @@ function toggleRosterDetail(){
   rosterDetailOpen=!rosterDetailOpen;
   renderMyRoster();
 }
+// Keeper-aware: merges the user's keepers alongside their draftLog
+// picks for display purposes ONLY -- draftState.keepers and
+// draftState.draftLog remain two completely separate arrays; nothing
+// here writes a keeper into draftLog or vice versa. Sorted by overall
+// pick number (falling back to the end of the list if a keeper's pick
+// number can't be resolved, e.g. Manual draft type) so the roster
+// reads in true draft order regardless of source.
 function renderMyRoster(){
   var el=document.getElementById('rosterPanel');
   if(!el)return;
   if(!draftState.myTeamId){ el.innerHTML=''; return; }
-  var mine=draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;})
-    .sort(function(a,b){return a.pickNumber-b.pickNumber;});
+  var liveMine=draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;})
+    .map(function(e){return {player:e.player,pos:e.pos,pickNumber:e.pickNumber,isKeeper:false,round:null};});
+  var keeperMine=(draftState.keepers||[]).filter(function(k){return k.teamId===draftState.myTeamId;})
+    .map(function(k){return {player:k.player,pos:k.pos,pickNumber:keeperPickNumber(k),isKeeper:true,round:k.round};});
+  var mine=liveMine.concat(keeperMine).sort(function(a,b){
+    var pa=(typeof a.pickNumber==='number')?a.pickNumber:Infinity;
+    var pb=(typeof b.pickNumber==='number')?b.pickNumber:Infinity;
+    return pa-pb;
+  });
 
   if(!mine.length){
     el.innerHTML='<div class="roster-hdr-row"><span class="roster-title">My Team — 0 Players</span></div>';
@@ -1692,7 +2027,9 @@ function renderMyRoster(){
   }).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
 
   var detailHtml=mine.map(function(e){
-    return '<span class="roster-chip">#'+e.pickNumber+' '+e.player+' ('+e.pos+')</span>';
+    var pickLabel=(typeof e.pickNumber==='number')?('#'+e.pickNumber+' '):'';
+    var keeperSuffix=e.isKeeper?(' · KEEPER R'+e.round):'';
+    return '<span class="roster-chip'+(e.isKeeper?' roster-chip-keeper':'')+'">'+pickLabel+e.player+' ('+e.pos+')'+keeperSuffix+'</span>';
   }).join('');
 
   el.innerHTML=
@@ -1929,10 +2266,10 @@ function render(){
         var injTitle=inj2&&inj2.part?' title="'+escAttr(inj2.part)+'"':'';
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
         var inCmp=cmpList.indexOf(p.key)!==-1;
-        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
         var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
         var tr=document.createElement('tr');
-        tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+        tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
         tr.id='row-'+p.key;
         tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=pos;
         tr.innerHTML=
@@ -1961,12 +2298,12 @@ function render(){
         var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
         var safeName=p.name.replace(/'/g,"\\'");
         var inCmp=cmpList.indexOf(p.key)!==-1;
-        var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+        var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
         var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
         var cardActionHtml='<div class="cactions">'+leftAction+
           '<button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></div>';
         var card=document.createElement('div');
-        card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
+        card.className='pcard'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');card.id='card-'+p.key;
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
         card.innerHTML=
           '<div class="crank">#'+pr+'</div>'+
@@ -2030,10 +2367,10 @@ function renderAll(){
       var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
-      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
       var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
       var tr=document.createElement('tr');
-      tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+      tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
       tr.id='row-'+p.key;
       tr.dataset.name=p.name.toLowerCase();tr.dataset.team=p.team.toLowerCase();tr.dataset.pos=p.pos;
       tr.innerHTML=
@@ -2064,10 +2401,10 @@ function renderAll(){
       var injH=inj2?'<div class="ibadge '+inj2.cls+'" style="margin-top:4px;width:fit-content;display:inline-flex"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</div>':'';
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
-      var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+      var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
       var leftAction=dk?ownBadge:'<button class="cdraft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
       var card=document.createElement('div');
-      card.className='pcard'+(dk?(isMine?' mypick':' drafted'):'');card.id='card-'+p.key;
+      card.className='pcard'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');card.id='card-'+p.key;
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
       card.innerHTML=
         '<div class="crank">#'+pr+'</div>'+
@@ -2138,10 +2475,10 @@ function renderSearch(){
       '<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':
       '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
     var safeName=p.name.replace(/'/g,"\\'");
-    var ownBadge=dk?'<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'★ Mine':teamNameById(entry.teamId))+'</button>':'';
+    var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
     var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
     var tr=document.createElement('tr');
-    tr.className='prow'+(dk?(isMine?' mypick':' drafted'):'');
+    tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
     tr.id='srow-'+p.key;
     tr.innerHTML=
       '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
