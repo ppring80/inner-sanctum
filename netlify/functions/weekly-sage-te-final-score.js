@@ -12,8 +12,8 @@
 //   weekly-sage-te-confidence
 //   weekly-sage-player-matchup
 //
-// FIRST-PASS TE FINAL WEIGHTS
-// ---------------------------
+// TE SAGE v1 FINAL WEIGHTS
+// ------------------------
 //
 //   Role        55%
 //   Production  40%
@@ -21,25 +21,25 @@
 //
 // IMPORTANT
 // ---------
-// These final TE weights are PROVISIONAL.
+// These weights have been validated as predictive via a completed
+// 2025 regular-season historical backtest: Weeks 8-17 (10 weeks; the
+// requested Weeks 5-7 failed at retrieval time due to a missing
+// weekly-sage-te-snapshot Blobs cache entry for those weeks and were
+// excluded, not silently zero-filled), 381 clean TE player-week
+// observations, via weekly-sage-te-backtest.
 //
-// They are carried forward unchanged from the TE Phase 1 placeholder
-// specified before any TE component code was written. They are NOT the
-// result of a TE historical backtest -- no TE equivalent of the WR
-// weight-sensitivity analysis has been run yet. This mirrors exactly how
-// WR's own 50/40/10 started: a starting hypothesis for historical
-// validation, not a locked methodology. Do not treat 55/40/5 as
-// TE-calibrated until a TE backtest (weekly-sage-te-backtest across a
-// multi-week range) has actually been run and reviewed, the same way the
-// WR weights were checked via wr-weight-sensitivity.js.
+// Results: pooled SAGE-vs-actual correlation of Pearson ~0.36-0.42 and
+// Spearman ~0.41-0.45 depending on scoring system (standard/half-PPR/
+// PPR), with positive Role and Production component correlations
+// (~0.33-0.40) and a smaller positive Matchup correlation (~0.14).
 //
-// We will validate:
-//
-//   - Role / Production / Matchup weight sensitivity
-//   - relationship between SAGE score and actual fantasy outcome
-//   - ranking quality
-//   - score calibration
-//   - recommendation thresholds
+// This backtest does NOT constitute held-out robustness testing (no
+// train/test splits, no decision bar) and does NOT represent weight
+// optimization -- no alternative Role/Production/Matchup combination
+// has been evaluated against this or any other TE data. 55/40/5 is
+// confirmed predictive, not confirmed optimal. Do not describe these
+// weights as robustness-validated or as superior to any untested
+// alternative.
 //
 // The final score uses CONFIDENCE-ADJUSTED Role and Production.
 //
@@ -109,9 +109,10 @@ const MATCHUP_FUNCTION =
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-// PROVISIONAL -- pending TE historical validation. See the header comment
-// above. Not derived from a TE backtest; carried forward from the Phase 1
-// specification as a starting hypothesis only.
+// Validated as predictive via a completed 2025 regular-season backtest
+// (Weeks 8-17, 381 clean observations). See the header comment above.
+// Not held-out robustness tested and not weight-optimized -- no
+// alternative Role/Production/Matchup combination has been evaluated.
 const TE_WEIGHTS = {
   role:
     0.55,
@@ -121,6 +122,86 @@ const TE_WEIGHTS = {
 
   matchup:
     0.05
+};
+
+/*
+  Validation evidence for the TE SAGE v1 weights, sourced directly
+  from a weekly-sage-te-backtest run against the 2025 regular season.
+  Weeks 5-7 failed at retrieval time (missing weekly-sage-te-snapshot
+  cache entry for those weeks) and are excluded here, not silently
+  zero-filled -- the evaluated window is Weeks 8-17 only. This is
+  descriptive backtest evidence, not held-out robustness testing and
+  not a weight-optimization result.
+*/
+const TE_VALIDATION_EVIDENCE = {
+  method:
+    "weekly-sage-te-backtest",
+
+  season:
+    "2025",
+
+  seasonType:
+    "reg",
+
+  weeksRequested:
+    "5-17",
+
+  weeksEvaluated:
+    "8-17",
+
+  weeksExcluded: {
+    weeks:
+      "5-7",
+
+    reason:
+      "Missing weekly-sage-te-snapshot cache entry for these weeks at retrieval time."
+  },
+
+  observations:
+    381,
+
+  correlations: {
+    standard: {
+      pearson:
+        0.364,
+
+      spearman:
+        0.414
+    },
+
+    halfPPR: {
+      pearson:
+        0.4,
+
+      spearman:
+        0.432
+    },
+
+    ppr: {
+      pearson:
+        0.422,
+
+      spearman:
+        0.446
+    }
+  },
+
+  componentCorrelations: {
+    role:
+      "0.335-0.396 across scoring systems",
+
+    production:
+      "0.354-0.400 across scoring systems",
+
+    matchup:
+      "0.141-0.145 across scoring systems"
+  },
+
+  robustnessTestingPerformed:
+    false,
+
+  weightOptimizationPerformed:
+    false
 };
 
 const NEUTRAL_BASELINE =
@@ -651,8 +732,9 @@ function buildExplanation({
     `The confidence-adjusted components are ${roleAdjusted} for Role, ` +
     `${productionAdjusted} for Production, and ${matchupAdjusted} ` +
     `for the matchup against ${opponent}. ` +
-    `This provisional TE model weights Role at 55%, ` +
-    `Production at 40%, and Matchup at 5%.`
+    `This TE model weights Role at 55%, ` +
+    `Production at 40%, and Matchup at 5%, validated as predictive ` +
+    `via a completed 2025 Weeks 8-17 historical backtest.`
   );
 }
 
@@ -1130,7 +1212,7 @@ async function buildTeFinalScore({
               "te-sage-v1",
 
             status:
-              "Provisional pending TE historical weight validation.",
+              "Validated as predictive via a completed 2025 regular-season historical backtest (Weeks 8-17, 381 clean observations). No held-out robustness testing or weight optimization has been performed.",
 
             weights:
               TE_WEIGHTS,
@@ -1145,8 +1227,11 @@ async function buildTeFinalScore({
               "Score what the evidence says. Weight how much SAGE trusts the evidence.",
 
             important:
-              "The final score uses confidence-adjusted Role, Production, and Matchup components. Final TE weights are not yet validated -- 55/40/5 is the Phase 1 provisional placeholder, not a backtested result."
+              "The final score uses confidence-adjusted Role, Production, and Matchup components. TE weights (55/40/5) are supported by a completed 2025 Weeks 8-17 historical backtest (381 clean observations) confirming a positive predictive relationship. This does not represent held-out robustness testing, weight optimization, or evidence that 55/40/5 outperforms any untested alternative."
           },
+
+          validationEvidence:
+            TE_VALIDATION_EVIDENCE,
 
           components: {
             role: {
@@ -1279,7 +1364,7 @@ async function buildTeFinalScore({
               false,
 
             reason:
-              "Validate TE final-score weights and historical outcomes before mapping scores to START / FLEX / SIT recommendations."
+              "TE weights have backtest-confirmed predictive signal (2025 Weeks 8-17), but this endpoint does not itself assign START / FLEX / SIT recommendations -- see weekly-sage-te-leaderboard for threshold status."
           },
 
           nextStep: {
@@ -1287,7 +1372,7 @@ async function buildTeFinalScore({
               true,
 
             reason:
-              "Validate provisional TE SAGE scores against historical outcomes before locking Role / Production / Matchup weights."
+              "TE weights (55/40/5) are backtest-validated as predictive. They have not undergone held-out robustness testing or weight optimization against alternative configurations -- treat as stable but revisitable pending that additional evidence."
           },
 
           architecture: {
@@ -1332,7 +1417,7 @@ async function buildTeFinalScore({
             peerPopulation:
               "weekly-sage-te-snapshot",
 
-            provisionalWeights:
+            activeWeights:
               TE_WEIGHTS
           }
         };
