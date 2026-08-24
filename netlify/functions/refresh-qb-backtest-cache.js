@@ -7,9 +7,16 @@
 // Build one already-proven historical QB backtest block and cache the
 // COMPLETE result in Netlify Blobs.
 //
-// This prevents research endpoints such as
-// weekly-sage-qb-weight-sensitivity.js from rebuilding hundreds of
-// player-week observations every time they run.
+// IMPORTANT ARCHITECTURE CHANGE
+// -----------------------------
+// The backtest is executed IN PROCESS by requiring
+// weekly-sage-qb-backtest.js and invoking its handler directly.
+//
+// We deliberately DO NOT fetch the deployed backtest endpoint over HTTP.
+// The direct historical block calls (4-7, 8-14, 15-17) have already been
+// proven to work. The previous cache-writer version added another
+// Lambda-to-Lambda HTTP hop, which introduced enough overhead to hit
+// Netlify's execution limit.
 //
 // STORE
 // -----
@@ -37,11 +44,12 @@ const {
   getStore
 } = require("@netlify/blobs");
 
+const {
+  handler: qbBacktestHandler
+} = require("./weekly-sage-qb-backtest.js");
+
 const DEFAULT_SEASON_TYPE =
   "reg";
-
-const BACKTEST_FUNCTION =
-  "weekly-sage-qb-backtest";
 
 const STORE_NAME =
   "qb-backtest";
@@ -70,95 +78,42 @@ function jsonResponse(
   };
 }
 
-function getBaseUrl(
-  event
+function parseHandlerBody(
+  response
 ) {
-  const headers =
-    event.headers ||
-    {};
-
-  const proto =
-    headers[
-      "x-forwarded-proto"
-    ] ||
-    headers[
-      "X-Forwarded-Proto"
-    ] ||
-    "https";
-
-  const host =
-    headers.host ||
-    headers.Host;
-
   if (
-    !host
+    !response ||
+    typeof response !==
+      "object"
   ) {
-    throw new Error(
-      "Could not determine host."
-    );
+    return null;
   }
 
-  return (
-    `${proto}://${host}`
-  );
-}
+  if (
+    typeof response.body ===
+      "object" &&
+    response.body !==
+      null
+  ) {
+    return response.body;
+  }
 
-function buildUrl({
-  baseUrl,
-  functionName,
-  params
-}) {
-  const query =
-    new URLSearchParams(
-      params
-    ).toString();
-
-  return (
-    `${baseUrl}/.netlify/functions/${functionName}` +
-    `?${query}`
-  );
-}
-
-async function fetchJsonWithStatus(
-  url
-) {
-  const response =
-    await fetch(
-      url,
-      {
-        method:
-          "GET",
-
-        headers: {
-          Accept:
-            "application/json"
-        }
-      }
-    );
-
-  let data =
-    null;
+  if (
+    typeof response.body !==
+      "string"
+  ) {
+    return null;
+  }
 
   try {
-    data =
-      await response
-        .json();
+    return JSON.parse(
+      response.body
+    );
   } catch (
     error
   ) {
-    data =
-      null;
+    return null;
   }
-
-  return {
-    ok:
-      response.ok,
-
-    status:
-      response.status,
-
-    data
-  };
 }
 
 function validateBacktest({
@@ -297,10 +252,70 @@ function validateBacktest({
   return problems;
 }
 
+async function buildBacktestInProcess({
+  event,
+  season,
+  startWeek,
+  endWeek,
+  seasonType
+}) {
+  /*
+    Preserve the incoming host / forwarded-proto headers because the
+    underlying backtest still needs its base URL when it calls the
+    weekly validation functions.
+
+    Only the query parameters are replaced.
+  */
+  const syntheticEvent = {
+    ...event,
+
+    httpMethod:
+      "GET",
+
+    queryStringParameters: {
+      season:
+        String(
+          season
+        ),
+
+      startWeek:
+        String(
+          startWeek
+        ),
+
+      endWeek:
+        String(
+          endWeek
+        ),
+
+      seasonType,
+
+      /*
+        Historical validation itself can be expensive.
+
+        Keep the inner backtest at concurrency 1 because that is the
+        exact execution shape already proven successfully for these
+        historical blocks.
+      */
+      concurrency:
+        "1"
+    }
+  };
+
+  return qbBacktestHandler(
+    syntheticEvent
+  );
+}
+
 exports.handler =
   async function (
     event
   ) {
+    /*
+      Required for Netlify Blobs in classic Lambda-compatible runtime.
+
+      Must occur before getStore().
+    */
     connectLambda(
       event
     );
@@ -392,57 +407,65 @@ exports.handler =
       `block:${season}:${startWeek}:${endWeek}:${seasonType}`;
 
     try {
-      const baseUrl =
-        getBaseUrl(
-          event
-        );
+      /*
+        STEP 1
+        ------
+        Execute weekly-sage-qb-backtest IN PROCESS.
 
-      const url =
-        buildUrl({
-          baseUrl,
+        This removes the unnecessary:
+          cache-writer Lambda
+              ->
+          HTTP
+              ->
+          backtest Lambda
 
-          functionName:
-            BACKTEST_FUNCTION,
-
-          params: {
-            season,
-
-            startWeek:
-              String(
-                startWeek
-              ),
-
-            endWeek:
-              String(
-                endWeek
-              ),
-
-            seasonType,
-
-            concurrency:
-              "1"
-          }
+        boundary that caused the prior 502.
+      */
+      const result =
+        await buildBacktestInProcess({
+          event,
+          season,
+          startWeek,
+          endWeek,
+          seasonType
         });
 
-      const result =
-        await fetchJsonWithStatus(
-          url
+      const statusCode =
+        Number(
+          result &&
+          result.statusCode
+        );
+
+      const backtest =
+        parseHandlerBody(
+          result
         );
 
       if (
-        !result.ok
+        !Number.isFinite(
+          statusCode
+        ) ||
+        statusCode <
+          200 ||
+        statusCode >=
+          300
       ) {
         const detail =
-          result.data &&
+          backtest &&
           (
-            result.data.detail ||
-            result.data.error
+            backtest.detail ||
+            backtest.error
           )
             ? (
-                result.data.detail ||
-                result.data.error
+                backtest.detail ||
+                backtest.error
               )
-            : `HTTP ${result.status}`;
+            : `Backtest handler returned status ${statusCode || "unknown"}.`;
+
+        console.error(
+          `refresh-qb-backtest-cache: in-process backtest failed for ${key}:`,
+          detail
+        );
 
         return jsonResponse(
           502,
@@ -465,16 +488,18 @@ exports.handler =
               key,
 
             error:
-              "Could not build Weekly SAGE QB backtest block.",
+              "Could not build Weekly SAGE QB backtest block in process.",
 
             detail
           }
         );
       }
 
-      const backtest =
-        result.data;
-
+      /*
+        STEP 2
+        ------
+        Never cache an incomplete historical block.
+      */
       const problems =
         validateBacktest({
           backtest,
@@ -520,6 +545,14 @@ exports.handler =
         );
       }
 
+      /*
+        STEP 3
+        ------
+        Cache the complete backtest exactly as produced.
+
+        No observations, scores, correlations, or historical outcomes
+        are changed here.
+      */
       const store =
         getStore({
           name:
@@ -556,11 +589,41 @@ exports.handler =
           observations:
             backtest.observations.length,
 
+          weeksRetrieved:
+            backtest.population &&
+            backtest.population
+              .weeksRetrieved !==
+              undefined
+              ? backtest.population
+                  .weeksRetrieved
+              : null,
+
+          weeklyFailures:
+            backtest.population &&
+            backtest.population
+              .weeklyFailures !==
+              undefined
+              ? backtest.population
+                  .weeklyFailures
+              : null,
+
+          retrievalFailures:
+            backtest.population &&
+            backtest.population
+              .retrievalFailures !==
+              undefined
+              ? backtest.population
+                  .retrievalFailures
+              : null,
+
           blobStore:
             STORE_NAME,
 
           blobKey:
-            key
+            key,
+
+          execution:
+            "in-process weekly-sage-qb-backtest"
         }
       );
     } catch (
