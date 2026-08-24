@@ -27,7 +27,14 @@
 //
 // IMPORTANT
 // ---------
-// This is sensitivity analysis, not model selection.
+// This is sensitivity analysis, not robustness validation and not a
+// final weight selection engine.
+//
+// It reports how alternative weight combinations would score against
+// the SAME frozen historical sample the current weights were also
+// evaluated against -- it does not use held-out/train-test splits,
+// does not apply a predetermined decision bar, and does not pick a
+// winner. A human must review the comparisons and decide.
 //
 // With a small historical sample, the best-performing weight
 // configuration can easily be noise.
@@ -52,7 +59,16 @@ const CACHE_CONTROL =
 /*
   Candidate weight configurations.
 
-  CURRENT remains the deployed SAGE architecture.
+  CURRENT reflects the deployed RB SAGE v2 production weights
+  (55/40/5), selected after an earlier sensitivity pass against this
+  same endpoint. It replaced the prior RB SAGE v1 baseline (45/35/20),
+  which is no longer deployed and is not labeled "current" here.
+
+  NOTE: because CURRENT is now 55/40/5, it is numerically identical
+  to the "minimal_matchup" candidate below. Both entries are kept
+  per the existing candidate set -- "minimal_matchup" is left
+  unmodified rather than removed or merged, since this file's
+  candidate list is otherwise untouched.
 
   The other configurations are diagnostic alternatives only.
 */
@@ -65,13 +81,13 @@ const WEIGHT_SETS = [
       "Current",
 
     role:
-      0.45,
+      0.55,
 
     production:
-      0.35,
+      0.40,
 
     matchup:
-      0.20
+      0.05
   },
 
   {
@@ -1270,7 +1286,8 @@ exports.handler =
       }
 
       /*
-        Add comparison against current 45 / 35 / 20.
+        Add comparison against the deployed RB SAGE v2 current
+        configuration (55/40/5).
 
         Current itself receives zeros.
       */
@@ -1325,13 +1342,13 @@ exports.handler =
 
             currentWeights: {
               role:
-                0.45,
+                0.55,
 
               production:
-                0.35,
+                0.40,
 
               matchup:
-                0.20
+                0.05
             },
 
             metrics: [
@@ -1360,7 +1377,7 @@ exports.handler =
             },
 
             important:
-              "This endpoint is sensitivity analysis only. It does not recommend or automatically select new SAGE weights."
+              "This endpoint is sensitivity analysis only, not robustness validation and not a final weight selection engine. It does not recommend or automatically select new SAGE weights."
           },
 
           population: {
@@ -1388,7 +1405,7 @@ exports.handler =
               true,
 
             reason:
-              "Compare alternative configurations against the current 45/35/20 architecture. Treat differences as diagnostic evidence only until a substantially larger historical sample is available."
+              "Compare alternative configurations against the current deployed 55/40/5 RB SAGE v2 architecture. This is sensitivity analysis, not robustness-tested or held-out evidence -- treat differences as diagnostic only until a substantially larger historical sample, and a held-out evaluation, are available."
           },
 
           provenance: {
