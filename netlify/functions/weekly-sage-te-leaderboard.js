@@ -36,10 +36,19 @@
 //
 // IMPORTANT
 // ---------
-// TE SAGE v1 weights remain provisional.
+// TE SAGE v1 weights (Role 55% / Production 40% / Matchup 5%) are
+// validated as predictive via a completed 2025 regular-season
+// historical backtest: Weeks 8-17 (10 weeks; the requested Weeks 5-7
+// failed at retrieval time due to a missing weekly-sage-te-snapshot
+// cache entry and were excluded, not silently zero-filled), 381 clean
+// TE player-week observations. They have NOT been through held-out
+// robustness testing or weight optimization against alternative
+// configurations.
 //
-// This leaderboard exposes the current forecast population for
-// historical validation. It does not validate or optimize weights.
+// This leaderboard exposes the current forecast population using
+// those backtest-confirmed weights. It does not itself perform
+// validation or weight comparison -- see weekly-sage-te-backtest
+// for that evidence.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -2105,7 +2114,7 @@ exports.handler =
               "te-sage-v1",
 
             status:
-              "Provisional pending TE historical weight validation. Recommendation thresholds below are inherited placeholders, not TE-calibrated.",
+              "TE SAGE v1 weights are validated as predictive via a completed 2025 regular-season historical backtest (Weeks 8-17, 381 clean observations). No held-out robustness testing or weight optimization has been performed. Recommendation thresholds below are a separate, still-unvalidated item.",
 
             ranking:
               "Descending Weekly SAGE TE Score.",
@@ -2129,7 +2138,7 @@ exports.handler =
               },
 
               status:
-                "PROVISIONAL: these are the WR-calibrated numeric thresholds (72/52) reused as a placeholder only. No TE historical validation has been performed -- do not represent these as TE-calibrated until a TE backtest across multiple weeks has been run and reviewed, the same way WR's were."
+                "PROVISIONAL: these are the WR-calibrated numeric thresholds (72/52) reused as a placeholder only. This is a threshold-calibration gap, not a weight-validation gap -- TE weights themselves are backtest-validated (see methodology.status above), but these thresholds have not been checked against real TE score distributions. Do not represent these as TE-calibrated until a TE-specific threshold analysis has been run and reviewed."
             },
 
             tieBreakers: [
