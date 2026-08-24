@@ -5,7 +5,11 @@
 // Reads the cached QB snapshot, removes bye/unresolved players before scoring,
 // scores active QBs through the existing in-process QB chain, and ranks them.
 // Missing/invalid QB snapshot cache fails fast with 503; there is no live rebuild.
-// START/FLEX/SIT thresholds are provisional placeholders until QB validation.
+// QB SAGE v2 scoring weights (Role 25% / Production 55% / Matchup 20%) are
+// historically validated via 2025 regular-season held-out robustness testing.
+// START/FLEX/SIT score thresholds (72/52) remain separately calibrated
+// placeholders inherited from prior positions -- they have not themselves
+// been recalibrated against the v2 score distribution.
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { buildQbFinalScore } = require("./weekly-sage-qb-final-score.js");
@@ -1653,10 +1657,10 @@ exports.handler =
 
           methodology: {
             modelVersion:
-              "qb-sage-v1",
+              "qb-sage-v2",
 
             status:
-              "Provisional pending QB historical validation. Recommendation thresholds are placeholders, not QB-calibrated.",
+              "QB SAGE v2 uses historically validated scoring weights from 2025 regular-season held-out robustness testing. Recommendation thresholds remain separately calibrated.",
 
             ranking:
               "Descending Weekly SAGE QB Score.",
@@ -1698,7 +1702,7 @@ exports.handler =
 
           architecture: {
             modelVersion:
-              "qb-sage-v1",
+              "qb-sage-v2",
 
             populationSource:
               "weekly-sage-qb-snapshot",
