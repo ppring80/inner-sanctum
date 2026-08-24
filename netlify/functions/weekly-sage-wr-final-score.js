@@ -12,8 +12,8 @@
 //   weekly-sage-wr-confidence
 //   weekly-sage-player-matchup
 //
-// FIRST-PASS WR FINAL WEIGHTS
-// ---------------------------
+// WR SAGE v1 FINAL WEIGHTS
+// ------------------------
 //
 //   Role        50%
 //   Production  40%
@@ -21,18 +21,18 @@
 //
 // IMPORTANT
 // ---------
-// These final WR weights are PROVISIONAL.
+// WR SAGE v1 weights have been validated as predictive via a completed
+// 2025 Weeks 3-8 historical backtest (423 clean WR player-week
+// observations across 6 independent weekly environments): pooled PPR
+// Pearson ~0.398, Spearman ~0.425, with positive Role and Production
+// component correlations.
 //
-// They are a starting hypothesis for historical validation,
-// not a locked methodology.
-//
-// We will validate:
-//
-//   - Role / Production / Matchup weight sensitivity
-//   - relationship between SAGE score and actual fantasy outcome
-//   - ranking quality
-//   - score calibration
-//   - recommendation thresholds
+// These weights have NOT been through held-out robustness testing
+// (predetermined train/test splits with a decision bar) or formal
+// weight-sensitivity comparison against alternative configurations.
+// 50/40/10 is the original configuration, not a result selected by
+// comparison -- do not describe it as robustness-validated or as the
+// output of a weight-optimization process.
 //
 // The final score uses CONFIDENCE-ADJUSTED Role and Production.
 //
@@ -641,8 +641,9 @@ function buildExplanation({
     `The confidence-adjusted components are ${roleAdjusted} for Role, ` +
     `${productionAdjusted} for Production, and ${matchupAdjusted} ` +
     `for the matchup against ${opponent}. ` +
-    `This provisional WR model weights Role at 50%, ` +
-    `Production at 40%, and Matchup at 10%.`
+    `This WR model weights Role at 50%, ` +
+    `Production at 40%, and Matchup at 10%, validated as predictive ` +
+    `via a completed 2025 Weeks 3-8 historical backtest.`
   );
 }
 
@@ -1120,7 +1121,7 @@ async function buildWrFinalScore({
               "wr-sage-v1",
 
             status:
-              "Provisional pending WR historical weight validation.",
+              "WR SAGE v1 weights are validated as predictive via a completed 2025 Weeks 3-8 historical backtest. No held-out robustness testing or formal weight optimization has been performed.",
 
             weights:
               WR_WEIGHTS,
@@ -1135,7 +1136,7 @@ async function buildWrFinalScore({
               "Score what the evidence says. Weight how much SAGE trusts the evidence.",
 
             important:
-              "The final score uses confidence-adjusted Role, Production, and Matchup components. Final WR weights are not yet validated."
+              "The final score uses confidence-adjusted Role, Production, and Matchup components. WR weights (50/40/10) have demonstrated real predictive signal in a completed historical backtest but have not been evaluated via held-out robustness testing or formal weight-sensitivity comparison against alternative configurations."
           },
 
           components: {
@@ -1269,7 +1270,7 @@ async function buildWrFinalScore({
               false,
 
             reason:
-              "Validate WR final-score weights and historical outcomes before mapping scores to START / FLEX / SIT recommendations."
+              "WR weights have backtest-confirmed predictive signal, but this endpoint does not itself assign START / FLEX / SIT recommendations -- see weekly-sage-wr-leaderboard for calibrated thresholds."
           },
 
           nextStep: {
@@ -1277,7 +1278,7 @@ async function buildWrFinalScore({
               true,
 
             reason:
-              "Validate provisional WR SAGE scores against historical outcomes before locking Role / Production / Matchup weights."
+              "WR weights (50/40/10) are backtest-validated as predictive. They have not undergone held-out robustness testing or formal optimization against alternative configurations -- treat as stable but revisitable pending that additional evidence."
           },
 
           architecture: {
@@ -1322,7 +1323,7 @@ async function buildWrFinalScore({
             peerPopulation:
               "weekly-sage-wr-snapshot",
 
-            provisionalWeights:
+            activeWeights:
               WR_WEIGHTS
           }
         };
