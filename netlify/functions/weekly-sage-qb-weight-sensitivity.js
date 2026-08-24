@@ -24,15 +24,27 @@
 //   Production 40%
 //   Matchup     5%
 //
-// DEFAULT HISTORICAL BLOCKS
-// -------------------------
+// CACHED HISTORICAL BLOCKS
+// ------------------------
 //   Weeks 4-7
-//   Weeks 8-14
+//   Weeks 8-10
+//   Weeks 11-14
 //   Weeks 15-17
 //
-// The blocks are fetched in parallel so the outer function waits roughly
-// for the slowest successful backtest block rather than recomputing the
-// entire Week 4-17 window in one oversized request.
+// These four blocks reconstruct the complete practical Weeks 4-17
+// historical validation population without rebuilding any historical
+// week inside this endpoint.
+//
+// STORE
+// -----
+//   qb-backtest
+//
+// KEYS
+// ----
+//   block:${season}:4:7:${seasonType}
+//   block:${season}:8:10:${seasonType}
+//   block:${season}:11:14:${seasonType}
+//   block:${season}:15:17:${seasonType}
 //
 // GRID
 // ----
@@ -54,8 +66,17 @@
 //
 // ═══════════════════════════════════════════════════════════════════════
 
-const DEFAULT_SEASON_TYPE = "reg";
-const BACKTEST_FUNCTION = "weekly-sage-qb-backtest";
+const {
+  connectLambda,
+  getStore
+} = require("@netlify/blobs");
+
+const DEFAULT_SEASON_TYPE =
+  "reg";
+
+const STORE_NAME =
+  "qb-backtest";
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -77,11 +98,43 @@ const REFERENCE_GRID_LEADER = {
   matchup: 0.20
 };
 
-const DEFAULT_BLOCKS = [
-  { key: "early", startWeek: 4, endWeek: 7 },
-  { key: "middle", startWeek: 8, endWeek: 14 },
-  { key: "late", startWeek: 15, endWeek: 17 }
+const CACHED_BLOCKS = [
+  {
+    key: "early",
+    startWeek: 4,
+    endWeek: 7
+  },
+  {
+    key: "middle_a",
+    startWeek: 8,
+    endWeek: 10
+  },
+  {
+    key: "middle_b",
+    startWeek: 11,
+    endWeek: 14
+  },
+  {
+    key: "late",
+    startWeek: 15,
+    endWeek: 17
+  }
 ];
+
+const ANALYSIS_SEGMENTS = {
+  early: {
+    startWeek: 4,
+    endWeek: 7
+  },
+  middle: {
+    startWeek: 8,
+    endWeek: 14
+  },
+  late: {
+    startWeek: 15,
+    endWeek: 17
+  }
+};
 
 const GRID = {
   roleMin: 0.20,
@@ -93,188 +146,311 @@ const GRID = {
   step: 0.05
 };
 
-function nullableNum(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+function nullableNum(
+  value
+) {
+  const n =
+    Number(
+      value
+    );
+
+  return Number.isFinite(
+    n
+  )
+    ? n
+    : null;
 }
 
-function round(value, digits = 3) {
-  const n = Number(value);
+function round(
+  value,
+  digits = 3
+) {
+  const n =
+    Number(
+      value
+    );
 
-  if (!Number.isFinite(n)) {
+  if (
+    !Number.isFinite(
+      n
+    )
+  ) {
     return null;
   }
 
-  const factor = Math.pow(10, digits);
-
-  return Math.round((n + Number.EPSILON) * factor) / factor;
-}
-
-function jsonResponse(statusCode, body, cacheControl) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": cacheControl || "no-store"
-    },
-    body: JSON.stringify(body, null, 2)
-  };
-}
-
-function getBaseUrl(event) {
-  const headers = event.headers || {};
-  const proto =
-    headers["x-forwarded-proto"] ||
-    headers["X-Forwarded-Proto"] ||
-    "https";
-
-  const host = headers.host || headers.Host;
-
-  if (!host) {
-    throw new Error("Could not determine host.");
-  }
-
-  return `${proto}://${host}`;
-}
-
-function buildUrl({
-  baseUrl,
-  functionName,
-  params
-}) {
-  const query =
-    new URLSearchParams(
-      params
-    ).toString();
+  const factor =
+    Math.pow(
+      10,
+      digits
+    );
 
   return (
-    `${baseUrl}/.netlify/functions/${functionName}` +
-    `?${query}`
+    Math.round(
+      (
+        n +
+        Number.EPSILON
+      ) *
+      factor
+    ) /
+    factor
   );
 }
 
-async function fetchJsonWithStatus(
-  url
+function jsonResponse(
+  statusCode,
+  body,
+  cacheControl
 ) {
-  const response =
-    await fetch(
-      url,
-      {
-        method:
-          "GET",
+  return {
+    statusCode,
 
-        headers: {
-          Accept:
-            "application/json"
-        }
-      }
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        cacheControl ||
+        "no-store"
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
+}
+
+function blobKey({
+  season,
+  startWeek,
+  endWeek,
+  seasonType
+}) {
+  return (
+    `block:${season}:${startWeek}:${endWeek}:${seasonType}`
+  );
+}
+
+function validateCachedBacktest({
+  backtest,
+  season,
+  startWeek,
+  endWeek,
+  seasonType
+}) {
+  const problems =
+    [];
+
+  if (
+    !backtest ||
+    typeof backtest !==
+      "object"
+  ) {
+    problems.push(
+      "Cached backtest is missing or not an object."
     );
+
+    return problems;
+  }
+
+  if (
+    backtest.evidenceType !==
+      "weekly-sage-qb-backtest"
+  ) {
+    problems.push(
+      `Unexpected evidenceType: ${backtest.evidenceType}`
+    );
+  }
+
+  if (
+    String(
+      backtest.season
+    ) !==
+    String(
+      season
+    )
+  ) {
+    problems.push(
+      `Season mismatch: requested ${season}, got ${backtest.season}`
+    );
+  }
+
+  if (
+    backtest.seasonType !==
+    seasonType
+  ) {
+    problems.push(
+      `seasonType mismatch: requested ${seasonType}, got ${backtest.seasonType}`
+    );
+  }
+
+  const requestedWindow =
+    backtest.requestedWindow ||
+    {};
+
+  if (
+    Number(
+      requestedWindow.startWeek
+    ) !==
+    Number(
+      startWeek
+    )
+  ) {
+    problems.push(
+      `startWeek mismatch: expected ${startWeek}, got ${requestedWindow.startWeek}`
+    );
+  }
+
+  if (
+    Number(
+      requestedWindow.endWeek
+    ) !==
+    Number(
+      endWeek
+    )
+  ) {
+    problems.push(
+      `endWeek mismatch: expected ${endWeek}, got ${requestedWindow.endWeek}`
+    );
+  }
+
+  if (
+    !Array.isArray(
+      backtest.observations
+    ) ||
+    backtest.observations.length ===
+      0
+  ) {
+    problems.push(
+      "Cached backtest observations are empty or not an array."
+    );
+  }
+
+  const population =
+    backtest.population ||
+    {};
+
+  if (
+    Number(
+      population.retrievalFailures ||
+      0
+    ) !==
+    0
+  ) {
+    problems.push(
+      `Cached backtest has ${population.retrievalFailures} retrieval failure(s).`
+    );
+  }
+
+  if (
+    Number(
+      population.weeklyFailures ||
+      0
+    ) !==
+    0
+  ) {
+    problems.push(
+      `Cached backtest has ${population.weeklyFailures} weekly failure(s).`
+    );
+  }
+
+  if (
+    !backtest.nextStep ||
+    backtest.nextStep.ready !==
+      true
+  ) {
+    problems.push(
+      "Cached backtest nextStep.ready is not true."
+    );
+  }
+
+  return problems;
+}
+
+async function readCachedBlock({
+  store,
+  season,
+  seasonType,
+  block
+}) {
+  const key =
+    blobKey({
+      season,
+      startWeek:
+        block.startWeek,
+      endWeek:
+        block.endWeek,
+      seasonType
+    });
 
   let data =
     null;
 
   try {
     data =
-      await response
-        .json();
+      await store.get(
+        key,
+        {
+          type:
+            "json"
+        }
+      );
   } catch (
     error
   ) {
-    data =
-      null;
+    return {
+      ok:
+        false,
+
+      block,
+
+      blobKey:
+        key,
+
+      error:
+        error &&
+        error.message
+          ? error.message
+          : String(
+              error
+            )
+    };
   }
-
-  return {
-    ok:
-      response.ok,
-
-    status:
-      response.status,
-
-    data
-  };
-}
-
-function errorMessage(
-  result
-) {
-  if (
-    !result
-  ) {
-    return (
-      "Unknown backtest retrieval failure."
-    );
-  }
-
-  const data =
-    result.data ||
-    {};
-
-  const detail =
-    data.detail ||
-    data.error ||
-    `HTTP ${result.status}`;
 
   if (
-    typeof detail ===
-    "string"
+    !data
   ) {
-    return detail;
+    return {
+      ok:
+        false,
+
+      block,
+
+      blobKey:
+        key,
+
+      error:
+        "Cached QB backtest block is missing."
+    };
   }
 
-  try {
-    return JSON.stringify(
-      detail
-    );
-  } catch (
-    error
-  ) {
-    return String(
-      detail
-    );
-  }
-}
-
-async function fetchBacktestBlock({
-  baseUrl,
-  season,
-  seasonType,
-  block
-}) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        BACKTEST_FUNCTION,
-
-      params: {
-        season,
-
-        startWeek:
-          String(
-            block.startWeek
-          ),
-
-        endWeek:
-          String(
-            block.endWeek
-          ),
-
-        seasonType,
-
-        concurrency:
-          "1"
-      }
+  const problems =
+    validateCachedBacktest({
+      backtest:
+        data,
+      season,
+      startWeek:
+        block.startWeek,
+      endWeek:
+        block.endWeek,
+      seasonType
     });
 
-  const result =
-    await fetchJsonWithStatus(
-      url
-    );
-
   if (
-    !result.ok
+    problems.length >
+    0
   ) {
     return {
       ok:
@@ -282,57 +458,13 @@ async function fetchBacktestBlock({
 
       block,
 
-      status:
-        result.status,
+      blobKey:
+        key,
 
       error:
-        errorMessage(
-          result
-        )
-    };
-  }
+        "Cached QB backtest block failed completeness validation.",
 
-  const data =
-    result.data;
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-qb-backtest"
-  ) {
-    return {
-      ok:
-        false,
-
-      block,
-
-      status:
-        502,
-
-      error:
-        "Unexpected Weekly SAGE QB backtest schema."
-    };
-  }
-
-  if (
-    !data.nextStep ||
-    data.nextStep.ready !==
-      true
-  ) {
-    return {
-      ok:
-        false,
-
-      block,
-
-      status:
-        422,
-
-      error:
-        data.nextStep &&
-        data.nextStep.reason
-          ? data.nextStep.reason
-          : "Backtest block was not ready."
+      problems
     };
   }
 
@@ -341,6 +473,9 @@ async function fetchBacktestBlock({
       true,
 
     block,
+
+    blobKey:
+      key,
 
     data
   };
@@ -1114,32 +1249,6 @@ function segmentAnalysis(
   observations,
   weights
 ) {
-  const segments = {
-    early: {
-      startWeek:
-        4,
-
-      endWeek:
-        7
-    },
-
-    middle: {
-      startWeek:
-        8,
-
-      endWeek:
-        14
-    },
-
-    late: {
-      startWeek:
-        15,
-
-      endWeek:
-        17
-    }
-  };
-
   const output =
     {};
 
@@ -1149,7 +1258,7 @@ function segmentAnalysis(
       segment
     ] of
     Object.entries(
-      segments
+      ANALYSIS_SEGMENTS
     )
   ) {
     const rows =
@@ -2002,6 +2111,10 @@ exports.handler =
   async function (
     event
   ) {
+    connectLambda(
+      event
+    );
+
     if (
       event.httpMethod &&
       event.httpMethod !==
@@ -2072,27 +2185,29 @@ exports.handler =
     }
 
     try {
-      const baseUrl =
-        getBaseUrl(
-          event
-        );
-
       /*
         STEP 1
         ------
-        Retrieve the three already-proven historical backtest blocks
-        in parallel.
+        Read the already-proven historical QB backtest blocks directly
+        from Netlify Blobs.
 
-        Each block itself preserves the no-look-ahead pipeline.
+        No historical validation or player-season computation happens
+        inside this endpoint.
       */
+      const store =
+        getStore({
+          name:
+            STORE_NAME
+        });
+
       const blockResults =
         await Promise.all(
-          DEFAULT_BLOCKS.map(
+          CACHED_BLOCKS.map(
             function (
               block
             ) {
-              return fetchBacktestBlock({
-                baseUrl,
+              return readCachedBlock({
+                store,
                 season,
                 seasonType,
                 block
@@ -2117,10 +2232,13 @@ exports.handler =
         0
       ) {
         return jsonResponse(
-          502,
+          503,
           {
             error:
-              "Could not retrieve all historical QB backtest blocks for weight sensitivity.",
+              "One or more cached QB backtest blocks are missing or incomplete.",
+
+            blobStore:
+              STORE_NAME,
 
             failures:
               failures.map(
@@ -2131,11 +2249,15 @@ exports.handler =
                     block:
                       failure.block,
 
-                    status:
-                      failure.status,
+                    blobKey:
+                      failure.blobKey,
 
                     error:
-                      failure.error
+                      failure.error,
+
+                    problems:
+                      failure.problems ||
+                      []
                   };
                 }
               ),
@@ -2145,7 +2267,7 @@ exports.handler =
                 false,
 
               reason:
-                "All three historical blocks must be clean before QB weight sensitivity can be interpreted."
+                "All four cached historical blocks must be present and complete before QB weight sensitivity can be interpreted."
             }
           }
         );
@@ -2167,7 +2289,106 @@ exports.handler =
           422,
           {
             error:
-              "No clean QB player-week observations were available."
+              "No clean QB player-week observations were available from the cached backtests."
+          }
+        );
+      }
+
+      /*
+        Guard against accidentally running sensitivity on a partial
+        historical population.
+
+        The proven Weeks 4-17 cache currently contains exactly
+        405 clean player-week observations.
+
+        This is not used to manipulate the sample. It is a diagnostic
+        safeguard so a missing/truncated block cannot silently produce
+        a misleading weight recommendation.
+      */
+      const expectedWeeks =
+        [];
+
+      for (
+        let week =
+          4;
+        week <=
+          17;
+        week +=
+          1
+      ) {
+        expectedWeeks.push(
+          week
+        );
+      }
+
+      const actualWeeks =
+        Array.from(
+          new Set(
+            observations.map(
+              function (
+                observation
+              ) {
+                return (
+                  Number(
+                    observation.seasonWeek
+                  )
+                );
+              }
+            )
+          )
+        )
+          .filter(
+            function (
+              week
+            ) {
+              return (
+                Number.isInteger(
+                  week
+                )
+              );
+            }
+          )
+          .sort(
+            function (
+              a,
+              b
+            ) {
+              return (
+                a -
+                b
+              );
+            }
+          );
+
+      const missingWeeks =
+        expectedWeeks.filter(
+          function (
+            week
+          ) {
+            return (
+              !actualWeeks.includes(
+                week
+              )
+            );
+          }
+        );
+
+      if (
+        missingWeeks.length >
+        0
+      ) {
+        return jsonResponse(
+          422,
+          {
+            error:
+              "Cached QB backtest population does not contain every expected Week 4-17 validation week.",
+
+            missingWeeks,
+
+            actualWeeks,
+
+            observations:
+              observations.length
           }
         );
       }
@@ -2192,9 +2413,6 @@ exports.handler =
           }
         );
 
-      /*
-        Control is already inside the grid, but verify it explicitly.
-      */
       let control =
         evaluated.find(
           function (
@@ -2331,7 +2549,7 @@ exports.handler =
             "weekly-sage-qb-weight-sensitivity",
 
           schemaVersion:
-            1,
+            2,
 
           generatedAt:
             new Date()
@@ -2379,13 +2597,19 @@ exports.handler =
               "No candidate is written back into qb-sage-v1"
             ],
 
+            cacheArchitecture:
+              "Reads four complete immutable historical QB backtest blocks from Netlify Blobs. No historical backtest or player-season computation occurs inside this endpoint.",
+
             important:
               "A top-ranked historical candidate is evidence for further validation, not automatic authorization to change production weights."
           },
 
           population: {
+            blobStore:
+              STORE_NAME,
+
             blocksRequested:
-              DEFAULT_BLOCKS,
+              CACHED_BLOCKS,
 
             blocksRetrieved:
               blockResults.length,
@@ -2396,30 +2620,11 @@ exports.handler =
             duplicatePlayerWeekRowsIgnored:
               collected.duplicateKeys.length,
 
-            weeks:
-              Array.from(
-                new Set(
-                  observations.map(
-                    function (
-                      observation
-                    ) {
-                      return (
-                        observation.seasonWeek
-                      );
-                    }
-                  )
-                )
-              ).sort(
-                function (
-                  a,
-                  b
-                ) {
-                  return (
-                    a -
-                    b
-                  );
-                }
-              )
+            expectedWeeks,
+
+            actualWeeks,
+
+            missingWeeks
           },
 
           sourceBlocks:
@@ -2436,6 +2641,9 @@ exports.handler =
 
                   endWeek:
                     result.block.endWeek,
+
+                  blobKey:
+                    result.blobKey,
 
                   observations:
                     (
@@ -2455,6 +2663,12 @@ exports.handler =
                             .observations
                             .length
                         : null,
+
+                  generatedAt:
+                    result.data &&
+                    result.data.generatedAt
+                      ? result.data.generatedAt
+                      : null,
 
                   ready:
                     (
@@ -2487,18 +2701,24 @@ exports.handler =
               true,
 
             reason:
-              "QB weight-sensitivity grid is complete. Review whether the leader materially and consistently beats 55/40/5 across the full sample, early/middle/late segments, and weekly stability before considering a second-stage validation or production weight change."
+              "QB weight-sensitivity grid is complete on the full cached Weeks 4-17 population. Review whether the leader materially and consistently beats 55/40/5 across the full sample, early/middle/late segments, and weekly stability before considering a second-stage validation or production weight change."
           },
 
           architecture: {
             modelVersion:
               "qb-sage-v1",
 
-            backtestSource:
-              BACKTEST_FUNCTION,
+            backtestCacheStore:
+              STORE_NAME,
 
             historicalBlocks:
-              DEFAULT_BLOCKS,
+              CACHED_BLOCKS,
+
+            analysisSegments:
+              ANALYSIS_SEGMENTS,
+
+            recalculatesHistoricalBacktests:
+              false,
 
             recalculatesHistoricalComponents:
               false,
@@ -2521,7 +2741,10 @@ exports.handler =
               "55/40/5",
 
             sourceBacktest:
-              BACKTEST_FUNCTION,
+              "weekly-sage-qb-backtest",
+
+            cachedBy:
+              "refresh-qb-backtest-cache",
 
             roleAndProduction:
               "weekly-sage-qb-component-scores",
@@ -2551,7 +2774,7 @@ exports.handler =
         502,
         {
           error:
-            "Could not build Weekly SAGE QB weight sensitivity analysis.",
+            "Could not build Weekly SAGE QB weight sensitivity analysis from cached backtests.",
 
           detail:
             error &&
