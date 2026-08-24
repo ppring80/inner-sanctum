@@ -64,6 +64,17 @@
 //                   SAGE still evaluates every player and supplies the
 //                   recommendation/action/explanation; its categorical
 //                   code is used only as a secondary tie-break.
+//
+//     rosterContext: object                   OPTIONAL. Draft Command
+//                   Center's computeRosterNeed() output (configured
+//                   starting requirements, filled counts, remaining
+//                   dedicated/flex slots). Phase 1 (this addition) never
+//                   uses this to change ranking, code, or explanation --
+//                   it is read ONLY to decide whether to append an
+//                   additive, separate `rosterContextNote` to a
+//                   recommendation (see RESPONSE below). If omitted,
+//                   malformed, or inconclusive, behavior is byte-
+//                   identical to before this field existed.
 //   }
 //
 // ═══════════════════════════════════════════════════════════════════
@@ -79,12 +90,28 @@
 //         recommendation: "Take Now",
 //         code: "take-now",
 //         explanation: "...",
-//         reasons: ["...", "..."]
+//         reasons: ["...", "..."],
+//         rosterContextNote: "..." | null
 //       },
 //       ... up to 5
 //     ],
 //     degraded: [ {name, pos, missing: ["opportunity"|"context", ...]} ]
 //   }
+//
+// rosterContextNote (Phase 1 addition) is a SEPARATE, purely additive
+// field -- never merged into `reasons`, never allowed to influence
+// `code`/`explanation`/order. It is null unless: the recommended
+// player's position has zero remaining dedicated starting slots per
+// rosterContext, AND at least one other position still has an unmet
+// dedicated slot, AND a real evaluated candidate at that other position
+// exists in this same request's candidate pool. When present, its text
+// identifies that real candidate by name only -- it never quotes SAGE's
+// internal recommendation label for them (model-internals leakage), and
+// never explains why the recommended player was chosen over them (the
+// actual sort is ADP-primary, not a head-to-head value comparison
+// between the two, so any such explanation would misdescribe what
+// happened). No invented claim about draft-pool depth, and never framed
+// as something SAGE "already factored into" the ranking above.
 //
 // No raw opportunityProfile/marketProfile/scarcityProfile/contextProfile
 // object is ever sent to the browser -- only the already-plain-language
@@ -590,6 +617,166 @@ function evaluateCandidate(
   };
 }
 
+// ── Optional roster-context annotation (Phase 1, additive only) ────────
+//
+// Read-only, informational annotation layered ON TOP OF the already-
+// ranked/scored recommendations below. It NEVER changes which players
+// are recommended, their order, their SAGE code, or their explanation --
+// it can only ever add a separate, clearly-labeled note.
+//
+// IMPORTANT:
+// - Before this change, SAGE never read or considered rosterContext at
+//   all. This annotation is a new, separate layer added now -- it is
+//   not, and must never be described as, something SAGE "already did."
+// - The note identifies a real, already-evaluated candidate at the
+//   unmet position by name only. It never quotes that candidate's
+//   internal SAGE recommendation label to the customer, and never
+//   explains why the recommended player was chosen over them -- the
+//   actual sort is ADP-primary, not a head-to-head comparison between
+//   these two specific candidates, so no such explanation would be
+//   accurate.
+// - If rosterContext is missing, malformed, or doesn't support a
+//   confident read, this returns null and nothing is added. Behavior
+//   when rosterContext is absent is therefore unchanged from before
+//   this field existed.
+
+const ROSTER_POSITION_ORDER = [
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+  "K",
+  "DEF"
+];
+
+function isPlainObject(
+  value
+) {
+  return Boolean(
+    value &&
+    typeof value ===
+      "object" &&
+    !Array.isArray(
+      value
+    )
+  );
+}
+
+function buildRosterContextNote(
+  recommendedPos,
+  rosterContext,
+  evaluatedPool
+) {
+  if (
+    !isPlainObject(
+      rosterContext
+    ) ||
+    !isPlainObject(
+      rosterContext.remainingDedicated
+    )
+  ) {
+    return null;
+  }
+
+  const remaining =
+    rosterContext.remainingDedicated;
+
+  const normalizedRecommendedPos =
+    String(
+      recommendedPos ||
+      ""
+    ).toUpperCase();
+
+  const recommendedRemaining =
+    remaining[
+      normalizedRecommendedPos
+    ];
+
+  // Only speak up when the recommended position's dedicated starting
+  // slots are confirmed fully filled (exactly 0 remaining). Any other
+  // value -- including missing/unknown/undefined -- is treated as
+  // "cannot confirm satisfied" and produces no note.
+  if (
+    recommendedRemaining !==
+    0
+  ) {
+    return null;
+  }
+
+  const unmetPos =
+    ROSTER_POSITION_ORDER.find(
+      function (pos) {
+        return (
+          pos !==
+            normalizedRecommendedPos &&
+          Number.isFinite(
+            remaining[
+              pos
+            ]
+          ) &&
+          remaining[
+            pos
+          ] >
+            0
+        );
+      }
+    );
+
+  if (!unmetPos) {
+    return null;
+  }
+
+  const representative =
+    (
+      evaluatedPool ||
+      []
+    ).find(
+      function (e) {
+        return (
+          e &&
+          e.player &&
+          String(
+            e.player.pos ||
+            ""
+          ).toUpperCase() ===
+            unmetPos
+        );
+      }
+    );
+
+  if (
+    !representative ||
+    !representative.sage ||
+    !representative.sage.recommendation
+  ) {
+    return null;
+  }
+
+  // Consumer-facing wording deliberately avoids quoting SAGE's internal
+  // recommendation label (e.g. "Consider Now") for the OTHER position's
+  // candidate -- that reads as model-internals leakage to a customer.
+  // It also deliberately does NOT explain why the recommended player
+  // was chosen over this one (e.g. "because it sees stronger value"):
+  // the actual sort is ADP-primary, not a head-to-head value comparison
+  // between these two specific candidates, so any such explanation
+  // would misdescribe what the system actually did. It also does not
+  // suggest SAGE is recommending the alternative, and does not imply
+  // anything about that player's future availability. State the fact
+  // (this real, identified alternative exists) and stop there.
+  return (
+    "Your " +
+    unmetPos +
+    " slot is still open. " +
+    (
+      representative.player.name ||
+      "A player"
+    ) +
+    " (" +
+    unmetPos +
+    ") is currently available if you prefer to address that position now. This note is informational only and does not change the recommendation above."
+  );
+}
+
 // ── Handler ────────────────────────────────────────────────────────────
 
 exports.handler =
@@ -710,6 +897,15 @@ exports.handler =
 
     const nextUserPick =
       payload.nextUserPick;
+
+    // Phase 1 addition: read-only. Never validated/filtered like
+    // candidates/pools above -- buildRosterContextNote() does its own
+    // defensive shape-checking and simply returns null for anything it
+    // can't confidently use. Not touching this variable at all (e.g. if
+    // it's undefined) produces identical behavior to before this field
+    // existed.
+    const rosterContext =
+      payload.rosterContext;
 
     try {
       const opportunityStore =
@@ -853,7 +1049,18 @@ exports.handler =
                         0,
                         2
                       )
-                    : []
+                    : [],
+
+                // Phase 1 addition: purely additive, never influences
+                // recommendation/code/explanation/order above. null
+                // whenever rosterContext is absent or the conditions
+                // for a confident note aren't met.
+                rosterContextNote:
+                  buildRosterContextNote(
+                    e.player.pos,
+                    rosterContext,
+                    evaluated
+                  )
               };
             }
           );
@@ -905,5 +1112,8 @@ module.exports._test = {
   compareEvaluatedCandidates,
   codeRank,
   CODE_RANK,
-  isValidPlayerShape
+  isValidPlayerShape,
+  isPlainObject,
+  buildRosterContextNote,
+  ROSTER_POSITION_ORDER
 };
