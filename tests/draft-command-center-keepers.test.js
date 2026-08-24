@@ -255,7 +255,7 @@ test('user keeper Round 12: resolves to correct overall pick number', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
-  const k = { id: 1, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 };
+  const k = { id: 1, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 };
   assert.strictEqual(sandbox.keeperPickNumber(k), 120);
 });
 
@@ -265,7 +265,7 @@ test('multiple keepers for the same user resolve to independent, distinct pick n
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   const set = sandbox.buildKeeperPickNumberSet();
   assert.ok(set[40] && set[120]);
@@ -403,7 +403,7 @@ test('keeper counted in computeRosterNeed() filled positions from Pick 1', () =>
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   const rosterNeed = sandbox.computeRosterNeed();
   assert.strictEqual(rosterNeed.filled.WR, 2);
@@ -426,7 +426,7 @@ test('MY TEAM player count includes keepers (2 keepers + 1 live selection = 3 pl
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   sandbox.draftState.draftLog = [{ id: 1, pickNumber: 1, player: 'Live RB', pos: 'RB', teamId: 'team-01' }];
   sandbox.renderMyRoster();
@@ -444,7 +444,7 @@ test('rosterContext (computeRosterNeed output) correctly reflects keeper ownersh
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   const rc = sandbox.computeRosterNeed();
   assert.strictEqual(rc.filled.WR, 2);
@@ -610,7 +610,7 @@ test('FLAGSHIP: both user keepers unavailable from Pick 1', () => {
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
     { id: 3, teamId: 'team-02', player: 'Other Team Keeper A', pos: 'RB', round: 2 },
     { id: 4, teamId: 'team-05', player: 'Other Team Keeper B', pos: 'TE', round: 6 },
   ];
@@ -624,7 +624,7 @@ test('FLAGSHIP: both user keepers appear on My Team from Pick 1, labeled with ke
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   sandbox.renderMyRoster();
   const html = sandbox.document.getElementById('rosterPanel').innerHTML;
@@ -638,7 +638,7 @@ test('FLAGSHIP: rosterContext sees two WRs already rostered', () => {
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   assert.strictEqual(sandbox.computeRosterNeed().filled.WR, 2);
 });
@@ -684,7 +684,7 @@ test('FLAGSHIP: live selections continue populating draftLog normally; keepers n
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   sandbox.draftState.draftLog.push({ id: 1, pickNumber: 1, player: 'Live Pick One', pos: 'QB', teamId: 'team-01' });
   assert.strictEqual(sandbox.draftState.draftLog.length, 1);
