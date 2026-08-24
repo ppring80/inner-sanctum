@@ -254,6 +254,11 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-detail.open{display:flex}
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
 .roster-chip-keeper{border-style:dashed;font-weight:600}
+.keeper-player-results{position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:220px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,0.15)}
+.keeper-player-result-item{padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)}
+.keeper-player-result-item:last-child{border-bottom:none}
+.keeper-player-result-item:hover{background:var(--bg2)}
+.keeper-player-result-empty{padding:8px 10px;font-size:12px;color:var(--text3)}
 .sage-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:none}
 .sage-panel-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .sage-status{font-family:Lora,serif;font-size:12px;color:var(--text3);font-style:italic}
@@ -592,11 +597,15 @@ function checkOAuthSession() {
     <div class="setup-collapse" id="keeperSection">
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Keepers are unavailable in the live draft from the start, count as already rostered for their team, and consume that team's selection in the specified round. Any number of keepers per team is supported — there's no fixed limit.</p>
       <div id="keeperListContainer" style="margin-bottom:12px"></div>
-      <div class="setup-grid" style="grid-template-columns:1.2fr 1.2fr 0.8fr 0.7fr auto;align-items:end">
-        <div class="setup-field"><label>Team</label><select id="keeperFormTeam"></select></div>
-        <div class="setup-field"><label>Player</label><input type="text" id="keeperFormPlayer" placeholder="Player name"/></div>
-        <div class="setup-field"><label>Position</label><select id="keeperFormPos"><option>QB</option><option>RB</option><option selected>WR</option><option>TE</option><option>K</option><option>DEF</option></select></div>
-        <div class="setup-field"><label>Round</label><input type="number" id="keeperFormRound" min="1" value="1"/></div>
+      <div class="setup-grid" style="grid-template-columns:1.1fr 1.6fr 0.7fr auto;align-items:end">
+        <div class="setup-field"><label>Team</label><select id="keeperFormTeam" onchange="renderKeeperRoundOptions()"></select></div>
+        <div class="setup-field" style="position:relative">
+          <label>Player</label>
+          <input type="text" id="keeperFormPlayerSearch" placeholder="Type a player name…" autocomplete="off" oninput="onKeeperPlayerSearchInput()" onfocus="onKeeperPlayerSearchInput()" onblur="setTimeout(hideKeeperPlayerResults,150)"/>
+          <div id="keeperFormPlayerResults" class="keeper-player-results" style="display:none"></div>
+          <p id="keeperFormPosDisplay" style="font-size:10px;color:var(--text3);margin-top:3px;margin-bottom:0">&nbsp;</p>
+        </div>
+        <div class="setup-field"><label>Round</label><select id="keeperFormRound"></select></div>
         <div class="setup-field"><button type="button" class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt);white-space:nowrap" onclick="addKeeperFromForm()" id="keeperFormSubmitBtn">Add Keeper</button></div>
       </div>
       <p id="keeperFormError" style="font-size:12px;color:#c0392b;margin-top:6px;display:none"></p>
@@ -1490,7 +1499,11 @@ function openSetupModal(){
   renderSetupTeamNames();
   renderSetupRosterFields();
   keeperEditingId=null;
+  keeperFormSelectedPlayer=null;
+  var keeperSearchInput=document.getElementById('keeperFormPlayerSearch');
+  if(keeperSearchInput)keeperSearchInput.value='';
   renderKeeperSection();
+  updateKeeperFormPosDisplay();
   document.getElementById('setupModalBg').classList.add('on');
 }
 function updateSetupDraftTypeNote(){
@@ -1625,6 +1638,143 @@ function setKeeperFormError(msg){
   if(msg){ el.textContent=msg; el.style.display='block'; }
   else{ el.style.display='none'; el.textContent=''; }
 }
+
+// ─── Keeper Players setup-UI refinement (searchable player selector,
+// auto-derived position, Round dropdown) -- setup/form handling ONLY.
+// Reuses the SAME adpByPos player dataset draft.html already loads for
+// the board itself; no second player dataset is created. Every keeper
+// still ends up validated by the existing, unmodified
+// keeperValidationError() below -- these helpers only make it easier
+// to arrive at a correct, canonical candidate in the first place. ───
+
+var keeperFormSelectedPlayer=null; // {name,pos,team,key} | null
+
+// Flat, all-position player list drawn directly from the same
+// adpByPos data the board/SAGE already use. Rebuilt fresh each time
+// it's needed (same "no incremental cache" pattern already used by
+// buildDraftIndex()/buildAvailablePlayersSortedByAdp() elsewhere in
+// this file), not a second stored dataset.
+function allPlayersFlat(){
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){ merged.push(p); });
+  });
+  return merged;
+}
+
+// Player-identity eligibility only (drafted / already-kept-elsewhere).
+// Deliberately separate from, and does not call, keeperValidationError()
+// below -- that function is validated/tested as-is and untouched by
+// this pass; this is new, additional, narrower logic used only to
+// decide which players appear in the search results, evaluated before
+// a round has even been chosen. excludeKeeperId lets the keeper
+// currently being edited keep its own player selectable.
+function keeperPlayerIneligibilityReason(key,excludeKeeperId){
+  var alreadyDrafted=draftState.draftLog.some(function(e){return playerKey(e.player,e.pos)===key;});
+  if(alreadyDrafted)return 'already drafted';
+  var alreadyKept=(draftState.keepers||[]).some(function(k){
+    return k.id!==excludeKeeperId&&playerKey(k.player,k.pos)===key;
+  });
+  if(alreadyKept)return 'already a keeper';
+  return null;
+}
+
+function hideKeeperPlayerResults(){
+  var el=document.getElementById('keeperFormPlayerResults');
+  if(el)el.style.display='none';
+}
+
+function updateKeeperFormPosDisplay(){
+  var el=document.getElementById('keeperFormPosDisplay');
+  if(!el)return;
+  el.textContent=keeperFormSelectedPlayer?('Position: '+keeperFormSelectedPlayer.pos):'\u00A0';
+}
+
+var KEEPER_PLAYER_RESULTS_MAX=8;
+function onKeeperPlayerSearchInput(){
+  var input=document.getElementById('keeperFormPlayerSearch');
+  var resultsEl=document.getElementById('keeperFormPlayerResults');
+  if(!input||!resultsEl)return;
+  var query=input.value.trim().toLowerCase();
+  // If the currently selected player's name no longer matches what's
+  // typed, the selection is stale -- clear it so a half-edited search
+  // box can never silently submit the PREVIOUS selection's position.
+  if(keeperFormSelectedPlayer&&keeperFormSelectedPlayer.name.toLowerCase()!==input.value.trim().toLowerCase()){
+    keeperFormSelectedPlayer=null;
+    updateKeeperFormPosDisplay();
+  }
+  if(!query){
+    resultsEl.style.display='none';
+    resultsEl.innerHTML='';
+    return;
+  }
+  var matches=allPlayersFlat().filter(function(p){
+    return p.name.toLowerCase().indexOf(query)!==-1;
+  }).filter(function(p){
+    return !keeperPlayerIneligibilityReason(p.key,keeperEditingId);
+  }).slice(0,KEEPER_PLAYER_RESULTS_MAX);
+  if(!matches.length){
+    resultsEl.innerHTML='<div class="keeper-player-result-empty">No eligible players match.</div>';
+    resultsEl.style.display='block';
+    return;
+  }
+  resultsEl.innerHTML=matches.map(function(p){
+    return '<div class="keeper-player-result-item" onmousedown="selectKeeperPlayerFromResults(\''+p.key.replace(/'/g,"\\'")+'\')">'+
+      escAttr(p.name)+' \u2014 '+p.pos+' \u00B7 '+escAttr(p.team||'')+
+      '</div>';
+  }).join('');
+  resultsEl.style.display='block';
+}
+
+// onmousedown (not onclick) so this fires BEFORE the search input's own
+// blur handler would otherwise hide the results first.
+function selectKeeperPlayerFromResults(key){
+  var p=allPlayersFlat().find(function(x){return x.key===key;});
+  if(!p)return;
+  keeperFormSelectedPlayer={name:p.name,pos:p.pos,team:p.team,key:p.key};
+  var input=document.getElementById('keeperFormPlayerSearch');
+  if(input)input.value=p.name;
+  updateKeeperFormPosDisplay();
+  hideKeeperPlayerResults();
+}
+
+// Rounds already occupied by this team's OTHER keepers (excluding the
+// keeper currently being edited, if any) -- used only to gray out
+// options in the Round dropdown. keeperValidationError()'s own
+// duplicate-team+round check remains the authoritative backstop.
+function occupiedRoundsForTeam(teamId,excludeKeeperId){
+  var set={};
+  (draftState.keepers||[]).forEach(function(k){
+    if(k.teamId===teamId&&k.id!==excludeKeeperId)set[k.round]=true;
+  });
+  return set;
+}
+
+function renderKeeperRoundOptions(){
+  var teamSel=document.getElementById('keeperFormTeam');
+  var roundSel=document.getElementById('keeperFormRound');
+  if(!teamSel||!roundSel)return;
+  var teamId=teamSel.value;
+  var maxRound=draftState.numRounds||16;
+  var occupied=occupiedRoundsForTeam(teamId,keeperEditingId);
+  var previousValue=roundSel.value;
+  roundSel.innerHTML='';
+  var firstAvailable=null;
+  for(var r=1;r<=maxRound;r++){
+    var o=document.createElement('option');
+    o.value=String(r);
+    o.textContent='Round '+r+(occupied[r]?' (taken)':'');
+    if(occupied[r])o.disabled=true;
+    else if(firstAvailable===null)firstAvailable=r;
+    roundSel.appendChild(o);
+  }
+  if(previousValue&&!occupied[previousValue]&&parseInt(previousValue,10)<=maxRound){
+    roundSel.value=previousValue;
+  }else if(firstAvailable!==null){
+    roundSel.value=String(firstAvailable);
+  }
+}
+
 // Returns an error string, or null if the candidate keeper is valid.
 // excludeId lets an in-progress edit (Remove-then-refill) validate
 // against every OTHER keeper without tripping over its own prior entry.
@@ -1661,8 +1811,15 @@ function keeperValidationError(candidate,excludeId){
 function addKeeperFromForm(){
   setKeeperFormError(null);
   var teamId=document.getElementById('keeperFormTeam').value;
-  var player=document.getElementById('keeperFormPlayer').value.trim();
-  var pos=document.getElementById('keeperFormPos').value;
+  if(!keeperFormSelectedPlayer){
+    setKeeperFormError('Select a player from the list first.');
+    return;
+  }
+  // Player/pos always come from the canonical selected record --
+  // never from raw search-box text -- so the stored keeper object can
+  // never diverge from draft.html's own player identity/position data.
+  var player=keeperFormSelectedPlayer.name;
+  var pos=keeperFormSelectedPlayer.pos;
   var round=parseInt(document.getElementById('keeperFormRound').value,10);
   var candidate={teamId:teamId,player:player,pos:pos,round:round};
   var err=keeperValidationError(candidate,keeperEditingId);
@@ -1670,8 +1827,11 @@ function addKeeperFromForm(){
   draftState.keepers.push({id:draftState.nextKeeperId++,teamId:teamId,player:player,pos:pos,round:round});
   saveDraftState();
   keeperEditingId=null;
-  document.getElementById('keeperFormPlayer').value='';
-  document.getElementById('keeperFormRound').value='1';
+  keeperFormSelectedPlayer=null;
+  var searchInput=document.getElementById('keeperFormPlayerSearch');
+  if(searchInput)searchInput.value='';
+  updateKeeperFormPosDisplay();
+  hideKeeperPlayerResults();
   document.getElementById('keeperFormSubmitBtn').textContent='Add Keeper';
   renderKeeperSection();
   render();
@@ -1694,18 +1854,44 @@ function startEditKeeper(id){
   var k=draftState.keepers.find(function(x){return x.id===id;});
   if(!k)return;
   keeperEditingId=id;
-  document.getElementById('keeperFormTeam').value=k.teamId;
-  document.getElementById('keeperFormPlayer').value=k.player;
-  document.getElementById('keeperFormPos').value=k.pos;
-  document.getElementById('keeperFormRound').value=String(k.round);
+  // Look up the canonical player record from the same adpByPos data
+  // the search selector itself draws from, so editing shows exactly
+  // what re-selecting that player from the search box would produce.
+  // Falls back to a synthetic record (team unknown) if the player
+  // isn't found in the currently loaded pool -- e.g. between seasons
+  // -- so editing never breaks just because ADP data doesn't include
+  // that player right now.
+  var canonical=allPlayersFlat().find(function(p){return p.key===playerKey(k.player,k.pos);});
+  keeperFormSelectedPlayer=canonical?
+    {name:canonical.name,pos:canonical.pos,team:canonical.team,key:canonical.key}:
+    {name:k.player,pos:k.pos,team:null,key:playerKey(k.player,k.pos)};
+  var searchInput=document.getElementById('keeperFormPlayerSearch');
+  if(searchInput)searchInput.value=k.player;
+  updateKeeperFormPosDisplay();
+  hideKeeperPlayerResults();
   document.getElementById('keeperFormSubmitBtn').textContent='Save Changes';
+  // Same removal-during-edit mechanism as before this pass: the entry
+  // is removed from draftState.keepers now and only re-added on the
+  // next successful Add Keeper submission -- this is what already
+  // prevented a keeper from falsely conflicting with itself, and is
+  // left completely unchanged here.
   draftState.keepers=draftState.keepers.filter(function(x){return x.id!==id;});
+  // renderKeeperSection() rebuilds the Team <select> from scratch
+  // (keeperFormTeamOptions()), which resets its value -- so the team
+  // and round selections must be set AFTER it runs, not before. (This
+  // corrects a pre-existing ordering bug: the previous version of this
+  // function set .value before that rebuild and had it silently
+  // discarded.)
   renderKeeperSection();
+  document.getElementById('keeperFormTeam').value=k.teamId;
+  renderKeeperRoundOptions();
+  document.getElementById('keeperFormRound').value=String(k.round);
 }
 function renderKeeperSection(){
   var container=document.getElementById('keeperListContainer');
   if(!container)return;
   keeperFormTeamOptions();
+  renderKeeperRoundOptions();
   if(!draftState.teams.length){
     container.innerHTML='<p style="font-size:12px;color:var(--text3)">Save your team names above first, then add keepers.</p>';
     document.getElementById('keeperFormSubmitBtn').disabled=true;
