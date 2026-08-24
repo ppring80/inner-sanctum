@@ -36,10 +36,16 @@
 //
 // IMPORTANT
 // ---------
-// WR SAGE v1 weights remain provisional.
+// WR SAGE v1 weights (Role 50% / Production 40% / Matchup 10%) are
+// validated as predictive via a completed 2025 Weeks 3-8 historical
+// backtest (423 clean WR player-week observations). They have NOT
+// been through held-out robustness testing or formal weight-
+// sensitivity optimization against alternative configurations.
 //
-// This leaderboard exposes the current forecast population for
-// historical validation. It does not validate or optimize weights.
+// This leaderboard exposes the current forecast population using
+// those backtest-confirmed weights. It does not itself perform
+// validation or weight comparison -- see weekly-sage-wr-backtest
+// for that evidence.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -2105,7 +2111,7 @@ exports.handler =
               "wr-sage-v1",
 
             status:
-              "Provisional pending WR historical weight validation.",
+              "WR SAGE v1 weights are validated as predictive via a completed 2025 Weeks 3-8 historical backtest. No held-out robustness testing or formal weight optimization has been performed.",
 
             ranking:
               "Descending Weekly SAGE WR Score.",
@@ -2129,7 +2135,7 @@ exports.handler =
               },
 
               status:
-                "Initial WR consumer recommendation thresholds calibrated from saved 2025 Week 5 and Week 8 historical evidence."
+                "WR consumer recommendation thresholds calibrated from saved 2025 Week 5 and Week 8 historical evidence. Thresholds have not themselves been through held-out robustness testing."
             },
 
             tieBreakers: [
