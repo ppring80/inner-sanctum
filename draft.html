@@ -289,6 +289,19 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .sage-roster-watch-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:rgba(201,168,76,0.18);color:#8a6a10;border:1px solid rgba(201,168,76,0.35);white-space:nowrap;margin-left:8px}
 .sage-roster-watch-msg{font-family:Lora,serif;font-size:12px;color:#6a5a32;line-height:1.5;margin-top:3px}
 .sage-roster-watch-options{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8a7a4a;margin-top:3px}
+.sage-scope-notice{
+  margin-top:10px;
+  background:#fffbf0;
+  border:1px solid rgba(201,168,76,0.35);
+  border-left:3px solid var(--gold);
+  border-radius:0 6px 6px 0;
+  padding:8px 12px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.3px;
+  color:#8a6a10;
+}
 .sage-rec-extra{margin-top:6px}
 .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
 .setup-collapse{display:none}
@@ -1285,7 +1298,7 @@ function renderSagePanel(){
         '</div>';
     }
   }
-  html+='<div style="margin-top:8px;font-family:Lora,serif;font-size:10px;color:var(--text3);font-style:italic">SAGE ranks QB/RB/WR/TE only — don\'t forget K and DEF before your draft ends.</div>';
+  html+='<div class="sage-scope-notice">⚠ SAGE ranks QB/RB/WR/TE only — don\'t forget K and DEF before your draft ends.</div>';
   el.style.display='block';
   el.innerHTML=html;
 }
