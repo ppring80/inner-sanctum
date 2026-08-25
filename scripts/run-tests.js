@@ -39,6 +39,7 @@ const SUITES = [
   'tests/draft-roster-advisory.test.js',
   'tests/draft-command-center-keepers.test.js',
   'tests/draft-command-center-mock.test.js',
+  'tests/draft-command-center-reset.test.js',
 ];
 
 const results = [];
