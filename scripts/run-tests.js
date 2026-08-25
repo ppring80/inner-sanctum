@@ -36,6 +36,9 @@ const SUITES = [
   'tests/weekly-oauth-session.test.js',
   'tests/sage-recommend.test.js',
   'tests/draft-sage-integration.test.js',
+  'tests/draft-roster-advisory.test.js',
+  'tests/draft-command-center-keepers.test.js',
+  'tests/draft-command-center-mock.test.js',
 ];
 
 const results = [];
