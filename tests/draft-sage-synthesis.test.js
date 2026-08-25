@@ -888,6 +888,162 @@ eq(
   before
 );
 
+
+// ---------------------------------------
+// 22. Final explainability pass
+//     Decision logic unchanged; prose must
+//     surface the evidence that drove it.
+// ---------------------------------------
+
+r = buildRecommendation({
+  opportunityProfile: op('High Volume', 'Increasing Role'),
+  marketProfile: market('At Market', 'Market Says He May Return'),
+  scarcityProfile: scarcity('Low'),
+  contextProfile: context()
+});
+eq(
+  'strong + wait room still => Can Wait',
+  r.code,
+  'can-wait'
+);
+check(
+  'Can Wait explanation names increasing role',
+  /increasing role/i.test(r.explanation)
+);
+check(
+  'Can Wait explanation names room to wait',
+  /room to wait|remain available|next turn/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('High Volume', 'Stable Role'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context('Negative', 'Reduced', 'Not Applicable', 'Strong')
+});
+eq(
+  'strong + negative context still => Strong Consideration',
+  r.code,
+  'strong-consideration'
+);
+check(
+  'negative-context explanation names stable high-volume role',
+  /high-volume|stable role/i.test(r.explanation)
+);
+check(
+  'negative-context explanation exposes reduced/downside context',
+  /reduced role|adds downside|downside/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('Moderate Volume', 'Decreasing Role'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context()
+});
+eq(
+  'caution + timing pressure still => Consider Now',
+  r.code,
+  'consider-now'
+);
+check(
+  'caution-now explanation preserves caution',
+  /caution/i.test(r.explanation)
+);
+check(
+  'caution-now explanation states cost of waiting',
+  /waiting|next pick|next turn|scarcity/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('Role Player', 'Stable Role'),
+  marketProfile: market('Discount', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context('Positive', 'Improved', 'Not Applicable', 'Strong')
+});
+eq(
+  'weak + strong context + now pressure still => Consider Now',
+  r.code,
+  'consider-now'
+);
+check(
+  'weak-context-now explanation acknowledges limited role',
+  /role player/i.test(r.explanation)
+);
+check(
+  'weak-context-now explanation includes context upside',
+  /improved role|environment has improved|credible upside/i.test(r.explanation)
+);
+check(
+  'discount + gone explanation reconciles favorable price with wait risk',
+  /favorable price/i.test(r.explanation) &&
+  /waiting|losing him/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('Moderate Volume', 'Stable Role'),
+  marketProfile: market('At Market', 'Return Outlook Unknown'),
+  scarcityProfile: scarcity('Unknown'),
+  contextProfile: context('Positive', 'Improved', 'Not Applicable', 'Strong')
+});
+eq(
+  'mixed + context upside still => Consider',
+  r.code,
+  'consider'
+);
+check(
+  'Consider explanation exposes opportunity case',
+  /moderate-volume|stable/i.test(r.explanation)
+);
+check(
+  'Consider explanation exposes context upside',
+  /improved role|environment has improved|credible upside/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('No NFL History', 'No NFL History', 'Limited'),
+  marketProfile: market('Discount', 'Market Leans Gone'),
+  scarcityProfile: scarcity('High'),
+  contextProfile: context('Positive', 'Improved', 'High', 'Strong')
+});
+eq(
+  'rookie strong context + now pressure still => Strong Consideration',
+  r.code,
+  'strong-consideration'
+);
+check(
+  'rookie explanation acknowledges limited NFL history',
+  /NFL history is limited/i.test(r.explanation)
+);
+check(
+  'rookie explanation exposes context upside',
+  /improved role|environment has improved|rookie-impact|credible upside/i.test(r.explanation)
+);
+check(
+  'rookie explanation exposes timing pressure',
+  /waiting risky|waiting risks|positional scarcity|next pick|favorable price/i.test(r.explanation)
+);
+
+r = buildRecommendation({
+  opportunityProfile: op('Moderate Volume', 'Increasing Role'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context()
+});
+eq(
+  'moderate increasing + timing pressure still => Consider Now',
+  r.code,
+  'consider-now'
+);
+check(
+  'reasons prioritize Opportunity first',
+  r.reasons[0] === 'Moderate Volume workload'
+);
+check(
+  'reasons prioritize timing driver second',
+  r.reasons[1] === 'market says waiting carries risk'
+);
+
 console.log(
   `draft-sage-synthesis.test.js: ${passed}/${passed + failed} passed`
 );
