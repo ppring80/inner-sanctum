@@ -2291,14 +2291,51 @@ function saveSetup(){
   if(isFirstEverSetup && !isOnboardingDismissed()) openOnboardingModal();
 }
 
-// ─── Reset Draft (formerly "Clear Drafted") — clears logged picks only;
-// team setup is preserved so a second draft can be tracked without
-// redoing Setup. Behavior is unchanged from the prior "Clear Drafted"
-// control; only the button label/wording changed. ───
+// ─── Reset Draft — returns Draft Command Center to a clean pre-draft
+// state while preserving league configuration and keeper setup.
+//
+// In live mode this clears every recorded live selection. In Mock mode
+// it first discards the ephemeral mock session and restores the real live
+// draftState reference, then resets THAT live draft. This keeps Reset Draft
+// semantically identical in both modes: setup + keepers remain; draft
+// selections and transient draft-session state do not. ───
 function clearDrafted(){
-  if(!confirm('Reset the draft? This clears all logged picks. Your team setup (teams and your slot) will be kept.'))return;
+  if(!confirm('Reset the draft? This clears all recorded selections and returns to the start of the draft. League setup and keeper players will be kept.'))return;
+
+  // If Reset is pressed during Mock Draft, discard the mock working copy
+  // first. Do this inline rather than calling exitMockDraft(), because that
+  // function intentionally renders/restores the live draft as-is; Reset
+  // needs to continue immediately and clear that restored live draft too.
+  if(mockModeActive){
+    mockModeActive=false;
+    mockPaused=false;
+    mockAutomationRunning=false;
+    mockAutomationBatching=false;
+    setMockStatus(null);
+    if(liveDraftStateBackup)draftState=liveDraftStateBackup;
+    liveDraftStateBackup=null;
+    mockStartSnapshot=null;
+  }
+
+  // Invalidate any SAGE request already in flight so a late response from
+  // the pre-reset draft cannot repopulate the panel after the board resets.
+  sageRequestSeq++;
+  sageRecommendations=null;
+  sageRosterAdvisory=null;
+  sageLoading=false;
+  sageError=null;
+  sageShowAll=false;
+
+  // Clear draft-session-only UI state. League setup, roster construction,
+  // scoring controls and keepers are deliberately preserved.
+  cmpList=[];
+  cmpData={};
+  currentReassignId=null;
+  pendingManualPick=null;
+
   draftState.draftLog=[];
   draftState.nextPickId=1;
+
   saveDraftState();
   render();
   refreshSageRecommendations();
