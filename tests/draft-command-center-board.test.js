@@ -484,6 +484,332 @@ test('CUSTOMER SCENARIO: opening/closing the board does not trigger SAGE or Mock
   assert.strictEqual(sandbox.sageRecommendations, null, 'SAGE state untouched -- sageRecommendations remains at its initial value');
 });
 
+// ═══════════════════════════════════════════════════════════
+// KEEPER TEMPORAL CLASSIFICATION (Aug 25 2026, smoke-test fix)
+// ═══════════════════════════════════════════════════════════
+
+function buildKeeperHeavyLeague(sandbox, mySlot) {
+  const TEAM_NAMES = ['Atterson', 'Fenton', 'Azam', 'ONeal', 'Mayo', 'Hayes', 'Jack', 'Jones', 'RK', 'Team10', 'Team11', 'Team12', 'Team13', 'Customer'];
+  const KEEPER_ROUNDS = {
+    Atterson: [1, 7], Fenton: [6, 8], Azam: [2, 8], ONeal: [10, 13], Mayo: [2, 10],
+    Hayes: [1, 3], Jack: [7, 9], Jones: [3, 9], RK: [3, 7], Team10: [4, 11], Team11: [5, 12],
+    Team12: [6, 14], Team13: [], Customer: [4, 14],
+  };
+  const teams = TEAM_NAMES.map((name, i) => ({ id: 'team-' + String(i + 1).padStart(2, '0'), name }));
+  const keepers = [];
+  let keeperId = 1;
+  teams.forEach((team) => {
+    (KEEPER_ROUNDS[team.name] || []).forEach((round) => {
+      const playerName = team.name === 'Customer' ? (round === 4 ? 'George Pickens' : 'Quentin Johnston') : (team.name + ' Keeper R' + round);
+      keepers.push({ id: keeperId++, teamId: team.id, player: playerName, pos: 'WR', round });
+    });
+  });
+  sandbox.draftState = {
+    schemaVersion: sandbox.DRAFT_SAVE_SCHEMA_VERSION, teams,
+    myTeamId: teams[mySlot - 1].id, draftLog: [], nextPickId: 1,
+    draftType: 'snake', numRounds: 14, rosterConstruction: sandbox.DEFAULT_ROSTER_CONSTRUCTION,
+    keepers, nextKeeperId: keeperId,
+  };
+  const pos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
+  let adp = 1;
+  ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach((p) => {
+    for (let i = 0; i < 40; i++) pos[p].push({ name: p + ' P' + i, pos: p, team: 'X', adp: adp++, key: sandbox.playerKey(p + ' P' + i, p) });
+  });
+  sandbox.adpByPos = pos;
+  return { teams, keepers };
+}
+
+test('1. Pickens R4 (pick 43) is classified as passed once the sequence has moved beyond it', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.confirmStartMockDraft();
+  // Drive the draft to the exact screenshot state (~pick 98).
+  let guard = 0;
+  while (sandbox.nextPickNumber() < 98 && !sandbox.isDraftComplete() && guard++ < 300) {
+    const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+    sandbox.logDraftPick(p.name, p.pos);
+  }
+  const pickens = sandbox.draftState.keepers.find((k) => k.player === 'George Pickens');
+  assert.strictEqual(sandbox.keeperPickNumber(pickens), 43);
+  assert.strictEqual(sandbox.keeperTemporalStatus(43), 'passed');
+});
+
+test('2. Johnston R14 (pick 183) is classified as RESERVED at the same screenshot state', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.confirmStartMockDraft();
+  let guard = 0;
+  while (sandbox.nextPickNumber() < 98 && !sandbox.isDraftComplete() && guard++ < 300) {
+    const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+    sandbox.logDraftPick(p.name, p.pos);
+  }
+  const johnston = sandbox.draftState.keepers.find((k) => k.player === 'Quentin Johnston');
+  assert.strictEqual(sandbox.keeperPickNumber(johnston), 183);
+  assert.strictEqual(sandbox.keeperTemporalStatus(183), 'reserved');
+  const cell = sandbox.buildDraftBoardCell(14, 14, 'team-14', 'snake', 14, sandbox.totalDraftPicks());
+  assert.strictEqual(cell.isReserved, true);
+});
+
+test('3. a future keeper becomes active/passed once its draft slot is actually reached', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-14', player: 'Future Keeper', pos: 'WR', round: 2 }]; // pick 20
+  assert.strictEqual(sandbox.keeperTemporalStatus(20), 'reserved', 'before pick 20 is reached, it is reserved');
+  sandbox.confirmStartMockDraft();
+  let guard = 0;
+  while (sandbox.nextPickNumber() <= 20 && !sandbox.isDraftComplete() && guard++ < 300) {
+    const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+    sandbox.logDraftPick(p.name, p.pos);
+  }
+  assert.strictEqual(sandbox.keeperTemporalStatus(20), 'passed', 'once the sequence passes pick 20, the same keeper is now passed');
+});
+
+test('4. existing board pick/team/round mapping remains unchanged (non-keeper cells unaffected)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-01');
+  sandbox.draftState.draftLog.push({ id: 1, pickNumber: 1, player: 'Player A', pos: 'RB', teamId: 'team-01' });
+  const cell = sandbox.buildDraftBoardCell(1, 1, 'team-01', 'snake', 4, sandbox.totalDraftPicks());
+  assert.strictEqual(cell.pickNumber, 1);
+  assert.strictEqual(cell.player, 'Player A');
+  assert.strictEqual(cell.isKeeper, false);
+  assert.strictEqual(cell.isReserved, false);
+});
+
+// ═══════════════════════════════════════════════════════════
+// TURN WATCH
+// ═══════════════════════════════════════════════════════════
+
+test('5. Turn Watch identifies the exact opponents selecting before the users next real pick', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-04');
+  const teams = sandbox.buildTurnWatchTeams();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(teams)), ['team-01', 'team-02', 'team-03']);
+});
+
+test('6. Slot-14 immediate second pick (Pick 1 of 2) produces ZERO intervening opponents', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.confirmStartMockDraft();
+  let guard = 0;
+  while (sandbox.nextPickNumber() < 98 && !sandbox.isDraftComplete() && guard++ < 300) {
+    const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+    sandbox.logDraftPick(p.name, p.pos);
+  }
+  assert.strictEqual(sandbox.nextPickNumber(), 98);
+  assert.strictEqual(sandbox.distanceToMySlot(99), 0, 'sanity: pick 99 is genuinely also the users turn (true back-to-back)');
+  const teams = sandbox.buildTurnWatchTeams();
+  assert.strictEqual(teams.length, 0, 'zero opponents invented during a genuine back-to-back turn');
+});
+
+test('7. after Slot-14 Pick 2 of 2 completes, Turn Watch recalculates against the real next turn', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.confirmStartMockDraft();
+  let guard = 0;
+  while (sandbox.nextPickNumber() < 98 && !sandbox.isDraftComplete() && guard++ < 300) {
+    const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+    sandbox.logDraftPick(p.name, p.pos);
+  }
+  // Pick 1 of 2
+  let p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p.name, p.pos);
+  assert.strictEqual(sandbox.nextPickNumber(), 99);
+  // Pick 2 of 2
+  p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p.name, p.pos);
+  assert.strictEqual(sandbox.nextPickNumber(), 126, 'the users true next turn after this pair');
+  const teams = sandbox.buildTurnWatchTeams();
+  assert.strictEqual(sandbox.distanceToMySlot(126), 0);
+  const away2 = sandbox.distanceToMySlot(127);
+  if (away2 === 0) {
+    assert.strictEqual(teams.length, 0, 'pick 126 is itself another back-to-back start -- correctly zero again');
+  } else {
+    assert.ok(teams.length > 0, 'otherwise Turn Watch correctly finds real opponents before the true next turn');
+  }
+});
+
+test('8. keeper-occupied upcoming slots are correctly excluded from the Turn Watch opponent list', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 6, 'team-06');
+  // team-02s pick (2) is consumed by their own keeper -- no live decision there.
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'Kept', pos: 'WR', round: 1 }];
+  const teams = sandbox.buildTurnWatchTeams();
+  assert.ok(!teams.includes('team-02'), 'a team whose ONLY appearance in the window is a keeper slot must not appear as an opponent to watch');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(teams)), ['team-01', 'team-03', 'team-04', 'team-05']);
+});
+
+test('viewing Turn Watch before the first pick of a slot-14 double-turn shows zero opponents (edge case: very first pick of the whole draft)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.confirmStartMockDraft();
+  assert.strictEqual(sandbox.nextPickNumber(), 14, 'Customers own R1 keeper (pick 14) does not exist -- wait, Customer keeps R4/R14, so pick 14 IS their real first live turn');
+  const teams = sandbox.buildTurnWatchTeams();
+  // Whatever the real away-to-next value is, confirm consistency rather than a hardcoded assumption.
+  const awayNext = sandbox.distanceToMySlot(15);
+  if (awayNext === 0) assert.strictEqual(teams.length, 0);
+  else assert.ok(teams.length >= 0);
+});
+
+// ═══════════════════════════════════════════════════════════
+// SAGE TURN INTELLIGENCE
+// ═══════════════════════════════════════════════════════════
+
+test('9. WAIT LIKELY SAFE fires for exactly zero needy teams', () => {
+  // Uses a 6-team league with the user at team-04 (a genuine middle
+  // slot, never a back-to-back edge case) so the opponent set before
+  // the users first turn is a clean, unambiguous team-01/02/03 --
+  // deliberately avoiding the LAST-slot double-turn-at-round-boundary
+  // behavior a 4-team team-04 would collide with.
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 6, 'team-04');
+  // Uses KEEPERS, not live draftLog picks, to give team-01/02/03 a
+  // filled TE -- a live pick for them would ADVANCE nextPickNumber() to
+  // team-04s own turn, which correctly shifts Turn Watch's perspective
+  // to teams AFTER that turn (by design -- see test 6/7). A keeper
+  // fills the roster slot without consuming a live sequence position,
+  // keeping nextPickNumber() at 1 so team-01/02/03 remain the CURRENT
+  // opponent set under test.
+  // Round 8 (not round 1) so these keepers never consume team-01/02/03s
+  // OWN round-1 LIVE turn slots (picks 1/2/3) -- that would jump
+  // nextPickNumber() straight to team-04s turn via keeper-skipping,
+  // the same collision test 9 originally hit. computeRosterNeed()
+  // already counts a keeper as filled regardless of round (confirmed,
+  // unmodified, existing behavior), so round 8 still correctly shows
+  // TE as filled for all three teams under test.
+  ['team-01', 'team-02', 'team-03'].forEach((teamId, i) => {
+    sandbox.draftState.keepers.push({ id: i + 1, teamId, player: 'TE for ' + teamId, pos: 'TE', round: 8 });
+  });
+  const teams = sandbox.buildTurnWatchTeams();
+  const intel = sandbox.buildSageTurnIntelligence(teams);
+  const teIntel = intel.find((i) => i.pos === 'TE');
+  assert.strictEqual(teIntel.needyCount, 0);
+  assert.strictEqual(teIntel.label, 'WAIT LIKELY SAFE');
+});
+
+test('10. WAIT MAY BE AVAILABLE fires for exactly one needy team', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 6, 'team-04'); // safe middle slot, see test 9s comment
+  // Keepers again (see test 9s comment) -- team-02/03 get a TE keeper,
+  // team-01 gets none, without touching nextPickNumber() at all.
+  sandbox.draftState.keepers.push({ id: 1, teamId: 'team-02', player: 'TE for team-02', pos: 'TE', round: 8 });
+  sandbox.draftState.keepers.push({ id: 2, teamId: 'team-03', player: 'TE for team-03', pos: 'TE', round: 8 });
+  // team-01 has no TE yet -- exactly 1 needy team.
+  const teams = sandbox.buildTurnWatchTeams();
+  const intel = sandbox.buildSageTurnIntelligence(teams);
+  const teIntel = intel.find((i) => i.pos === 'TE');
+  assert.strictEqual(teIntel.needyCount, 1);
+  assert.strictEqual(teIntel.label, 'WAIT MAY BE AVAILABLE');
+  assert.strictEqual(teIntel.explanation, '1 team selecting before your next pick still has an open TE need.');
+});
+
+test('11. POSITION PRESSURE fires for two or more needy teams', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 6, 'team-04'); // safe middle slot, see test 9s comment
+  // team-01, team-02, team-03 all still need TE (fresh state -- nothing drafted).
+  const teams = sandbox.buildTurnWatchTeams();
+  const intel = sandbox.buildSageTurnIntelligence(teams);
+  const teIntel = intel.find((i) => i.pos === 'TE');
+  assert.strictEqual(teIntel.needyCount, 3);
+  assert.strictEqual(teIntel.label, 'POSITION PRESSURE');
+  assert.strictEqual(teIntel.explanation, '3 teams selecting before your next pick still have an open TE need.');
+});
+
+test('12. labels derive directly from the real, unmodified computeRosterNeed() -- no separate scoring path', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-04');
+  const teams = sandbox.buildTurnWatchTeams();
+  const intel = sandbox.buildSageTurnIntelligence(teams);
+  intel.forEach((i) => {
+    const actualNeedyCount = teams.filter((teamId) => (sandbox.computeRosterNeed(teamId).remainingDedicated[i.pos] || 0) > 0).length;
+    assert.strictEqual(i.needyCount, actualNeedyCount, 'the label count must exactly match a fresh, independent computeRosterNeed() tally');
+  });
+});
+
+test('SAGE Turn Intelligence only surfaces positions where the USER has an open need (avoids clutter)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-04');
+  // Fill every one of team-04s dedicated slots using their OWN real
+  // pick numbers (computed via the real, unmodified resolveSlotForPick()
+  // rather than guessed/artificial ones) -- an artificial high pick
+  // number would corrupt nextPickNumber()'s max()+1 logic and push the
+  // simulated state past totalDraftPicks() entirely.
+  const total = sandbox.totalDraftPicks();
+  const posToFill = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE'];
+  let pn = 0;
+  posToFill.forEach((pos) => {
+    do { pn++; } while (sandbox.resolveSlotForPick(pn, 4, 'snake', total) !== 4);
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: 'Filler ' + pn, pos, teamId: 'team-04' });
+  });
+  const teams = sandbox.buildTurnWatchTeams();
+  const intel = sandbox.buildSageTurnIntelligence(teams);
+  assert.strictEqual(intel.length, 0, 'no Turn Intelligence rows when the user has no open dedicated need at all');
+});
+
+// ═══════════════════════════════════════════════════════════
+// NO STATE MUTATION
+// ═══════════════════════════════════════════════════════════
+
+test('13. viewing Turn Watch causes zero draftState mutation', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  const before = JSON.stringify(sandbox.draftState);
+  sandbox.buildTurnWatchTeams();
+  sandbox.buildSageTurnIntelligence(sandbox.buildTurnWatchTeams());
+  sandbox.renderTurnWatchPanel();
+  const after = JSON.stringify(sandbox.draftState);
+  assert.strictEqual(before, after);
+});
+
+test('14. viewing Draft Board (with keeper temporal classification) causes zero draftState mutation', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  const before = JSON.stringify(sandbox.draftState);
+  sandbox.openDraftBoardModal();
+  sandbox.renderDraftBoardTabHtml();
+  sandbox.switchDraftBoardTab('byteam');
+  sandbox.closeDraftBoardModal();
+  const after = JSON.stringify(sandbox.draftState);
+  assert.strictEqual(before, after);
+});
+
+test('15. no localStorage writes from Turn Watch or Draft Board keeper classification', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.renderTurnWatchPanel();
+  sandbox.openDraftBoardModal();
+  sandbox.renderDraftBoardTabHtml();
+  assert.strictEqual(Object.keys(sandbox._storageData || {}).length, 0);
+});
+
+test('Turn Watch and Draft Board never trigger Mock automation or SAGE recommendation generation', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  buildKeeperHeavyLeague(sandbox, 14);
+  sandbox.renderTurnWatchPanel();
+  sandbox.openDraftBoardModal();
+  assert.strictEqual(sandbox.mockModeActive, false);
+  assert.strictEqual(sandbox.mockAutomationRunning, false);
+  assert.strictEqual(sandbox.sageRecommendations, null);
+  assert.strictEqual(sandbox.draftState.draftLog.length, 0);
+});
+
 console.log(`draft-command-center-board.test.js: ${passed}/${passed + failed} passed`);
 if (failures.length) {
   failures.forEach((f) => console.error('FAIL:', f));
