@@ -591,8 +591,6 @@ function checkOAuthSession() {
 
 <div class="sage-panel no-print" id="sagePanel"></div>
 
-<div class="turnwatch-panel no-print" id="turnWatchPanel" style="display:none"></div>
-
 <div class="roster-panel no-print" id="rosterPanel"></div>
 
 <div class="drafted-bar no-print" id="dbar">
@@ -2673,6 +2671,22 @@ function renderClockStatus(){
     el.innerHTML='<div class="clock-line1">Complete <a href="#" onclick="openSetupModal();return false;">Draft Setup</a> to enable live pick tracking.</div>';
     return;
   }
+  // DRAFT READY (derived, no new state): a fresh configured league and a
+  // just-Reset league are otherwise indistinguishable from each other by
+  // any state this file already tracks -- both have teams configured and
+  // zero draftLog entries. That's exactly the condition used here, so
+  // this correctly persists across a refresh (it's re-derived from
+  // draftState on every render, not a session flag that would reset)
+  // and correctly disappears the instant a real pick exists, with no
+  // separate "clear the flag" logic needed anywhere. mockModeActive is
+  // excluded so an active Mock session (which also starts with an empty
+  // draftLog on its OWN ephemeral copy) still shows its own existing
+  // Mock experience instead of this.
+  if(!mockModeActive&&draftState.teams.length>0&&draftState.draftLog.length===0){
+    el.innerHTML='<div class="clock-line1">DRAFT READY</div>'+
+      '<div class="clock-line2">Your league setup is saved. Start a Mock Draft or begin tracking your live draft when ready.</div>';
+    return;
+  }
   if(isDraftComplete()){
     // Deliberately does not hide/disable anything else on the page — the
     // board, My Roster, corrections, Undo Last Pick, and Print all stay
@@ -3019,8 +3033,9 @@ function renderDraftBoardModal(){
   if(!tabsEl||!bodyEl)return;
   tabsEl.innerHTML=
     '<button type="button" class="board-tab-btn'+(draftBoardActiveTab==='board'?' active':'')+'" onclick="switchDraftBoardTab(\'board\')">Draft Board</button>'+
-    '<button type="button" class="board-tab-btn'+(draftBoardActiveTab==='byteam'?' active':'')+'" onclick="switchDraftBoardTab(\'byteam\')">By Team</button>';
-  bodyEl.innerHTML=draftBoardActiveTab==='board'?renderDraftBoardTabHtml():renderByTeamTabHtml();
+    '<button type="button" class="board-tab-btn'+(draftBoardActiveTab==='byteam'?' active':'')+'" onclick="switchDraftBoardTab(\'byteam\')">By Team</button>'+
+    '<button type="button" class="board-tab-btn'+(draftBoardActiveTab==='turnwatch'?' active':'')+'" onclick="switchDraftBoardTab(\'turnwatch\')">Turn Watch</button>';
+  bodyEl.innerHTML=draftBoardActiveTab==='board'?renderDraftBoardTabHtml():(draftBoardActiveTab==='byteam'?renderByTeamTabHtml():renderTurnWatchTabHtml());
 }
 
 function renderDraftBoardTabHtml(){
@@ -3171,22 +3186,16 @@ function buildSageTurnIntelligence(teams){
   });
 }
 
-function renderTurnWatchPanel(){
-  var el=document.getElementById('turnWatchPanel');
-  if(!el)return;
+function renderTurnWatchTabHtml(){
   if(!draftState.myTeamId||draftState.draftType==='manual'||!draftSetupComplete()||isDraftComplete()){
-    el.innerHTML='';
-    el.style.display='none';
-    return;
+    return '<p class="board-empty-note">Turn Watch becomes available once Draft Setup is complete and the draft is underway.</p>';
   }
   var teams=buildTurnWatchTeams();
   var intel=buildSageTurnIntelligence(teams);
 
   if(!teams.length){
-    el.style.display='block';
-    el.innerHTML='<div class="turnwatch-hdr">🔎 Turn Watch</div>'+
+    return '<div class="turnwatch-hdr">🔎 Turn Watch</div>'+
       '<div class="turnwatch-empty">Your next selectable pick is immediately yours again — no opponents pick in between.</div>';
-    return;
   }
 
   var rowsHtml=teams.map(function(teamId){
@@ -3205,8 +3214,7 @@ function renderTurnWatchPanel(){
       '<div class="turnwatch-intel-explain">'+escAttr(i.explanation)+'</div></div>';
   }).join('')+'</div>'):'';
 
-  el.style.display='block';
-  el.innerHTML='<div class="turnwatch-hdr">🔎 Turn Watch — teams before your next pick</div>'+rowsHtml+intelHtml;
+  return '<div class="turnwatch-hdr">🔎 Turn Watch — teams before your next pick</div>'+rowsHtml+intelHtml;
 }
 
 function renderByTeamTabHtml(){
@@ -3404,7 +3412,6 @@ function render(){
   renderMyRoster();
   renderMockControls();
   renderMockStatusLine();
-  renderTurnWatchPanel();
 
   // SAGE V1: fires exactly once, only if setup was already complete
   // before this page load (a restored session) -- saveSetup() handles
