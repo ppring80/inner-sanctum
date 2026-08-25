@@ -3064,7 +3064,7 @@ function renderDraftBoardTabHtml(){
         var cellClass=cell.isKeeper?(cell.isReserved?' board-cell-keeper-reserved':' board-cell-keeper'):'';
         var posSuffix=cell.isKeeper?(cell.isReserved?' · KEEPER · RESERVED':' · KEEPER'):'';
         bodyRows+='<td class="board-cell'+cellClass+'">'+
-          '<div class="board-cell-player">'+escAttr(cell.player)+'</div>'+
+          '<div class="board-cell-player" style="color:'+(PCOL[cell.pos]||"inherit")+'">'+escAttr(cell.player)+'</div>'+
           '<div class="board-cell-pos">'+escAttr(cell.pos)+posSuffix+'</div>'+
           '</td>';
       }
@@ -3483,7 +3483,7 @@ function render(){
         tr.innerHTML=
           '<td class="r-ovr">'+ovrStr+'</td>'+
           '<td class="r-pos">'+pr+'</td>'+
-          '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+          '<td><div class="pname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
           '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
           '<td class="bye-td">'+bye+'</td>'+
           '<td class="adp-td">'+adpStr+'</td>'+
@@ -3515,7 +3515,7 @@ function render(){
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
         card.innerHTML=
           '<div class="crank">#'+pr+'</div>'+
-          '<div class="cname">'+p.name+'</div>'+
+          '<div class="cname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div>'+
           '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
           injH+
           cardActionHtml;
@@ -3584,7 +3584,7 @@ function renderAll(){
       tr.innerHTML=
         '<td class="r-ovr">'+ovrStr+'</td>'+
         '<td><span class="pbadge '+p.pos+'" style="font-size:9px;padding:2px 6px">'+p.pos+'</span></td>'+
-        '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
+        '<td><div class="pname" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
         '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
         '<td class="bye-td">'+bye+'</td>'+
         '<td class="adp-td">'+adpStr+'</td>'+
@@ -3616,7 +3616,7 @@ function renderAll(){
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
       card.innerHTML=
         '<div class="crank">#'+pr+'</div>'+
-        '<div class="cname">'+p.name+'</div>'+
+        '<div class="cname" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div>'+
         '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
         injH+
         '<div class="cactions">'+leftAction+
@@ -3691,7 +3691,7 @@ function renderSearch(){
     tr.innerHTML=
       '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
       '<td class="r-pos">'+pr+'</td>'+
-      '<td><div class="pname">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+      '<td><div class="pname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
       '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
       '<td class="bye-td">'+bye+'</td>'+
       '<td class="adp-td">'+adpStr+'</td>'+
