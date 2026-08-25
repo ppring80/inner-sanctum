@@ -1528,6 +1528,17 @@ var mockModeActive=false;
 var mockPaused=false;
 var mockAutomationRunning=false; // prevents overlapping loop invocations
 var mockAutomationBatching=false; // guards afterDraftMutation() during a burst
+// Root-cause fix (Reset Draft bug): mockModeActive alone cannot tell a
+// STALE setTimeout(step,...) callback from a dead automation batch apart
+// from a legitimately active one -- if Reset/Restart is followed quickly
+// enough by a new mock session, mockModeActive can be true again by the
+// time the old callback fires, letting it inject an uninvited pick into
+// the new session. Every genuinely NEW batch claims the next generation
+// number; step() refuses to act at all once its own captured generation
+// no longer matches the current one, regardless of what mockModeActive
+// says. This is the single addition that makes Reset/Restart/Exit
+// provably immune to orphaned automation callbacks.
+var mockAutomationGeneration=0;
 var mockStatusMessage=null;
 var liveDraftStateBackup=null;
 var mockStartSnapshot=null; // the setup-only snapshot Restart Mock rebuilds from
@@ -1612,6 +1623,18 @@ function startMockDraft(){
 function restartMockDraft(){
   if(!mockModeActive||!mockStartSnapshot)return;
   mockPaused=false;
+  // Root-cause fix (Reset Draft bug): a still-in-flight batch from
+  // before Restart must not be allowed to (a) silently block the new
+  // batch below via the stale mockAutomationRunning guard in
+  // runMockAutomationUntilUserTurn(), or (b) act on the freshly-rebuilt
+  // draftState once its own pending setTimeout(step,...) eventually
+  // fires. Clearing the flag lets the call below actually start a new
+  // batch; bumping the generation invalidates the OLD batch's own
+  // step() closure immediately, regardless of what mockModeActive says
+  // by the time it fires.
+  mockAutomationRunning=false;
+  mockAutomationBatching=false;
+  mockAutomationGeneration++;
   setMockStatus(null);
   draftState=buildMockDraftState(mockStartSnapshot);
   render();
@@ -1624,6 +1647,7 @@ function exitMockDraft(){
   mockPaused=false;
   mockAutomationRunning=false;
   mockAutomationBatching=false;
+  mockAutomationGeneration++; // same protection as clearDrafted() -- see its comment
   setMockStatus(null);
   // Restore the exact original live object reference -- it was never
   // mutated, so this is a pure reassignment, not a merge/restore of data.
@@ -1702,9 +1726,18 @@ function runMockAutomationUntilUserTurn(){
   if(!mockModeActive||mockPaused||mockAutomationRunning)return;
   mockAutomationRunning=true;
   mockAutomationBatching=true;
+  // Claimed ONLY here, after the no-op guard above -- a redundant call
+  // while a batch is already legitimately running must never invalidate
+  // that running batch's own generation.
+  var myGeneration=++mockAutomationGeneration;
   var iterations=0;
 
   function stopBatch(){
+    // A newer generation has since taken over (Reset/Restart/Exit
+    // happened, then a new session started) -- that generation owns
+    // the flags/render/SAGE-refresh now; this stale call must not
+    // touch any of it.
+    if(myGeneration!==mockAutomationGeneration)return;
     mockAutomationRunning=false;
     mockAutomationBatching=false;
     render();
@@ -1712,6 +1745,12 @@ function runMockAutomationUntilUserTurn(){
   }
 
   function step(){
+    // Checked BEFORE anything else, including mockModeActive -- this is
+    // what actually distinguishes "this exact batch is still the live
+    // one" from "mockModeActive happens to be true again because a
+    // different, newer session started." See mockAutomationGeneration's
+    // own comment above for the full race this closes.
+    if(myGeneration!==mockAutomationGeneration)return;
     if(!mockModeActive||mockPaused){
       stopBatch();
       return;
@@ -2311,6 +2350,7 @@ function clearDrafted(){
     mockPaused=false;
     mockAutomationRunning=false;
     mockAutomationBatching=false;
+    mockAutomationGeneration++; // invalidate any already-scheduled step() immediately, not only once it fires and rechecks mockModeActive
     setMockStatus(null);
     if(liveDraftStateBackup)draftState=liveDraftStateBackup;
     liveDraftStateBackup=null;
