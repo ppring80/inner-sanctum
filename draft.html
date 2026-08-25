@@ -190,6 +190,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .board-cell{min-width:110px}
 .board-cell-empty{color:var(--text3);text-align:center}
 .board-cell-keeper{background:rgba(184,146,26,0.1)}
+.board-cell-keeper-reserved{background:transparent;border:1px dashed var(--border2);opacity:0.65}
+.board-legend-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
 .board-cell-player{font-weight:600;font-size:12px;white-space:normal}
 .board-cell-pos{font-size:10px;color:var(--text3)}
 .byteam-selector{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
@@ -204,6 +206,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .byteam-doubled-tag{color:var(--gold);font-size:10px}
 .byteam-player-row{font-size:12px;padding:2px 0}
 .byteam-keeper-tag{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold);font-weight:700}
+.byteam-keeper-tag-reserved{color:var(--text3);font-weight:400}
+.byteam-player-row-reserved{opacity:0.6;font-style:italic}
 .byteam-empty-pos{font-size:12px;color:var(--text3)}
 
 .modal-ttl{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px}
@@ -304,6 +308,28 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .keeper-player-result-item:hover{background:var(--bg2)}
 .keeper-player-result-empty{padding:8px 10px;font-size:12px;color:var(--text3)}
 .sage-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;display:none}
+
+/* Turn Watch (Aug 25 2026) -- deliberately compact: a short header, one
+   line per opponent, and a small SAGE Turn Intelligence block below.
+   Never a full roster dump, never a second scoring surface -- it sits
+   alongside SAGE Recommendations (visually smaller/quieter), not in
+   competition with it for attention. */
+.turnwatch-panel{background:var(--bg);border-bottom:1px solid var(--border);padding:8px 24px}
+.turnwatch-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+.turnwatch-empty{font-size:12px;color:var(--text3);font-style:italic}
+.turnwatch-team-row{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12px;flex-wrap:wrap}
+.turnwatch-team-name{font-weight:600;min-width:90px}
+.turnwatch-pos{font-family:'JetBrains Mono',monospace;font-size:10px;padding:1px 6px;border-radius:8px;white-space:nowrap}
+.turnwatch-pos.filled{color:var(--text3);background:transparent}
+.turnwatch-pos.open{color:var(--gold);background:rgba(184,146,26,0.12);font-weight:700}
+.turnwatch-intel{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.turnwatch-intel-row{margin-bottom:4px}
+.turnwatch-intel-pos{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;margin-right:6px}
+.turnwatch-intel-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.3px;padding:1px 7px;border-radius:8px}
+.turnwatch-intel-safe{color:var(--text3);background:transparent;border:1px solid var(--border)}
+.turnwatch-intel-maybe{color:var(--gold);background:rgba(184,146,26,0.14)}
+.turnwatch-intel-pressure{color:var(--amber,#c8780a);background:rgba(200,120,10,0.14)}
+.turnwatch-intel-explain{font-size:11px;color:var(--text3);margin-top:2px}
 .sage-panel-hdr{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
 .sage-status{font-family:Lora,serif;font-size:12px;color:var(--text3);font-style:italic}
 .sage-error-msg{color:#a06010}
@@ -564,6 +590,8 @@ function checkOAuthSession() {
 </div>
 
 <div class="sage-panel no-print" id="sagePanel"></div>
+
+<div class="turnwatch-panel no-print" id="turnWatchPanel" style="display:none"></div>
 
 <div class="roster-panel no-print" id="rosterPanel"></div>
 
@@ -2913,11 +2941,25 @@ function renderMyRoster(){
 // renderMyRoster() itself to share this -- keeps this feature's
 // regression surface fully isolated from the already-working roster
 // panel.
+// Temporal classification for a keeper's pick number, added for the
+// keeper-semantics fix (Aug 25 2026 smoke-test finding): a keeper whose
+// slot has already occurred in the sequence and one that's still ahead
+// must never render identically. Reads nextPickNumber() -- unmodified,
+// already keeper-aware -- as the single source of truth for "where the
+// draft actually is right now." Pure comparison, no new state.
+function keeperTemporalStatus(pickNumber){
+  if(typeof pickNumber!=='number')return 'passed'; // manual draft type / undeterminable -- default to the existing (non-alarming) treatment
+  return pickNumber<nextPickNumber()?'passed':'reserved';
+}
+
 function buildTeamRosterEntries(teamId){
   var live=draftState.draftLog.filter(function(e){return e.teamId===teamId;})
-    .map(function(e){return {player:e.player,pos:e.pos,pickNumber:e.pickNumber,isKeeper:false,round:null};});
+    .map(function(e){return {player:e.player,pos:e.pos,pickNumber:e.pickNumber,isKeeper:false,round:null,isReserved:false};});
   var kept=(draftState.keepers||[]).filter(function(k){return k.teamId===teamId;})
-    .map(function(k){return {player:k.player,pos:k.pos,pickNumber:keeperPickNumber(k),isKeeper:true,round:k.round};});
+    .map(function(k){
+      var pn=keeperPickNumber(k);
+      return {player:k.player,pos:k.pos,pickNumber:pn,isKeeper:true,round:k.round,isReserved:keeperTemporalStatus(pn)==='reserved'};
+    });
   return live.concat(kept).sort(function(a,b){
     var pa=(typeof a.pickNumber==='number')?a.pickNumber:Infinity;
     var pb=(typeof b.pickNumber==='number')?b.pickNumber:Infinity;
@@ -2930,7 +2972,9 @@ function buildTeamRosterEntries(teamId){
 // already uses, then checks keepers first (a keeper always wins its
 // own slot) and falls back to draftLog. Returns null for manual draft
 // type (no deterministic slot placement exists to derive) or for a
-// round/slot with nothing recorded yet.
+// round/slot with nothing recorded yet. Keeper cells additionally carry
+// isReserved (see keeperTemporalStatus() above) so a future keeper
+// commitment never renders identically to one that's already occurred.
 function buildDraftBoardCell(round,slot,teamId,draftType,numTeams,totalPicks){
   var pn=pickNumberForRoundAndSlot(round,slot,numTeams,draftType);
   if(pn===null)return null;
@@ -2938,9 +2982,9 @@ function buildDraftBoardCell(round,slot,teamId,draftType,numTeams,totalPicks){
   var keeperMatch=(draftState.keepers||[]).find(function(k){
     return k.teamId===teamId&&keeperPickNumber(k)===pn;
   });
-  if(keeperMatch)return {pickNumber:pn,player:keeperMatch.player,pos:keeperMatch.pos,isKeeper:true};
+  if(keeperMatch)return {pickNumber:pn,player:keeperMatch.player,pos:keeperMatch.pos,isKeeper:true,isReserved:keeperTemporalStatus(pn)==='reserved'};
   var liveMatch=draftState.draftLog.find(function(e){return e.pickNumber===pn;});
-  if(liveMatch)return {pickNumber:pn,player:liveMatch.player,pos:liveMatch.pos,isKeeper:false};
+  if(liveMatch)return {pickNumber:pn,player:liveMatch.player,pos:liveMatch.pos,isKeeper:false,isReserved:false};
   return {pickNumber:pn,empty:true};
 }
 
@@ -3002,15 +3046,167 @@ function renderDraftBoardTabHtml(){
       }else if(cell.empty){
         bodyRows+='<td class="board-cell board-cell-empty">·</td>';
       }else{
-        bodyRows+='<td class="board-cell'+(cell.isKeeper?' board-cell-keeper':'')+'">'+
+        var cellClass=cell.isKeeper?(cell.isReserved?' board-cell-keeper-reserved':' board-cell-keeper'):'';
+        var posSuffix=cell.isKeeper?(cell.isReserved?' · KEEPER · RESERVED':' · KEEPER'):'';
+        bodyRows+='<td class="board-cell'+cellClass+'">'+
           '<div class="board-cell-player">'+escAttr(cell.player)+'</div>'+
-          '<div class="board-cell-pos">'+escAttr(cell.pos)+(cell.isKeeper?' · KEEPER':'')+'</div>'+
+          '<div class="board-cell-pos">'+escAttr(cell.pos)+posSuffix+'</div>'+
           '</td>';
       }
     }
     bodyRows+='</tr>';
   }
-  return '<div class="board-scroll-wrap"><table class="draft-board-table"><thead>'+headerRow+'</thead><tbody>'+bodyRows+'</tbody></table></div>';
+  var legendHtml=hasAnyReservedKeeper(totalPicks)?'<p class="board-legend-note">Reserved keepers are already rostered but their draft-round slot has not yet occurred.</p>':'';
+  return '<div class="board-scroll-wrap"><table class="draft-board-table"><thead>'+headerRow+'</thead><tbody>'+bodyRows+'</tbody></table></div>'+legendHtml;
+}
+
+// Read-only check used only to decide whether the legend line is worth
+// showing at all -- iterates the already-loaded keepers array, no new
+// state, no persistence.
+function hasAnyReservedKeeper(totalPicks){
+  return (draftState.keepers||[]).some(function(k){
+    return keeperTemporalStatus(keeperPickNumber(k))==='reserved';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// TURN WATCH (Aug 25 2026) — inline, read-only interpretation of
+// existing draft state. Answers "who picks before my next real turn"
+// directly on the active Draft Command Center, without opening the
+// full Draft Board. Reuses nextPickNumber(), teamOnClock(),
+// distanceToMySlot(), and buildKeeperPickNumberSet() -- all completely
+// unmodified -- to walk the SAME sequencing the live/mock engine
+// already uses. No second draft-order model exists anywhere below;
+// every team-turn decision here is a direct call into that existing
+// machinery, never a re-derivation of it.
+//
+// Nothing here mutates draftState, writes to localStorage, advances
+// the draft, or touches SAGE/Mock automation -- it only reads and
+// renders.
+// ═══════════════════════════════════════════════════════════
+
+// The exact method for identifying "teams before my next selection":
+//   1. Find where the SEQUENCE currently is (nextPickNumber()) and
+//      whether that's already my own turn (distanceToMySlot).
+//   2. If it's already my turn, look one pick further ahead to find my
+//      TRUE next turn after this one (this is what correctly produces
+//      an EMPTY team list during a genuine back-to-back -- if the very
+//      next pick is also mine, there is nothing to walk at all).
+//   3. Walk every pick number in that window, resolve each to a team
+//      via the same teamOnClock() the engine already uses, and skip
+//      any pick number that's a keeper slot (buildKeeperPickNumberSet()
+//      -- already existing) since no live decision happens there.
+//   4. De-duplicate teams (a team can appear more than once across
+//      multiple rounds within a wide window in small leagues).
+function buildTurnWatchTeams(){
+  if(!draftState.myTeamId||!draftState.teams.length)return [];
+  if(draftState.draftType==='manual')return []; // no deterministic order to walk
+  var startPn=nextPickNumber();
+  var awayNow=distanceToMySlot(startPn);
+  if(awayNow===null)return [];
+
+  var windowStart,windowLength;
+  if(awayNow===0){
+    // It is already my turn right now. The relevant question is who
+    // picks between THIS turn and my NEXT one -- look one pick ahead.
+    var awayFromNext=distanceToMySlot(startPn+1);
+    if(awayFromNext===null)return [];
+    if(awayFromNext===0){
+      // Genuine back-to-back (Pick 1 of 2): the very next pick is also
+      // mine. Zero opponents between these two picks -- do not invent
+      // pressure that doesn't exist.
+      return [];
+    }
+    windowStart=startPn+1;
+    windowLength=awayFromNext;
+  }else{
+    windowStart=startPn;
+    windowLength=awayNow;
+  }
+
+  var keeperSlots=buildKeeperPickNumberSet();
+  var teams=[];
+  for(var offset=0;offset<windowLength;offset++){
+    var pn=windowStart+offset;
+    if(keeperSlots[pn])continue; // no live selection happens at a keeper-occupied pick
+    var teamId=teamOnClock(pn);
+    if(teamId&&teamId!==draftState.myTeamId&&teams.indexOf(teamId)===-1)teams.push(teamId);
+  }
+  return teams;
+}
+
+// SAGE Turn Intelligence positions -- deliberately the same QB/RB/WR/TE
+// scope the rest of SAGE already uses (see the existing "SAGE ranks
+// QB/RB/WR/TE only" footer note) -- not a new scope decision.
+var SAGE_TURN_INTEL_POSITIONS=['QB','RB','WR','TE'];
+
+// For each position where the USER (not every position generically)
+// still has an open dedicated need, counts how many of the Turn Watch
+// teams ALSO show an open dedicated need at that position via the same,
+// completely unmodified computeRosterNeed(teamId) -- then maps that
+// literal count (0 / 1 / 2+) to one of the three approved labels. No
+// score, no probability, no weighting -- the count IS the evidence.
+function buildSageTurnIntelligence(teams){
+  if(!draftState.myTeamId)return [];
+  var myNeed=computeRosterNeed(draftState.myTeamId);
+  return SAGE_TURN_INTEL_POSITIONS.filter(function(pos){
+    return (myNeed.remainingDedicated[pos]||0)>0;
+  }).map(function(pos){
+    var needyCount=teams.filter(function(teamId){
+      var need=computeRosterNeed(teamId);
+      return (need.remainingDedicated[pos]||0)>0;
+    }).length;
+    var label,explanation;
+    if(needyCount===0){
+      label='WAIT LIKELY SAFE';
+      explanation='No teams selecting before your next pick have an open '+pos+' need.';
+    }else if(needyCount===1){
+      label='WAIT MAY BE AVAILABLE';
+      explanation='1 team selecting before your next pick still has an open '+pos+' need.';
+    }else{
+      label='POSITION PRESSURE';
+      explanation=needyCount+' teams selecting before your next pick still have an open '+pos+' need.';
+    }
+    return {pos:pos,needyCount:needyCount,label:label,explanation:explanation};
+  });
+}
+
+function renderTurnWatchPanel(){
+  var el=document.getElementById('turnWatchPanel');
+  if(!el)return;
+  if(!draftState.myTeamId||draftState.draftType==='manual'||!draftSetupComplete()||isDraftComplete()){
+    el.innerHTML='';
+    el.style.display='none';
+    return;
+  }
+  var teams=buildTurnWatchTeams();
+  var intel=buildSageTurnIntelligence(teams);
+
+  if(!teams.length){
+    el.style.display='block';
+    el.innerHTML='<div class="turnwatch-hdr">🔎 Turn Watch</div>'+
+      '<div class="turnwatch-empty">Your next selectable pick is immediately yours again — no opponents pick in between.</div>';
+    return;
+  }
+
+  var rowsHtml=teams.map(function(teamId){
+    var need=computeRosterNeed(teamId);
+    var name=teamNameById(teamId)||'';
+    var posHtml=SAGE_TURN_INTEL_POSITIONS.map(function(pos){
+      var open=(need.remainingDedicated[pos]||0)>0;
+      return '<span class="turnwatch-pos'+(open?' open':' filled')+'">'+pos+' '+(open?'OPEN':'✓')+'</span>';
+    }).join('');
+    return '<div class="turnwatch-team-row"><span class="turnwatch-team-name">'+escAttr(name)+'</span>'+posHtml+'</div>';
+  }).join('');
+
+  var intelHtml=intel.length?('<div class="turnwatch-intel">'+intel.map(function(i){
+    return '<div class="turnwatch-intel-row"><span class="turnwatch-intel-pos">'+i.pos+'</span>'+
+      '<span class="turnwatch-intel-label turnwatch-intel-'+(i.needyCount===0?'safe':i.needyCount===1?'maybe':'pressure')+'">'+i.label+'</span>'+
+      '<div class="turnwatch-intel-explain">'+escAttr(i.explanation)+'</div></div>';
+  }).join('')+'</div>'):'';
+
+  el.style.display='block';
+  el.innerHTML='<div class="turnwatch-hdr">🔎 Turn Watch — teams before your next pick</div>'+rowsHtml+intelHtml;
 }
 
 function renderByTeamTabHtml(){
@@ -3031,17 +3227,18 @@ function renderByTeamTabHtml(){
     var list=byPos[pos]||[];
     var itemsHtml=list.length?list.map(function(e){
       var pickLabel=(typeof e.pickNumber==='number')?('#'+e.pickNumber+' '):'';
-      var keeperTag=e.isKeeper?' <span class="byteam-keeper-tag">KEEPER R'+e.round+'</span>':'';
-      return '<div class="byteam-player-row">'+pickLabel+escAttr(e.player)+keeperTag+'</div>';
+      var keeperTag=e.isKeeper?' <span class="byteam-keeper-tag'+(e.isReserved?' byteam-keeper-tag-reserved':'')+'">KEEPER R'+e.round+(e.isReserved?' · RESERVED':'')+'</span>':'';
+      return '<div class="byteam-player-row'+(e.isReserved?' byteam-player-row-reserved':'')+'">'+pickLabel+escAttr(e.player)+keeperTag+'</div>';
     }).join(''):'<div class="byteam-empty-pos">—</div>';
     var doubledUp=list.length>1?' <span class="byteam-doubled-tag">×'+list.length+'</span>':'';
     return '<div class="byteam-pos-group"><div class="byteam-pos-lbl">'+pos+doubledUp+'</div>'+itemsHtml+'</div>';
   }).join('');
 
   var selectedTeamName=teamNameById(draftBoardSelectedTeamId)||'';
+  var byTeamLegend=entries.some(function(e){return e.isReserved;})?'<p class="board-legend-note">Reserved keepers are already rostered but their draft-round slot has not yet occurred.</p>':'';
   return '<div class="byteam-selector">'+selectorHtml+'</div>'+
     '<div class="byteam-hdr">'+escAttr(selectedTeamName)+' — '+entries.length+' Player'+(entries.length===1?'':'s')+'</div>'+
-    '<div class="byteam-groups">'+groupsHtml+'</div>';
+    '<div class="byteam-groups">'+groupsHtml+'</div>'+byTeamLegend;
 }
 
 
@@ -3207,6 +3404,7 @@ function render(){
   renderMyRoster();
   renderMockControls();
   renderMockStatusLine();
+  renderTurnWatchPanel();
 
   // SAGE V1: fires exactly once, only if setup was already complete
   // before this page load (a restored session) -- saveSetup() handles
