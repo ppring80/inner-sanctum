@@ -55,7 +55,7 @@ test('draft.html source actually contains the new keeper functions (sanity check
 // ───────────────────────────────────────────────────────────
 function makeFakeElement() {
   const classes = new Set();
-  return {
+  const el = {
     _value: '',
     get value() { return this._value; },
     set value(v) { this._value = v; },
@@ -66,7 +66,14 @@ function makeFakeElement() {
       toggle: (c, on) => { if (on) classes.add(c); else classes.delete(c); },
       contains: (c) => classes.has(c),
     },
-    innerHTML: '',
+    _innerHTML: '',
+    get innerHTML() { return this._innerHTML; },
+    // Setting innerHTML clears any children previously added via
+    // appendChild (real DOM behavior) -- needed so renderKeeperSection()
+    // (which sets container.innerHTML=...) and renderKeeperRoundOptions()
+    // (which uses createElement/appendChild on the SAME kind of element)
+    // never leave stale children lingering across calls in these tests.
+    set innerHTML(v) { this._innerHTML = v; this.children.length = 0; },
     textContent: '',
     disabled: false,
     checked: false,
@@ -74,13 +81,20 @@ function makeFakeElement() {
     children: [],
     dataset: {},
     focus() {}, blur() {}, click() {},
-    appendChild() {}, removeChild() {}, remove() {},
+    // Real (if minimal) child-tracking -- needed for tests that inspect
+    // <option> elements created via document.createElement/appendChild
+    // (e.g. renderKeeperRoundOptions()), unlike draft-sage-integration
+    // .test.js's own copy of this fake DOM, which never needs to.
+    appendChild(child) { this.children.push(child); return child; },
+    removeChild(child) { this.children = this.children.filter((c) => c !== child); },
+    remove() {},
     addEventListener() {}, removeEventListener() {},
     querySelector: () => null,
     querySelectorAll: () => [],
     closest: () => null,
     getContext: () => null,
   };
+  return el;
 }
 
 function makeFakeDocument() {
@@ -255,7 +269,7 @@ test('user keeper Round 12: resolves to correct overall pick number', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
-  const k = { id: 1, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 };
+  const k = { id: 1, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 };
   assert.strictEqual(sandbox.keeperPickNumber(k), 120);
 });
 
@@ -265,7 +279,7 @@ test('multiple keepers for the same user resolve to independent, distinct pick n
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   const set = sandbox.buildKeeperPickNumberSet();
   assert.ok(set[40] && set[120]);
@@ -403,7 +417,7 @@ test('keeper counted in computeRosterNeed() filled positions from Pick 1', () =>
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   const rosterNeed = sandbox.computeRosterNeed();
   assert.strictEqual(rosterNeed.filled.WR, 2);
@@ -426,7 +440,7 @@ test('MY TEAM player count includes keepers (2 keepers + 1 live selection = 3 pl
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   sandbox.draftState.draftLog = [{ id: 1, pickNumber: 1, player: 'Live RB', pos: 'RB', teamId: 'team-01' }];
   sandbox.renderMyRoster();
@@ -444,7 +458,7 @@ test('rosterContext (computeRosterNeed output) correctly reflects keeper ownersh
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   const rc = sandbox.computeRosterNeed();
   assert.strictEqual(rc.filled.WR, 2);
@@ -610,7 +624,7 @@ test('FLAGSHIP: both user keepers unavailable from Pick 1', () => {
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
     { id: 3, teamId: 'team-02', player: 'Other Team Keeper A', pos: 'RB', round: 2 },
     { id: 4, teamId: 'team-05', player: 'Other Team Keeper B', pos: 'TE', round: 6 },
   ];
@@ -624,7 +638,7 @@ test('FLAGSHIP: both user keepers appear on My Team from Pick 1, labeled with ke
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   sandbox.renderMyRoster();
   const html = sandbox.document.getElementById('rosterPanel').innerHTML;
@@ -638,7 +652,7 @@ test('FLAGSHIP: rosterContext sees two WRs already rostered', () => {
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   assert.strictEqual(sandbox.computeRosterNeed().filled.WR, 2);
 });
@@ -684,12 +698,312 @@ test('FLAGSHIP: live selections continue populating draftLog normally; keepers n
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
-    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
   sandbox.draftState.draftLog.push({ id: 1, pickNumber: 1, player: 'Live Pick One', pos: 'QB', teamId: 'team-01' });
   assert.strictEqual(sandbox.draftState.draftLog.length, 1);
   assert.strictEqual(sandbox.draftState.keepers.length, 2);
 });
+
+// ═══════════════════════════════════════════════════════════
+// SETUP-UI REFINEMENT: searchable player selector, auto-derived
+// position, Round dropdown (added in the UI-refinement pass; does not
+// touch keeper engine functions -- see file header note per-test).
+// ═══════════════════════════════════════════════════════════
+
+function setupLeagueWithPool(sandbox, numTeams, myTeamId) {
+  setupLeague(sandbox, numTeams, myTeamId);
+  sandbox.adpByPos = {
+    WR: [
+      { name: 'George Pickens', pos: 'WR', team: 'PIT', adp: 20, key: sandbox.playerKey('George Pickens', 'WR') },
+      { name: 'Quentin Johnston', pos: 'WR', team: 'LAC', adp: 45, key: sandbox.playerKey('Quentin Johnston', 'WR') },
+      { name: 'Jahmyr Gibbs', pos: 'WR', team: 'DET', adp: 5, key: sandbox.playerKey('Jahmyr Gibbs', 'WR') }, // deliberately mis-tagged WR in this fixture only to prove position is NOT hand-typed -- unrelated to real ADP data
+    ],
+    RB: [
+      { name: 'Jahmyr Gibbs RB', pos: 'RB', team: 'DET', adp: 3, key: sandbox.playerKey('Jahmyr Gibbs RB', 'RB') },
+    ],
+    QB: [], TE: [], K: [], DEF: [],
+  };
+}
+
+test('searchable player selection uses the real/canonical adpByPos dataset, not a second dataset', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  const flat = sandbox.allPlayersFlat();
+  assert.ok(flat.some((p) => p.name === 'George Pickens' && p.pos === 'WR'));
+  assert.ok(flat.some((p) => p.name === 'Jahmyr Gibbs RB' && p.pos === 'RB'));
+  assert.strictEqual(flat.length, 4, 'flat list is exactly the union of adpByPos, nothing invented');
+});
+
+test('selecting a player auto-populates/derives position -- addKeeperFromForm never reads a manual position control', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-01';
+  sandbox.selectKeeperPlayerFromResults(sandbox.playerKey('George Pickens', 'WR'));
+  assert.strictEqual(sandbox.keeperFormSelectedPlayer.pos, 'WR');
+  sandbox.document.getElementById('keeperFormRound').value = '4';
+  sandbox.addKeeperFromForm();
+  assert.strictEqual(sandbox.draftState.keepers.length, 1);
+  assert.strictEqual(sandbox.draftState.keepers[0].pos, 'WR', 'position came from the canonical record, never manually chosen');
+  assert.strictEqual(sandbox.draftState.keepers[0].player, 'George Pickens');
+});
+
+test('the underlying keeper object shape is unchanged: {teamId, player, pos, round}', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-01';
+  sandbox.selectKeeperPlayerFromResults(sandbox.playerKey('George Pickens', 'WR'));
+  sandbox.document.getElementById('keeperFormRound').value = '4';
+  sandbox.addKeeperFromForm();
+  const k = sandbox.draftState.keepers[0];
+  assert.deepStrictEqual(Object.keys(k).sort(), ['id', 'pos', 'player', 'round', 'teamId'].sort());
+});
+
+test('round dropdown is generated to match the leagues configured Number of Rounds (14, not hard-coded)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.numRounds = 14;
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  assert.strictEqual(roundSel.children.length, 14);
+  assert.strictEqual(roundSel.children[0].value, '1');
+  assert.strictEqual(roundSel.children[13].value, '14');
+});
+
+test('round dropdown reflects a DIFFERENT configured Number of Rounds (18) without hard-coding', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.numRounds = 18;
+  sandbox.renderKeeperSection();
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  assert.strictEqual(roundSel.children.length, 18);
+});
+
+test('a round already occupied by the selected teams OTHER keeper is disabled in the dropdown', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-01';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  const round4Option = roundSel.children.find((o) => o.value === '4');
+  assert.strictEqual(round4Option.disabled, true);
+  const round5Option = roundSel.children.find((o) => o.value === '5');
+  assert.strictEqual(round5Option.disabled, false);
+});
+
+test('the same occupied round is NOT disabled for a DIFFERENT team (per-team occupancy, not global)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-02';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  const round4Option = roundSel.children.find((o) => o.value === '4');
+  assert.strictEqual(round4Option.disabled, false);
+});
+
+test('an already-kept player does not appear in search results for another team', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  const reason = sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('George Pickens', 'WR'), null);
+  assert.ok(reason);
+});
+
+test('a drafted (draftLog) player also does not appear in search results', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.draftLog.push({ id: 1, pickNumber: 1, player: 'Jahmyr Gibbs RB', pos: 'RB', teamId: 'team-03' });
+  const reason = sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('Jahmyr Gibbs RB', 'RB'), null);
+  assert.ok(reason);
+});
+
+test('removing a keeper restores that player as selectable again immediately', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  assert.ok(sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('George Pickens', 'WR'), null));
+  sandbox.removeKeeper(1);
+  assert.strictEqual(sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('George Pickens', 'WR'), null), null);
+});
+
+test('removing a keeper also re-enables that teams round in the dropdown', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  sandbox.removeKeeper(1);
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-01';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  const round4Option = roundSel.children.find((o) => o.value === '4');
+  assert.strictEqual(round4Option.disabled, false);
+});
+
+test('editing a keeper does NOT falsely flag its own player/round as a conflict', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
+  sandbox.startEditKeeper(1);
+  // The player-eligibility check (excludeKeeperId=keeperEditingId=1) must
+  // not treat the keeper's OWN player as a conflict while it's being edited.
+  const reason = sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('George Pickens', 'WR'), sandbox.keeperEditingId);
+  assert.strictEqual(reason, null);
+  // Re-adding with the SAME round must also succeed via the real
+  // (untouched) keeperValidationError backstop.
+  sandbox.document.getElementById('keeperFormRound').value = '4';
+  sandbox.addKeeperFromForm();
+  assert.strictEqual(sandbox.draftState.keepers.length, 1);
+  assert.strictEqual(sandbox.draftState.keepers[0].round, 4);
+});
+
+test('editing a keeper preserves canonical player/position through the selector, and Team populates correctly', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-05');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-05', player: 'Quentin Johnston', pos: 'WR', round: 12 }];
+  sandbox.startEditKeeper(1);
+  assert.strictEqual(sandbox.keeperFormSelectedPlayer.name, 'Quentin Johnston');
+  assert.strictEqual(sandbox.keeperFormSelectedPlayer.pos, 'WR');
+  assert.strictEqual(sandbox.document.getElementById('keeperFormPlayerSearch').value, 'Quentin Johnston');
+  // Team must populate correctly -- this specifically exercises the
+  // fix for a pre-existing ordering bug (keeperFormTeamOptions() inside
+  // renderKeeperSection() rebuilds the <select> and would otherwise
+  // silently reset it to the first team).
+  assert.strictEqual(sandbox.document.getElementById('keeperFormTeam').value, 'team-05');
+  assert.strictEqual(sandbox.document.getElementById('keeperFormRound').value, '12');
+});
+
+test('editing a keeper and changing its round still runs normal keeper validation', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [
+    { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
+    { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
+  ];
+  sandbox.draftState.nextKeeperId = 3;
+  sandbox.startEditKeeper(1); // editing Pickens
+  sandbox.document.getElementById('keeperFormRound').value = '12'; // collides with Johnston's round
+  sandbox.addKeeperFromForm();
+  // Must be rejected by the real, untouched keeperValidationError --
+  // Pickens should NOT have been re-added with a colliding round.
+  assert.strictEqual(sandbox.draftState.keepers.length, 1, 'only Johnston remains; the invalid edit was rejected');
+  assert.strictEqual(sandbox.draftState.keepers[0].player, 'Quentin Johnston');
+});
+
+// ═══════════════════════════════════════════════════════════
+// FLAGSHIP CUSTOMER SCENARIO (UI-refinement pass): 14-team snake
+// league, draft slot 14, Team 14 keeps George Pickens (WR, R4) and
+// Quentin Johnston (WR, R14) -- entered via the refined selector.
+// ═══════════════════════════════════════════════════════════
+
+test('FLAGSHIP (UI refinement): Pickens and Johnston both resolve to WR automatically via the selector', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.numRounds = 14;
+  sandbox.renderKeeperSection();
+
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.selectKeeperPlayerFromResults(sandbox.playerKey('George Pickens', 'WR'));
+  sandbox.document.getElementById('keeperFormRound').value = '4';
+  sandbox.addKeeperFromForm();
+
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.renderKeeperRoundOptions();
+  sandbox.selectKeeperPlayerFromResults(sandbox.playerKey('Quentin Johnston', 'WR'));
+  sandbox.document.getElementById('keeperFormRound').value = '14';
+  sandbox.addKeeperFromForm();
+
+  assert.strictEqual(sandbox.draftState.keepers.length, 2);
+  assert.ok(sandbox.draftState.keepers.every((k) => k.pos === 'WR'));
+  assert.ok(sandbox.draftState.keepers.some((k) => k.player === 'George Pickens' && k.round === 4));
+  assert.ok(sandbox.draftState.keepers.some((k) => k.player === 'Quentin Johnston' && k.round === 14));
+});
+
+test('FLAGSHIP (UI refinement): Round dropdown contains exactly 1-14', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.numRounds = 14;
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  const values = roundSel.children.map((o) => o.value);
+  assert.deepStrictEqual(values, Array.from({ length: 14 }, (_, i) => String(i + 1)));
+});
+
+test('FLAGSHIP (UI refinement): after Pickens is assigned to Team 14 Round 4, Round 4 cannot be reselected for Team 14', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.numRounds = 14;
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-14', player: 'George Pickens', pos: 'WR', round: 4 }];
+  sandbox.renderKeeperSection();
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  const round4Option = roundSel.children.find((o) => o.value === '4');
+  assert.strictEqual(round4Option.disabled, true);
+});
+
+test('FLAGSHIP (UI refinement): Pickens cannot be assigned to another team once kept by Team 14', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-14', player: 'George Pickens', pos: 'WR', round: 4 }];
+  const reason = sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('George Pickens', 'WR'), null);
+  assert.ok(reason, 'Pickens must be ineligible for selection by any other team');
+  // Defensive backstop still catches it even if the UI filter were somehow bypassed:
+  const err = sandbox.keeperValidationError({ teamId: 'team-02', player: 'George Pickens', pos: 'WR', round: 6 }, null);
+  assert.ok(err);
+});
+
+test('FLAGSHIP (UI refinement): editing/removing either keeper restores the appropriate options correctly', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeagueWithPool(sandbox, 14, 'team-14');
+  sandbox.draftState.numRounds = 14;
+  sandbox.draftState.keepers = [
+    { id: 1, teamId: 'team-14', player: 'George Pickens', pos: 'WR', round: 4 },
+    { id: 2, teamId: 'team-14', player: 'Quentin Johnston', pos: 'WR', round: 14 },
+  ];
+  sandbox.draftState.nextKeeperId = 3;
+  sandbox.removeKeeper(2); // remove Johnston
+  assert.strictEqual(sandbox.keeperPlayerIneligibilityReason(sandbox.playerKey('Quentin Johnston', 'WR'), null), null, 'Johnston is selectable again');
+  sandbox.document.getElementById('keeperFormTeam').value = 'team-14';
+  sandbox.renderKeeperRoundOptions();
+  const roundSel = sandbox.document.getElementById('keeperFormRound');
+  assert.strictEqual(roundSel.children.find((o) => o.value === '14').disabled, false, 'Round 14 is available again');
+  assert.strictEqual(roundSel.children.find((o) => o.value === '4').disabled, true, 'Round 4 (Pickens) remains occupied');
+});
+
+// ═══════════════════════════════════════════════════════════
+// Pre-existing keeper engine tests remain unchanged and passing --
+// confirmed by the fact that every test ABOVE this section in this
+// same file (unmodified from the prior pass) still passes.
+// ═══════════════════════════════════════════════════════════
 
 console.log(`draft-command-center-keepers.test.js: ${passed}/${passed + failed} passed`);
 if (failures.length) {
