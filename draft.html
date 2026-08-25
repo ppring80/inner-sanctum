@@ -1419,6 +1419,19 @@ function logDraftPick(name,pos){
   draftState.draftLog.push({id:draftState.nextPickId++,pickNumber:pickNumber,player:name,pos:pos,teamId:teamId});
   saveDraftState();
   afterDraftMutation();
+
+  // Mock Draft handoff: a manual user selection may be one half of a
+  // snake-turn pair (for example, Slot 14 owns picks #14 and #15 in a
+  // 14-team snake). Do not resume automation until the NEXT selectable
+  // pick belongs to another team. Automated opponent picks never enter
+  // this branch because they run with mockAutomationBatching=true.
+  if(mockModeActive&&!mockPaused&&!mockAutomationBatching){
+    var nextMockPickNumber=nextPickNumber();
+    var nextMockTeamId=teamOnClock(nextMockPickNumber);
+    if(nextMockTeamId&&nextMockTeamId!==draftState.myTeamId){
+      setTimeout(runMockAutomationUntilUserTurn,0);
+    }
+  }
 }
 
 // ─── Manual draft type: ownership is never auto-assigned from draft
