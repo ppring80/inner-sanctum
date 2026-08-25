@@ -125,6 +125,22 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 /* ── ORACLE / TRASH BOXES ── */
 .oracle-box{background:rgba(184,146,26,0.05);border-left:3px solid var(--gold);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
+
+/* SAGE Targets modal (Aug 25 2026) -- deliberately a full, roomy
+   overlay rather than a resized inline list, so richer SAGE
+   explanations and Max Bid have real space instead of a skinny
+   scrollbar. Reuses the site's existing card markup (renderRecommendationCard)
+   unchanged; this is presentation-only. */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:center;justify-content:center;padding:24px}
+.modal-bg.on{display:flex}
+.sage-targets-modal{background:var(--ink);color:#eee;border-radius:var(--r);width:min(720px,100%);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.sage-targets-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.1);font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+.sage-targets-modal-close{background:transparent;border:1px solid rgba(255,255,255,0.25);color:#eee;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1}
+.sage-targets-modal-close:hover{background:rgba(255,255,255,0.1)}
+.sage-targets-modal-body{padding:20px;overflow-y:auto}
+@media (max-width:600px){
+  .sage-targets-modal{width:100%;max-height:90vh}
+}
 .oracle-box-label{font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
 .oracle-box-text{font-style:italic;font-size:13px;color:var(--muted);line-height:1.7}
 .trash-box{background:rgba(138,32,32,0.04);border-left:3px solid var(--red);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;margin-bottom:20px}
@@ -962,6 +978,24 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="oracle-box-label">🎯 Recommended Targets</div>
         <div class="oracle-box-text" id="decisionPanelText">Log a pick to get recommendations.</div>
       </div>
+    </div>
+  </div>
+
+  <!-- SAGE Targets modal (Aug 25 2026) -- replaces the old narrow,
+       internally-scrolling Additional Targets list. Opened/closed by
+       openMoreTargetsModal()/closeMoreTargetsModal() in the script
+       below; never recomputes anything, only re-renders the already-
+       cached lastDecisionResult.moreTargets via the SAME
+       renderRecommendationCard() the compact sidebar uses. Sits
+       outside the step5-sidebar/tracker grid entirely, so it cannot
+       affect that layout or any draft-state logic. -->
+  <div class="modal-bg no-print" id="sageTargetsModalBg" onclick="if(event.target===this)closeMoreTargetsModal()">
+    <div class="sage-targets-modal">
+      <div class="sage-targets-modal-hdr">
+        <span>🎯 SAGE Targets</span>
+        <button type="button" class="sage-targets-modal-close" onclick="closeMoreTargetsModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="sage-targets-modal-body" id="sageTargetsModalBody"></div>
     </div>
   </div>
 
@@ -2085,30 +2119,76 @@ function logPick() {
 // ═══════════════════════════════════════════════════════════
 var DECISION_ROLE_LABELS = { PRIMARY: 'Primary Target', ALTERNATIVE: 'Alternative Target', VALUE: 'Value Target', MORE: 'Additional Target' };
 
+// Auction SAGE (Aug 25 2026): consumer-facing action badge, entirely
+// separate from the role label above it. Colors reuse the existing
+// palette (--green/--amber/--gold/--muted) -- no new alarmist red, and
+// CAUTION/NEEDS_MORE_EVIDENCE are deliberately muted rather than
+// warning-styled, consistent with the non-alarmist treatment already
+// used elsewhere in this product for advisory (not error) content.
+var SAGE_ACTION_BADGE_STYLE = {
+  TAKE_NOW: 'background:rgba(46,125,50,0.15);color:var(--green);border:1px solid rgba(46,125,50,0.35)',
+  CONSIDER_NOW: 'background:rgba(184,146,26,0.15);color:var(--gold);border:1px solid rgba(184,146,26,0.35)',
+  FLEXIBLE: 'background:rgba(21,101,192,0.12);color:var(--blue);border:1px solid rgba(21,101,192,0.3)',
+  CAUTION: 'background:rgba(200,120,10,0.15);color:var(--amber);border:1px solid rgba(200,120,10,0.35)',
+  NEEDS_MORE_EVIDENCE: 'background:rgba(122,122,118,0.15);color:var(--dim);border:1px solid rgba(122,122,118,0.3)'
+};
+
 function renderRecommendationCard(rec, isLast) {
   var label = DECISION_ROLE_LABELS[rec.role] || rec.role;
   var borderStyle = isLast ? '' : 'border-bottom:1px solid rgba(255,255,255,0.08);';
+  // sageAction/sageActionLabel/sageExplanation are additive fields from
+  // decision-engine.js's buildRecommendationEntry() -- rec.rationale
+  // still exists unchanged, but SAGE's own evidence-based explanation
+  // (sageExplanation) is what's shown here, since it's the richer,
+  // Max-Bid-aware text this feature is meant to add. The role label
+  // (PRIMARY TARGET) and the SAGE action (TAKE NOW) are rendered as two
+  // visually distinct things -- they answer different questions ("what
+  // slot is this" vs. "what should I do") and are never merged into one.
+  var sageBadge = rec.sageActionLabel
+    ? '<span style="display:inline-block;margin-left:8px;padding:1px 8px;border-radius:10px;font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;vertical-align:middle;' +
+      (SAGE_ACTION_BADGE_STYLE[rec.sageAction] || '') + '">' + rec.sageActionLabel + '</span>'
+    : '';
+  var explanationText = rec.sageExplanation || rec.rationale;
   return '<div style="margin-bottom:10px;padding-bottom:10px;' + borderStyle + '">' +
-    '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px">' + label + '</div>' +
+    '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px">' + label + sageBadge + '</div>' +
     '<div style="font-weight:600">' + rec.player + ' <span style="opacity:0.6;font-weight:400">(' + rec.pos + ')</span></div>' +
     '<div style="font-size:13px;opacity:0.85">Max Bid: $' + rec.maxPrice + ' &nbsp;•&nbsp; Decision Score: ' + rec.decisionScore + '</div>' +
-    '<div style="font-size:12px;opacity:0.7;margin-top:2px">' + rec.rationale + '</div>' +
+    '<div style="font-size:12px;opacity:0.7;margin-top:2px">' + explanationText + '</div>' +
     '</div>';
 }
 
-// "Show More Targets" (Aug 14 2026): purely a display toggle over
-// result.moreTargets, which decision-engine.js already computed from the
-// same filtered/gated `viable` pool Primary/Alternative/Value came from.
-// No re-scoring, re-ranking, API calls, or eligibility logic lives here --
-// this only remembers (a) the last rendered result, so the button can
-// re-render without recomputing anything, and (b) whether the list is
-// currently expanded.
+// "Show More Targets" (Aug 14 2026, replaced with a modal Aug 25 2026):
+// purely a display concern over result.moreTargets, which
+// decision-engine.js already computed from the same filtered/gated
+// `viable` pool Primary/Alternative/Value came from. No re-scoring,
+// re-ranking, API calls, or eligibility logic lives here or in the
+// modal below -- opening/closing the modal never recomputes anything;
+// it only re-renders the SAME cached lastDecisionResult.moreTargets
+// via the SAME renderRecommendationCard() the compact panel uses.
 var lastDecisionResult = null;
-var moreTargetsExpanded = false;
 
-function toggleMoreTargets() {
-  moreTargetsExpanded = !moreTargetsExpanded;
-  renderDecisionPanel(lastDecisionResult);
+function openMoreTargetsModal() {
+  var result = lastDecisionResult;
+  if (!result || !result.moreTargets || !result.moreTargets.length) return;
+  var body = document.getElementById('sageTargetsModalBody');
+  if (!body) return;
+  var moreTargets = result.moreTargets;
+  body.innerHTML = moreTargets.map(function (rec, i) {
+    return renderRecommendationCard(rec, i === moreTargets.length - 1);
+  }).join('');
+  var bg = document.getElementById('sageTargetsModalBg');
+  if (bg) bg.classList.add('on');
+  document.addEventListener('keydown', closeMoreTargetsModalOnEscape);
+}
+
+function closeMoreTargetsModal() {
+  var bg = document.getElementById('sageTargetsModalBg');
+  if (bg) bg.classList.remove('on');
+  document.removeEventListener('keydown', closeMoreTargetsModalOnEscape);
+}
+
+function closeMoreTargetsModalOnEscape(e) {
+  if (e.key === 'Escape') closeMoreTargetsModal();
 }
 
 function renderDecisionPanel(result) {
@@ -2136,26 +2216,18 @@ function renderDecisionPanel(result) {
 
   var recs = result.recommendations;
   var moreTargets = result.moreTargets || [];
-  var cards = recs.map(function (rec, i) { return renderRecommendationCard(rec, i === recs.length - 1 && !moreTargets.length); }).join('');
+  // Compact sidebar ALWAYS stops at Primary/Alternative/Value -- the
+  // last card here is always the last of `recs`, regardless of
+  // moreTargets.length, since Additional Targets no longer render
+  // inline at all (they live in the modal now, opened on demand).
+  var cards = recs.map(function (rec, i) { return renderRecommendationCard(rec, i === recs.length - 1); }).join('');
 
   var moreHtml = '';
   if (moreTargets.length) {
-    var buttonLabel = moreTargetsExpanded ? 'Hide More Targets' : 'Show More Targets';
-    moreHtml += '<button type="button" class="no-print" onclick="toggleMoreTargets()" ' +
-      'style="margin-top:4px;margin-bottom:8px;padding:6px 12px;font-size:12px;font-family:\'JetBrains Mono\',monospace;' +
+    moreHtml += '<button type="button" class="no-print" onclick="openMoreTargetsModal()" ' +
+      'style="margin-top:4px;padding:6px 12px;font-size:12px;font-family:\'JetBrains Mono\',monospace;' +
       'letter-spacing:0.5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);' +
-      'border-radius:5px;color:var(--muted);cursor:pointer;">' + buttonLabel + '</button>';
-    if (moreTargetsExpanded) {
-      var moreCards = moreTargets.map(function (rec, i) { return renderRecommendationCard(rec, i === moreTargets.length - 1); }).join('');
-      // Bounded, independently scrollable container (Aug 14 2026) --
-      // only the additional-target cards scroll; Primary/Alternative/
-      // Value and the toggle button above stay outside this div and
-      // always fully visible. max-height sized for ~2-3 cards at a
-      // glance (Pat's preference: 320-380px) with native momentum
-      // scrolling on touch. Presentation only -- card markup/styling
-      // inside (renderRecommendationCard) is completely unchanged.
-      moreHtml += '<div id="moreTargetsList" style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px;">' + moreCards + '</div>';
-    }
+      'border-radius:5px;color:var(--muted);cursor:pointer;">Show More Targets (' + moreTargets.length + ')</button>';
   }
 
   text.innerHTML = cards + moreHtml;
