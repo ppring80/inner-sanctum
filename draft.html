@@ -254,6 +254,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-detail.open{display:flex}
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
 .roster-chip-keeper{border-style:dashed;font-weight:600}
+.mock-active-badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:4px 10px;border-radius:12px;background:rgba(184,146,26,0.16);color:var(--gold);border:1px solid rgba(184,146,26,0.4);margin-right:4px}
+.mock-status-line{padding:6px 24px;font-family:Lora,serif;font-size:12px;color:#8a6a10;background:#fffbf0;border-bottom:1px solid rgba(201,168,76,0.3);display:none}
 .keeper-player-results{position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:220px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,0.15)}
 .keeper-player-result-item{padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)}
 .keeper-player-result-item:last-child{border-bottom:none}
@@ -435,6 +437,7 @@ function checkOAuthSession() {
       <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">↺ Reset Draft</button>
       <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
     </div>
+    <div class="draft-ctrl-group" id="mockControls"></div>
   </div>
 </div>
 
@@ -498,6 +501,7 @@ function checkOAuthSession() {
 </div>
 
 <div class="clock-bar no-print" id="clockBar"></div>
+<div class="mock-status-line no-print" id="mockStatusLine"></div>
 <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;padding:3px 24px;background:var(--surface);border-bottom:1px solid var(--border)">
   <span id="mySlotIndicator" style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text3)"></span>
   <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
@@ -805,6 +809,14 @@ function playerKey(name,pos){ return key(name)+'|'+pos; }
 // ─── Persistence (validated, fail-safe — modeled on auction.html's
 // readSavedAuctionState) ───
 function saveDraftState(){
+  // Mock Draft addition: while a mock session is active, `draftState`
+  // points at the ephemeral mock working copy (see startMockDraft()
+  // below), never the real live object. This guard is the second half
+  // of that isolation -- even if something calls saveDraftState()
+  // during a mock session, it must never reach the real live
+  // localStorage key. The live path (mockModeActive===false, always
+  // true before this feature existed) is completely unchanged.
+  if(mockModeActive)return;
   try{
     localStorage.setItem(DRAFT_SAVE_KEY, JSON.stringify(draftState));
   }catch(e){
@@ -1451,9 +1463,311 @@ function undoLastPick(){
 }
 
 function afterDraftMutation(){
+  // Mock Draft addition: during an automated opponent-selection batch,
+  // suppress the normal full render()+SAGE-network-call this function
+  // always did after every mutation -- otherwise a 12+ team league
+  // would trigger a full board re-render and a live SAGE fetch after
+  // EVERY intermediate opponent pick between the user's turns, which
+  // is wasted work since it's immediately superseded by the next pick.
+  // runMockAutomationUntilUserTurn() calls render()/refreshSageRecommendations()
+  // itself exactly once, only when automation actually stops. Live
+  // mode never sets mockAutomationBatching, so this is a no-op there --
+  // the two lines below execute unconditionally, exactly as before.
+  if(mockAutomationBatching)return;
   render();
   refreshSageRecommendations();
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// MOCK DRAFT COMMAND CENTER (Mock mode)
+//
+// Reuses the EXISTING draft engine as its single source of truth --
+// nextPickNumber(), teamOnClock(), resolveSlotForPick(), buildDraftIndex(),
+// buildAvailablePlayersSortedByAdp(), computeRosterNeed(teamId),
+// logDraftPick() -- ALL unmodified (except the two small, additive
+// guards immediately above, which are no-ops for live mode). No second
+// snake/keeper/availability/roster implementation exists anywhere in
+// this section.
+//
+// ISOLATION MODEL (the highest-risk part of this feature):
+// `draftState` is a single, reassignable module-level variable that
+// every function above reads/writes by closure (confirmed: ~100
+// references throughout this file). Mock mode works by REASSIGNING
+// which object that name points to, never by mutating the real live
+// object:
+//
+//   liveDraftStateBackup = draftState;      // keep a direct reference
+//   draftState = buildMockDraftState(...);  // swap to an ephemeral copy
+//
+// Every existing function above continues to work completely
+// unmodified, now operating on the mock copy. saveDraftState()'s guard
+// (above) ensures the mock copy is never written to the real
+// localStorage key while it's active. Exiting mock reassigns
+// `draftState` back to the exact same live object reference -- nothing
+// about it was ever mutated, so nothing needs to be "restored" beyond
+// the reassignment itself.
+// ═══════════════════════════════════════════════════════════════════
+
+var mockModeActive=false;
+var mockPaused=false;
+var mockAutomationRunning=false; // prevents overlapping loop invocations
+var mockAutomationBatching=false; // guards afterDraftMutation() during a burst
+var mockStatusMessage=null;
+var liveDraftStateBackup=null;
+var mockStartSnapshot=null; // the setup-only snapshot Restart Mock rebuilds from
+
+var MOCK_OPPONENT_PICK_DELAY_MS=150;
+var MOCK_TOP_K=5;
+// Generous upper bound -- well beyond any realistic league size x
+// round count -- purely a defensive circuit-breaker per the "no
+// infinite loop" requirement, never expected to be hit in normal use.
+var MOCK_MAX_AUTOMATION_ITERATIONS=2000;
+
+// Simple, seedable xorshift32 PRNG -- deterministic given a seed, no
+// dependency, used only for the "small controlled variation" in
+// mockOpponentPick() below. Live mode never calls this.
+var mockRngState=123456789;
+function seedMockRng(seed){
+  mockRngState=(seed>>>0)||1;
+}
+function mockRandom(){
+  mockRngState^=mockRngState<<13;
+  mockRngState^=mockRngState>>>17;
+  mockRngState^=mockRngState<<5;
+  mockRngState=mockRngState>>>0;
+  return (mockRngState%1000000)/1000000;
+}
+
+function setMockStatus(msg){
+  mockStatusMessage=msg||null;
+}
+
+// Deep-clones ONLY the league-setup fields (never draftLog -- Mock
+// mode always starts fresh from Pick 1 per the product spec) from a
+// source draftState-shaped object. Used by both Start Mock and Restart
+// Mock, always sourced from mockStartSnapshot/liveDraftStateBackup,
+// never from the CURRENT (possibly mid-mock-draft) draftState -- that
+// distinction is what makes Restart Mock discard prior mock picks
+// while keeping setup/keepers.
+function buildMockDraftState(source){
+  return {
+    schemaVersion:source.schemaVersion,
+    teams:JSON.parse(JSON.stringify(source.teams)),
+    myTeamId:source.myTeamId,
+    draftLog:[],
+    nextPickId:1,
+    draftType:source.draftType,
+    numRounds:source.numRounds,
+    rosterConstruction:JSON.parse(JSON.stringify(source.rosterConstruction||DEFAULT_ROSTER_CONSTRUCTION)),
+    keepers:JSON.parse(JSON.stringify(source.keepers||[])),
+    nextKeeperId:source.nextKeeperId||1
+  };
+}
+
+function canStartMockDraft(){
+  return draftSetupComplete()&&draftState.draftType!=='manual';
+}
+
+function startMockDraft(){
+  if(mockModeActive)return;
+  if(!draftSetupComplete()){
+    openSetupModal();
+    return;
+  }
+  if(draftState.draftType==='manual'){
+    setMockStatus('Mock Draft requires Snake or Linear draft order.');
+    render();
+    return;
+  }
+  // Capture the live object by REFERENCE (not a clone) -- it is never
+  // mutated while mock mode is active, so a direct reference is both
+  // correct and cheaper than a deep clone here. The deep clone happens
+  // separately, in buildMockDraftState(), for the WORKING copy only.
+  liveDraftStateBackup=draftState;
+  mockStartSnapshot=liveDraftStateBackup;
+  draftState=buildMockDraftState(mockStartSnapshot);
+  mockModeActive=true;
+  mockPaused=false;
+  setMockStatus(null);
+  render();
+  runMockAutomationUntilUserTurn();
+}
+
+function restartMockDraft(){
+  if(!mockModeActive||!mockStartSnapshot)return;
+  mockPaused=false;
+  setMockStatus(null);
+  draftState=buildMockDraftState(mockStartSnapshot);
+  render();
+  runMockAutomationUntilUserTurn();
+}
+
+function exitMockDraft(){
+  if(!mockModeActive)return;
+  mockModeActive=false;
+  mockPaused=false;
+  mockAutomationRunning=false;
+  mockAutomationBatching=false;
+  setMockStatus(null);
+  // Restore the exact original live object reference -- it was never
+  // mutated, so this is a pure reassignment, not a merge/restore of data.
+  draftState=liveDraftStateBackup;
+  liveDraftStateBackup=null;
+  mockStartSnapshot=null;
+  render();
+  refreshSageRecommendations();
+}
+
+function pauseMockDraft(){
+  if(!mockModeActive)return;
+  mockPaused=true;
+  render();
+}
+
+function resumeMockDraft(){
+  if(!mockModeActive)return;
+  mockPaused=false;
+  render();
+  runMockAutomationUntilUserTurn();
+}
+
+// Total configured roster size (all dedicated + FLEX + SUPERFLEX +
+// BENCH) versus how many players a team already has (draftLog picks
+// this mock session + keepers). Used only as the coarse "is this team
+// done drafting" legality gate below -- deliberately simple, per the
+// explicit "do not build sophisticated drafting strategy" instruction.
+function totalRosterSlotsRemaining(teamId){
+  var cfg=draftState.rosterConstruction||DEFAULT_ROSTER_CONSTRUCTION;
+  var totalSlots=(cfg.QB||0)+(cfg.RB||0)+(cfg.WR||0)+(cfg.TE||0)+(cfg.K||0)+(cfg.DEF||0)+(cfg.FLEX||0)+(cfg.SUPERFLEX||0)+(cfg.BENCH||0);
+  var filled=draftState.draftLog.filter(function(e){return e.teamId===teamId;}).length
+    +(draftState.keepers||[]).filter(function(k){return k.teamId===teamId;}).length;
+  return totalSlots-filled;
+}
+
+// MVP opponent-selection algorithm (see feasibility audit, section C):
+// 1. existing buildAvailablePlayersSortedByAdp() -- unmodified, already
+//    excludes drafted players AND keepers via buildDraftIndex().
+// 2. existing computeRosterNeed(teamId) -- unmodified logic, newly
+//    reachable for any team.
+// 3. Prefer positions with a real remaining need (dedicated/flex/
+//    superflex); fall back to the full available pool once every
+//    dedicated/flex/superflex need is met (players still route to
+//    bench, same as a real draft).
+// 4. ADP-primary: the pool is already ADP-sorted; select uniformly at
+//    random from the top MOCK_TOP_K of whichever pool applies -- this
+//    is the entire "small controlled variation" this MVP implements.
+// Returns null when the team has no remaining roster slot at all
+// (including bench) -- the automation loop treats that as a signal to
+// stop safely, per the "no legal player" requirement.
+function mockOpponentPick(teamId){
+  if(totalRosterSlotsRemaining(teamId)<=0)return null;
+  var available=buildAvailablePlayersSortedByAdp();
+  if(!available.length)return null;
+  var need=computeRosterNeed(teamId);
+  var needFirst=available.filter(function(p){
+    return (need.remainingDedicated[p.pos]||0)>0
+      ||(need.remainingFlex>0&&need.flexEligible.indexOf(p.pos)!==-1)
+      ||(need.remainingSuperflex>0&&need.superflexEligible.indexOf(p.pos)!==-1);
+  });
+  var pool=needFirst.length?needFirst:available;
+  var windowSize=Math.min(MOCK_TOP_K,pool.length);
+  var idx=Math.floor(mockRandom()*windowSize);
+  var chosen=pool[idx];
+  return {name:chosen.name,pos:chosen.pos};
+}
+
+// The automation loop. Calls ONLY existing, unmodified engine
+// functions to determine progression (nextPickNumber/teamOnClock --
+// both already keeper-aware, so keeper slots for ANY team, including
+// the user's own, are skipped with zero mock-specific logic here) and
+// the SAME shared logDraftPick(name,pos) primitive a manual click
+// uses to actually record an opponent's selection.
+function runMockAutomationUntilUserTurn(){
+  if(!mockModeActive||mockPaused||mockAutomationRunning)return;
+  mockAutomationRunning=true;
+  mockAutomationBatching=true;
+  var iterations=0;
+
+  function stopBatch(){
+    mockAutomationRunning=false;
+    mockAutomationBatching=false;
+    render();
+    refreshSageRecommendations();
+  }
+
+  function step(){
+    if(!mockModeActive||mockPaused){
+      stopBatch();
+      return;
+    }
+    iterations++;
+    if(iterations>MOCK_MAX_AUTOMATION_ITERATIONS){
+      setMockStatus('Mock Draft stopped: automation safety limit reached.');
+      stopBatch();
+      return;
+    }
+    if(isDraftComplete()){
+      setMockStatus('Mock Draft Complete.');
+      stopBatch();
+      return;
+    }
+    var pn=nextPickNumber();
+    var teamId=teamOnClock(pn);
+    if(!teamId){
+      setMockStatus('Mock Draft Complete.');
+      stopBatch();
+      return;
+    }
+    if(teamId===draftState.myTeamId){
+      setMockStatus(null);
+      stopBatch();
+      return;
+    }
+    var pick=mockOpponentPick(teamId);
+    if(!pick){
+      setMockStatus('Mock Draft stopped: no legal player available for '+(teamNameById(teamId)||'a team')+'.');
+      stopBatch();
+      return;
+    }
+    // Shared state-transition path -- identical to a manual click.
+    // afterDraftMutation() (called inside logDraftPick()) is a no-op
+    // right now because mockAutomationBatching is true.
+    logDraftPick(pick.name,pick.pos);
+    setTimeout(step,MOCK_OPPONENT_PICK_DELAY_MS);
+  }
+
+  step();
+}
+
+function renderMockStatusLine(){
+  var el=document.getElementById('mockStatusLine');
+  if(!el)return;
+  if(!mockStatusMessage){
+    el.style.display='none';
+    el.textContent='';
+    return;
+  }
+  el.style.display='block';
+  el.textContent=mockStatusMessage;
+}
+function renderMockControls(){
+  var el=document.getElementById('mockControls');
+  if(!el)return;
+  if(!mockModeActive){
+    var disabledAttr=canStartMockDraft()?'':' disabled title="Complete Draft Setup with Snake or Linear draft order first."';
+    el.innerHTML='<button class="hdr-btn" id="mockStartBtn" onclick="startMockDraft()"'+disabledAttr+'>\uD83C\uDFAE Start Mock Draft</button>';
+    return;
+  }
+  var pauseResumeBtn=mockPaused?
+    '<button class="hdr-btn" onclick="resumeMockDraft()">\u25B6 Resume</button>':
+    '<button class="hdr-btn" onclick="pauseMockDraft()">\u23F8 Pause</button>';
+  el.innerHTML=
+    '<span class="mock-active-badge">MOCK DRAFT ACTIVE</span>'+
+    pauseResumeBtn+
+    '<button class="hdr-btn" onclick="restartMockDraft()">\u21BA Restart</button>'+
+    '<button class="hdr-btn" onclick="exitMockDraft()">\u2715 Exit Mock</button>';
+}
+
 
 // ─── Reassignment modal (Correct Historical Pick: reassign or remove) ───
 function openReassignModal(id){
@@ -2126,19 +2440,29 @@ function allocateFlexSlots(leftoverByPos,flexSlots,superflexSlots){
   return {remainingFlex:remainingFlex,remainingSuperflex:remainingSuperflex};
 }
 
-function computeRosterNeed(){
+// Mock Draft addition: accepts an OPTIONAL teamId, defaulting to
+// draftState.myTeamId -- every existing call site (which calls this
+// with zero arguments) is completely unaffected, since the default
+// reproduces the exact prior behavior. This is the ONLY change to
+// this function; the filled/remainingDedicated/flex computation below
+// is byte-identical to before, just keyed off `teamId` instead of the
+// hard-coded draftState.myTeamId. Lets Mock mode derive roster need
+// for any fantasy team, reusing the exact same keeper-inclusive logic
+// already proven correct for the user's own team.
+function computeRosterNeed(teamId){
+  teamId=teamId||draftState.myTeamId;
   var cfg=draftState.rosterConstruction||DEFAULT_ROSTER_CONSTRUCTION;
   var numTeams=draftState.teams.length||0;
 
   var filled={QB:0,RB:0,WR:0,TE:0,K:0,DEF:0};
-  if(draftState.myTeamId){
-    draftState.draftLog.filter(function(e){return e.teamId===draftState.myTeamId;}).forEach(function(e){
+  if(teamId){
+    draftState.draftLog.filter(function(e){return e.teamId===teamId;}).forEach(function(e){
       if(Object.prototype.hasOwnProperty.call(filled,e.pos)) filled[e.pos]++;
     });
     // Keepers count as already rostered from the very start of the
     // draft -- this is what lets SAGE Roster Watch understand from
     // Pick 1 that a kept position is already (partially) filled.
-    (draftState.keepers||[]).filter(function(k){return k.teamId===draftState.myTeamId;}).forEach(function(k){
+    (draftState.keepers||[]).filter(function(k){return k.teamId===teamId;}).forEach(function(k){
       if(Object.prototype.hasOwnProperty.call(filled,k.pos)) filled[k.pos]++;
     });
   }
@@ -2390,6 +2714,8 @@ function render(){
   renderMySlotIndicator();
   renderSetupSummaryButton();
   renderMyRoster();
+  renderMockControls();
+  renderMockStatusLine();
 
   // SAGE V1: fires exactly once, only if setup was already complete
   // before this page load (a restored session) -- saveSetup() handles
