@@ -745,25 +745,10 @@ check(
 );
 
 r = buildRecommendation({
-  opportunityProfile:
-    op(
-      'High Volume',
-      'Softening Role'
-    ),
-
-  marketProfile:
-    market(
-      'At Market',
-      'Market Leans Gone'
-    ),
-
-  scarcityProfile:
-    scarcity(
-      'Moderate'
-    ),
-
-  contextProfile:
-    context()
+  opportunityProfile: op('High Volume', 'Softening Role'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context()
 });
 
 eq(
@@ -771,12 +756,9 @@ eq(
   r.recommendation,
   'Take Now'
 );
-
 check(
   'Softening Take Now retains plain-language caution reason',
-  r.reasons.includes(
-    'recent role has softened but volume remains strong'
-  )
+  r.reasons.includes('recent role has softened but volume remains strong')
 );
 
 const sustainedHigh = {
@@ -788,38 +770,18 @@ const sustainedHigh = {
 
 check(
   'high-volume Sustained Decline is caution',
-  isOpportunityCaution(
-    sustainedHigh
-  )
+  isOpportunityCaution(sustainedHigh)
 );
-
 check(
   'high-volume Sustained Decline is not strong',
-  !isStrongOpportunity(
-    sustainedHigh
-  )
+  !isStrongOpportunity(sustainedHigh)
 );
 
 r = buildRecommendation({
-  opportunityProfile:
-    op(
-      'High Volume',
-      'Sustained Decline'
-    ),
-
-  marketProfile:
-    market(
-      'At Market',
-      'Market Leans Gone'
-    ),
-
-  scarcityProfile:
-    scarcity(
-      'Moderate'
-    ),
-
-  contextProfile:
-    context()
+  opportunityProfile: op('High Volume', 'Sustained Decline'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context()
 });
 
 eq(
@@ -827,40 +789,20 @@ eq(
   r.recommendation,
   'Consider Now'
 );
-
 check(
   'Sustained Decline reason communicates persistence',
-  r.reasons.includes(
-    'role decline has persisted across longer windows'
-  )
+  r.reasons.includes('role decline has persisted across longer windows')
 );
 
 r = buildRecommendation({
-  opportunityProfile:
-    op(
-      'Moderate Volume',
-      'Softening Role'
-    ),
-
-  marketProfile:
-    market(
-      'At Market',
-      'Market Leans Gone'
-    ),
-
-  scarcityProfile:
-    scarcity(
-      'Moderate'
-    ),
-
-  contextProfile:
-    context()
+  opportunityProfile: op('Moderate Volume', 'Softening Role'),
+  marketProfile: market('At Market', 'Market Leans Gone'),
+  scarcityProfile: scarcity('Moderate'),
+  contextProfile: context()
 });
-
 check(
   'Moderate Volume + Softening Role never becomes Take Now through strong-opportunity path',
-  r.recommendation !==
-    'Take Now'
+  r.recommendation !== 'Take Now'
 );
 
 // ---------------------------------------
