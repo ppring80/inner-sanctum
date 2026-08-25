@@ -2330,27 +2330,27 @@ function saveSetup(){
   if(isFirstEverSetup && !isOnboardingDismissed()) openOnboardingModal();
 }
 
-// ─── Reset Draft — returns Draft Command Center to a clean pre-draft
-// state while preserving league configuration and keeper setup.
+// ─── Reset Draft — completely clears the current draft session while
+// preserving only the structural league configuration.
 //
-// In live mode this clears every recorded live selection. In Mock mode
-// it first discards the ephemeral mock session and restores the real live
-// draftState reference, then resets THAT live draft. This keeps Reset Draft
-// semantically identical in both modes: setup + keepers remain; draft
-// selections and transient draft-session state do not. ───
+// A Reset means a truly blank draft: no live selections, no keeper/frozen
+// assignments, no rostered players, no keeper badges, no Mock session, and
+// no stale draft-only UI state. Team count/names, draft type, rounds, user's
+// slot, roster construction, and scoring controls remain configured so the
+// customer can immediately set up a new draft without rebuilding the league. ───
 function clearDrafted(){
-  if(!confirm('Reset the draft? This clears all recorded selections and returns to the start of the draft. League setup and keeper players will be kept.'))return;
+  if(!confirm('Reset the entire draft? This clears all drafted players, all keeper/frozen-player assignments, and any active Mock Draft. Your league structure and roster settings will be kept.'))return;
 
-  // If Reset is pressed during Mock Draft, discard the mock working copy
-  // first. Do this inline rather than calling exitMockDraft(), because that
-  // function intentionally renders/restores the live draft as-is; Reset
-  // needs to continue immediately and clear that restored live draft too.
+  // If Reset is pressed during Mock Draft, invalidate that automation batch
+  // immediately and restore the untouched live state before wiping the live
+  // draft session. The generation bump prevents an already-scheduled stale
+  // step() callback from making a pick after Reset.
   if(mockModeActive){
     mockModeActive=false;
     mockPaused=false;
     mockAutomationRunning=false;
     mockAutomationBatching=false;
-    mockAutomationGeneration++; // invalidate any already-scheduled step() immediately, not only once it fires and rechecks mockModeActive
+    mockAutomationGeneration++;
     setMockStatus(null);
     if(liveDraftStateBackup)draftState=liveDraftStateBackup;
     liveDraftStateBackup=null;
@@ -2366,15 +2366,22 @@ function clearDrafted(){
   sageError=null;
   sageShowAll=false;
 
-  // Clear draft-session-only UI state. League setup, roster construction,
-  // scoring controls and keepers are deliberately preserved.
+  // Clear draft-session-only UI/form state.
   cmpList=[];
   cmpData={};
   currentReassignId=null;
   pendingManualPick=null;
+  keeperEditingId=null;
+  keeperFormSelectedPlayer=null;
 
+  // A complete reset clears BOTH sources of roster ownership. This is what
+  // removes former keepers from My Team, returns them to the available pool,
+  // removes every Keeper R# badge from the board, and returns progression to
+  // the first normal draft pick.
   draftState.draftLog=[];
   draftState.nextPickId=1;
+  draftState.keepers=[];
+  draftState.nextKeeperId=1;
 
   saveDraftState();
   render();
