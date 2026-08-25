@@ -255,6 +255,9 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-chip{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);border-radius:4px;padding:3px 8px;color:#7a5f10}
 .roster-chip-keeper{border-style:dashed;font-weight:600}
 .mock-active-badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:4px 10px;border-radius:12px;background:rgba(184,146,26,0.16);color:var(--gold);border:1px solid rgba(184,146,26,0.4);margin-right:4px}
+.mock-controls-inline{display:inline-flex;align-items:center;gap:6px}
+.mock-controls-inline .mock-ctrl-btn{color:var(--gold);border-color:rgba(184,146,26,0.5);background:var(--surface)}
+.mock-controls-inline .mock-ctrl-btn:hover{background:rgba(184,146,26,0.08);border-color:var(--gold)}
 .mock-status-line{padding:6px 24px;font-family:Lora,serif;font-size:12px;color:#8a6a10;background:#fffbf0;border-bottom:1px solid rgba(201,168,76,0.3);display:none}
 .keeper-player-results{position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:4px;max-height:220px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,0.15)}
 .keeper-player-result-item{padding:6px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)}
@@ -437,7 +440,6 @@ function checkOAuthSession() {
       <button class="hdr-btn" style="color:#ff9a9a" onclick="clearDrafted()">↺ Reset Draft</button>
       <button class="hdr-btn" onclick="loadAll()">↻ Refresh</button>
     </div>
-    <div class="draft-ctrl-group" id="mockControls"></div>
   </div>
 </div>
 
@@ -479,6 +481,7 @@ function checkOAuthSession() {
     <button class="view-btn" id="hideDraftedBtn" onclick="setHideDrafted(true)">Hide Drafted</button>
   </div>
   <button class="setup-summary-btn" id="draftSetupBtn" onclick="openSetupModal()">⚙ Draft Setup<span class="setup-summary-extra" id="draftSetupSummaryExtra"><span id="draftSetupSummaryCore"></span><span class="setup-summary-rounds" id="draftSetupSummaryRounds"></span></span></button>
+  <span class="mock-controls-inline" id="mockControls"></span>
   <div class="search-box">
     <span class="search-icon">🔍</span>
     <input type="text" id="srch" placeholder="Search player or team..." oninput="doSearch(this.value)">
@@ -1750,22 +1753,30 @@ function renderMockStatusLine(){
   el.style.display='block';
   el.textContent=mockStatusMessage;
 }
+// Entry point lives in the main ctrl-bar, directly beside Draft Setup
+// (same logical control group) rather than in the dark header --
+// customer mental model is "Draft Setup = configure this league,
+// Mock Draft = practice drafting this configured league," so the two
+// belong next to each other. Uses the current SAVED Draft Setup
+// configuration exactly as-is (startMockDraft() itself is untouched --
+// this function only controls what's rendered/clicked, never how a
+// mock session is built).
 function renderMockControls(){
   var el=document.getElementById('mockControls');
   if(!el)return;
   if(!mockModeActive){
     var disabledAttr=canStartMockDraft()?'':' disabled title="Complete Draft Setup with Snake or Linear draft order first."';
-    el.innerHTML='<button class="hdr-btn" id="mockStartBtn" onclick="startMockDraft()"'+disabledAttr+'>\uD83C\uDFAE Start Mock Draft</button>';
+    el.innerHTML='<button class="setup-summary-btn mock-entry-btn" id="mockStartBtn" onclick="startMockDraft()"'+disabledAttr+'>\uD83E\uDDEA Mock Draft</button>';
     return;
   }
   var pauseResumeBtn=mockPaused?
-    '<button class="hdr-btn" onclick="resumeMockDraft()">\u25B6 Resume</button>':
-    '<button class="hdr-btn" onclick="pauseMockDraft()">\u23F8 Pause</button>';
+    '<button class="hdr-btn mock-ctrl-btn" onclick="resumeMockDraft()">\u25B6 Resume</button>':
+    '<button class="hdr-btn mock-ctrl-btn" onclick="pauseMockDraft()">\u23F8 Pause</button>';
   el.innerHTML=
-    '<span class="mock-active-badge">MOCK DRAFT ACTIVE</span>'+
+    '<span class="mock-active-badge">\uD83E\uDDEA MOCK DRAFT ACTIVE</span>'+
     pauseResumeBtn+
-    '<button class="hdr-btn" onclick="restartMockDraft()">\u21BA Restart</button>'+
-    '<button class="hdr-btn" onclick="exitMockDraft()">\u2715 Exit Mock</button>';
+    '<button class="hdr-btn mock-ctrl-btn" onclick="restartMockDraft()">\u21BA Restart</button>'+
+    '<button class="hdr-btn mock-ctrl-btn" onclick="exitMockDraft()">\u2715 Exit Mock</button>';
 }
 
 
