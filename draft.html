@@ -626,6 +626,21 @@ function checkOAuthSession() {
   </div>
 </div>
 
+<!-- ═══ MOCK DRAFT PREFLIGHT MODAL ═══ -->
+<div class="modal-bg" id="mockPreflightModalBg">
+  <div class="modal" style="max-width:500px">
+    <button class="modal-x" onclick="closeMockPreflight()">✕</button>
+    <div class="modal-ttl">🧪 Ready to Mock Draft?</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:14px">Practice using your current Draft Setup.</p>
+    <div id="mockPreflightSummary" style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;line-height:1.7"></div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:18px">Other teams draft automatically. <strong>When you're on the clock, the simulation stops and you make the pick with SAGE.</strong></p>
+    <div class="btn-row" style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="hdr-btn" onclick="editDraftSetupFromMockPreflight()">⚙ Edit Draft Setup</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="confirmStartMockDraft()">🧪 Start Mock Draft</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ REASSIGN PICK MODAL (added) ═══ -->
 <div class="modal-bg" id="reassignModalBg">
   <div class="modal" style="max-width:380px">
@@ -1595,7 +1610,50 @@ function canStartMockDraft(){
   return draftSetupComplete()&&draftState.draftType!=='manual';
 }
 
+function mockPreflightScoringLabel(){
+  var el=document.getElementById('scoringSel');
+  var v=el?el.value:'standard';
+  if(v==='ppr')return 'PPR';
+  if(v==='half-ppr')return 'Half PPR';
+  return 'Standard';
+}
+
+function mockPreflightSummaryText(){
+  var teamCount=(draftState.teams||[]).length;
+  var mySlot=(draftState.teams||[]).findIndex(function(t){return t.id===draftState.myTeamId;})+1;
+  var draftType=draftState.draftType==='linear'?'Linear':'Snake';
+  var keeperCount=(draftState.keepers||[]).length;
+  return teamCount+' Teams · '+mockPreflightScoringLabel()+' · '+draftType+' · Pick '+mySlot+' · '+draftState.numRounds+' Rounds · '+keeperCount+' Keeper'+(keeperCount===1?'':'s');
+}
+
 function startMockDraft(){
+  if(mockModeActive)return;
+  if(!draftSetupComplete()){
+    openSetupModal();
+    return;
+  }
+  if(draftState.draftType==='manual'){
+    setMockStatus('Mock Draft requires Snake or Linear draft order.');
+    render();
+    return;
+  }
+  var summary=document.getElementById('mockPreflightSummary');
+  if(summary)summary.textContent=mockPreflightSummaryText();
+  document.getElementById('mockPreflightModalBg').classList.add('on');
+}
+
+function closeMockPreflight(){
+  var bg=document.getElementById('mockPreflightModalBg');
+  if(bg)bg.classList.remove('on');
+}
+
+function editDraftSetupFromMockPreflight(){
+  closeMockPreflight();
+  openSetupModal();
+}
+
+function confirmStartMockDraft(){
+  closeMockPreflight();
   if(mockModeActive)return;
   if(!draftSetupComplete()){
     openSetupModal();
