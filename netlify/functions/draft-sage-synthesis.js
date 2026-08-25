@@ -635,6 +635,119 @@
     }
 
     // -----------------------------------
+    // EVIDENCE-RESPONSIVE EXPLANATIONS
+    // -----------------------------------
+
+    // Consumer-facing only: no score, threshold, branch, code, or ranking
+    // changes. These helpers simply describe the evidence already used by
+    // the existing recommendation branch.
+    function opportunityLead(s) {
+      if (s.workload === 'High Volume' && s.direction === 'Increasing Role') {
+        return 'High-volume usage is paired with an increasing role';
+      }
+      if (s.workload === 'High Volume' && s.direction === 'Stable Role') {
+        return 'High-volume usage is backed by a stable role';
+      }
+      if (s.workload === 'High Volume' && s.direction === 'Softening Role') {
+        return 'Workload remains high even though the recent role has softened';
+      }
+      if (s.workload === 'Moderate Volume' && s.direction === 'Increasing Role') {
+        return 'Moderate volume is trending upward';
+      }
+      if (s.workload === 'Moderate Volume' && s.direction === 'Stable Role') {
+        return 'The player has a stable, moderate-volume role';
+      }
+      if (s.workload === 'Role Player') {
+        return 'The current workload is still that of a role player';
+      }
+      if (s.direction === 'Decreasing Role' || s.direction === 'Sustained Decline') {
+        return 'Recent role direction is a caution signal';
+      }
+      return s.workload
+        ? 'The current workload is ' + s.workload.toLowerCase()
+        : 'The Opportunity profile is mixed';
+    }
+
+    function buildNowPressureExplanation(opportunity, market, scarcity) {
+      var lead = opportunityLead(opportunity);
+      if (market.outlook === 'Market Leans Gone' && scarcity.cost === 'High') {
+        return lead + ', but both his ADP and the remaining positional depth make waiting risky.';
+      }
+      if (market.outlook === 'Market Leans Gone') {
+        return lead + ', but his ADP suggests he is unlikely to reach your next pick.';
+      }
+      if (market.value === 'Discount') {
+        return lead + ', and he is already available later than his ADP.';
+      }
+      if (scarcity.cost === 'High') {
+        return lead + ', while the remaining positional depth makes waiting costly.';
+      }
+      return lead + ', and the timing evidence creates a meaningful reason to act now.';
+    }
+
+    function buildFlexibleExplanation(opportunity, market, scarcity) {
+      var lead = opportunityLead(opportunity);
+      if (market.outlook === 'Market Says He May Return' && scarcity.cost === 'Low') {
+        return lead + ', while both ADP and positional depth leave room to wait.';
+      }
+      if (market.outlook === 'Market Says He May Return') {
+        return lead + ', and his ADP gives you room to wait until your next turn.';
+      }
+      if (scarcity.cost === 'Low') {
+        return lead + ', and comparable positional options are projected to remain available.';
+      }
+      if (market.value === 'Ahead of Market') {
+        return lead + ', but selecting him here would mean paying ahead of his ADP.';
+      }
+      if (market.value === 'At Market') {
+        return lead + ', with no additional market or scarcity signal strong enough to force the pick.';
+      }
+      return lead + ', but the available timing evidence does not force the decision.';
+    }
+
+    // sage-recommend intentionally shows only the first two reasons. Reorder
+    // existing reasons so those two represent both the player's Opportunity
+    // case and the evidence that actually drives the action/wait decision.
+    function prioritizeReasons(reasons, code, opportunity, market, scarcity) {
+      var all = Array.isArray(reasons) ? reasons.slice() : [];
+      var first = [];
+      function add(reason) {
+        if (all.indexOf(reason) !== -1 && first.indexOf(reason) === -1) first.push(reason);
+      }
+      function opportunityReason() {
+        if (opportunity.direction === 'Decreasing Role') return 'recent role trend warrants caution';
+        if (opportunity.direction === 'Sustained Decline') return 'role decline has persisted across longer windows';
+        if (opportunity.workload) return opportunity.workload + ' workload';
+        if (opportunity.direction === 'Increasing Role') return 'role is increasing';
+        if (opportunity.direction === 'Stable Role') return 'role is stable';
+        if (opportunity.direction === 'Softening Role') return 'recent role has softened but volume remains strong';
+        return '';
+      }
+      function nowReason() {
+        if (market.outlook === 'Market Leans Gone') return 'market says waiting carries risk';
+        if (scarcity.cost === 'High') return 'high cost of waiting at the position';
+        if (market.value === 'Discount') return 'available at a discount';
+        return '';
+      }
+      function waitReason() {
+        if (market.outlook === 'Market Says He May Return') return 'market gives room to wait';
+        if (scarcity.cost === 'Low') return 'later positional depth remains';
+        if (market.value === 'Ahead of Market') return 'priced ahead of market';
+        return '';
+      }
+
+      add(opportunityReason());
+      if (code === 'take-now' || code === 'consider-now' || code === 'strong-consideration') {
+        add(nowReason());
+      } else if (code === 'can-wait' || code === 'flexible' || code === 'wait' || code === 'pass-for-now') {
+        add(waitReason());
+      }
+
+      all.forEach(add);
+      return first;
+    }
+
+    // -----------------------------------
     // SYNTHESIS
     // -----------------------------------
 
@@ -988,7 +1101,11 @@
           'consider-now';
 
         explanation =
-          'Waiting carries meaningful market or positional risk, even though the Opportunity case is not dominant.';
+          buildNowPressureExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -1017,7 +1134,11 @@
           'flexible';
 
         explanation =
-          'The available evidence does not provide enough timing clarity to force the decision.';
+          buildFlexibleExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else {
@@ -1028,7 +1149,11 @@
           'flexible';
 
         explanation =
-          'No single evidence layer is strong enough to force the decision.';
+          buildFlexibleExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       return {
@@ -1042,11 +1167,17 @@
           explanation,
 
         reasons:
-          buildReasons(
+          prioritizeReasons(
+            buildReasons(
+              opportunity,
+              market,
+              scarcity,
+              context
+            ),
+            code,
             opportunity,
             market,
-            scarcity,
-            context
+            scarcity
           ),
 
         evidence: {
