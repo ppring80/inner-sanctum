@@ -1755,6 +1755,50 @@ function totalRosterSlotsRemaining(teamId){
   return totalSlots-filled;
 }
 
+// P0 realism fix (Aug 25 2026): K/DEF's own perpetually-open dedicated
+// slot must never, by itself, look like real "starter need" the way an
+// unfilled RB/WR slot does. Before this fix, needFirst below treated
+// K/DEF exactly like any other position with remainingDedicated>0 --
+// once a CPU team's skill-position starters filled up (as early as
+// pick 7 with a typical roster), K/DEF became the ONLY thing left in
+// needFirst, even with 150+ skill-position bench players still sitting
+// in the pool. Root cause confirmed by direct reproduction against
+// this exact function.
+//
+// Reuses only EXISTING signals already computed elsewhere in this file
+// (computeRosterNeed()'s remainingDedicated/remainingFlex/
+// remainingSuperflex, totalRosterSlotsRemaining()) -- no new drafting
+// engine, no arbitrary round-number check anywhere below.
+var MOCK_SKILL_POSITIONS = ['QB','RB','WR','TE'];
+
+// True while a team's SKILL-position starting requirements are still
+// unmet -- dedicated QB/RB/WR/TE slots, plus FLEX/SUPERFLEX capacity.
+// K/DEF's own dedicated need is deliberately excluded from this check;
+// that's the entire point of the fix.
+function hasUnmetSkillStarterNeed(need){
+  var skillDedicatedOpen=MOCK_SKILL_POSITIONS.some(function(pos){
+    return (need.remainingDedicated[pos]||0)>0;
+  });
+  return skillDedicatedOpen||need.remainingFlex>0||need.remainingSuperflex>0;
+}
+
+// Real remaining BENCH capacity: total open roster slots (already
+// computed by totalRosterSlotsRemaining(), reused here, not
+// re-derived) minus every still-open STARTER-type slot across every
+// position (dedicated QB/RB/WR/TE/K/DEF, plus flex/superflex). This is
+// what distinguishes "starters are set, but there's still real bench
+// value on the board" from "this roster is genuinely full except for
+// K/DEF."
+function remainingBenchCapacity(teamId,need){
+  var totalOpen=totalRosterSlotsRemaining(teamId);
+  var openStarterSlots=0;
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    openStarterSlots+=(need.remainingDedicated[pos]||0);
+  });
+  openStarterSlots+=need.remainingFlex+need.remainingSuperflex;
+  return Math.max(0,totalOpen-openStarterSlots);
+}
+
 // MVP opponent-selection algorithm (see feasibility audit, section C):
 // 1. existing buildAvailablePlayersSortedByAdp() -- unmodified, already
 //    excludes drafted players AND keepers via buildDraftIndex().
@@ -1767,6 +1811,13 @@ function totalRosterSlotsRemaining(teamId){
 // 4. ADP-primary: the pool is already ADP-sorted; select uniformly at
 //    random from the top MOCK_TOP_K of whichever pool applies -- this
 //    is the entire "small controlled variation" this MVP implements.
+// 5. (P0 realism fix) K and DEF are excluded from the entire candidate
+//    universe UNLESS: skill-position starter need is fully satisfied,
+//    AND (remaining skill-position bench capacity is exhausted OR the
+//    market itself no longer favors skill depth -- the best remaining
+//    K/DEF's ADP is now better than the best remaining skill player's
+//    ADP). Both the bench-capacity check and the ADP comparison are
+//    real, already-available signals; neither is a round number.
 // Returns null when the team has no remaining roster slot at all
 // (including bench) -- the automation loop treats that as a signal to
 // stop safely, per the "no legal player" requirement.
@@ -1775,12 +1826,30 @@ function mockOpponentPick(teamId){
   var available=buildAvailablePlayersSortedByAdp();
   if(!available.length)return null;
   var need=computeRosterNeed(teamId);
-  var needFirst=available.filter(function(p){
+
+  var skillStarterNeedOpen=hasUnmetSkillStarterNeed(need);
+  var benchCapacity=remainingBenchCapacity(teamId,need);
+  var bestSkillAvailable=available.find(function(p){return MOCK_SKILL_POSITIONS.indexOf(p.pos)!==-1;})||null;
+  var bestKDefAvailable=available.find(function(p){return p.pos==='K'||p.pos==='DEF';})||null;
+  var marketFavorsKDef=!!bestKDefAvailable&&(!bestSkillAvailable||bestKDefAvailable.adp<bestSkillAvailable.adp);
+  var kdefEligibleNow=!skillStarterNeedOpen&&(benchCapacity<=0||marketFavorsKDef);
+
+  var candidatePool=kdefEligibleNow?available:available.filter(function(p){
+    return MOCK_SKILL_POSITIONS.indexOf(p.pos)!==-1;
+  });
+  // If suppressing K/DEF happened to leave nothing at all (no skill
+  // players remain anywhere in the pool -- vanishingly unlikely, but a
+  // real edge case near the very end of a small player pool), fall
+  // back to the unfiltered pool rather than incorrectly reporting no
+  // legal player.
+  if(!candidatePool.length)candidatePool=available;
+
+  var needFirst=candidatePool.filter(function(p){
     return (need.remainingDedicated[p.pos]||0)>0
       ||(need.remainingFlex>0&&need.flexEligible.indexOf(p.pos)!==-1)
       ||(need.remainingSuperflex>0&&need.superflexEligible.indexOf(p.pos)!==-1);
   });
-  var pool=needFirst.length?needFirst:available;
+  var pool=needFirst.length?needFirst:candidatePool;
   var windowSize=Math.min(MOCK_TOP_K,pool.length);
   var idx=Math.floor(mockRandom()*windowSize);
   var chosen=pool[idx];
@@ -2476,6 +2545,39 @@ function closeOnboardingModal(){
   try{ localStorage.setItem(ONBOARDING_DISMISSED_KEY,'true'); }catch(e){}
 }
 
+// ─── Back-to-back pick clarity (Aug 25 2026, UX-only) ───
+//
+// Purely derived from EXISTING draft state on every call -- draftLog
+// (to check whether the immediately preceding pick number was already
+// mine) and the existing, unmodified distanceToMySlot() (to check
+// whether the immediately following pick number is also mine, which
+// already correctly accounts for keeper-occupied slots). No new
+// variable becomes authoritative for turn progression; this function
+// computes nothing that affects nextPickNumber()/teamOnClock()/any
+// state mutation -- it only decides what renderClockStatus() displays.
+//
+// Called only when the caller has already established away===0 (the
+// user IS on the clock right now for pn). Determines:
+//   - "Pick 2 of 2": the pick immediately before pn (pn-1) was already
+//     logged as mine -- I'm finishing a pair I already started.
+//   - "Pick 1 of 2": pn-1 was NOT mine, but the very next real turn
+//     after pn (via distanceToMySlot(pn+1), keeper-aware) is ALSO
+//     mine -- I'm about to start a pair.
+//   - otherwise: a normal, single turn -- no back-to-back messaging.
+function myBackToBackPickInfo(pn){
+  var previousWasMine=draftState.draftLog.some(function(e){
+    return e.pickNumber===pn-1&&e.teamId===draftState.myTeamId;
+  });
+  if(previousWasMine){
+    return {isBackToBack:true,position:2,total:2};
+  }
+  var nextIsAlsoMine=distanceToMySlot(pn+1)===0;
+  if(nextIsAlsoMine){
+    return {isBackToBack:true,position:1,total:2};
+  }
+  return {isBackToBack:false};
+}
+
 // ─── Live clock status. Two states, matched to the approved copy:
 //   not my turn -> "PICK Y — TEAM Z ON THE CLOCK" / "Your next pick: #N · M selections away"
 //   my turn     -> "YOU'RE ON THE CLOCK — PICK Y" / "Choose a player below and click Draft to My Team"
@@ -2510,8 +2612,12 @@ function renderClockStatus(){
 
   if(draftState.myTeamId && away===0){
     el.classList.add('mine');
+    var b2b=myBackToBackPickInfo(pn);
+    var line1=b2b.isBackToBack
+      ?'YOU\'RE ON THE CLOCK — Back-to-back picks: Pick '+b2b.position+' of '+b2b.total
+      :'YOU\'RE ON THE CLOCK — PICK '+pn;
     el.innerHTML=
-      '<div class="clock-line1">YOU\'RE ON THE CLOCK — PICK '+pn+'</div>'+
+      '<div class="clock-line1">'+line1+'</div>'+
       '<div class="clock-line2">Choose a player below and click <strong>Draft to My Team</strong></div>';
     return;
   }
