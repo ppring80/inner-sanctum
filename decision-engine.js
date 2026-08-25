@@ -582,7 +582,136 @@ function buildRationale(role, diag, decisionState, alreadySelected) {
   return parts.join(' — ');
 }
 
+// ─── AUCTION SAGE (Aug 25 2026) ───────────────────────────────
+//
+// A consumer-facing action/explanation layer over the EXISTING,
+// validated decision engine. Reads only values already computed above
+// (diag.action from classifyAction(), diag.reasonCodes/riskCodes from
+// buildReasonCodes()/buildRiskCodes(), diag.needScore/valueScore/
+// inflationScore/budgetScore from scorePlayer(), diag.maxPrice from
+// computeMaxPriceForPlayer()). Nothing here recomputes finalScore,
+// re-derives classifyAction()'s TARGET/WATCH/PASS thresholds, or
+// introduces a new numeric threshold of any kind -- it is a pure
+// function of already-decided evidence, exactly the same relationship
+// draft-sage-synthesis.js already has to its own pillar scores.
+//
+// Deliberately does NOT attempt five auction-native tiers mapped from
+// finalScore. TARGET/WATCH/PASS remains the sole authoritative
+// classification; SAGE_ACTION only asks "given which of those three
+// this already is, plus whether real risk evidence exists, which
+// consumer-facing action best describes it" -- a 2-input decision
+// (action x hasRisk), not a new scoring axis.
+
+var SAGE_ACTION_TAKE_NOW = 'TAKE_NOW';
+var SAGE_ACTION_CONSIDER_NOW = 'CONSIDER_NOW';
+var SAGE_ACTION_FLEXIBLE = 'FLEXIBLE';
+var SAGE_ACTION_CAUTION = 'CAUTION';
+var SAGE_ACTION_NEEDS_MORE_EVIDENCE = 'NEEDS_MORE_EVIDENCE';
+
+var SAGE_ACTION_LABELS = {
+  TAKE_NOW: 'Take Now',
+  CONSIDER_NOW: 'Consider Now',
+  FLEXIBLE: 'Flexible',
+  CAUTION: 'Caution',
+  NEEDS_MORE_EVIDENCE: 'Needs More Evidence'
+};
+
+// diag.riskCodes/reasonCodes are always arrays (buildReasonCodes/
+// buildRiskCodes never return anything else), but this stays defensive
+// rather than assuming that invariant holds forever.
+function hasRiskEvidence(diag) {
+  return Array.isArray(diag.riskCodes) && diag.riskCodes.length > 0;
+}
+function hasPositiveEvidence(diag) {
+  return Array.isArray(diag.reasonCodes) && diag.reasonCodes.length > 0;
+}
+
+// The entire mapping. action is classifyAction()'s own, unmodified
+// output -- never recomputed here.
+function deriveSageAction(diag) {
+  var risky = hasRiskEvidence(diag);
+
+  if (diag.action === 'TARGET') {
+    return risky ? SAGE_ACTION_CONSIDER_NOW : SAGE_ACTION_TAKE_NOW;
+  }
+  if (diag.action === 'WATCH') {
+    return risky ? SAGE_ACTION_CAUTION : SAGE_ACTION_FLEXIBLE;
+  }
+  // action === 'PASS'
+  return hasPositiveEvidence(diag) ? SAGE_ACTION_CAUTION : SAGE_ACTION_NEEDS_MORE_EVIDENCE;
+}
+
+// Evidence-hierarchy-ordered explanation (roster fit -> value -> Max
+// Bid/affordability -> budget obligations -> inflation -> depth/
+// opportunity cost -> reasonCodes/riskCodes, per the approved spec).
+// Every clause is conditional on a real, already-computed signal --
+// nothing is asserted that the evidence doesn't actually support, and
+// two candidates with genuinely identical evidence produce identical
+// text (no artificial variety is introduced for its own sake).
+function buildSageExplanation(sageAction, diag, decisionState) {
+  var depthRisk = (diag.riskCodes || []).some(function (c) { return c.indexOf('_DEPTH_THIN') !== -1; });
+  var budgetRisk = (diag.riskCodes || []).indexOf('BUDGET_TIGHT_AFTER_PICK') !== -1;
+  var weakValue = diag.valueScore <= 0.3;
+  var strongValue = diag.valueScore >= 0.7;
+
+  var parts = [];
+
+  // 1. roster fit / positional need
+  if (diag.needScore >= NEED_SCORE_DIRECT) parts.push(diag.pos + ' fills an open starting need');
+  else if (diag.needScore >= NEED_SCORE_FLEX) parts.push(diag.pos + ' fills your FLEX need');
+  else if (diag.needScore <= NEED_SCORE_BENCH) parts.push('your ' + diag.pos + ' need is already covered');
+
+  // 2 + 6 reconciled together when they conflict (thin depth pushing
+  // urgency, weak value pushing against it) -- stated as one resolved
+  // clause rather than two contradictory-sounding bullets.
+  if (depthRisk && weakValue) {
+    parts.push('remaining depth at ' + diag.pos + ' is thin, but the price/value trade-off here does not clearly justify paying up for it');
+  } else {
+    // 2. value at current market
+    if (strongValue) parts.push('value at this price is strong relative to the field');
+    else if (weakValue) parts.push('value at this price is weak relative to the field');
+    // 6. depth / opportunity cost of waiting
+    if (depthRisk) parts.push('remaining depth at ' + diag.pos + ' is thin, raising the cost of waiting');
+  }
+
+  // 5. inflation/deflation (only when a real positional sample backs
+  // it -- positionalInflationFallback means the global rate was used
+  // instead, which is weaker evidence not worth asserting confidently)
+  if (diag.positionalInflationFallback === false) {
+    if (diag.inflationScore >= 0.65) parts.push(diag.pos + ' is running below expected cost right now');
+    else if (diag.inflationScore <= 0.35) parts.push(diag.pos + ' is running hot, above expected cost');
+  }
+
+  // 4. remaining budget / roster obligations
+  if (budgetRisk) {
+    parts.push('committing this much would leave your remaining budget tight for other open slots');
+  } else if (diag.budgetScore >= 0.7) {
+    parts.push('this price leaves plenty of budget flexibility for remaining needs');
+  }
+
+  var evidenceSentence = parts.length ? (parts.join('; ') + '.') : '';
+
+  // 3. Max Bid as an explicit action boundary -- framing depends on
+  // the SAGE action itself, since "don't chase past $X" reads
+  // differently for an aggressive vs. a patient recommendation.
+  var maxBidClause;
+  if (sageAction === SAGE_ACTION_TAKE_NOW) {
+    maxBidClause = "Don't chase the bidding beyond $" + diag.maxPrice + '.';
+  } else if (sageAction === SAGE_ACTION_CONSIDER_NOW) {
+    maxBidClause = 'Worth pursuing carefully up to $' + diag.maxPrice + ', not beyond.';
+  } else if (sageAction === SAGE_ACTION_FLEXIBLE) {
+    maxBidClause = 'If the price stays at or below $' + diag.maxPrice + ", it's a reasonable add \u2014 no need to force it.";
+  } else if (sageAction === SAGE_ACTION_CAUTION) {
+    maxBidClause = 'Only worth it if the price falls well under the $' + diag.maxPrice + ' ceiling.';
+  } else {
+    maxBidClause = '$' + diag.maxPrice + ' would be the ceiling if you do pursue this one.';
+  }
+
+  return (evidenceSentence ? evidenceSentence + ' ' : '') + maxBidClause;
+}
+
 function buildRecommendationEntry(role, diag, decisionState, alreadySelected) {
+  var sageAction = deriveSageAction(diag);
   return {
     role: role,
     player: diag.player,
@@ -599,7 +728,18 @@ function buildRecommendationEntry(role, diag, decisionState, alreadySelected) {
     reasonCodes: diag.reasonCodes,
     riskCodes: diag.riskCodes,
     scoringFormat: decisionState.scoringFormat,
-    rationale: buildRationale(role, diag, decisionState, alreadySelected)
+    rationale: buildRationale(role, diag, decisionState, alreadySelected),
+    // Auction SAGE additions (additive only -- every field above this
+    // comment is byte-for-byte what buildRecommendationEntry() already
+    // returned; `rationale` itself is untouched, still computed the
+    // same way, for any caller that still wants the original role-only
+    // text). sageAction is a string key (see SAGE_ACTION_* constants);
+    // sageActionLabel is the consumer-facing label; sageExplanation is
+    // the evidence-based prose described in buildSageExplanation()'s
+    // own header comment above.
+    sageAction: sageAction,
+    sageActionLabel: SAGE_ACTION_LABELS[sageAction],
+    sageExplanation: buildSageExplanation(sageAction, diag, decisionState)
   };
 }
 
@@ -799,6 +939,15 @@ if (typeof module !== 'undefined' && module.exports) {
     INFLATION_SCORE_NEUTRAL: INFLATION_SCORE_NEUTRAL,
     THRESHOLD_TARGET: THRESHOLD_TARGET,
     THRESHOLD_WATCH: THRESHOLD_WATCH,
-    MORE_TARGETS_COUNT: MORE_TARGETS_COUNT
+    MORE_TARGETS_COUNT: MORE_TARGETS_COUNT,
+    deriveSageAction: deriveSageAction,
+    buildSageExplanation: buildSageExplanation,
+    buildRecommendationEntry: buildRecommendationEntry,
+    SAGE_ACTION_TAKE_NOW: SAGE_ACTION_TAKE_NOW,
+    SAGE_ACTION_CONSIDER_NOW: SAGE_ACTION_CONSIDER_NOW,
+    SAGE_ACTION_FLEXIBLE: SAGE_ACTION_FLEXIBLE,
+    SAGE_ACTION_CAUTION: SAGE_ACTION_CAUTION,
+    SAGE_ACTION_NEEDS_MORE_EVIDENCE: SAGE_ACTION_NEEDS_MORE_EVIDENCE,
+    SAGE_ACTION_LABELS: SAGE_ACTION_LABELS
   };
 }
