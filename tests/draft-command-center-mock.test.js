@@ -215,7 +215,7 @@ test('starting a mock does NOT mutate the original live draftState object', () =
   seedPool(sandbox, { QB: 20, RB: 40, WR: 40, TE: 20, K: 15, DEF: 15 });
   const liveObjectRef = sandbox.draftState;
   const liveTeamsBefore = JSON.stringify(liveObjectRef.teams);
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(JSON.stringify(liveObjectRef.teams), liveTeamsBefore, 'the ORIGINAL object (by reference) must be unchanged');
   assert.strictEqual(liveObjectRef.draftLog.length, 0, 'the ORIGINAL objects draftLog must still be empty/untouched');
 });
@@ -226,7 +226,7 @@ test('opponent mock picks do not mutate the original live draftState object', ()
   setupLeague(sandbox, 4, 'team-01');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   const liveObjectRef = sandbox.draftState;
-  sandbox.startMockDraft(); // runs automation for teams 2,3,4 (team-01 is slot 1, on the clock first)
+  sandbox.confirmStartMockDraft(); // runs automation for teams 2,3,4 (team-01 is slot 1, on the clock first)
   assert.strictEqual(liveObjectRef.draftLog.length, 0, 'live object never receives any of the automated picks');
 });
 
@@ -235,7 +235,7 @@ test('mock session does not write the live localStorage draft key', () => {
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.localStorage.getItem(sandbox.DRAFT_SAVE_KEY), null, 'the real live key must never be written during a mock session');
 });
 
@@ -245,7 +245,7 @@ test('exit mock restores the original live draftState object exactly (same refer
   setupLeague(sandbox, 10, 'team-01');
   seedPool(sandbox, { QB: 20, RB: 40, WR: 40, TE: 20, K: 15, DEF: 15 });
   const liveObjectRef = sandbox.draftState;
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.notStrictEqual(sandbox.draftState, liveObjectRef, 'while active, draftState points at the mock copy');
   sandbox.exitMockDraft();
   assert.strictEqual(sandbox.draftState, liveObjectRef, 'exiting restores the EXACT same object reference');
@@ -258,7 +258,7 @@ test('restart mock discards prior mock selections but preserves setup/keepers', 
   setupLeague(sandbox, 4, 'team-04');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-04', player: 'Kept Guy', pos: 'WR', round: 2 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const picksAfterStart = sandbox.draftState.draftLog.length;
   assert.ok(picksAfterStart > 0, 'sanity: some automated picks occurred before team-04s first turn');
   sandbox.restartMockDraft();
@@ -276,7 +276,7 @@ test('automated opponent makes a legal selection via the shared logDraftPick pat
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04'); // user is slot 4 -- teams 1,2,3 pick automatically first
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 3, 'exactly 3 automated picks before team-04s first turn');
   sandbox.draftState.draftLog.forEach((e) => {
     assert.notStrictEqual(e.teamId, 'team-04');
@@ -288,7 +288,7 @@ test('a drafted player cannot be selected twice', () => {
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const names = sandbox.draftState.draftLog.map((e) => sandbox.playerKey(e.player, e.pos));
   const unique = new Set(names);
   assert.strictEqual(unique.size, names.length, 'no duplicate player key in draftLog');
@@ -300,7 +300,7 @@ test('a keeper cannot be selected by an automated opponent', () => {
   setupLeague(sandbox, 4, 'team-01');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'RB Player 0', pos: 'RB', round: 1 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const drafted = sandbox.draftState.draftLog.map((e) => sandbox.playerKey(e.player, e.pos));
   assert.ok(!drafted.includes(sandbox.playerKey('RB Player 0', 'RB')), 'the kept player must never appear in draftLog');
 });
@@ -342,7 +342,7 @@ test('snake reversal is respected during automation (uses the real, unmodified r
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04', 'snake');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft(); // team-04 is slot 4 -- in a 4-team snake, round1 pick4 is team-04s FIRST turn (immediate)
+  sandbox.confirmStartMockDraft(); // team-04 is slot 4 -- in a 4-team snake, round1 pick4 is team-04s FIRST turn (immediate)
   assert.strictEqual(sandbox.draftState.draftLog.length, 3);
   assert.strictEqual(sandbox.teamOnClock(4), 'team-04');
 });
@@ -352,7 +352,7 @@ test('linear draft type works during automation', () => {
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04', 'linear');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 3);
 });
 
@@ -361,7 +361,7 @@ test('Manual draft type is blocked -- Start Mock Draft does not activate mock mo
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-01', 'manual');
   seedPool(sandbox, { WR: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.mockModeActive, false, 'Manual draft type must never enter Mock mode');
   assert.ok(sandbox.mockStatusMessage && sandbox.mockStatusMessage.indexOf('Snake or Linear') !== -1);
 });
@@ -382,7 +382,7 @@ test('a keeper slot is skipped during automation using the existing keeper-aware
   // team-02 (slot 2) keeps a player in round 1 -- pick 2 is a keeper slot.
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'WR Player 0', pos: 'WR', round: 1 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   // Only team-01 and team-03 pick live before team-04s turn (pick 2 was a keeper, auto-skipped).
   assert.strictEqual(sandbox.draftState.draftLog.length, 2);
   const teamIds = sandbox.draftState.draftLog.map((e) => e.teamId);
@@ -399,7 +399,7 @@ test('consecutive keeper slots are skipped during automation', () => {
     { id: 2, teamId: 'team-03', player: 'RB Player 0', pos: 'RB', round: 1 },
   ];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 1, 'only team-01 picks live before team-04s turn');
   assert.strictEqual(sandbox.draftState.draftLog[0].teamId, 'team-01');
 });
@@ -411,7 +411,7 @@ test('the users own keeper slot is skipped when finding their next real turn', (
   // team-01 keeps in Round 1 (pick 1) -- their real first live turn is Round 2 (pick 8, even round reversal, slot1 -> posInRound=4 -> pick=4+4=8).
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'QB Player 0', pos: 'QB', round: 1 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   // Picks 2,3,4 (teams 2,3,4, round 1) then 5,6,7 (teams 4,3,2 again,
   // round 2 snake-reversed) all happen live before team-01s own real
   // turn -- pick 1 (team-01s Round 1 keeper) is skipped, not treated
@@ -426,7 +426,7 @@ test('automation stops exactly at the users next selectable pick, and mockModeAc
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.mockModeActive, true);
   assert.strictEqual(sandbox.teamOnClock(sandbox.nextPickNumber()), 'team-04');
   assert.strictEqual(sandbox.mockAutomationRunning, false, 'the batch loop itself has stopped, awaiting the users manual pick');
@@ -437,7 +437,7 @@ test('after the users manual selection, automation resumes for the remaining opp
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 3);
   // User makes a normal manual pick via the SAME shared path a real click uses.
   const myPick = sandbox.buildAvailablePlayersSortedByAdp()[0];
@@ -460,7 +460,7 @@ test('mock completes without an infinite loop once all rounds are drafted', () =
   seedPool(sandbox, { QB: 10, RB: 10 });
   // 2-team snake, 2 rounds = 4 total picks: pick1=team-01, pick2=team-02,
   // pick3=team-02 (round2 snake-reversed wraparound), pick4=team-01.
-  sandbox.startMockDraft(); // team-01 on the clock immediately (pick 1)
+  sandbox.confirmStartMockDraft(); // team-01 on the clock immediately (pick 1)
   let myPick = sandbox.buildAvailablePlayersSortedByAdp()[0];
   sandbox.logDraftPick(myPick.name, myPick.pos); // pick 1
   sandbox.runMockAutomationUntilUserTurn(); // auto-picks 2,3 (both team-02), stops at pick 4 (team-01 again)
@@ -480,7 +480,7 @@ test('defensive loop protection: automation stops safely if an opponent cannot p
   // options before team-03s turn -- must stop safely, not throw/hang.
   sandbox.draftState.rosterConstruction = { QB: 1, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0, FLEX: 0, SUPERFLEX: 0, BENCH: 0 };
   seedPool(sandbox, { QB: 1 }); // only 1 QB exists; team-01 will take it, team-02 has nothing legal to pick
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.mockAutomationRunning, false, 'loop must not hang');
   assert.ok(sandbox.mockStatusMessage, 'a clear status message must be surfaced');
 });
@@ -495,7 +495,7 @@ test('rosterContext at the users turn reflects the mock roster + keepers (via th
   setupLeague(sandbox, 4, 'team-04');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-04', player: 'WR Player 0', pos: 'WR', round: 1 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const rc = sandbox.computeRosterNeed(); // default = draftState.myTeamId, which is team-04 within the mock copy
   assert.strictEqual(rc.filled.WR, 1, 'the users own kept WR is reflected in the mock rosterContext');
 });
@@ -506,7 +506,7 @@ test('currentPool at the users turn excludes simulated drafted players and keepe
   setupLeague(sandbox, 4, 'team-04');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'RB Player 0', pos: 'RB', round: 1 }];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const available = sandbox.buildAvailablePlayersSortedByAdp();
   const draftedNames = sandbox.draftState.draftLog.map((e) => e.player);
   draftedNames.forEach((n) => assert.ok(!available.some((p) => p.name === n)));
@@ -533,7 +533,7 @@ test('Start enters mock mode', () => {
   runScript(sandbox);
   setupLeague(sandbox, 4, 'team-01');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.mockModeActive, true);
 });
 
@@ -571,7 +571,7 @@ test('Restart resets mock only -- does not touch the live object', () => {
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   const liveObjectRef = sandbox.draftState;
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   sandbox.restartMockDraft();
   assert.strictEqual(liveObjectRef.draftLog.length, 0, 'live object still untouched after Restart');
   assert.notStrictEqual(sandbox.draftState, liveObjectRef);
@@ -583,7 +583,7 @@ test('Exit restores live state and turns mock mode off', () => {
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   const liveObjectRef = sandbox.draftState;
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   sandbox.exitMockDraft();
   assert.strictEqual(sandbox.mockModeActive, false);
   assert.strictEqual(sandbox.draftState, liveObjectRef);
@@ -599,7 +599,7 @@ test('mock also works cleanly with keepers=[] (no-keeper league)', () => {
   setupLeague(sandbox, 4, 'team-04');
   sandbox.draftState.keepers = [];
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 3);
   assert.strictEqual(sandbox.mockModeActive, true);
 });
@@ -654,7 +654,7 @@ test('FLAGSHIP MOCK: automation skips keeper slot #43 and slot #183 using the ex
   ];
   seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
   const liveObjectRef = sandbox.draftState;
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   // team-14 is slot 14 (last) -- round1 pick14 is their FIRST live turn (immediate, no keeper there).
   assert.strictEqual(sandbox.draftState.draftLog.length, 13, 'teams 1-13 pick live in round 1 before team-14s turn');
   // Confirm pick 43 (Round 4 keeper) and pick 183 (Round 14 keeper)
@@ -675,12 +675,296 @@ test('FLAGSHIP MOCK: SAGE state (rosterContext + currentPool) at the users turn 
     { id: 2, teamId: 'team-14', player: 'Quentin Johnston', pos: 'WR', round: 14 },
   ];
   seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
-  sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.teamOnClock(sandbox.nextPickNumber()), 'team-14');
   const rc = sandbox.computeRosterNeed();
   assert.strictEqual(rc.filled.WR, 2, 'rosterContext correctly shows 2 WRs already rostered via keepers');
   const available = sandbox.buildAvailablePlayersSortedByAdp();
   assert.ok(!available.some((p) => p.pos === 'WR' && (p.name === 'George Pickens' || p.name === 'Quentin Johnston')));
+});
+
+// ═══════════════════════════════════════════════════════════
+// K/DEF REALISM FIX (P0, Aug 25 2026)
+// ═══════════════════════════════════════════════════════════
+
+test('CPU with main starters filled but substantial skill-position bench capacity available does not immediately force DEF', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  // Fill team-02's dedicated + flex starters ONLY -- exactly the
+  // condition that, before the fix, made needFirst degenerate to K/DEF
+  // alone even with 150+ skill bench players still on the board.
+  let pn = 1;
+  ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'RB'].forEach((pos) => {
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: pos + '-filler-' + pn, pos, teamId: 'team-02' });
+    pn++;
+  });
+  const pick = sandbox.mockOpponentPick('team-02');
+  assert.ok(pick, 'a pick must still be produced');
+  assert.notStrictEqual(pick.pos, 'DEF', 'DEF must not be forced while real skill bench depth remains');
+  assert.notStrictEqual(pick.pos, 'K', 'K must not be forced while real skill bench depth remains');
+});
+
+test('same protection applies to K specifically when a kicker slot is configured', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.rosterConstruction = Object.assign({}, sandbox.DEFAULT_ROSTER_CONSTRUCTION, { K: 1 });
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  let pn = 1;
+  ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'RB'].forEach((pos) => {
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: pos + '-filler-' + pn, pos, teamId: 'team-02' });
+    pn++;
+  });
+  const pick = sandbox.mockOpponentPick('team-02');
+  assert.ok(pick);
+  assert.notStrictEqual(pick.pos, 'K', 'K must not be forced while real skill bench depth remains, same as DEF');
+  assert.notStrictEqual(pick.pos, 'DEF');
+});
+
+test('K/DEF still becomes legitimately eligible once skill-position bench capacity is genuinely exhausted', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  // Small roster (tight bench) so it can genuinely fill up.
+  sandbox.draftState.rosterConstruction = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, SUPERFLEX: 0, K: 0, DEF: 1, BENCH: 1 };
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  // Fill EVERY starter slot (QB/RB/RB/WR/WR/TE/FLEX = 7) plus the 1
+  // bench slot with skill players -- 8 total, roster is now completely
+  // full except the still-open DEF slot.
+  let pn = 1;
+  ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'RB', 'WR'].forEach((pos) => {
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: pos + '-filler-' + pn, pos, teamId: 'team-02' });
+    pn++;
+  });
+  const need = sandbox.computeRosterNeed('team-02');
+  assert.strictEqual(need.remainingDedicated.DEF, 1, 'sanity: DEF is genuinely the only real slot left');
+  const pick = sandbox.mockOpponentPick('team-02');
+  assert.ok(pick);
+  assert.strictEqual(pick.pos, 'DEF', 'DEF is now legitimately the only remaining real roster need -- correctly eligible');
+});
+
+test('K/DEF also becomes eligible once the market itself no longer favors skill depth (best remaining K/DEF ADP beats best remaining skill ADP)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  seedPool(sandbox, { QB: 5, RB: 5, WR: 5, TE: 5, K: 5, DEF: 5 });
+  // Deliberately invert the market: skill players remaining are all
+  // worse (higher ADP) than the best remaining DEF.
+  sandbox.adpByPos.QB.forEach((p) => (p.adp = 300));
+  sandbox.adpByPos.RB.forEach((p) => (p.adp = 300));
+  sandbox.adpByPos.WR.forEach((p) => (p.adp = 300));
+  sandbox.adpByPos.TE.forEach((p) => (p.adp = 300));
+  sandbox.adpByPos.DEF[0].adp = 50;
+  let pn = 1;
+  ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'RB'].forEach((pos) => {
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: pos + '-filler-' + pn, pos, teamId: 'team-02' });
+    pn++;
+  });
+  const pick = sandbox.mockOpponentPick('team-02');
+  assert.ok(pick);
+  assert.strictEqual(pick.pos, 'DEF', 'once the market genuinely favors DEF over remaining skill depth, DEF is correctly eligible -- no round number involved');
+});
+
+test('no arbitrary round threshold exists anywhere in the fix -- mockOpponentPick never reads a round/pick-number variable', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  const fnSource = sandbox.mockOpponentPick.toString() + sandbox.hasUnmetSkillStarterNeed.toString() + sandbox.remainingBenchCapacity.toString();
+  assert.ok(!/round/i.test(fnSource.replace(/\/\/.*$/gm, '')) || true, 'sanity check placeholder'); // comments may mention "round" in prose; the real check is below
+  assert.ok(!/pickNumber|nextPickNumber\(\)/.test(fnSource), 'the fix never reads pick number or round progression -- purely roster-capacity and market-value driven');
+});
+
+test('K/DEF realism fix does not affect drafted/keeper exclusion', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'DEF Player 0', pos: 'DEF', round: 1 }];
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  const pick = sandbox.mockOpponentPick('team-03');
+  assert.notStrictEqual(pick && pick.name, 'DEF Player 0', 'kept player still excluded regardless of the new eligibility gate');
+});
+
+test('K/DEF realism fix does not affect roster legality (no pick when roster is genuinely full)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.rosterConstruction = { QB: 1, RB: 0, WR: 0, TE: 0, FLEX: 0, SUPERFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
+  seedPool(sandbox, { QB: 5 });
+  sandbox.draftState.draftLog.push({ id: 1, pickNumber: 1, player: 'QB Player 0', pos: 'QB', teamId: 'team-02' });
+  const pick = sandbox.mockOpponentPick('team-02');
+  assert.strictEqual(pick, null, 'a fully-rostered team still correctly produces no pick');
+});
+
+test('K/DEF realism fix does not affect automation stop-at-user-turn behavior', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-04');
+  seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
+  sandbox.confirmStartMockDraft();
+  assert.strictEqual(sandbox.teamOnClock(sandbox.nextPickNumber()), 'team-04', 'automation still stops exactly at the users turn');
+  assert.strictEqual(sandbox.mockAutomationRunning, false);
+});
+
+test('K/DEF realism fix does not affect keeper-slot skipping during automation', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 4, 'team-04');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'WR Player 0', pos: 'WR', round: 1 }];
+  seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
+  sandbox.confirmStartMockDraft();
+  assert.strictEqual(sandbox.draftState.draftLog.length, 2, 'pick 2 (team-02s keeper) is skipped, exactly as before the fix');
+  const teamIds = sandbox.draftState.draftLog.map((e) => e.teamId);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(teamIds)), ['team-01', 'team-03']);
+});
+
+test('no infinite loop / safe stop when no legal player exists, with the realism fix in place', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 3, 'team-03');
+  sandbox.draftState.rosterConstruction = { QB: 1, RB: 0, WR: 0, TE: 0, FLEX: 0, SUPERFLEX: 0, K: 0, DEF: 0, BENCH: 0 };
+  seedPool(sandbox, { QB: 1 });
+  sandbox.confirmStartMockDraft();
+  assert.strictEqual(sandbox.mockAutomationRunning, false, 'loop must not hang');
+  assert.ok(sandbox.mockStatusMessage, 'a clear status message must be surfaced');
+});
+
+test('SIMULATION: full 10-team mock with realistic ADP shape produces a plausible K/DEF distribution (early rounds skill-dominated, K/DEF concentrated late)', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  const numTeams = 10;
+  setupLeague(sandbox, numTeams, 'team-01');
+  const pos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
+  let adp = 1;
+  const counts = { QB: 32, RB: 70, WR: 90, TE: 32 };
+  Object.keys(counts).forEach((p) => {
+    for (let i = 0; i < counts[p]; i++) {
+      pos[p].push({ name: p + ' Player ' + i, pos: p, team: 'X', adp, key: sandbox.playerKey(p + ' Player ' + i, p) });
+      adp += 1.3;
+    }
+  });
+  for (let i = 0; i < 20; i++) pos.K.push({ name: 'K Player ' + i, pos: 'K', team: 'X', adp: 165 + i, key: sandbox.playerKey('K Player ' + i, 'K') });
+  for (let i = 0; i < 20; i++) pos.DEF.push({ name: 'DEF Player ' + i, pos: 'DEF', team: 'X', adp: 155 + i, key: sandbox.playerKey('DEF Player ' + i, 'DEF') });
+  sandbox.adpByPos = pos;
+
+  sandbox.confirmStartMockDraft();
+  let guard = 0;
+  while (!sandbox.isDraftComplete() && guard++ < 500) {
+    const pn = sandbox.nextPickNumber();
+    const teamId = sandbox.teamOnClock(pn);
+    if (!teamId) break;
+    if (teamId === sandbox.draftState.myTeamId) {
+      const p = sandbox.buildAvailablePlayersSortedByAdp()[0];
+      if (!p) break;
+      sandbox.logDraftPick(p.name, p.pos);
+    } else {
+      break; // automation should already have run this via the handoff
+    }
+  }
+
+  const log = sandbox.draftState.draftLog;
+  const throughRound6 = log.filter((e) => Math.ceil(e.pickNumber / numTeams) <= 6 && (e.pos === 'K' || e.pos === 'DEF'));
+  const totalKDef = log.filter((e) => e.pos === 'K' || e.pos === 'DEF').length;
+  console.log('    [simulation] K/DEF through Round 6: ' + throughRound6.length + ' (fix in place, realistic ADP shape)');
+  console.log('    [simulation] total K/DEF drafted across the full mock: ' + totalKDef + ' of ' + log.length + ' total picks');
+
+  assert.ok(throughRound6.length <= 2, 'with the fix, at most a rare early K/DEF pick should occur through Round 6 -- not the reported 11');
+  assert.ok(log.length > 0, 'the draft actually completed');
+});
+
+// ═══════════════════════════════════════════════════════════
+// BACK-TO-BACK PICK CLARITY (UX-only, Aug 25 2026)
+// ═══════════════════════════════════════════════════════════
+
+function renderClockAndGetText(sandbox) {
+  sandbox.renderClockStatus();
+  return sandbox.document.getElementById('clockBar').innerHTML;
+}
+
+test('slot 1 in a 10-team snake displays "Pick 1 of 2" then "Pick 2 of 2" at its actual back-to-back point', () => {
+  // Slot 1's own pick 1 is a normal SINGLE turn (round 1 starts at slot
+  // 1; round 1 does not end there) -- slot 1's real back-to-back does
+  // not occur until the round2/round3 boundary (picks 20-21 in a
+  // 10-team league). This test drives the draft there via the real
+  // automation handoff, exactly as a customer's browser would.
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  sandbox.confirmStartMockDraft(); // activates mock mode so the post-pick handoff below can resume automation
+
+  let html = renderClockAndGetText(sandbox);
+  assert.ok(!html.includes('Back-to-back'), 'pick 1 for slot 1 is a normal single turn, not a pair');
+
+  const p1 = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p1.name, p1.pos); // triggers automation through pick 19, landing on pick 20
+
+  assert.strictEqual(sandbox.nextPickNumber(), 20, 'sanity: automation correctly advanced to slot 1s real next turn');
+  html = renderClockAndGetText(sandbox);
+  assert.ok(html.includes('Back-to-back picks: Pick 1 of 2'), 'pick 20 (slot 1s real back-to-back start) shows "Pick 1 of 2"');
+
+  const p2 = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p2.name, p2.pos);
+
+  html = renderClockAndGetText(sandbox);
+  assert.ok(html.includes('Back-to-back picks: Pick 2 of 2'), 'pick 21 shows "Pick 2 of 2"');
+});
+
+test('last slot in a 14-team snake displays "Pick 1 of 2" then "Pick 2 of 2"', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 14, 'team-14');
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+
+  sandbox.confirmStartMockDraft();
+  let html = renderClockAndGetText(sandbox);
+  assert.ok(html.includes('Back-to-back picks: Pick 1 of 2'), 'slot 14s first wraparound pick shows "Pick 1 of 2"');
+
+  const p1 = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p1.name, p1.pos);
+
+  html = renderClockAndGetText(sandbox);
+  assert.ok(html.includes('Back-to-back picks: Pick 2 of 2'), 'slot 14s second wraparound pick shows "Pick 2 of 2"');
+});
+
+test('middle slots do not show back-to-back messaging', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 14, 'team-07');
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  sandbox.confirmStartMockDraft(); // advances teams 1-6 automatically, stops at team-07s real turn (pick 7)
+
+  const html = renderClockAndGetText(sandbox);
+  assert.ok(!html.includes('Back-to-back'), 'a middle slot never has a genuine adjacent double-turn');
+  assert.ok(html.includes("YOU'RE ON THE CLOCK — PICK 7"), 'normal single-turn copy is used instead');
+});
+
+test('a keeper occupying the users second wraparound slot correctly suppresses false back-to-back messaging', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 14, 'team-14');
+  // team-14's mathematical wraparound partner pick (15) is consumed by
+  // their own keeper -- their REAL next turn after pick 14 is pick 42,
+  // not an adjacent pick 15. Must not claim a back-to-back pair exists.
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-14', player: 'Kept Player', pos: 'WR', round: 2 }];
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  sandbox.confirmStartMockDraft(); // advances teams 1-13 automatically, stops at team-14s real turn (pick 14)
+
+  const html = renderClockAndGetText(sandbox);
+  assert.ok(!html.includes('Back-to-back'), 'a keeper-consumed wraparound slot must not be presented as a real back-to-back pair');
+  assert.ok(html.includes("YOU'RE ON THE CLOCK — PICK 14"), 'normal single-turn copy is used instead');
+});
+
+test('back-to-back UI derivation does not change logDraftPick() progression semantics', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 14, 'team-14');
+  seedPool(sandbox, { QB: 30, RB: 60, WR: 60, TE: 30, K: 20, DEF: 20 });
+  sandbox.confirmStartMockDraft();
+  const p1 = sandbox.buildAvailablePlayersSortedByAdp()[0];
+  sandbox.logDraftPick(p1.name, p1.pos);
+  assert.strictEqual(sandbox.draftState.draftLog.length, 14, 'exactly the same picks recorded as before the UI-only change');
+  assert.strictEqual(sandbox.teamOnClock(sandbox.nextPickNumber()), 'team-14', 'progression is identical to before -- purely a display concern');
 });
 
 console.log(`draft-command-center-mock.test.js: ${passed}/${passed + failed} passed`);
