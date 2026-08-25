@@ -603,9 +603,19 @@
         market.outlook ===
           'Market Leans Gone'
       ) {
+        if (
+          market.value ===
+            'Discount'
+        ) {
+          return (
+            opportunityLead +
+            ', and he is available at a favorable price even though waiting risks losing him before your next pick.'
+          );
+        }
+
         return (
           opportunityLead +
-          ', and his ADP suggests he is unlikely to reach your next pick.'
+          ', and waiting risks losing him before your next pick.'
         );
       }
 
@@ -615,7 +625,7 @@
       ) {
         return (
           opportunityLead +
-          ', and he is already available later than his ADP.'
+          ', and he is already available at a favorable price relative to his ADP.'
         );
       }
 
@@ -668,41 +678,150 @@
         : 'The Opportunity profile is mixed';
     }
 
+    function contextUpsidePhrase(context) {
+      if (context.role === 'Improved') {
+        return 'current context points to improved role opportunity';
+      }
+      if (context.environment === 'Positive') {
+        return 'the surrounding environment has improved';
+      }
+      if (context.rookie === 'High') {
+        return 'the rookie-impact case is strong';
+      }
+      if (context.rookie === 'Moderate') {
+        return 'the rookie-impact case adds meaningful upside';
+      }
+      return 'current context adds credible upside';
+    }
+
+    function contextDownsidePhrase(context) {
+      if (context.role === 'Reduced') {
+        return 'current context points to reduced role opportunity';
+      }
+      if (context.environment === 'Negative') {
+        return 'the surrounding environment adds downside';
+      }
+      return 'current context adds meaningful downside';
+    }
+
+    function nowPressurePhrase(market, scarcity) {
+      var marketGone = market.outlook === 'Market Leans Gone';
+      var discount = market.value === 'Discount';
+      var scarce = scarcity.cost === 'High';
+
+      if (marketGone && scarce) {
+        return 'both the market and positional scarcity make waiting risky';
+      }
+      if (marketGone && discount) {
+        return 'he is available at a favorable price, but waiting still risks losing him before your next pick';
+      }
+      if (marketGone) {
+        return 'waiting risks losing him before your next pick';
+      }
+      if (scarce) {
+        return 'comparable positional opportunity may not remain at your next turn';
+      }
+      if (discount) {
+        return 'he is already available at a favorable price relative to his ADP';
+      }
+      return 'the timing evidence creates a meaningful reason to act now';
+    }
+
+    function waitRoomPhrase(market, scarcity) {
+      var marketReturn = market.outlook === 'Market Says He May Return';
+      var depth = scarcity.cost === 'Low';
+
+      if (marketReturn && depth) {
+        return 'both the market and positional depth give you room to wait';
+      }
+      if (marketReturn) {
+        return 'the market suggests he may still be available at your next turn';
+      }
+      if (depth) {
+        return 'comparable positional options are projected to remain available';
+      }
+      if (market.value === 'Ahead of Market') {
+        return 'selecting him here would mean paying ahead of his ADP';
+      }
+      if (market.value === 'At Market') {
+        return 'the timing evidence does not create a strong reason to force the pick';
+      }
+      return 'the available timing evidence leaves the decision flexible';
+    }
+
     function buildNowPressureExplanation(opportunity, market, scarcity) {
-      var lead = opportunityLead(opportunity);
-      if (market.outlook === 'Market Leans Gone' && scarcity.cost === 'High') {
-        return lead + ', but both his ADP and the remaining positional depth make waiting risky.';
-      }
-      if (market.outlook === 'Market Leans Gone') {
-        return lead + ', but his ADP suggests he is unlikely to reach your next pick.';
-      }
-      if (market.value === 'Discount') {
-        return lead + ', and he is already available later than his ADP.';
-      }
-      if (scarcity.cost === 'High') {
-        return lead + ', while the remaining positional depth makes waiting costly.';
-      }
-      return lead + ', and the timing evidence creates a meaningful reason to act now.';
+      return opportunityLead(opportunity) + ', but ' + nowPressurePhrase(market, scarcity) + '.';
     }
 
     function buildFlexibleExplanation(opportunity, market, scarcity) {
-      var lead = opportunityLead(opportunity);
-      if (market.outlook === 'Market Says He May Return' && scarcity.cost === 'Low') {
-        return lead + ', while both ADP and positional depth leave room to wait.';
+      return opportunityLead(opportunity) + ', while ' + waitRoomPhrase(market, scarcity) + '.';
+    }
+
+    function buildStrongWaitExplanation(opportunity, market, scarcity) {
+      return opportunityLead(opportunity) + ', while ' + waitRoomPhrase(market, scarcity) + '.';
+    }
+
+    function buildStrongConsiderationExplanation(opportunity, market, scarcity) {
+      return opportunityLead(opportunity) + ', but ' + waitRoomPhrase(market, scarcity) + '.';
+    }
+
+    function buildStrongContextDownExplanation(opportunity, context) {
+      return opportunityLead(opportunity) + ', but ' + contextDownsidePhrase(context) + '.';
+    }
+
+    function buildCautionContextUpExplanation(opportunity, context) {
+      return opportunityLead(opportunity) + ', but ' + contextUpsidePhrase(context) + ' and provides a credible reason the future role may improve.';
+    }
+
+    function buildCautionContextDownExplanation(opportunity, context) {
+      return opportunityLead(opportunity) + ', and ' + contextDownsidePhrase(context) + '.';
+    }
+
+    function buildCautionNowExplanation(opportunity, market, scarcity) {
+      return opportunityLead(opportunity) + ', but ' + nowPressurePhrase(market, scarcity) + '.';
+    }
+
+    function buildCautionExplanation(opportunity) {
+      return opportunityLead(opportunity) + ', and recent opportunity has weakened enough to reduce conviction.';
+    }
+
+    function buildLimitedEvidenceExplanation(context) {
+      if (contextSupportsUpside(context)) {
+        return 'The available Opportunity sample is limited, but ' + contextUpsidePhrase(context) + '.';
       }
-      if (market.outlook === 'Market Says He May Return') {
-        return lead + ', and his ADP gives you room to wait until your next turn.';
-      }
-      if (scarcity.cost === 'Low') {
-        return lead + ', and comparable positional options are projected to remain available.';
-      }
-      if (market.value === 'Ahead of Market') {
-        return lead + ', but selecting him here would mean paying ahead of his ADP.';
-      }
-      if (market.value === 'At Market') {
-        return lead + ', with no additional market or scarcity signal strong enough to force the pick.';
-      }
-      return lead + ', but the available timing evidence does not force the decision.';
+      return 'The available Opportunity sample is limited, and current context does not add enough support for a confident recommendation.';
+    }
+
+    function buildWeakContextNowExplanation(opportunity, context, market, scarcity) {
+      return opportunityLead(opportunity) + ', but ' + contextUpsidePhrase(context) + ' and ' + nowPressurePhrase(market, scarcity) + '.';
+    }
+
+    function buildWeakWaitExplanation(opportunity, market, scarcity) {
+      return opportunityLead(opportunity) + ', while ' + waitRoomPhrase(market, scarcity) + '.';
+    }
+
+    function buildWeakAheadMarketExplanation(opportunity) {
+      return opportunityLead(opportunity) + ', and selecting him here would mean paying ahead of his ADP.';
+    }
+
+    function buildContextDownWaitExplanation(opportunity, context, market, scarcity) {
+      return opportunityLead(opportunity) + ', while ' + contextDownsidePhrase(context) + ' and ' + waitRoomPhrase(market, scarcity) + '.';
+    }
+
+    function buildContextUpExplanation(opportunity, context) {
+      return opportunityLead(opportunity) + ', while ' + contextUpsidePhrase(context) + '.';
+    }
+
+    function buildRookieStrongNowExplanation(context, market, scarcity) {
+      return 'NFL history is limited, but ' + contextUpsidePhrase(context) + ', and ' + nowPressurePhrase(market, scarcity) + '.';
+    }
+
+    function buildRookieConsiderExplanation(context) {
+      return 'NFL history is limited, but ' + contextUpsidePhrase(context) + ' and provides a legitimate case for immediate fantasy impact.';
+    }
+
+    function buildRookieNeedsEvidenceExplanation() {
+      return 'NFL history is limited, and current context does not provide enough support for a confident recommendation yet.';
     }
 
     // sage-recommend intentionally shows only the first two reasons. Reorder
@@ -850,7 +969,11 @@
           'strong-consideration';
 
         explanation =
-          'NFL history is limited or unavailable, but strong contextual evidence supports immediate fantasy relevance and waiting carries risk.';
+          buildRookieStrongNowExplanation(
+            context,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -864,7 +987,9 @@
           'consider';
 
         explanation =
-          'NFL history is limited or unavailable, but contextual evidence provides a legitimate case for immediate fantasy impact.';
+          buildRookieConsiderExplanation(
+            context
+          );
       }
 
       else if (
@@ -877,7 +1002,7 @@
           'needs-more-evidence';
 
         explanation =
-          'There is not enough NFL Opportunity evidence or contextual support for a confident recommendation yet.';
+          buildRookieNeedsEvidenceExplanation();
       }
 
       // ---------------------------------
@@ -895,7 +1020,10 @@
           'strong-consideration';
 
         explanation =
-          'The historical opportunity profile is strong, but current context introduces meaningful downside risk.';
+          buildStrongContextDownExplanation(
+            opportunity,
+            context
+          );
       }
 
       else if (
@@ -927,7 +1055,11 @@
           'can-wait';
 
         explanation =
-          'The player has a strong role, but the market and positional depth give you room to wait.';
+          buildStrongWaitExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -940,7 +1072,11 @@
           'strong-consideration';
 
         explanation =
-          'The opportunity profile is strong, but the timing evidence does not force the decision.';
+          buildStrongConsiderationExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       // ---------------------------------
@@ -959,7 +1095,10 @@
           'strong-consideration';
 
         explanation =
-          'Recent opportunity has weakened, but strong contextual evidence gives a credible reason the future role may differ from the historical trend.';
+          buildCautionContextUpExplanation(
+            opportunity,
+            context
+          );
       }
 
       else if (
@@ -977,7 +1116,10 @@
             : 'caution';
 
         explanation =
-          'Recent opportunity has weakened and the current context adds additional downside.';
+          buildCautionContextDownExplanation(
+            opportunity,
+            context
+          );
       }
 
       else if (
@@ -991,7 +1133,11 @@
           'consider-now';
 
         explanation =
-          'Recent role direction warrants caution, but waiting also carries meaningful market or positional risk.';
+          buildCautionNowExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -1004,7 +1150,9 @@
           'caution';
 
         explanation =
-          'The player remains relevant, but recent opportunity has weakened enough to reduce conviction.';
+          buildCautionExplanation(
+            opportunity
+          );
       }
 
       // ---------------------------------
@@ -1022,7 +1170,9 @@
           'needs-more-evidence';
 
         explanation =
-          'The available Opportunity evidence is limited and Context does not provide enough support to increase conviction.';
+          buildLimitedEvidenceExplanation(
+            context
+          );
       }
 
       // ---------------------------------
@@ -1041,7 +1191,12 @@
           'consider-now';
 
         explanation =
-          'Historical opportunity is limited, but strong contextual improvement and timing pressure keep the player in consideration.';
+          buildWeakContextNowExplanation(
+            opportunity,
+            context,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -1055,7 +1210,11 @@
           'wait';
 
         explanation =
-          'The current role is not strong enough to justify forcing the pick when alternatives may remain.';
+          buildWeakWaitExplanation(
+            opportunity,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -1070,7 +1229,9 @@
           'pass-for-now';
 
         explanation =
-          'The current role does not justify paying ahead of market.';
+          buildWeakAheadMarketExplanation(
+            opportunity
+          );
       }
 
       // ---------------------------------
@@ -1088,7 +1249,12 @@
           'wait';
 
         explanation =
-          'The evidence does not justify forcing the pick while negative context and later alternatives remain.';
+          buildContextDownWaitExplanation(
+            opportunity,
+            context,
+            market,
+            scarcity
+          );
       }
 
       else if (
@@ -1118,7 +1284,10 @@
           'consider';
 
         explanation =
-          'The historical profile is mixed, but Context provides additional upside evidence.';
+          buildContextUpExplanation(
+            opportunity,
+            context
+          );
       }
 
       else if (
