@@ -247,6 +247,14 @@ function buildPlayerAggregates(players, rosterByPlayerID, teamAggregates) {
         longName: roster.longName || p.longName,
         pos: roster.pos,
         team: roster.team || p.teamAbv || p.team,
+        // Historical team abbreviation, captured from the box score
+        // entry itself (2025 games in this run) -- distinct from
+        // `team` above, which prefers the CURRENT roster cache and is
+        // the exact source of the currentTeam/usageTeam mismatch bug
+        // this field exists to fix. p.teamAbv is the same field
+        // refresh-risers-fallers.js already relies on for team
+        // display, so this is not a new assumption about the data.
+        usageTeamAbv: p.teamAbv || p.team,
         tank01TeamID: p.teamID, // distinct from `team` (the display abbreviation) -- needed to key back into teamAggregates, which groups by Tank01's numeric teamID
         games: []
       };
@@ -579,7 +587,14 @@ exports.handler = async (event) => {
     if (!roleResult) return;
 
     const roster = rosterByPlayerID[agg.playerID] || {};
-    const teamAbv = roster.team || agg.team;
+    // currentTeam: from the CURRENT (2026) roster cache -- unchanged
+    // source from before this fix, just explicitly named now.
+    const currentTeam = roster.team || agg.team;
+    // usageTeam: from the box score data actually used to compute this
+    // player's stats for THIS run (2025 games in the reported case) --
+    // this is the historical-team-attribution fix. See
+    // usageTeamAbv's own comment above for where it comes from.
+    const usageTeam = agg.usageTeamAbv || agg.team;
 
     const careerProfile = classifyCareerProfile(roster.exp, roleResult.teamRole, roleResult.evidence);
 
@@ -587,11 +602,12 @@ exports.handler = async (event) => {
       playerID: agg.playerID,
       longName: agg.longName,
       pos: agg.pos,
-      team: teamAbv,
+      currentTeam,
+      usageTeam,
       teamRole: roleResult.teamRole,
       roleDescription: roleResult.roleDescription,
       roleConfidence: roleResult.roleConfidence,
-      offenseStyle: null, // filled in below once we can reliably match this player's Tank01 teamID
+      offenseStyle: null, // filled in below, once currentTeam/usageTeam mismatch is resolved
       careerProfile,
       availabilityProfile: "NOT_CURRENTLY_SUPPORTED",
       computedFromGames: roleResult.evidence.gamesUsed,
@@ -610,9 +626,25 @@ exports.handler = async (event) => {
   // abbreviation used elsewhere for readability/grouping-by-abbreviation
   // in wrByTeam/qbByTeam/teamRbAvgCarryShares, which is why this is a
   // deliberately separate pass rather than folded into the loop above).
+  //
+  // HISTORICAL TEAM ATTRIBUTION FIX: offenseStyle here was ALREADY
+  // being computed from usageTeam (the historical, box-score-period
+  // team) via tank01TeamID -- that part was correct before this fix.
+  // The bug was that it was displayed alongside currentTeam with no
+  // way to tell they might differ. If a player's current roster team
+  // doesn't match the team his usage data actually came from (a
+  // trade/free-agent move since that data was recorded), showing his
+  // OLD team's offensive style under his NEW team's name is
+  // misleading -- it is not evidence about the new team's offense at
+  // all. Per spec: never silently carry a former team's style onto
+  // the new team.
   Object.values(perPlayerAggregates).forEach(agg => {
     const snap = snapshots[agg.playerID];
     if (!snap) return;
+    if (snap.currentTeam !== snap.usageTeam) {
+      snap.offenseStyle = "New Team — Offensive Style TBD";
+      return;
+    }
     const style = offenseStyleByTeam[agg.tank01TeamID];
     snap.offenseStyle = style ? style.offenseStyle : "Role Uncertain";
   });
