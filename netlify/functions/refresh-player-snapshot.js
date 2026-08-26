@@ -541,22 +541,37 @@ function classifyCareerProfile(exp, roleTeamRole, evidence) {
   // starting receiver, not a reduced role) alongside the four
   // position-leader tiers. QB2/RB2/WR3/TE2/Role Uncertain/blank are
   // deliberately NOT included -- those are reduced or unresolved
-  // roles, not established ones.
+  // roles, not established ones. UNCHANGED from the prior fix -- this
+  // turn only adjusts which LABEL each experience/role combination
+  // maps to below, never this definition itself.
   //
-  // The previous independent `avgSnapPct >= 0.50` fallback has been
-  // REMOVED entirely (not merely deprioritized) -- Career Profile now
-  // depends only on the already-computed, target-share-aware role
-  // tier, never on a raw snap-percentage re-derivation of its own.
-  // This is what stops a WR3 · Rotational Receiver (or an
-  // unclassified Role Uncertain player) with a high snap percentage
-  // from independently qualifying as "Established Starter" purely on
-  // snaps, contradicting what the role classification itself already
-  // determined.
+  // The independent `avgSnapPct >= 0.50` fallback remains REMOVED --
+  // Career Profile depends only on this already-computed,
+  // target-share-aware role tier, never on raw snap percentage.
   const hasMeaningfulStarterRole = roleTeamRole === "QB1" || roleTeamRole === "RB1" ||
     roleTeamRole === "WR1" || roleTeamRole === "WR2" || roleTeamRole === "TE1";
 
+  // FINAL CALIBRATION (locked framework): "Veteran" language was
+  // reaching customers too early -- a Year 3-4 player in a secondary
+  // role is not intuitively a "Veteran" to a fantasy football
+  // customer, even though it's defensible NFL terminology. The
+  // former single "years <= 6" bucket is now split into two: Years
+  // 3-4 secondary/reduced/uncertain roles now read as "Developing
+  // Young Player" (same label already used for Years 1-2 secondary
+  // roles and non-starter rookies); "Veteran — Reduced Role" now only
+  // begins at Year 5. Starter-tier labeling (Established Starter at
+  // 3-6 years, Proven Veteran at 7+) is unchanged in shape, just now
+  // spans the same "Established Starter" label across both the 3-4
+  // and 5-6 bands rather than needing a separate branch, since the
+  // label itself doesn't change at that boundary -- only the
+  // non-starter label does.
+  //
+  // Non-starter rookies also now read as "Developing Young Player"
+  // (previously "Rookie") -- consistent with every other non-starter
+  // young-player bucket using that same label, per the explicit
+  // locked framework.
   if (exp === "R") {
-    return hasMeaningfulStarterRole ? "High-Upside Rookie" : "Rookie";
+    return hasMeaningfulStarterRole ? "High-Upside Rookie" : "Developing Young Player";
   }
 
   const years = parseInt(exp, 10);
@@ -564,6 +579,9 @@ function classifyCareerProfile(exp, roleTeamRole, evidence) {
 
   if (years <= 2) {
     return hasMeaningfulStarterRole ? "Emerging Starter" : "Developing Young Player";
+  }
+  if (years <= 4) {
+    return hasMeaningfulStarterRole ? "Established Starter" : "Developing Young Player";
   }
   if (years <= 6) {
     return hasMeaningfulStarterRole ? "Established Starter" : "Veteran — Reduced Role";
