@@ -591,6 +591,235 @@ function classifyCareerProfile(exp, roleTeamRole, evidence) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// CURRENT SITUATION V1 (independent layer, added per approved
+// discovery/spec turn)
+//
+// Recent Role answers "what did this player actually demonstrate
+// during the historical usage window?" -- LOCKED, never modified
+// here. Current Situation answers a DIFFERENT question: "what
+// objective roster/environment change has occurred since that
+// historical role?" It is purely additive -- nothing below ever
+// writes to teamRole, roleDescription, roleConfidence, careerProfile,
+// offenseStyle, or any _internal evidence field. It reads the
+// already-built `snapshots` object (plus nothing else -- no new
+// Tank01 calls, no new intermediate data retained during
+// aggregation) and returns a separate `currentSituation` value to be
+// attached per player.
+//
+// SIGNIFICANCE TIERS reuse the existing, LOCKED role hierarchy
+// directly -- no new numeric threshold is introduced anywhere in this
+// section:
+//   HIGH:   teamRole is RB1 / WR1 / TE1 / QB1
+//   MEDIUM: teamRole is WR2 / QB2, or roleDescription is one of
+//           "RB2 · Receiving Back", "RB2 · Committee Back",
+//           "TE1 · Starting TE"
+//   LOW:    everything else, OR roleConfidence === "LOW", OR no
+//           teamRole at all (Role Uncertain) -- LOW-tier players
+//           never generate a competition signal for anyone else,
+//           per the explicit false-positive protection requirement.
+// ═══════════════════════════════════════════════════════════════════
+
+const CS_HIGH_TEAM_ROLES = new Set(["RB1", "WR1", "TE1", "QB1"]);
+const CS_MEDIUM_TEAM_ROLES = new Set(["WR2", "QB2"]);
+const CS_MEDIUM_ROLE_DESCRIPTIONS = new Set([
+  "RB2 · Receiving Back", "RB2 · Committee Back", "TE1 · Starting TE"
+]);
+
+function csSignificanceTier(player) {
+  if (!player || !player.teamRole || player.roleConfidence === "LOW") return "LOW";
+  if (CS_HIGH_TEAM_ROLES.has(player.teamRole)) return "HIGH";
+  if (CS_MEDIUM_TEAM_ROLES.has(player.teamRole) || CS_MEDIUM_ROLE_DESCRIPTIONS.has(player.roleDescription)) return "MEDIUM";
+  return "LOW";
+}
+
+// RB opportunity-type classification, derived entirely from the
+// already-locked RB roleDescription values -- not a new rule, a reuse
+// of the existing RB rule OUTCOME for a new purpose (distinguishing
+// rushing vs. receiving competition, per the explicit requirement not
+// to merge them).
+function csRbOpportunityTypes(player) {
+  const rd = player && player.roleDescription;
+  if (rd === "RB1 · Three-Down Back") return ["RUSHING", "RECEIVING"];
+  if (rd === "RB1 · Lead Runner" || rd === "RB1 · Committee Lead" || rd === "RB2 · Committee Back" || rd === "RB2 · Change-of-Pace Back") return ["RUSHING"];
+  if (rd === "RB2 · Receiving Back") return ["RECEIVING"];
+  return [];
+}
+
+// WR/TE have a single opportunity category in V1 -- TARGETS. WR and
+// TE pools are never merged (an incoming WR cannot create a signal
+// for a TE, and vice versa) -- enforced by grouping on position below.
+function csOpportunityTypesForPos(player, pos) {
+  if (pos === "RB") return csRbOpportunityTypes(player);
+  if (pos === "WR" || pos === "TE") return ["TARGETS"];
+  return []; // QB and any other position: no opportunity-type competition modeling in V1
+}
+
+// Deterministic label derivation. Every branch maps directly to one
+// of the customer-facing labels from the approved spec -- nothing
+// here is a new concept invented during implementation.
+function csDeriveLabel(player, pos, addedSignals, removedSignals) {
+  const isMover = player.currentTeam !== player.usageTeam;
+
+  if (isMover) {
+    // Refinement 2 (locked): QB team changes are a bare fact ONLY --
+    // never a competition/succession/starter claim, regardless of
+    // historical tier. Historical QB1/QB2 status only proves he
+    // started for his USAGE team, not that he'll start for his
+    // current one -- that requires depth-chart/news intelligence this
+    // project doesn't have (V2).
+    if (pos === "QB") return "New Team";
+
+    const tier = csSignificanceTier(player);
+    if (tier === "LOW") return "New Team"; // false-positive protection: a fringe/uncertain mover is still an objective fact, but claims no specific competition
+
+    if (pos === "RB") {
+      const types = csRbOpportunityTypes(player);
+      if (types.includes("RUSHING") && types.includes("RECEIVING")) return "New Team · Competing for Backfield Work";
+      if (types.includes("RECEIVING")) return "New Team · Competing for Passing-Down Work";
+      if (types.includes("RUSHING")) return "New Team · Backfield Competition";
+      return "New Team";
+    }
+    if (pos === "WR" || pos === "TE") return "New Team · Competing for Targets";
+    return "New Team";
+  }
+
+  // Incumbent (currentTeam === usageTeam): derive from accumulated
+  // signals. Refinement 3 (locked): a real departure and a real
+  // arrival at the same position/type are BOTH kept -- never netted
+  // away into "no change." When both are present, use a combined
+  // summary label while the underlying signals array still contains
+  // both individual events untouched.
+  if (addedSignals.length && removedSignals.length) {
+    return pos === "RB" ? "Backfield Reshaped" : "Receiving Corps Reshaped";
+  }
+  if (addedSignals.length) {
+    const hasHigh = addedSignals.some(s => s.significance === "HIGH");
+    if (pos === "RB") {
+      const categories = new Set(addedSignals.map(s => s.category));
+      const receivingOnly = categories.size === 1 && categories.has("RECEIVING");
+      if (receivingOnly) return hasHigh ? "Major Passing-Down Competition Added" : "Passing-Down Competition Added";
+      return hasHigh ? "Major Backfield Competition Added" : "Backfield Competition Increased";
+    }
+    return hasHigh ? "Major Target Competition Added" : "Increased Target Competition";
+  }
+  if (removedSignals.length) {
+    if (pos === "RB") {
+      const receivingOnly = removedSignals.every(s => s.category === "RECEIVING");
+      return receivingOnly ? "Vacated Passing-Down Opportunity" : "Expanded Backfield Opportunity";
+    }
+    return "Expanded Target Opportunity";
+  }
+  return null; // no objective roster-composition event -- no Current Situation applies
+}
+
+// Builds { playerID: { label, signals } | null } for every player in
+// the snapshot set. Reads ONLY the already-computed `snapshots`
+// object -- no new Tank01 calls, no new intermediate aggregation
+// data. A player absent from `snapshots` entirely (a rookie or anyone
+// with no usable historical role -- see MIN_GAMES_FOR_ANY_CONFIDENCE
+// upstream) simply never appears here and never gets a Current
+// Situation inference, per the explicit "cannot guess from name,
+// reputation, draft status, or roster presence" requirement -- this
+// is an intentional V1 limitation, not an oversight.
+function buildCurrentSituation(snapshots) {
+  const players = Object.values(snapshots);
+  const signalsByPlayerID = {};
+  function addSignal(playerID, signal) {
+    (signalsByPlayerID[playerID] = signalsByPlayerID[playerID] || []).push(signal);
+  }
+
+  // Group by team + position. A team-changer belongs to TWO groups:
+  // an "arrival" entry under his currentTeam, and a "departure" entry
+  // under his usageTeam.
+  const groups = {};
+  function bucket(team, pos) {
+    const key = team + "_" + pos;
+    return (groups[key] = groups[key] || { incumbents: [], arrivals: [], departures: [] });
+  }
+  players.forEach(p => {
+    if (p.currentTeam === p.usageTeam) {
+      bucket(p.currentTeam, p.pos).incumbents.push(p);
+    } else {
+      bucket(p.currentTeam, p.pos).arrivals.push(p);
+      bucket(p.usageTeam, p.pos).departures.push(p);
+    }
+  });
+
+  // Competition/opportunity signals -- RB/WR/TE only. QB is
+  // deliberately excluded from this entire pass (Refinement 2 --
+  // QB gets only its own bare "New Team" fact, handled separately
+  // below, never a competition inference for or from anyone).
+  Object.keys(groups).forEach(key => {
+    const pos = key.split("_")[1];
+    if (pos !== "RB" && pos !== "WR" && pos !== "TE") return;
+    const group = groups[key];
+
+    group.arrivals.forEach(arrival => {
+      const tier = csSignificanceTier(arrival);
+      if (tier === "LOW") return; // false-positive protection
+      // Signal category comes from the ARRIVAL's own opportunity
+      // type(s), attached to every incumbent in the room -- NOT
+      // gated on the incumbent's own type also matching. A
+      // receiving-down specialist arriving is real competition for a
+      // rushing-dominant lead back's team, even though the lead
+      // back's own historical profile is rushing-only (this is
+      // exactly the Bucky Irving / Kenny Gainwell case: Irving is a
+      // Lead Runner with no historical receiving-down role of his
+      // own, but Gainwell's arrival is still genuine passing-down
+      // competition for Irving's backfield).
+      const arrivalTypes = csOpportunityTypesForPos(arrival, pos);
+      group.incumbents.forEach(incumbent => {
+        arrivalTypes.forEach(type => {
+          addSignal(incumbent.playerID, {
+            signalType: "COMPETITION_ADDED", category: type,
+            counterpart: arrival.longName, counterpartRole: arrival.roleDescription, significance: tier
+          });
+        });
+      });
+    });
+
+    group.departures.forEach(departure => {
+      const tier = csSignificanceTier(departure);
+      if (tier === "LOW") return;
+      // Same reasoning as the arrival branch above -- category comes
+      // from the DEPARTING player's own opportunity type, not from
+      // requiring the remaining incumbent to already share that type.
+      const departureTypes = csOpportunityTypesForPos(departure, pos);
+      group.incumbents.forEach(incumbent => {
+        departureTypes.forEach(type => {
+          addSignal(incumbent.playerID, {
+            signalType: "COMPETITION_REMOVED", category: type,
+            counterpart: departure.longName, counterpartRole: departure.roleDescription, significance: tier
+          });
+        });
+      });
+    });
+  });
+
+  // Every team-changer (any position, including QB) gets its own
+  // TEAM_CHANGED fact -- independent of the competition-signal pass
+  // above, which only ever populates OTHER players' signals.
+  players.forEach(p => {
+    if (p.currentTeam === p.usageTeam) return;
+    addSignal(p.playerID, {
+      signalType: "TEAM_CHANGED", category: null, counterpart: null, counterpartRole: null,
+      significance: csSignificanceTier(p)
+    });
+  });
+
+  const result = {};
+  players.forEach(p => {
+    const signals = signalsByPlayerID[p.playerID] || [];
+    if (!signals.length) { result[p.playerID] = null; return; }
+    const added = signals.filter(s => s.signalType === "COMPETITION_ADDED");
+    const removed = signals.filter(s => s.signalType === "COMPETITION_REMOVED");
+    const label = csDeriveLabel(p, p.pos, added, removed);
+    result[p.playerID] = label ? { label, signals } : null;
+  });
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // HANDLER
 // ═══════════════════════════════════════════════════════════════════
 exports.handler = async (event) => {
@@ -724,6 +953,16 @@ exports.handler = async (event) => {
     snap.offenseStyle = style ? style.offenseStyle : "Role Uncertain";
   });
 
+  // Current Situation V1: a fully separate, additive pass over the
+  // already-finalized snapshots -- computed AFTER every Recent
+  // Role/Career Profile/Offensive Style field above is locked in for
+  // this run, and never modifies any of them. See buildCurrentSituation()
+  // and its own header comment for the complete rule set.
+  const currentSituationByPlayerID = buildCurrentSituation(snapshots);
+  Object.keys(snapshots).forEach(playerID => {
+    snapshots[playerID].currentSituation = currentSituationByPlayerID[playerID] || null;
+  });
+
   const store = getStore({ name: "player-snapshot" });
   await store.setJSON("latest", {
     computedAt: new Date().toISOString(),
@@ -748,5 +987,6 @@ exports.handler = async (event) => {
 exports._internal = {
   classifyRB, classifyWRsForTeam, classifyTE, classifyQBsForTeam,
   classifyOffensiveStyleForTeam, classifyCareerProfile, buildTeamAggregates,
-  buildPlayerAggregates, avg
+  buildPlayerAggregates, avg,
+  buildCurrentSituation, csSignificanceTier, csRbOpportunityTypes, csDeriveLabel
 };
