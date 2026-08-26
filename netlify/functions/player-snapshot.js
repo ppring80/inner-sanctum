@@ -49,12 +49,13 @@ function renderDiagnosticHtml(data) {
 
   const players = Object.values(data.players || {});
   const rows = players
-    .sort((a, b) => (a.team || "").localeCompare(b.team || "") || (a.pos || "").localeCompare(b.pos || ""))
+    .sort((a, b) => (a.currentTeam || "").localeCompare(b.currentTeam || "") || (a.pos || "").localeCompare(b.pos || ""))
     .map(p => `
       <tr>
         <td>${escapeHtml(p.longName)}</td>
         <td>${escapeHtml(p.pos)}</td>
-        <td>${escapeHtml(p.team)}</td>
+        <td>${escapeHtml(p.currentTeam)}</td>
+        <td>${escapeHtml(p.usageTeam)}</td>
         <td>${escapeHtml(p.teamRole)}</td>
         <td>${escapeHtml(p.roleDescription)}</td>
         <td class="conf-${escapeHtml(p.roleConfidence || "").toLowerCase()}">${escapeHtml(p.roleConfidence)}</td>
@@ -97,7 +98,7 @@ function renderDiagnosticHtml(data) {
   </div>
   <table id="t">
     <thead><tr>
-      <th>Player</th><th>Pos</th><th>Team</th><th>Team Role</th><th>Role Description</th>
+      <th>Player</th><th>Pos</th><th>Current Team</th><th>Usage Team</th><th>Team Role</th><th>Role Description</th>
       <th>Confidence</th><th>Offensive Style</th><th>Career Profile</th><th>Availability</th>
       <th>Avg Snap %</th><th>Avg Target Share</th><th>Avg RB Carry Share</th><th>Games</th>
     </tr></thead>
