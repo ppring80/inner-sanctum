@@ -139,12 +139,39 @@ async function fetchRecentGameWindow(season, currentWeek) {
   const weeks = [];
   for (let w = startWeek; w <= currentWeek; w++) weeks.push(w);
 
-  const gameIDsByWeek = await Promise.all(weeks.map(w => fetchGameIDsForWeek(w, season)));
-  const allGameIDs = gameIDsByWeek.flat();
-  if (allGameIDs.length === 0) return { players: [], weeksUsed: weeks, gamesUsed: 0 };
+  // ROOT-CAUSE FIX: the proven working pattern in
+  // refresh-risers-fallers.js NEVER fetches more than 2 weeks'
+  // getNFLGamesForWeek calls concurrently (Promise.all([currentWeek,
+  // previousWeek]) -- always exactly 2). This function previously
+  // fired ALL requested weeks concurrently via
+  // Promise.all(weeks.map(...)) -- up to 6 simultaneous
+  // getNFLGamesForWeek calls for the default 6-week window, 3x the
+  // concurrency the proven pattern ever uses. Combined with
+  // fetchGameIDsForWeek's own try/catch silently swallowing any
+  // failure into an empty array (logged, never surfaced or retried),
+  // a rate-limited/failed request for any of those simultaneous calls
+  // silently contributed zero games for that week, with no error
+  // visible anywhere in the cached output -- matching the observed
+  // symptom exactly (only 16 total games across a requested 6-week
+  // window, consistent with only one week's real slate actually
+  // succeeding). Fetching weeks SEQUENTIALLY here, one at a time,
+  // matches the proven file's more conservative concurrency and
+  // removes this specific failure mode. Per-game concurrency within a
+  // single week's box scores (fetchPlayerStatsForGames below) is
+  // UNCHANGED and still matches refresh-risers-fallers.js's own
+  // existing Promise.allSettled-per-week pattern exactly -- only the
+  // WEEK-LIST fetch concurrency changed.
+  const gamesPerWeek = {};
+  const allGameIDs = [];
+  for (const w of weeks) {
+    const ids = await fetchGameIDsForWeek(w, season);
+    gamesPerWeek[w] = ids.length;
+    allGameIDs.push(...ids);
+  }
+  if (allGameIDs.length === 0) return { players: [], weeksUsed: weeks, gamesUsed: 0, gamesPerWeek };
 
   const players = await fetchPlayerStatsForGames(allGameIDs);
-  return { players, weeksUsed: weeks, gamesUsed: allGameIDs.length };
+  return { players, weeksUsed: weeks, gamesUsed: allGameIDs.length, gamesPerWeek };
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -535,11 +562,11 @@ exports.handler = async (event) => {
     console.log("player-data cache read failed (non-fatal, will proceed with fewer classifiable players):", e.message);
   }
 
-  const { players, weeksUsed, gamesUsed } = await fetchRecentGameWindow(season, currentWeek);
+  const { players, weeksUsed, gamesUsed, gamesPerWeek } = await fetchRecentGameWindow(season, currentWeek);
   if (players.length === 0) {
     const msg = `No player game data available for weeks ${weeksUsed.join(",")}, season ${season} -- aborting, nothing cached.`;
-    console.log(msg);
-    return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: msg }) };
+    console.log(msg, "gamesPerWeek:", JSON.stringify(gamesPerWeek));
+    return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: msg, gamesPerWeek }) };
   }
 
   const teamAggregates = buildTeamAggregates(players, rosterByPlayerID);
@@ -656,12 +683,13 @@ exports.handler = async (event) => {
     currentWeek,
     weeksUsed,
     gamesFetched: gamesUsed,
+    gamesPerWeek, // e.g. {"13":16,"14":14,...} -- verifies every requested week actually contributed games, not just the total
     playerCount: Object.keys(snapshots).length,
     players: snapshots
   });
 
-  console.log(`Player Snapshot V1 computed: ${Object.keys(snapshots).length} players, weeks ${weeksUsed.join(",")}, season ${season}`);
-  return { statusCode: 200, body: JSON.stringify({ playerCount: Object.keys(snapshots).length, weeksUsed }) };
+  console.log(`Player Snapshot V1 computed: ${Object.keys(snapshots).length} players, weeks ${weeksUsed.join(",")} (per-week games: ${JSON.stringify(gamesPerWeek)}), season ${season}`);
+  return { statusCode: 200, body: JSON.stringify({ playerCount: Object.keys(snapshots).length, weeksUsed, gamesPerWeek }) };
 };
 
 // Exported for local logic testing only (mirrors this project's
