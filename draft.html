@@ -343,6 +343,18 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .sage-code-caution,.sage-code-wait,.sage-code-pass-for-now{background:rgba(184,48,32,0.1);color:#a03020;border-color:rgba(184,48,32,0.25)}
 .sage-code-needs-more-evidence{background:rgba(122,122,118,0.12);color:#6a6a66;border-color:rgba(122,122,118,0.25)}
 .sage-rec-explanation{font-family:Lora,serif;font-size:12px;color:var(--text2);line-height:1.4}
+/* 1/3/10 customer explanation (Aug 2026): typography-hierarchy only --
+   no new colors, no icons, no positive/negative treatment of any
+   Offensive Style value. Football Context is the most prominent line
+   after the recommendation label itself (bolder, full-strength text
+   color) -- the customer's 3-second football read. Draft Outlook is
+   secondary (italic, same muted tone the old explanation already
+   used) -- the 10-second timing rationale. Context Note is tertiary,
+   matching .sage-rec-reasons' existing small/muted treatment exactly,
+   so it never visually competes with the two lines above it. */
+.sage-rec-football-context{font-family:Lora,serif;font-weight:600;font-size:13px;color:var(--text);line-height:1.4;margin-top:2px}
+.sage-rec-draft-outlook{font-family:Lora,serif;font-size:12px;font-style:italic;color:var(--text2);line-height:1.4;margin-top:4px}
+.sage-rec-context-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:4px}
 .sage-rec-reasons{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px}
 .sage-showmore-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:3px 10px;cursor:pointer;font-size:10px;font-family:Lora,serif}
 .sage-showmore-btn:hover{border-color:var(--gold);color:var(--gold)}
@@ -1322,11 +1334,34 @@ function renderSagePanel(){
   function renderRec(r){
     var reasonsHtml=(r.reasons&&r.reasons.length)?('<div class="sage-rec-reasons">'+r.reasons.map(function(x){return '· '+escText(x);}).join('&nbsp;&nbsp;')+'</div>'):'';
     var codeClass='sage-code-'+String(r.code||'').replace(/[^a-z-]/g,'');
+
+    // 1/3/10 structured presentation (Aug 2026): sage-recommend.js now
+    // supplies footballContext (3-second football read) and
+    // draftOutlook (10-second timing rationale) alongside the
+    // original, unmodified `explanation` string (kept as a fail-soft
+    // value only). Showing the legacy explanation ALONGSIDE the new
+    // fields would recreate exactly the duplication problem this
+    // feature exists to solve, so the two paths are mutually
+    // exclusive: the new structured hierarchy renders whenever either
+    // field is present; the legacy explanation renders only when an
+    // old/stale response supplies neither (fail-soft -- no JS errors,
+    // no blank cards, behaves exactly as before this patch).
+    var hasStructured=!!(r.footballContext||r.draftOutlook);
+    var bodyHtml;
+    if(hasStructured){
+      var footballContextHtml=r.footballContext?('<div class="sage-rec-football-context">'+escText(r.footballContext)+'</div>'):'';
+      var draftOutlookHtml=r.draftOutlook?('<div class="sage-rec-draft-outlook">Draft outlook: '+escText(r.draftOutlook)+'</div>'):'';
+      var contextNoteHtml=r.contextNote?('<div class="sage-rec-context-note">'+escText(r.contextNote)+'</div>'):'';
+      bodyHtml=footballContextHtml+draftOutlookHtml+contextNoteHtml;
+    }else{
+      bodyHtml='<div class="sage-rec-explanation">'+escText(r.explanation)+'</div>';
+    }
+
     return '<div class="sage-rec">'+
       '<div class="sage-rec-top"><span class="sage-rec-player">'+escText(r.player.name)+'</span>'+
       '<span class="sage-rec-meta">'+escText(r.player.pos)+(r.player.team?' · '+escText(r.player.team):'')+'</span>'+
       '<span class="sage-rec-label '+codeClass+'">'+escText(r.recommendation)+'</span></div>'+
-      '<div class="sage-rec-explanation">'+escText(r.explanation)+'</div>'+
+      bodyHtml+
       reasonsHtml+
       '</div>';
   }
