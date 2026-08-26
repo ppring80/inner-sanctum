@@ -809,6 +809,210 @@ function buildRosterContextNote(
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PLAYER SNAPSHOT EXPLANATION AUGMENTATION (V1, additive, explanation-
+// only -- Aug 2026)
+//
+// Everything in this section runs strictly AFTER buildRecommendation()
+// has already produced recommendation/code/explanation/reasons. It
+// never feeds back into scoring, never re-sorts, never changes which
+// candidates are selected. Given a null/missing playerSnapshot (no
+// cache, or no match for this candidate), every function below is a
+// no-op that returns the existing explanation completely unchanged --
+// fail-soft by construction, not by a wrapping try/catch alone.
+//
+// VERIFIED FIELD PATH (do not assume, confirmed by direct inspection
+// of draft-context-profile.js's buildDraftContextProfile() return
+// shape and refresh-context-intel.js's storage call): the raw
+// changed-team boolean set by the human-curated context-evidence.js
+// registry survives, unmodified, as a NESTED field:
+//     contextProfile.evidence.changedTeam
+// NOT contextProfile.changedTeam at the top level. contextProfile
+// itself (environmentChange/roleOpportunity/rookieImpact/
+// contextConfidence/reasons/evidence) is exactly
+// getProductionContextProfile()'s existing, unmodified return value --
+// re-read here via that same existing function, not reconstructed.
+// ═══════════════════════════════════════════════════════════════════
+
+// roleDescription -> concise customer phrase, stripping the position-
+// tier prefix ("RB1 · Lead Runner" -> "Lead Runner") when a prefix is
+// present -- the prefix adds no value once it's embedded in a
+// sentence alongside the player's name/position elsewhere in the UI.
+// Does not touch or reinterpret the underlying Player Snapshot
+// classification in any way.
+function psRolePhrase(roleDescription) {
+  if (!roleDescription || roleDescription === "Role Uncertain") return null;
+  var parts = roleDescription.split(" · ");
+  return parts.length > 1 ? parts[1] : parts[0];
+}
+
+function psArticleFor(word) {
+  return /^[AEIOU]/i.test(word) ? "an" : "a";
+}
+
+// careerProfile -> a short supplementary clause, used ONLY when there
+// is no Current Situation to lead with (see augmentSageExplanation()
+// below) -- Career Profile is a supplement, never forced into every
+// sentence, per spec.
+function psCareerClause(careerProfile) {
+  if (!careerProfile || careerProfile === "Role Uncertain") return null;
+  var lower = careerProfile.toLowerCase();
+  return psArticleFor(careerProfile) + " " + lower;
+}
+
+// Current Situation label -> concise, deterministic football phrase.
+// Fixed vocabulary, matching draft-sage-synthesis.js's own established
+// pattern of small template functions over categorical state --
+// nothing here invents a new football conclusion; every phrase is a
+// direct, literal restatement of an existing Current Situation label.
+var PS_SITUATION_PHRASES = {
+  "Backfield Competition Increased": "facing increased backfield competition",
+  "Major Backfield Competition Added": "now facing significant backfield competition",
+  "Passing-Down Competition Added": "now facing passing-down competition",
+  "Major Passing-Down Competition Added": "now facing significant passing-down competition",
+  "Expanded Target Opportunity": "with expanded target opportunity",
+  "Expanded Backfield Opportunity": "with expanded backfield opportunity",
+  "Vacated Passing-Down Opportunity": "with a vacated passing-down role",
+  "Major Target Competition Added": "now facing significant target competition",
+  "Increased Target Competition": "facing increased target competition",
+  "Backfield Reshaped": "in a reshaped backfield",
+  "Receiving Corps Reshaped": "in a reshaped receiving corps"
+};
+
+// Team-change ("New Team · X") labels have TWO renderings depending on
+// whether Context already told the customer about the move -- see the
+// team-change deduplication block in psSituationClause() below for
+// which one applies and why.
+var PS_MOVER_REMAINDER_PHRASES = {
+  "New Team \u00b7 Competing for Targets": "now competing for targets",
+  "New Team \u00b7 Competing for Passing-Down Work": "now competing for passing-down work",
+  "New Team \u00b7 Backfield Competition": "now facing backfield competition",
+  "New Team \u00b7 Competing for Backfield Work": "now competing for backfield work"
+};
+var PS_MOVER_FULL_PHRASES = {
+  "New Team \u00b7 Competing for Targets": "joining a new offense and competing for targets",
+  "New Team \u00b7 Competing for Passing-Down Work": "joining a new backfield and competing for passing-down work",
+  "New Team \u00b7 Backfield Competition": "joining a new backfield with added competition",
+  "New Team \u00b7 Competing for Backfield Work": "joining a new backfield and competing for touches"
+};
+
+// TEAM-CHANGE DEDUPLICATION (the key overlap rule with the existing
+// SAGE Context pillar):
+//   - If this player is a team-changer (currentTeam !== usageTeam)
+//     AND Context's own registry already flagged the move
+//     (contextProfile.evidence.changedTeam === true), NEVER restate
+//     the generic "New Team" fact -- return only the non-overlapping
+//     REMAINDER (the specific competition type Current Situation
+//     knows that Context structurally does not track). A bare "New
+//     Team" label (no remainder at all -- e.g. a QB mover, or a
+//     LOW-tier mover) has nothing non-overlapping to add in that
+//     case, so this correctly returns null.
+//   - If Context did NOT flag the move (the common case -- Context is
+//     a small curated registry covering a minority of players, per
+//     the discovery turn's finding), Player Snapshot is the ONLY
+//     source that told the customer about the move, so the FULL
+//     phrasing is used.
+//   - Non-team-change labels are unaffected by any of this.
+function psSituationClause(currentSituation, isTeamChanger, contextAlreadyCoversTeamChange) {
+  if (!currentSituation || !currentSituation.label) return null;
+  var label = currentSituation.label;
+
+  if (isTeamChanger) {
+    if (label === "New Team") {
+      return contextAlreadyCoversTeamChange ? null : "joining a new team";
+    }
+    if (label.indexOf("New Team \u00b7 ") === 0) {
+      return contextAlreadyCoversTeamChange
+        ? (PS_MOVER_REMAINDER_PHRASES[label] || null)
+        : (PS_MOVER_FULL_PHRASES[label] || null);
+    }
+    // A team-changer should always receive a "New Team..."-shaped
+    // label from buildCurrentSituation() -- this branch is a safe
+    // fallback only, never expected to fire in practice.
+    return PS_SITUATION_PHRASES[label] || null;
+  }
+
+  return PS_SITUATION_PHRASES[label] || null;
+}
+
+// The single augmentation entry point. Deterministic, side-effect-
+// free, and fail-soft: any missing/unexpected input at any step
+// simply falls through to returning `existingExplanation` untouched.
+// Produces AT MOST one additional short clause appended to the
+// existing SAGE explanation -- never a second sentence, never a data
+// dump of every Player Snapshot field. Offensive Style is
+// deliberately NOT woven into this sentence in V1 (see delivery notes
+// -- "use sparingly" combined with "target ONE concise clause" made
+// omitting it the safer choice; adding it later is a small,
+// independent change if desired).
+function augmentSageExplanation(input) {
+  input = input || {};
+  var existingExplanation = input.existingExplanation || "";
+  var contextProfile = input.contextProfile || null;
+  var playerSnapshot = input.playerSnapshot || null;
+
+  if (!playerSnapshot) return existingExplanation;
+
+  var teamRole = playerSnapshot.teamRole;
+  var roleConfidence = playerSnapshot.roleConfidence;
+
+  // LOW confidence / no meaningful role: conservative by design --
+  // never a confident role statement, never a penalty, never altering
+  // the recommendation itself (this function only ever touches the
+  // explanation string). V1 simply adds nothing in this case rather
+  // than attempting to salvage a partial fact from Current Situation,
+  // per the explicit "be conservative" instruction.
+  if (!teamRole || roleConfidence === "LOW") {
+    return existingExplanation;
+  }
+
+  var isTeamChanger = playerSnapshot.currentTeam !== playerSnapshot.usageTeam;
+  var contextAlreadyCoversTeamChange = !!(
+    contextProfile &&
+    contextProfile.evidence &&
+    contextProfile.evidence.changedTeam === true
+  );
+
+  var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
+  var situationClause = psSituationClause(
+    playerSnapshot.currentSituation,
+    isTeamChanger,
+    contextAlreadyCoversTeamChange
+  );
+
+  var clause = null;
+  if (situationClause) {
+    // Priority 1: Current Situation, when meaningful -- paired with
+    // Recent Role when available for a concrete, player-specific
+    // sentence; the situation fact alone (capitalized) if role is
+    // unavailable for some reason.
+    clause = rolePhrase
+      ? (rolePhrase + " \u2014 " + situationClause + ".")
+      : (situationClause.charAt(0).toUpperCase() + situationClause.slice(1) + ".");
+  } else if (rolePhrase) {
+    // Priority 2/3: Recent Role, optionally supplemented by Career
+    // Profile when there's no stronger differentiator (no Current
+    // Situation) to lead with -- exactly the "stable elite player"
+    // case from the validation set.
+    var careerClause = psCareerClause(playerSnapshot.careerProfile);
+    clause = careerClause ? (rolePhrase + ", " + careerClause + ".") : (rolePhrase + ".");
+  }
+
+  if (!clause) return existingExplanation;
+  return existingExplanation + " " + clause;
+}
+
+// Exported for local logic testing only (same non-invasive pattern
+// already established in refresh-player-snapshot.js) -- Netlify only
+// ever invokes exports.handler; nothing in the production request
+// path reads exports._internal.
+exports._internal = {
+  augmentSageExplanation,
+  psRolePhrase,
+  psCareerClause,
+  psSituationClause
+};
+
 // ── Handler ────────────────────────────────────────────────────────────
 
 exports.handler =
@@ -952,9 +1156,28 @@ exports.handler =
             "context-intel"
         });
 
+      // Player Snapshot integration (explanation-only) -- mirrors the
+      // EXACT same store/fetch/fail-soft pattern already used for
+      // opportunityStore/contextStore above. Read ONCE per request,
+      // never per-candidate, and never a Tank01 call -- this reads the
+      // same "player-snapshot"/"latest" Blobs cache
+      // refresh-player-snapshot.js already populates on its own
+      // schedule (the same cache player-snapshot.js's diagnostic
+      // endpoint reads). A missing/unavailable cache resolves to
+      // `null` here, exactly like the two existing stores, and every
+      // downstream augmentation step already treats `null` as "leave
+      // the existing SAGE explanation unchanged" -- see
+      // augmentSageExplanation() below.
+      const playerSnapshotStore =
+        getStore({
+          name:
+            "player-snapshot"
+        });
+
       const [
         opportunityCache,
-        contextCache
+        contextCache,
+        playerSnapshotCache
       ] =
         await Promise.all([
           opportunityStore
@@ -979,8 +1202,44 @@ exports.handler =
             )
             .catch(
               () => null
+            ),
+
+          playerSnapshotStore
+            .get(
+              "latest",
+              {
+                type:
+                  "json"
+              }
+            )
+            .catch(
+              () => null
             )
         ]);
+
+      // Player Snapshot lookup index -- built ONCE per request, not
+      // per-candidate. Keyed with the EXACT SAME playerKey() function
+      // already used throughout this file for Opportunity/Context
+      // lookups (normalizePlayerName(name) + "|" + POS), since the
+      // candidate shape sent by draft.html's toSagePlayer() has no
+      // playerID field at all -- name+pos is the safest identifier
+      // both sides reliably expose, confirmed by inspecting
+      // isValidPlayerShape()/playerKey()'s existing usage in this
+      // file rather than assumed. Player Snapshot's own longName/pos
+      // fields are normalized through the identical function.
+      const playerSnapshotByKey = {};
+      if (
+        playerSnapshotCache &&
+        playerSnapshotCache.players &&
+        typeof playerSnapshotCache.players === "object"
+      ) {
+        Object.values(playerSnapshotCache.players).forEach(function (snap) {
+          if (!snap || !snap.longName || !snap.pos) return;
+          playerSnapshotByKey[
+            playerKey({ name: snap.longName, pos: snap.pos })
+          ] = snap;
+        });
+      }
 
       // Build the pool objects ONCE, reused across every candidate's
       // Scarcity call.
@@ -1071,7 +1330,29 @@ exports.handler =
                   e.sage.code,
 
                 explanation:
-                  e.sage.explanation,
+                  augmentSageExplanation({
+                    existingExplanation:
+                      e.sage.explanation,
+
+                    // Recomputed here via the SAME unmodified
+                    // getProductionContextProfile()/contextCache
+                    // already used inside evaluateCandidate() above --
+                    // deliberately re-read rather than threading a new
+                    // field through evaluateCandidate()'s return
+                    // shape, so that function's existing behavior and
+                    // return contract are untouched by this change.
+                    contextProfile:
+                      getProductionContextProfile(
+                        contextCache,
+                        e.player
+                      ),
+
+                    playerSnapshot:
+                      playerSnapshotByKey[
+                        playerKey(e.player)
+                      ] ||
+                      null
+                  }),
 
                 reasons:
                   Array.isArray(
