@@ -342,6 +342,20 @@ function classifyRB(agg, teamRbAvgCarryShares) {
     teamRole = "RB1"; roleDescription = "RB1 · Lead Runner";
   } else if (avgSnapPct >= 0.45 && avgSnapPct <= 0.60 && isRbRoomLeader) {
     teamRole = "RB1"; roleDescription = "RB1 · Committee Lead";
+  } else if (isRbRoomLeader) {
+    // Confirmed room-leader coverage-gap fix: a player who leads his
+    // team's RB room in carry share, but whose snap share falls
+    // outside the specific Committee Lead window above (and who
+    // didn't clear Three-Down Back or Lead Runner either), must not
+    // fall through to the generic secondary-usage fallback below --
+    // Rule 5 (Committee Back) explicitly excludes room leaders
+    // already, and the fallback (Rule 6) was designed for genuinely
+    // marginal/secondary usage, not for someone carrying the largest
+    // share of his team's RB-room work. No numeric threshold is used
+    // here -- this branch exists purely to catch a confirmed leader
+    // that the three rules above, each with its own narrower numeric
+    // window, didn't happen to catch.
+    teamRole = "RB1"; roleDescription = "RB1 · Committee Lead";
   } else if (avgRBCarryShare < 0.45 && avgTargetShare >= 0.08) {
     teamRole = "RB2"; roleDescription = "RB2 · Receiving Back";
   } else if (avgRBCarryShare >= 0.20 && !isRbRoomLeader) {
@@ -397,7 +411,7 @@ function classifyWRsForTeam(teamWRAggs) {
     } else if (i === 1 && entry.avgTargetShare >= WR1_TARGET_SHARE_FLOOR) {
       const first = withShares[0];
       const isCoPrimary = Math.abs(entry.avgTargetShare - first.avgTargetShare) <= CO_PRIMARY_MARGIN;
-      teamRole = "WR1";
+      teamRole = isCoPrimary ? "WR1" : "WR2";
       roleDescription = isCoPrimary ? "WR1 · Co-Primary Receiver" : "WR2 · Starting Receiver";
     } else if (entry.avgTargetShare >= WR2_TARGET_SHARE_FLOOR) {
       teamRole = "WR2"; roleDescription = "WR2 · Starting Receiver";
@@ -522,24 +536,40 @@ function classifyOffensiveStyleForTeam(teamPassRushTotals, teamID) {
 // available) -- "Veteran — Reduced Role" is used instead wherever the
 // spec's description of that concept would otherwise apply.
 function classifyCareerProfile(exp, roleTeamRole, evidence) {
-  const hasStarterTierRole = roleTeamRole === "RB1" || roleTeamRole === "WR1" || roleTeamRole === "TE1" || roleTeamRole === "QB1";
-  const meaningfulSnapShare = (evidence.avgSnapPct || 0) >= 0.50;
+  // Canonical position-aware "meaningful established starting role" --
+  // per explicit product refinement, this must include WR2 (a real
+  // starting receiver, not a reduced role) alongside the four
+  // position-leader tiers. QB2/RB2/WR3/TE2/Role Uncertain/blank are
+  // deliberately NOT included -- those are reduced or unresolved
+  // roles, not established ones.
+  //
+  // The previous independent `avgSnapPct >= 0.50` fallback has been
+  // REMOVED entirely (not merely deprioritized) -- Career Profile now
+  // depends only on the already-computed, target-share-aware role
+  // tier, never on a raw snap-percentage re-derivation of its own.
+  // This is what stops a WR3 · Rotational Receiver (or an
+  // unclassified Role Uncertain player) with a high snap percentage
+  // from independently qualifying as "Established Starter" purely on
+  // snaps, contradicting what the role classification itself already
+  // determined.
+  const hasMeaningfulStarterRole = roleTeamRole === "QB1" || roleTeamRole === "RB1" ||
+    roleTeamRole === "WR1" || roleTeamRole === "WR2" || roleTeamRole === "TE1";
 
   if (exp === "R") {
-    return (hasStarterTierRole || meaningfulSnapShare) ? "High-Upside Rookie" : "Rookie";
+    return hasMeaningfulStarterRole ? "High-Upside Rookie" : "Rookie";
   }
 
   const years = parseInt(exp, 10);
   if (Number.isNaN(years)) return "Role Uncertain";
 
   if (years <= 2) {
-    return (hasStarterTierRole || meaningfulSnapShare) ? "Emerging Starter" : "Developing Young Player";
+    return hasMeaningfulStarterRole ? "Emerging Starter" : "Developing Young Player";
   }
   if (years <= 6) {
-    return (hasStarterTierRole || meaningfulSnapShare) ? "Established Starter" : "Veteran — Reduced Role";
+    return hasMeaningfulStarterRole ? "Established Starter" : "Veteran — Reduced Role";
   }
   // years >= 7
-  return (hasStarterTierRole || meaningfulSnapShare) ? "Proven Veteran" : "Veteran — Reduced Role";
+  return hasMeaningfulStarterRole ? "Proven Veteran" : "Veteran — Reduced Role";
 }
 
 // ═══════════════════════════════════════════════════════════════════
