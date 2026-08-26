@@ -957,26 +957,41 @@ exports.handler = async (event) => {
   // in wrByTeam/qbByTeam/teamRbAvgCarryShares, which is why this is a
   // deliberately separate pass rather than folded into the loop above).
   //
-  // HISTORICAL TEAM ATTRIBUTION FIX: offenseStyle here was ALREADY
-  // being computed from usageTeam (the historical, box-score-period
-  // team) via tank01TeamID -- that part was correct before this fix.
-  // The bug was that it was displayed alongside currentTeam with no
-  // way to tell they might differ. If a player's current roster team
-  // doesn't match the team his usage data actually came from (a
-  // trade/free-agent move since that data was recorded), showing his
-  // OLD team's offensive style under his NEW team's name is
-  // misleading -- it is not evidence about the new team's offense at
-  // all. Per spec: never silently carry a former team's style onto
-  // the new team.
+  // CURRENT-TEAM OFFENSIVE STYLE PATCH (locked rule, supersedes the
+  // prior historical-team-attribution fix's offenseStyle behavior):
+  // Offensive Style is a TEAM-LEVEL attribute belonging to
+  // currentTeam, unlike Recent Role (usageTeam) and Current Situation
+  // (currentTeam roster/environment changes). A mover's offenseStyle
+  // must reflect the offense he is JOINING, not the one he came from
+  // and not a blanket "TBD" merely because he changed teams -- it is
+  // "TBD" only when the CURRENT team itself lacks a valid computed
+  // style, exactly the same condition that already applied to a
+  // same-team player.
+  //
+  // TEAM-LEVEL MAP REUSED: offenseStyleByTeam (built earlier, keyed by
+  // Tank01's numeric teamID, entirely from already-fetched box-score
+  // data -- no new Tank01 call, no second Offensive Style
+  // calculation). The only new piece is a small reverse lookup,
+  // built from data every player aggregate already carries: each
+  // player's OWN usageTeamAbv and tank01TeamID come from the exact
+  // same box-score entry, so pairing them for every player produces a
+  // reliable "team abbreviation -> Tank01 teamID" map for any team
+  // that had ANY player with usage data in this run's window --
+  // including a mover's CURRENT team, via players who never changed
+  // teams and share that current roster.
+  const abvToTank01TeamID = {};
+  Object.values(perPlayerAggregates).forEach(agg => {
+    if (agg.usageTeamAbv && agg.tank01TeamID && !abvToTank01TeamID[agg.usageTeamAbv]) {
+      abvToTank01TeamID[agg.usageTeamAbv] = agg.tank01TeamID;
+    }
+  });
+
   Object.values(perPlayerAggregates).forEach(agg => {
     const snap = snapshots[agg.playerID];
     if (!snap) return;
-    if (snap.currentTeam !== snap.usageTeam) {
-      snap.offenseStyle = "New Team — Offensive Style TBD";
-      return;
-    }
-    const style = offenseStyleByTeam[agg.tank01TeamID];
-    snap.offenseStyle = style ? style.offenseStyle : "Role Uncertain";
+    const currentTeamTank01ID = abvToTank01TeamID[snap.currentTeam];
+    const style = currentTeamTank01ID != null ? offenseStyleByTeam[currentTeamTank01ID] : null;
+    snap.offenseStyle = style ? style.offenseStyle : "Offensive Style TBD";
   });
 
   // Current Situation V1: a fully separate, additive pass over the
