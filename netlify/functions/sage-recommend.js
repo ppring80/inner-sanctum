@@ -879,16 +879,9 @@ var PS_SITUATION_PHRASES = {
   "Receiving Corps Reshaped": "in a reshaped receiving corps"
 };
 
-// Team-change ("New Team · X") labels have TWO renderings depending on
-// whether Context already told the customer about the move -- see the
-// team-change deduplication block in psSituationClause() below for
-// which one applies and why.
-var PS_MOVER_REMAINDER_PHRASES = {
-  "New Team \u00b7 Competing for Targets": "now competing for targets",
-  "New Team \u00b7 Competing for Passing-Down Work": "now competing for passing-down work",
-  "New Team \u00b7 Backfield Competition": "now facing backfield competition",
-  "New Team \u00b7 Competing for Backfield Work": "now competing for backfield work"
-};
+// Team-change ("New Team · X") labels always render as the full
+// phrasing now (see psSituationClause()'s own comment for why the
+// prior Context-dependent "remainder-only" table was removed).
 var PS_MOVER_FULL_PHRASES = {
   "New Team \u00b7 Competing for Targets": "joining a new offense and competing for targets",
   "New Team \u00b7 Competing for Passing-Down Work": "joining a new backfield and competing for passing-down work",
@@ -896,35 +889,32 @@ var PS_MOVER_FULL_PHRASES = {
   "New Team \u00b7 Competing for Backfield Work": "joining a new backfield and competing for touches"
 };
 
-// TEAM-CHANGE DEDUPLICATION (the key overlap rule with the existing
-// SAGE Context pillar):
-//   - If this player is a team-changer (currentTeam !== usageTeam)
-//     AND Context's own registry already flagged the move
-//     (contextProfile.evidence.changedTeam === true), NEVER restate
-//     the generic "New Team" fact -- return only the non-overlapping
-//     REMAINDER (the specific competition type Current Situation
-//     knows that Context structurally does not track). A bare "New
-//     Team" label (no remainder at all -- e.g. a QB mover, or a
-//     LOW-tier mover) has nothing non-overlapping to add in that
-//     case, so this correctly returns null.
-//   - If Context did NOT flag the move (the common case -- Context is
-//     a small curated registry covering a minority of players, per
-//     the discovery turn's finding), Player Snapshot is the ONLY
-//     source that told the customer about the move, so the FULL
-//     phrasing is used.
-//   - Non-team-change labels are unaffected by any of this.
-function psSituationClause(currentSituation, isTeamChanger, contextAlreadyCoversTeamChange) {
+// TEAM-CHANGE WORDING (locked presentation principle, patched Aug
+// 2026): Player Snapshot owns the standardized customer-facing
+// description of team movement, ALWAYS, for every team-changer --
+// regardless of whether SAGE's Context pillar separately happens to
+// have a registry entry for that same move. The prior version
+// suppressed this wording when contextProfile.evidence.changedTeam
+// was true, which produced inconsistent customer-facing language
+// across otherwise-identical team-changers (Waddle vs. Evans) purely
+// based on which players happened to be in Context's small, manually
+// curated registry -- an internal-subsystem-coverage detail the
+// customer has no reason to be aware of. Consistency across player
+// cards matters more than deduplicating the fact across internal data
+// sources, so this now ALWAYS uses the full phrasing for a
+// team-changer. Context's own scoring and prose are completely
+// unaffected -- this only changes what Player Snapshot's own
+// augmentation clause says.
+function psSituationClause(currentSituation, isTeamChanger) {
   if (!currentSituation || !currentSituation.label) return null;
   var label = currentSituation.label;
 
   if (isTeamChanger) {
     if (label === "New Team") {
-      return contextAlreadyCoversTeamChange ? null : "joining a new team";
+      return "joining a new team";
     }
     if (label.indexOf("New Team \u00b7 ") === 0) {
-      return contextAlreadyCoversTeamChange
-        ? (PS_MOVER_REMAINDER_PHRASES[label] || null)
-        : (PS_MOVER_FULL_PHRASES[label] || null);
+      return PS_MOVER_FULL_PHRASES[label] || null;
     }
     // A team-changer should always receive a "New Team..."-shaped
     // label from buildCurrentSituation() -- this branch is a safe
@@ -967,17 +957,11 @@ function augmentSageExplanation(input) {
   }
 
   var isTeamChanger = playerSnapshot.currentTeam !== playerSnapshot.usageTeam;
-  var contextAlreadyCoversTeamChange = !!(
-    contextProfile &&
-    contextProfile.evidence &&
-    contextProfile.evidence.changedTeam === true
-  );
 
   var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
   var situationClause = psSituationClause(
     playerSnapshot.currentSituation,
-    isTeamChanger,
-    contextAlreadyCoversTeamChange
+    isTeamChanger
   );
 
   var clause = null;
