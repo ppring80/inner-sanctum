@@ -654,6 +654,30 @@ function csOpportunityTypesForPos(player, pos) {
   return []; // QB and any other position: no opportunity-type competition modeling in V1
 }
 
+// RECIPIENT ELIGIBILITY FILTER (added per approved patch turn).
+//
+// Roster membership answers "is this player currently on the roster?"
+// -- already true for anyone appearing in Player Snapshot at all.
+// This is a DIFFERENT question: "has this player demonstrated enough
+// historical involvement for a Current Situation signal ABOUT them to
+// be analytically meaningful?" A camp/fringe body can sit on an
+// offseason roster with zero demonstrated NFL involvement (teamRole
+// null, roleConfidence "LOW" / Role Uncertain) -- that player existing
+// on the roster does not make an arrival/departure elsewhere on the
+// depth chart a meaningful event FOR them specifically.
+//
+// Deliberately NOT gated on significance tier -- a demonstrated
+// WR3 · Rotational Receiver, RB2 · Committee Back, RB2 · Change-of-
+// Pace Back, or TE2 · Secondary TE at HIGH/MEDIUM confidence remains
+// fully eligible; this filter only removes players with NO real
+// demonstrated role at all (teamRole missing) or LOW confidence in
+// what role they did show. This is the same underlying signal
+// (teamRole + roleConfidence) csSignificanceTier() already reads --
+// no new field, no new threshold, no roster-cut/date/preseason logic.
+function csIncumbentEligible(player) {
+  return !!(player && player.teamRole && player.roleConfidence !== "LOW");
+}
+
 // Deterministic label derivation. Every branch maps directly to one
 // of the customer-facing labels from the approved spec -- nothing
 // here is a new concept invented during implementation.
@@ -769,6 +793,7 @@ function buildCurrentSituation(snapshots) {
       // competition for Irving's backfield).
       const arrivalTypes = csOpportunityTypesForPos(arrival, pos);
       group.incumbents.forEach(incumbent => {
+        if (!csIncumbentEligible(incumbent)) return; // recipient eligibility filter -- see csIncumbentEligible()'s own comment
         arrivalTypes.forEach(type => {
           addSignal(incumbent.playerID, {
             signalType: "COMPETITION_ADDED", category: type,
@@ -786,6 +811,7 @@ function buildCurrentSituation(snapshots) {
       // requiring the remaining incumbent to already share that type.
       const departureTypes = csOpportunityTypesForPos(departure, pos);
       group.incumbents.forEach(incumbent => {
+        if (!csIncumbentEligible(incumbent)) return; // recipient eligibility filter -- same rule as the arrival branch above
         departureTypes.forEach(type => {
           addSignal(incumbent.playerID, {
             signalType: "COMPETITION_REMOVED", category: type,
@@ -988,5 +1014,5 @@ exports._internal = {
   classifyRB, classifyWRsForTeam, classifyTE, classifyQBsForTeam,
   classifyOffensiveStyleForTeam, classifyCareerProfile, buildTeamAggregates,
   buildPlayerAggregates, avg,
-  buildCurrentSituation, csSignificanceTier, csRbOpportunityTypes, csDeriveLabel
+  buildCurrentSituation, csSignificanceTier, csRbOpportunityTypes, csDeriveLabel, csIncumbentEligible
 };
