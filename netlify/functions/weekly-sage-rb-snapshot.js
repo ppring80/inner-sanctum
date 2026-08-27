@@ -1127,116 +1127,29 @@ function jsonResponse(
   };
 }
 
-exports.handler =
-  async function (event) {
-    if (
-      event.httpMethod &&
-      event.httpMethod !==
-        "GET"
-    ) {
-      return jsonResponse(
-        405,
-        {
-          error:
-            "Method not allowed."
-        }
-      );
-    }
 
-    if (
-      !process.env
-        .TANK01_API_KEY
-    ) {
-      return jsonResponse(
-        500,
-        {
-          error:
-            "TANK01_API_KEY is not configured."
-        }
-      );
-    }
-
-    const query =
-      event
-        .queryStringParameters ||
-      {};
-
-    const season =
-      String(
-        query.season ||
-        new Date()
-          .getFullYear()
-      );
-
-    const targetWeek =
-      Number(
-        query.week
-      );
-
-    const seasonType =
-      String(
-        query.seasonType ||
-        DEFAULT_SEASON_TYPE
-      );
-
-    if (
-      !Number.isInteger(
-        targetWeek
-      ) ||
-      targetWeek < 2 ||
-      targetWeek > 18
-    ) {
-      return jsonResponse(
-        400,
-        {
-          error:
-            "week must be an integer from 2 through 18."
-        }
-      );
-    }
-
-    const cacheKey =
-      [
-        season,
-        targetWeek,
-        seasonType
-      ].join("|");
-
-    const cached =
-      memoryCache.get(
-        cacheKey
-      );
-
-    if (
-      cached &&
-      (
-        Date.now() -
-        cached.createdAt
-      ) <
-      MEMORY_CACHE_TTL_MS
-    ) {
-      return jsonResponse(
-        200,
-        {
-          ...cached.data,
-
-          cache: {
-            source:
-              "warm_function_memory",
-
-            snapshotKey:
-              cacheKey
-          }
-        },
-
-        CACHE_CONTROL
-      );
-    }
-
-    try {
-      const baseUrl =
-        getBaseUrl(event);
-
+// ═══════════════════════════════════════════════════════════════════════
+// EXTRACTED FOR REUSE (production wiring pass) -- structural extraction
+// ONLY. Every line below is copied byte-for-byte from what was previously
+// inlined directly in exports.handler's try block; no Role, Production,
+// Confidence, eligibility, or scoring logic was changed. baseUrl is now a
+// parameter (passed in by the caller) instead of derived from an HTTP
+// `event` object, since this function is now ALSO called in-process by
+// refresh-rb-snapshot.js -- the same reuse pattern already established by
+// weekly-sage-qb-snapshot.js's buildQbSnapshot() (and the WR/TE
+// equivalents).
+//
+// exports.handler below is unchanged in every other respect (its own
+// query parsing, warm-function memory cache, and HTTP response shape are
+// byte-identical to before this extraction) -- it now calls this function
+// instead of inlining the same code.
+// ═══════════════════════════════════════════════════════════════════════
+async function buildRbSnapshot({
+  baseUrl,
+  season,
+  targetWeek,
+  seasonType
+}) {
       /*
         STEP 1
         ------
@@ -1568,6 +1481,130 @@ exports.handler =
               "Validate and cache the weekly RB snapshot before reconnecting individual player scoring."
           }
         };
+
+  return snapshot;
+}
+
+exports.buildRbSnapshot =
+  buildRbSnapshot;
+
+exports.handler =
+  async function (event) {
+    if (
+      event.httpMethod &&
+      event.httpMethod !==
+        "GET"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "Method not allowed."
+        }
+      );
+    }
+
+    if (
+      !process.env
+        .TANK01_API_KEY
+    ) {
+      return jsonResponse(
+        500,
+        {
+          error:
+            "TANK01_API_KEY is not configured."
+        }
+      );
+    }
+
+    const query =
+      event
+        .queryStringParameters ||
+      {};
+
+    const season =
+      String(
+        query.season ||
+        new Date()
+          .getFullYear()
+      );
+
+    const targetWeek =
+      Number(
+        query.week
+      );
+
+    const seasonType =
+      String(
+        query.seasonType ||
+        DEFAULT_SEASON_TYPE
+      );
+
+    if (
+      !Number.isInteger(
+        targetWeek
+      ) ||
+      targetWeek < 2 ||
+      targetWeek > 18
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "week must be an integer from 2 through 18."
+        }
+      );
+    }
+
+    const cacheKey =
+      [
+        season,
+        targetWeek,
+        seasonType
+      ].join("|");
+
+    const cached =
+      memoryCache.get(
+        cacheKey
+      );
+
+    if (
+      cached &&
+      (
+        Date.now() -
+        cached.createdAt
+      ) <
+      MEMORY_CACHE_TTL_MS
+    ) {
+      return jsonResponse(
+        200,
+        {
+          ...cached.data,
+
+          cache: {
+            source:
+              "warm_function_memory",
+
+            snapshotKey:
+              cacheKey
+          }
+        },
+
+        CACHE_CONTROL
+      );
+    }
+
+    try {
+      const baseUrl =
+        getBaseUrl(event);
+
+      const snapshot =
+        await buildRbSnapshot({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType
+        });
 
       memoryCache.set(
         cacheKey,
