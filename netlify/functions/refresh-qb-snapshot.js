@@ -15,12 +15,32 @@
 // the Weekly SAGE QB population build. It calls the existing QB
 // computation and validates its completed result.
 //
+// AUTOMATIC WEEK RESOLUTION
+// -------------------------
+// Manual/historical requests may continue to provide:
+//
+//   ?season=2025&week=8&seasonType=reg
+//
+// Scheduled Netlify invocations do not provide query parameters.
+// When no explicit week is supplied, this function determines the
+// current NFL week using the same 2026 season convention already used
+// elsewhere in Inner Sanctum.
+//
+// This allows the Tuesday Netlify schedule to build the appropriate
+// Weekly SAGE target week automatically while preserving explicit
+// historical/manual week overrides.
+//
+// IMPORTANT:
+// The automatic week resolver returns Week 1 before the 2026 regular
+// season begins. Weekly SAGE snapshots require prior-week evidence,
+// so the existing Week 2-18 validation remains intentionally intact.
+//
 // COMPLETENESS GATE
 // -----------------
 // A cached snapshot is only written when ALL of the following hold:
 //
 //   - evidenceType === "weekly-sage-qb-snapshot"
-//   - targetWeek matches the requested week
+//   - targetWeek matches the requested/resolved week
 //   - season matches the requested season
 //   - seasonType matches the requested seasonType
 //   - population is a non-empty array
@@ -60,6 +80,62 @@ const DEFAULT_SEASON_TYPE =
 
 const STORE_NAME =
   "qb-snapshot";
+
+/*
+  Current NFL week calculator.
+
+  This uses the same 2026 season convention already established
+  elsewhere in Inner Sanctum.
+
+  Before the regular season begins it returns Week 1.
+
+  During the regular season it advances one week for every seven
+  days from the 2026 season-start anchor and caps the result at
+  Week 18.
+
+  UPDATE seasonStart for future NFL seasons.
+*/
+function getCurrentNFLWeek() {
+  const seasonStart =
+    new Date(
+      "2026-09-09"
+    );
+
+  const now =
+    new Date();
+
+  if (
+    now <
+    seasonStart
+  ) {
+    return 1;
+  }
+
+  const diffDays =
+    Math.floor(
+      (
+        now -
+        seasonStart
+      ) /
+      (
+        1000 *
+        60 *
+        60 *
+        24
+      )
+    );
+
+  return Math.max(
+    1,
+    Math.min(
+      18,
+      Math.floor(
+        diffDays /
+        7
+      ) + 1
+    )
+  );
+}
 
 function jsonResponse(
   statusCode,
@@ -287,10 +363,19 @@ exports.handler =
           .getFullYear()
       );
 
+    /*
+      Explicit week wins.
+
+      If Netlify invokes this function from its Tuesday schedule,
+      query.week will not exist, so resolve the target NFL week
+      automatically instead.
+    */
     const targetWeek =
-      Number(
-        query.week
-      );
+      query.week
+        ? Number(
+            query.week
+          )
+        : getCurrentNFLWeek();
 
     const seasonType =
       String(
@@ -311,7 +396,13 @@ exports.handler =
         400,
         {
           error:
-            "week must be an integer from 2 through 18."
+            "week must be an integer from 2 through 18.",
+
+          resolvedTargetWeek:
+            targetWeek,
+
+          automaticWeekResolution:
+            !query.week
         }
       );
     }
