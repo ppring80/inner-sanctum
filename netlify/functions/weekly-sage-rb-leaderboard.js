@@ -31,6 +31,13 @@
 //
 // ═══════════════════════════════════════════════════════════════════════
 
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
 const DEFAULT_SEASON_TYPE = "reg";
 
 const CACHE_CONTROL =
@@ -38,6 +45,9 @@ const CACHE_CONTROL =
 
 const SNAPSHOT_FUNCTION =
   "weekly-sage-rb-snapshot";
+
+const RB_SNAPSHOT_STORE =
+  "rb-snapshot";
 
 const FINAL_SCORE_FUNCTION =
   "weekly-sage-rb-final-score";
@@ -316,41 +326,73 @@ function playerTeamFromRecord(player) {
   );
 }
 
+/*
+  PRODUCTION WIRING (added) -- read the cached RB snapshot from
+  Netlify Blobs (written by refresh-rb-snapshot.js) instead of making
+  a live HTTP call to weekly-sage-rb-snapshot on every leaderboard
+  request. This is the SAME pattern already proven in
+  weekly-sage-qb-leaderboard.js / weekly-sage-wr-leaderboard.js /
+  weekly-sage-te-leaderboard.js: connectLambda(event) must run before
+  any getStore() call (see exports.handler below), and there is
+  deliberately NO live-rebuild fallback -- if the cache is missing,
+  unreadable, or doesn't match the requested season/week/seasonType,
+  this fails fast (503) rather than ever calling
+  weekly-sage-rb-snapshot.js's HTTP endpoint itself. That live build
+  remains available only via refresh-rb-snapshot.js's own manual/
+  scheduled path -- never from a customer leaderboard request.
+
+  Everything AFTER this point in the file (final-score fetching,
+  bye/inactive classification, ranking, response shape,
+  recommendation:null, nextStep) is completely unchanged -- this
+  function's return shape is identical to before, so every downstream
+  caller (findPlayerArray, etc.) needs no changes at all.
+*/
 async function fetchSnapshot({
-  baseUrl,
   season,
   week,
   seasonType
 }) {
-  const url =
-    buildUrl({
-      baseUrl,
+  const key =
+    `week:${season}:${week}:${seasonType}`;
 
-      functionName:
-        SNAPSHOT_FUNCTION,
+  let cached = null;
 
-      params: {
-        season,
-        week:
-          String(week),
-        seasonType
-      }
-    });
+  try {
+    const store =
+      getStore({
+        name:
+          RB_SNAPSHOT_STORE
+      });
 
-  const data =
-    await fetchJson(url);
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-rb-snapshot"
-  ) {
-    throw new Error(
-      "Unexpected RB snapshot schema."
-    );
+    cached =
+      await store.get(
+        key,
+        { type: "json" }
+      );
+  } catch (error) {
+    const err =
+      new Error(
+        "RB snapshot cache could not be read."
+      );
+    err.statusCode = 503;
+    err.detail = error && error.message;
+    throw err;
   }
 
-  return data;
+  if (
+    !cached ||
+    cached.evidenceType !==
+      "weekly-sage-rb-snapshot"
+  ) {
+    const err =
+      new Error(
+        `No cached RB snapshot found for ${key}. Run refresh-rb-snapshot first.`
+      );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  return cached;
 }
 
 /*
@@ -822,6 +864,12 @@ function distribution(values) {
 
 exports.handler =
   async function (event) {
+    /*
+      Required for Netlify Blobs in this runtime mode -- must execute
+      before any getStore() call (see fetchSnapshot() above).
+    */
+    connectLambda(event);
+
     if (
       event.httpMethod &&
       event.httpMethod !==
@@ -883,7 +931,6 @@ exports.handler =
       */
       const snapshot =
         await fetchSnapshot({
-          baseUrl,
           season,
           week,
           seasonType
@@ -1217,8 +1264,12 @@ exports.handler =
         error
       );
 
+      // Cache-read errors from fetchSnapshot() above carry their own
+      // statusCode (503 -- "missing/unreadable cache, run
+      // refresh-rb-snapshot first"); everything else remains the
+      // existing generic 502.
       return jsonResponse(
-        502,
+        (error && error.statusCode) || 502,
         {
           error:
             "Could not build Weekly SAGE RB leaderboard.",
