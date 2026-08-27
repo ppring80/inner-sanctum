@@ -204,7 +204,9 @@ const {
 } = require("./draft-scarcity-profile");
 
 const {
-  buildRecommendation
+  buildRecommendation,
+  marketSignals,
+  scarcitySignals
 } = require("./draft-sage-synthesis");
 
 // Phase 2 addition: roster-LEVEL strategy advisory, entirely separate
@@ -986,6 +988,131 @@ function augmentSageExplanation(input) {
   return existingExplanation + " " + clause;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 1/3/10 CUSTOMER EXPLANATION V1 (Aug 2026)
+//
+// Supersedes augmentSageExplanation()'s role in the customer-facing
+// response: this section builds the two NEW structured fields
+// (footballContext, draftOutlook) that now carry the 3-second and
+// 10-second layers of the comprehension model. augmentSageExplanation()
+// and its helpers above are left intact (still exported for testing,
+// still correct) but are no longer wired into the response mapping --
+// the old single-paragraph-plus-appended-clause explanation is
+// superseded by this cleaner, explicitly separated structure. The
+// original, UNMODIFIED explanation: e.sage.explanation is restored at
+// the response call site as the existing safe fallback string (per
+// "SAGE must still return a valid recommendation using the existing
+// explanation behavior").
+//
+// Nothing here touches recommendation/code/ordering/scoring. Every
+// function is a pure, deterministic string builder over
+// already-computed profiles.
+// ═══════════════════════════════════════════════════════════════════
+
+// Team-change Current Situation labels -> concise noun-phrase form for
+// the 3-part Football Context line. Non-team-change labels need NO
+// transformation at all -- Current Situation's own labels
+// ("Major Target Competition Added", "Backfield Reshaped", etc.) are
+// already in the exact Title-Case noun-phrase form this presentation
+// needs, so they are used as-is (see buildFootballContext() below).
+var PS_MOVER_CONTEXT_LABELS = {
+  "New Team \u00b7 Competing for Targets": "Joining New Offense",
+  "New Team \u00b7 Competing for Passing-Down Work": "Joining New Backfield",
+  "New Team \u00b7 Backfield Competition": "Joining New Backfield",
+  "New Team \u00b7 Competing for Backfield Work": "Joining New Backfield",
+  "New Team": "Joining New Team"
+};
+
+// Football Context (3-second layer): Role · Situation-or-Career ·
+// Offensive Style. At most three pipe-separated parts, never a
+// paragraph. Offensive Style is included whenever valid, as plain
+// descriptive context -- never treated as positive or negative here.
+// LOW confidence / no teamRole -> null (fail-soft to the existing
+// explanation entirely; never a manufactured claim).
+function buildFootballContext(playerSnapshot) {
+  if (!playerSnapshot) return null;
+  var teamRole = playerSnapshot.teamRole;
+  var roleConfidence = playerSnapshot.roleConfidence;
+  if (!teamRole || roleConfidence === "LOW") return null;
+
+  var parts = [];
+  var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
+  if (rolePhrase) parts.push(rolePhrase);
+
+  var isTeamChanger = playerSnapshot.currentTeam !== playerSnapshot.usageTeam;
+  var label = playerSnapshot.currentSituation && playerSnapshot.currentSituation.label;
+  var middlePart = null;
+
+  if (label) {
+    middlePart = (isTeamChanger && Object.prototype.hasOwnProperty.call(PS_MOVER_CONTEXT_LABELS, label))
+      ? PS_MOVER_CONTEXT_LABELS[label]
+      : label;
+  }
+  // Career Profile only fills the middle slot when Current Situation
+  // is absent -- never stacked alongside it, keeping to at most 3
+  // parts total, matching every example in the spec exactly.
+  if (!middlePart && playerSnapshot.careerProfile && playerSnapshot.careerProfile !== "Role Uncertain") {
+    middlePart = playerSnapshot.careerProfile;
+  }
+  if (middlePart) parts.push(middlePart);
+
+  var style = playerSnapshot.offenseStyle;
+  if (style && style !== "Offensive Style TBD" && style !== "Role Uncertain") {
+    parts.push(style);
+  }
+
+  if (!parts.length) return null;
+  return parts.join(" \u00b7 ");
+}
+
+// Draft Outlook (10-second layer): "why act now or wait?" Reuses the
+// EXACT same categorical Market/Scarcity signals
+// nowPressurePhrase()/waitRoomPhrase() already check internally
+// (market.outlook/market.value/scarcity.cost), via marketSignals()/
+// scarcitySignals() -- both ALREADY exported by draft-sage-synthesis.js,
+// so zero changes were needed there. No new threshold: every branch
+// below is a direct restatement of an existing categorical value,
+// worded per the preferred vocabulary given in the spec.
+function buildDraftOutlookPhrase(marketProfile, scarcityProfile) {
+  var market = marketSignals(marketProfile);
+  var scarcity = scarcitySignals(scarcityProfile);
+
+  var marketGone = market.outlook === "Market Leans Gone";
+  var marketReturn = market.outlook === "Market Says He May Return";
+  var discount = market.value === "Discount";
+  var aheadOfMarket = market.value === "Ahead of Market";
+  var scarce = scarcity.cost === "High";
+  var depth = scarcity.cost === "Low";
+
+  if (marketGone && scarce) return "Market and positional scarcity make waiting risky.";
+  if (marketGone && discount) return "Good value now, but he may not reach your next pick.";
+  if (marketGone) return "Waiting risks losing him before your next pick.";
+  if (scarce) return "Comparable options may not remain at your next turn.";
+  if (discount) return "Available at a favorable price.";
+  if (marketReturn && depth) return "Market and positional depth give you room to wait.";
+  if (marketReturn) return "He may still be available at your next turn.";
+  if (depth) return "Comparable options should remain available.";
+  if (aheadOfMarket) return "You'd be paying ahead of ADP here.";
+  return "No strong timing pressure to force the pick.";
+}
+
+// Unique Context note: surfaces Context's OWN already-generated
+// `reasons` text (buildContextReasons(), unmodified) rather than
+// inventing new prose -- filtered to skip any reason mentioning "team",
+// since team movement is now Player Snapshot's territory (surfaced via
+// footballContext above) and repeating it here would be exactly the
+// duplication this spec asks to avoid. Returns null whenever Context
+// has nothing distinct to add (no profile, no reasons, or every reason
+// is team-change-related) -- never a manufactured "no unique context"
+// placeholder.
+function buildUniqueContextNote(contextProfile) {
+  if (!contextProfile || !Array.isArray(contextProfile.reasons)) return null;
+  var distinct = contextProfile.reasons.find(function (r) {
+    return typeof r === "string" && !/team/i.test(r);
+  });
+  return distinct || null;
+}
+
 // Exported for local logic testing only (same non-invasive pattern
 // already established in refresh-player-snapshot.js) -- Netlify only
 // ever invokes exports.handler; nothing in the production request
@@ -994,7 +1121,10 @@ exports._internal = {
   augmentSageExplanation,
   psRolePhrase,
   psCareerClause,
-  psSituationClause
+  psSituationClause,
+  buildFootballContext,
+  buildDraftOutlookPhrase,
+  buildUniqueContextNote
 };
 
 // ── Handler ────────────────────────────────────────────────────────────
@@ -1313,30 +1443,67 @@ exports.handler =
                 code:
                   e.sage.code,
 
+                // Original, UNMODIFIED SAGE synthesis explanation --
+                // restored to its plain value. Its role as the
+                // customer-facing football description is superseded
+                // by footballContext/draftOutlook below, but it is
+                // kept exactly as buildRecommendation() produced it as
+                // the existing safe fallback string (never removed,
+                // per "SAGE must still return a valid recommendation
+                // using the existing explanation behavior").
                 explanation:
-                  augmentSageExplanation({
-                    existingExplanation:
-                      e.sage.explanation,
+                  e.sage.explanation,
 
-                    // Recomputed here via the SAME unmodified
-                    // getProductionContextProfile()/contextCache
-                    // already used inside evaluateCandidate() above --
-                    // deliberately re-read rather than threading a new
-                    // field through evaluateCandidate()'s return
-                    // shape, so that function's existing behavior and
-                    // return contract are untouched by this change.
-                    contextProfile:
-                      getProductionContextProfile(
-                        contextCache,
-                        e.player
-                      ),
+                // 1/3/10 CUSTOMER EXPLANATION V1 -- additive fields,
+                // computed from re-derived profiles (SAME already-
+                // loaded caches/pure functions evaluateCandidate()
+                // used internally, re-read here rather than threading
+                // new fields through its return contract, matching the
+                // established pattern already used for contextProfile
+                // in the Player Snapshot explanation-augmentation
+                // turn). Never affects recommendation/code/order above,
+                // which are already fixed by the time this map() runs.
+                footballContext:
+                  buildFootballContext(
+                    playerSnapshotByKey[
+                      playerKey(e.player)
+                    ] ||
+                    null
+                  ),
 
-                    playerSnapshot:
-                      playerSnapshotByKey[
-                        playerKey(e.player)
-                      ] ||
-                      null
-                  }),
+                draftOutlook:
+                  buildDraftOutlookPhrase(
+                    buildDraftMarketProfile({
+                      adp:
+                        e.adp,
+                      currentPick:
+                        currentPick,
+                      nextUserPick:
+                        nextUserPick
+                    }),
+                    buildDraftScarcityProfile({
+                      candidate:
+                        attachAdp(
+                          getOpportunityRecord(
+                            opportunityCache,
+                            e.player
+                          ),
+                          e.player
+                        ),
+                      currentPool:
+                        currentPool,
+                      nextTurnPool:
+                        nextTurnPool
+                    })
+                  ),
+
+                contextNote:
+                  buildUniqueContextNote(
+                    getProductionContextProfile(
+                      contextCache,
+                      e.player
+                    )
+                  ),
 
                 reasons:
                   Array.isArray(
