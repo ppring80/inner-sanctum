@@ -15,36 +15,45 @@
 // the Weekly SAGE RB population build. It calls the existing RB
 // computation and validates its completed result. buildRbSnapshot()
 // itself was added to weekly-sage-rb-snapshot.js as a structural
-// extraction ONLY (see that file's own header comment on the
-// function) -- every line of Role/Production/Confidence/eligibility
-// logic inside it is byte-for-byte identical to what was previously
-// inlined directly in that file's own exports.handler.
+// extraction ONLY.
 //
-// IMPORTANT DEVIATION FROM THE QB/WR/TE PATTERN -- READ BEFORE CHANGING:
-// -----------------------------------------------------------------
-// QB/WR/TE's completeness gate checks `snapshot.nextStep.ready === true`.
-// RB's snapshot object does NOT have a `ready` field anywhere -- its
-// `nextStep` shape is `{ finalScore: null, recommendation: null, reason:
-// "Validate and cache the weekly RB snapshot before reconnecting
-// individual player scoring." }`, confirmed by direct inspection (no
-// `ready` key exists in weekly-sage-rb-snapshot.js at all, unlike
-// weekly-sage-qb-snapshot.js which genuinely has one). Copying the
-// QB gate verbatim would mean this function ALWAYS rejects the
-// snapshot as incomplete, permanently 422-ing and never caching
-// anything -- the opposite of this task's goal. The completeness gate
-// below therefore checks every OTHER QB-equivalent condition
-// (evidenceType/season/targetWeek/seasonType match, non-empty
-// population, zero failures) and OMITS the nextStep.ready check for
-// RB specifically. This is a validation-gate adaptation to RB's real,
-// existing output shape -- it does not change what
-// weekly-sage-rb-snapshot.js computes, scores, or recommends in any way.
+// AUTOMATIC WEEK RESOLUTION
+// -------------------------
+// Manual/historical requests may continue to provide:
 //
-// COMPLETENESS GATE (RB)
-// -----------------------
+//   ?season=2025&week=8&seasonType=reg
+//
+// Scheduled Netlify invocations do not provide query parameters.
+// When no explicit week is supplied, this function determines the
+// current NFL week using the same 2026 season convention already used
+// elsewhere in Inner Sanctum.
+//
+// This allows the Tuesday Netlify schedule to build the appropriate
+// Weekly SAGE target week automatically while preserving explicit
+// historical/manual week overrides.
+//
+// IMPORTANT:
+// The automatic week resolver returns Week 1 before the 2026 regular
+// season begins. Weekly SAGE snapshots require prior-week evidence,
+// so the existing Week 2-18 validation remains intentionally intact.
+//
+// IMPORTANT DEVIATION FROM THE QB/WR/TE PATTERN
+// ----------------------------------------------
+// QB/WR/TE's completeness gate checks snapshot.nextStep.ready === true.
+//
+// RB's snapshot object does NOT have a ready field. Its nextStep shape
+// does not populate that value, so copying the QB gate verbatim would
+// permanently reject every valid RB snapshot.
+//
+// The RB completeness gate therefore checks every other equivalent
+// condition and intentionally omits nextStep.ready.
+//
+// COMPLETENESS GATE
+// -----------------
 // A cached snapshot is only written when ALL of the following hold:
 //
 //   - evidenceType === "weekly-sage-rb-snapshot"
-//   - targetWeek matches the requested week
+//   - targetWeek matches the requested/resolved week
 //   - season matches the requested season
 //   - seasonType matches the requested seasonType
 //   - population is a non-empty array
@@ -56,8 +65,7 @@
 // BLOBS PATTERN
 // -------------
 // Same Netlify Blobs Lambda-compatibility pattern already proven
-// elsewhere in Inner Sanctum (refresh-qb-snapshot.js / refresh-wr-
-// snapshot.js / refresh-te-snapshot.js):
+// elsewhere in Inner Sanctum:
 //
 // connectLambda(event) MUST run before getStore().
 //
@@ -84,6 +92,62 @@ const DEFAULT_SEASON_TYPE =
 
 const STORE_NAME =
   "rb-snapshot";
+
+/*
+  Current NFL week calculator.
+
+  This uses the same 2026 season convention already established
+  elsewhere in Inner Sanctum.
+
+  Before the regular season begins it returns Week 1.
+
+  During the regular season it advances one week for every seven
+  days from the 2026 season-start anchor and caps the result at
+  Week 18.
+
+  UPDATE seasonStart for future NFL seasons.
+*/
+function getCurrentNFLWeek() {
+  const seasonStart =
+    new Date(
+      "2026-09-09"
+    );
+
+  const now =
+    new Date();
+
+  if (
+    now <
+    seasonStart
+  ) {
+    return 1;
+  }
+
+  const diffDays =
+    Math.floor(
+      (
+        now -
+        seasonStart
+      ) /
+      (
+        1000 *
+        60 *
+        60 *
+        24
+      )
+    );
+
+  return Math.max(
+    1,
+    Math.min(
+      18,
+      Math.floor(
+        diffDays /
+        7
+      ) + 1
+    )
+  );
+}
 
 function jsonResponse(
   statusCode,
@@ -149,8 +213,7 @@ function getBaseUrl(
   that the snapshot returned by buildRbSnapshot() is complete and
   corresponds to the exact requested season/week/seasonType.
 
-  See this file's own header comment for why this intentionally does
-  NOT check nextStep.ready, unlike the QB/WR/TE equivalents.
+  RB intentionally does NOT check nextStep.ready.
 */
 function validateCompleteSnapshot(
   snapshot,
@@ -249,10 +312,11 @@ function validateCompleteSnapshot(
     );
   }
 
-  // Deliberately NO nextStep.ready check here -- see this file's
-  // header comment. RB's snapshot object does not populate that
-  // field; requiring it would make this function permanently reject
-  // every valid RB snapshot.
+  /*
+    Deliberately NO nextStep.ready check.
+
+    RB's existing snapshot schema does not populate that field.
+  */
 
   return problems;
 }
@@ -309,10 +373,19 @@ exports.handler =
           .getFullYear()
       );
 
+    /*
+      Explicit week wins.
+
+      If Netlify invokes this function from its Tuesday schedule,
+      query.week will not exist, so resolve the target NFL week
+      automatically instead.
+    */
     const targetWeek =
-      Number(
-        query.week
-      );
+      query.week
+        ? Number(
+            query.week
+          )
+        : getCurrentNFLWeek();
 
     const seasonType =
       String(
@@ -333,7 +406,13 @@ exports.handler =
         400,
         {
           error:
-            "week must be an integer from 2 through 18."
+            "week must be an integer from 2 through 18.",
+
+          resolvedTargetWeek:
+            targetWeek,
+
+          automaticWeekResolution:
+            !query.week
         }
       );
     }
