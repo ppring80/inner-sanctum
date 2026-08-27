@@ -367,8 +367,28 @@ function checkOAuthSession() {
 
     <span class="toggle-label">Week</span>
 
-    <select class="week-select" id="weekSelect" onchange="renderTable()">
-      <option value="1">Week 1 (preview)</option>
+    <select class="week-select" id="weekSelect" onchange="loadWeeklyRankings()">
+      <!-- Real week range (added). Starts at 2, not 1: Weekly SAGE's
+           locked N-1 evidence rule means Week 1 has no prior-week
+           evidence to score from -- this page never offers a week
+           the backend cannot serve. -->
+      <option value="2">Week 2</option>
+      <option value="3">Week 3</option>
+      <option value="4">Week 4</option>
+      <option value="5">Week 5</option>
+      <option value="6">Week 6</option>
+      <option value="7">Week 7</option>
+      <option value="8">Week 8</option>
+      <option value="9">Week 9</option>
+      <option value="10">Week 10</option>
+      <option value="11">Week 11</option>
+      <option value="12">Week 12</option>
+      <option value="13">Week 13</option>
+      <option value="14">Week 14</option>
+      <option value="15">Week 15</option>
+      <option value="16">Week 16</option>
+      <option value="17">Week 17</option>
+      <option value="18">Week 18</option>
     </select>
 
     <button class="lineup-toggle" id="lineupToggleBtn" onclick="toggleLineupPanel()">⚙ League Lineup Setup ▾</button>
@@ -515,148 +535,6 @@ function getWeeklyLineupConstruction(){
   return state.lineupConstruction || DEFAULT_LINEUP_CONSTRUCTION;
 }
 
-var MOCK_RANKINGS = [
-  {
-    name:'Patrick Mahomes',
-    pos:'QB',
-    team:'KC',
-    opp:'BUF',
-    injury:'healthy',
-    proj:{ppr:24.8, half:24.8, standard:24.8},
-    call:{ppr:'start', half:'start', standard:'start'},
-    verdicts:{
-      oracle:"The signal caller faces no obstacle the stars cannot illuminate — start him with the confidence of 38 seasons behind you.",
-      trash:"It's Mahomes against a banged-up secondary. Even YOUR lineup decisions can't mess this one up. START HIM.",
-      analyst:"4,200+ proj pass yds pace, opponent allows 24.1 fantasy pts/gm to QBs (8th-most). Clear start."
-    }
-  },
-  {
-    name:'Christian McCaffrey',
-    pos:'RB',
-    team:'SF',
-    opp:'SEA',
-    injury:'questionable',
-    proj:{ppr:20.6, half:19.4, standard:18.2},
-    call:{ppr:'start', half:'flex', standard:'flex'},
-    verdicts:{
-      oracle:"In PPR leagues his hands alone are worth the risk — elsewhere, a flex play until the injury report clears.",
-      trash:"PPR? He's basically a WR with this catch volume, start him. Standard? Questionable tag has me side-eyeing this one.",
-      analyst:"6.2 targets/gm (PPR-relevant), 67% snap share last healthy game. PPR: start-caliber floor. Standard: flex pending injury report."
-    }
-  },
-  {
-    name:"Ja'Marr Chase",
-    pos:'WR',
-    team:'CIN',
-    opp:'PIT',
-    injury:'healthy',
-    proj:{ppr:19.4, half:17.1, standard:14.8},
-    call:{ppr:'start', half:'start', standard:'start'},
-    verdicts:{
-      oracle:"Against this secondary, the receiver's path to glory is foretold in any format — start with conviction.",
-      trash:"Pittsburgh's corners have given up the 3rd-most fantasy points to WRs. Chase is about to feast, any scoring system.",
-      analyst:"31% target share, opponent ranks 28th in pass defense DVOA. High-confidence start across all formats."
-    }
-  },
-  {
-    name:'Travis Kelce',
-    pos:'TE',
-    team:'KC',
-    opp:'BUF',
-    injury:'healthy',
-    proj:{ppr:15.8, half:14.4, standard:13.1},
-    call:{ppr:'start', half:'start', standard:'start'},
-    verdicts:{
-      oracle:"Even as seasons pass, the tight end's bond with his quarterback remains unbroken — a steady start, any format.",
-      trash:"Kelce's still getting targets like it's 2019. Start him and stop overthinking it, PPR or not.",
-      analyst:"22% target share in red zone, consistent floor regardless of format. Start."
-    }
-  },
-  {
-    name:'Justin Tucker',
-    pos:'K',
-    team:'BAL',
-    opp:'CLE',
-    injury:'healthy',
-    proj:{ppr:8.4, half:8.4, standard:8.4},
-    call:{ppr:'flex', half:'flex', standard:'flex'},
-    verdicts:{
-      oracle:"Even the most reliable leg faces uncertainty in the wind — a fine streamer, nothing more, no matter the format.",
-      trash:"It's a kicker. Scoring format doesn't matter. Calm down. Streamable, not a priority.",
-      analyst:"Indoor-adjacent conditions, average implied team total. Streamable floor play, format-agnostic."
-    }
-  },
-  {
-    name:'San Francisco 49ers',
-    pos:'DEF',
-    team:'SF',
-    opp:'SEA',
-    injury:'healthy',
-    proj:{ppr:9.2, half:9.2, standard:9.2},
-    call:{ppr:'start', half:'start', standard:'start'},
-    verdicts:{
-      oracle:"The defense stands as a wall against a wounded offense — start with confidence, format aside.",
-      trash:"Seattle's offensive line is falling apart. This defense is about to feast, no matter how you score it.",
-      analyst:"Opponent allows 2.1 sacks/gm allowed, high pressure-rate matchup. Strong start."
-    }
-  },
-  {
-    name:'Tua Tagovailoa',
-    pos:'QB',
-    team:'MIA',
-    opp:'NYJ',
-    injury:'doubtful',
-    proj:{ppr:11.5, half:11.5, standard:11.5},
-    call:{ppr:'sit', half:'sit', standard:'sit'},
-    verdicts:{
-      oracle:"The path is shrouded in doubt this week — better to seek wisdom elsewhere until the fog clears.",
-      trash:"Doubtful tag plus a tough Jets D? Bench him and don't think twice.",
-      analyst:"Doubtful per Friday report, opponent allows 16.2 fantasy pts/gm to QBs (4th-fewest). Sit."
-    }
-  },
-  {
-    name:'Breece Hall',
-    pos:'RB',
-    team:'NYJ',
-    opp:'MIA',
-    injury:'healthy',
-    proj:{ppr:19.6, half:18.2, standard:16.8},
-    call:{ppr:'start', half:'start', standard:'start'},
-    verdicts:{
-      oracle:"The path opens wide for the swift — a clear start against a defense that cannot contain him, in any format.",
-      trash:"Miami's run D is Swiss cheese. Breece is about to run wild, PPR or standard, doesn't matter. START.",
-      analyst:"4.8 yards/carry season avg, opponent allows 5.1 ypc (worst in league). Start regardless of scoring."
-    }
-  },
-  {
-    name:'Mike Evans',
-    pos:'WR',
-    team:'TB',
-    opp:'NO',
-    injury:'healthy',
-    proj:{ppr:14.6, half:12.8, standard:10.9},
-    call:{ppr:'flex', half:'flex', standard:'sit'},
-    verdicts:{
-      oracle:"A solid offering in PPR, though in standard formats the path dims — know your league before you commit.",
-      trash:"PPR, he's a fine flex. Standard? His catch volume doesn't pay off — bench-able in deeper leagues.",
-      analyst:"19% target share but middling yards-after-catch. PPR: flex floor. Standard: matchup-dependent sit candidate."
-    }
-  },
-  {
-    name:'George Kittle',
-    pos:'TE',
-    team:'SF',
-    opp:'SEA',
-    injury:'out',
-    proj:{ppr:0, half:0, standard:0},
-    call:{ppr:'sit', half:'sit', standard:'sit'},
-    verdicts:{
-      oracle:"The path is closed this week, seeker — find another route to glory, in any format.",
-      trash:"He's OUT. As in, not playing. Bench him, this isn't complicated, no matter how your league scores.",
-      analyst:"Ruled out per Friday injury report. Do not start, any format."
-    }
-  }
-];
 
 var state = {
   persona: 'oracle',
@@ -665,8 +543,116 @@ var state = {
   sortKey: 'proj',
   sortDir: 'desc',
   myRosterNames: [],
-  lineupConstruction: DEFAULT_LINEUP_CONSTRUCTION
+  lineupConstruction: DEFAULT_LINEUP_CONSTRUCTION,
+  rankings: null,
+  loading: false,
+  loadError: null
 };
+
+// ═══════════════════════════════════════════════════════════
+// PRODUCTION WIRING (added) -- weekly-sage-rankings integration
+// ═══════════════════════════════════════════════════════════
+//
+// season is read from the page's own URL (?season=2025), defaulting
+// to the current calendar year, so this page remains parameter-driven
+// for the 2025 historical smoke test without any new visible control
+// -- per the explicit "do not redesign the page" / "endpoint and page
+// must remain parameter-driven" requirements.
+function getSelectedSeason() {
+  var params = new URLSearchParams(window.location.search);
+  var fromUrl = params.get('season');
+  return fromUrl || String(new Date().getFullYear());
+}
+
+function getSelectedWeek() {
+  var el = document.getElementById('weekSelect');
+  var n = el ? parseInt(el.value, 10) : NaN;
+  return Number.isInteger(n) ? n : 2;
+}
+
+// Flattens the unified weekly-sage-rankings response's four separate
+// position arrays into ONE array, matching the shape the existing
+// filter/sort/render pipeline below already expects (it was built to
+// filter a single flat array by p.pos, exactly like MOCK_RANKINGS
+// was). Each entry is mapped from the REAL Weekly SAGE leaderboard
+// record shape -- {name, team, position, opponent, sage:{score,label,
+// confidence}, recommendation} -- into the field names the existing
+// render code reads. Nothing here recalculates a score, reorders a
+// position's own ranking, or invents a value: a field with no real
+// source (e.g. injury status, which Weekly SAGE does not produce) is
+// left null/absent rather than fabricated, and the row template
+// (see renderTable() below) shows '—' for anything null rather than
+// manufacturing text.
+function flattenRankings(rankings) {
+  if (!rankings || !rankings.positions) return [];
+  var out = [];
+  ['QB', 'RB', 'WR', 'TE'].forEach(function (pos) {
+    var list = rankings.positions[pos];
+    if (!Array.isArray(list)) return;
+    list.forEach(function (entry) {
+      out.push({
+        name: entry.name || '(unknown player)',
+        pos: entry.position || pos,
+        team: entry.team || '—',
+        opp: entry.opponent || '—',
+        injury: null, // Weekly SAGE does not produce an injury field -- '—' is rendered, never fabricated
+        // recommendation is "START"/"FLEX"/"SIT" (or null) from the
+        // existing, unmodified positional leaderboard -- lowercased
+        // here only to match callTag()'s existing lookup keys, never
+        // recalculated.
+        call: entry.recommendation
+          ? String(entry.recommendation).toLowerCase()
+          : null,
+        sageScore:
+          entry.sage && typeof entry.sage.score === 'number'
+            ? entry.sage.score
+            : null,
+        sageLabel: (entry.sage && entry.sage.label) || null,
+        sageConfidence: (entry.sage && entry.sage.confidence) || null
+      });
+    });
+  });
+  return out;
+}
+
+function loadWeeklyRankings() {
+  state.loading = true;
+  state.loadError = null;
+
+  var season = getSelectedSeason();
+  var week = getSelectedWeek();
+  var url =
+    '/.netlify/functions/weekly-sage-rankings?season=' +
+    encodeURIComponent(season) +
+    '&week=' + encodeURIComponent(String(week)) +
+    '&seasonType=reg';
+
+  return fetch(url, { credentials: 'same-origin' })
+    .then(function (res) {
+      return res.json().catch(function () { return null; }).then(function (data) {
+        return { ok: res.ok, data: data };
+      });
+    })
+    .then(function (result) {
+      state.loading = false;
+      if (!result.ok || !result.data || !result.data.positions) {
+        state.rankings = null;
+        state.loadError =
+          (result.data && (result.data.error || result.data.detail)) ||
+          'Weekly Rankings is not available for this week yet.';
+      } else {
+        state.rankings = result.data;
+        state.loadError = null;
+      }
+      renderTable();
+    })
+    .catch(function (err) {
+      state.loading = false;
+      state.rankings = null;
+      state.loadError = 'Weekly Rankings is not available for this week yet.';
+      renderTable();
+    });
+}
 
 function injuryLabel(code) {
   return {
@@ -683,6 +669,13 @@ function callTag(call) {
     flex:'FLEX',
     sit:'SIT'
   };
+
+  // A position whose leaderboard has not defined recommendation
+  // thresholds yet (currently RB -- see weekly-sage-rb-leaderboard.js)
+  // produces call === null. Suppress the tag entirely rather than
+  // render an "undefined" label, per "remove/suppress rather than
+  // manufacture new copy."
+  if (!labels[call]) return '';
 
   return '<span class="verdict-tag ' + call + '">' + labels[call] + '</span>';
 }
@@ -786,6 +779,10 @@ function getScoringFormat() {
     : 'ppr';
 }
 
+function getAllRows() {
+  return flattenRankings(state.rankings);
+}
+
 function getFilteredSorted() {
   var q =
     document
@@ -800,7 +797,7 @@ function getFilteredSorted() {
     getScoringFormat();
 
   var rows =
-    MOCK_RANKINGS.filter(
+    getAllRows().filter(
       function(p) {
         if (
           state.posFilter !==
@@ -889,8 +886,8 @@ function getFilteredSorted() {
 
         case 'proj':
         default:
-          av = a.proj[fmt];
-          bv = b.proj[fmt];
+          av = a.sageScore;
+          bv = b.sageScore;
           break;
       }
 
@@ -951,20 +948,39 @@ function renderTable() {
                 p.name
               ) !== -1;
 
+          // Real Weekly SAGE data has no persona-flavored prose (that
+          // was MOCK_RANKINGS-only) -- showing the actual SAGE label/
+          // confidence here is factual supporting detail instead,
+          // never manufactured copy. Empty when absent, per "remove/
+          // suppress rather than invent."
           var verdictText =
-            p.verdicts[
-              state.persona
-            ] || '';
+            p.sageLabel
+              ? (
+                  p.sageLabel +
+                  (
+                    p.sageConfidence
+                      ? ' · ' + p.sageConfidence + ' confidence'
+                      : ''
+                  )
+                )
+              : '';
 
+          // Weekly SAGE's score is not currently split by scoring
+          // format (ppr/half/standard) the way MOCK_RANKINGS was --
+          // the same score is shown regardless of the Scoring
+          // dropdown's value rather than fabricating per-format
+          // variance that doesn't exist in the real data.
           var proj =
-            p.proj[
-              fmt
-            ];
+            p.sageScore;
 
+          // recommendation ("start"/"flex"/"sit", already lowercased
+          // in flattenRankings()) or null when the position's
+          // leaderboard has not defined recommendation thresholds
+          // yet (this is currently true for RB -- see
+          // weekly-sage-rb-leaderboard.js's own
+          // recommendationThresholdsApplied: false).
           var call =
-            p.call[
-              fmt
-            ];
+            p.call;
 
           return (
             '<tr class="' +
@@ -1007,13 +1023,23 @@ function renderTable() {
               '</td>' +
 
               '<td>' +
-                '<span class="injury-pill ' +
-                  p.injury +
-                '">' +
-                  injuryLabel(
-                    p.injury
-                  ) +
-                '</span>' +
+                (
+                  p.injury
+                    ? (
+                        '<span class="injury-pill ' +
+                          p.injury +
+                        '">' +
+                          injuryLabel(
+                            p.injury
+                          ) +
+                        '</span>'
+                      )
+                    // Weekly SAGE does not currently produce an
+                    // injury field (see refresh-current-nfl-facts.js's
+                    // own V2.2 scope note) -- show a plain dash rather
+                    // than a fabricated "Healthy" status.
+                    : '—'
+                ) +
               '</td>' +
 
               '<td>' +
@@ -1062,9 +1088,9 @@ function renderWeekSnapshot() {
     getScoringFormat();
 
   var withProj =
-    MOCK_RANKINGS.filter(
+    getAllRows().filter(
       function(p) {
-        return p.proj[fmt] > 0;
+        return p.sageScore > 0;
       }
     );
 
@@ -1072,8 +1098,8 @@ function renderWeekSnapshot() {
     withProj.length
       ? withProj.reduce(
           function(a, b) {
-            return b.proj[fmt] >
-              a.proj[fmt]
+            return b.sageScore >
+              a.sageScore
               ? b
               : a;
           }
@@ -1088,10 +1114,15 @@ function renderWeekSnapshot() {
   };
 
   var withConcern =
-    MOCK_RANKINGS.filter(
+    getAllRows().filter(
       function(p) {
-        return p.injury !==
-          'healthy';
+        // p.injury is null whenever no real injury data exists for
+        // this player (Weekly SAGE does not currently produce this
+        // field) -- null must mean "nothing to report," not "always a
+        // concern," unlike the previous MOCK_RANKINGS rows which
+        // always had a real (even if 'healthy') value here.
+        return p.injury &&
+          p.injury !== 'healthy';
       }
     );
 
@@ -1115,8 +1146,8 @@ function renderWeekSnapshot() {
                 : a;
             }
 
-            return b.proj[fmt] >
-              a.proj[fmt]
+            return b.sageScore >
+              a.sageScore
               ? b
               : a;
           }
@@ -1124,9 +1155,9 @@ function renderWeekSnapshot() {
       : null;
 
   var starters =
-    MOCK_RANKINGS.filter(
+    getAllRows().filter(
       function(p) {
-        return p.call[fmt] ===
+        return p.call ===
           'start';
       }
     );
@@ -1135,8 +1166,8 @@ function renderWeekSnapshot() {
     starters.length
       ? starters.reduce(
           function(a, b) {
-            return b.proj[fmt] >
-              a.proj[fmt]
+            return b.sageScore >
+              a.sageScore
               ? b
               : a;
           }
@@ -1151,7 +1182,7 @@ function renderWeekSnapshot() {
     state.myRosterNames.length
   ) {
     var mine =
-      MOCK_RANKINGS.filter(
+      getAllRows().filter(
         function(p) {
           return state
             .myRosterNames
@@ -1165,8 +1196,8 @@ function renderWeekSnapshot() {
       myTop =
         mine.reduce(
           function(a, b) {
-            return b.proj[fmt] >
-              a.proj[fmt]
+            return b.sageScore >
+              a.sageScore
               ? b
               : a;
           }
@@ -1209,7 +1240,7 @@ function renderWeekSnapshot() {
         '<div class="week-snapshot-sub">' +
           topProjected.pos +
           ' · ' +
-          topProjected.proj[fmt].toFixed(1) +
+          topProjected.sageScore.toFixed(1) +
           ' pts' +
         '</div>' +
       '</div>';
@@ -1243,7 +1274,7 @@ function renderWeekSnapshot() {
           'vs ' +
           bestStart.opp +
           ' · ' +
-          bestStart.proj[fmt].toFixed(1) +
+          bestStart.sageScore.toFixed(1) +
           ' pts' +
         '</div>' +
       '</div>';
@@ -1259,7 +1290,7 @@ function renderWeekSnapshot() {
         '<div class="week-snapshot-sub">' +
           myTop.pos +
           ' · ' +
-          myTop.proj[fmt].toFixed(1) +
+          myTop.sageScore.toFixed(1) +
           ' pts' +
         '</div>' +
       '</div>';
@@ -1292,6 +1323,7 @@ document
 
 renderTable();
 renderLineupFields();
+loadWeeklyRankings();
 </script>
 
 <script>
@@ -1599,7 +1631,9 @@ document.addEventListener(
       - My Roster Only
       - Top On My Roster when a preview player matches the CBS roster
 
-    MOCK_RANKINGS remains unchanged.
+    Weekly SAGE rankings data itself remains unchanged by this --
+    this only re-renders the same already-loaded state.rankings with
+    roster-connection context applied.
   */
   renderTable();
 })();
