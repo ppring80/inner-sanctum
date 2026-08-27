@@ -63,6 +63,8 @@ function renderDiagnosticHtml(data) {
         <td>${escapeHtml(p.careerProfile)}</td>
         <td>${escapeHtml(p.availabilityProfile)}</td>
         <td title="${p.currentSituation ? escapeHtml(p.currentSituation.signals.map(s => s.signalType + (s.category ? ':' + s.category : '') + (s.counterpart ? ' vs ' + s.counterpart + ' (' + s.significance + ')' : ' (' + s.significance + ')')).join(' | ')) : ''}">${p.currentSituation ? escapeHtml(p.currentSituation.label) : '—'}</td>
+        <td>${p.isRookie ? 'Yes' : 'No'}</td>
+        <td>${p.currentDepthChart ? escapeHtml(p.currentDepthChart.label) : '—'}</td>
         <td>${p._internal ? (p._internal.avgSnapPct * 100).toFixed(1) + "%" : "—"}</td>
         <td>${p._internal ? (p._internal.avgTargetShare * 100).toFixed(1) + "%" : "—"}</td>
         <td>${p._internal && p.pos === "RB" ? (p._internal.avgRBCarryShare * 100).toFixed(1) + "%" : "—"}</td>
@@ -100,7 +102,7 @@ function renderDiagnosticHtml(data) {
   <table id="t">
     <thead><tr>
       <th>Player</th><th>Pos</th><th>Current Team</th><th>Usage Team</th><th>Team Role</th><th>Role Description</th>
-      <th>Confidence</th><th>Offensive Style</th><th>Career Profile</th><th>Availability</th><th>Current Situation</th>
+      <th>Confidence</th><th>Offensive Style</th><th>Career Profile</th><th>Availability</th><th>Current Situation</th><th>Rookie</th><th>Depth Chart</th>
       <th>Avg Snap %</th><th>Avg Target Share</th><th>Avg RB Carry Share</th><th>Games</th>
     </tr></thead>
     <tbody>${rows}</tbody>
