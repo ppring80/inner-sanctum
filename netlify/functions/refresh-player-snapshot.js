@@ -134,6 +134,13 @@ async function fetchPlayerStatsForGames(gameIDs) {
 // ─────────────────────────────────────────────────────────────────
 const WINDOW_WEEKS = 6; // "approximately most recent 6 PLAYER GAMES where practical" -- see header
 
+// Position scope for the V2.1 rookie/no-history minimal-entry pass --
+// matches Player Snapshot's own existing classification scope exactly
+// (classifyRB/classifyWRsForTeam/classifyTE/classifyQBsForTeam cover
+// only these four positions); K/DEF were never in scope for Player
+// Snapshot and remain out of scope here.
+const TRACKED_POSITIONS_FOR_SNAPSHOT = ["QB", "RB", "WR", "TE"];
+
 async function fetchRecentGameWindow(season, currentWeek) {
   const startWeek = Math.max(1, currentWeek - (WINDOW_WEEKS - 1));
   const weeks = [];
@@ -307,6 +314,69 @@ function avg(nums) {
   const valid = nums.filter(n => typeof n === "number" && !Number.isNaN(n));
   if (!valid.length) return 0;
   return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+// Small local name normalizer for the Current NFL Facts fallback-match
+// path only (used when a depth-chart entry lacks a Tank01 playerID).
+// This file otherwise matches players entirely by Tank01 numeric ID
+// via rosterByPlayerID -- this is a narrow, additive exception, not a
+// general identity-matching change.
+function normalizePlayerNameV2(name) {
+  return (name || "").toLowerCase().replace(/[.'\u2018\u2019-]/g, "").replace(/\s+/g, " ").trim();
+}
+
+// Flattens the Current NFL Facts cache (see refresh-current-nfl-facts.js)
+// into two lookup dicts, built once per run. Primary key is Tank01
+// playerID (the SAME playerID space Player Snapshot's own aggregation
+// already uses -- both originate from Tank01 box score/roster data),
+// per the discovery turn's finding that playerID is the strongest
+// available stable identity. A secondary fallback keyed by normalized
+// longName+pos+team covers the rare case where Tank01 omits playerID
+// on a depth-chart entry (never invented, only used when a real
+// name+pos+team match exists). Returns empty lookups (never throws)
+// when currentNflFacts is null/malformed -- the fail-soft case.
+function buildDepthChartLookups(currentNflFacts) {
+  const byPlayerID = {};
+  const byNamePosTeam = {};
+  let fallbackKeyCount = 0;
+  if (currentNflFacts && currentNflFacts.teams) {
+    Object.keys(currentNflFacts.teams).forEach(team => {
+      const teamChart = currentNflFacts.teams[team] || {};
+      Object.keys(teamChart).forEach(pos => {
+        (teamChart[pos] || []).forEach(entry => {
+          const withTeam = Object.assign({}, entry, { team });
+          if (entry.playerID) {
+            byPlayerID[entry.playerID] = withTeam;
+          } else {
+            const fallbackKey = normalizePlayerNameV2(entry.longName) + "|" + pos + "|" + team;
+            byNamePosTeam[fallbackKey] = withTeam;
+            fallbackKeyCount++;
+          }
+        });
+      });
+    });
+  }
+  return { byPlayerID, byNamePosTeam, fallbackKeyCount };
+}
+
+// Looks up a player's current depth-chart fact by playerID first,
+// falling back to normalized name+pos+CURRENT team only when no
+// playerID match exists. Returns currentDepthChart: null (never a
+// guess) when neither lookup finds a real match, per the explicit
+// "do not guess" requirement.
+function lookupCurrentDepthChart(lookups, playerID, longName, pos, currentTeam) {
+  let entry = playerID ? lookups.byPlayerID[playerID] : null;
+  let matchedVia = entry ? "playerID" : null;
+  if (!entry && longName && pos && currentTeam) {
+    const fallbackKey = normalizePlayerNameV2(longName) + "|" + pos + "|" + currentTeam;
+    entry = lookups.byNamePosTeam[fallbackKey] || null;
+    if (entry) matchedVia = "name+pos+team fallback";
+  }
+  if (!entry) return { currentDepthChart: null, matchedVia: null };
+  return {
+    currentDepthChart: { label: entry.label, positionDepth: entry.depth, team: entry.team, source: "Tank01" },
+    matchedVia
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -865,6 +935,24 @@ exports.handler = async (event) => {
     console.log("player-data cache read failed (non-fatal, will proceed with fewer classifiable players):", e.message);
   }
 
+  // Current NFL Facts (V2.1, depth chart): READ ONLY -- this function
+  // never fetches Tank01 depth-chart data itself. Populated on its own
+  // schedule by refresh-current-nfl-facts.js. Fail-soft: a missing/
+  // unavailable cache simply means every currentDepthChart attaches as
+  // null below, never a failure of this refresh.
+  let currentNflFacts = null;
+  try {
+    const factsStore = getStore({ name: "current-nfl-facts" });
+    currentNflFacts = await factsStore.get("latest", { type: "json" });
+  } catch (e) {
+    console.log("current-nfl-facts cache read failed (non-fatal, currentDepthChart will be null for all players):", e.message);
+  }
+
+  const depthChartLookups = buildDepthChartLookups(currentNflFacts);
+  const depthChartByPlayerID = depthChartLookups.byPlayerID;
+  const depthChartByNamePosTeam = depthChartLookups.byNamePosTeam;
+  const depthChartFallbackKeyCount = depthChartLookups.fallbackKeyCount;
+
   const { players, weeksUsed, gamesUsed, gamesPerWeek } = await fetchRecentGameWindow(season, currentWeek);
   if (players.length === 0) {
     const msg = `No player game data available for weeks ${weeksUsed.join(",")}, season ${season} -- aborting, nothing cached.`;
@@ -1004,6 +1092,77 @@ exports.handler = async (event) => {
     snapshots[playerID].currentSituation = currentSituationByPlayerID[playerID] || null;
   });
 
+  // ═══════════════════════════════════════════════════════════════════
+  // CURRENT NFL FACTS V2.1 -- additive only, two passes:
+  //
+  // PASS 1: attach currentDepthChart + isRookie to every EXISTING
+  // snapshot (built from historical usage above). Never touches
+  // teamRole/roleDescription/roleConfidence/careerProfile/
+  // offenseStyle/currentSituation -- those are already fully decided
+  // by the time this runs.
+  //
+  // PASS 2: rookies with NO historical usage never reach the loop
+  // above at all (perPlayerAggregates only contains players who
+  // appeared in a fetched box score) -- meaning a true no-history
+  // rookie previously had no Player Snapshot entry whatsoever. This
+  // pass creates a MINIMAL entry for exactly that case: current-fact
+  // fields only (isRookie, currentDepthChart, currentTeam), with
+  // Recent Role explicitly left as "Role Uncertain" (never
+  // manufactured) and Career Profile computed via the existing,
+  // UNCHANGED classifyCareerProfile() function called with a null
+  // role -- exactly the same call shape it already handles for any
+  // low-confidence/no-role player, so no new branch was added to that
+  // locked function.
+  // ═══════════════════════════════════════════════════════════════════
+  let depthChartMatchedByPlayerID = 0;
+  let depthChartMatchedByFallback = 0;
+  let depthChartUnmatched = 0;
+
+  Object.keys(snapshots).forEach(playerID => {
+    const snap = snapshots[playerID];
+    const roster = rosterByPlayerID[playerID] || {};
+    const lookup = lookupCurrentDepthChart(depthChartLookups, playerID, snap.longName, snap.pos, snap.currentTeam);
+    snap.currentDepthChart = lookup.currentDepthChart;
+    snap.isRookie = roster.exp === "R";
+    if (lookup.matchedVia === "playerID") depthChartMatchedByPlayerID++;
+    else if (lookup.matchedVia) depthChartMatchedByFallback++;
+    else depthChartUnmatched++;
+  });
+
+  let rookieNoHistoryAdded = 0;
+  Object.keys(rosterByPlayerID).forEach(playerID => {
+    if (snapshots[playerID]) return; // already has a real, usage-based snapshot -- do not touch it
+    const roster = rosterByPlayerID[playerID];
+    if (!roster || roster.exp !== "R") return; // V2.1 scope: rookies only, per spec
+    if (!roster.pos || !TRACKED_POSITIONS_FOR_SNAPSHOT.includes(roster.pos)) return; // K/DEF/other out of Player Snapshot's scope, same as historical players
+
+    const lookup = lookupCurrentDepthChart(depthChartLookups, playerID, roster.longName, roster.pos, roster.team);
+    if (lookup.matchedVia === "playerID") depthChartMatchedByPlayerID++;
+    else if (lookup.matchedVia) depthChartMatchedByFallback++;
+    else depthChartUnmatched++;
+
+    snapshots[playerID] = {
+      playerID,
+      longName: roster.longName,
+      pos: roster.pos,
+      currentTeam: roster.team,
+      usageTeam: null, // no historical usage exists to attribute a usage team to
+      teamRole: null,
+      roleDescription: "Role Uncertain",
+      roleConfidence: "LOW",
+      offenseStyle: "Role Uncertain", // no usage-team box-score data exists to derive this from either
+      careerProfile: classifyCareerProfile(roster.exp, null, {}),
+      availabilityProfile: "NOT_CURRENTLY_SUPPORTED",
+      currentSituation: null, // no roster-composition comparison is meaningful without a usage team
+      currentDepthChart: lookup.currentDepthChart,
+      isRookie: true,
+      computedFromGames: 0,
+      updatedAt: new Date().toISOString(),
+      _internal: { avgSnapPct: 0, avgTargetShare: 0, avgRBCarryShare: 0 }
+    };
+    rookieNoHistoryAdded++;
+  });
+
   const store = getStore({ name: "player-snapshot" });
   await store.setJSON("latest", {
     computedAt: new Date().toISOString(),
@@ -1013,11 +1172,27 @@ exports.handler = async (event) => {
     gamesFetched: gamesUsed,
     gamesPerWeek, // e.g. {"13":16,"14":14,...} -- verifies every requested week actually contributed games, not just the total
     playerCount: Object.keys(snapshots).length,
+    // V2.1 diagnostics -- purely informational, never consumed by any
+    // classification logic. rookieNoHistoryAdded is the count of
+    // minimal entries created in PASS 2 above (rookies with zero
+    // historical usage who would otherwise have no snapshot at all).
+    currentNflFactsAvailable: !!currentNflFacts,
+    depthChartMatchedByPlayerID,
+    depthChartMatchedByFallback,
+    depthChartUnmatched,
+    depthChartFallbackKeyCount,
+    rookieNoHistoryAdded,
     players: snapshots
   });
 
-  console.log(`Player Snapshot V1 computed: ${Object.keys(snapshots).length} players, weeks ${weeksUsed.join(",")} (per-week games: ${JSON.stringify(gamesPerWeek)}), season ${season}`);
-  return { statusCode: 200, body: JSON.stringify({ playerCount: Object.keys(snapshots).length, weeksUsed, gamesPerWeek }) };
+  console.log(`Player Snapshot V1 computed: ${Object.keys(snapshots).length} players, weeks ${weeksUsed.join(",")} (per-week games: ${JSON.stringify(gamesPerWeek)}), season ${season}. Depth chart: ${depthChartMatchedByPlayerID} by playerID, ${depthChartMatchedByFallback} by fallback, ${depthChartUnmatched} unmatched. Rookie no-history entries added: ${rookieNoHistoryAdded}.`);
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      playerCount: Object.keys(snapshots).length, weeksUsed, gamesPerWeek,
+      depthChartMatchedByPlayerID, depthChartMatchedByFallback, depthChartUnmatched, rookieNoHistoryAdded
+    })
+  };
 };
 
 // Exported for local logic testing only (mirrors this project's
@@ -1029,5 +1204,6 @@ exports._internal = {
   classifyRB, classifyWRsForTeam, classifyTE, classifyQBsForTeam,
   classifyOffensiveStyleForTeam, classifyCareerProfile, buildTeamAggregates,
   buildPlayerAggregates, avg,
-  buildCurrentSituation, csSignificanceTier, csRbOpportunityTypes, csDeriveLabel, csIncumbentEligible
+  buildCurrentSituation, csSignificanceTier, csRbOpportunityTypes, csDeriveLabel, csIncumbentEligible,
+  buildDepthChartLookups, lookupCurrentDepthChart, normalizePlayerNameV2, TRACKED_POSITIONS_FOR_SNAPSHOT
 };
