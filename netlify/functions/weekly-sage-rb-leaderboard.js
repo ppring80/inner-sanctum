@@ -386,7 +386,7 @@ cached =
     {
       type: "json",
       consistency:
-        "strong"
+        "json"
     }
   );
   } catch (error) {
