@@ -65,6 +65,42 @@ const DEFAULT_SEASON_TYPE = "reg";
 
 const STORE_NAME = "wr-snapshot";
 
+/*
+  Current NFL week calculator.
+
+  Same 2026 season convention already used elsewhere in
+  Inner Sanctum.
+
+  Scheduled Netlify invocations do not provide query parameters,
+  so this provides the target week when query.week is absent.
+
+  Explicit query.week values still take precedence for historical
+  and manual testing.
+
+  UPDATE seasonStart each NFL season.
+*/
+function getCurrentNFLWeek() {
+  const seasonStart = new Date("2026-09-09");
+  const now = new Date();
+
+  if (now < seasonStart) {
+    return 1;
+  }
+
+  const diffDays = Math.floor(
+    (now - seasonStart) /
+    (1000 * 60 * 60 * 24)
+  );
+
+  return Math.max(
+    1,
+    Math.min(
+      18,
+      Math.floor(diffDays / 7) + 1
+    )
+  );
+}
+
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
@@ -168,7 +204,12 @@ exports.handler = async function (event) {
   const query = event.queryStringParameters || {};
 
   const season = String(query.season || new Date().getFullYear());
-  const targetWeek = Number(query.week);
+
+  const targetWeek =
+    query.week
+      ? Number(query.week)
+      : getCurrentNFLWeek();
+
   const seasonType = String(query.seasonType || DEFAULT_SEASON_TYPE);
 
   if (!Number.isInteger(targetWeek) || targetWeek < 2 || targetWeek > 18) {
