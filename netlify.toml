@@ -77,6 +77,29 @@
 [functions."generate-camp-watch"]
   schedule = "0 13,23 * * *"
 
+# CURRENT NFL FACTS (DEPTH CHART) SCHEDULE — V2.1 (added)
+# Runs refresh-current-nfl-facts.js TWICE a day, at 13:30 and 23:30
+# UTC — the same twice-daily cadence already established for
+# generate-camp-watch.js above (offset by 30 minutes to avoid
+# contending for the same minute), chosen for the identical reason:
+# Tank01 itself says getNFLDepthCharts updates multiple times a day,
+# but real depth-chart CHANGES (a promotion, a trade, an injury
+# reshuffling a depth chart) don't happen continuously either — a
+# single daily pull would leave same-day depth-chart moves stale for
+# up to 24 hours, while polling more than twice a day would mostly
+# just reprocess the same underlying facts at extra Tank01 cost with
+# no new substance. See refresh-current-nfl-facts.js for the full
+# rationale and the confirmed real Tank01 response shape it's built
+# against.
+#
+# This is READ-ONLY input to refresh-player-snapshot.js (see that
+# file's own comments) — it does not itself run Player Snapshot's
+# aggregation, and this schedule is independent of
+# refresh-player-snapshot.js's own trigger (currently manual/on-demand
+# per the V2.1 implementation turn, unchanged by this addition).
+[functions."refresh-current-nfl-facts"]
+  schedule = "30 13,23 * * *"
+
 [[redirects]]
   from = "/landing"
   to = "/"
