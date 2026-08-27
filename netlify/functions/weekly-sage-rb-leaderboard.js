@@ -375,19 +375,20 @@ async function fetchSnapshot({
 
   try {
     const store =
-      getStore({
-        name:
-          RB_SNAPSHOT_STORE,
+  getStore({
+    name:
+      RB_SNAPSHOT_STORE
+  });
 
-        consistency:
-          "strong"
-      });
-
-    cached =
-      await store.get(
-        key,
-        { type: "json" }
-      );
+cached =
+  await store.get(
+    key,
+    {
+      type: "json",
+      consistency:
+        "strong"
+    }
+  );
   } catch (error) {
     const err =
       new Error(
