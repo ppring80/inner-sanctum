@@ -1024,16 +1024,48 @@ var PS_MOVER_CONTEXT_LABELS = {
 };
 
 // Football Context (3-second layer): Role · Situation-or-Career ·
-// Offensive Style. At most three pipe-separated parts, never a
-// paragraph. Offensive Style is included whenever valid, as plain
-// descriptive context -- never treated as positive or negative here.
-// LOW confidence / no teamRole -> null (fail-soft to the existing
-// explanation entirely; never a manufactured claim).
+// [Depth-Chart-Diff] · Offensive Style. Offensive Style is included
+// whenever valid, as plain descriptive context -- never treated as
+// positive or negative here.
+//
+// V2.1 ADDITION (isRookie / currentDepthChart): these are CURRENT,
+// independent facts, never reconciled with or allowed to overwrite
+// Recent Role -- see the two distinct phrasings below, which
+// deliberately never share wording:
+//   - Rookie/no-history path: "Rookie \u00b7 Depth Chart <label>" --
+//     used ONLY when there is no real historical role to state at all.
+//   - Established-player path: "Current <label>" -- an ADDITIONAL
+//     clause appended alongside the real Recent Role, never replacing
+//     it, and only when the depth-chart rank materially differs from
+//     the already-computed teamRole (a plain string comparison over
+//     the same tier vocabulary Player Snapshot already produces on
+//     both sides -- QB1/QB2/RB1/RB2/WR1/WR2/WR3/TE1/TE2 -- no new
+//     numeric scoring introduced). An exact match is redundant and is
+//     never appended.
 function buildFootballContext(playerSnapshot) {
   if (!playerSnapshot) return null;
   var teamRole = playerSnapshot.teamRole;
   var roleConfidence = playerSnapshot.roleConfidence;
-  if (!teamRole || roleConfidence === "LOW") return null;
+  var currentDepthChart = playerSnapshot.currentDepthChart;
+
+  if (!teamRole || roleConfidence === "LOW") {
+    // Rookie/no-history exception: a real current-team fact exists
+    // even though no historical role does. Never invents a role label
+    // (Starter/Emerging Starter/Lead Runner/etc.) -- only the plain
+    // Rookie fact plus the raw depth-chart rank, plus Offensive Style
+    // when valid. Every other LOW-confidence case (a LOW-confidence
+    // VETERAN, or a rookie with no depth-chart match) keeps the exact
+    // prior conservative behavior: null, no manufactured story.
+    if (playerSnapshot.isRookie && currentDepthChart && currentDepthChart.label) {
+      var rookieParts = ["Rookie", "Depth Chart " + currentDepthChart.label];
+      var rookieStyle = playerSnapshot.offenseStyle;
+      if (rookieStyle && rookieStyle !== "Offensive Style TBD" && rookieStyle !== "Role Uncertain") {
+        rookieParts.push(rookieStyle);
+      }
+      return rookieParts.join(" \u00b7 ");
+    }
+    return null;
+  }
 
   var parts = [];
   var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
@@ -1055,6 +1087,16 @@ function buildFootballContext(playerSnapshot) {
     middlePart = playerSnapshot.careerProfile;
   }
   if (middlePart) parts.push(middlePart);
+
+  // Depth-chart-diff clause: an established player already has a real
+  // Recent Role in parts[0] -- this never overwrites it, only adds one
+  // short additional fact when the current depth-chart rank genuinely
+  // differs from it. teamRole and currentDepthChart.label share the
+  // exact same tier vocabulary already produced by Player Snapshot, so
+  // this is a plain string comparison, not a new scoring system.
+  if (currentDepthChart && currentDepthChart.label && currentDepthChart.label !== teamRole) {
+    parts.push("Current " + currentDepthChart.label);
+  }
 
   var style = playerSnapshot.offenseStyle;
   if (style && style !== "Offensive Style TBD" && style !== "Role Uncertain") {
