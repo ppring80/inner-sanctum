@@ -341,6 +341,22 @@ function playerTeamFromRecord(player) {
   remains available only via refresh-rb-snapshot.js's own manual/
   scheduled path -- never from a customer leaderboard request.
 
+  CONSISTENCY FIX (production defect, root-caused): Netlify Blobs
+  defaults to EVENTUAL consistency -- per Netlify's own docs, a write
+  is "guaranteed to be propagated to all edge locations within 60
+  seconds," not necessarily immediately. refresh-rb-snapshot.js
+  writing successfully and this function's very next read reporting
+  "not found" is exactly that documented propagation window, not a
+  store-name/key/ordering bug (all confirmed identical to the working
+  QB path before this was found). `consistency: "strong"` forces this
+  read to go to the non-distributed origin rather than the
+  eventually-consistent edge cache, so a write is visible to the very
+  next read that requests it. QB/WR/TE are not touched here -- they
+  are equally exposed to this same race in theory, they simply were
+  not caught by whatever informal timing validated them as "working."
+  Worth the same fix later, but out of this task's explicit RB-only
+  scope.
+
   Everything AFTER this point in the file (final-score fetching,
   bye/inactive classification, ranking, response shape,
   recommendation:null, nextStep) is completely unchanged -- this
@@ -361,7 +377,10 @@ async function fetchSnapshot({
     const store =
       getStore({
         name:
-          RB_SNAPSHOT_STORE
+          RB_SNAPSHOT_STORE,
+
+        consistency:
+          "strong"
       });
 
     cached =
