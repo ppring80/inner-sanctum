@@ -47,6 +47,12 @@ const DEFAULT_SEASON_TYPE =
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
+const {
+  buildRbBenchmarks
+} = require(
+  "./weekly-sage-rb-benchmarks"
+);
+
 const RB_ROLE_WEIGHTS = {
   opportunitiesPerGame: 0.40,
   offensiveSnapPct: 0.25,
@@ -113,82 +119,6 @@ function getBaseUrl(event) {
   }
 
   return `${proto}://${host}`;
-}
-
-async function fetchJson(url) {
-  const response =
-    await fetch(
-      url,
-      {
-        method: "GET",
-
-        headers: {
-          Accept:
-            "application/json"
-        }
-      }
-    );
-
-  let data = null;
-
-  try {
-    data =
-      await response.json();
-  } catch (error) {
-    data = null;
-  }
-
-  if (!response.ok) {
-    const detail =
-      data &&
-      (
-        data.detail ||
-        data.error
-      )
-        ? (
-            data.detail ||
-            data.error
-          )
-        : `HTTP ${response.status}`;
-
-    throw new Error(
-      detail
-    );
-  }
-
-  return data;
-}
-
-async function fetchRBBenchmarks({
-  baseUrl,
-  season,
-  week,
-  playerID,
-  seasonType
-}) {
-  const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-rb-benchmarks` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&playerID=${encodeURIComponent(playerID)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
-
-  const data =
-    await fetchJson(
-      url
-    );
-
-  if (
-    !data ||
-    data.evidenceType !==
-      "weekly-sage-rb-benchmarks"
-  ) {
-    throw new Error(
-      "Unexpected RB benchmark evidence schema."
-    );
-  }
-
-  return data;
 }
 
 function percentileOf(
@@ -626,6 +556,303 @@ function jsonResponse(
   };
 }
 
+function componentError(
+  statusCode,
+  message
+) {
+  const error =
+    new Error(message);
+
+  error.componentStatusCode =
+    statusCode;
+
+  return error;
+}
+
+async function buildRbComponentScores({
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  playerID = "",
+  playerName = "",
+  prebuiltSnapshot = null,
+  baseUrl = null
+}) {
+  const normalizedSeason =
+    String(
+      season ||
+      new Date()
+        .getFullYear()
+    );
+
+  const normalizedWeek =
+    Number(week);
+
+  const normalizedPlayerID =
+    String(
+      playerID ||
+      ""
+    ).trim();
+
+  const normalizedPlayerName =
+    String(
+      playerName ||
+      ""
+    ).trim();
+
+  const normalizedSeasonType =
+    String(
+      seasonType ||
+      DEFAULT_SEASON_TYPE
+    );
+
+  if (
+    !Number.isInteger(
+      normalizedWeek
+    ) ||
+    normalizedWeek < 2 ||
+    normalizedWeek > 18
+  ) {
+    throw componentError(
+      400,
+      "week must be an integer from 2 through 18."
+    );
+  }
+
+  if (
+    !normalizedPlayerID &&
+    !normalizedPlayerName
+  ) {
+    throw componentError(
+      400,
+      "playerID or playerName is required."
+    );
+  }
+
+  const benchmarkData =
+    await buildRbBenchmarks({
+      season:
+        normalizedSeason,
+
+      week:
+        normalizedWeek,
+
+      seasonType:
+        normalizedSeasonType,
+
+      playerID:
+        normalizedPlayerID,
+
+      playerName:
+        normalizedPlayerName,
+
+      prebuiltSnapshot,
+
+      baseUrl
+    });
+
+  const player =
+    benchmarkData.target ||
+    {};
+
+  if (
+    player.position !==
+      "RB"
+  ) {
+    throw componentError(
+      400,
+      "RB component scoring requires an RB target."
+    );
+  }
+
+  const roleComponents =
+    buildRoleComponents(
+      benchmarkData
+        .benchmarks
+    );
+
+  const productionComponents =
+    buildProductionComponents(
+      benchmarkData
+        .benchmarks
+    );
+
+  const roleScore =
+    weightedComponentScore(
+      roleComponents
+    );
+
+  const productionScore =
+    weightedComponentScore(
+      productionComponents
+    );
+
+  const explanation =
+    buildExplanation({
+      player,
+
+      roleScore,
+
+      productionScore,
+
+      roleComponents,
+
+      productionComponents
+    });
+
+  return {
+    evidenceType:
+      "weekly-sage-rb-component-scores",
+
+    schemaVersion:
+      1,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season:
+      normalizedSeason,
+
+    targetWeek:
+      normalizedWeek,
+
+    seasonType:
+      normalizedSeasonType,
+
+    player: {
+      playerID:
+        player.playerID ||
+        normalizedPlayerID,
+
+      name:
+        player.name ||
+        null,
+
+      team:
+        player.team ||
+        null,
+
+      position:
+        player.position ||
+        "RB"
+    },
+
+    noLookAhead:
+      benchmarkData
+        .noLookAhead,
+
+    population: {
+      size:
+        player.populationSize ||
+        benchmarkData
+          .populationSummary
+          .eligibleRBPopulation,
+
+      rankByOpportunities:
+        player
+          .populationRankByOpportunities
+    },
+
+    methodology: {
+      roleWeights:
+        RB_ROLE_WEIGHTS,
+
+      productionWeights:
+        RB_PRODUCTION_WEIGHTS,
+
+      philosophy:
+        "Role measures opportunity and playing-time control. Production measures how effectively the player converts that role into fantasy-relevant output.",
+
+      important:
+        "These are SAGE component scores, not a START/SIT recommendation and not yet the final SAGE player score."
+    },
+
+    role: {
+      score:
+        roleScore,
+
+      label:
+        scoreLabel(
+          roleScore
+        ),
+
+      components:
+        roleComponents,
+
+      explanation:
+        explanation.role
+    },
+
+    production: {
+      score:
+        productionScore,
+
+      label:
+        scoreLabel(
+          productionScore
+        ),
+
+      components:
+        productionComponents,
+
+      explanation:
+        explanation.production
+    },
+
+    matchup: {
+      score:
+        null,
+
+      reason:
+        "Matchup remains in the separate validated Weekly SAGE matchup layer."
+    },
+
+    finalSageScore:
+      null,
+
+    recommendation:
+      null,
+
+    nextStep: {
+      readyForFinalComposition:
+        (
+          Number.isFinite(
+            roleScore
+          ) &&
+          Number.isFinite(
+            productionScore
+          )
+        ),
+
+      eventualWeights: {
+        role:
+          0.45,
+
+        production:
+          0.35,
+
+        matchup:
+          0.20
+      },
+
+      reason:
+        "Validate Role and Production component scores before combining them with matchup."
+    },
+
+    provenance: {
+      benchmarkSource:
+        "weekly-sage-rb-benchmarks",
+
+      playerEvidenceSource:
+        "weekly-sage-player-season"
+    }
+  };
+}
+
+exports.buildRbComponentScores =
+  buildRbComponentScores;
+
 exports.handler =
   async function (event) {
     if (
@@ -701,219 +928,34 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      const benchmarkData =
-        await fetchRBBenchmarks({
-          baseUrl,
+      const result =
+        await buildRbComponentScores({
           season,
           week,
           playerID,
-          seasonType
-        });
-
-      const player =
-        benchmarkData.target ||
-        {};
-
-      if (
-        player.position !==
-        "RB"
-      ) {
-        return jsonResponse(
-          400,
-          {
-            error:
-              "RB component scoring requires an RB target."
-          }
-        );
-      }
-
-      const roleComponents =
-        buildRoleComponents(
-          benchmarkData
-            .benchmarks
-        );
-
-      const productionComponents =
-        buildProductionComponents(
-          benchmarkData
-            .benchmarks
-        );
-
-      const roleScore =
-        weightedComponentScore(
-          roleComponents
-        );
-
-      const productionScore =
-        weightedComponentScore(
-          productionComponents
-        );
-
-      const explanation =
-        buildExplanation({
-          player,
-
-          roleScore,
-
-          productionScore,
-
-          roleComponents,
-
-          productionComponents
+          seasonType,
+          baseUrl
         });
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-rb-component-scores",
-
-          schemaVersion:
-            1,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          targetWeek:
-            week,
-
-          seasonType,
-
-          player: {
-            playerID:
-              player.playerID ||
-              playerID,
-
-            name:
-              player.name ||
-              null,
-
-            team:
-              player.team ||
-              null,
-
-            position:
-              player.position ||
-              "RB"
-          },
-
-          noLookAhead:
-            benchmarkData
-              .noLookAhead,
-
-          population: {
-            size:
-              player.populationSize ||
-              benchmarkData
-                .populationSummary
-                .eligibleRBPopulation,
-
-            rankByOpportunities:
-              player
-                .populationRankByOpportunities
-          },
-
-          methodology: {
-            roleWeights:
-              RB_ROLE_WEIGHTS,
-
-            productionWeights:
-              RB_PRODUCTION_WEIGHTS,
-
-            philosophy:
-              "Role measures opportunity and playing-time control. Production measures how effectively the player converts that role into fantasy-relevant output.",
-
-            important:
-              "These are SAGE component scores, not a START/SIT recommendation and not yet the final SAGE player score."
-          },
-
-          role: {
-            score:
-              roleScore,
-
-            label:
-              scoreLabel(
-                roleScore
-              ),
-
-            components:
-              roleComponents,
-
-            explanation:
-              explanation.role
-          },
-
-          production: {
-            score:
-              productionScore,
-
-            label:
-              scoreLabel(
-                productionScore
-              ),
-
-            components:
-              productionComponents,
-
-            explanation:
-              explanation.production
-          },
-
-          matchup: {
-            score:
-              null,
-
-            reason:
-              "Matchup remains in the separate validated Weekly SAGE matchup layer."
-          },
-
-          finalSageScore:
-            null,
-
-          recommendation:
-            null,
-
-          nextStep: {
-            readyForFinalComposition:
-              (
-                Number.isFinite(
-                  roleScore
-                ) &&
-                Number.isFinite(
-                  productionScore
-                )
-              ),
-
-            eventualWeights: {
-              role:
-                0.45,
-
-              production:
-                0.35,
-
-              matchup:
-                0.20
-            },
-
-            reason:
-              "Validate Role and Production component scores before combining them with matchup."
-          },
-
-          provenance: {
-            benchmarkSource:
-              "weekly-sage-rb-benchmarks",
-
-            playerEvidenceSource:
-              "weekly-sage-player-season"
-          }
-        },
-
+        result,
         CACHE_CONTROL
       );
     } catch (error) {
+      if (
+        error &&
+        error.componentStatusCode
+      ) {
+        return jsonResponse(
+          error.componentStatusCode,
+          {
+            error:
+              error.message
+          }
+        );
+      }
+
       console.error(
         "weekly-sage-rb-component-scores failed:",
         error
