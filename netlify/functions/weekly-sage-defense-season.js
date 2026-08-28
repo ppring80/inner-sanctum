@@ -12,15 +12,24 @@
 // Week 8 itself is EXCLUDED so SAGE does not use future/current-week
 // results when making a Week 8 lineup recommendation.
 //
-// This function consumes the already-deployed:
-//   /.netlify/functions/weekly-sage-defense-week
+// This function consumes validated weekly defensive evidence from:
+//   Netlify Blob store: weekly-sage-defense
 //
 // It does NOT call Tank01 directly.
+// It does NOT rebuild missing weekly evidence on demand.
 // It does NOT contain SAGE recommendation logic.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
+const {
+  connectLambda,
+  getStore
+} = require("@netlify/blobs");
+
 const DEFAULT_SEASON_TYPE = "reg";
+
+const STORE_NAME =
+  "weekly-sage-defense";
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
@@ -348,88 +357,96 @@ function finalizeDefense(profile) {
   return result;
 }
 
-function getBaseUrl(event) {
-  const proto =
-    event.headers &&
-    (
-      event.headers["x-forwarded-proto"] ||
-      event.headers["X-Forwarded-Proto"]
-    )
-      ? (
-          event.headers["x-forwarded-proto"] ||
-          event.headers["X-Forwarded-Proto"]
-        )
-      : "https";
-
-  const host =
-    event.headers &&
-    (
-      event.headers.host ||
-      event.headers.Host
-    );
-
-  if (!host) {
-    throw new Error(
-      "Could not determine host for internal Weekly SAGE evidence request."
-    );
-  }
-
-  return `${proto}://${host}`;
-}
-
 async function fetchWeeklyEvidence({
-  baseUrl,
+  store,
   season,
   week,
   seasonType
 }) {
-  const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-defense-week` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
+  const key =
+    `week:${season}:${week}:${seasonType}`;
 
-  const response =
-    await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json"
+  const data =
+    await store.get(
+      key,
+      {
+        type: "json"
       }
-    });
+    );
 
-  let data = null;
-
-  try {
-    data = await response.json();
-  } catch (err) {
-    data = null;
-  }
-
-  if (!response.ok) {
-    const detail =
-      data &&
-      (
-        data.detail ||
-        data.error
-      )
-        ? (
-            data.detail ||
-            data.error
-          )
-        : `HTTP ${response.status}`;
-
+  if (!data) {
     throw new Error(
-      `Week ${week} evidence failed: ${detail}`
+      `Week ${week} cached defensive evidence is missing.`
     );
   }
 
   if (
-    !data ||
     data.evidenceType !==
       "weekly-sage-defense-week"
   ) {
     throw new Error(
       `Week ${week} returned an unexpected evidence schema.`
+    );
+  }
+
+  if (
+    String(data.season) !==
+      String(season)
+  ) {
+    throw new Error(
+      `Week ${week} cached season mismatch.`
+    );
+  }
+
+  if (
+    Number(data.week) !==
+      Number(week)
+  ) {
+    throw new Error(
+      `Week ${week} cached week mismatch.`
+    );
+  }
+
+  if (
+    data.seasonType !==
+      seasonType
+  ) {
+    throw new Error(
+      `Week ${week} cached seasonType mismatch.`
+    );
+  }
+
+  if (
+    !data.schedule ||
+    typeof data.schedule !==
+      "object"
+  ) {
+    throw new Error(
+      `Week ${week} cached schedule is missing.`
+    );
+  }
+
+  if (
+    Number(
+      data.schedule.completedGames
+    ) !==
+    Number(
+      data.schedule.processedGames
+    )
+  ) {
+    throw new Error(
+      `Week ${week} cached evidence is incomplete.`
+    );
+  }
+
+  if (
+    !data.defenses ||
+    typeof data.defenses !==
+      "object" ||
+    Array.isArray(data.defenses)
+  ) {
+    throw new Error(
+      `Week ${week} cached defenses are missing.`
     );
   }
 
@@ -519,6 +536,8 @@ function jsonResponse(
 
 exports.handler =
   async function (event) {
+    connectLambda(event);
+
     if (
       event.httpMethod &&
       event.httpMethod !== "GET"
@@ -627,8 +646,10 @@ exports.handler =
     }
 
     try {
-      const baseUrl =
-        getBaseUrl(event);
+      const store =
+        getStore({
+          name: STORE_NAME
+        });
 
       const weeksIncluded =
         Array.from(
@@ -642,11 +663,11 @@ exports.handler =
         );
 
       /*
-        Fetch a few weekly snapshots at a time.
+        Read a few cached weekly snapshots at a time.
 
-        Each weekly endpoint is independently CDN-cacheable, so once a
-        historical week has been built, this season aggregator should
-        generally hit cached responses rather than Tank01 directly.
+        Missing or incomplete weekly evidence is never rebuilt here.
+        The scheduled/shared evidence writer owns creation of each
+        weekly defensive snapshot.
       */
       const weeklyResults =
         await mapWithConcurrency(
@@ -656,7 +677,7 @@ exports.handler =
             try {
               const data =
                 await fetchWeeklyEvidence({
-                  baseUrl,
+                  store,
                   season,
                   week,
                   seasonType
