@@ -166,6 +166,250 @@ function buildFunctionUrl({
 }
 
 /*
+  PREBUILT RB SNAPSHOT LOOKUP
+  ---------------------------
+
+  Production callers may pass the already-cached authoritative RB
+  snapshot. When present, confidence can reuse the exact sample-size
+  evidence already contained in that snapshot instead of rebuilding
+  player-season evidence through Tank01.
+
+  Existing diagnostic HTTP behavior remains unchanged when no
+  prebuiltSnapshot is supplied.
+*/
+function findSnapshotPlayer(
+  snapshot,
+  playerID
+) {
+  if (
+    !snapshot ||
+    typeof snapshot !== "object"
+  ) {
+    return null;
+  }
+
+  const normalizedPlayerID =
+    String(
+      playerID ||
+      ""
+    ).trim();
+
+  if (!normalizedPlayerID) {
+    return null;
+  }
+
+  const directCandidates = [
+    snapshot.population,
+    snapshot.eligiblePlayers,
+    snapshot.eligibleRBs,
+    snapshot.players,
+    snapshot.runningBacks,
+    snapshot.rbs
+  ];
+
+  for (
+    const candidate of
+    directCandidates
+  ) {
+    if (!Array.isArray(candidate)) {
+      continue;
+    }
+
+    const match =
+      candidate.find(
+        player =>
+          String(
+            player &&
+            (
+              player.playerID ??
+              player.playerId ??
+              player.id ??
+              ""
+            )
+          ).trim() ===
+          normalizedPlayerID
+      );
+
+    if (match) {
+      return match;
+    }
+  }
+
+  const nestedObjects = [
+    snapshot.population,
+    snapshot.snapshot,
+    snapshot.data
+  ];
+
+  for (
+    const object of
+    nestedObjects
+  ) {
+    if (
+      !object ||
+      typeof object !== "object" ||
+      Array.isArray(object)
+    ) {
+      continue;
+    }
+
+    const nestedCandidates = [
+      object.population,
+      object.eligiblePlayers,
+      object.eligibleRBs,
+      object.players,
+      object.runningBacks,
+      object.rbs
+    ];
+
+    for (
+      const candidate of
+      nestedCandidates
+    ) {
+      if (!Array.isArray(candidate)) {
+        continue;
+      }
+
+      const match =
+        candidate.find(
+          player =>
+            String(
+              player &&
+              (
+                player.playerID ??
+                player.playerId ??
+                player.id ??
+                ""
+              )
+            ).trim() ===
+            normalizedPlayerID
+        );
+
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildSnapshotSampleEvidence({
+  snapshot,
+  playerID,
+  week,
+  prebuiltScheduleContext
+}) {
+  const player =
+    findSnapshotPlayer(
+      snapshot,
+      playerID
+    );
+
+  if (!player) {
+    throw new Error(
+      "Target RB was not found in the prebuilt RB snapshot."
+    );
+  }
+
+  const weeksIncluded =
+    Array.isArray(
+      player.weeksIncluded
+    )
+      ? player.weeksIncluded
+          .map(Number)
+          .filter(Number.isInteger)
+          .sort(
+            (a, b) =>
+              a - b
+          )
+      : [];
+
+  const scheduleWeeksQueried =
+    prebuiltScheduleContext &&
+    Array.isArray(
+      prebuiltScheduleContext
+        .weeksIncluded
+    )
+      ? prebuiltScheduleContext
+          .weeksIncluded
+          .slice()
+      : (
+          snapshot.noLookAhead &&
+          Array.isArray(
+            snapshot
+              .noLookAhead
+              .weeksQueried
+          )
+            ? snapshot
+                .noLookAhead
+                .weeksQueried
+                .slice()
+            : Array.from(
+                {
+                  length:
+                    Math.max(
+                      0,
+                      Number(week) - 1
+                    )
+                },
+                (
+                  _,
+                  index
+                ) =>
+                  index + 1
+              )
+        );
+
+  return {
+    source:
+      "weekly-sage-rb-snapshot",
+
+    gamesUsed:
+      num(
+        player.gamesUsed
+      ),
+
+    weeksIncluded,
+
+    noLookAhead: {
+      rule:
+        `Only games from Weeks 1 through ${Number(week) - 1} are eligible.`,
+
+      scheduleWeeksQueried,
+
+      weeksIncluded,
+
+      targetWeekExcluded:
+        !weeksIncluded
+          .includes(
+            Number(week)
+          )
+    },
+
+    usageProfile: {
+      carriesPerGame:
+        num(
+          player.role &&
+          player.role.carriesPerGame
+        ),
+
+      targetsPerGame:
+        num(
+          player.role &&
+          player.role.targetsPerGame
+        ),
+
+      offensiveSnapPct:
+        num(
+          player.role &&
+          player.role.offensiveSnapPct
+        )
+    }
+  };
+}
+
+/*
   ROLE CONFIDENCE
   ---------------
 
@@ -447,47 +691,90 @@ async function buildRbConfidence({
     );
   }
 
+  /*
+    COMPONENT SCORES
+    ----------------
+
+    The component layer already accepts prebuiltSnapshot and therefore
+    can reuse the authoritative cached RB population without rebuilding
+    the peer universe.
+  */
+  const componentsPromise =
+    buildRbComponentScores({
+      season:
+        normalizedSeason,
+
+      week:
+        normalizedWeek,
+
+      seasonType:
+        normalizedSeasonType,
+
+      playerID:
+        normalizedPlayerID,
+
+      prebuiltSnapshot,
+
+      baseUrl
+    });
+
+  /*
+    SAMPLE EVIDENCE
+    ---------------
+
+    Production path:
+      prebuiltSnapshot supplied
+        -> reuse gamesUsed / weeksIncluded / role sample evidence
+           already present in the cached RB snapshot
+        -> ZERO player-season call
+        -> ZERO Tank01 calls from this confidence layer
+
+    Diagnostic / legacy path:
+      no prebuiltSnapshot
+        -> preserve the existing buildPlayerSeason() behavior exactly.
+  */
+  const sampleEvidencePromise =
+    prebuiltSnapshot
+      ? Promise.resolve(
+          buildSnapshotSampleEvidence({
+            snapshot:
+              prebuiltSnapshot,
+
+            playerID:
+              normalizedPlayerID,
+
+            week:
+              normalizedWeek,
+
+            prebuiltScheduleContext
+          })
+        )
+      : buildPlayerSeason({
+          baseUrl,
+
+          season:
+            normalizedSeason,
+
+          targetWeek:
+            normalizedWeek,
+
+          seasonType:
+            normalizedSeasonType,
+
+          playerID:
+            normalizedPlayerID,
+
+          scheduleContext:
+            prebuiltScheduleContext
+        });
+
   const [
     components,
-    playerSeason
+    sampleEvidence
   ] =
     await Promise.all([
-      buildRbComponentScores({
-        season:
-          normalizedSeason,
-
-        week:
-          normalizedWeek,
-
-        seasonType:
-          normalizedSeasonType,
-
-        playerID:
-          normalizedPlayerID,
-
-        prebuiltSnapshot,
-
-        baseUrl
-      }),
-
-      buildPlayerSeason({
-        baseUrl,
-
-        season:
-          normalizedSeason,
-
-        targetWeek:
-          normalizedWeek,
-
-        seasonType:
-          normalizedSeasonType,
-
-        playerID:
-          normalizedPlayerID,
-
-        scheduleContext:
-          prebuiltScheduleContext
-      })
+      componentsPromise,
+      sampleEvidencePromise
     ]);
 
   if (
@@ -500,9 +787,15 @@ async function buildRbConfidence({
     );
   }
 
+  if (!sampleEvidence) {
+    throw new Error(
+      "RB confidence sample evidence was unavailable."
+    );
+  }
+
   if (
-    !playerSeason ||
-    playerSeason.evidenceType !==
+    !prebuiltSnapshot &&
+    sampleEvidence.evidenceType !==
       "weekly-sage-player-season"
   ) {
     throw new Error(
@@ -512,7 +805,7 @@ async function buildRbConfidence({
 
   const gamesUsed =
     num(
-      playerSeason.gamesUsed
+      sampleEvidence.gamesUsed
     );
 
   const roleMetrics =
@@ -546,16 +839,16 @@ async function buildRbConfidence({
           opportunityMetric.value
         )
       : num(
-          playerSeason
+          sampleEvidence
             .usageProfile &&
           (
             num(
-              playerSeason
+              sampleEvidence
                 .usageProfile
                 .carriesPerGame
             ) +
             num(
-              playerSeason
+              sampleEvidence
                 .usageProfile
                 .targetsPerGame
             )
@@ -568,9 +861,9 @@ async function buildRbConfidence({
           snapMetric.value
         )
       : num(
-          playerSeason
+          sampleEvidence
             .usageProfile &&
-          playerSeason
+          sampleEvidence
             .usageProfile
             .offensiveSnapPct
         );
@@ -646,6 +939,10 @@ async function buildRbConfidence({
       productionConfidence
     );
 
+  const noLookAhead =
+    sampleEvidence.noLookAhead ||
+    {};
+
   return {
     evidenceType:
       "weekly-sage-rb-confidence",
@@ -655,17 +952,19 @@ async function buildRbConfidence({
     generatedAt:
       new Date().toISOString(),
 
-    season,
+    season:
+      normalizedSeason,
 
-    targetWeek: week,
+    targetWeek:
+      normalizedWeek,
 
-    seasonType,
+    seasonType:
+      normalizedSeasonType,
 
     player:
       components.player,
 
-    noLookAhead:
-      playerSeason.noLookAhead,
+    noLookAhead,
 
     philosophy: {
       principle:
@@ -688,26 +987,18 @@ async function buildRbConfidence({
       gamesUsed,
 
       weeksIncluded:
-        playerSeason
-          .noLookAhead &&
+        noLookAhead &&
         Array.isArray(
-          playerSeason
-            .noLookAhead
-            .weeksIncluded
+          noLookAhead.weeksIncluded
         )
-          ? playerSeason
-              .noLookAhead
-              .weeksIncluded
+          ? noLookAhead.weeksIncluded
           : (
-              playerSeason
-                .noLookAhead &&
+              noLookAhead &&
               Array.isArray(
-                playerSeason
-                  .noLookAhead
+                noLookAhead
                   .scheduleWeeksQueried
               )
-                ? playerSeason
-                    .noLookAhead
+                ? noLookAhead
                     .scheduleWeeksQueried
                 : []
             ),
@@ -810,7 +1101,9 @@ async function buildRbConfidence({
         "weekly-sage-rb-component-scores",
 
       sampleEvidence:
-        "weekly-sage-player-season",
+        prebuiltSnapshot
+          ? "weekly-sage-rb-snapshot"
+          : "weekly-sage-player-season",
 
       confidence:
         "weekly-sage-rb-confidence"
