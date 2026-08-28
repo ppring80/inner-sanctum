@@ -606,9 +606,19 @@ function flattenRankings(rankings) {
         sageScore:
           entry.sage && typeof entry.sage.score === 'number'
             ? entry.sage.score
-            : null,
-        sageLabel: (entry.sage && entry.sage.label) || null,
-        sageConfidence: (entry.sage && entry.sage.confidence) || null
+            : (typeof entry.sageScore === 'number' ? entry.sageScore : null),
+        sageLabel:
+          entry.sage && entry.sage.label != null
+            ? entry.sage.label
+            : (entry.sageLabel != null ? entry.sageLabel : null),
+        sageConfidence:
+          entry.sage && entry.sage.confidence != null
+            ? entry.sage.confidence
+            : (entry.sageConfidence != null ? entry.sageConfidence : null),
+        sageConfidenceLabel:
+          entry.sage && entry.sage.confidenceLabel != null
+            ? entry.sage.confidenceLabel
+            : (entry.sageConfidenceLabel != null ? entry.sageConfidenceLabel : null)
       });
     });
   });
@@ -958,9 +968,13 @@ function renderTable() {
               ? (
                   p.sageLabel +
                   (
-                    p.sageConfidence
-                      ? ' · ' + p.sageConfidence + ' confidence'
-                      : ''
+                    p.sageConfidenceLabel
+                      ? ' · ' + p.sageConfidenceLabel + ' confidence'
+                      : (
+                          p.sageConfidence != null
+                            ? ' · ' + p.sageConfidence + ' confidence'
+                            : ''
+                        )
                   )
                 )
               : '';
