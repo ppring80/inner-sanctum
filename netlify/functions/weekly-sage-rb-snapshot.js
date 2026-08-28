@@ -26,47 +26,10 @@
 // - calculate a final SAGE score
 // - calculate player-specific matchup
 // - call getNFLPlayerInfo for every RB
-// - call getNFLPlayerList or read the player-data cache to discover
-//   or gate candidates (see HISTORICAL CANDIDATE DISCOVERY below --
-//   both are CURRENT-roster-only sources and produced an incomplete/
-//   incorrect candidate universe for any historical rebuild)
-//
-// HISTORICAL CANDIDATE DISCOVERY (replaces the prior getNFLPlayerList
-// approach)
-// -----------------------------------------------------------------
-// getNFLPlayerList?all=true returns Tank01's CURRENT player list, not
-// a season/week-scoped historical one. Rebuilding a past week's
-// snapshot against it silently drops any RB who has since retired,
-// been cut, or changed teams/status -- confirmed as the root cause of
-// an incomplete 2025 Week 8 RB population (68 discovered, only 12
-// eligible).
-//
-// RB candidates are now discovered directly from actual historical
-// rushing evidence in every unique box score across the SAME
-// Weeks 1 through targetWeek-1 window already used for no-look-ahead
-// schedule classification (see buildScheduleMap() below, now called
-// FIRST so its gameMap's game IDs are available for this step). Each
-// unique gameID is fetched via getNFLBoxScore exactly once -- never
-// once per player, never once per week redundantly. A player with
-// real Rushing.carries in any scanned box score is a discovery
-// candidate; a player who ALSO shows genuine Passing evidence
-// (presence of Tank01's own Passing stat block at all -- not a new
-// numeric threshold) in any scanned game is excluded as an obvious
-// passing-role player (e.g. a scrambling QB with called runs). This
-// intentionally does NOT attempt to separate a true low-volume RB
-// from a gadget-play WR via any new numeric cutoff -- see this
-// file's own design-discussion history: the existing, UNCHANGED
-// MIN_GAMES / MIN_OPPORTUNITIES_PER_GAME eligibility filter below
-// already absorbs most of that remaining over-inclusion risk,
-// downstream, without any new classification rule.
 //
 // Tank01 calls:
-//   1 x getNFLGamesForWeek per prior week (via weekly-sage-schedule,
-//       unchanged -- already made for no-look-ahead scheduling)
-//   1 x getNFLBoxScore per UNIQUE historical game across Weeks 1
-//       through targetWeek-1 (new -- replaces the single
-//       getNFLPlayerList call)
-//   1 x getNFLGamesForPlayer per discovered RB (unchanged)
+//   1 x getNFLPlayerList?all=true
+//   1 x getNFLGamesForPlayer per discovered RB
 //
 // Schedule:
 //   Weekly SAGE schedule is fetched once for each prior week.
@@ -1197,219 +1160,79 @@ async function buildRbSnapshot({
       /*
         STEP 1
         ------
-        Build Weeks 1 through targetWeek - 1 schedule map ONCE.
-
-        MOVED EARLIER (was STEP 3): candidate discovery below now
-        depends on this map's unique game IDs. Nothing about this
-        function itself changed.
+        Retrieve the full player list ONCE.
       */
-      const scheduleContext =
-        await buildScheduleMap({
-          baseUrl,
-          season,
-          targetWeek,
-          seasonType
-        });
+      const playerListResult =
+        await tank01Fetch(
+          "getNFLPlayerList",
+          {
+            all:
+              "true"
+          }
+        );
+
+      const allPlayers =
+        extractPlayers(
+          playerListResult
+        );
+
+      if (!allPlayers.length) {
+        throw new Error(
+          "Tank01 getNFLPlayerList returned no players."
+        );
+      }
 
       /*
         STEP 2
         ------
-        Discover RB candidates from actual historical rushing
-        evidence in every UNIQUE box score across Weeks 1 through
-        targetWeek - 1 -- see this file's header comment for the
-        full rationale. Never calls getNFLPlayerList or reads the
-        player-data cache to discover or gate candidates.
-
-        Each unique gameID is fetched via getNFLBoxScore exactly
-        once, at the same PLAYER_CONCURRENCY already used elsewhere
-        in this file to keep Tank01 pressure low -- no new
-        concurrency parameter introduced.
+        Discover RB candidates.
       */
-      const uniqueGameIDs =
-        [
-          ...scheduleContext
-            .gameMap
-            .keys()
-        ];
-
-      let boxScoresRetrieved =
-        0;
-
-      let boxScoreFailures =
-        0;
-
-      const boxScoreResults =
-        await mapWithConcurrency(
-          uniqueGameIDs,
-          PLAYER_CONCURRENCY,
-          async gameID => {
-            try {
-              const data =
-                await tank01Fetch(
-                  "getNFLBoxScore",
-                  { gameID }
-                );
-
-              return {
-                ok: true,
-                gameID,
-                data
-              };
-            } catch (error) {
-              return {
-                ok: false,
-                gameID,
-                error:
-                  error &&
-                  error.message
-                    ? error.message
-                    : String(
-                        error
-                      )
-              };
-            }
-          }
-        );
-
-      /*
-        Deduplicate strictly by playerID across every scanned game.
-
-        rushingCandidateMap: every playerID with real Rushing.carries
-        in at least one scanned box score (first occurrence's name/
-        team wins -- same "first wins" dedup convention already used
-        by the prior getNFLPlayerList-based candidateMap).
-
-        passingEvidencePlayerIDs: every playerID who shows a genuine
-        Passing stat block (key presence only, never a numeric value
-        threshold) in ANY scanned game -- checked season-wide, not
-        per-game, so a single called-run game from an otherwise
-        clearly-passing player doesn't inconsistently admit them.
-      */
-      const rushingCandidateMap =
-        new Map();
-
-      const passingEvidencePlayerIDs =
-        new Set();
-
-      for (
-        const result
-        of boxScoreResults
-      ) {
-        if (
-          !result ||
-          !result.ok
-        ) {
-          boxScoreFailures += 1;
-          continue;
-        }
-
-        boxScoresRetrieved += 1;
-
-        const body =
-          unwrapBody(
-            result.data
-          );
-
-        const playerStats =
-          body &&
-          body.playerStats &&
-          typeof body.playerStats ===
-            "object"
-            ? body.playerStats
-            : {};
-
-        for (
-          const [
-            playerID,
-            statsEntry
-          ]
-          of Object.entries(
-            playerStats
-          )
-        ) {
-          const normalizedID =
-            String(
-              playerID || ""
-            ).trim();
-
-          if (
-            !normalizedID ||
-            !statsEntry
-          ) {
-            continue;
-          }
-
-          if (
-            Object.keys(
-              statBlock(
-                statsEntry,
-                "Passing"
-              )
-            ).length > 0
-          ) {
-            passingEvidencePlayerIDs.add(
-              normalizedID
-            );
-          }
-
-          const rushing =
-            rushingStats(
-              statsEntry
-            );
-
-          if (
-            rushing.carries > 0 &&
-            !rushingCandidateMap.has(
-              normalizedID
-            )
-          ) {
-            rushingCandidateMap.set(
-              normalizedID,
-              {
-                playerID:
-                  normalizedID,
-
-                name:
-                  playerNameOf(
-                    statsEntry
-                  ),
-
-                team:
-                  playerTeamOf(
-                    statsEntry
-                  )
-              }
-            );
-          }
-        }
-      }
-
-      let candidatesExcludedForPassingEvidence =
-        0;
-
       const candidateMap =
         new Map();
 
       for (
-        const [
-          playerID,
-          candidate
-        ]
-        of rushingCandidateMap
+        const player
+        of allPlayers
       ) {
         if (
-          passingEvidencePlayerIDs.has(
-            playerID
-          )
+          playerPositionOf(
+            player
+          ) !== "RB"
         ) {
-          candidatesExcludedForPassingEvidence += 1;
           continue;
         }
 
-        candidateMap.set(
-          playerID,
-          candidate
-        );
+        const playerID =
+          playerIDOf(
+            player
+          );
+
+        if (!playerID) {
+          continue;
+        }
+
+        if (
+          !candidateMap.has(
+            playerID
+          )
+        ) {
+          candidateMap.set(
+            playerID,
+            {
+              playerID,
+
+              name:
+                playerNameOf(
+                  player
+                ),
+
+              team:
+                playerTeamOf(
+                  player
+                )
+            }
+          );
+        }
       }
 
       const candidates =
@@ -1420,6 +1243,19 @@ async function buildRbSnapshot({
 
       /*
         STEP 3
+        ------
+        Build Weeks 1 through targetWeek - 1 schedule map ONCE.
+      */
+      const scheduleContext =
+        await buildScheduleMap({
+          baseUrl,
+          season,
+          targetWeek,
+          seasonType
+        });
+
+      /*
+        STEP 4
         ------
         Retrieve one player-games payload per RB.
 
@@ -1552,17 +1388,8 @@ async function buildRbSnapshot({
           },
 
           populationSummary: {
-            historicalGamesScanned:
-              uniqueGameIDs.length,
-
-            boxScoresRetrieved,
-
-            boxScoreFailures,
-
-            uniqueRushingCandidatesDiscovered:
-              rushingCandidateMap.size,
-
-            candidatesExcludedForPassingEvidence,
+            nflPlayersReturned:
+              allPlayers.length,
 
             rbCandidatesDiscovered:
               candidates.length,
@@ -1585,6 +1412,7 @@ async function buildRbSnapshot({
 
           population:
             sortedPopulation,
+
 
           /*
             Keep the non-eligible records during validation.
@@ -1649,44 +1477,6 @@ async function buildRbSnapshot({
                     : "Unknown failure"
               })
             ),
-
-          /*
-            TEMPORARY VALIDATION DIAGNOSTICS -- strictly additive to
-            the existing schema. Intended to be removed once
-            historical RB box-score discovery has been validated
-            against a known week (e.g. 2025 Week 8). Not consumed by
-            any leaderboard, final-score, or scoring logic.
-          */
-          temporaryValidationDiagnostics: {
-            note:
-              "TEMPORARY -- remove once historical RB box-score discovery is validated.",
-
-            historicalGamesScanned:
-              uniqueGameIDs.length,
-
-            boxScoresRetrieved,
-
-            boxScoreFailures,
-
-            uniqueRushingCandidatesDiscovered:
-              rushingCandidateMap.size,
-
-            candidatesExcludedForPassingEvidence,
-
-            eligibleRBPopulation:
-              sortedPopulation.length,
-
-            eligiblePlayers:
-              sortedPopulation.map(
-                record => ({
-                  playerID:
-                    record.playerID,
-
-                  name:
-                    record.name
-                })
-              )
-          },
 
           nextStep: {
             finalScore:
