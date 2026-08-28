@@ -364,6 +364,313 @@ function jsonResponse(
   };
 }
 
+function playerMatchupError(
+  statusCode,
+  message,
+  details = {}
+) {
+  const error =
+    new Error(message);
+
+  error.playerMatchupStatusCode =
+    statusCode;
+
+  error.playerMatchupDetails =
+    details;
+
+  return error;
+}
+
+async function buildPlayerMatchup({
+  baseUrl,
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  team,
+  position,
+  prebuiltSchedule = null,
+  prebuiltMatchupDefense = null
+}) {
+  const normalizedSeason =
+    String(
+      season ||
+      new Date().getFullYear()
+    );
+
+  const normalizedWeek =
+    Number(week);
+
+  const normalizedSeasonType =
+    String(
+      seasonType ||
+      DEFAULT_SEASON_TYPE
+    );
+
+  const normalizedTeam =
+    normalizeTeam(team);
+
+  const normalizedPosition =
+    normalizePosition(position);
+
+  if (
+    !Number.isInteger(normalizedWeek) ||
+    normalizedWeek < 1 ||
+    normalizedWeek > 18
+  ) {
+    throw playerMatchupError(
+      400,
+      "week must be an integer from 1 through 18."
+    );
+  }
+
+  if (!normalizedTeam) {
+    throw playerMatchupError(
+      400,
+      "team is required."
+    );
+  }
+
+  if (
+    !VALID_POSITIONS.has(
+      normalizedPosition
+    )
+  ) {
+    throw playerMatchupError(
+      400,
+      "position must be QB, RB, WR, or TE."
+    );
+  }
+
+  const [
+    schedule,
+    matchupDefense
+  ] =
+    await Promise.all([
+      prebuiltSchedule
+        ? Promise.resolve(
+            prebuiltSchedule
+          )
+        : fetchSchedule({
+            baseUrl,
+            season:
+              normalizedSeason,
+            week:
+              normalizedWeek,
+            seasonType:
+              normalizedSeasonType
+          }),
+
+      prebuiltMatchupDefense
+        ? Promise.resolve(
+            prebuiltMatchupDefense
+          )
+        : fetchMatchupDefense({
+            baseUrl,
+            season:
+              normalizedSeason,
+            week:
+              normalizedWeek,
+            seasonType:
+              normalizedSeasonType
+          })
+    ]);
+
+  const games =
+    extractGames(schedule);
+
+  const game =
+    findGameForTeam(
+      games,
+      normalizedTeam
+    );
+
+  if (!game) {
+    throw playerMatchupError(
+      404,
+      "No game found for team in requested week.",
+      {
+        season:
+          normalizedSeason,
+        week:
+          normalizedWeek,
+        team:
+          normalizedTeam,
+        position:
+          normalizedPosition
+      }
+    );
+  }
+
+  const opponentInfo =
+    getOpponent(
+      game,
+      normalizedTeam
+    );
+
+  if (
+    !opponentInfo ||
+    !opponentInfo.opponent
+  ) {
+    throw new Error(
+      "Could not resolve opponent."
+    );
+  }
+
+  const opponent =
+    opponentInfo.opponent;
+
+  const matchup =
+    matchupDefense &&
+    matchupDefense.matchups
+      ? matchupDefense
+          .matchups[
+            opponent
+          ]
+      : null;
+
+  if (!matchup) {
+    throw playerMatchupError(
+      404,
+      "No defensive matchup evidence found for opponent.",
+      {
+        season:
+          normalizedSeason,
+        week:
+          normalizedWeek,
+        team:
+          normalizedTeam,
+        position:
+          normalizedPosition,
+        opponent
+      }
+    );
+  }
+
+  const profile =
+    profileForPosition(
+      normalizedPosition,
+      matchup
+    );
+
+  const explanation =
+    explanationForPosition(
+      normalizedPosition,
+      matchup
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-player-matchup",
+
+    schemaVersion: 1,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season:
+      normalizedSeason,
+
+    week:
+      normalizedWeek,
+
+    seasonType:
+      normalizedSeasonType,
+
+    playerContext: {
+      team:
+        normalizedTeam,
+
+      position:
+        normalizedPosition,
+
+      opponent,
+
+      location:
+        opponentInfo.location,
+
+      gameID:
+        game.gameID ||
+        null,
+
+      gameDate:
+        game.gameDate ||
+        null,
+
+      gameTime:
+        game.gameTime ||
+        null
+    },
+
+    matchupEvidence: {
+      opponent,
+
+      profileType:
+        profile
+          ? profile.profileType
+          : null,
+
+      score:
+        profile
+          ? profile.score
+          : null,
+
+      signal:
+        profile
+          ? profile.signal
+          : null,
+
+      label:
+        profile
+          ? profile.label
+          : null,
+
+      confidence:
+        profile
+          ? profile.confidence
+          : null,
+
+      explanation,
+
+      source:
+        normalizedPosition === "WR" ||
+        normalizedPosition === "TE"
+          ? "overall_pass_defense_v1"
+          : (
+              normalizedPosition === "QB"
+                ? "overall_pass_defense"
+                : "run_defense"
+            )
+    },
+
+    /*
+      Keep the underlying opponent profile available for
+      diagnostics and later SAGE composition.
+
+      This is evidence only.
+    */
+    opponentDefense: {
+      team:
+        matchup.team,
+
+      games:
+        matchup.games,
+
+      run:
+        matchup.run,
+
+      pass:
+        matchup.pass,
+
+      receiving:
+        matchup.receiving
+    }
+  };
+}
+
+exports.buildPlayerMatchup =
+  buildPlayerMatchup;
+
 exports.handler =
   async function (event) {
     if (
@@ -450,213 +757,39 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      const [
-        schedule,
-        matchupDefense
-      ] =
-        await Promise.all([
-          fetchSchedule({
-            baseUrl,
-            season,
-            week,
-            seasonType
-          }),
-
-          fetchMatchupDefense({
-            baseUrl,
-            season,
-            week,
-            seasonType
-          })
-        ]);
-
-      const games =
-        extractGames(schedule);
-
-      const game =
-        findGameForTeam(
-          games,
-          team
-        );
-
-      if (!game) {
-        return jsonResponse(
-          404,
-          {
-            error:
-              "No game found for team in requested week.",
-
-            season,
-            week,
-            team,
-            position
-          }
-        );
-      }
-
-      const opponentInfo =
-        getOpponent(
-          game,
-          team
-        );
-
-      if (
-        !opponentInfo ||
-        !opponentInfo.opponent
-      ) {
-        throw new Error(
-          "Could not resolve opponent."
-        );
-      }
-
-      const opponent =
-        opponentInfo.opponent;
-
-      const matchup =
-        matchupDefense &&
-        matchupDefense.matchups
-          ? matchupDefense
-              .matchups[
-                opponent
-              ]
-          : null;
-
-      if (!matchup) {
-        return jsonResponse(
-          404,
-          {
-            error:
-              "No defensive matchup evidence found for opponent.",
-
-            season,
-            week,
-            team,
-            position,
-            opponent
-          }
-        );
-      }
-
-      const profile =
-        profileForPosition(
-          position,
-          matchup
-        );
-
-      const explanation =
-        explanationForPosition(
-          position,
-          matchup
-        );
+      const body =
+        await buildPlayerMatchup({
+          baseUrl,
+          season,
+          week,
+          seasonType,
+          team,
+          position
+        });
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-player-matchup",
-
-          schemaVersion: 1,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          week,
-
-          seasonType,
-
-          playerContext: {
-            team,
-            position,
-
-            opponent,
-
-            location:
-              opponentInfo.location,
-
-            gameID:
-              game.gameID ||
-              null,
-
-            gameDate:
-              game.gameDate ||
-              null,
-
-            gameTime:
-              game.gameTime ||
-              null
-          },
-
-          matchupEvidence: {
-            opponent,
-
-            profileType:
-              profile
-                ? profile.profileType
-                : null,
-
-            score:
-              profile
-                ? profile.score
-                : null,
-
-            signal:
-              profile
-                ? profile.signal
-                : null,
-
-            label:
-              profile
-                ? profile.label
-                : null,
-
-            confidence:
-              profile
-                ? profile.confidence
-                : null,
-
-            explanation,
-
-            source:
-              position === "WR" ||
-              position === "TE"
-                ? "overall_pass_defense_v1"
-                : (
-                    position === "QB"
-                      ? "overall_pass_defense"
-                      : "run_defense"
-                  )
-          },
-
-          /*
-            Keep the underlying opponent profile available for
-            diagnostics and later SAGE composition.
-
-            This is evidence only.
-          */
-          opponentDefense: {
-            team:
-              matchup.team,
-
-            games:
-              matchup.games,
-
-            run:
-              matchup.run,
-
-            pass:
-              matchup.pass,
-
-            receiving:
-              matchup.receiving
-          }
-        },
-
+        body,
         CACHE_CONTROL
       );
     } catch (error) {
+      if (
+        error &&
+        error.playerMatchupStatusCode
+      ) {
+        return jsonResponse(
+          error.playerMatchupStatusCode,
+          {
+            error:
+              error.message,
+            ...(
+              error.playerMatchupDetails ||
+              {}
+            )
+          }
+        );
+      }
+
       console.error(
         "weekly-sage-player-matchup failed:",
         error
