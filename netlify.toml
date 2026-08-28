@@ -100,6 +100,15 @@
 [functions."refresh-current-nfl-facts"]
   schedule = "30 13,23 * * *"
 
+# WEEKLY SAGE SHARED SCHEDULE EVIDENCE
+# Builds and caches the current week's normalized schedule before
+# any positional Weekly SAGE snapshot refresh begins.
+#
+# Tuesday 08:40 UTC -- 20 minutes before the first positional
+# snapshot refresh at 09:00 UTC.
+[functions."refresh-weekly-sage-schedule"]
+  schedule = "40 8 * * 2"
+
 # WEEKLY SAGE PRODUCTION SNAPSHOT REFRESH SCHEDULE (added)
 # Runs each position's dedicated snapshot cache-writer ONCE weekly, at
 # 09:00 UTC every Tuesday, staggered 5 minutes apart (QB/RB/WR/TE) to
