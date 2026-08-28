@@ -111,6 +111,18 @@ const CONFIDENCE_FUNCTION =
 const MATCHUP_FUNCTION =
   "weekly-sage-player-matchup";
 
+const {
+  buildRbConfidence
+} = require(
+  "./weekly-sage-rb-confidence"
+);
+
+const {
+  buildPlayerMatchup
+} = require(
+  "./weekly-sage-player-matchup"
+);
+
 const NEUTRAL_BASELINE = 50;
 
 function num(value) {
@@ -636,81 +648,18 @@ function jsonResponse(
   };
 }
 
-exports.handler =
-  async function (event) {
-    if (
-      event.httpMethod &&
-      event.httpMethod !==
-        "GET"
-    ) {
-      return jsonResponse(
-        405,
-        {
-          error:
-            "Method not allowed."
-        }
-      );
-    }
 
-    const query =
-      event
-        .queryStringParameters ||
-      {};
-
-    const season =
-      String(
-        query.season ||
-        new Date()
-          .getFullYear()
-      );
-
-    const week =
-      Number(
-        query.week
-      );
-
-    const playerID =
-      String(
-        query.playerID ||
-        ""
-      ).trim();
-
-    const seasonType =
-      String(
-        query.seasonType ||
-        DEFAULT_SEASON_TYPE
-      );
-
-    if (
-      !Number.isInteger(
-        week
-      ) ||
-      week < 2 ||
-      week > 18
-    ) {
-      return jsonResponse(
-        400,
-        {
-          error:
-            "week must be an integer from 2 through 18."
-        }
-      );
-    }
-
-    if (!playerID) {
-      return jsonResponse(
-        400,
-        {
-          error:
-            "playerID is required."
-        }
-      );
-    }
-
-    try {
-      const baseUrl =
-        getBaseUrl(event);
-
+async function buildRbFinalScore({
+  baseUrl,
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  playerID,
+  prebuiltSnapshot = null,
+  prebuiltScheduleContext = null,
+  prebuiltSchedule = null,
+  prebuiltMatchupDefense = null
+}) {
       /*
         STEP 1
         ------
@@ -720,12 +669,14 @@ exports.handler =
         so it does NOT rebuild the 68-player RB universe.
       */
       const confidence =
-        await fetchConfidence({
+        await buildRbConfidence({
           baseUrl,
           season,
           week,
           seasonType,
-          playerID
+          playerID,
+          prebuiltSnapshot,
+          prebuiltScheduleContext
         });
 
       const player =
@@ -736,13 +687,11 @@ exports.handler =
         player.position !==
         "RB"
       ) {
-        return jsonResponse(
-          400,
-          {
-            error:
-              "Final RB SAGE scoring requires an RB."
-          }
+        const error = new Error(
+          "Final RB SAGE scoring requires an RB."
         );
+        error.rbFinalScoreStatusCode = 400;
+        throw error;
       }
 
       if (
@@ -761,7 +710,7 @@ exports.handler =
         No RB-universe population rebuild occurs here.
       */
       const matchupData =
-        await fetchMatchup({
+        await buildPlayerMatchup({
           baseUrl,
           season,
           week,
@@ -769,7 +718,9 @@ exports.handler =
           team:
             player.team,
           position:
-            player.position
+            player.position,
+          prebuiltSchedule,
+          prebuiltMatchupDefense
         });
 
       const matchup =
@@ -851,24 +802,21 @@ exports.handler =
         adjustedProductionScore === null ||
         adjustedMatchupScore === null
       ) {
-        return jsonResponse(
-          422,
-          {
-            error:
-              "One or more SAGE components are not ready for final composition.",
-
-            components: {
-              role:
-                adjustedRoleScore,
-
-              production:
-                adjustedProductionScore,
-
-              matchup:
-                adjustedMatchupScore
-            }
-          }
+        const error = new Error(
+          "One or more SAGE components are not ready for final composition."
         );
+        error.rbFinalScoreStatusCode = 422;
+        error.rbFinalScoreDetails = {
+          components: {
+            role:
+              adjustedRoleScore,
+            production:
+              adjustedProductionScore,
+            matchup:
+              adjustedMatchupScore
+          }
+        };
+        throw error;
       }
 
       /*
@@ -921,9 +869,7 @@ exports.handler =
           finalScore
         );
 
-      return jsonResponse(
-        200,
-        {
+      return {
           evidenceType:
             "weekly-sage-rb-final-score",
 
@@ -1229,8 +1175,99 @@ exports.handler =
             peerPopulation:
               "weekly-sage-rb-snapshot"
           }
-        },
+        };
+}
 
+exports.buildRbFinalScore =
+  buildRbFinalScore;
+
+exports.handler =
+  async function (event) {
+    if (
+      event.httpMethod &&
+      event.httpMethod !==
+        "GET"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "Method not allowed."
+        }
+      );
+    }
+
+    const query =
+      event
+        .queryStringParameters ||
+      {};
+
+    const season =
+      String(
+        query.season ||
+        new Date()
+          .getFullYear()
+      );
+
+    const week =
+      Number(
+        query.week
+      );
+
+    const playerID =
+      String(
+        query.playerID ||
+        ""
+      ).trim();
+
+    const seasonType =
+      String(
+        query.seasonType ||
+        DEFAULT_SEASON_TYPE
+      );
+
+    if (
+      !Number.isInteger(
+        week
+      ) ||
+      week < 2 ||
+      week > 18
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "week must be an integer from 2 through 18."
+        }
+      );
+    }
+
+    if (!playerID) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "playerID is required."
+        }
+      );
+    }
+
+    try {
+      const baseUrl =
+        getBaseUrl(event);
+
+      const body =
+        await buildRbFinalScore({
+          baseUrl,
+          season,
+          week,
+          seasonType,
+          playerID
+        });
+
+      return jsonResponse(
+        200,
+        body,
         CACHE_CONTROL
       );
     } catch (error) {
