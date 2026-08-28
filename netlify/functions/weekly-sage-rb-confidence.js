@@ -38,6 +38,18 @@ const DEFAULT_SEASON_TYPE = "reg";
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
+const {
+  buildRbComponentScores
+} = require(
+  "./weekly-sage-rb-component-scores"
+);
+
+const {
+  buildPlayerSeason
+} = require(
+  "./weekly-sage-player-season"
+);
+
 const COMPONENT_FUNCTION =
   "weekly-sage-rb-component-scores";
 
@@ -389,6 +401,426 @@ function jsonResponse(
   };
 }
 
+async function buildRbConfidence({
+  baseUrl,
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  playerID,
+  prebuiltSnapshot = null,
+  prebuiltScheduleContext = null
+}) {
+  const normalizedSeason =
+    String(
+      season ||
+      new Date().getFullYear()
+    );
+
+  const normalizedWeek =
+    Number(week);
+
+  const normalizedPlayerID =
+    String(
+      playerID ||
+      ""
+    ).trim();
+
+  const normalizedSeasonType =
+    String(
+      seasonType ||
+      DEFAULT_SEASON_TYPE
+    );
+
+  if (
+    !Number.isInteger(normalizedWeek) ||
+    normalizedWeek < 2 ||
+    normalizedWeek > 18
+  ) {
+    throw new Error(
+      "week must be an integer from 2 through 18."
+    );
+  }
+
+  if (!normalizedPlayerID) {
+    throw new Error(
+      "playerID is required."
+    );
+  }
+
+  const [
+    components,
+    playerSeason
+  ] =
+    await Promise.all([
+      buildRbComponentScores({
+        season:
+          normalizedSeason,
+
+        week:
+          normalizedWeek,
+
+        seasonType:
+          normalizedSeasonType,
+
+        playerID:
+          normalizedPlayerID,
+
+        prebuiltSnapshot,
+
+        baseUrl
+      }),
+
+      buildPlayerSeason({
+        baseUrl,
+
+        season:
+          normalizedSeason,
+
+        targetWeek:
+          normalizedWeek,
+
+        seasonType:
+          normalizedSeasonType,
+
+        playerID:
+          normalizedPlayerID,
+
+        scheduleContext:
+          prebuiltScheduleContext
+      })
+    ]);
+
+  if (
+    !components ||
+    components.evidenceType !==
+      "weekly-sage-rb-component-scores"
+  ) {
+    throw new Error(
+      "Unexpected RB component-score schema."
+    );
+  }
+
+  if (
+    !playerSeason ||
+    playerSeason.evidenceType !==
+      "weekly-sage-player-season"
+  ) {
+    throw new Error(
+      "Unexpected player-season schema."
+    );
+  }
+
+  const gamesUsed =
+    num(
+      playerSeason.gamesUsed
+    );
+
+  const roleMetrics =
+    components.role &&
+    Array.isArray(
+      components.role.components
+    )
+      ? components.role.components
+      : [];
+
+  const findRoleMetric =
+    metric =>
+      roleMetrics.find(
+        item =>
+          item.metric === metric
+      );
+
+  const opportunityMetric =
+    findRoleMetric(
+      "opportunitiesPerGame"
+    );
+
+  const snapMetric =
+    findRoleMetric(
+      "offensiveSnapPct"
+    );
+
+  const opportunitiesPerGame =
+    opportunityMetric
+      ? num(
+          opportunityMetric.value
+        )
+      : num(
+          playerSeason
+            .usageProfile &&
+          (
+            num(
+              playerSeason
+                .usageProfile
+                .carriesPerGame
+            ) +
+            num(
+              playerSeason
+                .usageProfile
+                .targetsPerGame
+            )
+          )
+        );
+
+  const offensiveSnapPct =
+    snapMetric
+      ? num(
+          snapMetric.value
+        )
+      : num(
+          playerSeason
+            .usageProfile &&
+          playerSeason
+            .usageProfile
+            .offensiveSnapPct
+        );
+
+  const roleGamesWeight =
+    roleGamesConfidence(
+      gamesUsed
+    );
+
+  const roleQualityWeight =
+    roleSampleQuality({
+      opportunitiesPerGame,
+      offensiveSnapPct
+    });
+
+  /*
+    Games are the dominant confidence factor.
+
+    Sample quality can modestly reduce confidence when the
+    player has not established a substantial role.
+  */
+  const roleConfidence =
+    round(
+      clamp(
+        roleGamesWeight *
+        roleQualityWeight,
+        0,
+        1
+      ),
+      3
+    );
+
+  const productionGamesWeight =
+    productionGamesConfidence(
+      gamesUsed
+    );
+
+  const productionQualityWeight =
+    productionSampleQuality();
+
+  const productionConfidence =
+    round(
+      clamp(
+        productionGamesWeight *
+        productionQualityWeight,
+        0,
+        1
+      ),
+      3
+    );
+
+  const rawRoleScore =
+    num(
+      components.role &&
+      components.role.score
+    );
+
+  const rawProductionScore =
+    num(
+      components.production &&
+      components.production.score
+    );
+
+  const adjustedRoleScore =
+    confidenceAdjustedScore(
+      rawRoleScore,
+      roleConfidence
+    );
+
+  const adjustedProductionScore =
+    confidenceAdjustedScore(
+      rawProductionScore,
+      productionConfidence
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-rb-confidence",
+
+    schemaVersion: 1,
+
+    generatedAt:
+      new Date().toISOString(),
+
+    season,
+
+    targetWeek: week,
+
+    seasonType,
+
+    player:
+      components.player,
+
+    noLookAhead:
+      playerSeason.noLookAhead,
+
+    philosophy: {
+      principle:
+        "Score what the evidence says. Weight how much SAGE trusts the evidence.",
+
+      role:
+        "Role stabilizes faster because carries, targets, opportunities, and snap share are directly observable.",
+
+      production:
+        "Production stabilizes more slowly because efficiency, touchdowns, and explosive plays are more volatile in small samples.",
+
+      baseline:
+        50,
+
+      important:
+        "Confidence does not alter the raw component scores. It creates separate confidence-adjusted scores for downstream final composition."
+    },
+
+    sample: {
+      gamesUsed,
+
+      weeksIncluded:
+        playerSeason
+          .noLookAhead &&
+        Array.isArray(
+          playerSeason
+            .noLookAhead
+            .weeksIncluded
+        )
+          ? playerSeason
+              .noLookAhead
+              .weeksIncluded
+          : (
+              playerSeason
+                .noLookAhead &&
+              Array.isArray(
+                playerSeason
+                  .noLookAhead
+                  .scheduleWeeksQueried
+              )
+                ? playerSeason
+                    .noLookAhead
+                    .scheduleWeeksQueried
+                : []
+            ),
+
+      opportunitiesPerGame:
+        round(
+          opportunitiesPerGame
+        ),
+
+      offensiveSnapPct:
+        round(
+          offensiveSnapPct,
+          1
+        )
+    },
+
+    role: {
+      rawScore:
+        rawRoleScore,
+
+      confidence: {
+        weight:
+          roleConfidence,
+
+        label:
+          confidenceLabel(
+            roleConfidence
+          ),
+
+        gamesWeight:
+          roleGamesWeight,
+
+        sampleQualityWeight:
+          roleQualityWeight
+      },
+
+      adjustedScore:
+        adjustedRoleScore,
+
+      regressionToBaseline:
+        round(
+          rawRoleScore -
+          adjustedRoleScore,
+          1
+        )
+    },
+
+    production: {
+      rawScore:
+        rawProductionScore,
+
+      confidence: {
+        weight:
+          productionConfidence,
+
+        label:
+          confidenceLabel(
+            productionConfidence
+          ),
+
+        gamesWeight:
+          productionGamesWeight,
+
+        sampleQualityWeight:
+          productionQualityWeight
+      },
+
+      adjustedScore:
+        adjustedProductionScore,
+
+      regressionToBaseline:
+        round(
+          rawProductionScore -
+          adjustedProductionScore,
+          1
+        )
+    },
+
+    matchup: {
+      confidenceSource:
+        "weekly-sage matchup layer",
+
+      important:
+        "Matchup confidence is not recalculated here."
+    },
+
+    scoringReadiness: {
+      rawComponentScoresPreserved:
+        true,
+
+      confidenceLayerReady:
+        true,
+
+      readyForFinalComposition:
+        true
+    },
+
+    provenance: {
+      componentScores:
+        "weekly-sage-rb-component-scores",
+
+      sampleEvidence:
+        "weekly-sage-player-season",
+
+      confidence:
+        "weekly-sage-rb-confidence"
+    }
+  };
+}
+
+exports.buildRbConfidence =
+  buildRbConfidence;
+
 exports.handler =
   async function (event) {
     if (
@@ -457,380 +889,18 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      /*
-        COMPONENT SCORES
-
-        These remain untouched.
-
-        We are layering confidence on top of the already
-        validated Role and Production scores.
-      */
-      const componentUrl =
-        buildFunctionUrl({
+      const body =
+        await buildRbConfidence({
           baseUrl,
-          functionName:
-            COMPONENT_FUNCTION,
           season,
           week,
           seasonType,
           playerID
         });
-
-      /*
-        PLAYER-SEASON EVIDENCE
-
-        Used to verify games/sample information and preserve
-        the no-look-ahead provenance.
-      */
-      const playerSeasonUrl =
-        buildFunctionUrl({
-          baseUrl,
-          functionName:
-            PLAYER_SEASON_FUNCTION,
-          season,
-          week,
-          seasonType,
-          playerID
-        });
-
-      const [
-        components,
-        playerSeason
-      ] =
-        await Promise.all([
-          fetchJson(componentUrl),
-          fetchJson(playerSeasonUrl)
-        ]);
-
-      if (
-        !components ||
-        components.evidenceType !==
-          "weekly-sage-rb-component-scores"
-      ) {
-        throw new Error(
-          "Unexpected RB component-score schema."
-        );
-      }
-
-      if (
-        !playerSeason ||
-        playerSeason.evidenceType !==
-          "weekly-sage-player-season"
-      ) {
-        throw new Error(
-          "Unexpected player-season schema."
-        );
-      }
-
-      const gamesUsed =
-        num(
-          playerSeason.gamesUsed
-        );
-
-      const roleMetrics =
-        components.role &&
-        Array.isArray(
-          components.role.components
-        )
-          ? components.role.components
-          : [];
-
-      const findRoleMetric =
-        metric =>
-          roleMetrics.find(
-            item =>
-              item.metric === metric
-          );
-
-      const opportunityMetric =
-        findRoleMetric(
-          "opportunitiesPerGame"
-        );
-
-      const snapMetric =
-        findRoleMetric(
-          "offensiveSnapPct"
-        );
-
-      const opportunitiesPerGame =
-        opportunityMetric
-          ? num(
-              opportunityMetric.value
-            )
-          : num(
-              playerSeason
-                .usageProfile &&
-              (
-                num(
-                  playerSeason
-                    .usageProfile
-                    .carriesPerGame
-                ) +
-                num(
-                  playerSeason
-                    .usageProfile
-                    .targetsPerGame
-                )
-              )
-            );
-
-      const offensiveSnapPct =
-        snapMetric
-          ? num(
-              snapMetric.value
-            )
-          : num(
-              playerSeason
-                .usageProfile &&
-              playerSeason
-                .usageProfile
-                .offensiveSnapPct
-            );
-
-      const roleGamesWeight =
-        roleGamesConfidence(
-          gamesUsed
-        );
-
-      const roleQualityWeight =
-        roleSampleQuality({
-          opportunitiesPerGame,
-          offensiveSnapPct
-        });
-
-      /*
-        Games are the dominant confidence factor.
-
-        Sample quality can modestly reduce confidence when the
-        player has not established a substantial role.
-      */
-      const roleConfidence =
-        round(
-          clamp(
-            roleGamesWeight *
-            roleQualityWeight,
-            0,
-            1
-          ),
-          3
-        );
-
-      const productionGamesWeight =
-        productionGamesConfidence(
-          gamesUsed
-        );
-
-      const productionQualityWeight =
-        productionSampleQuality();
-
-      const productionConfidence =
-        round(
-          clamp(
-            productionGamesWeight *
-            productionQualityWeight,
-            0,
-            1
-          ),
-          3
-        );
-
-      const rawRoleScore =
-        num(
-          components.role &&
-          components.role.score
-        );
-
-      const rawProductionScore =
-        num(
-          components.production &&
-          components.production.score
-        );
-
-      const adjustedRoleScore =
-        confidenceAdjustedScore(
-          rawRoleScore,
-          roleConfidence
-        );
-
-      const adjustedProductionScore =
-        confidenceAdjustedScore(
-          rawProductionScore,
-          productionConfidence
-        );
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-rb-confidence",
-
-          schemaVersion: 1,
-
-          generatedAt:
-            new Date().toISOString(),
-
-          season,
-
-          targetWeek: week,
-
-          seasonType,
-
-          player:
-            components.player,
-
-          noLookAhead:
-            playerSeason.noLookAhead,
-
-          philosophy: {
-            principle:
-              "Score what the evidence says. Weight how much SAGE trusts the evidence.",
-
-            role:
-              "Role stabilizes faster because carries, targets, opportunities, and snap share are directly observable.",
-
-            production:
-              "Production stabilizes more slowly because efficiency, touchdowns, and explosive plays are more volatile in small samples.",
-
-            baseline:
-              50,
-
-            important:
-              "Confidence does not alter the raw component scores. It creates separate confidence-adjusted scores for downstream final composition."
-          },
-
-          sample: {
-            gamesUsed,
-
-            weeksIncluded:
-              playerSeason
-                .noLookAhead &&
-              Array.isArray(
-                playerSeason
-                  .noLookAhead
-                  .weeksIncluded
-              )
-                ? playerSeason
-                    .noLookAhead
-                    .weeksIncluded
-                : (
-                    playerSeason
-                      .noLookAhead &&
-                    Array.isArray(
-                      playerSeason
-                        .noLookAhead
-                        .scheduleWeeksQueried
-                    )
-                      ? playerSeason
-                          .noLookAhead
-                          .scheduleWeeksQueried
-                      : []
-                  ),
-
-            opportunitiesPerGame:
-              round(
-                opportunitiesPerGame
-              ),
-
-            offensiveSnapPct:
-              round(
-                offensiveSnapPct,
-                1
-              )
-          },
-
-          role: {
-            rawScore:
-              rawRoleScore,
-
-            confidence: {
-              weight:
-                roleConfidence,
-
-              label:
-                confidenceLabel(
-                  roleConfidence
-                ),
-
-              gamesWeight:
-                roleGamesWeight,
-
-              sampleQualityWeight:
-                roleQualityWeight
-            },
-
-            adjustedScore:
-              adjustedRoleScore,
-
-            regressionToBaseline:
-              round(
-                rawRoleScore -
-                adjustedRoleScore,
-                1
-              )
-          },
-
-          production: {
-            rawScore:
-              rawProductionScore,
-
-            confidence: {
-              weight:
-                productionConfidence,
-
-              label:
-                confidenceLabel(
-                  productionConfidence
-                ),
-
-              gamesWeight:
-                productionGamesWeight,
-
-              sampleQualityWeight:
-                productionQualityWeight
-            },
-
-            adjustedScore:
-              adjustedProductionScore,
-
-            regressionToBaseline:
-              round(
-                rawProductionScore -
-                adjustedProductionScore,
-                1
-              )
-          },
-
-          matchup: {
-            confidenceSource:
-              "weekly-sage matchup layer",
-
-            important:
-              "Matchup confidence is not recalculated here."
-          },
-
-          scoringReadiness: {
-            rawComponentScoresPreserved:
-              true,
-
-            confidenceLayerReady:
-              true,
-
-            readyForFinalComposition:
-              true
-          },
-
-          provenance: {
-            componentScores:
-              "weekly-sage-rb-component-scores",
-
-            sampleEvidence:
-              "weekly-sage-player-season",
-
-            confidence:
-              "weekly-sage-rb-confidence"
-          }
-        },
-
+        body,
         CACHE_CONTROL
       );
     } catch (error) {
