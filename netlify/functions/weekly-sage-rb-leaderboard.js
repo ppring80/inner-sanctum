@@ -38,6 +38,18 @@ const {
   "@netlify/blobs"
 );
 
+const {
+  buildRbFinalScore
+} = require(
+  "./weekly-sage-rb-final-score"
+);
+
+const {
+  buildMatchupDefense
+} = require(
+  "./weekly-sage-matchup-defense"
+);
+
 const DEFAULT_SEASON_TYPE = "reg";
 
 const CACHE_CONTROL =
@@ -48,6 +60,9 @@ const SNAPSHOT_FUNCTION =
 
 const RB_SNAPSHOT_STORE =
   "rb-snapshot";
+
+const WEEKLY_SCHEDULE_STORE =
+  "weekly-sage-schedule";
 
 const FINAL_SCORE_FUNCTION =
   "weekly-sage-rb-final-score";
@@ -404,6 +419,156 @@ cached =
   }
 
   return cached;
+}
+
+/*
+  Read the target-week schedule from the shared Weekly SAGE Blob cache.
+
+  This is deliberately cache-only. A customer leaderboard request must
+  never rebuild schedule evidence or call Tank01. The scheduled/manual
+  refresh-weekly-sage-schedule writer owns that work.
+*/
+async function fetchWeeklySchedule({
+  season,
+  week,
+  seasonType
+}) {
+  const key =
+    `week:${season}:${week}:${seasonType}`;
+
+  let cached = null;
+
+  try {
+    const store =
+      getStore({
+        name:
+          WEEKLY_SCHEDULE_STORE
+      });
+
+    cached =
+      await store.get(
+        key,
+        {
+          type: "json"
+        }
+      );
+  } catch (error) {
+    const err =
+      new Error(
+        "Weekly SAGE schedule cache could not be read."
+      );
+    err.statusCode = 503;
+    err.detail = error && error.message;
+    throw err;
+  }
+
+  if (
+    !cached ||
+    cached.evidenceType !==
+      "weekly-sage-schedule"
+  ) {
+    const err =
+      new Error(
+        `No cached Weekly SAGE schedule found for ${key}. Run refresh-weekly-sage-schedule first.`
+      );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  if (
+    String(cached.season) !==
+      String(season) ||
+    Number(cached.targetWeek ?? cached.week) !==
+      Number(week) ||
+    String(
+      cached.seasonType ||
+      DEFAULT_SEASON_TYPE
+    ) !== String(seasonType)
+  ) {
+    const err =
+      new Error(
+        `Cached Weekly SAGE schedule did not match requested ${key}.`
+      );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  return cached;
+}
+
+/*
+  Production scoring wrapper.
+
+  The old leaderboard made one HTTP request to
+  weekly-sage-rb-final-score for every eligible RB. This wrapper calls
+  the exported final-score builder in-process and passes the shared
+  evidence that was loaded once for the whole leaderboard build.
+
+  No per-player HTTP self-fetch occurs here.
+*/
+async function buildFinalScoreResult({
+  baseUrl,
+  season,
+  week,
+  seasonType,
+  playerID,
+  prebuiltSnapshot,
+  prebuiltSchedule,
+  prebuiltMatchupDefense
+}) {
+  try {
+    const data =
+      await buildRbFinalScore({
+        baseUrl,
+        season,
+        week,
+        seasonType,
+        playerID,
+        prebuiltSnapshot,
+        prebuiltSchedule,
+        prebuiltMatchupDefense
+      });
+
+    if (
+      !data ||
+      data.evidenceType !==
+        "weekly-sage-rb-final-score"
+    ) {
+      return {
+        ok: false,
+        status: 502,
+        data: {
+          error:
+            "Unexpected final RB score schema."
+        }
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      data
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status:
+        Number(
+          error &&
+          (
+            error.rbFinalScoreStatusCode ||
+            error.statusCode ||
+            error.status
+          )
+        ) || 502,
+      data: {
+        error:
+          error && error.message
+            ? error.message
+            : "Unknown scoring failure."
+      }
+    };
+  }
 }
 
 /*
@@ -1035,19 +1200,48 @@ exports.handler =
       /*
         STEP 3
         ------
-        Run final score pipeline for each eligible snapshot RB.
+        Load shared target-week evidence ONCE, then run the final-score
+        builder in-process for each eligible snapshot RB.
+
+        Schedule is cache-only. Matchup-defense is built once for the
+        whole league; its deployed defense-season dependency is Blob-only.
+        Each player then receives the same prebuilt snapshot, schedule,
+        and matchup-defense objects by reference.
       */
+      const [
+        prebuiltSchedule,
+        prebuiltMatchupDefense
+      ] =
+        await Promise.all([
+          fetchWeeklySchedule({
+            season,
+            week,
+            seasonType
+          }),
+
+          buildMatchupDefense({
+            baseUrl,
+            season,
+            week,
+            seasonType
+          })
+        ]);
+
       const results =
         await Promise.all(
           players.map(
             player =>
-              fetchFinalScore({
+              buildFinalScoreResult({
                 baseUrl,
                 season,
                 week,
                 seasonType,
                 playerID:
-                  player.playerID
+                  player.playerID,
+                prebuiltSnapshot:
+                  snapshot,
+                prebuiltSchedule,
+                prebuiltMatchupDefense
               })
           )
         );
@@ -1200,10 +1394,19 @@ exports.handler =
               "weekly-sage-rb-snapshot",
 
             playerScoreSource:
-              "weekly-sage-rb-final-score",
+              "weekly-sage-rb-final-score in-process builder",
+
+            sharedScheduleSource:
+              "weekly-sage-schedule Blob cache",
+
+            sharedMatchupDefenseSource:
+              "weekly-sage-matchup-defense in-process builder",
 
             populationRebuiltByLeaderboard:
               false,
+
+            perPlayerFinalScoreHttpCalls:
+              0,
 
             directTank01Calls:
               0
