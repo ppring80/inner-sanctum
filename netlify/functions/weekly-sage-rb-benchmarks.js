@@ -707,6 +707,342 @@ function jsonResponse(
   };
 }
 
+function benchmarkError(
+  statusCode,
+  message,
+  details = {}
+) {
+  const error =
+    new Error(message);
+
+  error.statusCode =
+    statusCode;
+
+  error.responseBody = {
+    error:
+      message,
+
+    ...details
+  };
+
+  return error;
+}
+
+async function buildRbBenchmarks({
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  playerID = "",
+  playerName = "",
+  prebuiltSnapshot = null,
+  baseUrl = null
+}) {
+  const normalizedSeason =
+    String(
+      season ||
+      new Date()
+        .getFullYear()
+    );
+
+  const normalizedWeek =
+    Number(week);
+
+  const normalizedPlayerID =
+    String(
+      playerID ||
+      ""
+    ).trim();
+
+  const normalizedPlayerName =
+    String(
+      playerName ||
+      ""
+    ).trim();
+
+  const normalizedSeasonType =
+    String(
+      seasonType ||
+      DEFAULT_SEASON_TYPE
+    );
+
+  if (
+    !Number.isInteger(
+      normalizedWeek
+    ) ||
+    normalizedWeek < 2 ||
+    normalizedWeek > 18
+  ) {
+    throw benchmarkError(
+      400,
+      "week must be an integer from 2 through 18."
+    );
+  }
+
+  if (
+    !normalizedPlayerID &&
+    !normalizedPlayerName
+  ) {
+    throw benchmarkError(
+      400,
+      "playerID or playerName is required."
+    );
+  }
+
+  let snapshot =
+    prebuiltSnapshot;
+
+  if (!snapshot) {
+    if (!baseUrl) {
+      throw new Error(
+        "baseUrl is required when prebuiltSnapshot is not provided."
+      );
+    }
+
+    /*
+      Diagnostic HTTP path only.
+
+      Production callers can pass prebuiltSnapshot and bypass this
+      network request entirely.
+    */
+    snapshot =
+      await fetchSnapshot({
+        baseUrl,
+        season:
+          normalizedSeason,
+        week:
+          normalizedWeek,
+        seasonType:
+          normalizedSeasonType
+      });
+  }
+
+  if (
+    !snapshot ||
+    snapshot.evidenceType !==
+      "weekly-sage-rb-snapshot"
+  ) {
+    throw new Error(
+      "Unexpected RB snapshot schema."
+    );
+  }
+
+  const population =
+    Array.isArray(
+      snapshot.population
+    )
+      ? snapshot.population
+      : [];
+
+  if (!population.length) {
+    throw benchmarkError(
+      422,
+      "RB snapshot contains no eligible peer population.",
+      {
+        snapshotKey:
+          snapshot.snapshotKey ||
+          null
+      }
+    );
+  }
+
+  const sortedPopulation =
+    sortPopulation(
+      population
+    );
+
+  const resolved =
+    findTarget(
+      sortedPopulation,
+      normalizedPlayerID,
+      normalizedPlayerName
+    );
+
+  const target =
+    resolved.target;
+
+  if (!target) {
+    throw benchmarkError(
+      404,
+      "Target RB was not found in the cached eligible RB snapshot.",
+      {
+        playerID:
+          normalizedPlayerID ||
+          null,
+
+        playerName:
+          normalizedPlayerName ||
+          null,
+
+        snapshotKey:
+          snapshot.snapshotKey ||
+          null,
+
+        populationSize:
+          sortedPopulation.length,
+
+        note:
+          "The target may be absent from Tank01 getNFLPlayerList or may not meet current RB snapshot eligibility rules."
+      }
+    );
+  }
+
+  const benchmarks =
+    buildTargetBenchmarks(
+      sortedPopulation,
+      target
+    );
+
+  const targetPopulationIndex =
+    sortedPopulation.findIndex(
+      player =>
+        String(
+          player.playerID
+        ) ===
+        String(
+          target.playerID
+        )
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-rb-benchmarks",
+
+    schemaVersion:
+      3,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season:
+      normalizedSeason,
+
+    targetWeek:
+      normalizedWeek,
+
+    seasonType:
+      normalizedSeasonType,
+
+    noLookAhead:
+      snapshot.noLookAhead,
+
+    architecture: {
+      source:
+        "weekly-sage-rb-snapshot",
+
+      snapshotKey:
+        snapshot.snapshotKey ||
+        null,
+
+      snapshotGeneratedAt:
+        snapshot.generatedAt ||
+        null,
+
+      tank01CallsFromThisFunction:
+        0,
+
+      important:
+        "This benchmark request reuses the weekly RB snapshot and does not rebuild the league population."
+    },
+
+    methodology: {
+      position:
+        "RB",
+
+      populationDefinition:
+        "Eligible running backs from the cached Weekly SAGE RB snapshot.",
+
+      percentileMethod:
+        "midrank",
+
+      percentileFormula:
+        "((players below + 0.5 * players tied) / population size) * 100",
+
+      important:
+        "These percentiles describe the cached peer population. Role and Production component scoring remains downstream."
+    },
+
+    populationSummary: {
+      eligibleRBPopulation:
+        sortedPopulation.length,
+
+      snapshotCandidates:
+        snapshot
+          .populationSummary
+          ? snapshot
+              .populationSummary
+              .rbCandidatesDiscovered
+          : null,
+
+      snapshotFailures:
+        snapshot
+          .populationSummary
+          ? snapshot
+              .populationSummary
+              .playerGameFailures
+          : null
+    },
+
+    targetResolution: {
+      requestedPlayerID:
+        normalizedPlayerID ||
+        null,
+
+      requestedPlayerName:
+        normalizedPlayerName ||
+        null,
+
+      resolvedBy:
+        resolved.resolution,
+
+      resolvedPlayerID:
+        target.playerID,
+
+      resolvedName:
+        target.name
+    },
+
+    target: {
+      ...target,
+
+      populationRankByOpportunities:
+        targetPopulationIndex >= 0
+          ? targetPopulationIndex + 1
+          : null,
+
+      populationSize:
+        sortedPopulation.length
+    },
+
+    benchmarks,
+
+    nextStep: {
+      roleScore:
+        null,
+
+      productionScore:
+        null,
+
+      finalSageScore:
+        null,
+
+      reason:
+        "Downstream component scoring can now consume this benchmark result without triggering an RB population rebuild."
+    },
+
+    provenance: {
+      benchmarkPopulation:
+        "weekly-sage-rb-snapshot",
+
+      tank01PopulationRebuild:
+        false
+    }
+  };
+}
+
+exports.buildRbBenchmarks =
+  buildRbBenchmarks;
+
 exports.handler =
   async function (event) {
     if (
@@ -791,239 +1127,36 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      /*
-        One cached snapshot request.
-
-        NO Tank01 work happens in this function.
-      */
-      const snapshot =
-        await fetchSnapshot({
-          baseUrl,
+      const result =
+        await buildRbBenchmarks({
           season,
           week,
-          seasonType
-        });
-
-      const population =
-        Array.isArray(
-          snapshot.population
-        )
-          ? snapshot.population
-          : [];
-
-      if (!population.length) {
-        return jsonResponse(
-          422,
-          {
-            error:
-              "RB snapshot contains no eligible peer population.",
-
-            snapshotKey:
-              snapshot.snapshotKey ||
-              null
-          }
-        );
-      }
-
-      const sortedPopulation =
-        sortPopulation(
-          population
-        );
-
-      const resolved =
-        findTarget(
-          sortedPopulation,
+          seasonType,
           playerID,
-          playerName
-        );
-
-      const target =
-        resolved.target;
-
-      if (!target) {
-        return jsonResponse(
-          404,
-          {
-            error:
-              "Target RB was not found in the cached eligible RB snapshot.",
-
-            playerID:
-              playerID ||
-              null,
-
-            playerName:
-              playerName ||
-              null,
-
-            snapshotKey:
-              snapshot.snapshotKey ||
-              null,
-
-            populationSize:
-              sortedPopulation.length,
-
-            note:
-              "The target may be absent from Tank01 getNFLPlayerList or may not meet current RB snapshot eligibility rules."
-          }
-        );
-      }
-
-      const benchmarks =
-        buildTargetBenchmarks(
-          sortedPopulation,
-          target
-        );
-
-      const targetPopulationIndex =
-        sortedPopulation.findIndex(
-          player =>
-            String(
-              player.playerID
-            ) ===
-            String(
-              target.playerID
-            )
-        );
+          playerName,
+          baseUrl
+        });
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-rb-benchmarks",
-
-          schemaVersion:
-            3,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          targetWeek:
-            week,
-
-          seasonType,
-
-          noLookAhead:
-            snapshot.noLookAhead,
-
-          architecture: {
-            source:
-              "weekly-sage-rb-snapshot",
-
-            snapshotKey:
-              snapshot.snapshotKey ||
-              null,
-
-            snapshotGeneratedAt:
-              snapshot.generatedAt ||
-              null,
-
-            tank01CallsFromThisFunction:
-              0,
-
-            important:
-              "This benchmark request reuses the weekly RB snapshot and does not rebuild the league population."
-          },
-
-          methodology: {
-            position:
-              "RB",
-
-            populationDefinition:
-              "Eligible running backs from the cached Weekly SAGE RB snapshot.",
-
-            percentileMethod:
-              "midrank",
-
-            percentileFormula:
-              "((players below + 0.5 * players tied) / population size) * 100",
-
-            important:
-              "These percentiles describe the cached peer population. Role and Production component scoring remains downstream."
-          },
-
-          populationSummary: {
-            eligibleRBPopulation:
-              sortedPopulation.length,
-
-            snapshotCandidates:
-              snapshot
-                .populationSummary
-                ? snapshot
-                    .populationSummary
-                    .rbCandidatesDiscovered
-                : null,
-
-            snapshotFailures:
-              snapshot
-                .populationSummary
-                ? snapshot
-                    .populationSummary
-                    .playerGameFailures
-                : null
-          },
-
-          targetResolution: {
-            requestedPlayerID:
-              playerID ||
-              null,
-
-            requestedPlayerName:
-              playerName ||
-              null,
-
-            resolvedBy:
-              resolved.resolution,
-
-            resolvedPlayerID:
-              target.playerID,
-
-            resolvedName:
-              target.name
-          },
-
-          target: {
-            ...target,
-
-            populationRankByOpportunities:
-              targetPopulationIndex >= 0
-                ? targetPopulationIndex + 1
-                : null,
-
-            populationSize:
-              sortedPopulation.length
-          },
-
-          benchmarks,
-
-          nextStep: {
-            roleScore:
-              null,
-
-            productionScore:
-              null,
-
-            finalSageScore:
-              null,
-
-            reason:
-              "Downstream component scoring can now consume this benchmark result without triggering an RB population rebuild."
-          },
-
-          provenance: {
-            benchmarkPopulation:
-              "weekly-sage-rb-snapshot",
-
-            tank01PopulationRebuild:
-              false
-          }
-        },
-
+        result,
         CACHE_CONTROL
       );
     } catch (error) {
+      if (
+        error &&
+        error.statusCode
+      ) {
+        return jsonResponse(
+          error.statusCode,
+          error.responseBody ||
+          {
+            error:
+              error.message
+          }
+        );
+      }
+
       console.error(
         "weekly-sage-rb-benchmarks failed:",
         error
