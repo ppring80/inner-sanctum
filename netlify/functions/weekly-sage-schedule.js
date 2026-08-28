@@ -36,6 +36,17 @@
 // Example:
 // /.netlify/functions/weekly-sage-schedule?season=2025&week=8
 //
+// PRODUCTION WIRING
+// -----------------
+// buildWeeklySchedule() contains the existing schedule-evidence build
+// and is exported so the scheduled Blob cache writer can call it
+// IN PROCESS.
+//
+// The HTTP handler below uses that same builder.
+//
+// No schedule methodology, normalization, bye classification,
+// or Tank01 endpoint has been changed.
+//
 // ═══════════════════════════════════════════════════════════════════════
 
 const TANK01_HOST =
@@ -359,6 +370,125 @@ function jsonResponse(
   };
 }
 
+/*
+  Build the complete normalized schedule evidence object.
+
+  This is the exact computation previously performed directly
+  inside exports.handler.
+
+  It is extracted only so the scheduled cache writer can call
+  the same production logic in-process without an HTTP self-fetch.
+*/
+async function buildWeeklySchedule({
+  season,
+  week,
+  seasonType
+}) {
+  const result =
+    await tank01Fetch(
+      "getNFLGamesForWeek",
+      {
+        week:
+          String(week),
+
+        season:
+          String(season),
+
+        seasonType
+      }
+    );
+
+  const rawGames =
+    Array.isArray(
+      result.body
+    )
+      ? result.body
+      : [];
+
+  const games =
+    rawGames.map(
+      normalizeGame
+    );
+
+  /*
+    Derive weekly team-state once here so every downstream
+    SAGE layer consumes the same answer.
+  */
+  const activeTeams =
+    buildActiveTeams(
+      games
+    );
+
+  const byeTeams =
+    buildByeTeams(
+      activeTeams,
+      seasonType
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-schedule",
+
+    schemaVersion:
+      2,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season,
+
+    week,
+
+    seasonType,
+
+    gamesReturned:
+      games.length,
+
+    activeTeamsReturned:
+      activeTeams.length,
+
+    byeTeamsReturned:
+      byeTeams.length,
+
+    /*
+      True only for regular-season requests because that
+      is where absence from the weekly NFL schedule means
+      a normal scheduled bye.
+    */
+    byeClassificationAvailable:
+      seasonType === "reg",
+
+    /*
+      Helpful explanation for downstream consumers.
+    */
+    teamState: {
+      rule:
+        seasonType === "reg"
+          ? "Teams appearing in the requested week's games are active. NFL teams absent from the complete regular-season weekly schedule are classified as bye teams."
+          : "Bye classification is not applied outside regular-season requests.",
+
+      nflTeamCount:
+        NFL_TEAMS.length,
+
+      scheduledTeamCount:
+        activeTeams.length,
+
+      byeTeamCount:
+        byeTeams.length
+    },
+
+    activeTeams,
+
+    byeTeams,
+
+    games
+  };
+}
+
+exports.buildWeeklySchedule =
+  buildWeeklySchedule;
+
 exports.handler =
   async function (event) {
     if (
@@ -449,110 +579,16 @@ exports.handler =
     }
 
     try {
-      const result =
-        await tank01Fetch(
-          "getNFLGamesForWeek",
-          {
-            week:
-              String(week),
-
-            season:
-              String(season),
-
-            seasonType
-          }
-        );
-
-      const rawGames =
-        Array.isArray(
-          result.body
-        )
-          ? result.body
-          : [];
-
-      const games =
-        rawGames.map(
-          normalizeGame
-        );
-
-      /*
-        NEW:
-        Derive weekly team-state once here so every downstream
-        SAGE layer consumes the same answer.
-      */
-      const activeTeams =
-        buildActiveTeams(
-          games
-        );
-
-      const byeTeams =
-        buildByeTeams(
-          activeTeams,
+      const schedule =
+        await buildWeeklySchedule({
+          season,
+          week,
           seasonType
-        );
+        });
 
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-schedule",
-
-          schemaVersion:
-            2,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          week,
-
-          seasonType,
-
-          gamesReturned:
-            games.length,
-
-          activeTeamsReturned:
-            activeTeams.length,
-
-          byeTeamsReturned:
-            byeTeams.length,
-
-          /*
-            True only for regular-season requests because that
-            is where absence from the weekly NFL schedule means
-            a normal scheduled bye.
-          */
-          byeClassificationAvailable:
-            seasonType === "reg",
-
-          /*
-            Helpful explanation for downstream consumers.
-          */
-          teamState: {
-            rule:
-              seasonType === "reg"
-                ? "Teams appearing in the requested week's games are active. NFL teams absent from the complete regular-season weekly schedule are classified as bye teams."
-                : "Bye classification is not applied outside regular-season requests.",
-
-            nflTeamCount:
-              NFL_TEAMS.length,
-
-            scheduledTeamCount:
-              activeTeams.length,
-
-            byeTeamCount:
-              byeTeams.length
-          },
-
-          activeTeams,
-
-          byeTeams,
-
-          games
-        },
-
+        schedule,
         CACHE_CONTROL
       );
     } catch (error) {
