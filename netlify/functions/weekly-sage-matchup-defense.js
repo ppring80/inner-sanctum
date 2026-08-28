@@ -1001,6 +1001,304 @@ function jsonResponse(
   };
 }
 
+async function buildMatchupDefense({
+  baseUrl,
+  season,
+  week,
+  seasonType = DEFAULT_SEASON_TYPE,
+  prebuiltDefenseSeason = null
+}) {
+  const normalizedSeason =
+    String(
+      season ||
+      new Date().getFullYear()
+    );
+
+  const normalizedWeek =
+    Number(week);
+
+  const normalizedSeasonType =
+    String(
+      seasonType ||
+      DEFAULT_SEASON_TYPE
+    );
+
+  if (
+    !Number.isInteger(normalizedWeek) ||
+    normalizedWeek < 1 ||
+    normalizedWeek > 18
+  ) {
+    throw new Error(
+      "week must be an integer from 1 through 18."
+    );
+  }
+
+  if (
+    ![
+      "reg",
+      "pre",
+      "post",
+      "all"
+    ].includes(normalizedSeasonType)
+  ) {
+    throw new Error(
+      "seasonType must be reg, pre, post, or all."
+    );
+  }
+
+  const evidence =
+    prebuiltDefenseSeason ||
+    await fetchSeasonEvidence({
+      baseUrl,
+      season:
+        normalizedSeason,
+      week:
+        normalizedWeek,
+      seasonType:
+        normalizedSeasonType
+    });
+
+  if (
+    !evidence ||
+    evidence.evidenceType !==
+      "weekly-sage-defense-season"
+  ) {
+    throw new Error(
+      "Unexpected season evidence schema."
+    );
+  }
+
+  const defenses =
+    evidence.defenses ||
+    {};
+
+  if (
+    Object.keys(defenses)
+      .length === 0
+  ) {
+    return {
+      evidenceType:
+        "weekly-sage-matchup-defense",
+
+      schemaVersion:
+        1,
+
+      generatedAt:
+        new Date()
+          .toISOString(),
+
+      season:
+        normalizedSeason,
+
+      targetWeek:
+        normalizedWeek,
+
+      seasonType:
+        normalizedSeasonType,
+
+      weeksIncluded:
+        evidence.weeksIncluded ||
+        [],
+
+      methodology: {
+        basis:
+          "league-relative percentile scoring",
+
+        earlySeasonAdjustment:
+          "low-sample scores are shrunk toward league-neutral 50",
+
+        positiveMeaning:
+          "favorable for the offensive fantasy player"
+      },
+
+      matchups:
+        {}
+    };
+  }
+
+  const runLeagueValues =
+    buildLeagueMetricValues(
+      defenses,
+      RUN_METRICS
+    );
+
+  const passLeagueValues =
+    buildLeagueMetricValues(
+      defenses,
+      PASS_METRICS
+    );
+
+  const matchups = {};
+
+  Object
+    .keys(defenses)
+    .sort()
+    .forEach(
+      function (team) {
+        const defense =
+          defenses[team];
+
+        const run =
+          buildProfileScore({
+            defense,
+            metrics:
+              RUN_METRICS,
+            leagueMetricValues:
+              runLeagueValues
+          });
+
+        const pass =
+          buildProfileScore({
+            defense,
+            metrics:
+              PASS_METRICS,
+            leagueMetricValues:
+              passLeagueValues
+          });
+
+        /*
+          Version 1 intentionally keeps receiving aligned with the
+          overall pass-defense signal.
+
+          Once our Tank01 positional evidence layer is complete,
+          WR and TE will receive their own position-specific
+          defensive profiles.
+        */
+        const receiving = {
+          ...pass,
+          source:
+            "overall_pass_defense_v1"
+        };
+
+        matchups[team] = {
+          team,
+
+          games:
+            numberValue(
+              defense.games
+            ),
+
+          run,
+
+          pass,
+
+          receiving,
+
+          explanation:
+            buildExplanation({
+              team,
+              run,
+              pass,
+              defense
+            }),
+
+          rawEvidence: {
+            runDefense:
+              defense.runDefense,
+
+            passDefense:
+              defense.passDefense,
+
+            perGame:
+              defense.perGame
+          }
+        };
+      }
+    );
+
+  return {
+    evidenceType:
+      "weekly-sage-matchup-defense",
+
+    schemaVersion:
+      1,
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    season:
+      normalizedSeason,
+
+    targetWeek:
+      normalizedWeek,
+
+    seasonType:
+      normalizedSeasonType,
+
+    weeksIncluded:
+      evidence.weeksIncluded ||
+      [],
+
+    methodology: {
+      basis:
+        "league-relative percentile scoring",
+
+      runWeights: {
+        rushYardsAllowedPerGame:
+          0.40,
+
+        yardsPerCarryAllowed:
+          0.30,
+
+        rushTDAllowedPerGame:
+          0.20,
+
+        rushAttemptsAllowedPerGame:
+          0.10
+      },
+
+      passWeights: {
+        passYardsAllowedPerGame:
+          0.35,
+
+        yardsPerAttemptAllowed:
+          0.25,
+
+        passTDAllowedPerGame:
+          0.20,
+
+        completionPctAllowed:
+          0.10,
+
+        sacksPerGame:
+          0.05,
+
+        interceptionsPerGame:
+          0.05
+      },
+
+      thresholds: {
+        strongPositive:
+          "80-100",
+
+        positive:
+          "60-79.9",
+
+        neutral:
+          "40.1-59.9",
+
+        negative:
+          "20.1-40",
+
+        strongNegative:
+          "0-20"
+      },
+
+      earlySeasonAdjustment:
+        "Scores from fewer than four games are shrunk toward league-neutral 50.",
+
+      positiveMeaning:
+        "A higher score means a more favorable matchup for the offensive fantasy player."
+    },
+
+    matchups
+  };
+}
+
+exports.buildMatchupDefense =
+  buildMatchupDefense;
+
 exports.handler =
   async function (event) {
     if (
@@ -1072,244 +1370,17 @@ exports.handler =
       const baseUrl =
         getBaseUrl(event);
 
-      const evidence =
-        await fetchSeasonEvidence({
+      const body =
+        await buildMatchupDefense({
           baseUrl,
           season,
           week,
           seasonType
         });
 
-      const defenses =
-        evidence.defenses ||
-        {};
-
-      if (
-        Object.keys(defenses)
-          .length === 0
-      ) {
-        return jsonResponse(
-          200,
-          {
-            evidenceType:
-              "weekly-sage-matchup-defense",
-
-            schemaVersion:
-              1,
-
-            generatedAt:
-              new Date()
-                .toISOString(),
-
-            season,
-
-            targetWeek:
-              week,
-
-            seasonType,
-
-            weeksIncluded:
-              evidence.weeksIncluded ||
-              [],
-
-            methodology: {
-              basis:
-                "league-relative percentile scoring",
-
-              earlySeasonAdjustment:
-                "low-sample scores are shrunk toward league-neutral 50",
-
-              positiveMeaning:
-                "favorable for the offensive fantasy player"
-            },
-
-            matchups:
-              {}
-          },
-
-          CACHE_CONTROL
-        );
-      }
-
-      const runLeagueValues =
-        buildLeagueMetricValues(
-          defenses,
-          RUN_METRICS
-        );
-
-      const passLeagueValues =
-        buildLeagueMetricValues(
-          defenses,
-          PASS_METRICS
-        );
-
-      const matchups = {};
-
-      Object
-        .keys(defenses)
-        .sort()
-        .forEach(
-          function (team) {
-            const defense =
-              defenses[team];
-
-            const run =
-              buildProfileScore({
-                defense,
-                metrics:
-                  RUN_METRICS,
-                leagueMetricValues:
-                  runLeagueValues
-              });
-
-            const pass =
-              buildProfileScore({
-                defense,
-                metrics:
-                  PASS_METRICS,
-                leagueMetricValues:
-                  passLeagueValues
-              });
-
-            /*
-              Version 1 intentionally keeps receiving aligned with the
-              overall pass-defense signal.
-
-              Once our Tank01 positional evidence layer is complete,
-              WR and TE will receive their own position-specific
-              defensive profiles.
-            */
-            const receiving = {
-              ...pass,
-              source:
-                "overall_pass_defense_v1"
-            };
-
-            matchups[team] = {
-              team,
-
-              games:
-                numberValue(
-                  defense.games
-                ),
-
-              run,
-
-              pass,
-
-              receiving,
-
-              explanation:
-                buildExplanation({
-                  team,
-                  run,
-                  pass,
-                  defense
-                }),
-
-              rawEvidence: {
-                runDefense:
-                  defense.runDefense,
-
-                passDefense:
-                  defense.passDefense,
-
-                perGame:
-                  defense.perGame
-              }
-            };
-          }
-        );
-
       return jsonResponse(
         200,
-        {
-          evidenceType:
-            "weekly-sage-matchup-defense",
-
-          schemaVersion:
-            1,
-
-          generatedAt:
-            new Date()
-              .toISOString(),
-
-          season,
-
-          targetWeek:
-            week,
-
-          seasonType,
-
-          weeksIncluded:
-            evidence.weeksIncluded ||
-            [],
-
-          methodology: {
-            basis:
-              "league-relative percentile scoring",
-
-            runWeights: {
-              rushYardsAllowedPerGame:
-                0.40,
-
-              yardsPerCarryAllowed:
-                0.30,
-
-              rushTDAllowedPerGame:
-                0.20,
-
-              rushAttemptsAllowedPerGame:
-                0.10
-            },
-
-            passWeights: {
-              passYardsAllowedPerGame:
-                0.35,
-
-              yardsPerAttemptAllowed:
-                0.25,
-
-              passTDAllowedPerGame:
-                0.20,
-
-              completionPctAllowed:
-                0.10,
-
-              sacksPerGame:
-                0.05,
-
-              interceptionsPerGame:
-                0.05
-            },
-
-            thresholds: {
-              strongPositive:
-                "80-100",
-
-              positive:
-                "60-79.9",
-
-              neutral:
-                "40.1-59.9",
-
-              negative:
-                "20.1-40",
-
-              strongNegative:
-                "0-20"
-            },
-
-            earlySeasonAdjustment:
-              "Scores from fewer than four games are shrunk toward league-neutral 50.",
-
-            positiveMeaning:
-              "A higher score means a more favorable matchup for the offensive fantasy player."
-          },
-
-          matchups
-        },
-
+        body,
         CACHE_CONTROL
       );
     } catch (error) {
