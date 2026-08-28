@@ -29,12 +29,17 @@
 // Defensive evidence used for a target SAGE week must come from
 // COMPLETED PRIOR weeks.
 //
-// Therefore, when invoked automatically during target Week W,
-// this writer builds Week W - 1.
+// Therefore, when invoked automatically on Tuesday after Week W
+// completes, this writer caches completed Week W defensive evidence.
+//
+// The automatic resolver uses Tuesday as the production boundary
+// because the Weekly SAGE pipeline runs Tuesday morning after
+// Monday Night Football.
 //
 // Example:
 //
-//   During Week 8 -> cache completed Week 7 defense evidence.
+//   Tuesday after Week 7 completes -> cache completed Week 7 defense
+//   evidence for the upcoming Week 8 SAGE build.
 //
 // Explicit ?week= always wins for historical/manual testing.
 //
@@ -63,10 +68,23 @@ const DEFAULT_SEASON_TYPE =
 const STORE_NAME =
   "weekly-sage-defense";
 
+/*
+  Resolve the Weekly SAGE target week for the Tuesday production
+  pipeline.
+
+  The first Tuesday pipeline after 2026 Week 1 is September 15, 2026.
+  That Tuesday prepares recommendations for Week 2.
+
+  Each following Tuesday advances the target week by one.
+
+  Before that first post-Week-1 Tuesday, return Week 1.
+
+  UPDATE firstWeek2PipelineTuesday for future NFL seasons.
+*/
 function getCurrentNFLWeek() {
-  const seasonStart =
+  const firstWeek2PipelineTuesday =
     new Date(
-      "2026-09-09"
+      "2026-09-15T00:00:00Z"
     );
 
   const now =
@@ -74,7 +92,7 @@ function getCurrentNFLWeek() {
 
   if (
     now <
-    seasonStart
+    firstWeek2PipelineTuesday
   ) {
     return 1;
   }
@@ -83,7 +101,7 @@ function getCurrentNFLWeek() {
     Math.floor(
       (
         now -
-        seasonStart
+        firstWeek2PipelineTuesday
       ) /
       (
         1000 *
@@ -94,13 +112,13 @@ function getCurrentNFLWeek() {
     );
 
   return Math.max(
-    1,
+    2,
     Math.min(
       18,
       Math.floor(
         diffDays /
         7
-      ) + 1
+      ) + 2
     )
   );
 }
@@ -410,6 +428,10 @@ exports.handler =
       Automatic execution caches the most recently completed
       week because that is the newest defensive evidence that
       can safely feed the next SAGE recommendation week.
+
+      getCurrentNFLWeek() is aligned to the Tuesday production
+      pipeline, so currentWeek - 1 is the week that completed
+      the previous night.
     */
     const week =
       query.week
