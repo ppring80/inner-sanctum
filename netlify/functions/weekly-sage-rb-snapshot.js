@@ -1,3 +1,4 @@
+
 // netlify/functions/weekly-sage-rb-snapshot.js
 //
 // WEEKLY SAGE — RB BENCHMARK SNAPSHOT
@@ -1150,6 +1151,13 @@ async function buildRbSnapshot({
   targetWeek,
   seasonType
 }) {
+  const cacheKey =
+    [
+      season,
+      targetWeek,
+      seasonType
+    ].join("|");
+
       /*
         STEP 1
         ------
