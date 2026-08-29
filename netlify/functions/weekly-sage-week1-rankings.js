@@ -156,6 +156,12 @@ const {
   "./weekly-sage-matchup-defense.js"
 );
 
+const {
+  buildWeek1SageTake
+} = require(
+  "./sage-take.js"
+);
+
 const DEFAULT_SEASON_TYPE = "reg";
 
 const PLAYER_DATA_STORE =
@@ -910,6 +916,24 @@ function buildWeek1Positions({
               matchup
                 ? matchup.matchupEvidenceType
                 : null,
+
+            // Deterministic explanation layer -- see sage-take.js.
+            // Read-only against the fields above; never influences
+            // recommendation, rankingScore, or sort order. null on
+            // any failure or lack of usable evidence, in which case
+            // weekly.html falls back to its existing baseline text.
+            sageTake:
+              buildWeek1SageTake({
+                sageConfidenceLabel:
+                  confidenceLabel,
+
+                matchupStrength:
+                  matchup
+                    ? matchup.matchupStrength
+                    : null,
+
+                recommendation
+              }),
 
             baselineEvidenceType:
               "week1-adp-baseline"
