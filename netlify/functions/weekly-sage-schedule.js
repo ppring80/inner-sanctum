@@ -1,353 +1,162 @@
-// netlify/functions/weekly-sage-schedule.js
+// netlify/functions/refresh-weekly-sage-schedule.js
 //
-// WEEKLY SAGE — WEEKLY SCHEDULE EVIDENCE
+// WEEKLY SAGE — SHARED SCHEDULE CACHE WRITER
 //
 // PURPOSE
 // -------
-// Provide one normalized, reusable Weekly SAGE schedule endpoint.
+// Build normalized Weekly SAGE schedule evidence once for a
+// season/week/seasonType and persist the completed result in
+// Netlify Blobs.
 //
-// This function wraps Tank01:
-//   getNFLGamesForWeek
+// The production schedule calculation is NOT duplicated here.
 //
-// It returns scheduled, in-progress, and completed games.
-// That matters because Weekly SAGE must know NEXT WEEK'S opponent
-// before the game has been played.
+// This function calls:
 //
-// REGULAR-SEASON TEAM STATE
-// -------------------------
-// This endpoint also identifies:
+//   weekly-sage-schedule.js
+//     -> buildWeeklySchedule()
 //
-//   activeTeams
-//     Teams appearing in a game during the requested week.
-//
-//   byeTeams
-//     NFL teams not appearing in a game during the requested
-//     regular-season week.
-//
-// This centralizes bye-week knowledge so downstream SAGE
-// functions do not have to infer or hard-code bye logic.
-//
-// It does NOT:
-// - calculate matchup scores
-// - calculate player recommendations
-// - modify weekly.html
-// - call box scores
-//
-// Example:
-// /.netlify/functions/weekly-sage-schedule?season=2025&week=8
-//
-// PRODUCTION WIRING
-// -----------------
-// buildWeeklySchedule() contains the existing schedule-evidence build
-// and is exported so the scheduled Blob cache writer can call it
 // IN PROCESS.
 //
-// The HTTP handler below uses that same builder.
+// MANUAL / HISTORICAL
+// -------------------
+// Explicit requests remain supported:
 //
-// No schedule methodology, normalization, bye classification,
-// or Tank01 endpoint has been changed.
+//   ?season=2025&week=8&seasonType=reg
+//
+// AUTOMATIC WEEK RESOLUTION
+// -------------------------
+// Scheduled Netlify invocations do not provide query parameters.
+//
+// When no explicit week is supplied, this function resolves the
+// current NFL week using the same 2026 season convention already
+// established by the positional snapshot refreshers.
+//
+// IMPORTANT
+// ---------
+// Unlike positional Weekly SAGE snapshots, shared schedule
+// evidence supports Week 1.
+//
+// A Week 2 SAGE build needs Week 1 schedule evidence, so rejecting
+// Week 1 here would make the shared evidence architecture incomplete.
+//
+// COMPLETENESS GATE
+// -----------------
+// A schedule is written only when:
+//
+//   - evidenceType === "weekly-sage-schedule"
+//   - season matches
+//   - week matches
+//   - seasonType matches
+//   - games is an array
+//   - activeTeams is an array
+//   - byeTeams is an array
+//   - gamesReturned matches games.length
+//
+// If validation fails, NOTHING is written.
+//
+// BLOBS
+// -----
+// Store:
+//   weekly-sage-schedule
+//
+// Key:
+//   week:${season}:${week}:${seasonType}
+//
+// Netlify Lambda compatibility requires:
+//
+//   connectLambda(event)
+//
+// before:
+//
+//   getStore()
+//
+// Strong consistency is intentionally NOT requested.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
-const TANK01_HOST =
-  "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
+const {
+  buildWeeklySchedule
+} = require(
+  "./weekly-sage-schedule.js"
+);
 
 const DEFAULT_SEASON_TYPE =
   "reg";
 
-const CACHE_CONTROL =
-  "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
+const STORE_NAME =
+  "weekly-sage-schedule";
 
 /*
-  Canonical NFL team abbreviations.
+  Current NFL week calculator.
 
-  Used only to determine regular-season bye teams.
+  Aligned to the Tuesday Weekly SAGE production pipeline -- the same
+  production convention already established in
+  refresh-weekly-sage-defense.js. The prior anchor/formula here
+  (season-start-based, no Tuesday alignment) rolled its weekly
+  boundary over on Wednesdays, one day after this pipeline's actual
+  Tuesday schedule -- confirmed to incorrectly resolve Week 1 on
+  2026-09-15 (a production Tuesday that needs Week 2) instead of the
+  correct value.
 
-  Keep this list centralized here rather than duplicating
-  bye logic across RB / WR / QB / TE SAGE functions.
+  Before the first Week 2 production Tuesday it returns Week 1.
+
+  From that Tuesday onward it advances one week for every seven days
+  and caps the result at Week 18.
+
+  UPDATE firstWeek2PipelineTuesday for future NFL seasons.
 */
-const NFL_TEAMS = [
-  "ARI",
-  "ATL",
-  "BAL",
-  "BUF",
-  "CAR",
-  "CHI",
-  "CIN",
-  "CLE",
-  "DAL",
-  "DEN",
-  "DET",
-  "GB",
-  "HOU",
-  "IND",
-  "JAX",
-  "KC",
-  "LV",
-  "LAC",
-  "LAR",
-  "MIA",
-  "MIN",
-  "NE",
-  "NO",
-  "NYG",
-  "NYJ",
-  "PHI",
-  "PIT",
-  "SEA",
-  "SF",
-  "TB",
-  "TEN",
-  "WSH"
-];
-
-function tank01Headers() {
-  return {
-    "Content-Type":
-      "application/json",
-
-    "x-rapidapi-host":
-      TANK01_HOST,
-
-    "x-rapidapi-key":
-      process.env.TANK01_API_KEY
-  };
-}
-
-function normalizeTeam(value) {
-  const raw =
-    String(
-      value || ""
-    )
-      .trim()
-      .toUpperCase();
-
-  /*
-    Normalize common alternate abbreviations in case an
-    upstream source uses one of them.
-  */
-  const aliases = {
-    JAC: "JAX",
-    GBP: "GB",
-    KAN: "KC",
-    LVR: "LV",
-    NEP: "NE",
-    NOR: "NO",
-    SFO: "SF",
-    TBB: "TB",
-    WAS: "WSH"
-  };
-
-  return (
-    aliases[raw] ||
-    raw
-  );
-}
-
-async function tank01Fetch(
-  endpoint,
-  params
-) {
-  const query =
-    new URLSearchParams(
-      params || {}
-    ).toString();
-
-  const url =
-    `https://${TANK01_HOST}/${endpoint}` +
-    (
-      query
-        ? `?${query}`
-        : ""
+function getCurrentNFLWeek() {
+  const firstWeek2PipelineTuesday =
+    new Date(
+      "2026-09-15T00:00:00Z"
     );
 
-  const response =
-    await fetch(
-      url,
-      {
-        method: "GET",
+  const now =
+    new Date();
 
-        headers:
-          tank01Headers()
-      }
-    );
-
-  let data = null;
-
-  try {
-    data =
-      await response.json();
-  } catch (error) {
-    data = null;
-  }
-
-  if (!response.ok) {
-    let message =
-      `Tank01 ${endpoint} failed with HTTP ${response.status}`;
-
-    if (
-      data &&
-      data.message
-    ) {
-      message =
-        data.message;
-    } else if (
-      data &&
-      data.body &&
-      typeof data.body ===
-        "string"
-    ) {
-      message =
-        data.body;
-    }
-
-    throw new Error(
-      message
-    );
-  }
-
-  return data;
-}
-
-function normalizeGame(game) {
-  return {
-    gameID:
-      game.gameID ||
-      null,
-
-    season:
-      game.season ||
-      null,
-
-    seasonType:
-      game.seasonType ||
-      null,
-
-    gameWeek:
-      game.gameWeek ||
-      null,
-
-    gameDate:
-      game.gameDate ||
-      null,
-
-    gameTime:
-      game.gameTime ||
-      null,
-
-    gameTime_epoch:
-      game.gameTime_epoch ||
-      null,
-
-    gameStatus:
-      game.gameStatus ||
-      null,
-
-    gameStatusCode:
-      game.gameStatusCode ||
-      null,
-
-    away:
-      normalizeTeam(
-        game.away
-      ),
-
-    home:
-      normalizeTeam(
-        game.home
-      ),
-
-    teamIDAway:
-      game.teamIDAway ||
-      null,
-
-    teamIDHome:
-      game.teamIDHome ||
-      null,
-
-    neutralSite:
-      game.neutralSite ||
-      null,
-
-    espnID:
-      game.espnID ||
-      null
-  };
-}
-
-/*
-  Return all unique teams participating in this week's games.
-*/
-function buildActiveTeams(games) {
-  const teams =
-    new Set();
-
-  for (
-    const game of games
-  ) {
-    const away =
-      normalizeTeam(
-        game.away
-      );
-
-    const home =
-      normalizeTeam(
-        game.home
-      );
-
-    if (away) {
-      teams.add(away);
-    }
-
-    if (home) {
-      teams.add(home);
-    }
-  }
-
-  return Array
-    .from(teams)
-    .sort();
-}
-
-/*
-  Bye calculation is meaningful for the regular season only.
-
-  A team absent from the complete regular-season weekly
-  schedule is on bye.
-
-  We intentionally do NOT apply this rule to preseason,
-  postseason, or seasonType=all because absence there does
-  not mean "bye" in the normal NFL regular-season sense.
-*/
-function buildByeTeams(
-  activeTeams,
-  seasonType
-) {
   if (
-    seasonType !== "reg"
+    now <
+    firstWeek2PipelineTuesday
   ) {
-    return [];
+    return 1;
   }
 
-  const active =
-    new Set(
-      activeTeams.map(
-        normalizeTeam
+  const diffDays =
+    Math.floor(
+      (
+        now -
+        firstWeek2PipelineTuesday
+      ) /
+      (
+        1000 *
+        60 *
+        60 *
+        24
       )
     );
 
-  return NFL_TEAMS
-    .filter(
-      team =>
-        !active.has(team)
+  return Math.max(
+    2,
+    Math.min(
+      18,
+      Math.floor(
+        diffDays /
+        7
+      ) + 2
     )
-    .sort();
+  );
 }
 
 function jsonResponse(
   statusCode,
-  body,
-  cacheControl
+  body
 ) {
   return {
     statusCode,
@@ -357,7 +166,6 @@ function jsonResponse(
         "application/json",
 
       "Cache-Control":
-        cacheControl ||
         "no-store"
     },
 
@@ -371,126 +179,138 @@ function jsonResponse(
 }
 
 /*
-  Build the complete normalized schedule evidence object.
+  Validate only structural completeness.
 
-  This is the exact computation previously performed directly
-  inside exports.handler.
-
-  It is extracted only so the scheduled cache writer can call
-  the same production logic in-process without an HTTP self-fetch.
+  This function does NOT recalculate or second-guess schedule
+  evidence, team normalization, or bye classification.
 */
-async function buildWeeklySchedule({
-  season,
-  week,
-  seasonType
-}) {
-  const result =
-    await tank01Fetch(
-      "getNFLGamesForWeek",
-      {
-        week:
-          String(week),
-
-        season:
-          String(season),
-
-        seasonType
-      }
-    );
-
-  const rawGames =
-    Array.isArray(
-      result.body
-    )
-      ? result.body
-      : [];
-
-  const games =
-    rawGames.map(
-      normalizeGame
-    );
-
-  /*
-    Derive weekly team-state once here so every downstream
-    SAGE layer consumes the same answer.
-  */
-  const activeTeams =
-    buildActiveTeams(
-      games
-    );
-
-  const byeTeams =
-    buildByeTeams(
-      activeTeams,
-      seasonType
-    );
-
-  return {
-    evidenceType:
-      "weekly-sage-schedule",
-
-    schemaVersion:
-      2,
-
-    generatedAt:
-      new Date()
-        .toISOString(),
-
+function validateCompleteSchedule(
+  schedule,
+  {
     season,
-
     week,
+    seasonType
+  }
+) {
+  const problems =
+    [];
 
-    seasonType,
+  if (
+    !schedule ||
+    typeof schedule !==
+      "object"
+  ) {
+    problems.push(
+      "Schedule build did not return an object."
+    );
 
-    gamesReturned:
-      games.length,
+    return problems;
+  }
 
-    activeTeamsReturned:
-      activeTeams.length,
+  if (
+    schedule.evidenceType !==
+    "weekly-sage-schedule"
+  ) {
+    problems.push(
+      `Unexpected evidenceType: ${schedule.evidenceType}`
+    );
+  }
 
-    byeTeamsReturned:
-      byeTeams.length,
+  if (
+    String(
+      schedule.season
+    ) !==
+    String(
+      season
+    )
+  ) {
+    problems.push(
+      `Season mismatch: requested ${season}, got ${schedule.season}`
+    );
+  }
 
-    /*
-      True only for regular-season requests because that
-      is where absence from the weekly NFL schedule means
-      a normal scheduled bye.
-    */
-    byeClassificationAvailable:
-      seasonType === "reg",
+  if (
+    Number(
+      schedule.week
+    ) !==
+    Number(
+      week
+    )
+  ) {
+    problems.push(
+      `Week mismatch: requested ${week}, got ${schedule.week}`
+    );
+  }
 
-    /*
-      Helpful explanation for downstream consumers.
-    */
-    teamState: {
-      rule:
-        seasonType === "reg"
-          ? "Teams appearing in the requested week's games are active. NFL teams absent from the complete regular-season weekly schedule are classified as bye teams."
-          : "Bye classification is not applied outside regular-season requests.",
+  if (
+    schedule.seasonType !==
+    seasonType
+  ) {
+    problems.push(
+      `seasonType mismatch: requested ${seasonType}, got ${schedule.seasonType}`
+    );
+  }
 
-      nflTeamCount:
-        NFL_TEAMS.length,
+  if (
+    !Array.isArray(
+      schedule.games
+    )
+  ) {
+    problems.push(
+      "games is not an array."
+    );
+  }
 
-      scheduledTeamCount:
-        activeTeams.length,
+  if (
+    !Array.isArray(
+      schedule.activeTeams
+    )
+  ) {
+    problems.push(
+      "activeTeams is not an array."
+    );
+  }
 
-      byeTeamCount:
-        byeTeams.length
-    },
+  if (
+    !Array.isArray(
+      schedule.byeTeams
+    )
+  ) {
+    problems.push(
+      "byeTeams is not an array."
+    );
+  }
 
-    activeTeams,
+  if (
+    Array.isArray(
+      schedule.games
+    ) &&
+    Number(
+      schedule.gamesReturned
+    ) !==
+      schedule.games.length
+  ) {
+    problems.push(
+      `gamesReturned mismatch: reported ${schedule.gamesReturned}, actual ${schedule.games.length}`
+    );
+  }
 
-    byeTeams,
-
-    games
-  };
+  return problems;
 }
 
-exports.buildWeeklySchedule =
-  buildWeeklySchedule;
-
 exports.handler =
-  async function (event) {
+  async function (
+    event
+  ) {
+    /*
+      Required for Netlify Blobs in this runtime mode.
+
+      Must execute before any getStore() call.
+    */
+    connectLambda(
+      event
+    );
+
     if (
       event.httpMethod &&
       event.httpMethod !==
@@ -530,10 +350,18 @@ exports.handler =
           .getFullYear()
       );
 
+    /*
+      Explicit week wins.
+
+      Scheduled Netlify invocations do not provide query.week,
+      so automatically resolve the current NFL week.
+    */
     const week =
-      Number(
-        query.week
-      );
+      query.week
+        ? Number(
+            query.week
+          )
+        : getCurrentNFLWeek();
 
     const seasonType =
       String(
@@ -543,6 +371,9 @@ exports.handler =
         .trim()
         .toLowerCase();
 
+    /*
+      Shared schedule evidence intentionally supports Week 1.
+    */
     if (
       !Number.isInteger(
         week
@@ -554,7 +385,13 @@ exports.handler =
         400,
         {
           error:
-            "week must be an integer from 1 through 18."
+            "week must be an integer from 1 through 18.",
+
+          resolvedWeek:
+            week,
+
+          automaticWeekResolution:
+            !query.week
         }
       );
     }
@@ -578,7 +415,16 @@ exports.handler =
       );
     }
 
+    const key =
+      `week:${season}:${week}:${seasonType}`;
+
     try {
+      /*
+        Build schedule evidence IN PROCESS.
+
+        This is the same production builder used by
+        weekly-sage-schedule's HTTP handler.
+      */
       const schedule =
         await buildWeeklySchedule({
           season,
@@ -586,25 +432,139 @@ exports.handler =
           seasonType
         });
 
+      const problems =
+        validateCompleteSchedule(
+          schedule,
+          {
+            season,
+            week,
+            seasonType
+          }
+        );
+
+      if (
+        problems.length >
+        0
+      ) {
+        console.error(
+          `refresh-weekly-sage-schedule: build for ${key} was incomplete, NOT caching. Problems: ${problems.join(" | ")}`
+        );
+
+        /*
+          Do not touch Blobs.
+
+          Any previously cached known-good schedule for this
+          key remains unchanged.
+        */
+        return jsonResponse(
+          422,
+          {
+            cached:
+              false,
+
+            season,
+
+            week,
+
+            seasonType,
+
+            blobStore:
+              STORE_NAME,
+
+            blobKey:
+              key,
+
+            error:
+              "Weekly SAGE schedule build was incomplete; existing cache (if any) was left untouched.",
+
+            problems
+          }
+        );
+      }
+
+      const store =
+        getStore({
+          name:
+            STORE_NAME
+        });
+
+      await store.setJSON(
+        key,
+        schedule
+      );
+
+      console.log(
+        `refresh-weekly-sage-schedule: cached ${key} -- ${schedule.games.length} game(s), ${schedule.activeTeams.length} active team(s), ${schedule.byeTeams.length} bye team(s).`
+      );
+
       return jsonResponse(
         200,
-        schedule,
-        CACHE_CONTROL
+        {
+          cached:
+            true,
+
+          season,
+
+          week,
+
+          seasonType,
+
+          generatedAt:
+            schedule.generatedAt ||
+            null,
+
+          gamesReturned:
+            schedule.games.length,
+
+          activeTeamsReturned:
+            schedule.activeTeams.length,
+
+          byeTeamsReturned:
+            schedule.byeTeams.length,
+
+          blobStore:
+            STORE_NAME,
+
+          blobKey:
+            key
+        }
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
-        "weekly-sage-schedule failed:",
+        `refresh-weekly-sage-schedule failed for ${key}:`,
         error
       );
 
       return jsonResponse(
         502,
         {
+          cached:
+            false,
+
+          season,
+
+          week,
+
+          seasonType,
+
+          blobStore:
+            STORE_NAME,
+
+          blobKey:
+            key,
+
           error:
-            "Could not retrieve Weekly SAGE schedule evidence.",
+            "Could not build and cache Weekly SAGE schedule evidence.",
 
           detail:
+            error &&
             error.message
+              ? error.message
+              : String(
+                  error
+                )
         }
       );
     }
