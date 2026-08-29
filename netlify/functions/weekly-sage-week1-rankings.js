@@ -924,15 +924,14 @@ function buildWeek1Positions({
             // weekly.html falls back to its existing baseline text.
             sageTake:
               buildWeek1SageTake({
-                sageConfidenceLabel:
-                  confidenceLabel,
+                recommendation,
+
+                positionRank,
 
                 matchupStrength:
                   matchup
                     ? matchup.matchupStrength
-                    : null,
-
-                recommendation
+                    : null
               }),
 
             baselineEvidenceType:
