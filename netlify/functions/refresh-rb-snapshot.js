@@ -96,21 +96,26 @@ const STORE_NAME =
 /*
   Current NFL week calculator.
 
-  This uses the same 2026 season convention already established
-  elsewhere in Inner Sanctum.
+  Aligned to the Tuesday Weekly SAGE production pipeline -- the same
+  convention now deployed in refresh-weekly-sage-schedule.js and
+  refresh-weekly-sage-defense.js. The prior season-start-based anchor
+  rolled its weekly boundary over on Wednesdays, one day after this
+  pipeline's actual Tuesday schedule, and resolved Week 1 on
+  2026-09-15 when Week 2 was needed.
 
-  Before the regular season begins it returns Week 1.
+  Before the first Week 2 production Tuesday it returns Week 1.
 
-  During the regular season it advances one week for every seven
-  days from the 2026 season-start anchor and caps the result at
-  Week 18.
+  From that Tuesday onward it advances one week for every seven
+  days and caps the result at Week 18. Unlike
+  refresh-weekly-sage-defense.js, this positional writer needs the
+  target week directly -- no -1 offset here.
 
-  UPDATE seasonStart for future NFL seasons.
+  UPDATE firstWeek2PipelineTuesday for future NFL seasons.
 */
 function getCurrentNFLWeek() {
-  const seasonStart =
+  const firstWeek2PipelineTuesday =
     new Date(
-      "2026-09-09"
+      "2026-09-15T00:00:00Z"
     );
 
   const now =
@@ -118,7 +123,7 @@ function getCurrentNFLWeek() {
 
   if (
     now <
-    seasonStart
+    firstWeek2PipelineTuesday
   ) {
     return 1;
   }
@@ -127,7 +132,7 @@ function getCurrentNFLWeek() {
     Math.floor(
       (
         now -
-        seasonStart
+        firstWeek2PipelineTuesday
       ) /
       (
         1000 *
@@ -138,13 +143,13 @@ function getCurrentNFLWeek() {
     );
 
   return Math.max(
-    1,
+    2,
     Math.min(
       18,
       Math.floor(
         diffDays /
         7
-      ) + 1
+      ) + 2
     )
   );
 }
