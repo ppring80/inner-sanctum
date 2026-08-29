@@ -426,10 +426,9 @@ function checkOAuthSession() {
             <th>Rank</th>
             <th onclick="setSort('name')" id="th-name">Player <span class="sort-arrow">▼</span></th>
             <th>Team</th>
-            <th onclick="setSort('opp')" id="th-opp">Opp <span class="sort-arrow">▼</span></th>
-            <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
+            <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
+            <th>Matchup</th>
             <th>SAGE Take</th>
-            <th id="th-proj">Projected Points</th>
           </tr>
         </thead>
 
@@ -620,7 +619,11 @@ function flattenRankings(rankings) {
             ? entry.sage.confidenceLabel
             : (entry.sageConfidenceLabel != null ? entry.sageConfidenceLabel : null),
         adp: typeof entry.adp === 'number' ? entry.adp : null,
-        positionRank: typeof entry.positionRank === 'number' ? entry.positionRank : null
+        positionRank: typeof entry.positionRank === 'number' ? entry.positionRank : null,
+        matchup:
+          entry.matchupStrength != null
+            ? entry.matchupStrength
+            : (entry.matchup != null ? entry.matchup : null)
       });
     });
   });
@@ -674,13 +677,8 @@ function loadWeeklyRankings() {
 
 function updateWeeklyContextUI() {
   var week1 = getSelectedWeek() === 1;
-  var projHeader = document.getElementById('th-proj');
   var banner = document.getElementById('previewBanner');
   var bannerText = banner ? banner.querySelector('.preview-banner-text') : null;
-
-  if (projHeader) {
-    projHeader.textContent = 'Projected Points';
-  }
 
   if (bannerText) {
     bannerText.innerHTML = week1
@@ -990,11 +988,11 @@ function renderTable() {
           // suppress rather than invent."
           var week1 = getSelectedWeek() === 1;
           var verdictText =
-            p.sageLabel
-              ? (
-                  week1
-                    ? p.sageLabel
-                    : (
+            week1
+              ? 'Preseason ranking baseline'
+              : (
+                  p.sageLabel
+                    ? (
                         p.sageLabel +
                         (
                           p.sageConfidenceLabel
@@ -1006,18 +1004,10 @@ function renderTable() {
                               )
                         )
                       )
-                )
-              : '';
+                    : ''
+                );
 
-          // Weekly SAGE's score is not currently split by scoring
-          // format (ppr/half/standard) the way MOCK_RANKINGS was --
-          // the same score is shown regardless of the Scoring
-          // dropdown's value rather than fabricating per-format
-          // variance that doesn't exist in the real data.
-          // Projected fantasy points require a legitimate projection
-          // source. ADP and the SAGE score are ranking inputs/signals,
-          // not fantasy-point projections, so neither is relabeled here.
-          var proj = null;
+
 
           // recommendation ("start"/"flex"/"sit", already lowercased
           // in flattenRankings()) or null when the position's
@@ -1074,20 +1064,8 @@ function renderTable() {
 
               '<td>' +
                 (
-                  p.injury
-                    ? (
-                        '<span class="injury-pill ' +
-                          p.injury +
-                        '">' +
-                          injuryLabel(
-                            p.injury
-                          ) +
-                        '</span>'
-                      )
-                    // Weekly SAGE does not currently produce an
-                    // injury field (see refresh-current-nfl-facts.js's
-                    // own V2.2 scope note) -- show a plain dash rather
-                    // than a fabricated "Healthy" status.
+                  p.matchup != null && String(p.matchup).trim() !== ''
+                    ? String(p.matchup)
                     : '—'
                 ) +
               '</td>' +
@@ -1099,14 +1077,6 @@ function renderTable() {
                   ) +
                   verdictText +
                 '</div>' +
-              '</td>' +
-
-              '<td class="cell-proj">' +
-                (
-                  proj > 0
-                    ? proj.toFixed(1)
-                    : '—'
-                ) +
               '</td>' +
 
             '</tr>'
