@@ -150,6 +150,16 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .verdict-tag.sit{background:rgba(138,32,32,0.15);color:var(--red)}
 .cell-proj{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--ink);text-align:right}
 
+/* Matchup cell (1/3/10 visual management): dot=1s, label=3s, hover/tap/focus explanation=10s. Reuses the existing green/amber/red vocabulary already established by .injury-pill and .verdict-tag -- no new colors introduced. */
+.matchup-cell{position:relative;display:inline-flex;align-items:center;gap:6px;cursor:help;border:none;background:none;padding:0;font-family:inherit;font-size:13px;color:var(--ink);text-align:left}
+.matchup-cell:focus{outline:2px solid var(--gold);outline-offset:2px;border-radius:3px}
+.matchup-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.matchup-dot.good{background:var(--green)}
+.matchup-dot.neutral{background:var(--amber)}
+.matchup-dot.bad{background:var(--red)}
+.matchup-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:0;z-index:50;background:#15100a;color:#f2f1ef;font-family:'Lora',Georgia,serif;font-size:12px;line-height:1.4;padding:8px 11px;border-radius:6px;box-shadow:0 8px 20px rgba(0,0,0,0.25);white-space:normal;width:200px}
+.matchup-cell:hover .matchup-tooltip,.matchup-cell:focus .matchup-tooltip,.matchup-cell.open .matchup-tooltip{display:block}
+
 .empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
 .empty-state-icon{font-size:36px;margin-bottom:12px;opacity:0.4}
 
@@ -713,6 +723,68 @@ function callTag(call) {
   return '<span class="verdict-tag ' + call + '">' + labels[call] + '</span>';
 }
 
+// Matchup 1/3/10 visual management -- see the .matchup-cell/.matchup-dot
+// CSS rules above. Only three colors are used (green/amber/red); the
+// five existing labels below still provide the finer distinction at
+// the 3-second glance, unchanged. Plain-language sentences are shown
+// on hover/tap/focus (10 seconds) -- no percentile/formula/baseline
+// mechanics are ever exposed here.
+var MATCHUP_COLOR_CLASS = {
+  'Strong Positive':'good',
+  'Positive':'good',
+  'Neutral':'neutral',
+  'Negative':'bad',
+  'Strong Negative':'bad'
+};
+
+var MATCHUP_EXPLANATION = {
+  'Strong Positive':'Very favorable matchup for this position.',
+  'Positive':'Favorable matchup for this position.',
+  'Neutral':'Neither a clear advantage nor disadvantage.',
+  'Negative':'Tough matchup for this position.',
+  'Strong Negative':'Very tough matchup for this position.'
+};
+
+function matchupCellHtml(label) {
+  if (label == null || String(label).trim() === '') {
+    return '—';
+  }
+
+  var text = String(label);
+  var colorClass = MATCHUP_COLOR_CLASS[text] || 'neutral';
+  var explanation = MATCHUP_EXPLANATION[text] || text;
+
+  // tabindex + onclick/onkeydown give keyboard and touch users the
+  // same 10-second reveal that :hover already gives desktop users
+  // via the CSS above -- see toggleMatchupTooltip() and the shared
+  // outside-click dismiss listener near toggleNavDropdown().
+  return (
+    '<button type="button" class="matchup-cell" tabindex="0" ' +
+      'onclick="toggleMatchupTooltip(this,event)" ' +
+      'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){toggleMatchupTooltip(this,event)}">' +
+      '<span class="matchup-dot ' + colorClass + '"></span>' +
+      '<span>' + text + '</span>' +
+      '<span class="matchup-tooltip">' + explanation + '</span>' +
+    '</button>'
+  );
+}
+
+function toggleMatchupTooltip(el, event) {
+  if (event) {
+    event.stopPropagation();
+  }
+
+  var wasOpen = el.classList.contains('open');
+
+  document.querySelectorAll('.matchup-cell.open').forEach(function (cell) {
+    cell.classList.remove('open');
+  });
+
+  if (!wasOpen) {
+    el.classList.add('open');
+  }
+}
+
 function setPersona(p) {
   state.persona = p;
 
@@ -1063,11 +1135,7 @@ function renderTable() {
               '</td>' +
 
               '<td>' +
-                (
-                  p.matchup != null && String(p.matchup).trim() !== ''
-                    ? String(p.matchup)
-                    : '—'
-                ) +
+                matchupCellHtml(p.matchup) +
               '</td>' +
 
               '<td>' +
@@ -1421,6 +1489,28 @@ document.addEventListener(
         .forEach(
           function(d) {
             d.classList.remove(
+              'open'
+            );
+          }
+        );
+    }
+
+    // Same dismiss-on-outside-click pattern as .nav-dropdown above,
+    // applied to the Matchup tooltip (toggleMatchupTooltip() already
+    // stops propagation on its own trigger click, so this only fires
+    // for genuine outside clicks).
+    if (
+      !e.target.closest(
+        '.matchup-cell'
+      )
+    ) {
+      document
+        .querySelectorAll(
+          '.matchup-cell.open'
+        )
+        .forEach(
+          function(cell) {
+            cell.classList.remove(
               'open'
             );
           }
