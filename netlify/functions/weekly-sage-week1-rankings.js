@@ -175,7 +175,7 @@ const SCHEDULE_STORE =
 const DEFAULT_SCORING = "ppr";
 const DEFAULT_TEAMS = 12;
 
-const POSITIONS = ["QB", "RB", "WR", "TE"];
+const POSITIONS = ["QB", "RB", "WR", "TE", "K"];
 
 /*
   WEEK 1 MATCHUP BASELINE (display/context only)
@@ -501,6 +501,18 @@ function recommendationForPositionRank({
   }
 
   if (position === "QB") {
+    return positionRank <= teams
+      ? "START"
+      : "SIT";
+  }
+
+  // Kickers are conventionally a single-starter position in the vast
+  // majority of leagues, the same shape as QB -- reusing QB's exact
+  // existing single-starter rule rather than inventing a new
+  // recommendation concept. This is Week 1 baseline tiering only,
+  // driven by preseason value/ADP-derived positionRank; it is not a
+  // kicker scoring formula and does not use any kicking evidence.
+  if (position === "K") {
     return positionRank <= teams
       ? "START"
       : "SIT";
@@ -1330,7 +1342,10 @@ exports.handler =
               `START through TE${teams}; FLEX through TE${
                 teams +
                 Math.ceil(teams / 2)
-              }; remaining TEs SIT.`
+              }; remaining TEs SIT.`,
+
+            K:
+              `START through K${teams}; remaining Ks SIT.`
           },
 
           playerTeamEvidence:
