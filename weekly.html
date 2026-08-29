@@ -165,9 +165,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
    classes above (no new colors). flex-shrink:0 plus the toggle-bar's
    existing flex-wrap lets this reposition onto its own line on narrow
    screens rather than compressing the persona buttons. */
-.matchup-legend{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
-.matchup-legend-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.matchup-legend-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.matchup-legend{display:flex;align-items:flex-start;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.matchup-legend-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);padding-top:2px}
+.matchup-legend-pair{display:flex;flex-direction:column;align-items:center;gap:1px}
 .matchup-legend-item{display:inline-flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
 .matchup-legend-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:0.3px}
 
@@ -382,13 +382,19 @@ function checkOAuthSession() {
        exact .matchup-dot color classes from the Matchup column above;
        no new colors introduced. -->
   <div class="matchup-legend">
-    <div class="matchup-legend-row">
-      <span class="matchup-legend-title">Matchup</span>
+    <span class="matchup-legend-title">Matchup</span>
+    <span class="matchup-legend-pair">
       <span class="matchup-legend-item"><span class="matchup-dot good"></span>Positive</span>
+      <span class="matchup-legend-sub">Favorable</span>
+    </span>
+    <span class="matchup-legend-pair">
       <span class="matchup-legend-item"><span class="matchup-dot neutral"></span>Neutral</span>
+      <span class="matchup-legend-sub">Even</span>
+    </span>
+    <span class="matchup-legend-pair">
       <span class="matchup-legend-item"><span class="matchup-dot bad"></span>Negative</span>
-    </div>
-    <div class="matchup-legend-sub">Favorable · Even · Difficult</div>
+      <span class="matchup-legend-sub">Difficult</span>
+    </span>
   </div>
 
   <div class="week-select-wrap">
