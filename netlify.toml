@@ -109,6 +109,15 @@
 [functions."refresh-weekly-sage-schedule"]
   schedule = "40 8 * * 2"
 
+# WEEKLY SAGE DEFENSE EVIDENCE
+# Caches the completed week's defensive matchup evidence, one weekly
+# schedule cycle behind the positional snapshots.
+#
+# Tuesday 08:50 UTC -- after the shared schedule (08:40 UTC) and
+# before the first positional snapshot refresh (09:00 UTC).
+[functions."refresh-weekly-sage-defense"]
+  schedule = "50 8 * * 2"
+
 # WEEKLY SAGE PRODUCTION SNAPSHOT REFRESH SCHEDULE (added)
 # Runs each position's dedicated snapshot cache-writer ONCE weekly, at
 # 09:00 UTC every Tuesday, staggered 5 minutes apart (QB/RB/WR/TE) to
