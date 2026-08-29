@@ -555,6 +555,246 @@ async function getBoxScore(gameID) {
   return result.body || null;
 }
 
+/*
+  KICKER EVIDENCE EXTRACTION (additive)
+  --------------------------------------
+  Reads only fields already present on the same boxScore object this
+  file already fetches once per completed game -- no new Tank01 call,
+  no change to the request above.
+
+  Live-confirmed field names used verbatim below:
+    body.playerStats[*].Kicking: fgLong, fgMade, fgAttempts, xpMade,
+      fgPct, kickingPts, xpAttempts, fgMissed, xpMissed
+    body.scoringPlays[*]: score, scoreType, team, playerIDs
+
+  Return specialists also receive a Kicking block (kick-return
+  fields only, no FG/XP fields), so a stat line only counts as a
+  place kicker's if it actually contains at least one of
+  fgAttempts / fgMade / xpAttempts / xpMade.
+*/
+function isPlaceKickerStatLine(kicking) {
+  if (
+    !kicking ||
+    typeof kicking !==
+      "object"
+  ) {
+    return false;
+  }
+
+  return (
+    kicking.fgAttempts !==
+      undefined ||
+    kicking.fgMade !==
+      undefined ||
+    kicking.xpAttempts !==
+      undefined ||
+    kicking.xpMade !==
+      undefined
+  );
+}
+
+function numOrNull(value) {
+  const n =
+    Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : null;
+}
+
+const FG_SCORE_TEXT_PATTERN =
+  /(\d+)\s*Yd Field Goal/i;
+
+/*
+  Made field-goal distances for ONE specific kicker, using ONLY the
+  confirmed scoringPlays contract -- scoreType === "FG", associated
+  by playerIDs, distance parsed from the "score" text. No speculative
+  field names. Fails soft (returns []) whenever a play doesn't match
+  this exact confirmed shape rather than guessing.
+*/
+function madeFgDistancesForKicker(
+  scoringPlays,
+  playerID
+) {
+  if (
+    !Array.isArray(
+      scoringPlays
+    )
+  ) {
+    return [];
+  }
+
+  const distances =
+    [];
+
+  scoringPlays.forEach(
+    function (play) {
+      if (
+        !play ||
+        play.scoreType !==
+          "FG" ||
+        !Array.isArray(
+          play.playerIDs
+        ) ||
+        play.playerIDs.indexOf(
+          playerID
+        ) ===
+          -1
+      ) {
+        return;
+      }
+
+      const match =
+        FG_SCORE_TEXT_PATTERN.exec(
+          play.score ||
+          ""
+        );
+
+      if (match) {
+        distances.push(
+          Number(
+            match[1]
+          )
+        );
+      }
+    }
+  );
+
+  return distances;
+}
+
+/*
+  This game's kickerEvidence entries (zero, one, or two -- one per
+  team that actually attempted a kick).
+*/
+function buildGameKickerEvidence({
+  boxScore,
+  game
+}) {
+  const playerStats =
+    boxScore &&
+    boxScore.playerStats &&
+    typeof boxScore.playerStats ===
+      "object"
+      ? boxScore.playerStats
+      : {};
+
+  const homePts =
+    numOrNull(
+      boxScore &&
+      boxScore.homePts
+    );
+
+  const awayPts =
+    numOrNull(
+      boxScore &&
+      boxScore.awayPts
+    );
+
+  const evidence =
+    [];
+
+  Object.keys(
+    playerStats
+  ).forEach(
+    function (playerID) {
+      const player =
+        playerStats[
+          playerID
+        ];
+
+      const kicking =
+        player &&
+        player.Kicking;
+
+      if (
+        !isPlaceKickerStatLine(
+          kicking
+        )
+      ) {
+        return;
+      }
+
+      evidence.push({
+        gameID:
+          game.gameID,
+
+        week:
+          game.gameWeek ||
+          null,
+
+        home:
+          game.home,
+
+        away:
+          game.away,
+
+        homePts:
+          homePts,
+
+        awayPts:
+          awayPts,
+
+        playerID:
+          playerID,
+
+        name:
+          player.longName ||
+          null,
+
+        team:
+          player.teamAbv ||
+          player.team ||
+          null,
+
+        fgAttempts:
+          numOrNull(
+            kicking.fgAttempts
+          ),
+
+        fgMade:
+          numOrNull(
+            kicking.fgMade
+          ),
+
+        fgMissed:
+          numOrNull(
+            kicking.fgMissed
+          ),
+
+        xpAttempts:
+          numOrNull(
+            kicking.xpAttempts
+          ),
+
+        xpMade:
+          numOrNull(
+            kicking.xpMade
+          ),
+
+        xpMissed:
+          numOrNull(
+            kicking.xpMissed
+          ),
+
+        fgLong:
+          numOrNull(
+            kicking.fgLong
+          ),
+
+        madeFgDistances:
+          madeFgDistancesForKicker(
+            boxScore &&
+            boxScore.scoringPlays,
+            playerID
+          )
+      });
+    }
+  );
+
+  return evidence;
+}
+
 async function mapWithConcurrency(
   items,
   limit,
@@ -728,6 +968,11 @@ exports.handler =
 
       const defenseMap = {};
 
+      // Additive only -- see buildGameKickerEvidence() above. Does
+      // not participate in, or get read by, any existing defense
+      // calculation below.
+      const kickerEvidenceByGame = [];
+
       const processed =
         await mapWithConcurrency(
           completedGames,
@@ -766,7 +1011,20 @@ exports.handler =
               /*
                 JavaScript's single-threaded execution means these
                 synchronous object mutations are safe between awaits.
+                The same guarantee applies to the kickerEvidenceByGame
+                push immediately below.
               */
+
+              // Additive only -- reads the SAME already-fetched
+              // boxScore object; makes no new Tank01 call and does
+              // not alter anything the existing defense calculation
+              // below reads or produces.
+              kickerEvidenceByGame.push(
+                ...buildGameKickerEvidence({
+                  boxScore,
+                  game
+                })
+              );
 
               const homeDefense =
                 ensureDefense(
@@ -901,7 +1159,14 @@ exports.handler =
             defenses,
 
           gameResults:
-            processed
+            processed,
+
+          // Additive only -- see buildGameKickerEvidence() above.
+          // Does not alter, and is not read by, defenses/gameResults
+          // above. Consumed later by the future K snapshot builder;
+          // this file does not itself score or rank kickers.
+          kickerEvidence:
+            kickerEvidenceByGame
         },
 
         CACHE_CONTROL
