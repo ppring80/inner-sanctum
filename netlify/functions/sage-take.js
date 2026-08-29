@@ -43,11 +43,6 @@ const SECONDARY_SIGNAL_FLOOR = 10;
 // One shared phrase table for both Week 1 and Week 2+ -- no duplicate
 // tables per position or per week.
 const PHRASES = {
-  value: {
-    strong: "Strong preseason value",
-    reasonable: "Reasonable preseason value",
-    limited: "Limited preseason value"
-  },
   component: {
     role: { strong: "a strong role", weak: "a limited role" },
     production: { strong: "strong production", weak: "limited production" }
@@ -131,32 +126,94 @@ function componentPhrase(signal, matchupLabel) {
   return PHRASES.component[signal.key] ? PHRASES.component[signal.key][bucket] : null;
 }
 
-function buildWeek1Take(player) {
-  const valueTier =
-    player.sageConfidenceLabel === "High" ? "strong" :
-    player.sageConfidenceLabel === "Moderate" ? "reasonable" :
-    player.sageConfidenceLabel === "Developing" ? "limited" :
-    null;
+// WEEK 1 TIER SYSTEM
+// -------------------
+// Distinguishes players within the same recommendation using
+// positionRank -- already computed, already returned, never ADP
+// language. Fixed, position-agnostic cutoffs (top 5 / top 12) are
+// used only to pick WORDING within a tier the recommendation has
+// already decided; they can never contradict recommendation, since
+// "elite"/"strong"/"lower" only apply when recommendation is already
+// START, "flex" only when it is already FLEX, and "bench" only when
+// it is already SIT.
+function week1Tier(recommendation, positionRank) {
+  const rec = recommendation ? String(recommendation).toUpperCase() : null;
+  const rank = typeof positionRank === "number" ? positionRank : null;
 
-  const matchupPhrase = player.matchupStrength ? PHRASES.matchup[matchupTier(player.matchupStrength)] : null;
-  const action = actionClause(player.recommendation);
-
-  if (!valueTier && !matchupPhrase && !action) return null;
-
-  let first = valueTier ? PHRASES.value[valueTier] : null;
-
-  if (first && matchupPhrase) {
-    const matchupDirection = matchupTier(player.matchupStrength) === "difficult" ? "down" : "up";
-    const valueDirection = valueTier === "limited" ? "down" : "up";
-    first += " " + connectorFor(valueDirection, matchupDirection) + " " + matchupPhrase + ".";
-  } else if (first) {
-    first += ".";
-  } else if (matchupPhrase) {
-    first = "In " + matchupPhrase + ".";
+  if (rec === "START") {
+    if (rank !== null && rank <= 5) return "elite";
+    if (rank !== null && rank <= 12) return "strong";
+    return "lower";
   }
 
-  const sentences = [first, action].filter(Boolean);
-  return sentences.length ? sentences.join(" ") : null;
+  if (rec === "FLEX") return "flex";
+  if (rec === "SIT") return "bench";
+  return null;
+}
+
+const WEEK1_TIER_ACTION = {
+  elite: "Keep him locked in.",
+  strong: "Confident start.",
+  lower: "Still a Week 1 start.",
+  flex: "Worth flex consideration.",
+  bench: "Best as a depth option this week."
+};
+
+// One hand-tuned opening sentence per tier x matchup combination.
+// Deliberately explicit rather than mechanically assembled from
+// fragments -- this is what actually produces natural, varied,
+// player-specific prose instead of a formula that always reads the
+// same way. Every entry describes only recommendation/positionRank/
+// matchup -- no fabricated role, production, or regular-season
+// evidence, and no "ADP" wording anywhere.
+const WEEK1_OPENING = {
+  elite: {
+    favorable: "Elite Week 1 profile with a favorable matchup on top.",
+    even: "Elite Week 1 profile in an even matchup.",
+    difficult: "Elite Week 1 profile even with a difficult matchup.",
+    none: "Elite Week 1 profile."
+  },
+  strong: {
+    favorable: "Strong starter profile with the matchup working in his favor.",
+    even: "Strong starter profile in an even matchup.",
+    difficult: "Strong starter profile despite a difficult matchup.",
+    none: "Strong starter profile."
+  },
+  lower: {
+    favorable: "Lower-end starter range, but the favorable matchup helps.",
+    even: "Lower-end starter range in an even matchup.",
+    difficult: "Lower-end starter range, and the matchup doesn't do him any favors.",
+    none: "Lower-end starter range."
+  },
+  flex: {
+    favorable: "The matchup helps, but he remains outside the preferred starter tier.",
+    even: "Flex-range profile in an even matchup.",
+    difficult: "Flex-range profile, and a difficult matchup doesn't help his case.",
+    none: "Flex-range profile."
+  },
+  bench: {
+    favorable: "The matchup is favorable, but he's still a bench-caliber option.",
+    even: "Bench-caliber Week 1 outlook.",
+    difficult: "Bench-caliber Week 1 outlook, and a difficult matchup doesn't help.",
+    none: "Bench-caliber Week 1 outlook."
+  }
+};
+
+function buildWeek1Take(player) {
+  const tier = week1Tier(player.recommendation, player.positionRank);
+  const matchupKey = player.matchupStrength ? matchupTier(player.matchupStrength) : null;
+
+  if (!tier) {
+    // No usable recommendation/positionRank signal at all. Fall back
+    // to matchup alone if that's the only evidence present; never
+    // fabricate a tier.
+    return matchupKey ? "In " + PHRASES.matchup[matchupKey] + " this week." : null;
+  }
+
+  const opening = WEEK1_OPENING[tier][matchupKey || "none"];
+  const action = WEEK1_TIER_ACTION[tier];
+
+  return opening + " " + action;
 }
 
 function buildWeek2PlusTake(player) {
