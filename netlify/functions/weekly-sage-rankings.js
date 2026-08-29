@@ -21,7 +21,12 @@
 // Each position's leaderboard array is passed through EXACTLY as that
 // leaderboard already produced it -- this file only fans out to the
 // four existing endpoints and reshapes the four responses into one
-// envelope.
+// envelope. The only addition made here is a new sageTake field per
+// player (see sage-take.js) -- a deterministic, read-only explanation
+// string built from fields the leaderboard already returned. It never
+// alters score, order, recommendation, confidence, matchup, role, or
+// production, and any failure producing it yields null rather than
+// blocking the response.
 //
 // FAILURE PHILOSOPHY
 // -------------------
@@ -43,6 +48,12 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 const DEFAULT_SEASON_TYPE = "reg";
+
+const {
+  buildWeek2PlusSageTake
+} = require(
+  "./sage-take.js"
+);
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
@@ -218,9 +229,23 @@ exports.handler = async function (event) {
       // Passed through EXACTLY as the positional leaderboard produced
       // it -- this file never touches score, order, or recommendation
       // fields within a position's own leaderboard array.
-      positions[position] = Array.isArray(result.data.leaderboard)
+      const leaderboard = Array.isArray(result.data.leaderboard)
         ? result.data.leaderboard
         : [];
+
+      // Deterministic explanation layer -- see sage-take.js. This
+      // .map() only ADDS a new sageTake field to each existing
+      // element, in place, at its existing index. It never filters,
+      // sorts, splices, or otherwise changes array length or order,
+      // and it never touches sageScore, recommendation, confidence,
+      // matchup, role, or production. Any failure inside
+      // buildWeek2PlusSageTake() is caught internally and yields
+      // null -- it can never throw here.
+      positions[position] = leaderboard.map((row) => ({
+        ...row,
+        sageTake: buildWeek2PlusSageTake(row)
+      }));
+
       failures[position] = [];
       successCount++;
     } else {
