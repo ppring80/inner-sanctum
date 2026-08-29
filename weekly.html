@@ -368,8 +368,8 @@ function checkOAuthSession() {
     <span class="toggle-label">Week</span>
 
     <select class="week-select" id="weekSelect" onchange="loadWeeklyRankings()">
-      <!-- Week 1 uses the transparent ADP baseline. Weekly SAGE's
-           locked N-1 evidence model begins with Week 2. -->
+      <!-- Week 1 uses preseason expectations before regular-season
+           evidence exists. Weekly SAGE's locked N-1 model begins Week 2. -->
       <option value="1">Week 1</option>
       <option value="2">Week 2</option>
       <option value="3">Week 3</option>
@@ -423,12 +423,13 @@ function checkOAuthSession() {
       <table class="rank-table">
         <thead>
           <tr>
+            <th>Rank</th>
             <th onclick="setSort('name')" id="th-name">Player <span class="sort-arrow">▼</span></th>
-            <th onclick="setSort('pos')" id="th-pos">Pos <span class="sort-arrow">▼</span></th>
-            <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
+            <th>Team</th>
+            <th onclick="setSort('opp')" id="th-opp">Opp <span class="sort-arrow">▼</span></th>
             <th onclick="setSort('injury')" id="th-injury">Status <span class="sort-arrow">▼</span></th>
-            <th>Verdict</th>
-            <th onclick="setSort('proj')" id="th-proj">Proj <span class="sort-arrow">▼</span></th>
+            <th>SAGE Take</th>
+            <th id="th-proj">Projected Points</th>
           </tr>
         </thead>
 
@@ -678,12 +679,12 @@ function updateWeeklyContextUI() {
   var bannerText = banner ? banner.querySelector('.preview-banner-text') : null;
 
   if (projHeader) {
-    projHeader.innerHTML = (week1 ? 'ADP' : 'Proj') + ' <span class="sort-arrow">▼</span>';
+    projHeader.textContent = 'Projected Points';
   }
 
   if (bannerText) {
     bannerText.innerHTML = week1
-      ? '📊 <strong>Week 1 baseline</strong> — rankings use current market ADP because no regular-season evidence exists yet. Weekly SAGE scoring begins with Week 2.'
+      ? '📊 <strong>Week 1 Rankings</strong> — built from preseason expectations and current player context. Weekly SAGE incorporates regular-season evidence beginning Week 2.'
       : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.';
   }
 }
@@ -974,7 +975,7 @@ function renderTable() {
   tbody.innerHTML =
     rows
       .map(
-        function(p) {
+        function(p, rowIndex) {
           var isMine =
             state
               .myRosterNames
@@ -1013,8 +1014,10 @@ function renderTable() {
           // the same score is shown regardless of the Scoring
           // dropdown's value rather than fabricating per-format
           // variance that doesn't exist in the real data.
-          var proj =
-            week1 ? p.adp : p.sageScore;
+          // Projected fantasy points require a legitimate projection
+          // source. ADP and the SAGE score are ranking inputs/signals,
+          // not fantasy-point projections, so neither is relabeled here.
+          var proj = null;
 
           // recommendation ("start"/"flex"/"sit", already lowercased
           // in flattenRankings()) or null when the position's
@@ -1034,6 +1037,10 @@ function renderTable() {
               ) +
             '">' +
 
+              '<td class="cell-proj">' +
+                (rowIndex + 1) +
+              '</td>' +
+
               '<td>' +
                 '<div class="cell-player">' +
                   (
@@ -1044,15 +1051,15 @@ function renderTable() {
                   '<span class="cell-name">' +
                     p.name +
                   '</span>' +
+                  '<span class="pos-pill ' +
+                    p.pos +
+                  '">' +
+                    p.pos +
+                  '</span>' +
                 '</div>' +
               '</td>' +
 
               '<td>' +
-                '<span class="pos-pill ' +
-                  p.pos +
-                '">' +
-                  p.pos +
-                '</span> ' +
                 '<span class="cell-team">' +
                   p.team +
                 '</span>' +
@@ -1144,17 +1151,17 @@ function renderWeekSnapshot() {
 
     if (topBaseline) {
       week1Html += '<div class="week-snapshot-item">' +
-        '<div class="week-snapshot-label">Top Week 1 Baseline</div>' +
+        '<div class="week-snapshot-label">Top Week 1 Ranking</div>' +
         '<div class="week-snapshot-value">' + topBaseline.name + '</div>' +
-        '<div class="week-snapshot-sub">' + topBaseline.pos + ' · ADP ' + topBaseline.adp.toFixed(1) + '</div>' +
+        '<div class="week-snapshot-sub">' + topBaseline.pos + '</div>' +
         '</div>';
     }
 
     if (bestBaselineStart) {
       week1Html += '<div class="week-snapshot-item">' +
-        '<div class="week-snapshot-label">Strongest Start Baseline</div>' +
+        '<div class="week-snapshot-label">Strongest Start</div>' +
         '<div class="week-snapshot-value">' + bestBaselineStart.name + '</div>' +
-        '<div class="week-snapshot-sub">' + bestBaselineStart.pos + ' · ADP ' + bestBaselineStart.adp.toFixed(1) + '</div>' +
+        '<div class="week-snapshot-sub">' + bestBaselineStart.pos + '</div>' +
         '</div>';
     }
 
