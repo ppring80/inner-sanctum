@@ -108,7 +108,7 @@ exports.handler = async function (event, context) {
   const gameID = query.gameID ? String(query.gameID) : DEFAULT_GAME_ID;
   const includeFullResponse = String(query.full || '').toLowerCase() === 'true';
 
-  const url = `https://${TANK01_HOST}/getNFLBoxScore?gameID=${encodeURIComponent(gameID)}`;
+  const url = `https://${TANK01_HOST}/getNFLBoxScore?gameID=${encodeURIComponent(gameID)}&playByPlay=false`;
 
   try {
     const response = await fetch(url, {
