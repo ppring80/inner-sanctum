@@ -116,7 +116,23 @@
 //
 // ═══════════════════════════════════════════════════════════════════════
 
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
 const DEFAULT_SEASON_TYPE = "reg";
+
+const PLAYER_DATA_STORE =
+  "player-data";
+
+const PLAYER_DATA_KEY =
+  "playerData";
+
+const SCHEDULE_STORE =
+  "weekly-sage-schedule";
 const DEFAULT_SCORING = "ppr";
 const DEFAULT_TEAMS = 12;
 
@@ -206,6 +222,133 @@ function normalizePosition(position) {
 function finiteNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function normalizeTeam(value) {
+  const raw =
+    String(value || "")
+      .trim()
+      .toUpperCase();
+
+  const aliases = {
+    JAC: "JAX",
+    GBP: "GB",
+    KAN: "KC",
+    LVR: "LV",
+    NEP: "NE",
+    NOR: "NO",
+    SFO: "SF",
+    TBB: "TB",
+    WAS: "WSH"
+  };
+
+  return aliases[raw] || raw;
+}
+
+function normalizePlayerName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function buildPlayerTeamMap(playerDataCache) {
+  const map = new Map();
+
+  const players =
+    playerDataCache &&
+    playerDataCache.players &&
+    typeof playerDataCache.players === "object"
+      ? playerDataCache.players
+      : {};
+
+  Object.values(players).forEach(function (player) {
+    if (!player || !player.longName || !player.team) {
+      return;
+    }
+
+    const key = normalizePlayerName(player.longName);
+    const team = normalizeTeam(player.team);
+
+    if (key && team) {
+      map.set(key, team);
+    }
+  });
+
+  return map;
+}
+
+function buildOpponentMap(schedule) {
+  const map = new Map();
+
+  const games =
+    schedule && Array.isArray(schedule.games)
+      ? schedule.games
+      : [];
+
+  games.forEach(function (game) {
+    const away = normalizeTeam(game && game.away);
+    const home = normalizeTeam(game && game.home);
+
+    if (away && home) {
+      map.set(away, home);
+      map.set(home, away);
+    }
+  });
+
+  const byeTeams =
+    schedule && Array.isArray(schedule.byeTeams)
+      ? schedule.byeTeams
+      : [];
+
+  byeTeams.forEach(function (team) {
+    const normalized = normalizeTeam(team);
+
+    if (normalized) {
+      map.set(normalized, "BYE");
+    }
+  });
+
+  return map;
+}
+
+async function readWeek1Evidence({
+  season,
+  week,
+  seasonType
+}) {
+  const playerStore =
+    getStore({
+      name: PLAYER_DATA_STORE
+    });
+
+  const scheduleStore =
+    getStore({
+      name: SCHEDULE_STORE
+    });
+
+  const scheduleKey =
+    `week:${season}:${week}:${seasonType}`;
+
+  const [playerDataCache, schedule] =
+    await Promise.all([
+      playerStore.get(
+        PLAYER_DATA_KEY,
+        { type: "json" }
+      ),
+      scheduleStore.get(
+        scheduleKey,
+        { type: "json" }
+      )
+    ]);
+
+  return {
+    playerDataCache,
+    schedule,
+    scheduleKey
+  };
 }
 
 function recommendationForPositionRank({
@@ -427,7 +570,9 @@ async function fetchAdp({
 
 function buildWeek1Positions({
   players,
-  teams
+  teams,
+  playerTeamMap,
+  opponentMap
 }) {
   const positions = {
     QB: [],
@@ -467,9 +612,14 @@ function buildWeek1Positions({
           position,
 
           team:
-            player.team
-              ? String(player.team)
-              : null,
+            normalizeTeam(
+              player.team ||
+              playerTeamMap.get(
+                normalizePlayerName(
+                  player.name
+                )
+              )
+            ) || null,
 
           adp
         };
@@ -554,7 +704,15 @@ function buildWeek1Positions({
               player.team,
 
             opponent:
-              null,
+              player.team
+                ? (
+                    opponentMap.get(
+                      normalizeTeam(
+                        player.team
+                      )
+                    ) || null
+                  )
+                : null,
 
             recommendation,
 
@@ -736,11 +894,73 @@ exports.handler =
       );
     }
 
+    let week1Evidence = {
+      playerDataCache: null,
+      schedule: null,
+      scheduleKey:
+        `week:${season}:${targetWeek}:${seasonType}`
+    };
+
+    const evidenceWarnings = [];
+
+    try {
+      connectLambda(
+        event
+      );
+
+      week1Evidence =
+        await readWeek1Evidence({
+          season,
+          week: targetWeek,
+          seasonType
+        });
+    } catch (error) {
+      evidenceWarnings.push(
+        `Optional Week 1 Team/Opponent evidence could not be read: ${
+          error && error.message
+            ? error.message
+            : String(error)
+        }`
+      );
+    }
+
+    if (
+      !week1Evidence.playerDataCache ||
+      !week1Evidence.playerDataCache.players
+    ) {
+      evidenceWarnings.push(
+        "Optional player-data cache is unavailable; Team will use ADP data when available."
+      );
+    }
+
+    if (
+      !week1Evidence.schedule ||
+      !Array.isArray(
+        week1Evidence.schedule.games
+      )
+    ) {
+      evidenceWarnings.push(
+        "Optional Week 1 shared schedule cache is unavailable; Opponent will remain null."
+      );
+    }
+
+    const playerTeamMap =
+      buildPlayerTeamMap(
+        week1Evidence.playerDataCache
+      );
+
+    const opponentMap =
+      buildOpponentMap(
+        week1Evidence.schedule
+      );
+
     const positions =
       buildWeek1Positions({
         players:
           adpData.players,
-        teams
+        teams,
+        playerTeamMap,
+        opponentMap
       });
 
     const counts = {};
@@ -877,6 +1097,25 @@ exports.handler =
                 Math.ceil(teams / 2)
               }; remaining TEs SIT.`
           },
+
+          playerTeamEvidence:
+            week1Evidence.playerDataCache &&
+            week1Evidence.playerDataCache.players
+              ? "player-data-blob"
+              : "adp-fallback",
+
+          scheduleEvidence:
+            week1Evidence.schedule &&
+            Array.isArray(
+              week1Evidence.schedule.games
+            )
+              ? "weekly-sage-schedule-blob"
+              : null,
+
+          scheduleBlobKey:
+            week1Evidence.scheduleKey,
+
+          evidenceWarnings,
 
           sageScoringApplied:
             false,
