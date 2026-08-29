@@ -114,6 +114,33 @@
 //   half-ppr
 //   standard
 //
+// WEEK 1 MATCHUP ENRICHMENT (display/context only)
+// -------------------------------------------------
+// 2026 Week 1 has no prior-week defensive evidence of its own, so the
+// normal current-season matchup-defense path cannot produce a
+// meaningful signal here. As a Week-1-only exception, this function
+// reuses the already-existing 2025 Weeks 1-7 defensive matchup
+// baseline (weekly-sage-matchup-defense.js's own unmodified
+// buildMatchupDefense(), called with season "2025", week 8) as
+// preseason context, paired with each player's REAL, already-resolved
+// 2026 Week 1 opponent.
+//
+// This does NOT calculate a new score, invent a new methodology, or
+// touch weekly-sage-matchup-defense.js in any way -- it reads that
+// function's existing run / pass / receiving fields verbatim:
+//
+//   RB -> run
+//   QB -> pass
+//   WR -> receiving
+//   TE -> receiving
+//
+// The result is exposed as matchupStrength / matchupEvidence and is
+// explicitly marked matchupEvidenceType: "2025-week8-defense-baseline"
+// so it is never mistaken for current-season SAGE evidence. It has no
+// effect on rank, ADP order, rankingScore, recommendation, or
+// sageScore, and failure to load it is non-fatal -- Team/Opponent and
+// the rest of the response are unaffected either way.
+//
 // ═══════════════════════════════════════════════════════════════════════
 
 const {
@@ -121,6 +148,12 @@ const {
   getStore
 } = require(
   "@netlify/blobs"
+);
+
+const {
+  buildMatchupDefense
+} = require(
+  "./weekly-sage-matchup-defense.js"
 );
 
 const DEFAULT_SEASON_TYPE = "reg";
@@ -137,6 +170,40 @@ const DEFAULT_SCORING = "ppr";
 const DEFAULT_TEAMS = 12;
 
 const POSITIONS = ["QB", "RB", "WR", "TE"];
+
+/*
+  WEEK 1 MATCHUP BASELINE (display/context only)
+  -----------------------------------------------
+  Fixed, explicit source for the Week 1 matchup exception described
+  above. This is intentionally NOT derived from the requested season/
+  week -- Week 1 always uses this exact 2025 baseline, regardless of
+  which season is requested, because no current-season defensive
+  evidence can exist yet for a Week 1 request.
+*/
+const MATCHUP_BASELINE_SEASON =
+  "2025";
+
+const MATCHUP_BASELINE_WEEK =
+  8;
+
+const MATCHUP_BASELINE_SEASON_TYPE =
+  "reg";
+
+const MATCHUP_EVIDENCE_TYPE =
+  "2025-week8-defense-baseline";
+
+/*
+  Maps each fantasy position to the existing matchup-defense field
+  that already represents its relevant defensive signal. No new
+  calculation -- these fields already exist on every
+  buildMatchupDefense() team entry.
+*/
+const MATCHUP_FIELD_BY_POSITION = {
+  RB: "run",
+  QB: "pass",
+  WR: "receiving",
+  TE: "receiving"
+};
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600";
@@ -312,6 +379,73 @@ function buildOpponentMap(schedule) {
   });
 
   return map;
+}
+
+/*
+  Look up the existing, unmodified matchup-defense signal for one
+  player's opponent, by position. Returns null whenever the baseline
+  is unavailable, the opponent is unknown/BYE, or the position has no
+  mapped field -- never fabricates a value.
+
+  This does not calculate anything new. It reads run / pass /
+  receiving verbatim from buildMatchupDefense()'s own output.
+*/
+function matchupForPlayer({
+  position,
+  opponent,
+  matchupBaseline
+}) {
+  if (
+    !matchupBaseline ||
+    !opponent ||
+    opponent === "BYE"
+  ) {
+    return null;
+  }
+
+  const fieldName =
+    MATCHUP_FIELD_BY_POSITION[position];
+
+  if (!fieldName) {
+    return null;
+  }
+
+  const opponentEntry =
+    matchupBaseline[
+      normalizeTeam(opponent)
+    ];
+
+  if (!opponentEntry) {
+    return null;
+  }
+
+  const signal =
+    opponentEntry[fieldName];
+
+  if (!signal) {
+    return null;
+  }
+
+  return {
+    matchupStrength:
+      signal.label || null,
+
+    matchupEvidence: {
+      score:
+        typeof signal.score === "number"
+          ? signal.score
+          : null,
+
+      signal:
+        signal.signal || null,
+
+      label:
+        signal.label || null
+    },
+
+    matchupEvidenceType:
+      MATCHUP_EVIDENCE_TYPE
+  };
 }
 
 async function readWeek1Evidence({
@@ -572,7 +706,8 @@ function buildWeek1Positions({
   players,
   teams,
   playerTeamMap,
-  opponentMap
+  opponentMap,
+  matchupBaseline
 }) {
   const positions = {
     QB: [],
@@ -693,6 +828,27 @@ function buildWeek1Positions({
               player.adp
             );
 
+          const opponent =
+            player.team
+              ? (
+                  opponentMap.get(
+                    normalizeTeam(
+                      player.team
+                    )
+                  ) || null
+                )
+              : null;
+
+          const matchup =
+            matchupForPlayer({
+              position:
+                player.position,
+
+              opponent,
+
+              matchupBaseline
+            });
+
           return {
             name:
               player.name,
@@ -703,16 +859,7 @@ function buildWeek1Positions({
             team:
               player.team,
 
-            opponent:
-              player.team
-                ? (
-                    opponentMap.get(
-                      normalizeTeam(
-                        player.team
-                      )
-                    ) || null
-                  )
-                : null,
+            opponent,
 
             recommendation,
 
@@ -745,6 +892,24 @@ function buildWeek1Positions({
 
             sageConfidenceLabel:
               confidenceLabel,
+
+            // Display/context only -- see WEEK 1 MATCHUP ENRICHMENT
+            // above. Never current-season SAGE; null whenever the
+            // 2025 baseline or opponent is unavailable.
+            matchupStrength:
+              matchup
+                ? matchup.matchupStrength
+                : null,
+
+            matchupEvidence:
+              matchup
+                ? matchup.matchupEvidence
+                : null,
+
+            matchupEvidenceType:
+              matchup
+                ? matchup.matchupEvidenceType
+                : null,
 
             baselineEvidenceType:
               "week1-adp-baseline"
@@ -944,6 +1109,52 @@ exports.handler =
       );
     }
 
+    /*
+      WEEK 1 MATCHUP BASELINE (display/context only)
+      -----------------------------------------------
+      Reuses the existing, unmodified buildMatchupDefense() builder
+      with the fixed 2025 Week 8 baseline described above. This is
+      strictly additive context -- failure here is non-fatal and
+      never causes a 502; Team/Opponent and the rest of the response
+      are produced exactly as before regardless of outcome.
+    */
+    let matchupBaseline = null;
+
+    let matchupBaselineLoaded = false;
+
+    try {
+      const matchupDefenseResult =
+        await buildMatchupDefense({
+          baseUrl,
+          season: MATCHUP_BASELINE_SEASON,
+          week: MATCHUP_BASELINE_WEEK,
+          seasonType: MATCHUP_BASELINE_SEASON_TYPE
+        });
+
+      if (
+        matchupDefenseResult &&
+        matchupDefenseResult.matchups &&
+        typeof matchupDefenseResult.matchups === "object"
+      ) {
+        matchupBaseline =
+          matchupDefenseResult.matchups;
+
+        matchupBaselineLoaded = true;
+      } else {
+        evidenceWarnings.push(
+          "Optional Week 1 matchup baseline returned no usable matchup data; Matchup will remain null."
+        );
+      }
+    } catch (error) {
+      evidenceWarnings.push(
+        `Optional Week 1 matchup baseline could not be loaded: ${
+          error && error.message
+            ? error.message
+            : String(error)
+        }`
+      );
+    }
+
     const playerTeamMap =
       buildPlayerTeamMap(
         week1Evidence.playerDataCache
@@ -960,7 +1171,8 @@ exports.handler =
           adpData.players,
         teams,
         playerTeamMap,
-        opponentMap
+        opponentMap,
+        matchupBaseline
       });
 
     const counts = {};
@@ -1114,6 +1326,15 @@ exports.handler =
 
           scheduleBlobKey:
             week1Evidence.scheduleKey,
+
+          // Display/context only -- see WEEK 1 MATCHUP ENRICHMENT
+          // above. Does not indicate SAGE evidence of any kind.
+          matchupBaselineEvidence:
+            matchupBaselineLoaded
+              ? MATCHUP_EVIDENCE_TYPE
+              : null,
+
+          matchupBaselineLoaded,
 
           evidenceWarnings,
 
