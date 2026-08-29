@@ -68,35 +68,40 @@ const STORE_NAME = "wr-snapshot";
 /*
   Current NFL week calculator.
 
-  Same 2026 season convention already used elsewhere in
-  Inner Sanctum.
+  Aligned to the Tuesday Weekly SAGE production pipeline -- the same
+  convention now deployed in refresh-weekly-sage-schedule.js and
+  refresh-weekly-sage-defense.js. The prior season-start-based anchor
+  rolled its weekly boundary over on Wednesdays, one day after this
+  pipeline's actual Tuesday schedule, and resolved Week 1 on
+  2026-09-15 when Week 2 was needed.
 
   Scheduled Netlify invocations do not provide query parameters,
   so this provides the target week when query.week is absent.
 
   Explicit query.week values still take precedence for historical
-  and manual testing.
+  and manual testing. This positional writer needs the target week
+  directly -- no -1 offset here.
 
-  UPDATE seasonStart each NFL season.
+  UPDATE firstWeek2PipelineTuesday each NFL season.
 */
 function getCurrentNFLWeek() {
-  const seasonStart = new Date("2026-09-09");
+  const firstWeek2PipelineTuesday = new Date("2026-09-15T00:00:00Z");
   const now = new Date();
 
-  if (now < seasonStart) {
+  if (now < firstWeek2PipelineTuesday) {
     return 1;
   }
 
   const diffDays = Math.floor(
-    (now - seasonStart) /
+    (now - firstWeek2PipelineTuesday) /
     (1000 * 60 * 60 * 24)
   );
 
   return Math.max(
-    1,
+    2,
     Math.min(
       18,
-      Math.floor(diffDays / 7) + 1
+      Math.floor(diffDays / 7) + 2
     )
   );
 }
