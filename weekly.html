@@ -664,7 +664,11 @@ function flattenRankings(rankings) {
         matchup:
           entry.matchupStrength != null
             ? entry.matchupStrength
-            : (entry.matchup != null ? entry.matchup : null)
+            : (entry.matchup != null ? entry.matchup : null),
+        sageTake:
+          entry.sageTake != null && String(entry.sageTake).trim() !== ''
+            ? entry.sageTake
+            : null
       });
     });
   });
@@ -1090,24 +1094,32 @@ function renderTable() {
           // never manufactured copy. Empty when absent, per "remove/
           // suppress rather than invent."
           var week1 = getSelectedWeek() === 1;
+          // SAGE Take: prefer the new deterministic per-player
+          // explanation (p.sageTake) when present; otherwise fall
+          // back to the exact prior behavior unchanged -- the Week 1
+          // baseline sentence, or the score-tier + confidence string.
           var verdictText =
-            week1
-              ? 'Preseason ranking baseline'
+            p.sageTake
+              ? p.sageTake
               : (
-                  p.sageLabel
-                    ? (
-                        p.sageLabel +
-                        (
-                          p.sageConfidenceLabel
-                            ? ' · ' + p.sageConfidenceLabel + ' confidence'
-                            : (
-                                p.sageConfidence != null
-                                  ? ' · ' + p.sageConfidence + ' confidence'
-                                  : ''
+                  week1
+                    ? 'Preseason ranking baseline'
+                    : (
+                        p.sageLabel
+                          ? (
+                              p.sageLabel +
+                              (
+                                p.sageConfidenceLabel
+                                  ? ' · ' + p.sageConfidenceLabel + ' confidence'
+                                  : (
+                                      p.sageConfidence != null
+                                        ? ' · ' + p.sageConfidence + ' confidence'
+                                        : ''
+                                    )
                               )
-                        )
+                            )
+                          : ''
                       )
-                    : ''
                 );
 
 
