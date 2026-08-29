@@ -128,9 +128,9 @@ exports.handler = async function (event) {
   const targetWeek = Number(query.week);
   const seasonType = String(query.seasonType || DEFAULT_SEASON_TYPE);
 
-  if (!Number.isInteger(targetWeek) || targetWeek < 2 || targetWeek > 18) {
+  if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 18) {
     return jsonResponse(400, {
-      error: "week must be an integer from 2 through 18."
+      error: "week must be an integer from 1 through 18."
     });
   }
 
@@ -145,6 +145,58 @@ exports.handler = async function (event) {
     baseUrl = getBaseUrl(event);
   } catch (error) {
     return jsonResponse(500, { error: error.message });
+  }
+
+  if (targetWeek === 1) {
+    const scoring = String(query.scoring || "ppr");
+    const teams = String(query.teams || "12");
+    const url =
+      `${baseUrl}/.netlify/functions/weekly-sage-week1-rankings` +
+      `?${new URLSearchParams({
+        season,
+        week: "1",
+        seasonType,
+        scoring,
+        teams
+      }).toString()}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return jsonResponse(502, {
+          error: "Week 1 rankings could not be produced.",
+          detail: data.detail || data.error || `HTTP ${response.status}`
+        });
+      }
+
+      return jsonResponse(200, {
+        evidenceType: "weekly-sage-rankings",
+        schemaVersion: 1,
+        generatedAt: new Date().toISOString(),
+        season,
+        targetWeek,
+        seasonType,
+        scoring,
+        teams: Number(teams),
+        positions: data.positions,
+        failures: data.failures,
+        metadata: {
+          ...data.metadata,
+          route: "week1-adp-baseline"
+        }
+      });
+    } catch (error) {
+      return jsonResponse(502, {
+        error: "Week 1 rankings could not be produced.",
+        detail: error && error.message
+      });
+    }
   }
 
   // Fetch all four positional leaderboards in parallel. Each is
