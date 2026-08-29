@@ -359,7 +359,7 @@ function checkOAuthSession() {
   <div class="week-select-wrap">
     <span class="toggle-label">Scoring</span>
 
-    <select class="week-select" id="scoringSelect" onchange="renderTable()">
+    <select class="week-select" id="scoringSelect" onchange="loadWeeklyRankings()">
       <option value="ppr">PPR</option>
       <option value="half">Half PPR</option>
       <option value="standard">Standard</option>
@@ -368,10 +368,9 @@ function checkOAuthSession() {
     <span class="toggle-label">Week</span>
 
     <select class="week-select" id="weekSelect" onchange="loadWeeklyRankings()">
-      <!-- Real week range (added). Starts at 2, not 1: Weekly SAGE's
-           locked N-1 evidence rule means Week 1 has no prior-week
-           evidence to score from -- this page never offers a week
-           the backend cannot serve. -->
+      <!-- Week 1 uses the transparent ADP baseline. Weekly SAGE's
+           locked N-1 evidence model begins with Week 2. -->
+      <option value="1">Week 1</option>
       <option value="2">Week 2</option>
       <option value="3">Week 3</option>
       <option value="4">Week 4</option>
@@ -567,7 +566,7 @@ function getSelectedSeason() {
 function getSelectedWeek() {
   var el = document.getElementById('weekSelect');
   var n = el ? parseInt(el.value, 10) : NaN;
-  return Number.isInteger(n) ? n : 2;
+  return Number.isInteger(n) ? n : 1;
 }
 
 // Flattens the unified weekly-sage-rankings response's four separate
@@ -618,7 +617,9 @@ function flattenRankings(rankings) {
         sageConfidenceLabel:
           entry.sage && entry.sage.confidenceLabel != null
             ? entry.sage.confidenceLabel
-            : (entry.sageConfidenceLabel != null ? entry.sageConfidenceLabel : null)
+            : (entry.sageConfidenceLabel != null ? entry.sageConfidenceLabel : null),
+        adp: typeof entry.adp === 'number' ? entry.adp : null,
+        positionRank: typeof entry.positionRank === 'number' ? entry.positionRank : null
       });
     });
   });
@@ -631,11 +632,14 @@ function loadWeeklyRankings() {
 
   var season = getSelectedSeason();
   var week = getSelectedWeek();
+  var scoring = getScoringFormat();
   var url =
     '/.netlify/functions/weekly-sage-rankings?season=' +
     encodeURIComponent(season) +
     '&week=' + encodeURIComponent(String(week)) +
-    '&seasonType=reg';
+    '&seasonType=reg' +
+    '&scoring=' + encodeURIComponent(scoring) +
+    '&teams=12';
 
   return fetch(url, { credentials: 'same-origin' })
     .then(function (res) {
@@ -653,7 +657,10 @@ function loadWeeklyRankings() {
       } else {
         state.rankings = result.data;
         state.loadError = null;
+        state.sortKey = 'proj';
+        state.sortDir = week === 1 ? 'asc' : 'desc';
       }
+      updateWeeklyContextUI();
       renderTable();
     })
     .catch(function (err) {
@@ -662,6 +669,23 @@ function loadWeeklyRankings() {
       state.loadError = 'Weekly Rankings is not available for this week yet.';
       renderTable();
     });
+}
+
+function updateWeeklyContextUI() {
+  var week1 = getSelectedWeek() === 1;
+  var projHeader = document.getElementById('th-proj');
+  var banner = document.getElementById('previewBanner');
+  var bannerText = banner ? banner.querySelector('.preview-banner-text') : null;
+
+  if (projHeader) {
+    projHeader.innerHTML = (week1 ? 'ADP' : 'Proj') + ' <span class="sort-arrow">▼</span>';
+  }
+
+  if (bannerText) {
+    bannerText.innerHTML = week1
+      ? '📊 <strong>Week 1 baseline</strong> — rankings use current market ADP because no regular-season evidence exists yet. Weekly SAGE scoring begins with Week 2.'
+      : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.';
+  }
 }
 
 function injuryLabel(code) {
@@ -896,8 +920,8 @@ function getFilteredSorted() {
 
         case 'proj':
         default:
-          av = a.sageScore;
-          bv = b.sageScore;
+          av = getSelectedWeek() === 1 ? a.adp : a.sageScore;
+          bv = getSelectedWeek() === 1 ? b.adp : b.sageScore;
           break;
       }
 
@@ -963,19 +987,24 @@ function renderTable() {
           // confidence here is factual supporting detail instead,
           // never manufactured copy. Empty when absent, per "remove/
           // suppress rather than invent."
+          var week1 = getSelectedWeek() === 1;
           var verdictText =
             p.sageLabel
               ? (
-                  p.sageLabel +
-                  (
-                    p.sageConfidenceLabel
-                      ? ' · ' + p.sageConfidenceLabel + ' confidence'
-                      : (
-                          p.sageConfidence != null
-                            ? ' · ' + p.sageConfidence + ' confidence'
-                            : ''
+                  week1
+                    ? p.sageLabel
+                    : (
+                        p.sageLabel +
+                        (
+                          p.sageConfidenceLabel
+                            ? ' · ' + p.sageConfidenceLabel + ' confidence'
+                            : (
+                                p.sageConfidence != null
+                                  ? ' · ' + p.sageConfidence + ' confidence'
+                                  : ''
+                              )
                         )
-                  )
+                      )
                 )
               : '';
 
@@ -985,7 +1014,7 @@ function renderTable() {
           // dropdown's value rather than fabricating per-format
           // variance that doesn't exist in the real data.
           var proj =
-            p.sageScore;
+            week1 ? p.adp : p.sageScore;
 
           // recommendation ("start"/"flex"/"sit", already lowercased
           // in flattenRankings()) or null when the position's
@@ -1100,6 +1129,43 @@ function renderWeekSnapshot() {
 
   var fmt =
     getScoringFormat();
+
+  if (getSelectedWeek() === 1) {
+    var week1Rows = getAllRows().filter(function(p) { return p.adp > 0; });
+    var topBaseline = week1Rows.length
+      ? week1Rows.reduce(function(a, b) { return b.adp < a.adp ? b : a; })
+      : null;
+    var week1Starters = week1Rows.filter(function(p) { return p.call === 'start'; });
+    var bestBaselineStart = week1Starters.length
+      ? week1Starters.reduce(function(a, b) { return b.adp < a.adp ? b : a; })
+      : null;
+    var fmtLabelWeek1 = {ppr:'PPR', half:'Half PPR', standard:'Standard'}[fmt] || fmt;
+    var week1Html = '';
+
+    if (topBaseline) {
+      week1Html += '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Top Week 1 Baseline</div>' +
+        '<div class="week-snapshot-value">' + topBaseline.name + '</div>' +
+        '<div class="week-snapshot-sub">' + topBaseline.pos + ' · ADP ' + topBaseline.adp.toFixed(1) + '</div>' +
+        '</div>';
+    }
+
+    if (bestBaselineStart) {
+      week1Html += '<div class="week-snapshot-item">' +
+        '<div class="week-snapshot-label">Strongest Start Baseline</div>' +
+        '<div class="week-snapshot-value">' + bestBaselineStart.name + '</div>' +
+        '<div class="week-snapshot-sub">' + bestBaselineStart.pos + ' · ADP ' + bestBaselineStart.adp.toFixed(1) + '</div>' +
+        '</div>';
+    }
+
+    week1Html += '<div class="week-snapshot-item">' +
+      '<div class="week-snapshot-label">Format &amp; Week</div>' +
+      '<div class="week-snapshot-value">' + fmtLabelWeek1 + ' · Week 1</div>' +
+      '</div>';
+
+    panel.innerHTML = week1Html;
+    return;
+  }
 
   var withProj =
     getAllRows().filter(
