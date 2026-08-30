@@ -175,7 +175,7 @@ const SCHEDULE_STORE =
 const DEFAULT_SCORING = "ppr";
 const DEFAULT_TEAMS = 12;
 
-const POSITIONS = ["QB", "RB", "WR", "TE", "K"];
+const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 
 /*
   WEEK 1 MATCHUP BASELINE (display/context only)
@@ -513,6 +513,19 @@ function recommendationForPositionRank({
   // driven by preseason value/ADP-derived positionRank; it is not a
   // kicker scoring formula and does not use any kicking evidence.
   if (position === "K") {
+    return positionRank <= teams
+      ? "START"
+      : "SIT";
+  }
+
+  // Team defenses are conventionally a single-starter position in
+  // the vast majority of leagues, the same shape as QB and K --
+  // reusing that exact existing single-starter rule rather than
+  // inventing a new recommendation concept. This is Week 1 baseline
+  // tiering only, driven by preseason value/ADP-derived
+  // positionRank; it is not a DEF/ST scoring formula and does not
+  // use any regular-season defensive evidence.
+  if (position === "DEF") {
     return positionRank <= teams
       ? "START"
       : "SIT";
@@ -1345,7 +1358,10 @@ exports.handler =
               }; remaining TEs SIT.`,
 
             K:
-              `START through K${teams}; remaining Ks SIT.`
+              `START through K${teams}; remaining Ks SIT.`,
+
+            DEF:
+              `START through DEF${teams}; remaining DEFs SIT.`
           },
 
           playerTeamEvidence:
