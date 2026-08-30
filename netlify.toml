@@ -120,8 +120,8 @@
 
 # WEEKLY SAGE PRODUCTION SNAPSHOT REFRESH SCHEDULE (added)
 # Runs each position's dedicated snapshot cache-writer ONCE weekly, at
-# 09:00 UTC every Tuesday, staggered 5 minutes apart (QB/RB/WR/TE) to
-# avoid four functions contending for Tank01 rate limits/CPU at the
+# 09:00 UTC every Tuesday, staggered 5 minutes apart (QB/RB/WR/TE/K) to
+# avoid five functions contending for Tank01 rate limits/CPU at the
 # exact same instant -- the same staggering rationale already used
 # for refresh-player-data (00:00 UTC) vs. its dependent job (00:30
 # UTC) above.
@@ -133,12 +133,12 @@
 # US time zone (09:00 UTC = 4:00am CT / 5:00am ET / 2:00am PT) so
 # Weekly Rankings is ready before customers check it.
 #
-# All four positions can safely run independently from the same
+# All five positions can safely run independently from the same
 # completed-week data -- there is no cross-position dependency, so
 # this is a staggering choice for load/contention only, not a
 # required execution order.
 #
-# Only the four snapshot cache-writers are scheduled here. The
+# Only the five snapshot cache-writers are scheduled here. The
 # positional leaderboards and the unified weekly-sage-rankings
 # endpoint remain request-time reads (they read whatever the most
 # recent scheduled snapshot refresh already cached) -- scheduling
@@ -156,6 +156,9 @@
 
 [functions."refresh-te-snapshot"]
   schedule = "15 9 * * 2"
+
+[functions."refresh-k-snapshot"]
+  schedule = "20 9 * * 2"
 
 [[redirects]]
   from = "/landing"
