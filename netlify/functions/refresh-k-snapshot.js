@@ -1,0 +1,463 @@
+// netlify/functions/refresh-k-snapshot.js
+//
+// WEEKLY SAGE — K SNAPSHOT CACHE WRITER
+//
+// PURPOSE
+// -------
+// Build the K (place kicker) population snapshot for a given
+// season/week/seasonType by calling weekly-sage-k-snapshot.js's
+// buildKSnapshot() IN PROCESS (not over HTTP), and, only if the
+// result is COMPLETE, write it to Netlify Blobs so
+// weekly-sage-k-leaderboard.js can consume the cached snapshot
+// instead of rebuilding it on every leaderboard request.
+//
+// This file does NOT change, duplicate, or reimplement any part of
+// the K population build, and makes NO Tank01 call of any kind --
+// buildKSnapshot() itself only reads already-cached
+// weekly-sage-defense and player-data Blobs.
+//
+// NOT YET SCHEDULED
+// -------------------
+// This function is deliberately NOT registered in netlify.toml yet.
+// Scheduling is a separate step, added only once the K pipeline has
+// been validated. Until then, this function is invoked manually
+// (e.g. via the Netlify dashboard "Run now", or a direct request
+// with explicit season/week/seasonType).
+//
+// AUTOMATIC WEEK RESOLUTION
+// -------------------------
+// Manual/historical requests may continue to provide:
+//
+//   ?season=2025&week=8&seasonType=reg
+//
+// When no explicit week is supplied, this function resolves the
+// current NFL week using the same Tuesday-aligned production
+// pipeline convention already established in
+// refresh-weekly-sage-schedule.js / refresh-rb-snapshot.js /
+// refresh-qb-snapshot.js / refresh-wr-snapshot.js /
+// refresh-te-snapshot.js.
+//
+// COMPLETENESS GATE
+// ------------------
+// A snapshot is written only when:
+//   - evidenceType === "weekly-sage-k-snapshot"
+//   - season/week/seasonType match the request
+//   - population is an array (may legitimately be empty in a very
+//     early season with little kicking evidence yet -- an empty
+//     array is still a valid, complete result, not an error)
+//
+// BLOBS
+// -----
+// Store: k-snapshot
+// Key:   week:${season}:${week}:${seasonType}
+//
+// ═══════════════════════════════════════════════════════════════════════
+
+const {
+  connectLambda,
+  getStore
+} = require(
+  "@netlify/blobs"
+);
+
+const {
+  buildKSnapshot
+} = require(
+  "./weekly-sage-k-snapshot.js"
+);
+
+const DEFAULT_SEASON_TYPE =
+  "reg";
+
+const STORE_NAME =
+  "k-snapshot";
+
+/*
+  Current NFL week calculator.
+
+  Aligned to the Tuesday Weekly SAGE production pipeline -- the same
+  convention deployed in refresh-weekly-sage-schedule.js and the
+  positional snapshot refreshers.
+
+  UPDATE firstWeek2PipelineTuesday for future NFL seasons.
+*/
+function getCurrentNFLWeek() {
+  const firstWeek2PipelineTuesday =
+    new Date(
+      "2026-09-15T00:00:00Z"
+    );
+
+  const now =
+    new Date();
+
+  if (
+    now <
+    firstWeek2PipelineTuesday
+  ) {
+    return 1;
+  }
+
+  const diffDays =
+    Math.floor(
+      (
+        now -
+        firstWeek2PipelineTuesday
+      ) /
+      (
+        1000 *
+        60 *
+        60 *
+        24
+      )
+    );
+
+  return Math.max(
+    2,
+    Math.min(
+      18,
+      Math.floor(
+        diffDays /
+        7
+      ) + 2
+    )
+  );
+}
+
+function jsonResponse(
+  statusCode,
+  body
+) {
+  return {
+    statusCode,
+
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        "no-store"
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
+}
+
+function validateCompleteSnapshot(
+  snapshot,
+  {
+    season,
+    targetWeek,
+    seasonType
+  }
+) {
+  const problems =
+    [];
+
+  if (
+    !snapshot ||
+    typeof snapshot !==
+      "object"
+  ) {
+    problems.push(
+      "K snapshot build did not return an object."
+    );
+
+    return problems;
+  }
+
+  if (
+    snapshot.evidenceType !==
+    "weekly-sage-k-snapshot"
+  ) {
+    problems.push(
+      `Unexpected evidenceType: ${snapshot.evidenceType}`
+    );
+  }
+
+  if (
+    String(
+      snapshot.season
+    ) !==
+    String(
+      season
+    )
+  ) {
+    problems.push(
+      `Season mismatch: requested ${season}, got ${snapshot.season}`
+    );
+  }
+
+  if (
+    Number(
+      snapshot.targetWeek
+    ) !==
+    Number(
+      targetWeek
+    )
+  ) {
+    problems.push(
+      `targetWeek mismatch: requested ${targetWeek}, got ${snapshot.targetWeek}`
+    );
+  }
+
+  if (
+    snapshot.seasonType !==
+    seasonType
+  ) {
+    problems.push(
+      `seasonType mismatch: requested ${seasonType}, got ${snapshot.seasonType}`
+    );
+  }
+
+  if (
+    !Array.isArray(
+      snapshot.population
+    )
+  ) {
+    problems.push(
+      "population is not an array."
+    );
+  }
+
+  return problems;
+}
+
+exports.handler =
+  async function (
+    event
+  ) {
+    connectLambda(
+      event
+    );
+
+    if (
+      event.httpMethod &&
+      event.httpMethod !==
+        "GET"
+    ) {
+      return jsonResponse(
+        405,
+        {
+          error:
+            "Method not allowed."
+        }
+      );
+    }
+
+    const query =
+      event
+        .queryStringParameters ||
+      {};
+
+    const season =
+      String(
+        query.season ||
+        new Date()
+          .getFullYear()
+      );
+
+    const targetWeek =
+      query.week
+        ? Number(
+            query.week
+          )
+        : getCurrentNFLWeek();
+
+    const seasonType =
+      String(
+        query.seasonType ||
+        DEFAULT_SEASON_TYPE
+      )
+        .trim()
+        .toLowerCase();
+
+    if (
+      !Number.isInteger(
+        targetWeek
+      ) ||
+      targetWeek < 2 ||
+      targetWeek > 18
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "week must be an integer from 2 through 18.",
+
+          resolvedTargetWeek:
+            targetWeek,
+
+          automaticWeekResolution:
+            !query.week
+        }
+      );
+    }
+
+    if (
+      ![
+        "reg",
+        "pre",
+        "post",
+        "all"
+      ].includes(
+        seasonType
+      )
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "seasonType must be reg, pre, post, or all."
+        }
+      );
+    }
+
+    const key =
+      `week:${season}:${targetWeek}:${seasonType}`;
+
+    try {
+      const snapshot =
+        await buildKSnapshot({
+          season,
+          targetWeek,
+          seasonType
+        });
+
+      const problems =
+        validateCompleteSnapshot(
+          snapshot,
+          {
+            season,
+            targetWeek,
+            seasonType
+          }
+        );
+
+      if (
+        problems.length >
+        0
+      ) {
+        console.error(
+          `refresh-k-snapshot: build for ${key} was incomplete, NOT caching. Problems: ${problems.join(" | ")}`
+        );
+
+        return jsonResponse(
+          422,
+          {
+            cached:
+              false,
+
+            season,
+
+            targetWeek,
+
+            seasonType,
+
+            blobStore:
+              STORE_NAME,
+
+            blobKey:
+              key,
+
+            error:
+              "K snapshot build was incomplete; existing cache (if any) was left untouched.",
+
+            problems
+          }
+        );
+      }
+
+      const store =
+        getStore({
+          name:
+            STORE_NAME
+        });
+
+      await store.setJSON(
+        key,
+        snapshot
+      );
+
+      console.log(
+        `refresh-k-snapshot: cached ${key} -- ${snapshot.population.length} K candidate(s), ${snapshot.populationSummary.weeksWithEvidence} of ${snapshot.populationSummary.weeksScanned} evidence week(s) available.`
+      );
+
+      return jsonResponse(
+        200,
+        {
+          cached:
+            true,
+
+          season,
+
+          targetWeek,
+
+          seasonType,
+
+          generatedAt:
+            snapshot.generatedAt ||
+            null,
+
+          candidatesConfirmedAsK:
+            snapshot.population.length,
+
+          weeksWithEvidence:
+            snapshot.populationSummary
+              .weeksWithEvidence,
+
+          weeksScanned:
+            snapshot.populationSummary
+              .weeksScanned,
+
+          blobStore:
+            STORE_NAME,
+
+          blobKey:
+            key
+        }
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        `refresh-k-snapshot failed for ${key}:`,
+        error
+      );
+
+      return jsonResponse(
+        502,
+        {
+          cached:
+            false,
+
+          season,
+
+          targetWeek,
+
+          seasonType,
+
+          blobStore:
+            STORE_NAME,
+
+          blobKey:
+            key,
+
+          error:
+            "Could not build Weekly SAGE K snapshot.",
+
+          detail:
+            error &&
+            error.message
+              ? error.message
+              : String(
+                  error
+                )
+        }
+      );
+    }
+  };
