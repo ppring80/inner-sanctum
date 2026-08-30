@@ -200,6 +200,20 @@ function emptyDefenseProfile(team) {
       yardsPerPlayAllowed: 0
     },
 
+    // Additive only -- see addPointsAllowedToDefense() below. A
+    // SEPARATE counter from `games` above (not a reuse of it):
+    // opponent-offense stats (rushing/passing/sacks/etc., tracked by
+    // addOpponentOffenseToDefense) and box-score final score
+    // (homePts/awayPts) are two independent fields on the same
+    // already-fetched box score, so gamesRepresented only increments
+    // when a valid, finite score was actually present for that game
+    // -- never assumed equal to `games`, and never silently treated
+    // as zero when score data is missing or invalid.
+    pointsAllowed: {
+      total: 0,
+      gamesRepresented: 0
+    },
+
     gamesUsed: []
   };
 }
@@ -359,6 +373,32 @@ function addOpponentOffenseToDefense({
     opponentTotalYards:
       totalYards
   });
+}
+
+/*
+  Additive only. Records ONE defense's points allowed for ONE game,
+  from boxScore.homePts / boxScore.awayPts -- the same already-fetched
+  box score this file already reads, no new field source. Only
+  increments when points is a valid, finite number; a missing or
+  invalid value is skipped entirely rather than treated as a 0-point
+  game, so a data gap can never silently understate points allowed.
+*/
+function addPointsAllowedToDefense({
+  defense,
+  points
+}) {
+  if (
+    !defense ||
+    points === null
+  ) {
+    return;
+  }
+
+  defense.pointsAllowed.total +=
+    points;
+
+  defense.pointsAllowed.gamesRepresented +=
+    1;
 }
 
 function finalizeDefense(profile) {
@@ -1058,6 +1098,32 @@ exports.handler =
                   teamStats.home,
 
                 game
+              });
+
+              // Additive only -- home defense's points allowed is
+              // the AWAY team's final score, and vice versa. Reads
+              // the SAME already-fetched boxScore object used above;
+              // numOrNull() (already defined for kickerEvidence)
+              // returns null on any missing/invalid value, so a data
+              // gap here is skipped, never coerced to 0.
+              addPointsAllowedToDefense({
+                defense:
+                  homeDefense,
+
+                points:
+                  numOrNull(
+                    boxScore.awayPts
+                  )
+              });
+
+              addPointsAllowedToDefense({
+                defense:
+                  awayDefense,
+
+                points:
+                  numOrNull(
+                    boxScore.homePts
+                  )
               });
 
               return {
