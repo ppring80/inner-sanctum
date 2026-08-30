@@ -1051,6 +1051,37 @@ function getFilteredSorted() {
       }
     );
 
+  // My Roster Only is a lineup-decision view, not an overall rankings
+  // view. Keep each natural position together so customers can compare
+  // starters and bench alternatives concurrently. A FLEX/SUPERFLEX starter
+  // stays in the player's natural-position bucket; the lineup tag identifies
+  // the actual slot. Within each position, starters display first, then bench,
+  // with the better Weekly Ranking/SAGE option first inside each group.
+  if (state.myRosterOnly) {
+    var lineupAssignments = getRosterLineupAssignments();
+    rows.sort(function(a, b) {
+      var aPos = POS_ORDER.indexOf(a.pos);
+      var bPos = POS_ORDER.indexOf(b.pos);
+      if (aPos === -1) aPos = POS_ORDER.length;
+      if (bPos === -1) bPos = POS_ORDER.length;
+      if (aPos !== bPos) return aPos - bPos;
+
+      var aAssignment = lineupAssignments[a.name];
+      var bAssignment = lineupAssignments[b.name];
+      var aStarter = aAssignment && aAssignment.call === 'start' ? 0 : 1;
+      var bStarter = bAssignment && bAssignment.call === 'start' ? 0 : 1;
+      if (aStarter !== bStarter) return aStarter - bStarter;
+
+      var aValue = lineupRankingValue(a);
+      var bValue = lineupRankingValue(b);
+      if (aValue !== bValue) return bValue - aValue;
+
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    return rows;
+  }
+
   rows.sort(
     function(a, b) {
       var av;
