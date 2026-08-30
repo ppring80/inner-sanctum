@@ -5,10 +5,10 @@
 // PURPOSE
 // -------
 // The ONE customer-facing entry point for Weekly Rankings. Fetches
-// the four existing, already-validated positional leaderboards
+// the five existing, already-validated positional leaderboards
 // (weekly-sage-qb-leaderboard, -rb-leaderboard, -wr-leaderboard,
-// -te-leaderboard) and returns them combined under one normalized
-// response shape.
+// -te-leaderboard, -k-leaderboard) and returns them combined under
+// one normalized response shape.
 //
 // This function does NOT:
 // - recalculate any score
@@ -38,7 +38,7 @@
 // overall HTTP response still returns 200 as long as AT LEAST ONE
 // position succeeded, since a partial Weekly Rankings page (e.g. "QB
 // data is temporarily unavailable, but RB/WR/TE are ready") is more
-// useful to a customer than an all-or-nothing failure. If ALL FOUR
+// useful to a customer than an all-or-nothing failure. If ALL FIVE
 // positions fail, the response is a clear 502 -- never a fabricated
 // "empty rankings" 200.
 //
@@ -58,13 +58,14 @@ const {
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
-const POSITIONS = ["QB", "RB", "WR", "TE"];
+const POSITIONS = ["QB", "RB", "WR", "TE", "K"];
 
 const LEADERBOARD_FUNCTION_BY_POSITION = {
   QB: "weekly-sage-qb-leaderboard",
   RB: "weekly-sage-rb-leaderboard",
   WR: "weekly-sage-wr-leaderboard",
-  TE: "weekly-sage-te-leaderboard"
+  TE: "weekly-sage-te-leaderboard",
+  K: "weekly-sage-k-leaderboard"
 };
 
 function jsonResponse(statusCode, body) {
@@ -210,7 +211,7 @@ exports.handler = async function (event) {
     }
   }
 
-  // Fetch all four positional leaderboards in parallel. Each is
+  // Fetch all five positional leaderboards in parallel. Each is
   // completely independent -- one position's failure never blocks or
   // alters another's result.
   const results = await Promise.all(
@@ -241,9 +242,17 @@ exports.handler = async function (event) {
       // matchup, role, or production. Any failure inside
       // buildWeek2PlusSageTake() is caught internally and yields
       // null -- it can never throw here.
+      //
+      // K is excluded from this call: weekly-sage-k-leaderboard.js
+      // already computes its own K-specific sageTake locally (see
+      // that file's buildKSageTake()), since K does not use the
+      // QB/RB/WR/TE role/production/matchup model this function
+      // builds its explanation from. K's row is passed through with
+      // its own sageTake exactly as its leaderboard produced it --
+      // QB/RB/WR/TE behavior here is completely unchanged.
       positions[position] = leaderboard.map((row) => ({
         ...row,
-        sageTake: buildWeek2PlusSageTake(row)
+        sageTake: position === "K" ? row.sageTake : buildWeek2PlusSageTake(row)
       }));
 
       failures[position] = [];
