@@ -688,7 +688,7 @@ function getSelectedWeek() {
 function flattenRankings(rankings) {
   if (!rankings || !rankings.positions) return [];
   var out = [];
-  ['QB', 'RB', 'WR', 'TE', 'K'].forEach(function (pos) {
+  ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach(function (pos) {
     var list = rankings.positions[pos];
     if (!Array.isArray(list)) return;
     list.forEach(function (entry) {
