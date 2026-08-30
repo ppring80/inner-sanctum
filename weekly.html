@@ -148,6 +148,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .verdict-tag.start{background:rgba(46,125,50,0.15);color:var(--green)}
 .verdict-tag.flex{background:rgba(200,120,10,0.15);color:var(--amber)}
 .verdict-tag.sit{background:rgba(138,32,32,0.15);color:var(--red)}
+.lineup-slot-label{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:0.5px;color:var(--muted);margin-right:7px;vertical-align:middle}
 .cell-proj{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--ink);text-align:right}
 
 /* Matchup cell (1/3/10 visual management): dot=1s, label=3s, hover/tap/focus explanation=10s. Reuses the existing green/amber/red vocabulary already established by .injury-pill and .verdict-tag -- no new colors introduced. */
@@ -566,13 +567,74 @@ function updateLineupConstruction(){
   });
   state.lineupConstruction = obj;
   updateLineupTotal();
-  // Intentionally does NOT call renderTable() or touch rankings/
-  // verdicts/projections in any way -- storage only, per this pass's
-  // explicit scope.
+  // Lineup construction now drives My Roster starter assignments.
+  // Re-render only the existing Weekly Rankings presentation; rankings
+  // and SAGE values themselves are never recalculated here.
+  renderTable();
 }
 
 function getWeeklyLineupConstruction(){
   return state.lineupConstruction || DEFAULT_LINEUP_CONSTRUCTION;
+}
+
+// ─── My Roster starter assignment ───
+// Uses the customer's existing League Lineup Setup plus the already-loaded
+// Weekly Rankings order. It does not create a second ranking model. Fixed
+// position requirements are filled first, then FLEX, then SUPERFLEX from
+// the best remaining eligible roster players. Everyone else is a SIT.
+function lineupRankingValue(player) {
+  if (getSelectedWeek() === 1) {
+    return (typeof player.adp === 'number' && player.adp > 0) ? -player.adp : -Infinity;
+  }
+  return (typeof player.sageScore === 'number') ? player.sageScore : -Infinity;
+}
+
+function getRosterLineupAssignments() {
+  var assignments = {};
+  if (!state.myRosterNames || !state.myRosterNames.length) return assignments;
+
+  var rosterNameSet = {};
+  state.myRosterNames.forEach(function(name) { rosterNameSet[name] = true; });
+
+  var available = getAllRows()
+    .filter(function(player) { return rosterNameSet[player.name] === true; })
+    .slice()
+    .sort(function(a, b) { return lineupRankingValue(b) - lineupRankingValue(a); });
+
+  available.forEach(function(player) {
+    assignments[player.name] = { call: 'sit', slot: 'BENCH' };
+  });
+
+  function fillSlots(slot, count, eligiblePositions) {
+    for (var i = 0; i < count; i++) {
+      var bestIndex = -1;
+      for (var j = 0; j < available.length; j++) {
+        if (eligiblePositions.indexOf(available[j].pos) !== -1) {
+          bestIndex = j;
+          break;
+        }
+      }
+      if (bestIndex === -1) break;
+      var selected = available.splice(bestIndex, 1)[0];
+      assignments[selected.name] = { call: 'start', slot: slot };
+    }
+  }
+
+  var lineup = getWeeklyLineupConstruction();
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos) {
+    fillSlots(pos, Number(lineup[pos]) || 0, [pos]);
+  });
+  fillSlots('FLEX', Number(lineup.FLEX) || 0, FLEX_ELIGIBLE.FLEX);
+  fillSlots('SUPERFLEX', Number(lineup.SUPERFLEX) || 0, FLEX_ELIGIBLE.SFLEX);
+
+  return assignments;
+}
+
+function rosterLineupTag(assignment) {
+  if (!assignment) return '';
+  var tag = callTag(assignment.call);
+  var slot = assignment.call === 'start' ? assignment.slot : 'BENCH';
+  return tag + '<span class="lineup-slot-label">' + slot + '</span>';
 }
 
 
@@ -1054,6 +1116,12 @@ function renderTable() {
   var rows =
     getFilteredSorted();
 
+  // Compute lineup assignments from the full connected roster so search
+  // and position filters never change who is recommended to start.
+  var rosterAssignments = state.myRosterOnly
+    ? getRosterLineupAssignments()
+    : {};
+
   var fmt =
     getScoringFormat();
 
@@ -1130,8 +1198,13 @@ function renderTable() {
           // yet (this is currently true for RB -- see
           // weekly-sage-rb-leaderboard.js's own
           // recommendationThresholdsApplied: false).
-          var call =
-            p.call;
+          var lineupAssignment = state.myRosterOnly
+            ? rosterAssignments[p.name]
+            : null;
+
+          var call = lineupAssignment
+            ? lineupAssignment.call
+            : p.call;
 
           return (
             '<tr class="' +
@@ -1183,9 +1256,9 @@ function renderTable() {
 
               '<td>' +
                 '<div class="cell-verdict">' +
-                  callTag(
-                    call
-                  ) +
+                  (lineupAssignment
+                    ? rosterLineupTag(lineupAssignment)
+                    : callTag(call)) +
                   verdictText +
                 '</div>' +
               '</td>' +
