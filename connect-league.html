@@ -971,6 +971,9 @@ var CBS_ACCOUNT_ORIGIN =
 var discoveredCbsLeagues =
   [];
 
+var CBS_MOBILE_PENDING_LEAGUE_KEY =
+  "innerSanctum.cbs.mobilePendingLeague";
+
 var STATUS_LABELS = {
   live:
     "Live",
@@ -2590,6 +2593,8 @@ window.receiveCbsConnection =
       selectedProvider =
         "cbs";
 
+      clearPendingMobileCbsLeague();
+
       renderPlatformRow();
       renderConnectedBanner();
       renderProviderForm();
@@ -2838,6 +2843,216 @@ function cbsDiscoveredLeagueLabel(
     : name;
 }
 
+function isSafeDiscoveredCbsLeagueUrl(
+  url
+) {
+  try {
+    var parsed =
+      new URL(
+        String(
+          url ||
+          ""
+        )
+      );
+
+    return (
+      parsed.protocol ===
+        "https:" &&
+      /^[^.]+\.football\.cbssports\.com$/i.test(
+        parsed.hostname
+      )
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function savePendingMobileCbsLeague(
+  league
+) {
+  if (
+    !league ||
+    !isSafeDiscoveredCbsLeagueUrl(
+      league.url
+    )
+  ) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(
+      CBS_MOBILE_PENDING_LEAGUE_KEY,
+      JSON.stringify(
+        {
+          league:
+            league,
+          savedAt:
+            Date.now()
+        }
+      )
+    );
+  } catch (e) {
+    console.warn(
+      "Could not persist pending CBS mobile league.",
+      e
+    );
+  }
+}
+
+function getPendingMobileCbsLeague() {
+  try {
+    var raw =
+      localStorage.getItem(
+        CBS_MOBILE_PENDING_LEAGUE_KEY
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    var parsed =
+      JSON.parse(
+        raw
+      );
+
+    var league =
+      parsed &&
+      parsed.league;
+
+    var savedAt =
+      Number(
+        parsed &&
+        parsed.savedAt
+      );
+
+    /*
+      Keep this handoff short-lived. It only exists to survive the
+      CBS -> Inner Sanctum mobile Return button navigation.
+    */
+    if (
+      !league ||
+      !isSafeDiscoveredCbsLeagueUrl(
+        league.url
+      ) ||
+      !savedAt ||
+      Date.now() -
+        savedAt >
+        15 * 60 * 1000
+    ) {
+      localStorage.removeItem(
+        CBS_MOBILE_PENDING_LEAGUE_KEY
+      );
+
+      return null;
+    }
+
+    return league;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearPendingMobileCbsLeague() {
+  try {
+    localStorage.removeItem(
+      CBS_MOBILE_PENDING_LEAGUE_KEY
+    );
+  } catch (e) {
+    // Best-effort cleanup only.
+  }
+}
+
+function openPendingMobileCbsLeague() {
+  var league =
+    getPendingMobileCbsLeague();
+
+  var box =
+    document.getElementById(
+      "cbsResult"
+    );
+
+  if (
+    !league ||
+    !isSafeDiscoveredCbsLeagueUrl(
+      league.url
+    )
+  ) {
+    if (box) {
+      box.className =
+        "result-box error show";
+
+      box.innerHTML =
+        "⚠️ The saved CBS league link expired. " +
+        '<button class="connect-btn" onclick="startCbsConnect()">Start again</button>';
+    }
+
+    return;
+  }
+
+  if (box) {
+    box.className =
+      "result-box loading show";
+
+    box.innerHTML =
+      "<strong>Opening " +
+      escapeHtml(
+        cbsDiscoveredLeagueLabel(
+          league
+        )
+      ) +
+      "…</strong><br>" +
+      "Once your CBS league opens, run your Inner Sanctum CBS Connect bookmark one more time.";
+  }
+
+  /*
+    This page may itself be the CBS tab that was navigated back to
+    Inner Sanctum by the CBS Connect panel. Navigating THIS tab is
+    deterministic on mobile and preserves its opener relationship.
+  */
+  window.location.href =
+    league.url;
+}
+
+function renderPendingMobileCbsLeague() {
+  if (
+    !isMobileCbsBrowser()
+  ) {
+    return false;
+  }
+
+  var league =
+    getPendingMobileCbsLeague();
+
+  if (!league) {
+    return false;
+  }
+
+  var box =
+    document.getElementById(
+      "cbsResult"
+    );
+
+  if (!box) {
+    return false;
+  }
+
+  box.className =
+    "result-box success show";
+
+  box.innerHTML =
+    "<strong>✓ Found " +
+    escapeHtml(
+      cbsDiscoveredLeagueLabel(
+        league
+      )
+    ) +
+    ".</strong><br>" +
+    "Tap below to continue to your CBS league." +
+    '<br><br><button class="connect-btn" onclick="openPendingMobileCbsLeague()">OPEN MY LEAGUE</button>';
+
+  return true;
+}
+
 function handleCbsDiscoveryResult(
   leagues
 ) {
@@ -2879,6 +3094,10 @@ function handleCbsDiscoveryResult(
     if (isMobileCbsBrowser()) {
       discoveredCbsLeagues =
         leagues;
+
+      savePendingMobileCbsLeague(
+        leagues[0]
+      );
 
       box.className =
         "result-box success show";
@@ -3049,6 +3268,14 @@ function afterConnect() {
   renderPlatformRow();
   renderConnectedBanner();
   renderProviderForm();
+
+  /*
+    Android Chrome: the CBS panel's Return to Inner Sanctum button
+    navigates the CBS tab itself back here. Restore the league that
+    discovery already found so the customer can continue instead of
+    starting over.
+  */
+  renderPendingMobileCbsLeague();
 })();
 </script>
 
