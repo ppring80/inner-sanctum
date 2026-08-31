@@ -1581,16 +1581,61 @@
           "error"
         );
       } else if (leagues.length === 1) {
+        const discoveredLeague =
+          leagues[0];
+
+        const discoveredLeagueLabel =
+          discoveredLeague.leagueName ||
+          discoveredLeague.rawText ||
+          discoveredLeague.leagueId ||
+          "Your CBS league";
+
+        const discoveredLeagueUrl =
+          String(
+            discoveredLeague.url ||
+            discoveredLeague.leagueUrl ||
+            discoveredLeague.href ||
+            ""
+          ).trim();
+
         setPanelState(
           ui,
           "✅ League found",
           [
-            (leagues[0].leagueName || leagues[0].rawText || leagues[0].leagueId),
+            discoveredLeagueLabel,
             "",
-            "Continuing to your league automatically…"
+            "Tap OPEN MY LEAGUE to continue."
           ].join("\n"),
           "success"
         );
+
+        if (discoveredLeagueUrl) {
+          const openLeagueButton =
+            createButton(
+              "OPEN MY LEAGUE",
+              "primary"
+            );
+
+          openLeagueButton.onclick =
+            function () {
+              window.location.href =
+                discoveredLeagueUrl;
+            };
+
+          ui.buttons.appendChild(
+            openLeagueButton
+          );
+        } else {
+          addStatusBox(
+            ui,
+            [
+              "Inner Sanctum found your league, but CBS did not provide a usable league link.",
+              "",
+              "Return to Inner Sanctum and try CBS Connect again."
+            ].join("\n"),
+            "error"
+          );
+        }
       } else {
         setPanelState(
           ui,
