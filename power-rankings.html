@@ -333,23 +333,29 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 // ═══════════════════════════════════════════════════════════
 // MOCK LEAGUE DATA
 // ═══════════════════════════════════════════════════════════
+// NOTE: platform is deliberately a generic demo label, not a real
+// provider name (e.g. "Yahoo Fantasy") — this constant is mock/demo
+// data and must never claim to be a specific connected provider,
+// regardless of which provider (if any) the customer has connected.
+// See connectMock() below, which is the single place that decides
+// whether real provider attribution is shown.
 const LEAGUE = {
   name: 'The Brotherhood',
   numTeams: 10,
   scoring: 'PPR',
   week: 11,
-  platform: 'Yahoo Fantasy',
+  platform: 'Preview Data',
   teams: [
-    { name: 'Gridiron Gladiators',   wins: 9, losses: 1, weeklyScores: [142,118,135,129,151,140,122,138,149,160] },
-    { name: 'Thunderbolt Throwers',  wins: 8, losses: 2, weeklyScores: [128,134,140,119,122,131,145,138,128,121] },
-    { name: 'Endzone Enforcers',     wins: 7, losses: 3, weeklyScores: [110,125,118,140,132,128,119,134,142,138] },
-    { name: 'Hail Mary Heroes',      wins: 6, losses: 4, weeklyScores: [120,108,131,125,118,140,135,98,112,129] },
-    { name: 'Blitzkrieg Bandits',    wins: 6, losses: 4, weeklyScores: [99,115,140,128,135,120,110,142,118,131] },
-    { name: 'Red Zone Raiders',      wins: 5, losses: 5, weeklyScores: [118,122,108,131,115,98,128,120,135,110] },
-    { name: 'Pigskin Pirates',       wins: 5, losses: 5, weeklyScores: [105,118,99,128,110,131,118,108,122,115] },
-    { name: 'Fumble Force',          wins: 4, losses: 6, weeklyScores: [110,98,115,108,122,105,118,99,108,112] },
-    { name: 'Sack Attack Squad',     wins: 3, losses: 7, weeklyScores: [95,108,99,118,102,95,108,90,99,105] },
-    { name: 'Punt Return Posse',     wins: 1, losses: 9, weeklyScores: [88,95,82,99,90,85,92,88,79,95] },
+    { name: 'Gridiron Gladiators',   wins: 9, losses: 1, ties: 0, weeklyScores: [142,118,135,129,151,140,122,138,149,160], roster: [], rosterSource: 'manual' },
+    { name: 'Thunderbolt Throwers',  wins: 8, losses: 2, ties: 0, weeklyScores: [128,134,140,119,122,131,145,138,128,121], roster: [], rosterSource: 'manual' },
+    { name: 'Endzone Enforcers',     wins: 7, losses: 3, ties: 0, weeklyScores: [110,125,118,140,132,128,119,134,142,138], roster: [], rosterSource: 'manual' },
+    { name: 'Hail Mary Heroes',      wins: 6, losses: 4, ties: 0, weeklyScores: [120,108,131,125,118,140,135,98,112,129], roster: [], rosterSource: 'manual' },
+    { name: 'Blitzkrieg Bandits',    wins: 6, losses: 4, ties: 0, weeklyScores: [99,115,140,128,135,120,110,142,118,131], roster: [], rosterSource: 'manual' },
+    { name: 'Red Zone Raiders',      wins: 5, losses: 5, ties: 0, weeklyScores: [118,122,108,131,115,98,128,120,135,110], roster: [], rosterSource: 'manual' },
+    { name: 'Pigskin Pirates',       wins: 5, losses: 5, ties: 0, weeklyScores: [105,118,99,128,110,131,118,108,122,115], roster: [], rosterSource: 'manual' },
+    { name: 'Fumble Force',          wins: 4, losses: 6, ties: 0, weeklyScores: [110,98,115,108,122,105,118,99,108,112], roster: [], rosterSource: 'manual' },
+    { name: 'Sack Attack Squad',     wins: 3, losses: 7, ties: 0, weeklyScores: [95,108,99,118,102,95,108,90,99,105], roster: [], rosterSource: 'manual' },
+    { name: 'Punt Return Posse',     wins: 1, losses: 9, ties: 0, weeklyScores: [88,95,82,99,90,85,92,88,79,95], roster: [], rosterSource: 'manual' },
   ],
   matchups: [
     { teamA: 'Gridiron Gladiators', teamB: 'Pigskin Pirates' },
@@ -360,30 +366,92 @@ const LEAGUE = {
   ]
 };
 
+// Ties-aware record formatting, e.g. "9-1" or, when the provider
+// actually supplies a tie, "9-1-1". A single shared helper so every
+// place a record is displayed (persona commentary, rank cards,
+// snapshot, matchups) stays consistent, and so existing (tie-free)
+// output is byte-identical to before -- the "-ties" segment only
+// appears when ties is actually greater than 0.
+function formatRecord(team) {
+  var base = team.wins + '-' + team.losses;
+  return (team.ties > 0) ? (base + '-' + team.ties) : base;
+}
+
+// Null-safe number formatting for the newly-nullable seasonAvg/
+// last3Avg/vsLeagueAvg/formDelta fields -- a team with zero recorded
+// weekly scores has no real average to show, so this renders "—"
+// rather than fabricating a number or throwing on null.toFixed().
+function fmtNum(val, decimals) {
+  return (val === null || val === undefined || isNaN(val)) ? '—' : val.toFixed(decimals);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL ROSTER FOUNDATION (added) — data structure/hooks only.
+// No manual-entry UI is built in this pass. Every canonical team
+// object (mock LEAGUE teams above, and buildRealLeagueFromEspn's
+// parsed teams) now carries roster (an array of player IDs/player
+// objects, empty by default) and rosterSource ('provider' | 'manual'
+// | 'provider+manual'), so a later phase can build a simple player
+// assignment workflow against an already-established shape rather
+// than retrofitting one. This function is the intended hook that
+// workflow will call -- nothing in this file invokes it yet.
+// ═══════════════════════════════════════════════════════════
+function setTeamRoster(team, players) {
+  if (!team || !Array.isArray(players)) return;
+  team.roster = players;
+  team.rosterSource = (team.rosterSource === 'provider' && players.length)
+    ? 'provider+manual'
+    : 'manual';
+}
+
 // ═══════════════════════════════════════════════════════════
 // POWER RANKING FORMULA — LOCKED 2026-06-28
 // ═══════════════════════════════════════════════════════════
+// DATA-INTEGRITY NOTE (added): the formula's weights and structure
+// below are UNCHANGED. What changed is that a team can now genuinely
+// have zero recorded weekly scores (no more synthetic [0] padding --
+// see buildRealLeagueFromEspn), so every average below is computed
+// null-safely rather than assuming at least one score always exists,
+// and last3Avg/formDelta correctly divide by however many of the
+// last 3 weeks actually exist (never a hardcoded 3), matching the
+// exact same actual-length approach already used for the season
+// average. A team with no scores at all gets seasonAvg/last3Avg/
+// formDelta of null (rendered as "—", never fabricated), and is
+// excluded from the min/max ranges other teams get normalized
+// against, rather than corrupting those ranges with NaN.
 function computePowerRankings(league) {
   const teams = league.teams;
-  const maxGames = Math.max(...teams.map(t => t.wins + t.losses));
 
-  const seasonAvgs = teams.map(t => t.weeklyScores.reduce((a,b)=>a+b,0) / t.weeklyScores.length);
-  const leagueAvg = seasonAvgs.reduce((a,b)=>a+b,0) / seasonAvgs.length;
+  function average(arr) {
+    return arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+  }
 
-  const recordScores = teams.map(t => (t.wins + t.losses) > 0 ? t.wins / (t.wins + t.losses) : 0);
+  const seasonAvgs = teams.map(t => {
+    const calculated = average(t.weeklyScores || []);
+    return calculated !== null ? calculated : (Number.isFinite(Number(t.seasonAvgOverride)) ? Number(t.seasonAvgOverride) : null);
+  });
+  const knownSeasonAvgs = seasonAvgs.filter(v => v !== null);
+  const leagueAvg = knownSeasonAvgs.length ? average(knownSeasonAvgs) : 0;
+
+  const recordScores = teams.map(t => {
+    const games = (t.wins || 0) + (t.losses || 0) + (t.ties || 0);
+    return games > 0 ? (((t.wins || 0) + (0.5 * (t.ties || 0))) / games) : 0;
+  });
   const maxRecord = Math.max(...recordScores), minRecord = Math.min(...recordScores);
 
-  const scoringScores = seasonAvgs.map(avg => avg - leagueAvg);
-  const maxScoring = Math.max(...scoringScores), minScoring = Math.min(...scoringScores);
+  const scoringScores = seasonAvgs.map(avg => avg === null ? null : avg - leagueAvg);
+  const knownScoringScores = scoringScores.filter(v => v !== null);
+  const maxScoring = knownScoringScores.length ? Math.max(...knownScoringScores) : 0;
+  const minScoring = knownScoringScores.length ? Math.min(...knownScoringScores) : 0;
 
-  const formScores = teams.map((t, i) => {
-    const last3 = t.weeklyScores.slice(-3);
-    const last3Avg = last3.reduce((a,b)=>a+b,0) / last3.length;
-    return last3Avg - seasonAvgs[i];
-  });
-  const maxForm = Math.max(...formScores), minForm = Math.min(...formScores);
+  const last3Avgs = teams.map(t => average(t.weeklyScores.slice(-3)));
+  const formScores = teams.map((t, i) => (last3Avgs[i] === null || seasonAvgs[i] === null) ? null : last3Avgs[i] - seasonAvgs[i]);
+  const knownFormScores = formScores.filter(v => v !== null);
+  const maxForm = knownFormScores.length ? Math.max(...knownFormScores) : 0;
+  const minForm = knownFormScores.length ? Math.min(...knownFormScores) : 0;
 
   function normalize(val, min, max) {
+    if (val === null) return 0.5; // no data yet -- neutral, never fabricated as good or bad
     if (max === min) return 0.5;
     return (val - min) / (max - min);
   }
@@ -397,7 +465,7 @@ function computePowerRankings(league) {
       ...t,
       seasonAvg: seasonAvgs[i],
       vsLeagueAvg: scoringScores[i],
-      last3Avg: t.weeklyScores.slice(-3).reduce((a,b)=>a+b,0) / 3,
+      last3Avg: last3Avgs[i],
       formDelta: formScores[i],
       powerScore
     };
@@ -417,39 +485,39 @@ function oracleCommentary(team, rank, allTeams) {
   if (team.formDelta < -8) return `I see turbulence ahead for ${team.name}. Their recent output has fallen from what once was — the #${rank} ranking may not hold if this continues.`;
   if (rank === 2) return `${team.name} stands second, a step behind the leader but well clear of the pack below. The gap is real, but not insurmountable.`;
   if (rank === 3) return `${team.name} holds the third seat with quiet consistency. Theirs is not the loudest record, but it is a dependable one.`;
-  if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. ${team.wins}-${team.losses} is unkind, and I find little in the numbers to suggest an imminent turn.`;
-  if (team.formDelta > 2) return `${team.name} sits at #${rank}, ${team.wins}-${team.losses} on the season, averaging ${team.last3Avg.toFixed(0)} points over their last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Nothing dramatic yet, but I sense the early stirrings of momentum.`;
-  if (team.formDelta < -2) return `${team.name} holds #${rank} for now at ${team.wins}-${team.losses}, though their last three weeks have averaged ${team.last3Avg.toFixed(0)} against a season mark of ${team.seasonAvg.toFixed(0)}. The foundation is steady, but I would not call their recent play inspired.`;
+  if (rank >= allTeams.length - 1) return `${team.name} treads a difficult path. ${formatRecord(team)} is unkind, and I find little in the numbers to suggest an imminent turn.`;
+  if (team.formDelta > 2) return `${team.name} sits at #${rank}, ${formatRecord(team)} on the season, averaging ${fmtNum(team.last3Avg, 0)} points over their last three weeks against a ${fmtNum(team.seasonAvg, 0)} season average. Nothing dramatic yet, but I sense the early stirrings of momentum.`;
+  if (team.formDelta < -2) return `${team.name} holds #${rank} for now at ${formatRecord(team)}, though their last three weeks have averaged ${fmtNum(team.last3Avg, 0)} against a season mark of ${fmtNum(team.seasonAvg, 0)}. The foundation is steady, but I would not call their recent play inspired.`;
   const aboveOrBelowAvg = team.vsLeagueAvg >= 0 ? 'a touch above' : 'a touch below';
-  return `${team.name} sits at #${rank}, a ${team.wins}-${team.losses} record with scoring ${aboveOrBelowAvg} the league average. Neither blessed nor cursed — this is a team still writing its story.`;
+  return `${team.name} sits at #${rank}, a ${formatRecord(team)} record with scoring ${aboveOrBelowAvg} the league average. Neither blessed nor cursed — this is a team still writing its story.`;
 }
 
 function trashCommentary(team, rank, allTeams) {
-  if (rank === 1) return `${team.name} sits at ${team.wins}-${team.losses} averaging ${team.seasonAvg.toFixed(0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense. The next closest team is putting up ${allTeams[1] ? allTeams[1].seasonAvg.toFixed(0) : '—'} a week — not a typo, just a different tax bracket of football.`;
-  if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${team.last3Avg.toFixed(0)} points a game the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent. Whoever drafted them is currently insufferable in the league chat, and honestly? Earned it.`;
-  if (team.formDelta < -8) return `${team.name} peaked in week 3 and has been quietly dying ever since — ${team.last3Avg.toFixed(0)} points the last three weeks, down from ${team.seasonAvg.toFixed(0)} on the season. That #${rank} ranking is a fossil. The standings just haven't gotten the memo yet. Somewhere a waiver wire move from week 4 is aging like milk left in a hot car.`;
-  if (rank === 2) return `${team.name} is the clear #2 at ${team.wins}-${team.losses}, which is a nice way of saying "best of the rest." Not catching the top spot this week. Maybe not ever. Everybody else, though? Be very afraid — at ${team.seasonAvg.toFixed(0)} points a week, they're still out here ending seasons for the bottom half of this league without breaking a sweat.`;
-  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal, ${team.wins}-${team.losses} and perfectly respectable. Respectable is a polite word for "forgettable." Nobody's writing a documentary about #3. ${team.seasonAvg.toFixed(0)} points a week is a fine, solid, completely unremarkable number — the football equivalent of a firm handshake.`;
+  if (rank === 1) return `${team.name} sits at ${formatRecord(team)} averaging ${fmtNum(team.seasonAvg, 0)} a week, and the rest of this league is just COSPLAYING as competition at this point. Nobody's catching this. Print the trophy. Save everyone the suspense. The next closest team is putting up ${allTeams[1] ? fmtNum(allTeams[1].seasonAvg, 0) : '—'} a week — not a typo, just a different tax bracket of football.`;
+  if (team.formDelta > 8) return `Everybody slept on ${team.name} all season and now look — ${fmtNum(team.last3Avg, 0)} points a game the last three weeks against a ${fmtNum(team.seasonAvg, 0)} season average. That's not a hot streak, that's a TAKEOVER. Currently #${rank} and climbing like rent. Whoever drafted them is currently insufferable in the league chat, and honestly? Earned it.`;
+  if (team.formDelta < -8) return `${team.name} peaked in week 3 and has been quietly dying ever since — ${fmtNum(team.last3Avg, 0)} points the last three weeks, down from ${fmtNum(team.seasonAvg, 0)} on the season. That #${rank} ranking is a fossil. The standings just haven't gotten the memo yet. Somewhere a waiver wire move from week 4 is aging like milk left in a hot car.`;
+  if (rank === 2) return `${team.name} is the clear #2 at ${formatRecord(team)}, which is a nice way of saying "best of the rest." Not catching the top spot this week. Maybe not ever. Everybody else, though? Be very afraid — at ${fmtNum(team.seasonAvg, 0)} points a week, they're still out here ending seasons for the bottom half of this league without breaking a sweat.`;
+  if (rank === 3) return `${team.name} sitting at #3 like it's no big deal, ${formatRecord(team)} and perfectly respectable. Respectable is a polite word for "forgettable." Nobody's writing a documentary about #3. ${fmtNum(team.seasonAvg, 0)} points a week is a fine, solid, completely unremarkable number — the football equivalent of a firm handshake.`;
   if (rank >= allTeams.length - 1) {
-    const deficitVsAvg = Math.abs(team.vsLeagueAvg).toFixed(0);
-    return `${team.name} is ${team.wins}-${team.losses} and I genuinely don't know what to tell you. The numbers don't lie, the standings don't lie, and frankly neither will I: it might be time to start drafting a eulogy for this season. ${team.seasonAvg.toFixed(0)} points a week is ${deficitVsAvg} below where this league's average sits — that's not a rough patch, that's a ${deficitVsAvg}-point hole this roster needs to climb out of, starting yesterday.`;
+    const deficitVsAvg = team.vsLeagueAvg === null ? '—' : fmtNum(Math.abs(team.vsLeagueAvg), 0);
+    return `${team.name} is ${formatRecord(team)} and I genuinely don't know what to tell you. The numbers don't lie, the standings don't lie, and frankly neither will I: it might be time to start drafting a eulogy for this season. ${fmtNum(team.seasonAvg, 0)} points a week is ${deficitVsAvg} below where this league's average sits — that's not a rough patch, that's a ${deficitVsAvg}-point hole this roster needs to climb out of, starting yesterday.`;
   }
   if (team.formDelta > 2) {
     const teamAbove = allTeams.find(t => t.rank === rank - 1);
-    const gapToClimb = teamAbove ? Math.abs(teamAbove.seasonAvg - team.seasonAvg).toFixed(0) : null;
+    const gapToClimb = (teamAbove && teamAbove.seasonAvg !== null && team.seasonAvg !== null) ? fmtNum(Math.abs(teamAbove.seasonAvg - team.seasonAvg), 0) : '—';
     const climbLine = teamAbove
       ? `Close that ${gapToClimb}-point gap on #${rank - 1} and this team is no longer a secret.`
       : `Keep sleeping on this team — by next month it'll be too late to say you saw it coming.`;
-    return `${team.name} sitting at #${rank} at ${team.wins}-${team.losses}, but check this: ${team.last3Avg.toFixed(0)} points the last three weeks against a ${team.seasonAvg.toFixed(0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral. ${climbLine}`;
+    return `${team.name} sitting at #${rank} at ${formatRecord(team)}, but check this: ${fmtNum(team.last3Avg, 0)} points the last three weeks against a ${fmtNum(team.seasonAvg, 0)} season average. Somebody's quietly cooking and nobody in this league is paying attention. Their funeral. ${climbLine}`;
   }
-  if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${team.wins}-${team.losses}, but the last three weeks have only averaged ${team.last3Avg.toFixed(0)} against a ${team.seasonAvg.toFixed(0)} season mark. The record says fine. The trend says start sweating. Whatever got them here isn't showing up anymore, and "fine for now" is exactly how a season quietly falls apart.`;
-  const scoringTake = team.vsLeagueAvg >= 0 ? `scoring ${team.vsLeagueAvg.toFixed(0)} points above the league average, which is something at least` : `scoring ${Math.abs(team.vsLeagueAvg).toFixed(0)} points BELOW the league average, which is not the flex they think it is`;
-  return `${team.name} is #${rank} at ${team.wins}-${team.losses}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture — present every week, never the topic of conversation, perfectly load-bearing and completely unmemorable.`;
+  if (team.formDelta < -2) return `${team.name} is parked at #${rank}, ${formatRecord(team)}, but the last three weeks have only averaged ${fmtNum(team.last3Avg, 0)} against a ${fmtNum(team.seasonAvg, 0)} season mark. The record says fine. The trend says start sweating. Whatever got them here isn't showing up anymore, and "fine for now" is exactly how a season quietly falls apart.`;
+  const scoringTake = team.vsLeagueAvg >= 0 ? `scoring ${fmtNum(team.vsLeagueAvg, 0)} points above the league average, which is something at least` : `scoring ${team.vsLeagueAvg === null ? '—' : fmtNum(Math.abs(team.vsLeagueAvg), 0)} points BELOW the league average, which is not the flex they think it is`;
+  return `${team.name} is #${rank} at ${formatRecord(team)}, ${scoringTake}. Nobody's scared. Nobody's worried. This is the league's furniture — present every week, never the topic of conversation, perfectly load-bearing and completely unmemorable.`;
 }
 
 function analystCommentary(team, rank, allTeams) {
-  const diff = team.vsLeagueAvg >= 0 ? '+' : '';
-  return `Rank ${rank} of ${allTeams.length}. Record: ${team.wins}-${team.losses}. Season average ${team.seasonAvg.toFixed(1)} pts (${diff}${team.vsLeagueAvg.toFixed(1)} vs. league average). Last 3 weeks: ${team.last3Avg.toFixed(1)} pts (${team.formDelta >= 0 ? '+' : ''}${team.formDelta.toFixed(1)} vs. own season average).`;
+  const diff = team.vsLeagueAvg !== null && team.vsLeagueAvg >= 0 ? '+' : '';
+  return `Rank ${rank} of ${allTeams.length}. Record: ${formatRecord(team)}. Season average ${fmtNum(team.seasonAvg, 1)} pts (${diff}${fmtNum(team.vsLeagueAvg, 1)} vs. league average). Last 3 weeks: ${fmtNum(team.last3Avg, 1)} pts (${team.formDelta !== null && team.formDelta >= 0 ? '+' : ''}${fmtNum(team.formDelta, 1)} vs. own season average).`;
 }
 
 function getCommentary(persona, team, rank, allTeams) {
@@ -473,26 +541,26 @@ function trashMatchup(teamA, teamB) {
 
   if (gap < 0.08) {
     const coinFlipVariants = [
-      `${teamA.name} vs ${teamB.name} is basically a coin flip — ${teamA.seasonAvg.toFixed(0)} a week against ${teamB.seasonAvg.toFixed(0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up. This is the kind of game that gets decided by one bad bench decision on a Sunday morning, and somebody's about to learn that the hard way.`,
-      `Nobody should feel confident about ${teamA.name} vs ${teamB.name}. ${teamA.seasonAvg.toFixed(0)} a week, ${teamB.seasonAvg.toFixed(0)} a week — there's nothing separating these two teams except whoever remembers to check their lineup before kickoff. Pure chaos game.`,
-      `${teamA.name} and ${teamB.name} are basically the same team wearing different jerseys — ${teamA.seasonAvg.toFixed(0)} vs ${teamB.seasonAvg.toFixed(0)}, a rounding error apart. This one's going to come down to whoever's bench player has the better Sunday, not skill.`
+      `${teamA.name} vs ${teamB.name} is basically a coin flip — ${fmtNum(teamA.seasonAvg, 0)} a week against ${fmtNum(teamB.seasonAvg, 0)}. Either of these teams could win this and either of these teams could absolutely embarrass themselves. Buckle up. This is the kind of game that gets decided by one bad bench decision on a Sunday morning, and somebody's about to learn that the hard way.`,
+      `Nobody should feel confident about ${teamA.name} vs ${teamB.name}. ${fmtNum(teamA.seasonAvg, 0)} a week, ${fmtNum(teamB.seasonAvg, 0)} a week — there's nothing separating these two teams except whoever remembers to check their lineup before kickoff. Pure chaos game.`,
+      `${teamA.name} and ${teamB.name} are basically the same team wearing different jerseys — ${fmtNum(teamA.seasonAvg, 0)} vs ${fmtNum(teamB.seasonAvg, 0)}, a rounding error apart. This one's going to come down to whoever's bench player has the better Sunday, not skill.`
     ];
     return coinFlipVariants[variant];
   }
 
   if (gap < 0.2) {
     const closeVariants = [
-      `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it. The gap on paper is real — ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.seasonAvg.toFixed(0)} — but "on paper" has never once stopped an upset in this league.`,
-      `On paper, ${favorite.name} takes this — ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)}. But "on paper" is exactly the kind of phrase that ages badly in this league, and ${underdog.name} has a real shot at making this one ugly.`,
-      `${favorite.name} is the favorite here, ${favorite.seasonAvg.toFixed(0)} a week vs ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — a real edge, but not a big one. Close enough that one big play from ${underdog.name} flips the whole script.`
+      `${favorite.name} SHOULD win this one. Should. Big emphasis on should. ${underdog.name} has made a career out of ruining a perfectly good prediction, so don't go betting your fantasy reputation on it. The gap on paper is real — ${fmtNum(favorite.seasonAvg, 0)} a week to ${fmtNum(underdog.seasonAvg, 0)} — but "on paper" has never once stopped an upset in this league.`,
+      `On paper, ${favorite.name} takes this — ${fmtNum(favorite.seasonAvg, 0)} a week against ${underdog.name}'s ${fmtNum(underdog.seasonAvg, 0)}. But "on paper" is exactly the kind of phrase that ages badly in this league, and ${underdog.name} has a real shot at making this one ugly.`,
+      `${favorite.name} is the favorite here, ${fmtNum(favorite.seasonAvg, 0)} a week vs ${underdog.name}'s ${fmtNum(underdog.seasonAvg, 0)} — a real edge, but not a big one. Close enough that one big play from ${underdog.name} flips the whole script.`
     ];
     return closeVariants[variant];
   }
 
   const blowoutVariants = [
-    `${favorite.name} averaging ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday. A ${rankGap}-spot gap in the standings doesn't happen by accident, and this is exactly the kind of week where the gap gets wider, not closer.`,
-    `Let's be honest about ${favorite.name} vs ${underdog.name}: ${favorite.seasonAvg.toFixed(0)} a week against ${underdog.seasonAvg.toFixed(0)} isn't a fair fight, it's a mercy rule waiting to happen. ${rankGap} spots apart in the standings for a reason — ${underdog.name} shows up here as a formality.`,
-    `${underdog.name} walking into a buzzsaw this week. ${favorite.name} is putting up ${favorite.seasonAvg.toFixed(0)} a week to ${underdog.name}'s ${underdog.seasonAvg.toFixed(0)}, and a ${rankGap}-spot gap that big in the standings means this one's over before it starts. Sorry in advance.`
+    `${favorite.name} averaging ${fmtNum(favorite.seasonAvg, 0)} a week against ${underdog.name}'s ${fmtNum(underdog.seasonAvg, 0)} — this isn't a matchup, it's a scheduled L. ${underdog.name}'s manager should already be drafting the excuse for Monday. A ${rankGap}-spot gap in the standings doesn't happen by accident, and this is exactly the kind of week where the gap gets wider, not closer.`,
+    `Let's be honest about ${favorite.name} vs ${underdog.name}: ${fmtNum(favorite.seasonAvg, 0)} a week against ${fmtNum(underdog.seasonAvg, 0)} isn't a fair fight, it's a mercy rule waiting to happen. ${rankGap} spots apart in the standings for a reason — ${underdog.name} shows up here as a formality.`,
+    `${underdog.name} walking into a buzzsaw this week. ${favorite.name} is putting up ${fmtNum(favorite.seasonAvg, 0)} a week to ${underdog.name}'s ${fmtNum(underdog.seasonAvg, 0)}, and a ${rankGap}-spot gap that big in the standings means this one's over before it starts. Sorry in advance.`
   ];
   return blowoutVariants[variant];
 }
@@ -500,7 +568,11 @@ function trashMatchup(teamA, teamB) {
 // ═══════════════════════════════════════════════════════════
 // STATE + RENDERING
 // ═══════════════════════════════════════════════════════════
-let state = { connected: false, persona: 'trash', rankings: [] };
+// activeLeague/usingRealData (added) -- the single source of truth
+// for which league object (real or mock) is currently rendered.
+// renderMatchups() and any future consumer must read state.activeLeague
+// rather than reaching for the LEAGUE mock constant directly.
+let state = { connected: false, persona: 'trash', rankings: [], activeLeague: null, usingRealData: false };
 
 function selectPlatform(p) {
   if (p === 'espn') return;
@@ -559,10 +631,18 @@ function buildRealLeagueFromEspn(raw) {
         || ('Team ' + t.id);
       var rec = (t.record && t.record.overall) || {};
       return {
+        teamId: t.id,
         name: name,
         wins: rec.wins || 0,
         losses: rec.losses || 0,
-        weeklyScores: scoresByTeam[t.id] || []
+        ties: rec.ties || 0,
+        weeklyScores: scoresByTeam[t.id] || [],
+        // Manual roster foundation (added) -- data structure/hooks
+        // only, no UI yet. Every team from a real provider starts as
+        // pure provider data; setTeamRoster() below is the future
+        // hook a later manual-assignment workflow will call.
+        roster: [],
+        rosterSource: 'provider'
       };
     });
 
@@ -573,13 +653,12 @@ function buildRealLeagueFromEspn(raw) {
     var teamsWithScores = teams.filter(function (t) { return t.weeklyScores.length > 0; });
     if (teamsWithScores.length < 2) return null;
 
-    // Any team still missing scores this early in the season (bye-adjacent
-    // edge cases, mid-week connection, etc.) needs at least one number so
-    // computePowerRankings()'s .slice(-3) / .reduce() math doesn't break —
-    // pad with a single 0 rather than dropping the team from the league.
-    teams.forEach(function (t) {
-      if (!t.weeklyScores.length) t.weeklyScores = [0];
-    });
+    // A team with genuinely zero weekly scores this early in the
+    // season (bye-adjacent edge cases, mid-week connection, a team
+    // just added, etc.) is left with an EMPTY weeklyScores array --
+    // no synthetic [0] padding. computePowerRankings() below treats
+    // an empty array as "no data yet" (null averages, neutral
+    // normalization) rather than a fabricated 0-point season.
 
     return {
       name: (raw.settings && raw.settings.name) || 'My ESPN League',
@@ -592,6 +671,86 @@ function buildRealLeagueFromEspn(raw) {
     };
   } catch (e) {
     console.log('buildRealLeagueFromEspn failed, falling back to mock:', e.message);
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// REAL CBS LEAGUE ADAPTER
+// ═══════════════════════════════════════════════════════════
+// CBS's existing browser-assisted sync persists league-wide standings
+// plus the connected manager's roster/schedule. The standings provide
+// record + PF + weeks for every fantasy team, but not every team's
+// week-by-week scoring history. We therefore use real CBS season scoring
+// (PF / completed weeks) and leave recent form unavailable/null rather
+// than manufacturing weekly scores. The current formula remains 45/35/20;
+// a null form input normalizes neutrally to 0.5 until richer weekly
+// history is captured in a later CBS sync revision.
+function buildRealLeagueFromCbs(conn) {
+  try {
+    if (!conn || !Array.isArray(conn.standings) || conn.standings.length < 2) return null;
+
+    var standings = conn.standings.filter(function (row) {
+      return row && (row.teamId !== null && row.teamId !== undefined) && row.teamName;
+    });
+    if (standings.length < 2) return null;
+
+    var connectedTeamId = (conn.teamId !== null && conn.teamId !== undefined)
+      ? String(conn.teamId)
+      : (conn.team && conn.team.id !== null && conn.team.id !== undefined ? String(conn.team.id) : null);
+
+    var teams = standings.map(function (row) {
+      var weeks = Number(row.weeks);
+      var pointsFor = Number(row.pointsFor);
+      var seasonAvgOverride = (Number.isFinite(weeks) && weeks > 0 && Number.isFinite(pointsFor))
+        ? pointsFor / weeks
+        : null;
+      var isConnectedTeam = connectedTeamId !== null && String(row.teamId) === connectedTeamId;
+
+      return {
+        teamId: row.teamId,
+        name: row.teamName,
+        wins: Number(row.wins) || 0,
+        losses: Number(row.losses) || 0,
+        ties: Number(row.ties) || 0,
+        weeklyScores: [],
+        seasonAvgOverride: seasonAvgOverride,
+        roster: isConnectedTeam && Array.isArray(conn.roster) ? conn.roster.slice() : [],
+        rosterSource: 'provider'
+      };
+    });
+
+    var usableScoringTeams = teams.filter(function (t) { return t.seasonAvgOverride !== null; });
+    if (usableScoringTeams.length < 2) return null;
+
+    var completedWeeks = standings.reduce(function (max, row) {
+      var w = Number(row.weeks);
+      return Number.isFinite(w) ? Math.max(max, w) : max;
+    }, 0);
+
+    var scoring = conn.scoringFormat
+      || (conn.settings && conn.settings.scoringProfile && conn.settings.scoringProfile.format)
+      || 'Unknown';
+    var scoringLabel = String(scoring).toLowerCase() === 'ppr' ? 'PPR'
+      : (String(scoring).toLowerCase().indexOf('half') >= 0 ? 'Half PPR'
+      : (String(scoring).toLowerCase() === 'standard' ? 'Standard' : String(scoring)));
+
+    // The stored CBS schedule is for the connected manager, not a complete
+    // league-wide matchup matrix, so do not present it as every matchup.
+    return {
+      name: conn.leagueName || (conn.league && conn.league.name) || 'My CBS League',
+      numTeams: teams.length,
+      scoring: scoringLabel,
+      week: completedWeeks || 1,
+      platform: 'CBS Fantasy',
+      teams: teams,
+      matchups: [],
+      dataCoverage: 'standings+season-scoring',
+      formAvailable: false
+    };
+  } catch (e) {
+    console.log('buildRealLeagueFromCbs failed, falling back to preview:', e.message);
     return null;
   }
 }
@@ -615,36 +774,70 @@ function connectMock() {
         activeLeague = realLeague;
         usingRealData = true;
       } else {
-        fallbackReason = 'Connected to ESPN, but no games have been played yet in your league — showing preview data until real scores exist.';
+        fallbackReason = 'Connected to ESPN, but no completed scoring data is available yet — showing preview data.';
       }
     } else {
       fallbackReason = 'Connected to ESPN, but no league data was returned — showing preview data.';
     }
+  } else if (activeProvider === 'cbs' && typeof LeagueConnection !== 'undefined') {
+    var cbsConn = LeagueConnection.getConnection('cbs');
+    if (cbsConn) {
+      var cbsLeague = buildRealLeagueFromCbs(cbsConn);
+      if (cbsLeague) {
+        activeLeague = cbsLeague;
+        usingRealData = true;
+      } else {
+        fallbackReason = 'Connected to CBS, but the saved league data does not contain enough standings/scoring information to rank the league — showing preview data.';
+      }
+    } else {
+      fallbackReason = 'Connected to CBS, but no saved league data was returned — showing preview data.';
+    }
+  } else if (activeProvider) {
+    fallbackReason = 'This connected provider is not yet supported by Power Rankings — showing preview data.';
   }
 
   state.rankings = computePowerRankings(activeLeague);
   state.connected = true;
+  // Active league consistency (added) -- the actually-rendered league
+  // (real ESPN data, or the mock LEAGUE fallback) is now stored on
+  // state so every consumer (rankings, snapshot, matchups) reads the
+  // SAME object rather than some reading state.rankings while others
+  // reach for the global LEAGUE/mock constant directly.
+  state.activeLeague = activeLeague;
+  state.usingRealData = usingRealData;
   document.getElementById('connectWrap').classList.add('hidden');
   document.getElementById('results').classList.add('active');
   document.getElementById('leagueName').textContent = activeLeague.name;
 
-  var platformLabel = activeProvider && LeagueConnection.PROVIDERS[activeProvider]
+  // Connected-provider truth (added): a specific provider's name
+  // (ESPN/Yahoo/CBS) is ONLY ever shown when usingRealData is
+  // actually true. Whenever real parsing failed or wasn't available
+  // and mock/demo data is being shown instead, the label is a
+  // neutral "Preview Data" regardless of which provider is
+  // technically connected -- the customer must never be told mock
+  // data came from a real provider.
+  var platformLabel = (usingRealData && activeProvider && LeagueConnection.PROVIDERS[activeProvider])
     ? LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy'
     : activeLeague.platform;
 
   document.getElementById('leagueMeta').textContent =
     activeLeague.numTeams + ' teams · ' + activeLeague.scoring + ' · Week ' + activeLeague.week + ' · ' + platformLabel;
 
-  // Attribution line — reflects the real active provider. Yahoo
-  // specifically requires this exact phrasing, hyperlinked to an
-  // official Yahoo Fantasy page, per the signed API Access and Use
-  // Agreement — that requirement only applies once real Yahoo data is
-  // live, but the link is included now so the correct format is
-  // already in place.
+  // Attribution line — reflects the real active provider ONLY when
+  // usingRealData is true (see the connected-provider truth note
+  // above). Yahoo specifically requires this exact phrasing,
+  // hyperlinked to an official Yahoo Fantasy page, per the signed
+  // API Access and Use Agreement — that requirement only applies
+  // once real Yahoo data is live, but the link is included now so
+  // the correct format is already in place for when it is.
   var attrEl = document.getElementById('attribution');
   if (attrEl) {
-    if (activeProvider === 'yahoo') {
+    if (!usingRealData) {
+      attrEl.textContent = 'Preview data — not from a connected league';
+    } else if (activeProvider === 'yahoo') {
       attrEl.innerHTML = 'Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Yahoo Fantasy</a>';
+    } else if (activeProvider === 'cbs') {
+      attrEl.textContent = 'Fantasy data provided by CBS Fantasy · season scoring + standings';
     } else if (activeProvider && LeagueConnection.PROVIDERS[activeProvider]) {
       attrEl.textContent = 'Fantasy data provided by ' + LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy';
     } else {
@@ -804,13 +997,13 @@ function renderRankings() {
       '<div class="rank-main">' +
         '<div class="rank-team-row">' +
           '<span class="rank-team-name">' + team.name + '</span>' +
-          '<span class="rank-record">' + team.wins + '-' + team.losses + '</span>' +
+          '<span class="rank-record">' + formatRecord(team) + '</span>' +
           '<span class="rank-trend ' + trendClass + '">' + trendIcon + ' ' + trendLabel + '</span>' +
         '</div>' +
         '<div class="rank-commentary">' + getCommentary(state.persona, team, team.rank, state.rankings) + '</div>' +
       '</div>' +
       '<div class="rank-stats">' +
-        '<div class="rank-stat-val">' + team.seasonAvg.toFixed(1) + '</div>' +
+        '<div class="rank-stat-val">' + fmtNum(team.seasonAvg, 1) + '</div>' +
         '<div class="rank-stat-label">avg pts/wk</div>' +
         (showVoiceButton ? '<button class="voice-btn-card" title="Hear the Trash Lord roast this">🔊</button>' : '') +
       '</div>';
@@ -846,39 +1039,41 @@ function renderSnapshot() {
   }
 
   const powerLeader = teams[0];
-  const hottest = teams.reduce((a, b) => (b.formDelta > a.formDelta ? b : a));
-  const coolest = teams.reduce((a, b) => (b.formDelta < a.formDelta ? b : a));
-  const scoringLeader = teams.reduce((a, b) => (b.seasonAvg > a.seasonAvg ? b : a));
-  const leagueAvg = teams.reduce((sum, t) => sum + t.seasonAvg, 0) / teams.length;
+  const formTeams = teams.filter(t => t.formDelta !== null && Number.isFinite(t.formDelta));
+  const scoringTeams = teams.filter(t => t.seasonAvg !== null && Number.isFinite(t.seasonAvg));
+  const hottest = formTeams.length ? formTeams.reduce((a, b) => (b.formDelta > a.formDelta ? b : a)) : null;
+  const coolest = formTeams.length ? formTeams.reduce((a, b) => (b.formDelta < a.formDelta ? b : a)) : null;
+  const scoringLeader = scoringTeams.length ? scoringTeams.reduce((a, b) => (b.seasonAvg > a.seasonAvg ? b : a)) : null;
+  const leagueAvg = scoringTeams.length ? scoringTeams.reduce((sum, t) => sum + t.seasonAvg, 0) / scoringTeams.length : null;
 
   function fmtDelta(v) {
-    return (v >= 0 ? '+' : '') + v.toFixed(1);
+    return (v === null || !Number.isFinite(v)) ? '—' : ((v >= 0 ? '+' : '') + fmtNum(v, 1));
   }
 
   panel.innerHTML =
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Power Leader</div>' +
       '<div class="snapshot-value">' + powerLeader.name + '</div>' +
-      '<div class="snapshot-sub">' + powerLeader.wins + '-' + powerLeader.losses + ' · ' + powerLeader.seasonAvg.toFixed(1) + ' pts/wk</div>' +
+      '<div class="snapshot-sub">' + formatRecord(powerLeader) + ' · ' + fmtNum(powerLeader.seasonAvg, 1) + ' pts/wk</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Hottest Team</div>' +
-      '<div class="snapshot-value">' + hottest.name + '</div>' +
-      '<div class="snapshot-sub">' + fmtDelta(hottest.formDelta) + ' vs season avg</div>' +
+      '<div class="snapshot-value">' + (hottest ? hottest.name : '—') + '</div>' +
+      '<div class="snapshot-sub">' + (hottest ? (fmtDelta(hottest.formDelta) + ' vs season avg') : 'Recent form unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Cooling Off</div>' +
-      '<div class="snapshot-value">' + coolest.name + '</div>' +
-      '<div class="snapshot-sub">' + fmtDelta(coolest.formDelta) + ' vs season avg</div>' +
+      '<div class="snapshot-value">' + (coolest ? coolest.name : '—') + '</div>' +
+      '<div class="snapshot-sub">' + (coolest ? (fmtDelta(coolest.formDelta) + ' vs season avg') : 'Recent form unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Scoring Leader</div>' +
-      '<div class="snapshot-value">' + scoringLeader.name + '</div>' +
-      '<div class="snapshot-sub">' + scoringLeader.seasonAvg.toFixed(1) + ' pts/wk</div>' +
+      '<div class="snapshot-value">' + (scoringLeader ? scoringLeader.name : '—') + '</div>' +
+      '<div class="snapshot-sub">' + (scoringLeader ? (fmtNum(scoringLeader.seasonAvg, 1) + ' pts/wk') : 'Scoring unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">League Average</div>' +
-      '<div class="snapshot-value">' + leagueAvg.toFixed(1) + ' pts/wk</div>' +
+      '<div class="snapshot-value">' + fmtNum(leagueAvg, 1) + ' pts/wk</div>' +
     '</div>';
 }
 
@@ -888,17 +1083,31 @@ function renderMatchups() {
   const byName = {};
   state.rankings.forEach(t => byName[t.name] = t);
 
-  LEAGUE.matchups.forEach(m => {
+  // Active league consistency (added): reads state.activeLeague (the
+  // actually-rendered league, real or mock) rather than the hardcoded
+  // mock LEAGUE constant directly. A real connected league with no
+  // matchup-preview data yet (buildRealLeagueFromEspn currently sets
+  // matchups: []) correctly renders no matchup cards rather than
+  // silently showing the mock league's unrelated matchups.
+  const matchups = (state.activeLeague && Array.isArray(state.activeLeague.matchups))
+    ? state.activeLeague.matchups
+    : [];
+
+  matchups.forEach(m => {
     const teamA = byName[m.teamA], teamB = byName[m.teamB];
+    if (!teamA || !teamB) {
+      console.log('Power Rankings matchup skipped: team could not be resolved', m.teamA, m.teamB);
+      return;
+    }
     const card = document.createElement('div');
     card.className = 'matchup-card';
     const trashText = trashMatchup(teamA, teamB);
     const oracleText = oracleMatchup(teamA, teamB);
     card.innerHTML =
       '<div class="matchup-teams">' +
-        '<div class="matchup-team"><div class="matchup-team-name">' + teamA.name + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + teamA.wins + '-' + teamA.losses + '</div></div>' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + teamA.name + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + formatRecord(teamA) + '</div></div>' +
         '<div class="matchup-vs">VS</div>' +
-        '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + teamB.wins + '-' + teamB.losses + '</div></div>' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + formatRecord(teamB) + '</div></div>' +
       '</div>' +
       '<hr class="matchup-divider">' +
       '<div class="trash-box-hero">' +
