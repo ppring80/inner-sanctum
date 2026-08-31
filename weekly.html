@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Weekly Rankings — The Inner Sanctum</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- Player Profile V1 (added) -- shared stylesheet, also used later by
+     Draft Command Center. Contains no Weekly-Rankings-specific rules. -->
+<link rel="stylesheet" href="/player-profile.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -153,6 +156,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .rank-table td{padding:12px 14px;font-size:13px;color:var(--ink);vertical-align:middle}
 .cell-player{display:flex;align-items:center;gap:8px}
 .cell-name{font-weight:600}
+/* Player Profile V1 (added) -- cell-name is now clickable/focusable
+   to open the profile; keeps the existing font-weight rule above
+   untouched and only adds the interactive affordance. */
+.cell-name[role="button"]{cursor:pointer}
+.cell-name[role="button"]:hover{text-decoration:underline}
+.cell-name[role="button"]:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:3px}
 .cell-mine-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0}
 .pos-pill{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:3px 7px;border-radius:3px;letter-spacing:0.5px}
 .pos-pill.QB{background:rgba(21,101,192,0.12);color:#1565c0}
@@ -534,6 +543,12 @@ function checkOAuthSession() {
     </div>
   </div>
 </div>
+
+<!-- Player Profile V1 (added) -- shared component, also used later by
+     Draft Command Center. Loaded before the main script below so
+     PlayerProfile.open() is available to openPlayerProfile(). Contains
+     no Weekly-Rankings-specific logic. -->
+<script src="/player-profile.js"></script>
 
 <script>
 var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
@@ -996,6 +1011,12 @@ function flattenRankings(rankings) {
     if (!Array.isArray(list)) return;
     list.forEach(function (entry) {
       out.push({
+        // Player Profile V1 (added): playerID is already returned by
+        // every positional leaderboard/backend response but was
+        // previously discarded here. Exposed as the preferred stable
+        // identifier; existing consumers that never read this field
+        // are completely unaffected.
+        playerID: entry.playerID || null,
         name: entry.name || '(unknown player)',
         pos: entry.position || pos,
         team: entry.team || '—',
@@ -1025,11 +1046,26 @@ function flattenRankings(rankings) {
             ? entry.sage.confidenceLabel
             : (entry.sageConfidenceLabel != null ? entry.sageConfidenceLabel : null),
         adp: typeof entry.adp === 'number' ? entry.adp : null,
-        positionRank: typeof entry.positionRank === 'number' ? entry.positionRank : null,
+        overallRank: typeof entry.overallRank === 'number' ? entry.overallRank : null,
+        // Player Profile V1 (added): Week 2+ leaderboards expose this
+        // same rank under the field name `rank`, not `positionRank` --
+        // entry.positionRank alone was always null for every Week 2+
+        // player. Falls back to entry.rank so this now reflects the
+        // real value the backend already computes, for every existing
+        // consumer of this field, not only the new profile.
+        positionRank:
+          typeof entry.positionRank === 'number'
+            ? entry.positionRank
+            : (typeof entry.rank === 'number' ? entry.rank : null),
         matchup:
           entry.matchupStrength != null
             ? entry.matchupStrength
             : (entry.matchup != null ? entry.matchup : null),
+        // Player Profile V1 (added): the detailed component breakdown
+        // behind the flattened matchup label above, already present on
+        // the backend response, previously discarded here.
+        matchupEvidence: entry.matchupEvidence || null,
+        components: entry.components || null,
         sageTake:
           entry.sageTake != null && String(entry.sageTake).trim() !== ''
             ? entry.sageTake
@@ -1288,6 +1324,143 @@ function getAllRows() {
   return flattenRankings(state.rankings);
 }
 
+// ═══════════════════════════════════════════════════════════
+// PLAYER PROFILE V1 (added) -- Weekly Rankings' own mapper
+// ═══════════════════════════════════════════════════════════
+//
+// All Weekly-Rankings-specific business logic for Player Profile
+// lives HERE, in this page, never inside the shared player-profile.js
+// component. This is the only place that decides what a "reason"
+// means for this page, what the context panel's title says, or which
+// fields Weekly Rankings currently has versus doesn't -- the shared
+// component itself has no knowledge any of this exists.
+//
+// playerID preferred, falling back to name+position -- matches the
+// same resolution order already used for safeProfileId in
+// renderTable() above.
+function getPlayerRowById(id) {
+  var rows = getAllRows();
+  return rows.find(function (p) {
+    if (p.playerID && p.playerID === id) return true;
+    return (p.name + '|' + p.pos) === id;
+  }) || null;
+}
+
+// Builds the ProfileModel contract from one already-flattened Weekly
+// Rankings row. Every field not actually available from Weekly SAGE
+// today is left null/omitted rather than fabricated -- see the
+// Player Profile V1 architecture review for the exact evidence behind
+// each omission (no photo/headshot data, no fantasy-points projection,
+// no per-game log, no structured risk factors currently exist
+// anywhere in Weekly SAGE's response).
+// Builds the ProfileModel contract from one already-flattened Weekly
+// Rankings row. Every field not actually available from Weekly SAGE
+// today is left null/omitted rather than fabricated -- see the
+// Player Profile V1 architecture review for the exact evidence behind
+// each omission (no photo/headshot data, no fantasy-points projection,
+// no per-game log, no structured risk factors currently exist
+// anywhere in Weekly SAGE's response).
+//
+// effectiveCall (added, deployment review): the SAME effective
+// recommendation renderTable() itself displays for this row -- pass
+// row.call directly when My Roster Only is off, or the caller's
+// already-resolved getRosterLineupAssignments() value when it's on
+// (see openPlayerProfile() below, which is the only place that
+// decides which one applies). This function never calls
+// getRosterLineupAssignments() itself and never re-derives a lineup
+// decision -- it only renders whichever single call value it's given.
+function mapWeeklyRowToProfileModel(row, effectiveCall) {
+  var id = row.playerID || (row.name + '|' + row.pos);
+  var call = (effectiveCall !== undefined) ? effectiveCall : row.call;
+
+  var rankStats = [];
+  if (row.positionRank != null) {
+    rankStats.push({ label: row.pos + ' Rank', value: String(row.positionRank) });
+  }
+  if (row.overallRank != null) {
+    rankStats.push({ label: 'Overall Rank', value: String(row.overallRank) });
+  }
+  if (row.adp != null) {
+    rankStats.push({ label: 'ADP', value: row.adp.toFixed(1) });
+  }
+
+  var contextStats = [];
+  if (row.opp && row.opp !== '—') {
+    contextStats.push({ label: 'Opponent', value: row.opp });
+  }
+  if (row.matchup) {
+    contextStats.push({ label: 'Matchup', value: row.matchup });
+  }
+
+  return {
+    identity: {
+      id: id,
+      playerID: row.playerID || null,
+      name: row.name,
+      position: row.pos,
+      team: (row.team && row.team !== '—') ? row.team : null,
+      photoUrl: null // no headshot data exists anywhere in Weekly SAGE today
+    },
+
+    verdict: (row.sageLabel || call || row.sageConfidenceLabel)
+      ? {
+          label: row.sageLabel || null,
+          action: call ? String(call).toUpperCase() : null,
+          confidence: row.sageConfidenceLabel || null,
+          reasons: [] // Weekly SAGE's explanation is one sentence (sageTake, below), not a discrete reasons list -- never split into fake bullets
+        }
+      : null,
+
+    rankProjection: rankStats.length ? { stats: rankStats } : null,
+
+    // Weekly Rankings' own context panel -- opponent/matchup only.
+    // No fantasy-points projection or confidence-vs-projection field
+    // exists in Weekly SAGE's response, so neither is invented here.
+    contextPanel: contextStats.length
+      ? { title: 'This Week', stats: contextStats, note: null }
+      : null,
+
+    // Weekly SAGE does not currently preserve a per-game log anywhere
+    // in its customer-facing output -- always omitted, not
+    // approximated from season-to-date aggregates.
+    recentForm: null,
+
+    // No structured risk-factor field exists in Weekly SAGE today.
+    risks: null,
+    outlookNote: null,
+
+    // sageTake is already this product's own "why, and what should I
+    // do" explanation -- the closest real analogue to V1's Insight
+    // section, used as-is rather than duplicating it into verdict
+    // reasons above.
+    insight: row.sageTake || null
+  };
+}
+
+// Resolves the SAME effective recommendation renderTable() already
+// shows for this row (added, deployment review). Deliberately reuses
+// getRosterLineupAssignments() -- the existing, unmodified lineup
+// engine -- rather than introducing a second recommendation
+// algorithm. Mirrors renderTable()'s own local resolution exactly:
+// when My Roster Only is on and a personalized assignment exists for
+// this player, that assignment's call wins; otherwise the row's own
+// raw call is used, identical to My Roster Only being off.
+function getEffectiveCall(row) {
+  var lineupAssignment = state.myRosterOnly
+    ? getRosterLineupAssignments()[row.name]
+    : null;
+
+  return lineupAssignment ? lineupAssignment.call : row.call;
+}
+
+function openPlayerProfile(id) {
+  var row = getPlayerRowById(id);
+  if (!row) return;
+  if (typeof PlayerProfile === 'undefined' || !PlayerProfile.open) return;
+  PlayerProfile.open(mapWeeklyRowToProfileModel(row, getEffectiveCall(row)));
+}
+
+
 function getFilteredSorted() {
   var q =
     document
@@ -1490,6 +1663,16 @@ function renderTable() {
                 p.name
               ) !== -1;
 
+          // Player Profile V1 (added): playerID preferred, falling
+          // back to name+position only when no playerID exists on
+          // this row (matches getPlayerRowById()'s own resolution
+          // order below). Escaped once here, matching the existing
+          // safeName pattern already used elsewhere for inline
+          // onclick handlers.
+          var safeProfileId =
+            String(p.playerID || (p.name + '|' + p.pos))
+              .replace(/'/g, "\\'");
+
           // Real Weekly SAGE data has no persona-flavored prose (that
           // was MOCK_RANKINGS-only) -- showing the actual SAGE label/
           // confidence here is factual supporting detail instead,
@@ -1560,7 +1743,9 @@ function renderTable() {
                       ? '<span class="cell-mine-dot" title="On your roster"></span>'
                       : ''
                   ) +
-                  '<span class="cell-name">' +
+                  '<span class="cell-name" tabindex="0" role="button" ' +
+                    'onclick="openPlayerProfile(\'' + safeProfileId + '\')" ' +
+                    'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){openPlayerProfile(\'' + safeProfileId + '\')}">' +
                     p.name +
                   '</span>' +
                   '<span class="pos-pill ' +
