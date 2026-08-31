@@ -4,18 +4,18 @@
    Shared visual shell for Player Profile across Inner Sanctum.
 
    Visual management goals:
-   - keep the interface visually quiet
-   - make player identity and SAGE verdict dominant
-   - use white/light-neutral surfaces for readability
-   - use color only when it communicates meaning
-   - keep supporting data subordinate to the decision
-   - no page-specific Weekly or Draft selectors
+   - information first
+   - minimal container weight
+   - player identity + SAGE verdict dominate
+   - supporting data reads as structured bands, not stacked cards
+   - light neutral canvas
+   - restrained status color only where it communicates meaning
    ═══════════════════════════════════════════════════════════ */
 
 .pp-overlay{
   position:fixed;
   inset:0;
-  background:rgba(38,34,29,0.38);
+  background:rgba(38,34,29,0.34);
   z-index:3000;
   display:none;
   align-items:flex-start;
@@ -29,12 +29,12 @@
 }
 
 .pp-modal{
-  background:#f6f4f0;
+  background:#f7f5f1;
   border:1px solid #ddd8cf;
   border-radius:14px;
   max-width:900px;
   width:100%;
-  box-shadow:0 20px 50px rgba(43,38,31,0.18);
+  box-shadow:0 18px 46px rgba(43,38,31,0.16);
   font-family:'Lora',Georgia,serif;
   color:#282621;
   margin:auto 0;
@@ -45,15 +45,15 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:14px 20px;
+  padding:12px 18px;
   background:#ffffff;
-  border-bottom:1px solid #e5e0d7;
+  border-bottom:1px solid #e5e0d8;
 }
 
 .pp-header-title{
   font-family:'JetBrains Mono',monospace;
   font-size:10px;
-  letter-spacing:2px;
+  letter-spacing:1.8px;
   text-transform:uppercase;
   color:#8b7440;
 }
@@ -79,16 +79,14 @@
 }
 
 .pp-body{
-  padding:22px 22px 24px;
+  padding:18px 22px 20px;
   display:flex;
   flex-direction:column;
-  gap:15px;
+  gap:0;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Section 1 — Identity
-   Identity intentionally sits directly on the profile canvas.
-   It should feel like the player header, not another data card.
+   Identity
    ═══════════════════════════════════════════════════════════ */
 
 .pp-identity{
@@ -96,15 +94,16 @@
   align-items:center;
   gap:14px;
   flex-wrap:wrap;
-  padding:3px 2px 7px;
+  padding:2px 0 16px;
+  border-bottom:1px solid #e3ded6;
 }
 
 .pp-photo{
-  width:64px;
-  height:64px;
-  border-radius:9px;
+  width:60px;
+  height:60px;
+  border-radius:8px;
   object-fit:cover;
-  background:#e9e5dd;
+  background:#e8e4dc;
   flex-shrink:0;
 }
 
@@ -123,51 +122,54 @@
 .pp-meta{
   font-family:'JetBrains Mono',monospace;
   font-size:11px;
-  color:#756f65;
-  margin-top:5px;
-  letter-spacing:0.25px;
+  color:#777067;
+  margin-top:4px;
+  letter-spacing:0.2px;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Generic supporting section
-   Quiet structure with minimal visual weight.
+   Generic sections
+   No heavy cards. Sections behave like content bands.
    ═══════════════════════════════════════════════════════════ */
 
 .pp-section{
-  background:#ffffff;
-  border:1px solid #e4dfd7;
-  border-radius:9px;
-  padding:14px 16px;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid #e5e0d8;
+  border-radius:0;
+  padding:14px 0;
   box-shadow:none;
 }
 
 .pp-section-title{
   font-family:'JetBrains Mono',monospace;
   font-size:9px;
-  letter-spacing:1.5px;
+  letter-spacing:1.4px;
   text-transform:uppercase;
   color:#8a8278;
-  margin-bottom:9px;
+  margin-bottom:8px;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Section 2 — SAGE Verdict
-   This is the hero decision area of the profile.
+   SAGE Verdict
+   Strongest visual element after player identity.
    ═══════════════════════════════════════════════════════════ */
 
 .pp-section:has(.pp-verdict-top){
-  background:#f1f7f2;
-  border:1px solid #cfded2;
+  background:#f0f6f1;
+  border:1px solid #d2dfd4;
   border-left:4px solid #4d8a5c;
-  padding:16px 18px;
+  border-radius:8px;
+  padding:14px 16px;
+  margin:14px 0 0;
 }
 
 .pp-verdict-top{
   display:flex;
   align-items:center;
-  gap:14px;
+  gap:12px;
   flex-wrap:wrap;
-  margin-bottom:7px;
+  margin-bottom:5px;
 }
 
 .pp-verdict-label{
@@ -181,7 +183,7 @@
   font-family:'JetBrains Mono',monospace;
   font-size:14px;
   font-weight:700;
-  letter-spacing:0.6px;
+  letter-spacing:0.5px;
   color:#8a6b27;
 }
 
@@ -201,7 +203,7 @@
   list-style:none;
   display:flex;
   flex-direction:column;
-  gap:5px;
+  gap:4px;
   font-size:13px;
   color:#4d514b;
   margin-top:4px;
@@ -213,20 +215,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Sections 3 / 4 — Rank / Value and Context
-   Supporting data should scan quickly without competing with verdict.
+   Rank / Value and Weekly Context
+   Compact data bands.
    ═══════════════════════════════════════════════════════════ */
 
 .pp-stat-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
-  gap:14px;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:18px;
 }
 
 .pp-stat{
   display:flex;
   flex-direction:column;
-  gap:3px;
+  gap:2px;
 }
 
 .pp-stat-label{
@@ -239,22 +241,22 @@
 
 .pp-stat-value{
   font-family:'JetBrains Mono',monospace;
-  font-size:19px;
+  font-size:20px;
   font-weight:600;
   color:#26241f;
 }
 
 .pp-context-note{
-  margin-top:11px;
-  padding-top:9px;
-  border-top:1px solid #eeeae4;
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid #ece7df;
   font-size:13px;
   color:#504b44;
-  line-height:1.5;
+  line-height:1.45;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Section 5 — Recent Form
+   Recent Form
    ═══════════════════════════════════════════════════════════ */
 
 .pp-trend{
@@ -281,7 +283,7 @@
 .pp-games-table{
   width:100%;
   border-collapse:collapse;
-  margin-top:9px;
+  margin-top:8px;
   font-size:12px;
 }
 
@@ -303,14 +305,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Section 6 — Risks / Watch
+   Risks / Watch
    ═══════════════════════════════════════════════════════════ */
 
 .pp-risk-list{
   list-style:none;
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:5px;
   font-size:13px;
   color:#6c5524;
 }
@@ -321,28 +323,34 @@
 }
 
 .pp-outlook-note{
-  margin-top:9px;
+  margin-top:7px;
   font-size:12px;
   color:#777067;
   font-style:italic;
-  line-height:1.5;
+  line-height:1.45;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Section 7 — Inner Sanctum Insight
-   Closing takeaway should feel distinctive without becoming loud.
+   Inner Sanctum Insight
+   Distinct closing takeaway without becoming another card.
    ═══════════════════════════════════════════════════════════ */
 
 .pp-insight{
   background:#fbf8ef;
-  border:1px solid #e3d8b7;
+  border:none;
   border-left:4px solid #b49a58;
-  border-radius:0 8px 8px 0;
-  padding:14px 16px;
+  border-radius:0 7px 7px 0;
+  padding:12px 14px;
+  margin-top:14px;
   font-size:13px;
   font-style:italic;
   color:#49443b;
-  line-height:1.65;
+  line-height:1.55;
+}
+
+/* Remove divider after the final rendered section */
+.pp-body > .pp-section:last-of-type{
+  border-bottom:none;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -362,37 +370,45 @@
   }
 
   .pp-header{
-    padding:13px 15px;
+    padding:12px 14px;
   }
 
   .pp-body{
-    padding:16px 14px 20px;
-    gap:12px;
+    padding:15px 14px 18px;
   }
 
   .pp-identity{
-    padding-top:2px;
+    padding-bottom:13px;
   }
 
   .pp-photo{
-    width:52px;
-    height:52px;
+    width:50px;
+    height:50px;
   }
 
   .pp-name{
     font-size:20px;
   }
 
-  .pp-stat-grid{
-    grid-template-columns:repeat(2,1fr);
-    gap:12px;
-  }
-
-  .pp-stat-value{
-    font-size:17px;
+  .pp-section{
+    padding:12px 0;
   }
 
   .pp-section:has(.pp-verdict-top){
-    padding:14px 15px;
+    padding:13px 14px;
+    margin-top:12px;
+  }
+
+  .pp-stat-grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+  }
+
+  .pp-stat-value{
+    font-size:18px;
+  }
+
+  .pp-insight{
+    margin-top:12px;
   }
 }
