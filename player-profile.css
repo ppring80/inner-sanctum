@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════
+   PLAYER PROFILE V1 — shared component stylesheet
+   ═══════════════════════════════════════════════════════════
+   Loaded once, shared by every calling page (Weekly Rankings today,
+   Draft Command Center later). Contains ONLY the profile shell and
+   its six sections -- no page-specific selectors, no knowledge of
+   "Weekly Rankings" or "Draft Command" anywhere in this file.
+
+   Visual language matches the dark verdict-card mockup approved for
+   V1: a dark modal on a light page, reusing the same warm gold/green/
+   red vocabulary already established across Inner Sanctum's other
+   tools (Weekly Rankings' own --gold/--green/--red variables), so it
+   reads as one consistent product rather than a new visual system.
+   Values are inlined here (not tied to a calling page's own CSS
+   variables) so this file has zero dependency on which page loaded
+   it.
+   ═══════════════════════════════════════════════════════════ */
+
+.pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:3000;display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto}
+.pp-overlay.pp-open{display:flex}
+
+.pp-modal{background:#15100a;border:1px solid rgba(201,168,76,0.3);border-radius:14px;max-width:900px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:'Lora',Georgia,serif;color:#f2f1ef;margin:auto 0}
+
+.pp-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(201,168,76,0.2)}
+.pp-header-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c9a84c}
+.pp-close{background:none;border:none;color:#a08a5a;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
+.pp-close:hover{color:#f5c842}
+.pp-close:focus-visible{outline:2px solid #c9a84c;outline-offset:2px;border-radius:4px}
+
+.pp-body{padding:18px 20px 22px;display:flex;flex-direction:column;gap:14px}
+
+/* Section 1 — Identity (the only section always rendered) */
+.pp-identity{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pp-photo{width:64px;height:64px;border-radius:8px;object-fit:cover;background:#2a2018;flex-shrink:0}
+.pp-identity-text{min-width:0}
+.pp-name{font-family:'Cinzel',serif;font-size:22px;font-weight:600;color:#f5f0e0;line-height:1.15}
+.pp-meta{font-family:'JetBrains Mono',monospace;font-size:12px;color:#a08a5a;margin-top:3px}
+
+/* Generic section shell -- every section below Identity uses this
+   same card treatment, so the shared component never needs a
+   per-section visual identity beyond an accent color. */
+.pp-section{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px}
+.pp-section-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#8a7a5a;margin-bottom:8px}
+
+/* Section 2 — Verdict */
+.pp-verdict-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.pp-verdict-label{font-family:'Cinzel',serif;font-size:19px;font-weight:600;color:#4caf50}
+.pp-verdict-action{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:0.5px;color:#f5c842}
+.pp-verdict-confidence{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:2px 8px;border-radius:10px;background:rgba(76,175,80,0.15);color:#4caf50;border:1px solid rgba(76,175,80,0.35)}
+.pp-reasons{list-style:none;display:flex;flex-direction:column;gap:5px;font-size:13px;color:#d9d0c0}
+.pp-reasons li::before{content:'✓ ';color:#4caf50}
+
+/* Sections 3/4 — labeled stat grids (rankProjection / contextPanel) */
+.pp-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.pp-stat{display:flex;flex-direction:column;gap:2px}
+.pp-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a7a5a}
+.pp-stat-value{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:#f2f1ef}
+.pp-context-note{margin-top:8px;font-size:13px;color:#d9d0c0;line-height:1.5}
+
+/* Section 5 — recent form */
+.pp-trend{display:inline-flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+.pp-trend-up{color:#4caf50}
+.pp-trend-down{color:#e57373}
+.pp-trend-flat{color:#a08a5a}
+.pp-games-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+.pp-games-table th{text-align:left;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#8a7a5a;padding:4px 8px 4px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
+.pp-games-table td{padding:5px 8px 5px 0;border-bottom:1px solid rgba(255,255,255,0.06);color:#e8e0d0}
+
+/* Section 6 — risks/watch */
+.pp-risk-list{list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px;color:#f0d9a0}
+.pp-risk-list li::before{content:'⚠ ';color:#f5a623}
+.pp-outlook-note{margin-top:8px;font-size:12px;color:#a08a5a;font-style:italic;line-height:1.5}
+
+/* Section 7 — insight */
+.pp-insight{background:rgba(245,198,66,0.08);border:1px solid rgba(245,198,66,0.25);border-left:3px solid #c9a84c;border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;font-style:italic;color:#f0e6cc;line-height:1.6}
+
+@media(max-width:640px){
+  .pp-overlay{padding:0}
+  .pp-modal{border-radius:0;max-width:100%;min-height:100%}
+  .pp-photo{width:52px;height:52px}
+  .pp-name{font-size:18px}
+  .pp-stat-grid{grid-template-columns:repeat(2,1fr)}
+}
