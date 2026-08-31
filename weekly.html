@@ -1369,6 +1369,42 @@ function getPlayerRowById(id) {
 // decides which one applies). This function never calls
 // getRosterLineupAssignments() itself and never re-derives a lineup
 // decision -- it only renders whichever single call value it's given.
+// Player Profile V1 content population (added, evidence review pass):
+// risks[] is populated ONLY from row.matchup -- the SAME matchup
+// label already extracted by flattenRankings() and already shown in
+// the Context Panel above -- and ONLY when the backend's own existing
+// categorical label is itself negative ("Negative"/"Strong Negative").
+// The exact sentence used is MATCHUP_EXPLANATION's own existing text
+// (already defined above, already shown verbatim in this page's
+// matchup tooltip) -- reused as-is, never new prose.
+//
+// This function exists because the actual backend response was
+// inspected directly (not assumed from field names) for this pass:
+// - QB/RB/WR/TE Week 2+ leaderboards return role/production/matchup
+//   as separate top-level fields (never a "components" wrapper at
+//   all) -- role/production are pure percentile numbers with no
+//   accompanying text; matchup additionally has signal/label, both
+//   identical to what row.matchup already carries.
+// - K/DEF leaderboards DO return a real top-level "components" field,
+//   but it is also pure percentile numbers (opportunity/teamScoring/
+//   reliability/range for K; scoringPrevention/disruption/
+//   opponentEnvironment for DEF) with no text of their own -- their
+//   only existing human-readable interpretation is sageTake itself
+//   (already used as Insight).
+// - Week 1's matchupEvidence is {score, signal, label} -- score is a
+//   bare number, and signal/label duplicate matchupStrength exactly.
+// None of the above provides new, non-redundant, non-numeric
+// explanatory text beyond what row.matchup/sageLabel/sageTake already
+// carry -- so verdict.reasons stays empty and risks is built only
+// from this one already-categorical signal.
+function buildWeeklyRisks(row) {
+  if (row.matchup === 'Negative' || row.matchup === 'Strong Negative') {
+    var explanation = MATCHUP_EXPLANATION[row.matchup];
+    return explanation ? [explanation] : null;
+  }
+  return null;
+}
+
 function mapWeeklyRowToProfileModel(row, effectiveCall) {
   var id = row.playerID || (row.name + '|' + row.pos);
   var call = (effectiveCall !== undefined) ? effectiveCall : row.call;
@@ -1407,7 +1443,12 @@ function mapWeeklyRowToProfileModel(row, effectiveCall) {
           label: row.sageLabel || null,
           action: call ? String(call).toUpperCase() : null,
           confidence: row.sageConfidenceLabel || null,
-          reasons: [] // Weekly SAGE's explanation is one sentence (sageTake, below), not a discrete reasons list -- never split into fake bullets
+          // No genuine, non-redundant, non-numeric structured reason
+          // text exists in the actual backend response for any
+          // position -- see buildWeeklyRisks()'s comment above for
+          // the full field-by-field investigation. Left empty rather
+          // than splitting sageTake or interpreting a raw percentile.
+          reasons: []
         }
       : null,
 
@@ -1425,8 +1466,11 @@ function mapWeeklyRowToProfileModel(row, effectiveCall) {
     // approximated from season-to-date aggregates.
     recentForm: null,
 
-    // No structured risk-factor field exists in Weekly SAGE today.
-    risks: null,
+    risks: buildWeeklyRisks(row),
+    // No distinct "outlook" field exists anywhere in Weekly SAGE's
+    // response (Draft Command's separate /sage-recommend endpoint has
+    // its own draftOutlook/contextNote fields, but Weekly Rankings'
+    // endpoint does not) -- kept null rather than reusing sageTake.
     outlookNote: null,
 
     // sageTake is already this product's own "why, and what should I
