@@ -215,7 +215,7 @@
     if (!hasContent(rankProjection, ['stats'])) return '';
     return (
       '<div class="pp-section">' +
-      '<div class="pp-section-title">Rank &amp; Projection</div>' +
+      '<div class="pp-section-title">Rank &amp; Value</div>' +
       renderStatGrid(rankProjection.stats) +
       '</div>'
     );
