@@ -88,6 +88,33 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .lineup-pbadge.FLEX{background:#6a1b9a}.lineup-pbadge.SUPERFLEX{background:#7a3010}.lineup-pbadge.BENCH{background:#6a6a64}
 .lineup-total{font-size:12px;color:var(--muted)}
 
+/* ── BUILD MY ROSTER (added) — same collapsible-panel visual pattern
+   as League Lineup Setup above, so this reads as one consistent
+   family of compact toolbar panels rather than a new UI language. */
+.roster-build-toggle{background:rgba(21,101,192,0.06);border:1.5px solid rgba(21,101,192,0.3);color:var(--blue);border-radius:4px;padding:6px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;white-space:nowrap}
+.roster-build-toggle:hover{border-color:var(--blue)}
+.roster-build-panel{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px}
+.roster-build-panel.open{display:block}
+.roster-source-toggle{display:none;gap:6px;margin-bottom:12px}
+.roster-source-btn{padding:6px 12px;border-radius:16px;border:1px solid var(--border);background:var(--bg2);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.3px;cursor:pointer}
+.roster-source-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.roster-search-wrap{position:relative;max-width:420px}
+.roster-search-wrap .search-input{width:100%}
+.roster-suggestions{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 8px 20px rgba(0,0,0,0.12);z-index:150;max-height:260px;overflow-y:auto}
+.roster-suggestion-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)}
+.roster-suggestion-item:last-child{border-bottom:none}
+.roster-suggestion-item:hover,.roster-suggestion-item.active{background:var(--bg2)}
+.roster-manual-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-width:520px}
+.roster-manual-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border-radius:var(--r);font-size:13px}
+.roster-manual-item .cell-name{flex:1}
+.roster-remove-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-weight:700;padding:2px 6px;line-height:1}
+.roster-remove-btn:hover{opacity:0.7}
+
+@media(max-width:760px){
+  .roster-search-wrap{max-width:100%}
+  .roster-manual-list{max-width:100%}
+}
+
 /* ── TABLE ── */
 .table-wrap{max-width:1480px;margin:0 auto;padding:20px 24px 60px}
 
@@ -457,6 +484,22 @@ function checkOAuthSession() {
   </div>
 
   <button class="my-roster-toggle" id="myRosterToggle" onclick="toggleMyRoster()">🏈 My Roster Only</button>
+  <button class="roster-build-toggle" id="rosterBuildToggleBtn" onclick="toggleRosterBuildPanel()">🛠 Build My Roster ▾</button>
+</div>
+
+<div class="roster-build-panel" id="rosterBuildPanel">
+  <div class="roster-source-toggle" id="rosterSourceToggle">
+    <button class="roster-source-btn" data-source="connected" onclick="setRosterSource('connected')">Connected League</button>
+    <button class="roster-source-btn" data-source="manual" onclick="setRosterSource('manual')">Build My Roster</button>
+  </div>
+
+  <div class="roster-search-wrap">
+    <input type="text" class="search-input" id="rosterSearchInput" placeholder="Add a player (QB, RB, WR, TE, K, DEF)..." autocomplete="off"
+      oninput="onRosterSearchInput()" onkeydown="onRosterSearchKeydown(event)"/>
+    <div class="roster-suggestions" id="rosterSuggestions"></div>
+  </div>
+
+  <div class="roster-manual-list" id="rosterManualList"></div>
 </div>
 
 <div class="table-wrap">
@@ -637,6 +680,258 @@ function rosterLineupTag(assignment) {
   return tag + '<span class="lineup-slot-label">' + slot + '</span>';
 }
 
+// ─── Build My Roster (added) ───
+// A second roster SOURCE, alongside the existing connected-league/CBS
+// sync, both feeding the SAME state.myRosterNames array that My
+// Roster Only and getRosterLineupAssignments() already consume above.
+// This section does not implement a second Start/Sit or lineup
+// algorithm -- it only decides which name list state.myRosterNames
+// should currently equal.
+var MANUAL_ROSTER_STORAGE_KEY = 'sanctum_weekly_manual_roster_v1';
+var rosterBuildPanelOpen = false;
+var rosterCurrentSuggestions = [];
+var rosterSuggestionIndex = -1;
+
+function toggleRosterBuildPanel() {
+  rosterBuildPanelOpen = !rosterBuildPanelOpen;
+  var panel = document.getElementById('rosterBuildPanel');
+  var btn = document.getElementById('rosterBuildToggleBtn');
+  if (panel) panel.classList.toggle('open', rosterBuildPanelOpen);
+  if (btn) btn.textContent = '🛠 Build My Roster ' + (rosterBuildPanelOpen ? '▴' : '▾');
+  if (rosterBuildPanelOpen) {
+    renderManualRosterList();
+    updateRosterSourceToggleUI();
+  }
+}
+
+function loadManualRosterFromStorage() {
+  try {
+    var raw = localStorage.getItem(MANUAL_ROSTER_STORAGE_KEY);
+    if (!raw) return { players: [], source: null };
+    var parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.players)) return { players: [], source: null };
+    var players = parsed.players.filter(function (p) {
+      return p && typeof p.name === 'string' && p.name.length > 0;
+    });
+    var source = (parsed.source === 'manual' || parsed.source === 'connected') ? parsed.source : null;
+    return { players: players, source: source };
+  } catch (e) {
+    // localStorage unavailable, disabled, or the stored value is
+    // corrupt JSON -- fail safe to an empty manual roster rather than
+    // throwing.
+    return { players: [], source: null };
+  }
+}
+
+function saveManualRosterToStorage() {
+  try {
+    localStorage.setItem(
+      MANUAL_ROSTER_STORAGE_KEY,
+      JSON.stringify({ players: state.manualRoster, source: state.rosterSource })
+    );
+  } catch (e) {
+    // Storage full, disabled, or unavailable -- the manual roster
+    // still works for the rest of this session from in-memory state,
+    // it just won't survive a reload.
+  }
+}
+
+// Case-insensitive and tolerant of apostrophes/periods, e.g. "devon
+// achane" must match "De'Von Achane".
+function normalizeRosterSearchText(text) {
+  return String(text || '').toLowerCase().replace(/['’.]/g, '');
+}
+
+function onRosterSearchInput() {
+  var input = document.getElementById('rosterSearchInput');
+  var query = input ? input.value : '';
+  var normalized = normalizeRosterSearchText(query);
+
+  if (normalized.length < 2) {
+    closeRosterSuggestions();
+    return;
+  }
+
+  var manualNameSet = {};
+  state.manualRoster.forEach(function (p) { manualNameSet[p.name] = true; });
+
+  rosterCurrentSuggestions = getAllRows()
+    .filter(function (p) {
+      return normalizeRosterSearchText(p.name).indexOf(normalized) !== -1 && !manualNameSet[p.name];
+    })
+    .slice(0, 8);
+
+  rosterSuggestionIndex = rosterCurrentSuggestions.length ? 0 : -1;
+  renderRosterSuggestions();
+}
+
+function renderRosterSuggestions() {
+  var box = document.getElementById('rosterSuggestions');
+  if (!box) return;
+
+  if (!rosterCurrentSuggestions.length) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  box.style.display = 'block';
+  box.innerHTML = rosterCurrentSuggestions.map(function (p, i) {
+    return '<div class="roster-suggestion-item' + (i === rosterSuggestionIndex ? ' active' : '') + '" ' +
+        'onclick="addManualRosterPlayerByIndex(' + i + ')">' +
+      '<span class="cell-name">' + p.name + '</span>' +
+      ' <span class="pos-pill ' + p.pos + '">' + p.pos + '</span>' +
+      ' <span class="cell-team">' + p.team + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function onRosterSearchKeydown(event) {
+  if (event.key === 'Escape') {
+    closeRosterSuggestions();
+    return;
+  }
+
+  if (!rosterCurrentSuggestions.length) return;
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    rosterSuggestionIndex = Math.min(rosterSuggestionIndex + 1, rosterCurrentSuggestions.length - 1);
+    renderRosterSuggestions();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    rosterSuggestionIndex = Math.max(rosterSuggestionIndex - 1, 0);
+    renderRosterSuggestions();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (rosterSuggestionIndex >= 0) {
+      addManualRosterPlayerByIndex(rosterSuggestionIndex);
+    }
+  }
+}
+
+function closeRosterSuggestions() {
+  var box = document.getElementById('rosterSuggestions');
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+  rosterCurrentSuggestions = [];
+  rosterSuggestionIndex = -1;
+}
+
+function addManualRosterPlayerByIndex(i) {
+  var player = rosterCurrentSuggestions[i];
+  if (!player) return;
+  addManualRosterPlayer(player);
+}
+
+function addManualRosterPlayer(player) {
+  var alreadyAdded = state.manualRoster.some(function (p) { return p.name === player.name; });
+  if (alreadyAdded) return;
+
+  state.manualRoster.push({ name: player.name, pos: player.pos, team: player.team });
+  saveManualRosterToStorage();
+  renderManualRosterList();
+
+  var input = document.getElementById('rosterSearchInput');
+  if (input) input.value = '';
+  closeRosterSuggestions();
+
+  if (state.rosterSource === 'manual') {
+    applyRosterSource();
+  }
+}
+
+function removeManualRosterPlayer(name) {
+  state.manualRoster = state.manualRoster.filter(function (p) { return p.name !== name; });
+  saveManualRosterToStorage();
+  renderManualRosterList();
+
+  if (state.rosterSource === 'manual') {
+    applyRosterSource();
+  }
+}
+
+function renderManualRosterList() {
+  var list = document.getElementById('rosterManualList');
+  if (!list) return;
+
+  if (!state.manualRoster.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--dim)">No players added yet. Search above to add QB, RB, WR, TE, K, or DEF.</p>';
+  } else {
+    list.innerHTML = state.manualRoster.map(function (p) {
+      return '<div class="roster-manual-item">' +
+        '<span class="cell-name">' + p.name + '</span>' +
+        '<span class="pos-pill ' + p.pos + '">' + p.pos + '</span>' +
+        '<span class="cell-team">' + p.team + '</span>' +
+        '<button class="roster-remove-btn" onclick="removeManualRosterPlayer(' +
+          JSON.stringify(p.name).replace(/"/g, '&quot;') + ')">✕</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  updateRosterSourceToggleVisibility();
+}
+
+// Sets state.myRosterNames -- the SAME array My Roster Only and
+// getRosterLineupAssignments() already read -- to whichever source
+// is currently active. This never recalculates a lineup; it only
+// decides which name list feeds the existing pipeline.
+function applyRosterSource() {
+  if (state.rosterSource === 'manual') {
+    state.myRosterNames = state.manualRoster.map(function (p) { return p.name; });
+  } else {
+    state.myRosterNames = (state.connectedRosterNames || []).slice();
+  }
+  renderTable();
+}
+
+function setRosterSource(source) {
+  state.rosterSource = source;
+  saveManualRosterToStorage();
+  applyRosterSource();
+  updateRosterSourceToggleUI();
+}
+
+function updateRosterSourceToggleUI() {
+  document.querySelectorAll('.roster-source-btn').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.source === state.rosterSource);
+  });
+}
+
+// The source picker only needs to appear once there is a real choice
+// to make -- a connected roster AND at least one manually-added
+// player. With only one source available, that source is simply used
+// without asking the customer to pick.
+function updateRosterSourceToggleVisibility() {
+  var toggle = document.getElementById('rosterSourceToggle');
+  if (!toggle) return;
+  var hasChoice = (state.connectedRosterNames && state.connectedRosterNames.length > 0) &&
+    state.manualRoster.length > 0;
+  toggle.style.display = hasChoice ? 'flex' : 'none';
+}
+
+// Restores the persisted manual roster (if any) and decides which
+// source is active on load. If the customer previously chose manual
+// AND still has manual players saved, that takes over
+// state.myRosterNames; otherwise whatever the existing connected-
+// league sync already set is left completely untouched.
+function initManualRoster() {
+  var loaded = loadManualRosterFromStorage();
+  state.manualRoster = loaded.players;
+
+  if (loaded.source === 'manual' && state.manualRoster.length > 0) {
+    state.rosterSource = 'manual';
+    applyRosterSource();
+  } else {
+    state.rosterSource = 'connected';
+  }
+
+  renderManualRosterList();
+  updateRosterSourceToggleUI();
+}
+
 
 var state = {
   persona: 'oracle',
@@ -645,6 +940,14 @@ var state = {
   sortKey: 'proj',
   sortDir: 'desc',
   myRosterNames: [],
+  // Build My Roster (added) -- an alternative roster SOURCE feeding
+  // the exact same myRosterNames/My Roster Only/getRosterLineupAssignments()
+  // pipeline above. connectedRosterNames preserves whatever the
+  // existing, unmodified CBS sync sets, so switching back to it stays
+  // possible even after the manual roster becomes active.
+  manualRoster: [],
+  rosterSource: 'connected',
+  connectedRosterNames: [],
   lineupConstruction: DEFAULT_LINEUP_CONSTRUCTION,
   rankings: null,
   loading: false,
@@ -1922,6 +2225,19 @@ document.addEventListener(
     roster-connection context applied.
   */
   renderTable();
+})();
+</script>
+
+<script>
+// Build My Roster (added) -- runs AFTER the existing, unmodified
+// connected-league/CBS sync above. This does not change what that
+// block does; it only reads the state.myRosterNames it already set
+// and preserves a copy (state.connectedRosterNames) so switching
+// back to the connected roster remains possible even after a
+// persisted manual roster takes over below.
+(function initRosterSourceAfterConnection() {
+  state.connectedRosterNames = (state.myRosterNames || []).slice();
+  initManualRoster();
 })();
 </script>
 
