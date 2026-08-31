@@ -19,7 +19,7 @@
 .pp-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:3000;display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto}
 .pp-overlay.pp-open{display:flex}
 
-.pp-modal{background:#241d15;border:1px solid rgba(201,168,76,0.3);border-radius:14px;max-width:900px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:'Lora',Georgia,serif;color:#f2f1ef;margin:auto 0}
+.pp-modal{background:#4a4034;border:1px solid rgba(201,168,76,0.3);border-radius:14px;max-width:900px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:'Lora',Georgia,serif;color:#f2f1ef;margin:auto 0}
 
 .pp-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(201,168,76,0.2)}
 .pp-header-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c9a84c}
@@ -39,7 +39,7 @@
 /* Generic section shell -- every section below Identity uses this
    same card treatment, so the shared component never needs a
    per-section visual identity beyond an accent color. */
-.pp-section{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:8px;padding:12px 14px}
+.pp-section{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:12px 14px}
 .pp-section-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#8a7a5a;margin-bottom:8px}
 
 /* Section 2 — Verdict */
