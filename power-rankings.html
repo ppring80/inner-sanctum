@@ -572,7 +572,7 @@ function trashMatchup(teamA, teamB) {
 // for which league object (real or mock) is currently rendered.
 // renderMatchups() and any future consumer must read state.activeLeague
 // rather than reaching for the LEAGUE mock constant directly.
-let state = { connected: false, persona: 'trash', rankings: [], activeLeague: null, usingRealData: false };
+let state = { connected: false, persona: 'trash', rankings: [], activeLeague: null, usingRealData: false, performanceAvailable: true };
 
 function selectPlatform(p) {
   if (p === 'espn') return;
@@ -689,79 +689,133 @@ function buildRealLeagueFromEspn(raw) {
 // history is captured in a later CBS sync revision.
 function buildRealLeagueFromCbs(conn) {
   try {
+    // A connected CBS league is real even when no games have been played.
+    // Team identity is the acceptance gate; scoring availability is tracked
+    // separately so preseason never falls back to fictional preview teams.
     if (!conn || !Array.isArray(conn.standings) || conn.standings.length < 2) return null;
 
     var standings = conn.standings.filter(function (row) {
-      return row && (row.teamId !== null && row.teamId !== undefined) && row.teamName;
+      return row &&
+        row.teamId !== null &&
+        row.teamId !== undefined &&
+        String(row.teamName || '').trim();
     });
     if (standings.length < 2) return null;
 
-    var connectedTeamId = (conn.teamId !== null && conn.teamId !== undefined)
-      ? String(conn.teamId)
-      : (conn.team && conn.team.id !== null && conn.team.id !== undefined ? String(conn.team.id) : null);
+    var connectedTeamId =
+      (conn.teamId !== null && conn.teamId !== undefined)
+        ? String(conn.teamId)
+        : (conn.team && conn.team.id !== null && conn.team.id !== undefined
+            ? String(conn.team.id)
+            : null);
 
     var teams = standings.map(function (row) {
-      var weeks = Number(row.weeks);
+      var wins = Number(row.wins);
+      var losses = Number(row.losses);
+      var ties = Number(row.ties);
+      wins = Number.isFinite(wins) ? wins : 0;
+      losses = Number.isFinite(losses) ? losses : 0;
+      ties = Number.isFinite(ties) ? ties : 0;
+
+      var explicitWeeks = Number(row.weeks);
+      var recordWeeks = wins + losses + ties;
+      var completedWeeks =
+        (Number.isFinite(explicitWeeks) && explicitWeeks > 0)
+          ? explicitWeeks
+          : recordWeeks;
+
       var pointsFor = Number(row.pointsFor);
-      var seasonAvgOverride = (Number.isFinite(weeks) && weeks > 0 && Number.isFinite(pointsFor))
-        ? pointsFor / weeks
-        : null;
-      var isConnectedTeam = connectedTeamId !== null && String(row.teamId) === connectedTeamId;
+      var seasonAvgOverride =
+        completedWeeks > 0 && Number.isFinite(pointsFor)
+          ? pointsFor / completedWeeks
+          : null;
+
+      var isConnectedTeam =
+        connectedTeamId !== null &&
+        String(row.teamId) === connectedTeamId;
 
       return {
         teamId: row.teamId,
         name: row.teamName,
-        wins: Number(row.wins) || 0,
-        losses: Number(row.losses) || 0,
-        ties: Number(row.ties) || 0,
+        wins: wins,
+        losses: losses,
+        ties: ties,
         weeklyScores: [],
         seasonAvgOverride: seasonAvgOverride,
-        roster: isConnectedTeam && Array.isArray(conn.roster) ? conn.roster.slice() : [],
+        roster:
+          isConnectedTeam && Array.isArray(conn.roster)
+            ? conn.roster.slice()
+            : [],
         rosterSource: 'provider'
       };
     });
 
-    var usableScoringTeams = teams.filter(function (t) { return t.seasonAvgOverride !== null; });
-    if (usableScoringTeams.length < 2) return null;
-
-    var completedWeeks = standings.reduce(function (max, row) {
-      var w = Number(row.weeks);
-      return Number.isFinite(w) ? Math.max(max, w) : max;
+    var completedWeeks = teams.reduce(function (max, team) {
+      return Math.max(max, team.wins + team.losses + team.ties);
     }, 0);
 
-    var scoring = conn.scoringFormat
-      || (conn.settings && conn.settings.scoringProfile && conn.settings.scoringProfile.format)
-      || 'Unknown';
-    var scoringLabel = String(scoring).toLowerCase() === 'ppr' ? 'PPR'
-      : (String(scoring).toLowerCase().indexOf('half') >= 0 ? 'Half PPR'
-      : (String(scoring).toLowerCase() === 'standard' ? 'Standard' : String(scoring)));
+    standings.forEach(function (row) {
+      var w = Number(row.weeks);
+      if (Number.isFinite(w) && w > completedWeeks) completedWeeks = w;
+    });
 
-    // The stored CBS schedule is for the connected manager, not a complete
-    // league-wide matchup matrix, so do not present it as every matchup.
+    var teamsWithSeasonScoring = teams.filter(function (team) {
+      return team.seasonAvgOverride !== null &&
+        Number.isFinite(team.seasonAvgOverride);
+    }).length;
+
+    var performanceAvailable =
+      completedWeeks > 0 &&
+      teamsWithSeasonScoring >= 2;
+
+    var scoring =
+      conn.scoringFormat ||
+      (conn.settings &&
+        conn.settings.scoringProfile &&
+        conn.settings.scoringProfile.format) ||
+      'Unknown';
+
+    var scoringText = String(scoring);
+    var scoringLower = scoringText.toLowerCase();
+    var scoringLabel =
+      scoringLower === 'ppr'
+        ? 'PPR'
+        : (scoringLower.indexOf('half') >= 0
+            ? 'Half PPR'
+            : (scoringLower === 'standard'
+                ? 'Standard'
+                : scoringText));
+
     return {
-      name: conn.leagueName || (conn.league && conn.league.name) || 'My CBS League',
+      name:
+        conn.leagueName ||
+        (conn.league && conn.league.name) ||
+        'My CBS League',
       numTeams: teams.length,
       scoring: scoringLabel,
-      week: completedWeeks || 1,
+      week: completedWeeks,
       platform: 'CBS Fantasy',
       teams: teams,
       matchups: [],
-      dataCoverage: 'standings+season-scoring',
-      formAvailable: false
+      dataCoverage: performanceAvailable
+        ? 'standings+season-scoring'
+        : 'standings-preseason',
+      formAvailable: false,
+      performanceAvailable: performanceAvailable,
+      preseason: !performanceAvailable
     };
   } catch (e) {
-    console.log('buildRealLeagueFromCbs failed, falling back to preview:', e.message);
+    console.log('buildRealLeagueFromCbs failed:', e.message);
     return null;
   }
 }
 
 function connectMock() {
-  var activeProvider = (typeof LeagueConnection !== 'undefined') ? LeagueConnection.getActiveProvider() : null;
+  var activeProvider =
+    (typeof LeagueConnection !== 'undefined')
+      ? LeagueConnection.getActiveProvider()
+      : null;
 
-  // Try real data first (ESPN today; other providers can plug into this
-  // same pattern once they have real league-fetching backends too).
-  // Falls back to the mock LEAGUE constant — visibly, not silently —
-  // whenever real data isn't available or can't be parsed yet.
   var activeLeague = LEAGUE;
   var usingRealData = false;
   var fallbackReason = '';
@@ -773,93 +827,120 @@ function connectMock() {
       if (realLeague) {
         activeLeague = realLeague;
         usingRealData = true;
+        if (typeof activeLeague.performanceAvailable === 'undefined') {
+          activeLeague.performanceAvailable = true;
+        }
       } else {
-        fallbackReason = 'Connected to ESPN, but no completed scoring data is available yet — showing preview data.';
+        fallbackReason =
+          'Connected to ESPN, but no completed scoring data is available yet — showing preview data.';
       }
     } else {
-      fallbackReason = 'Connected to ESPN, but no league data was returned — showing preview data.';
+      fallbackReason =
+        'Connected to ESPN, but no league data was returned — showing preview data.';
     }
   } else if (activeProvider === 'cbs' && typeof LeagueConnection !== 'undefined') {
     var cbsConn = LeagueConnection.getConnection('cbs');
     if (cbsConn) {
       var cbsLeague = buildRealLeagueFromCbs(cbsConn);
       if (cbsLeague) {
+        // Preseason CBS data is still real data. Never replace a valid
+        // connected league with The Brotherhood just because PF is zero.
         activeLeague = cbsLeague;
         usingRealData = true;
       } else {
-        fallbackReason = 'Connected to CBS, but the saved league data does not contain enough standings/scoring information to rank the league — showing preview data.';
+        fallbackReason =
+          'Connected to CBS, but no usable league-wide team identities were found — showing preview data.';
       }
     } else {
-      fallbackReason = 'Connected to CBS, but no saved league data was returned — showing preview data.';
+      fallbackReason =
+        'Connected to CBS, but no saved league data was returned — showing preview data.';
     }
   } else if (activeProvider) {
-    fallbackReason = 'This connected provider is not yet supported by Power Rankings — showing preview data.';
+    fallbackReason =
+      'This connected provider is not yet supported by Power Rankings — showing preview data.';
   }
 
-  state.rankings = computePowerRankings(activeLeague);
-  state.connected = true;
-  // Active league consistency (added) -- the actually-rendered league
-  // (real ESPN data, or the mock LEAGUE fallback) is now stored on
-  // state so every consumer (rankings, snapshot, matchups) reads the
-  // SAME object rather than some reading state.rankings while others
-  // reach for the global LEAGUE/mock constant directly.
   state.activeLeague = activeLeague;
   state.usingRealData = usingRealData;
+  state.performanceAvailable =
+    activeLeague.performanceAvailable !== false;
+  state.rankings = computePowerRankings(activeLeague);
+  state.connected = true;
+
   document.getElementById('connectWrap').classList.add('hidden');
   document.getElementById('results').classList.add('active');
   document.getElementById('leagueName').textContent = activeLeague.name;
 
-  // Connected-provider truth (added): a specific provider's name
-  // (ESPN/Yahoo/CBS) is ONLY ever shown when usingRealData is
-  // actually true. Whenever real parsing failed or wasn't available
-  // and mock/demo data is being shown instead, the label is a
-  // neutral "Preview Data" regardless of which provider is
-  // technically connected -- the customer must never be told mock
-  // data came from a real provider.
-  var platformLabel = (usingRealData && activeProvider && LeagueConnection.PROVIDERS[activeProvider])
-    ? LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy'
-    : activeLeague.platform;
+  var platformLabel =
+    (usingRealData &&
+      activeProvider &&
+      LeagueConnection.PROVIDERS[activeProvider])
+      ? LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy'
+      : activeLeague.platform;
+
+  var weekLabel =
+    activeLeague.week > 0
+      ? ('Week ' + activeLeague.week)
+      : 'Preseason';
 
   document.getElementById('leagueMeta').textContent =
-    activeLeague.numTeams + ' teams · ' + activeLeague.scoring + ' · Week ' + activeLeague.week + ' · ' + platformLabel;
+    activeLeague.numTeams + ' teams · ' +
+    activeLeague.scoring + ' · ' +
+    weekLabel + ' · ' +
+    platformLabel;
 
-  // Attribution line — reflects the real active provider ONLY when
-  // usingRealData is true (see the connected-provider truth note
-  // above). Yahoo specifically requires this exact phrasing,
-  // hyperlinked to an official Yahoo Fantasy page, per the signed
-  // API Access and Use Agreement — that requirement only applies
-  // once real Yahoo data is live, but the link is included now so
-  // the correct format is already in place for when it is.
   var attrEl = document.getElementById('attribution');
   if (attrEl) {
     if (!usingRealData) {
-      attrEl.textContent = 'Preview data — not from a connected league';
+      attrEl.textContent =
+        'Preview data — not from a connected league';
     } else if (activeProvider === 'yahoo') {
-      attrEl.innerHTML = 'Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Yahoo Fantasy</a>';
+      attrEl.innerHTML =
+        'Fantasy data provided by <a href="https://football.fantasysports.yahoo.com/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Yahoo Fantasy</a>';
     } else if (activeProvider === 'cbs') {
-      attrEl.textContent = 'Fantasy data provided by CBS Fantasy · season scoring + standings';
-    } else if (activeProvider && LeagueConnection.PROVIDERS[activeProvider]) {
-      attrEl.textContent = 'Fantasy data provided by ' + LeagueConnection.PROVIDERS[activeProvider].label + ' Fantasy';
+      attrEl.textContent =
+        activeLeague.performanceAvailable
+          ? 'Fantasy data provided by CBS Fantasy · season scoring + standings'
+          : 'Fantasy data provided by CBS Fantasy · preseason league data';
+    } else if (
+      activeProvider &&
+      LeagueConnection.PROVIDERS[activeProvider]
+    ) {
+      attrEl.textContent =
+        'Fantasy data provided by ' +
+        LeagueConnection.PROVIDERS[activeProvider].label +
+        ' Fantasy';
     } else {
-      attrEl.textContent = 'Fantasy data provided by ' + activeLeague.platform;
+      attrEl.textContent =
+        'Fantasy data provided by ' + activeLeague.platform;
     }
   }
 
-  // Mock-data banner — was previously always visible regardless of
-  // connection state. Now: hidden entirely once real data is loaded,
-  // shown with an honest specific reason when a real provider is
-  // connected but real data isn't usable yet, and left as the
-  // original generic message when there's no connection at all.
   var mockBanner = document.getElementById('mockBanner');
   if (mockBanner) {
-    if (usingRealData) {
+    if (usingRealData && activeLeague.performanceAvailable === false) {
+      mockBanner.innerHTML =
+        '🏈 <strong>Connected league loaded.</strong> ' +
+        'Power Rankings will activate after completed games provide real scoring data.';
+      mockBanner.style.display = '';
+    } else if (usingRealData) {
       mockBanner.style.display = 'none';
     } else if (fallbackReason) {
-      mockBanner.innerHTML = '🧪 <strong>Preview data.</strong> ' + fallbackReason;
+      mockBanner.innerHTML =
+        '🧪 <strong>Preview data.</strong> ' + fallbackReason;
       mockBanner.style.display = '';
     } else {
       mockBanner.style.display = '';
     }
+  }
+
+  var resultsSub =
+    document.querySelector('.rank-section .panel-sub');
+  if (resultsSub) {
+    resultsSub.textContent =
+      state.performanceAvailable
+        ? "Updated through this week's games. Click a persona above to see their take on every team."
+        : 'Your connected league is loaded. Rankings and trend commentary will activate after completed games provide real performance data.';
   }
 
   renderRankings();
@@ -985,28 +1066,66 @@ function playFromUrl(url, buttonEl) {
 function renderRankings() {
   const list = document.getElementById('rankList');
   list.innerHTML = '';
-  const showVoiceButton = state.persona === 'trash';
+
+  const performanceAvailable = state.performanceAvailable !== false;
+  const showVoiceButton =
+    performanceAvailable && state.persona === 'trash';
+
   state.rankings.forEach(team => {
-    const trendClass = team.formDelta > 4 ? 'up' : team.formDelta < -4 ? 'down' : 'flat';
-    const trendIcon = trendClass === 'up' ? '▲' : trendClass === 'down' ? '▼' : '●';
-    const trendLabel = trendClass === 'up' ? 'Trending Up' : trendClass === 'down' ? 'Trending Down' : 'Steady';
+    const hasForm =
+      performanceAvailable &&
+      team.formDelta !== null &&
+      Number.isFinite(team.formDelta);
+
+    const trendClass =
+      !hasForm ? 'flat' :
+      (team.formDelta > 4 ? 'up' :
+      (team.formDelta < -4 ? 'down' : 'flat'));
+
+    const trendIcon =
+      !hasForm ? '—' :
+      (trendClass === 'up' ? '▲' :
+      (trendClass === 'down' ? '▼' : '●'));
+
+    const trendLabel =
+      !performanceAvailable ? 'Awaiting games' :
+      (!hasForm ? 'Form unavailable' :
+      (trendClass === 'up' ? 'Trending Up' :
+      (trendClass === 'down' ? 'Trending Down' : 'Steady')));
+
+    const commentary =
+      performanceAvailable
+        ? getCommentary(state.persona, team, team.rank, state.rankings)
+        : 'Preseason — real league data is connected, but no completed scoring exists yet. Power Ranking and trend commentary will activate after games are played.';
+
     const card = document.createElement('div');
     card.className = 'rank-card';
     card.innerHTML =
-      '<div class="rank-num' + (team.rank <= 3 ? ' top' : '') + '">' + team.rank + '</div>' +
+      '<div class="rank-num' +
+        (performanceAvailable && team.rank <= 3 ? ' top' : '') +
+        '">' + (performanceAvailable ? team.rank : '—') + '</div>' +
       '<div class="rank-main">' +
         '<div class="rank-team-row">' +
           '<span class="rank-team-name">' + team.name + '</span>' +
           '<span class="rank-record">' + formatRecord(team) + '</span>' +
-          '<span class="rank-trend ' + trendClass + '">' + trendIcon + ' ' + trendLabel + '</span>' +
+          '<span class="rank-trend ' + trendClass + '">' +
+            trendIcon + ' ' + trendLabel +
+          '</span>' +
         '</div>' +
-        '<div class="rank-commentary">' + getCommentary(state.persona, team, team.rank, state.rankings) + '</div>' +
+        '<div class="rank-commentary">' + commentary + '</div>' +
       '</div>' +
       '<div class="rank-stats">' +
-        '<div class="rank-stat-val">' + fmtNum(team.seasonAvg, 1) + '</div>' +
-        '<div class="rank-stat-label">avg pts/wk</div>' +
-        (showVoiceButton ? '<button class="voice-btn-card" title="Hear the Trash Lord roast this">🔊</button>' : '') +
+        '<div class="rank-stat-val">' +
+          (performanceAvailable ? fmtNum(team.seasonAvg, 1) : '—') +
+        '</div>' +
+        '<div class="rank-stat-label">' +
+          (performanceAvailable ? 'avg pts/wk' : 'awaiting games') +
+        '</div>' +
+        (showVoiceButton
+          ? '<button class="voice-btn-card" title="Hear the Trash Lord roast this">🔊</button>'
+          : '') +
       '</div>';
+
     if (showVoiceButton) {
       const voiceBtn = card.querySelector('.voice-btn-card');
       voiceBtn.addEventListener('click', function (e) {
@@ -1014,6 +1133,7 @@ function renderRankings() {
         playTeamCommentary(team, state.persona, voiceBtn);
       });
     }
+
     list.appendChild(card);
   });
 
@@ -1032,9 +1152,20 @@ function renderRankings() {
 function renderSnapshot() {
   const panel = document.getElementById('snapshotList');
   if (!panel) return;
+
   const teams = state.rankings;
   if (!teams || !teams.length) {
     panel.innerHTML = '';
+    return;
+  }
+
+  if (state.performanceAvailable === false) {
+    panel.innerHTML =
+      '<div class="snapshot-item"><div class="snapshot-label">Power Leader</div><div class="snapshot-value">—</div><div class="snapshot-sub">Available after completed games</div></div>' +
+      '<div class="snapshot-item"><div class="snapshot-label">Hottest Team</div><div class="snapshot-value">—</div><div class="snapshot-sub">Recent form unavailable</div></div>' +
+      '<div class="snapshot-item"><div class="snapshot-label">Cooling Off</div><div class="snapshot-value">—</div><div class="snapshot-sub">Recent form unavailable</div></div>' +
+      '<div class="snapshot-item"><div class="snapshot-label">Scoring Leader</div><div class="snapshot-value">—</div><div class="snapshot-sub">Available after completed games</div></div>' +
+      '<div class="snapshot-item"><div class="snapshot-label">League Average</div><div class="snapshot-value">—</div><div class="snapshot-sub">Available after completed games</div></div>';
     return;
   }
 
@@ -1080,6 +1211,15 @@ function renderSnapshot() {
 function renderMatchups() {
   const list = document.getElementById('matchupList');
   list.innerHTML = '';
+
+  if (state.performanceAvailable === false) {
+    list.innerHTML =
+      '<div class="matchup-card">' +
+        '<div class="rank-commentary">Connected league loaded. Matchup intelligence will activate after real scoring data is available.</div>' +
+      '</div>';
+    return;
+  }
+
   const byName = {};
   state.rankings.forEach(t => byName[t.name] = t);
 
