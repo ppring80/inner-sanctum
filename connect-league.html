@@ -1774,7 +1774,7 @@ function buildCbsForm() {
 
         '<div class="cbs-mobile-step">' +
           '<span class="cbs-mobile-step-num">4</span>' +
-          '<span><strong>Finish the connection.</strong> If Inner Sanctum first finds your league, let CBS open it and run the same CBS Connect bookmark once more. Your sanitized league data will be sent back to this Inner Sanctum tab.</span>' +
+          '<span><strong>Finish the connection.</strong> After CBS finds your league, tap Return to Inner Sanctum. Tap OPEN MY LEAGUE here, then run the same CBS Connect bookmark once more from your league page. Your sanitized league data will return here automatically.</span>' +
         '</div>' +
 
         '<div class="cbs-mobile-note">' +
@@ -2867,6 +2867,36 @@ function handleCbsDiscoveryResult(
   }
 
   if (leagues.length === 1) {
+    /*
+      Desktop can keep the proven automatic navigation.
+
+      Mobile Chrome may receive the discovery result correctly but block
+      or ignore the opener-driven cross-origin navigation when it is not
+      attached to a fresh customer gesture. On mobile, keep the exact CBS
+      URL returned by discovery and let the customer explicitly tap
+      OPEN MY LEAGUE from Inner Sanctum. That click is the user gesture.
+    */
+    if (isMobileCbsBrowser()) {
+      discoveredCbsLeagues =
+        leagues;
+
+      box.className =
+        "result-box success show";
+
+      box.innerHTML =
+        "<strong>✓ Found " +
+        escapeHtml(
+          cbsDiscoveredLeagueLabel(
+            leagues[0]
+          )
+        ) +
+        ".</strong><br>" +
+        "Tap the button below to open your league." +
+        '<br><br><button class="connect-btn" onclick="selectDiscoveredCbsLeague(0)">OPEN MY LEAGUE</button>';
+
+      return;
+    }
+
     box.className =
       "result-box loading show";
 
@@ -2980,6 +3010,12 @@ function selectDiscoveredCbsLeague(
 
   cbsConnectWindow.location.href =
     league.url;
+
+  try {
+    cbsConnectWindow.focus();
+  } catch (e) {
+    // Focus is optional; the CBS tab has still been navigated.
+  }
 }
 
 /*
