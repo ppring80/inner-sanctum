@@ -3,7 +3,7 @@
   ------------------------------------------------
   Browser-assisted, READ-ONLY CBS Fantasy connector.
 
-  VERSION 0.3.0
+  VERSION 0.4.0
 
   DESIGN PRINCIPLE
   ------------------------------------------------
@@ -95,7 +95,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "0.3.0";
+  const VERSION = "0.4.0";
 
   const CBS_HOST_RE =
     /^([^.]+)\.football\.cbssports\.com$/i;
@@ -1033,163 +1033,676 @@
     let currentDivision =
       "";
 
-    let headers =
-      [];
+    const seenTeamIds =
+      new Set();
 
-    doc.querySelectorAll(
-      "tr"
-    ).forEach(
-      function (row) {
-        const cells =
-          [...row.querySelectorAll(
-            "th,td"
-          )].map(
-            function (cell) {
-              return clean(
-                cell.textContent
-              );
-            }
-          );
+    function normalizeHeader(value) {
+      return clean(value)
+        .replace(/[.]/g, "")
+        .replace(/\s+/g, "")
+        .toUpperCase();
+    }
 
-        if (!cells.length) {
-          return;
-        }
+    function getCellLabel(cell) {
+      return normalizeHeader(
+        cell.getAttribute(
+          "data-label"
+        ) ||
+        cell.getAttribute(
+          "aria-label"
+        ) ||
+        ""
+      );
+    }
 
-        if (
-          cells.length === 1 &&
-          /division$/i.test(
-            cells[0]
-          )
-        ) {
-          currentDivision =
-            cells[0]
-              .replace(
-                /\s+division$/i,
-                ""
-              )
-              .trim();
+    function parseRecord(value) {
+      const text =
+        clean(value);
 
-          return;
-        }
-
-        if (
-          cells[0]
-            ?.toLowerCase() ===
-            "team" &&
-          cells.some(
-            function (value) {
-              return (
-                value
-                  .toUpperCase() ===
-                "PF"
-              );
-            }
-          )
-        ) {
-          headers =
-            cells;
-
-          return;
-        }
-
-        const teamLink =
-          row.querySelector(
-            'a[href*="/teams/"]'
-          );
-
-        if (!teamLink) {
-          return;
-        }
-
-        const teamId =
-          parseTeamIdFromHref(
-            teamLink.href
-          );
-
-        if (!teamId) {
-          return;
-        }
-
-        const values = {};
-
-        headers.forEach(
-          function (
-            header,
-            index
-          ) {
-            values[header] =
-              cells[index] ?? "";
-          }
+      const match =
+        text.match(
+          /(?:^|\s)(\d+)\s*[-–—]\s*(\d+)(?:\s*[-–—]\s*(\d+))?(?:\s|$)/
         );
 
-        standings.push({
-          teamId,
-
-          teamName:
-            clean(
-              teamLink.textContent
-            ),
-
-          division:
-            currentDivision,
-
-          wins:
-            integerOrNull(
-              values.W
-            ) ?? 0,
-
-          losses:
-            integerOrNull(
-              values.L
-            ) ?? 0,
-
-          ties:
-            integerOrNull(
-              values.T
-            ) ?? 0,
-
-          percentage:
-            numberOrNull(
-              values.PCT
-            ),
-
-          gamesBack:
-            numberOrNull(
-              values.GB
-            ),
-
-          streak:
-            clean(
-              values.Streak
-            ) || null,
-
-          divisionRecord:
-            clean(
-              values.Div
-            ) || null,
-
-          weeks:
-            integerOrNull(
-              values.Wks
-            ),
-
-          pointsFor:
-            numberOrNull(
-              values.PF
-            ),
-
-          back:
-            numberOrNull(
-              values.Back
-            ),
-
-          pointsAgainst:
-            numberOrNull(
-              values.PA
-            ),
-        });
+      if (!match) {
+        return null;
       }
+
+      return {
+        wins:
+          Number(match[1]),
+
+        losses:
+          Number(match[2]),
+
+        ties:
+          Number(match[3] || 0),
+      };
+    }
+
+    function makeGrid(table) {
+      const rows =
+        [...table.querySelectorAll(
+          "tr"
+        )];
+
+      const grid = [];
+
+      rows.forEach(
+        function (row, rowIndex) {
+          if (!grid[rowIndex]) {
+            grid[rowIndex] = [];
+          }
+
+          let columnIndex = 0;
+
+          const cells =
+            [...row.children].filter(
+              function (child) {
+                const tag =
+                  child.tagName
+                    ?.toLowerCase();
+
+                return (
+                  tag === "th" ||
+                  tag === "td"
+                );
+              }
+            );
+
+          cells.forEach(
+            function (cell) {
+              while (
+                grid[rowIndex][
+                  columnIndex
+                ] !== undefined
+              ) {
+                columnIndex++;
+              }
+
+              const rowSpan =
+                Math.max(
+                  1,
+                  integerOrNull(
+                    cell.getAttribute(
+                      "rowspan"
+                    )
+                  ) || 1
+                );
+
+              const colSpan =
+                Math.max(
+                  1,
+                  integerOrNull(
+                    cell.getAttribute(
+                      "colspan"
+                    )
+                  ) || 1
+                );
+
+              const entry = {
+                text:
+                  clean(
+                    cell.textContent
+                  ),
+
+                label:
+                  getCellLabel(
+                    cell
+                  ),
+
+                cell,
+              };
+
+              for (
+                let r = 0;
+                r < rowSpan;
+                r++
+              ) {
+                const targetRow =
+                  rowIndex + r;
+
+                if (!grid[targetRow]) {
+                  grid[targetRow] = [];
+                }
+
+                for (
+                  let c = 0;
+                  c < colSpan;
+                  c++
+                ) {
+                  grid[targetRow][
+                    columnIndex + c
+                  ] = entry;
+                }
+              }
+
+              columnIndex +=
+                colSpan;
+            }
+          );
+        }
+      );
+
+      return {
+        rows,
+        grid,
+      };
+    }
+
+    function findHeaderLabels(
+      rows,
+      grid,
+      dataRowIndex
+    ) {
+      const labels = [];
+
+      for (
+        let rowIndex = 0;
+        rowIndex < dataRowIndex;
+        rowIndex++
+      ) {
+        const row =
+          rows[rowIndex];
+
+        if (!row) {
+          continue;
+        }
+
+        const rowEntries =
+          grid[rowIndex] || [];
+
+        const headerLike =
+          row.querySelectorAll(
+            "th"
+          ).length > 0;
+
+        if (!headerLike) {
+          continue;
+        }
+
+        rowEntries.forEach(
+          function (entry, columnIndex) {
+            const normalized =
+              normalizeHeader(
+                entry?.text
+              );
+
+            if (normalized) {
+              labels[columnIndex] =
+                normalized;
+            }
+          }
+        );
+      }
+
+      return labels;
+    }
+
+    function valueFromAliases(
+      values,
+      aliases
+    ) {
+      for (const alias of aliases) {
+        const normalized =
+          normalizeHeader(alias);
+
+        if (
+          Object.prototype
+            .hasOwnProperty.call(
+              values,
+              normalized
+            )
+        ) {
+          return values[normalized];
+        }
+      }
+
+      return "";
+    }
+
+    function parseStandingsTable(
+      table
+    ) {
+      const built =
+        makeGrid(table);
+
+      const rows =
+        built.rows;
+
+      const grid =
+        built.grid;
+
+      let tableDivision =
+        currentDivision;
+
+      rows.forEach(
+        function (row, rowIndex) {
+          const directCells =
+            [...row.querySelectorAll(
+              ":scope > th, :scope > td"
+            )];
+
+          const directText =
+            directCells.map(
+              function (cell) {
+                return clean(
+                  cell.textContent
+                );
+              }
+            );
+
+          if (
+            directText.length === 1 &&
+            /division$/i.test(
+              directText[0]
+            )
+          ) {
+            tableDivision =
+              directText[0]
+                .replace(
+                  /\s+division$/i,
+                  ""
+                )
+                .trim();
+
+            currentDivision =
+              tableDivision;
+
+            return;
+          }
+
+          const teamLink =
+            row.querySelector(
+              'a[href*="/teams/"]'
+            );
+
+          if (!teamLink) {
+            return;
+          }
+
+          const teamId =
+            parseTeamIdFromHref(
+              teamLink.href
+            );
+
+          if (
+            !teamId ||
+            seenTeamIds.has(teamId)
+          ) {
+            return;
+          }
+
+          const rowEntries =
+            grid[rowIndex] || [];
+
+          const headerLabels =
+            findHeaderLabels(
+              rows,
+              grid,
+              rowIndex
+            );
+
+          const values = {};
+
+          rowEntries.forEach(
+            function (entry, columnIndex) {
+              if (!entry) {
+                return;
+              }
+
+              const ownLabel =
+                entry.label;
+
+              const headerLabel =
+                headerLabels[
+                  columnIndex
+                ] || "";
+
+              const label =
+                ownLabel ||
+                headerLabel;
+
+              if (
+                label &&
+                !Object.prototype
+                  .hasOwnProperty.call(
+                    values,
+                    label
+                  )
+              ) {
+                values[label] =
+                  entry.text;
+              }
+            }
+          );
+
+          const rowText =
+            clean(
+              row.textContent
+            );
+
+          const combinedRecord =
+            parseRecord(
+              valueFromAliases(
+                values,
+                [
+                  "W-L-T",
+                  "WLT",
+                  "RECORD",
+                  "REC",
+                ]
+              )
+            ) ||
+            parseRecord(
+              rowText
+            );
+
+          let wins =
+            integerOrNull(
+              valueFromAliases(
+                values,
+                ["W", "WINS"]
+              )
+            );
+
+          let losses =
+            integerOrNull(
+              valueFromAliases(
+                values,
+                ["L", "LOSSES"]
+              )
+            );
+
+          let ties =
+            integerOrNull(
+              valueFromAliases(
+                values,
+                ["T", "TIES"]
+              )
+            );
+
+          if (combinedRecord) {
+            if (wins === null) {
+              wins =
+                combinedRecord.wins;
+            }
+
+            if (losses === null) {
+              losses =
+                combinedRecord.losses;
+            }
+
+            if (ties === null) {
+              ties =
+                combinedRecord.ties;
+            }
+          }
+
+          const percentage =
+            numberOrNull(
+              valueFromAliases(
+                values,
+                [
+                  "PCT",
+                  "PCT%",
+                  "WIN%",
+                  "WINPCT",
+                ]
+              )
+            );
+
+          const gamesBack =
+            numberOrNull(
+              valueFromAliases(
+                values,
+                ["GB", "GBACK"]
+              )
+            );
+
+          const streak =
+            clean(
+              valueFromAliases(
+                values,
+                ["STREAK", "STRK"]
+              )
+            ) || null;
+
+          const divisionRecord =
+            clean(
+              valueFromAliases(
+                values,
+                [
+                  "DIV",
+                  "DIVISION",
+                  "DIVREC",
+                  "DIVRECORD",
+                ]
+              )
+            ) || null;
+
+          const pointsFor =
+            numberOrNull(
+              valueFromAliases(
+                values,
+                [
+                  "PF",
+                  "POINTSFOR",
+                  "PTSFOR",
+                  "POINTSF",
+                ]
+              )
+            );
+
+          const pointsAgainst =
+            numberOrNull(
+              valueFromAliases(
+                values,
+                [
+                  "PA",
+                  "POINTSAGAINST",
+                  "PTSAGAINST",
+                  "POINTSA",
+                ]
+              )
+            );
+
+          let weeks =
+            integerOrNull(
+              valueFromAliases(
+                values,
+                [
+                  "WKS",
+                  "WK",
+                  "WEEKS",
+                  "GP",
+                  "G",
+                ]
+              )
+            );
+
+          const recordParsed =
+            wins !== null &&
+            losses !== null;
+
+          if (
+            ties === null &&
+            recordParsed
+          ) {
+            ties = 0;
+          }
+
+          if (
+            weeks === null &&
+            recordParsed
+          ) {
+            weeks =
+              wins +
+              losses +
+              (ties || 0);
+          }
+
+          const scoringParsed =
+            pointsFor !== null ||
+            pointsAgainst !== null;
+
+          standings.push({
+            teamId,
+
+            teamName:
+              clean(
+                teamLink.textContent
+              ),
+
+            division:
+              tableDivision,
+
+            wins,
+
+            losses,
+
+            ties,
+
+            percentage,
+
+            gamesBack,
+
+            streak,
+
+            divisionRecord,
+
+            weeks,
+
+            pointsFor,
+
+            back:
+              numberOrNull(
+                valueFromAliases(
+                  values,
+                  ["BACK"]
+                )
+              ),
+
+            pointsAgainst,
+
+            recordParsed,
+
+            scoringParsed,
+          });
+
+          seenTeamIds.add(teamId);
+        }
+      );
+    }
+
+    const tables =
+      [...doc.querySelectorAll(
+        "table"
+      )];
+
+    tables.forEach(
+      parseStandingsTable
     );
+
+    /*
+      Fallback for unusual CBS markup where standings rows are not inside
+      a normal table. Identity is still captured, but missing numeric data
+      remains null rather than being silently manufactured as zero.
+    */
+
+    if (!standings.length) {
+      doc.querySelectorAll(
+        "tr"
+      ).forEach(
+        function (row) {
+          const teamLink =
+            row.querySelector(
+              'a[href*="/teams/"]'
+            );
+
+          if (!teamLink) {
+            return;
+          }
+
+          const teamId =
+            parseTeamIdFromHref(
+              teamLink.href
+            );
+
+          if (
+            !teamId ||
+            seenTeamIds.has(teamId)
+          ) {
+            return;
+          }
+
+          const record =
+            parseRecord(
+              row.textContent
+            );
+
+          standings.push({
+            teamId,
+
+            teamName:
+              clean(
+                teamLink.textContent
+              ),
+
+            division:
+              currentDivision,
+
+            wins:
+              record?.wins ??
+              null,
+
+            losses:
+              record?.losses ??
+              null,
+
+            ties:
+              record?.ties ??
+              null,
+
+            percentage:
+              null,
+
+            gamesBack:
+              null,
+
+            streak:
+              null,
+
+            divisionRecord:
+              null,
+
+            weeks:
+              record
+                ? record.wins +
+                  record.losses +
+                  record.ties
+                : null,
+
+            pointsFor:
+              null,
+
+            back:
+              null,
+
+            pointsAgainst:
+              null,
+
+            recordParsed:
+              Boolean(record),
+
+            scoringParsed:
+              false,
+          });
+
+          seenTeamIds.add(teamId);
+        }
+      );
+    }
 
     return standings;
   }
@@ -3244,6 +3757,46 @@
         ?.format ||
       null;
 
+    const standingsRecordCount =
+      standings.filter(
+        function (team) {
+          return (
+            team.recordParsed ===
+            true
+          );
+        }
+      ).length;
+
+    const standingsScoringCount =
+      standings.filter(
+        function (team) {
+          return (
+            team.scoringParsed ===
+            true
+          );
+        }
+      ).length;
+
+    if (
+      standings.length &&
+      standingsRecordCount <
+        standings.length
+    ) {
+      warnings.push(
+        "CBS standings team identity was captured, but record fields were not parsed for every team."
+      );
+    }
+
+    if (
+      standings.length &&
+      standingsScoringCount <
+        standings.length
+    ) {
+      warnings.push(
+        "CBS standings team identity was captured, but PF/PA fields were not parsed for every team."
+      );
+    }
+
     const dataQuality = {
       leagueIdentity:
         Boolean(
@@ -3279,6 +3832,22 @@
 
       standingsCount:
         standings.length,
+
+      standingsRecordCount,
+
+      standingsScoringCount,
+
+      standingsRecordCoverage:
+        standings.length
+          ? standingsRecordCount /
+            standings.length
+          : 0,
+
+      standingsScoringCoverage:
+        standings.length
+          ? standingsScoringCount /
+            standings.length
+          : 0,
 
       schedule:
         schedule.length > 0,
