@@ -544,6 +544,83 @@ body{
   line-height:1.5;
 }
 
+.cbs-mobile-install{
+  background:rgba(201,168,76,0.07);
+  border:1px solid rgba(201,168,76,0.28);
+  border-radius:8px;
+  padding:14px;
+  margin-bottom:16px;
+  text-align:left;
+}
+
+.cbs-mobile-title{
+  color:#e1c36a;
+  font-family:'Cinzel',serif;
+  font-size:13px;
+  letter-spacing:0.5px;
+  margin-bottom:7px;
+}
+
+.cbs-mobile-copy{
+  width:100%;
+  padding:12px 14px;
+  background:linear-gradient(135deg,#c9a84c,#8b6914);
+  color:#0a0600;
+  font-family:'Cinzel',serif;
+  font-size:12px;
+  font-weight:600;
+  border:none;
+  border-radius:7px;
+  cursor:pointer;
+  letter-spacing:0.5px;
+  margin:8px 0 10px;
+}
+
+.cbs-mobile-copy:active{
+  transform:translateY(1px);
+}
+
+.cbs-mobile-status{
+  min-height:18px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:#a8d5a8;
+  margin-top:6px;
+}
+
+.cbs-mobile-step{
+  display:flex;
+  gap:9px;
+  align-items:flex-start;
+  margin:10px 0;
+  color:#a08a5a;
+  font-size:12px;
+  line-height:1.55;
+}
+
+.cbs-mobile-step-num{
+  width:20px;
+  height:20px;
+  min-width:20px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(201,168,76,0.13);
+  color:#e1c36a;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  margin-top:1px;
+}
+
+.cbs-mobile-note{
+  color:#7a6a45;
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;
+  line-height:1.55;
+  margin-top:10px;
+}
+
 .connect-btn{
   width:100%;
   padding:14px 20px;
@@ -1364,6 +1441,97 @@ function buildEspnForm() {
   part of this flow.
 */
 
+function isMobileCbsBrowser() {
+  var ua = navigator.userAgent || "";
+  var touchMac =
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1;
+
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ||
+    touchMac
+  );
+}
+
+function isIosCbsBrowser() {
+  var ua = navigator.userAgent || "";
+  var touchMac =
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1;
+
+  return /iPhone|iPad|iPod/i.test(ua) || touchMac;
+}
+
+function isAndroidCbsBrowser() {
+  return /Android/i.test(navigator.userAgent || "");
+}
+
+window.copyCbsConnectCode = function () {
+  var code =
+    "javascript:(function(){var s=document.createElement('script');s.src='https://theinnersanctum.xyz/cbs-poc.js?ts='+Date.now();s.async=true;document.head.appendChild(s);}());";
+
+  var status =
+    document.getElementById("cbsMobileCopyStatus");
+
+  function success() {
+    if (status) {
+      status.textContent =
+        "✓ CBS Connect code copied.";
+    }
+  }
+
+  function failure() {
+    if (status) {
+      status.textContent =
+        "Could not copy automatically. Press and hold the code field below to copy it.";
+    }
+  }
+
+  if (
+    navigator.clipboard &&
+    window.isSecureContext
+  ) {
+    navigator.clipboard
+      .writeText(code)
+      .then(success)
+      .catch(function () {
+        fallbackCopy();
+      });
+  } else {
+    fallbackCopy();
+  }
+
+  function fallbackCopy() {
+    try {
+      var ta =
+        document.createElement("textarea");
+
+      ta.value = code;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      ta.style.pointerEvents = "none";
+
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+
+      var ok =
+        document.execCommand("copy");
+
+      document.body.removeChild(ta);
+
+      if (ok) {
+        success();
+      } else {
+        failure();
+      }
+    } catch (err) {
+      failure();
+    }
+  }
+};
+
 function buildCbsForm() {
   var wrap =
     document.createElement(
@@ -1379,19 +1547,18 @@ function buildCbsForm() {
         "cbs"
       );
 
-  // Standard, documented extension-detection pattern: the extension's
-  // own sanctum-content-bridge.js content script marks the page as
-  // soon as it loads, only when actually installed. No fake
-  // detection, no new permission -- this IS the supported signal.
+  var mobile =
+    isMobileCbsBrowser();
+
+  // Desktop browser extension detection. Mobile browsers do not get
+  // the desktop-extension path even if a UA quirk exposes the marker.
   var extensionInstalled =
+    !mobile &&
     document.documentElement.hasAttribute(
       "data-inner-sanctum-cbs-extension"
     );
 
- // The extension content script may mark the page after this form
-  // renders. Watch for that marker instead of relying on a single
-  // timing-sensitive retry.
-  if (!extensionInstalled) {
+  if (!mobile && !extensionInstalled) {
     var extensionObserver =
       new MutationObserver(
         function () {
@@ -1417,7 +1584,6 @@ function buildCbsForm() {
       }
     );
 
-    // Safety cleanup if the extension is genuinely not installed.
     setTimeout(
       function () {
         extensionObserver.disconnect();
@@ -1465,12 +1631,6 @@ function buildCbsForm() {
       '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
     '</div>';
 
-  // Bookmarklet journeys — byte-preserved from the proven manual-
-  // connect flow. Not rewritten, only relocated: see
-  // bookmarkletFallbackMarkup below, which tucks this behind a
-  // "Having trouble?" disclosure once the extension is the primary
-  // path, and shows it directly (as before) when the extension isn't
-  // detected at all.
   var firstTimeStepsMarkup =
     '<span class="cbs-bookmark-tip" style="display:block;margin:0 0 14px;font-size:12px;line-height:1.6;color:#c9a84c;font-weight:600">Click CBS Connect once to find your league, then once more after your league opens to finish connecting.</span>' +
 
@@ -1547,12 +1707,83 @@ function buildCbsForm() {
       ? returningMarkup
       : firstTimeStepsMarkup;
 
-  // Primary extension-driven UI (added). This is the customer's
-  // main path whenever the extension is detected — a single button,
-  // no bookmark install, no second click, no manual navigation.
   var primaryMarkup;
 
-  if (extensionInstalled) {
+  if (mobile) {
+    var mobilePlatform =
+      isIosCbsBrowser()
+        ? "iPhone / iPad"
+        : (isAndroidCbsBrowser()
+            ? "Android"
+            : "Mobile");
+
+    var mobileLaunchLabel =
+      existing
+        ? "Open CBS Fantasy to Sync"
+        : "Open CBS Fantasy";
+
+    var mobileBrowserHint =
+      isIosCbsBrowser()
+        ? "In Safari, create any bookmark for this page, then edit that bookmark: rename it “Inner Sanctum CBS Connect” and replace its address with the copied CBS Connect code."
+        : "Create a bookmark for this page in your mobile browser, then edit it: rename it “Inner Sanctum CBS Connect” and replace its address with the copied CBS Connect code.";
+
+    var mobileRunHint =
+      isIosCbsBrowser()
+        ? "On the CBS Fantasy page, open your Safari bookmarks and tap “Inner Sanctum CBS Connect.”"
+        : "On the CBS Fantasy page, open your browser bookmarks and launch “Inner Sanctum CBS Connect.” If your browser does not execute JavaScript bookmarks from the bookmark manager, type the bookmark name in the address bar and select it from bookmarks.";
+
+    primaryMarkup =
+      '<div class="cbs-mobile-install">' +
+
+        '<div class="cbs-mobile-title">📱 CBS Connect for ' +
+          escapeHtml(mobilePlatform) +
+        '</div>' +
+
+        '<p style="color:#a08a5a;font-size:12px;line-height:1.6;margin:0 0 10px">' +
+          'Mobile browsers do not have a desktop bookmarks bar. Use this one-time setup instead.' +
+        '</p>' +
+
+        '<div class="cbs-mobile-step">' +
+          '<span class="cbs-mobile-step-num">1</span>' +
+          '<span><strong>Save this page as a bookmark.</strong> ' +
+            escapeHtml(mobileBrowserHint) +
+          '</span>' +
+        '</div>' +
+
+        '<button class="cbs-mobile-copy" type="button" onclick="copyCbsConnectCode()">' +
+          'COPY CBS CONNECT CODE' +
+        '</button>' +
+
+        '<div class="cbs-mobile-status" id="cbsMobileCopyStatus"></div>' +
+
+        '<div class="cbs-mobile-step">' +
+          '<span class="cbs-mobile-step-num">2</span>' +
+          '<span><strong>Open CBS Fantasy.</strong> Sign in normally if CBS asks.</span>' +
+        '</div>' +
+
+        '<button class="connect-btn" onclick="startCbsConnect()">' +
+          mobileLaunchLabel +
+        '</button>' +
+
+        '<div class="cbs-mobile-step">' +
+          '<span class="cbs-mobile-step-num">3</span>' +
+          '<span><strong>Run CBS Connect from CBS.</strong> ' +
+            escapeHtml(mobileRunHint) +
+          '</span>' +
+        '</div>' +
+
+        '<div class="cbs-mobile-step">' +
+          '<span class="cbs-mobile-step-num">4</span>' +
+          '<span><strong>Finish the connection.</strong> If Inner Sanctum first finds your league, let CBS open it and run the same CBS Connect bookmark once more. Your sanitized league data will be sent back to this Inner Sanctum tab.</span>' +
+        '</div>' +
+
+        '<div class="cbs-mobile-note">' +
+          'One-time setup. Inner Sanctum never asks for your CBS password or stores CBS cookies/session tokens.' +
+        '</div>' +
+
+      '</div>';
+
+  } else if (extensionInstalled) {
     var primaryButtonMarkup =
       existing
         ? '<button class="connect-btn" id="cbsSyncBtn" data-league-id="' +
@@ -1584,9 +1815,6 @@ function buildCbsForm() {
       supportingLineMarkup +
       bookmarkletFallbackMarkup;
   } else {
-    // Extension not detected: the bookmarklet flow is the only thing
-    // that actually works right now, so it's shown directly rather
-    // than hidden behind a fallback disclosure.
     primaryMarkup =
       '<div class="pf-info">' +
         '<strong>The Inner Sanctum CBS Connect browser extension is required for one-click CBS connection.</strong><br>' +
