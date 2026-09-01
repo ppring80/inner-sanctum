@@ -338,14 +338,16 @@ function buildPlayerTeamMap(playerDataCache) {
       : {};
 
   Object.values(players).forEach(function (player) {
-    if (!player || !player.longName || !player.team) {
+    if (!player || !player.longName || !player.pos || !player.team) {
       return;
     }
 
-    const key = normalizePlayerName(player.longName);
+    const name = normalizePlayerName(player.longName);
+    const position = normalizePosition(player.pos);
     const team = normalizeTeam(player.team);
+    const key = `${name}|${position}`;
 
-    if (key && team) {
+    if (name && position && team) {
       map.set(key, team);
     }
   });
@@ -781,9 +783,7 @@ function buildWeek1Positions({
             normalizeTeam(
               player.team ||
               playerTeamMap.get(
-                normalizePlayerName(
-                  player.name
-                )
+                `${normalizePlayerName(player.name)}|${position}`
               )
             ) || null,
 
