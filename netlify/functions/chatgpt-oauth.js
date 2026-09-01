@@ -1,357 +1,147 @@
 "use strict";
 
 const crypto = require("crypto");
+const { connectLambda, getStore } = require("@netlify/blobs");
 
-const {
-  connectLambda,
-  getStore
-} = require("@netlify/blobs");
+const AUTH_STORE = "chatgpt-oauth";
+const SNAPSHOT_STORE = "league-snapshots";
 
-
-// ============================================================================
-// INNER SANCTUM — CHATGPT OAUTH BRIDGE
-// ============================================================================
-//
-// Purpose:
-//
-//   Browser league link
-//        ↓
-//   OAuth authorization
-//        ↓
-//   ChatGPT access / refresh token
-//        ↓
-//   Inner Sanctum league snapshot
-//
-// IMPORTANT:
-//
-// - ChatGPT never receives the browser's league link token.
-// - The league link token is used only by the Inner Sanctum authorization page
-//   to prove which stored league snapshot the customer is authorizing.
-// - OAuth access tokens are separate random credentials.
-// - All stored OAuth credentials are hashed before they are used as Blob keys.
-// - Access tokens are resource-bound to the Inner Sanctum MCP endpoint.
-// - PKCE S256 is mandatory.
-// - Authorization codes are short-lived and single-use.
-// - Refresh tokens rotate.
-// - Revoking the league snapshot automatically makes OAuth access useless
-//   because token resolution must also verify that the snapshot still exists.
-//
-// ============================================================================
-
-
-const AUTH_STORE =
-  "chatgpt-oauth";
-
-const SNAPSHOT_STORE =
-  "league-snapshots";
-
-
-const ISSUER =
-  "https://theinnersanctum.xyz";
-
+const ISSUER = "https://theinnersanctum.xyz";
 const MCP_RESOURCE =
   "https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp";
 
-const OAUTH_FUNCTION =
-  `${ISSUER}/.netlify/functions/chatgpt-oauth`;
-
-
 const AUTHORIZATION_ENDPOINT =
-  `${OAUTH_FUNCTION}?action=authorize`;
-
+  `${ISSUER}/.netlify/functions/chatgpt-oauth?action=authorize`;
 const TOKEN_ENDPOINT =
-  `${OAUTH_FUNCTION}?action=token`;
-
+  `${ISSUER}/.netlify/functions/chatgpt-oauth?action=token`;
 const REGISTRATION_ENDPOINT =
-  `${OAUTH_FUNCTION}?action=register`;
-
+  `${ISSUER}/.netlify/functions/chatgpt-oauth?action=register`;
 const PROTECTED_RESOURCE_METADATA_ENDPOINT =
-  `${OAUTH_FUNCTION}?action=protected-resource`;
-
+  `${ISSUER}/.netlify/functions/chatgpt-oauth?action=protected-resource`;
 const AUTHORIZATION_SERVER_METADATA_ENDPOINT =
-  `${OAUTH_FUNCTION}?action=authorization-server`;
+  `${ISSUER}/.netlify/functions/chatgpt-oauth?action=authorization-server`;
 
+const SCOPE_LEAGUE_READ = "inner_sanctum.league.read";
+const SCOPE_OFFLINE = "offline_access";
+const SUPPORTED_SCOPES = new Set([
+  SCOPE_LEAGUE_READ,
+  SCOPE_OFFLINE
+]);
 
-// ============================================================================
-// SCOPES
-// ============================================================================
+const AUTH_CODE_TTL_SECONDS = 5 * 60;
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
+const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+const TRANSACTION_TTL_SECONDS = 10 * 60;
+const CLIENT_TTL_SECONDS = 365 * 24 * 60 * 60;
 
-const SCOPE_LEAGUE_READ =
-  "inner_sanctum.league.read";
-
-const SCOPE_OFFLINE =
-  "offline_access";
-
-const SUPPORTED_SCOPES =
-  new Set([
-    SCOPE_LEAGUE_READ,
-    SCOPE_OFFLINE
-  ]);
-
-
-// ============================================================================
-// EXPIRATION
-// ============================================================================
-
-const AUTH_CODE_TTL_SECONDS =
-  5 * 60;
-
-const ACCESS_TOKEN_TTL_SECONDS =
-  60 * 60;
-
-const REFRESH_TOKEN_TTL_SECONDS =
-  30 * 24 * 60 * 60;
-
-const TRANSACTION_TTL_SECONDS =
-  10 * 60;
-
-const CLIENT_TTL_SECONDS =
-  365 * 24 * 60 * 60;
-
-
-// ============================================================================
-// SECURITY CONSTANTS
-// ============================================================================
-
-const RANDOM_TOKEN_BYTES =
-  32;
-
-const TRANSACTION_COOKIE =
-  "is_oauth_tx";
-
-const MAX_BODY_BYTES =
-  100000;
-
-
-// ============================================================================
-// BASIC HELPERS
-// ============================================================================
+const RANDOM_TOKEN_BYTES = 32;
+const TRANSACTION_COOKIE = "is_oauth_tx";
+const MAX_BODY_BYTES = 100000;
 
 function nowSeconds() {
-  return Math.floor(
-    Date.now() / 1000
-  );
+  return Math.floor(Date.now() / 1000);
 }
 
-
-function safeString(value) {
-  if (
-    value === undefined ||
-    value === null
-  ) {
-    return "";
-  }
-
-  return String(value)
-    .trim();
-}
-
-
-function randomToken(
-  bytes = RANDOM_TOKEN_BYTES
-) {
-  return crypto
-    .randomBytes(bytes)
-    .toString("base64url");
-}
-
-
-function sha256(value) {
-  return crypto
-    .createHash("sha256")
-    .update(
-      String(value),
-      "utf8"
-    )
-    .digest("hex");
-}
-
-
-function sha256Base64Url(value) {
-  return crypto
-    .createHash("sha256")
-    .update(
-      String(value),
-      "utf8"
-    )
-    .digest("base64url");
-}
-
-
-function timingSafeEqualText(
-  leftValue,
-  rightValue
-) {
-  const left =
-    Buffer.from(
-      String(leftValue),
-      "utf8"
-    );
-
-  const right =
-    Buffer.from(
-      String(rightValue),
-      "utf8"
-    );
-
-  if (
-    left.length !==
-    right.length
-  ) {
-    return false;
-  }
-
-  return crypto
-    .timingSafeEqual(
-      left,
-      right
-    );
-}
-
-
-function blobKey(
-  prefix,
-  token
-) {
-  return (
-    `${prefix}:` +
-    sha256(token)
-  );
-}
-
-
-function snapshotBlobKey(
-  linkToken
-) {
-  return (
-    "sha256:" +
-    sha256(linkToken)
-  );
-}
-
-
-// ============================================================================
-// RESPONSE HELPERS
-// ============================================================================
-
-function jsonResponse(
-  statusCode,
-  body,
-  extraHeaders = {}
-) {
+function jsonResponse(statusCode, body, extraHeaders = {}) {
   return {
     statusCode,
-
     headers: {
-      "Content-Type":
-        "application/json; charset=utf-8",
-
-      "Cache-Control":
-        "no-store",
-
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
       ...extraHeaders
     },
-
-    body:
-      JSON.stringify(body)
+    body: JSON.stringify(body)
   };
 }
 
-
-function htmlResponse(
-  statusCode,
-  body,
-  extraHeaders = {}
-) {
+function htmlResponse(statusCode, body, extraHeaders = {}) {
   return {
     statusCode,
-
     headers: {
-      "Content-Type":
-        "text/html; charset=utf-8",
-
-      "Cache-Control":
-        "no-store",
-
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
       "Content-Security-Policy":
-        "default-src 'none'; " +
-        "style-src 'unsafe-inline'; " +
-        "script-src 'unsafe-inline'; " +
-        "connect-src 'self'; " +
-        "img-src 'self' data:; " +
-        "base-uri 'none'; " +
-        "frame-ancestors 'none';",
-
-      "Referrer-Policy":
-        "no-referrer",
-
-      "X-Content-Type-Options":
-        "nosniff",
-
-      "X-Frame-Options":
-        "DENY",
-
+        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://chatgpt.com https://*.openai.com;",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
       ...extraHeaders
     },
-
     body
   };
 }
 
-
-function redirectResponse(
-  location,
-  extraHeaders = {}
-) {
+function redirectResponse(location, extraHeaders = {}) {
   return {
-    statusCode:
-      302,
-
+    statusCode: 302,
     headers: {
-      Location:
-        location,
-
-      "Cache-Control":
-        "no-store",
-
+      Location: location,
+      "Cache-Control": "no-store",
       ...extraHeaders
     },
-
-    body:
-      ""
+    body: ""
   };
 }
 
+function safeString(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+}
 
-// ============================================================================
-// REQUEST HELPERS
-// ============================================================================
+function randomToken(bytes = RANDOM_TOKEN_BYTES) {
+  return crypto.randomBytes(bytes).toString("base64url");
+}
 
-function getQuery(event) {
-  return (
-    event.queryStringParameters ||
-    {}
+function sha256(value) {
+  return crypto
+    .createHash("sha256")
+    .update(String(value), "utf8")
+    .digest("hex");
+}
+
+function sha256Base64Url(value) {
+  return crypto
+    .createHash("sha256")
+    .update(String(value), "utf8")
+    .digest("base64url");
+}
+
+function timingSafeEqualText(a, b) {
+  const left = Buffer.from(String(a), "utf8");
+  const right = Buffer.from(String(b), "utf8");
+
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(
+    left,
+    right
   );
 }
 
+function blobKey(prefix, token) {
+  return `${prefix}:${sha256(token)}`;
+}
 
-function getHeader(
-  event,
-  name
-) {
+function snapshotBlobKey(linkToken) {
+  return `sha256:${sha256(linkToken)}`;
+}
+
+function getQuery(event) {
+  return event.queryStringParameters || {};
+}
+
+function getHeader(event, name) {
   const headers =
-    event.headers ||
-    {};
+    event.headers || {};
 
   return (
-    headers[
-      name.toLowerCase()
-    ] ||
+    headers[name.toLowerCase()] ||
     headers[name] ||
     ""
   );
 }
-
 
 function parseCookies(event) {
   const raw =
@@ -371,7 +161,7 @@ function parseCookies(event) {
   raw
     .split(";")
     .forEach(
-      function (part) {
+      (part) => {
         const index =
           part.indexOf("=");
 
@@ -406,18 +196,31 @@ function parseCookies(event) {
   return output;
 }
 
+function setTransactionCookie(transactionId) {
+  return (
+    `${TRANSACTION_COOKIE}=${encodeURIComponent(transactionId)}; ` +
+    "Path=/.netlify/functions/chatgpt-oauth; " +
+    "HttpOnly; Secure; SameSite=Lax; Max-Age=600"
+  );
+}
+
+function clearTransactionCookie() {
+  return (
+    `${TRANSACTION_COOKIE}=; ` +
+    "Path=/.netlify/functions/chatgpt-oauth; " +
+    "HttpOnly; Secure; SameSite=Lax; Max-Age=0"
+  );
+}
 
 function parseBody(event) {
   const raw =
-    event.body ||
-    "";
+    event.body || "";
 
   if (
     Buffer.byteLength(
       raw,
       "utf8"
-    ) >
-    MAX_BODY_BYTES
+    ) > MAX_BODY_BYTES
   ) {
     throw new Error(
       "Request body is too large."
@@ -430,8 +233,7 @@ function parseBody(event) {
         event,
         "content-type"
       )
-    )
-      .toLowerCase();
+    ).toLowerCase();
 
   if (
     contentType.includes(
@@ -448,7 +250,7 @@ function parseBody(event) {
       raw
     );
 
-  const output = {};
+  const body = {};
 
   for (
     const [
@@ -456,42 +258,12 @@ function parseBody(event) {
       value
     ] of params.entries()
   ) {
-    output[key] =
+    body[key] =
       value;
   }
 
-  return output;
+  return body;
 }
-
-
-// ============================================================================
-// COOKIE HELPERS
-// ============================================================================
-
-function setTransactionCookie(
-  transactionId
-) {
-  return (
-    `${TRANSACTION_COOKIE}=` +
-    `${encodeURIComponent(transactionId)}; ` +
-    "Path=/.netlify/functions/chatgpt-oauth; " +
-    "HttpOnly; Secure; SameSite=Lax; Max-Age=600"
-  );
-}
-
-
-function clearTransactionCookie() {
-  return (
-    `${TRANSACTION_COOKIE}=; ` +
-    "Path=/.netlify/functions/chatgpt-oauth; " +
-    "HttpOnly; Secure; SameSite=Lax; Max-Age=0"
-  );
-}
-
-
-// ============================================================================
-// OAUTH VALIDATION
-// ============================================================================
 
 function parseScopes(value) {
   const raw =
@@ -510,7 +282,6 @@ function parseScopes(value) {
   ];
 }
 
-
 function validateScopes(value) {
   const scopes =
     parseScopes(value);
@@ -521,9 +292,7 @@ function validateScopes(value) {
     )
   ) {
     return {
-      ok:
-        false,
-
+      ok: false,
       error:
         "invalid_scope"
     };
@@ -531,41 +300,50 @@ function validateScopes(value) {
 
   const unsupported =
     scopes.filter(
-      function (scope) {
-        return (
-          !SUPPORTED_SCOPES
-            .has(scope)
-        );
-      }
+      (scope) =>
+        !SUPPORTED_SCOPES.has(
+          scope
+        )
     );
 
   if (
     unsupported.length
   ) {
     return {
-      ok:
-        false,
-
+      ok: false,
       error:
         "invalid_scope"
     };
   }
 
   return {
-    ok:
-      true,
-
+    ok: true,
     scopes
   };
 }
 
-
-function isAllowedRedirectUri(
-  value
-) {
+function isHttpsUrl(value) {
   try {
     const url =
-      new URL(value);
+      new URL(
+        value
+      );
+
+    return (
+      url.protocol ===
+      "https:"
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function isAllowedRedirectUri(value) {
+  try {
+    const url =
+      new URL(
+        value
+      );
 
     if (
       url.protocol ===
@@ -593,44 +371,36 @@ function isAllowedRedirectUri(
   }
 }
 
-
-function isValidPkceChallenge(
-  value
-) {
+function isValidPkceChallenge(value) {
   return (
     /^[A-Za-z0-9_-]{43,128}$/
       .test(
-        safeString(value)
+        safeString(
+          value
+        )
       )
   );
 }
 
-
-function isValidPkceVerifier(
-  value
-) {
+function isValidPkceVerifier(value) {
   return (
     /^[A-Za-z0-9._~-]{43,128}$/
       .test(
-        safeString(value)
+        safeString(
+          value
+        )
       )
   );
 }
 
-
-function validateResource(
-  value
-) {
+function validateResource(value) {
   return (
-    safeString(value) ===
+    safeString(
+      value
+    ) ===
     MCP_RESOURCE
   );
 }
-
-
-// ============================================================================
-// BLOB HELPERS
-// ============================================================================
 
 async function getJson(
   store,
@@ -639,15 +409,12 @@ async function getJson(
   return store.get(
     key,
     {
-      type:
-        "json",
-
+      type: "json",
       consistency:
         "strong"
     }
   );
 }
-
 
 async function saveRecord(
   store,
@@ -660,18 +427,15 @@ async function saveRecord(
   );
 }
 
-
 function isExpired(record) {
   return (
     !record ||
     Number(
       record.expiresAt ||
       0
-    ) <=
-      nowSeconds()
+    ) <= nowSeconds()
   );
 }
-
 
 async function getActiveRecord(
   store,
@@ -688,12 +452,16 @@ async function getActiveRecord(
   }
 
   if (
-    isExpired(record)
+    isExpired(
+      record
+    )
   ) {
     await store
-      .delete(key)
+      .delete(
+        key
+      )
       .catch(
-        function () {}
+        () => {}
       );
 
     return null;
@@ -701,11 +469,6 @@ async function getActiveRecord(
 
   return record;
 }
-
-
-// ============================================================================
-// CLIENT REGISTRATION
-// ============================================================================
 
 async function validateRegisteredClient(
   authStore,
@@ -727,9 +490,7 @@ async function validateRegisteredClient(
     !redirect
   ) {
     return {
-      ok:
-        false,
-
+      ok: false,
       error:
         "invalid_client"
     };
@@ -746,9 +507,7 @@ async function validateRegisteredClient(
 
   if (!client) {
     return {
-      ok:
-        false,
-
+      ok: false,
       error:
         "invalid_client"
     };
@@ -764,99 +523,17 @@ async function validateRegisteredClient(
       )
   ) {
     return {
-      ok:
-        false,
-
+      ok: false,
       error:
         "invalid_redirect_uri"
     };
   }
 
   return {
-    ok:
-      true,
-
+    ok: true,
     client
   };
 }
-
-
-// ============================================================================
-// DISCOVERY METADATA
-// ============================================================================
-
-function protectedResourceMetadata() {
-  return {
-    resource:
-      MCP_RESOURCE,
-
-    authorization_servers: [
-      ISSUER
-    ],
-
-    scopes_supported: [
-      SCOPE_LEAGUE_READ,
-      SCOPE_OFFLINE
-    ],
-
-    bearer_methods_supported: [
-      "header"
-    ],
-
-    resource_name:
-      "Inner Sanctum ChatGPT MCP"
-  };
-}
-
-
-function authorizationServerMetadata() {
-  return {
-    issuer:
-      ISSUER,
-
-    authorization_endpoint:
-      AUTHORIZATION_ENDPOINT,
-
-    token_endpoint:
-      TOKEN_ENDPOINT,
-
-    registration_endpoint:
-      REGISTRATION_ENDPOINT,
-
-    response_types_supported: [
-      "code"
-    ],
-
-    grant_types_supported: [
-      "authorization_code",
-      "refresh_token"
-    ],
-
-    token_endpoint_auth_methods_supported: [
-      "none"
-    ],
-
-    code_challenge_methods_supported: [
-      "S256"
-    ],
-
-    scopes_supported: [
-      SCOPE_LEAGUE_READ,
-      SCOPE_OFFLINE
-    ],
-
-    authorization_response_iss_parameter_supported:
-      true,
-
-    service_documentation:
-      `${ISSUER}/connect-league.html`
-  };
-}
-
-
-// ============================================================================
-// OAUTH ERROR REDIRECT
-// ============================================================================
 
 function oauthErrorRedirect(
   redirectUri,
@@ -902,30 +579,91 @@ function oauthErrorRedirect(
   );
 }
 
+function protectedResourceMetadata() {
+  return {
+    resource:
+      MCP_RESOURCE,
 
-// ============================================================================
-// AUTHORIZATION PAGE
-// ============================================================================
+    authorization_servers: [
+      ISSUER
+    ],
+
+    scopes_supported: [
+      SCOPE_LEAGUE_READ
+    ],
+
+    bearer_methods_supported: [
+      "header"
+    ],
+
+    resource_name:
+      "Inner Sanctum ChatGPT MCP"
+  };
+}
+
+function authorizationServerMetadata() {
+  return {
+    issuer:
+      ISSUER,
+
+    authorization_endpoint:
+      AUTHORIZATION_ENDPOINT,
+
+    token_endpoint:
+      TOKEN_ENDPOINT,
+
+    registration_endpoint:
+      REGISTRATION_ENDPOINT,
+
+    response_types_supported: [
+      "code"
+    ],
+
+    grant_types_supported: [
+      "authorization_code",
+      "refresh_token"
+    ],
+
+    token_endpoint_auth_methods_supported: [
+      "none"
+    ],
+
+    code_challenge_methods_supported: [
+      "S256"
+    ],
+
+    scopes_supported: [
+      SCOPE_LEAGUE_READ,
+      SCOPE_OFFLINE
+    ],
+
+    authorization_response_iss_parameter_supported:
+      true,
+
+    service_documentation:
+      `${ISSUER}/connect-league.html`
+  };
+}
 
 function renderAuthorizationPage(
   transactionId
 ) {
-  const transactionLiteral =
+  const escapedTx =
     JSON.stringify(
       transactionId
     );
 
-  const storageKeyLiteral =
+  const storageKey =
     JSON.stringify(
       "innerSanctum_chatgptLeagueLinks"
     );
 
-  const snapshotEndpointLiteral =
+  const snapshotEndpoint =
     JSON.stringify(
       "/.netlify/functions/league-snapshot"
     );
 
-  const approveEndpointLiteral =
+  const approveEndpoint =
     JSON.stringify(
       "/.netlify/functions/chatgpt-oauth?action=approve"
     );
@@ -936,17 +674,10 @@ function renderAuthorizationPage(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Authorize Inner Sanctum</title>
-
 <style>
   :root {
-    font-family:
-      Inter,
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
+    color-scheme: light;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   body {
@@ -966,14 +697,13 @@ function renderAuthorizationPage(
     border: 1px solid #e4e7eb;
     border-radius: 18px;
     padding: 28px;
-    box-shadow:
-      0 12px 36px
-      rgba(0,0,0,.06);
+    box-shadow: 0 12px 36px rgba(0,0,0,.06);
   }
 
   h1 {
     margin: 0 0 8px;
     font-size: 28px;
+    line-height: 1.2;
   }
 
   p {
@@ -988,7 +718,7 @@ function renderAuthorizationPage(
     width: 100%;
     text-align: left;
     border: 1px solid #d8dde3;
-    background: white;
+    background: #fff;
     border-radius: 12px;
     padding: 14px 16px;
     margin: 10px 0;
@@ -1041,15 +771,15 @@ function renderAuthorizationPage(
   }
 
   .error {
-    display: none;
     color: #a32121;
     background: #fff0f0;
     padding: 12px;
     border-radius: 10px;
     margin-top: 14px;
+    display: none;
   }
 
-  .status {
+  .ok {
     color: #24452c;
     background: #eef8f0;
     padding: 12px;
@@ -1058,28 +788,19 @@ function renderAuthorizationPage(
   }
 </style>
 </head>
-
 <body>
-
 <div class="wrap">
-
   <div class="card">
-
-    <h1>
-      Authorize Inner Sanctum
-    </h1>
+    <h1>Authorize Inner Sanctum</h1>
 
     <p class="muted">
-      Choose the fantasy league ChatGPT may read.
-      Inner Sanctum shares only the sanitized linked-league snapshot.
-      Provider passwords, cookies and provider credentials are not sent
-      to ChatGPT.
+      Choose the linked fantasy league ChatGPT may read.
+      Inner Sanctum will share the sanitized league snapshot only;
+      provider passwords, cookies, and provider credentials are not
+      sent to ChatGPT.
     </p>
 
-    <div
-      id="status"
-      class="status"
-    >
+    <div id="status" class="ok">
       Checking your linked leagues…
     </div>
 
@@ -1091,7 +812,6 @@ function renderAuthorizationPage(
     ></div>
 
     <div class="actions">
-
       <button
         id="approve"
         disabled
@@ -1102,33 +822,28 @@ function renderAuthorizationPage(
       <button id="deny">
         Cancel
       </button>
-
     </div>
-
   </div>
-
 </div>
-
 
 <script>
 (function () {
   "use strict";
 
   var transactionId =
-    ${transactionLiteral};
+    ${escapedTx};
 
   var storageKey =
-    ${storageKeyLiteral};
+    ${storageKey};
 
   var snapshotEndpoint =
-    ${snapshotEndpointLiteral};
+    ${snapshotEndpoint};
 
   var approveEndpoint =
-    ${approveEndpointLiteral};
+    ${approveEndpoint};
 
   var selected =
     null;
-
 
   var status =
     document.getElementById(
@@ -1155,7 +870,6 @@ function renderAuthorizationPage(
       "deny"
     );
 
-
   function showError(message) {
     errorBox.textContent =
       message;
@@ -1163,7 +877,6 @@ function renderAuthorizationPage(
     errorBox.style.display =
       "block";
   }
-
 
   function readLinks() {
     try {
@@ -1184,22 +897,20 @@ function renderAuthorizationPage(
       )
         ? parsed
         : {};
-
     } catch (error) {
       return {};
     }
   }
 
-
-  async function loadSnapshot(
+  async function loadSummary(
+    provider,
     link
   ) {
     var response =
       await fetch(
         snapshotEndpoint,
         {
-          method:
-            "GET",
+          method: "GET",
 
           headers: {
             Accept:
@@ -1230,7 +941,6 @@ function renderAuthorizationPage(
       : null;
   }
 
-
   function choose(
     item,
     button
@@ -1243,7 +953,6 @@ function renderAuthorizationPage(
         document.querySelectorAll(
           ".league"
         ),
-
         function (node) {
           node.classList.remove(
             "selected"
@@ -1259,14 +968,14 @@ function renderAuthorizationPage(
       false;
   }
 
-
   async function render() {
     var state =
       readLinks();
 
     var entries =
-      Object.keys(state)
-
+      Object.keys(
+        state
+      )
         .map(
           function (provider) {
             return {
@@ -1278,7 +987,6 @@ function renderAuthorizationPage(
             };
           }
         )
-
         .filter(
           function (item) {
             return (
@@ -1287,7 +995,6 @@ function renderAuthorizationPage(
             );
           }
         );
-
 
     if (!entries.length) {
       status.textContent =
@@ -1300,26 +1007,24 @@ function renderAuthorizationPage(
       return;
     }
 
-
     status.textContent =
       "Select the league ChatGPT should use.";
 
-
     for (
-      var index = 0;
-      index < entries.length;
-      index += 1
+      var i = 0;
+      i < entries.length;
+      i += 1
     ) {
       var item =
-        entries[index];
+        entries[i];
 
       var snapshot =
         null;
 
-
       try {
         snapshot =
-          await loadSnapshot(
+          await loadSummary(
+            item.provider,
             item.link
           );
       } catch (error) {
@@ -1327,11 +1032,9 @@ function renderAuthorizationPage(
           null;
       }
 
-
       if (!snapshot) {
         continue;
       }
-
 
       var button =
         document.createElement(
@@ -1344,7 +1047,6 @@ function renderAuthorizationPage(
       button.className =
         "league";
 
-
       var leagueName =
         snapshot.league &&
         snapshot.league.name
@@ -1353,7 +1055,6 @@ function renderAuthorizationPage(
               item.link.leagueId ||
               "Linked league"
             );
-
 
       var teamName =
         snapshot.team &&
@@ -1364,7 +1065,6 @@ function renderAuthorizationPage(
               "Fantasy team"
             );
 
-
       var title =
         document.createElement(
           "strong"
@@ -1372,7 +1072,6 @@ function renderAuthorizationPage(
 
       title.textContent =
         leagueName;
-
 
       var detail =
         document.createElement(
@@ -1385,9 +1084,7 @@ function renderAuthorizationPage(
         String(
           item.provider ||
           ""
-        )
-          .toUpperCase();
-
+        ).toUpperCase();
 
       button.appendChild(
         title
@@ -1397,33 +1094,30 @@ function renderAuthorizationPage(
         detail
       );
 
-
-      (function (
-        chosenItem,
-        chosenButton
-      ) {
-
-        chosenButton
-          .addEventListener(
-            "click",
-            function () {
-              choose(
-                chosenItem,
-                chosenButton
-              );
-            }
-          );
-
-      })(
+      (
+        function (
+          chosenItem,
+          chosenButton
+        ) {
+          chosenButton
+            .addEventListener(
+              "click",
+              function () {
+                choose(
+                  chosenItem,
+                  chosenButton
+                );
+              }
+            );
+        }
+      )(
         item,
         button
       );
 
-
       leagues.appendChild(
         button
       );
-
 
       if (!selected) {
         choose(
@@ -1432,7 +1126,6 @@ function renderAuthorizationPage(
         );
       }
     }
-
 
     if (
       !leagues.children.length
@@ -1445,7 +1138,6 @@ function renderAuthorizationPage(
       );
     }
   }
-
 
   approveButton
     .addEventListener(
@@ -1460,7 +1152,6 @@ function renderAuthorizationPage(
 
         errorBox.style.display =
           "none";
-
 
         try {
           var response =
@@ -1494,10 +1185,8 @@ function renderAuthorizationPage(
               }
             );
 
-
           var data =
             await response.json();
-
 
           if (
             !response.ok ||
@@ -1510,11 +1199,9 @@ function renderAuthorizationPage(
             );
           }
 
-
           window.location.assign(
             data.redirectTo
           );
-
         } catch (error) {
           approveButton.disabled =
             false;
@@ -1529,15 +1216,12 @@ function renderAuthorizationPage(
       }
     );
 
-
   denyButton
     .addEventListener(
       "click",
       async function () {
-
         denyButton.disabled =
           true;
-
 
         try {
           var response =
@@ -1566,10 +1250,8 @@ function renderAuthorizationPage(
               }
             );
 
-
           var data =
             await response.json();
-
 
           if (
             data.redirectTo
@@ -1578,7 +1260,6 @@ function renderAuthorizationPage(
               data.redirectTo
             );
           }
-
         } catch (error) {
           showError(
             "Could not cancel the authorization request."
@@ -1587,28 +1268,12 @@ function renderAuthorizationPage(
       }
     );
 
-
   render();
-
 })();
 </script>
-
 </body>
 </html>`;
 }
-
-
-// ============================================================================
-// DYNAMIC CLIENT REGISTRATION
-// ============================================================================
-//
-// MCP 2026 favors Client ID Metadata Documents.
-//
-// We retain DCR here because it remains supported for backward compatibility
-// and gives ChatGPT a standards-compatible public-client registration path.
-// We do NOT issue a client_secret.
-//
-// ============================================================================
 
 async function handleRegister(
   event,
@@ -1618,7 +1283,9 @@ async function handleRegister(
 
   try {
     body =
-      parseBody(event);
+      parseBody(
+        event
+      );
   } catch (error) {
     return jsonResponse(
       400,
@@ -1632,16 +1299,18 @@ async function handleRegister(
     );
   }
 
-
   const redirectUris =
     Array.isArray(
       body.redirect_uris
     )
       ? body.redirect_uris
-          .map(safeString)
-          .filter(Boolean)
+          .map(
+            safeString
+          )
+          .filter(
+            Boolean
+          )
       : [];
-
 
   if (
     !redirectUris.length ||
@@ -1661,13 +1330,11 @@ async function handleRegister(
     );
   }
 
-
   const tokenMethod =
     safeString(
       body.token_endpoint_auth_method ||
       "none"
     );
-
 
   if (
     tokenMethod !==
@@ -1680,23 +1347,23 @@ async function handleRegister(
           "invalid_client_metadata",
 
         error_description:
-          "Inner Sanctum supports OAuth public clients with token_endpoint_auth_method=none."
+          "Inner Sanctum supports public OAuth clients with token_endpoint_auth_method=none."
       }
     );
   }
-
 
   const grantTypes =
     Array.isArray(
       body.grant_types
     )
       ? body.grant_types
-          .map(safeString)
+          .map(
+            safeString
+          )
       : [
           "authorization_code",
           "refresh_token"
         ];
-
 
   if (
     !grantTypes.includes(
@@ -1715,15 +1382,11 @@ async function handleRegister(
     );
   }
 
-
   const clientId =
-    "isc_" +
-    randomToken(24);
-
+    `isc_${randomToken(24)}`;
 
   const issuedAt =
     nowSeconds();
-
 
   const client = {
     clientId,
@@ -1758,7 +1421,6 @@ async function handleRegister(
       CLIENT_TTL_SECONDS
   };
 
-
   await saveRecord(
     authStore,
     blobKey(
@@ -1767,7 +1429,6 @@ async function handleRegister(
     ),
     client
   );
-
 
   return jsonResponse(
     201,
@@ -1794,18 +1455,14 @@ async function handleRegister(
   );
 }
 
-
-// ============================================================================
-// AUTHORIZE
-// ============================================================================
-
 async function handleAuthorize(
   event,
   authStore
 ) {
   const query =
-    getQuery(event);
-
+    getQuery(
+      event
+    );
 
   const responseType =
     safeString(
@@ -1848,7 +1505,6 @@ async function handleAuthorize(
       query.code_challenge_method
     );
 
-
   if (
     responseType !==
     "code"
@@ -1865,14 +1521,12 @@ async function handleAuthorize(
     );
   }
 
-
   const clientResult =
     await validateRegisteredClient(
       authStore,
       clientId,
       redirectUri
     );
-
 
   if (
     !clientResult.ok
@@ -1889,7 +1543,6 @@ async function handleAuthorize(
     );
   }
 
-
   if (
     !validateResource(
       resource
@@ -1903,12 +1556,10 @@ async function handleAuthorize(
     );
   }
 
-
   const scopeResult =
     validateScopes(
       scope
     );
-
 
   if (
     !scopeResult.ok
@@ -1920,7 +1571,6 @@ async function handleAuthorize(
       "Unsupported OAuth scope."
     );
   }
-
 
   if (
     codeChallengeMethod !==
@@ -1937,22 +1587,18 @@ async function handleAuthorize(
     );
   }
 
-
   const transactionId =
-    randomToken(24);
-
+    randomToken(
+      24
+    );
 
   const createdAt =
     nowSeconds();
 
-
   const transaction = {
     clientId,
-
     redirectUri,
-
     state,
-
     resource,
 
     scopes:
@@ -1970,7 +1616,6 @@ async function handleAuthorize(
       TRANSACTION_TTL_SECONDS
   };
 
-
   await saveRecord(
     authStore,
     blobKey(
@@ -1979,7 +1624,6 @@ async function handleAuthorize(
     ),
     transaction
   );
-
 
   return htmlResponse(
     200,
@@ -1995,11 +1639,6 @@ async function handleAuthorize(
   );
 }
 
-
-// ============================================================================
-// APPROVE / DENY
-// ============================================================================
-
 async function handleApproval(
   event,
   authStore,
@@ -2009,7 +1648,9 @@ async function handleApproval(
 
   try {
     body =
-      parseBody(event);
+      parseBody(
+        event
+      );
   } catch (error) {
     return jsonResponse(
       400,
@@ -2023,22 +1664,20 @@ async function handleApproval(
     );
   }
 
-
   const transactionId =
     safeString(
       body.transactionId
     );
-
 
   const decision =
     safeString(
       body.decision
     );
 
-
   const cookies =
-    parseCookies(event);
-
+    parseCookies(
+      event
+    );
 
   const cookieTransactionId =
     safeString(
@@ -2046,7 +1685,6 @@ async function handleApproval(
         TRANSACTION_COOKIE
       ]
     );
-
 
   if (
     !transactionId ||
@@ -2068,20 +1706,17 @@ async function handleApproval(
     );
   }
 
-
   const transactionKey =
     blobKey(
       "transaction",
       transactionId
     );
 
-
   const transaction =
     await getActiveRecord(
       authStore,
       transactionKey
     );
-
 
   if (!transaction) {
     return jsonResponse(
@@ -2096,7 +1731,6 @@ async function handleApproval(
     );
   }
 
-
   if (
     decision !==
     "approve"
@@ -2106,21 +1740,18 @@ async function handleApproval(
         transactionKey
       )
       .catch(
-        function () {}
+        () => {}
       );
-
 
     const redirect =
       new URL(
         transaction.redirectUri
       );
 
-
     redirect.searchParams.set(
       "error",
       "access_denied"
     );
-
 
     if (
       transaction.state
@@ -2131,12 +1762,10 @@ async function handleApproval(
       );
     }
 
-
     redirect.searchParams.set(
       "iss",
       ISSUER
     );
-
 
     return jsonResponse(
       200,
@@ -2151,12 +1780,10 @@ async function handleApproval(
     );
   }
 
-
   const linkToken =
     safeString(
       body.linkToken
     );
-
 
   if (
     !/^[A-Za-z0-9_-]{40,128}$/
@@ -2176,19 +1803,16 @@ async function handleApproval(
     );
   }
 
-
   const linkedSnapshotKey =
     snapshotBlobKey(
       linkToken
     );
-
 
   const snapshot =
     await getJson(
       snapshotStore,
       linkedSnapshotKey
     );
-
 
   if (!snapshot) {
     return jsonResponse(
@@ -2203,14 +1827,11 @@ async function handleApproval(
     );
   }
 
-
   const code =
     randomToken();
 
-
   const issuedAt =
     nowSeconds();
-
 
   const codeRecord = {
     clientId:
@@ -2241,7 +1862,6 @@ async function handleApproval(
       AUTH_CODE_TTL_SECONDS
   };
 
-
   await saveRecord(
     authStore,
     blobKey(
@@ -2251,27 +1871,23 @@ async function handleApproval(
     codeRecord
   );
 
-
   await authStore
     .delete(
       transactionKey
     )
     .catch(
-      function () {}
+      () => {}
     );
-
 
   const redirect =
     new URL(
       transaction.redirectUri
     );
 
-
   redirect.searchParams.set(
     "code",
     code
   );
-
 
   if (
     transaction.state
@@ -2282,12 +1898,10 @@ async function handleApproval(
     );
   }
 
-
   redirect.searchParams.set(
     "iss",
     ISSUER
   );
-
 
   return jsonResponse(
     200,
@@ -2302,46 +1916,29 @@ async function handleApproval(
   );
 }
 
-
-// ============================================================================
-// TOKEN ISSUANCE
-// ============================================================================
-
 async function issueTokenPair(
   authStore,
   snapshotStore,
   values
 ) {
-  /*
-    Verify the authorized league still exists before issuing credentials.
-
-    This is important because deleting the league snapshot is effectively
-    revocation of the linked league.
-  */
-
   const snapshot =
     await getJson(
       snapshotStore,
       values.snapshotKey
     );
 
-
   if (!snapshot) {
     return null;
   }
 
-
   const accessToken =
     randomToken();
-
 
   const refreshToken =
     randomToken();
 
-
   const issuedAt =
     nowSeconds();
-
 
   const accessRecord = {
     tokenType:
@@ -2366,7 +1963,6 @@ async function issueTokenPair(
       ACCESS_TOKEN_TTL_SECONDS
   };
 
-
   const refreshRecord = {
     tokenType:
       "refresh",
@@ -2390,7 +1986,6 @@ async function issueTokenPair(
       REFRESH_TOKEN_TTL_SECONDS
   };
 
-
   await Promise.all([
     saveRecord(
       authStore,
@@ -2411,7 +2006,6 @@ async function issueTokenPair(
     )
   ]);
 
-
   return {
     access_token:
       accessToken,
@@ -2426,15 +2020,11 @@ async function issueTokenPair(
       refreshToken,
 
     scope:
-      values.scopes
-        .join(" ")
+      values.scopes.join(
+        " "
+      )
   };
 }
-
-
-// ============================================================================
-// AUTHORIZATION CODE EXCHANGE
-// ============================================================================
 
 async function handleAuthorizationCodeGrant(
   body,
@@ -2466,7 +2056,6 @@ async function handleAuthorizationCodeGrant(
       body.resource
     );
 
-
   if (
     !code ||
     !clientId ||
@@ -2486,7 +2075,6 @@ async function handleAuthorizationCodeGrant(
     );
   }
 
-
   if (
     !validateResource(
       resource
@@ -2503,7 +2091,6 @@ async function handleAuthorizationCodeGrant(
       }
     );
   }
-
 
   if (
     !isValidPkceVerifier(
@@ -2522,20 +2109,17 @@ async function handleAuthorizationCodeGrant(
     );
   }
 
-
   const codeKey =
     blobKey(
       "code",
       code
     );
 
-
   const record =
     await getActiveRecord(
       authStore,
       codeKey
     );
-
 
   if (!record) {
     return jsonResponse(
@@ -2549,7 +2133,6 @@ async function handleAuthorizationCodeGrant(
       }
     );
   }
-
 
   if (
     !timingSafeEqualText(
@@ -2577,12 +2160,10 @@ async function handleAuthorizationCodeGrant(
     );
   }
 
-
   const computedChallenge =
     sha256Base64Url(
       codeVerifier
     );
-
 
   if (
     !timingSafeEqualText(
@@ -2602,15 +2183,9 @@ async function handleAuthorizationCodeGrant(
     );
   }
 
-
-  /*
-    Authorization codes are single use.
-  */
-
   await authStore.delete(
     codeKey
   );
-
 
   const pair =
     await issueTokenPair(
@@ -2618,7 +2193,6 @@ async function handleAuthorizationCodeGrant(
       snapshotStore,
       record
     );
-
 
   if (!pair) {
     return jsonResponse(
@@ -2633,17 +2207,11 @@ async function handleAuthorizationCodeGrant(
     );
   }
 
-
   return jsonResponse(
     200,
     pair
   );
 }
-
-
-// ============================================================================
-// REFRESH TOKEN
-// ============================================================================
 
 async function handleRefreshGrant(
   body,
@@ -2665,7 +2233,6 @@ async function handleRefreshGrant(
       body.resource
     );
 
-
   if (
     !refreshToken ||
     !clientId ||
@@ -2682,7 +2249,6 @@ async function handleRefreshGrant(
       }
     );
   }
-
 
   if (
     !validateResource(
@@ -2701,20 +2267,17 @@ async function handleRefreshGrant(
     );
   }
 
-
   const refreshKey =
     blobKey(
       "refresh",
       refreshToken
     );
 
-
   const record =
     await getActiveRecord(
       authStore,
       refreshKey
     );
-
 
   if (!record) {
     return jsonResponse(
@@ -2728,7 +2291,6 @@ async function handleRefreshGrant(
       }
     );
   }
-
 
   if (
     !timingSafeEqualText(
@@ -2752,17 +2314,9 @@ async function handleRefreshGrant(
     );
   }
 
-
-  /*
-    Refresh-token rotation.
-
-    Delete the presented refresh token before issuing the new pair.
-  */
-
   await authStore.delete(
     refreshKey
   );
-
 
   const pair =
     await issueTokenPair(
@@ -2770,7 +2324,6 @@ async function handleRefreshGrant(
       snapshotStore,
       record
     );
-
 
   if (!pair) {
     return jsonResponse(
@@ -2785,17 +2338,11 @@ async function handleRefreshGrant(
     );
   }
 
-
   return jsonResponse(
     200,
     pair
   );
 }
-
-
-// ============================================================================
-// TOKEN ENDPOINT
-// ============================================================================
 
 async function handleToken(
   event,
@@ -2806,7 +2353,9 @@ async function handleToken(
 
   try {
     body =
-      parseBody(event);
+      parseBody(
+        event
+      );
   } catch (error) {
     return jsonResponse(
       400,
@@ -2820,12 +2369,10 @@ async function handleToken(
     );
   }
 
-
   const grantType =
     safeString(
       body.grant_type
     );
-
 
   if (
     grantType ===
@@ -2838,7 +2385,6 @@ async function handleToken(
     );
   }
 
-
   if (
     grantType ===
     "refresh_token"
@@ -2849,7 +2395,6 @@ async function handleToken(
       snapshotStore
     );
   }
-
 
   return jsonResponse(
     400,
@@ -2863,20 +2408,11 @@ async function handleToken(
   );
 }
 
-
-// ============================================================================
-// NETLIFY HANDLER
-// ============================================================================
-
 exports.handler =
   async function handler(event) {
-
-    /*
-      Required by @netlify/blobs in Lambda-compatible Netlify Functions.
-    */
-
-    connectLambda(event);
-
+    connectLambda(
+      event
+    );
 
     const authStore =
       getStore({
@@ -2884,36 +2420,28 @@ exports.handler =
           AUTH_STORE
       });
 
-
     const snapshotStore =
       getStore({
         name:
           SNAPSHOT_STORE
       });
 
-
     const action =
       safeString(
-        getQuery(event)
-          .action
+        getQuery(
+          event
+        ).action
       );
-
 
     const method =
       safeString(
         event.httpMethod
-      )
-        .toUpperCase();
-
+      ).toUpperCase();
 
     try {
-
-      // ----------------------------------------------------------------------
-      // Protected Resource Metadata
-      // ----------------------------------------------------------------------
-
       if (
-        method === "GET" &&
+        method ===
+          "GET" &&
         action ===
           "protected-resource"
       ) {
@@ -2923,13 +2451,9 @@ exports.handler =
         );
       }
 
-
-      // ----------------------------------------------------------------------
-      // Authorization Server Metadata
-      // ----------------------------------------------------------------------
-
       if (
-        method === "GET" &&
+        method ===
+          "GET" &&
         action ===
           "authorization-server"
       ) {
@@ -2939,13 +2463,9 @@ exports.handler =
         );
       }
 
-
-      // ----------------------------------------------------------------------
-      // Dynamic Client Registration
-      // ----------------------------------------------------------------------
-
       if (
-        method === "POST" &&
+        method ===
+          "POST" &&
         action ===
           "register"
       ) {
@@ -2955,13 +2475,9 @@ exports.handler =
         );
       }
 
-
-      // ----------------------------------------------------------------------
-      // OAuth Authorization
-      // ----------------------------------------------------------------------
-
       if (
-        method === "GET" &&
+        method ===
+          "GET" &&
         action ===
           "authorize"
       ) {
@@ -2971,13 +2487,9 @@ exports.handler =
         );
       }
 
-
-      // ----------------------------------------------------------------------
-      // Browser Approval
-      // ----------------------------------------------------------------------
-
       if (
-        method === "POST" &&
+        method ===
+          "POST" &&
         action ===
           "approve"
       ) {
@@ -2988,13 +2500,9 @@ exports.handler =
         );
       }
 
-
-      // ----------------------------------------------------------------------
-      // Token / Refresh
-      // ----------------------------------------------------------------------
-
       if (
-        method === "POST" &&
+        method ===
+          "POST" &&
         action ===
           "token"
       ) {
@@ -3004,7 +2512,6 @@ exports.handler =
           snapshotStore
         );
       }
-
 
       return jsonResponse(
         404,
@@ -3016,14 +2523,11 @@ exports.handler =
             "Unknown Inner Sanctum OAuth endpoint."
         }
       );
-
     } catch (error) {
-
       console.error(
         "Inner Sanctum ChatGPT OAuth error:",
         error
       );
-
 
       return jsonResponse(
         500,
@@ -3038,30 +2542,12 @@ exports.handler =
     }
   };
 
-
-// ============================================================================
-// SHARED CONSTANTS
-// ============================================================================
-//
-// These exports are not required by Netlify itself.
-//
-// They give chatgpt-mcp.js a clean way to use the same resource identifier,
-// discovery URL and scope once we add authenticated Tool #4.
-//
-// ============================================================================
-
 exports.oauth = {
   ISSUER,
-
   MCP_RESOURCE,
-
   PROTECTED_RESOURCE_METADATA_ENDPOINT,
-
   AUTHORIZATION_SERVER_METADATA_ENDPOINT,
-
   SCOPE_LEAGUE_READ,
-
   blobKey,
-
   snapshotBlobKey
 };
