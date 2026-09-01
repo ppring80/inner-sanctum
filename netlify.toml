@@ -1,6 +1,7 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+
 [context.production]
   environment = { SECRETS_SCAN_ENABLED = "false" }
 
@@ -32,7 +33,7 @@
 # via getNFLGamesForWeek, computes week-over-week target share and
 # snap share deltas per player from getNFLBoxScore, and caches the
 # result (risers, fallers, and the full delta list) to Netlify Blobs
-# for the frontend to read. See refresh-risers-fallers.js for the
+# for the frontend to read live. See refresh-risers-fallers.js for the
 # full rationale and the live-verified Tank01 field shapes it's built
 # against.
 #
@@ -163,22 +164,43 @@
 [functions."refresh-def-snapshot"]
   schedule = "25 9 * * 2"
 
+# CHATGPT / MCP OAUTH DISCOVERY
+# Standard OAuth discovery URLs used by ChatGPT when the
+# Inner Sanctum MCP app is configured with Authentication = OAuth.
+#
+# These are Netlify rewrites (status 200), not browser redirects.
+# The public .well-known URLs remain visible while Netlify routes
+# the request to the appropriate metadata action in chatgpt-oauth.js.
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource"
+  to = "/.netlify/functions/chatgpt-oauth?action=protected-resource"
+  status = 200
+
+[[redirects]]
+  from = "/.well-known/oauth-authorization-server"
+  to = "/.netlify/functions/chatgpt-oauth?action=authorization-server"
+  status = 200
+
 [[redirects]]
   from = "/landing"
   to = "/"
   status = 308
+
 [[redirects]]
   from = "/landing.html"
   to = "/"
   status = 308
+
 [[redirects]]
   from = "/home.html"
   to = "/"
   status = 308
+
 [[redirects]]
   from = "/sanctum.html"
   to = "/sanctum"
   status = 308
+
 # PATREON OAUTH CALLBACK REDIRECT (added)
 # PATREON_REDIRECT_URI (Netlify env var, and the redirect URI
 # registered in Patreon's own developer app settings) points at
@@ -206,10 +228,12 @@
   from = "/oauth/callback"
   to = "/.netlify/functions/oauth-callback"
   status = 200
+
 [[headers]]
   for = "/favicon.svg"
   [headers.values]
     Content-Type = "image/svg+xml"
+
 # CACHE CONTROL (added)
 # Added after a real bug: rapid back-to-back testing of weekly.html
 # served a stale cached copy with old "Ask [Persona]" links pointing
@@ -229,18 +253,22 @@
   for = "/weekly"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
 [[headers]]
   for = "/sanctum"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
 [[headers]]
   for = "/auction"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
 [[headers]]
   for = "/tiers"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
 # Added same session as compare.html's build (checklist #130) — this is
 # the same category of page as auction/tiers/sanctum/weekly (fetches
 # live data on every load), so it gets the same stale-cache protection
@@ -254,6 +282,7 @@
   for = "/compare"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
 # Added 2026-08-05, same reasoning as /compare above — dispatches.html
 # now fetches Camp Watch live from get-dispatches.js on every load
 # (see dispatches.html and generate-camp-watch.js), so it joins the
