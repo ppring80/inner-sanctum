@@ -37,9 +37,6 @@ const DEFAULT_SCORING = "ppr";
 const DEFAULT_TEAMS = 12;
 const DEFAULT_SEASON_TYPE = "reg";
 
-// Existing Inner Sanctum matchup language.
-// Only adverse matchup labels become Risks.
-// Neutral/positive matchups are not converted into fake risk items.
 const MATCHUP_EXPLANATION = {
   "Strong Positive": "Very favorable matchup for this position.",
   "Positive": "Favorable matchup for this position.",
@@ -74,22 +71,14 @@ function normalizePlayerName(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
-
-    // Curly/smart apostrophes -> straight apostrophe.
     .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
-
-    // Curly quotes -> straight quote.
     .replace(/[\u201C\u201D]/g, '"')
-
-    // Collapse repeated whitespace.
     .replace(/\s+/g, " ");
 }
 
 function getCurrentNFLWeek() {
   const now = new Date();
 
-  // Inner Sanctum's existing 2026 season anchor.
-  // Before the regular season begins, expose Week 1.
   const seasonStart = new Date(
     Date.UTC(
       2026,
@@ -124,14 +113,15 @@ function getCurrentNFLWeek() {
 }
 
 function getRequestBaseUrl(request) {
-  try {
-    const url =
-      new URL(request.url);
-
-    return url.origin;
-  } catch (error) {
-    return "https://theinnersanctum.xyz";
+  if (request && request.url) {
+    try {
+      return new URL(request.url).origin;
+    } catch (error) {
+      // Fall through to production origin.
+    }
   }
+
+  return "https://theinnersanctum.xyz";
 }
 
 function buildWeeklyRankingsUrl({
@@ -394,7 +384,6 @@ function findPlayer(
       requestedName
     );
 
-  // First try exact normalized name.
   let player =
     rows.find(
       (row) =>
@@ -407,8 +396,6 @@ function findPlayer(
     return player;
   }
 
-  // Conservative fallback:
-  // allow a single unambiguous partial-name result.
   const partialMatches =
     rows.filter((row) => {
       const candidate =
@@ -432,18 +419,7 @@ function findPlayer(
 }
 
 // -----------------------------------------------------------
-// Build the Universal Player Profile V1 contract
-//
-// Mirrors the customer-facing Player Profile philosophy:
-//
-// Identity
-// -> SAGE Verdict
-// -> Rank / Value
-// -> This Week
-// -> Risks
-// -> Inner Sanctum Insight
-//
-// Missing information is omitted, never fabricated.
+// Universal Player Profile V1 mapping
 // -----------------------------------------------------------
 
 function buildProfileModel(
@@ -630,6 +606,7 @@ function buildProfileModel(
       season,
       week,
       scoring,
+
       teams:
         DEFAULT_TEAMS,
 
@@ -640,7 +617,7 @@ function buildProfileModel(
 }
 
 // -----------------------------------------------------------
-// Human-readable tool response
+// Human-readable response
 // -----------------------------------------------------------
 
 function profileToText(profile) {
@@ -749,7 +726,11 @@ function profileToText(profile) {
 }
 
 // -----------------------------------------------------------
-// MCP Server
+// MCP server factory
+//
+// The current MCP SDK passes the original HTTP Request to the
+// factory as ctx.requestInfo. That lets this tool call the same
+// deployed Inner Sanctum origin without creating another handler.
 // -----------------------------------------------------------
 
 function buildServer(request) {
@@ -878,10 +859,13 @@ function buildServer(request) {
         const rankings =
           await fetchWeeklyRankings({
             baseUrl,
+
             season:
               resolvedSeason,
+
             week:
               resolvedWeek,
+
             scoring:
               resolvedScoring
           });
@@ -1023,14 +1007,22 @@ function buildServer(request) {
 }
 
 // -----------------------------------------------------------
-// Official MCP HTTP handler
+// Official MCP Streamable HTTP handler
 //
-// createMcpHandler serves the MCP Streamable HTTP transport.
+// createMcpHandler creates a fresh server from this factory for
+// each HTTP request. The SDK passes the original request through
+// ctx.requestInfo.
 // -----------------------------------------------------------
 
 const mcpHandler =
   createMcpHandler(
-    buildServer
+    (ctx) =>
+      buildServer(
+        ctx &&
+        ctx.requestInfo
+          ? ctx.requestInfo
+          : null
+      )
   );
 
 // -----------------------------------------------------------
@@ -1113,21 +1105,8 @@ exports.handler =
           requestInit
         );
 
-      /*
-        Build the MCP handler per request so the tool has access
-        to this request's actual Inner Sanctum origin when calling
-        the existing Weekly SAGE backend.
-      */
-      const requestScopedHandler =
-        createMcpHandler(
-          () =>
-            buildServer(
-              request
-            )
-        );
-
       const response =
-        await requestScopedHandler.fetch(
+        await mcpHandler.fetch(
           request
         );
 
