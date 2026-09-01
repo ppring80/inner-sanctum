@@ -7,6 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Draft Command Center — The Inner Sanctum</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- Universal Player Profile V1 (added) -- same shared root files
+     Weekly Rankings already uses. Not duplicated here. -->
+<link rel="stylesheet" href="/player-profile.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -120,6 +123,12 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
 .r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
 .pname{font-size:14px;font-weight:600;color:var(--text)}
+/* Universal Player Profile V1 (added) -- smallest clickable-name
+   affordance only; does not touch the Player Profile visual system
+   itself (that lives entirely in the unmodified /player-profile.css). */
+.pname,.cname,.sage-rec-player{cursor:pointer}
+.pname:hover,.cname:hover,.sage-rec-player:hover{text-decoration:underline}
+.pname:focus-visible,.cname:focus-visible,.sage-rec-player:focus-visible{outline:2px solid var(--gold-lt);outline-offset:2px;border-radius:3px}
 .pteam-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:1px}
 .bye-td{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;width:40px;color:var(--amber);font-weight:600}
 .adp-td{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);text-align:center;width:52px}
@@ -799,6 +808,10 @@ function checkOAuthSession() {
 </div>
 
 <script src="/shared-player-data.js"></script>
+<!-- Universal Player Profile V1 (added) -- same shared root file
+     Weekly Rankings already uses. Loaded before the main script below
+     so PlayerProfile.open() is available to openDraftPlayerProfile(). -->
+<script src="/player-profile.js"></script>
 <script>
 // ═══════════════════════════════════════
 // ORACLE / TRASH LORD WISDOM
@@ -1358,7 +1371,7 @@ function renderSagePanel(){
     }
 
     return '<div class="sage-rec">'+
-      '<div class="sage-rec-top"><span class="sage-rec-player">'+escText(r.player.name)+'</span>'+
+      '<div class="sage-rec-top"><span class="sage-rec-player" data-profile-id="'+escAttr(r.player.name+'|'+r.player.pos)+'" tabindex="0" role="button">'+escText(r.player.name)+'</span>'+
       '<span class="sage-rec-meta">'+escText(r.player.pos)+(r.player.team?' · '+escText(r.player.team):'')+'</span>'+
       '<span class="sage-rec-label '+codeClass+'">'+escText(r.recommendation)+'</span></div>'+
       bodyHtml+
@@ -3299,6 +3312,172 @@ function getInj(name){
   return{cls:r.c,icon:r.i,label:r.l,part:d.part};
 }
 function escAttr(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ═══════════════════════════════════════════════════════════════════
+// UNIVERSAL PLAYER PROFILE V1 -- DRAFT COMMAND CENTER INTEGRATION
+//
+// Presentation/mapping only. Reuses the existing, unmodified
+// adpByPos population, sageRecommendations array, getInj(), BYE,
+// nextPickNumber(), and draftSetupComplete() -- no new network
+// request, no new player database, no new analytics. All logic below
+// is Draft-specific and lives entirely in this file; the shared
+// /player-profile.js component has no knowledge any of this exists.
+// ═══════════════════════════════════════════════════════════════════
+
+// Preferred profile identifier: a genuine playerID if the player
+// object ever carries one (it does not today -- adpByPos entries are
+// built from the ADP endpoint with no playerID field -- but this
+// checks for one rather than assuming its absence permanently).
+// Fallback: name + "|" + position, exactly matching Weekly Rankings'
+// own established convention. Never name alone.
+function getDraftPlayerProfileId(player){
+  return player.playerID || (player.name+'|'+player.pos);
+}
+
+// Resolves a profile id back to the existing adpByPos player object --
+// searches QB/RB/WR/TE/K/DEF, matching playerID when present or the
+// same name+"|"+position fallback. Does not build a second player
+// database; reads directly from the same population the board itself
+// renders from.
+function getDraftPlayerById(id){
+  var positions=['QB','RB','WR','TE','K','DEF'];
+  for(var i=0;i<positions.length;i++){
+    var list=adpByPos[positions[i]]||[];
+    for(var j=0;j<list.length;j++){
+      var p=list[j];
+      if(p.playerID&&p.playerID===id)return p;
+      if((p.name+'|'+p.pos)===id)return p;
+    }
+  }
+  return null;
+}
+
+// Pure lookup into the ALREADY-FETCHED sageRecommendations array --
+// never calls sage-recommend again. Matches by name+position, the
+// same identity every recommendation card already keys off of.
+function findSageRecommendationForPlayer(name,pos){
+  if(!sageRecommendations||!sageRecommendations.length)return null;
+  return sageRecommendations.find(function(r){
+    return r.player&&r.player.name===name&&r.player.pos===pos;
+  })||null;
+}
+
+// Position rank -- the SAME array/order the position board itself
+// renders from (adpByPos[pos], already ADP-sorted by loadAll()). No
+// separate ranking methodology.
+function getDraftPositionRank(player){
+  var list=adpByPos[player.pos]||[];
+  var idx=list.findIndex(function(p){return p.key===player.key;});
+  return idx===-1?null:idx+1;
+}
+
+// Overall/draft rank -- the SAME merged, ADP-sorted population
+// renderAll() already builds for the "All Positions" board. Rebuilt
+// fresh here rather than reused from a stored value, matching how
+// renderAll() itself always recomputes it, but using the identical
+// sort so the number a customer sees here always matches what "All
+// Positions" would show for the same player.
+function getDraftOverallRank(player){
+  var merged=[];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos){
+    (adpByPos[pos]||[]).forEach(function(p){merged.push(p);});
+  });
+  merged.sort(function(a,b){return a.adp-b.adp;});
+  var idx=merged.findIndex(function(p){return p.key===player.key;});
+  return idx===-1?null:idx+1;
+}
+
+// Risks/Watch -- ONLY the existing, unmodified getInj() result, using
+// its own already-displayed label/part text verbatim. No medical
+// interpretation, no inference from rank/ADP/tier/bye. A healthy/
+// no-status player (getInj() returns null) never produces a risk.
+function buildDraftRisks(player){
+  var inj=getInj(player.name);
+  if(!inj)return null;
+  var text=inj.label+(inj.part?' — '+inj.part:'');
+  return [text];
+}
+
+// Builds the ProfileModel contract from one existing adpByPos player
+// object. Every field with no genuine supporting data is left
+// null/omitted -- never fabricated. See individual comments below for
+// exactly which backend/board data each field reuses.
+function mapDraftPlayerToProfileModel(player){
+  var rec=findSageRecommendationForPlayer(player.name,player.pos);
+
+  var rankStats=[];
+  var posRank=getDraftPositionRank(player);
+  var ovrRank=getDraftOverallRank(player);
+  if(posRank!=null)rankStats.push({label:player.pos+' Rank',value:String(posRank)});
+  if(ovrRank!=null)rankStats.push({label:'Overall Rank',value:String(ovrRank)});
+  if(typeof player.adp==='number'&&player.adp<900)rankStats.push({label:'ADP',value:player.adp.toFixed(1)});
+
+  // Draft & Market: Bye + Current Pick only -- ADP is deliberately not
+  // repeated here since Rank & Value already shows it.
+  var contextStats=[];
+  var bye=BYE[player.team]||null;
+  if(bye)contextStats.push({label:'Bye',value:String(bye)});
+  if(draftSetupComplete())contextStats.push({label:'Current Pick',value:'#'+nextPickNumber()});
+
+  var draftOutlook=(rec&&rec.draftOutlook)?rec.draftOutlook:null;
+
+  return {
+    identity:{
+      id:getDraftPlayerProfileId(player),
+      playerID:player.playerID||null,
+      name:player.name,
+      position:player.pos,
+      team:(player.team&&player.team!=='FA')?player.team:null,
+      photoUrl:null // no genuine headshot URL exists anywhere in Draft Command today
+    },
+
+    // Only populated when a real, already-fetched SAGE recommendation
+    // matches this player -- confidence is deliberately never set,
+    // since the current SAGE Draft response exposes no probability/
+    // confidence field suitable for this profile.
+    verdict:rec?{
+      label:'SAGE Draft Recommendation',
+      action:rec.recommendation||null,
+      confidence:null,
+      reasons:(rec.reasons||[]).slice(0,2) // existing reasons only, never rewritten, max 2
+    }:null,
+
+    rankProjection:rankStats.length?{stats:rankStats}:null,
+
+    contextPanel:(contextStats.length||draftOutlook)?{
+      title:'Draft & Market',
+      stats:contextStats,
+      note:draftOutlook // the existing draftOutlook IS the authoritative timing read -- never recalculated
+    }:null,
+
+    // No per-game log exists in Draft Command -- never synthesized.
+    recentForm:null,
+
+    risks:buildDraftRisks(player),
+
+    // Distinct from draftOutlook -- only the existing contextNote,
+    // never a duplicate of it.
+    outlookNote:(rec&&rec.contextNote)?rec.contextNote:null,
+
+    // Mirrors the existing SAGE Recommendations UI's own fail-soft
+    // rule: structured footballContext is preferred; the legacy
+    // explanation is used only when footballContext is absent
+    // (an old/stale response) -- never both.
+    insight:rec?(rec.footballContext||rec.explanation||null):null
+  };
+}
+
+// Opens the shared profile for a given id. Read-only: never mutates
+// draftState, never writes localStorage, never issues a network
+// request.
+function openDraftPlayerProfile(id){
+  var player=getDraftPlayerById(id);
+  if(!player)return;
+  if(typeof PlayerProfile==='undefined'||!PlayerProfile.open)return;
+  PlayerProfile.open(mapDraftPlayerToProfileModel(player));
+}
+
+
 // "1st", "2nd", "3rd", "4th"... — used only for the Draft Setup slot picker
 // ("1st Pick", "2nd Pick", ...). Handles the 11th/12th/13th exceptions.
 function ordinalLabel(n){
@@ -3518,7 +3697,7 @@ function render(){
         tr.innerHTML=
           '<td class="r-ovr">'+ovrStr+'</td>'+
           '<td class="r-pos">'+pr+'</td>'+
-          '<td><div class="pname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+          '<td><div class="pname" data-profile-id="'+escAttr(p.name+'|'+pos)+'" tabindex="0" role="button" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
           '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
           '<td class="bye-td">'+bye+'</td>'+
           '<td class="adp-td">'+adpStr+'</td>'+
@@ -3550,7 +3729,7 @@ function render(){
         card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=pos;
         card.innerHTML=
           '<div class="crank">#'+pr+'</div>'+
-          '<div class="cname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div>'+
+          '<div class="cname" data-profile-id="'+escAttr(p.name+'|'+pos)+'" tabindex="0" role="button" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div>'+
           '<div class="cmeta"><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
           injH+
           cardActionHtml;
@@ -3619,7 +3798,7 @@ function renderAll(){
       tr.innerHTML=
         '<td class="r-ovr">'+ovrStr+'</td>'+
         '<td><span class="pbadge '+p.pos+'" style="font-size:9px;padding:2px 6px">'+p.pos+'</span></td>'+
-        '<td><div class="pname" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
+        '<td><div class="pname" data-profile-id="'+escAttr(p.name+'|'+p.pos)+'" tabindex="0" role="button" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+p.pos+' · '+p.team+'</div></td>'+
         '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
         '<td class="bye-td">'+bye+'</td>'+
         '<td class="adp-td">'+adpStr+'</td>'+
@@ -3651,7 +3830,7 @@ function renderAll(){
       card.dataset.name=p.name.toLowerCase();card.dataset.team=p.team.toLowerCase();card.dataset.pos=p.pos;
       card.innerHTML=
         '<div class="crank">#'+pr+'</div>'+
-        '<div class="cname" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div>'+
+        '<div class="cname" data-profile-id="'+escAttr(p.name+'|'+p.pos)+'" tabindex="0" role="button" style="color:'+(PCOL[p.pos]||"inherit")+'">'+p.name+'</div>'+
         '<div class="cmeta"><span class="pbadge '+p.pos+'" style="font-size:8px;padding:1px 5px">'+p.pos+'</span><span>'+p.team+'</span><span>BYE '+bye+'</span><span style="margin-left:auto">'+(p.adp<900?'ADP '+p.adp.toFixed(0):'—')+'</span><span class="sbadge '+sCls(sc)+'" style="width:18px;height:18px;font-size:8px">'+sLbl(sc)+'</span></div>'+
         injH+
         '<div class="cactions">'+leftAction+
@@ -3726,7 +3905,7 @@ function renderSearch(){
     tr.innerHTML=
       '<td><span class="pbadge '+pos+'" style="font-size:9px;padding:2px 6px">'+pos+'</span></td>'+
       '<td class="r-pos">'+pr+'</td>'+
-      '<td><div class="pname" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
+      '<td><div class="pname" data-profile-id="'+escAttr(p.name+'|'+pos)+'" tabindex="0" role="button" style="color:'+(PCOL[pos]||"inherit")+'">'+p.name+'</div><div class="pteam-lbl">'+pos+' · '+p.team+'</div></td>'+
       '<td><span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--text3)">'+p.team+'</span></td>'+
       '<td class="bye-td">'+bye+'</td>'+
       '<td class="adp-td">'+adpStr+'</td>'+
@@ -3934,6 +4113,39 @@ document.addEventListener('click', function (e) {
   if (!e.target.closest('.nav-dropdown')) {
     document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
   }
+});
+</script>
+
+<script>
+// Universal Player Profile V1 (added) -- delegated click/keyboard
+// handling for every clickable player name (.pname/.cname/
+// .sage-rec-player), reading the data-profile-id attribute each was
+// given at render time. Delegated rather than inline onclick so no
+// per-render-site name escaping is needed beyond the existing
+// escAttr() already used to build the attribute value itself. Does
+// not affect Draft/Compare/ownership-badge/Undo controls -- those are
+// sibling elements, never inside the name element itself, so
+// closest('.pname, .cname, .sage-rec-player') never matches a click on
+// any of them.
+function handlePlayerProfileTrigger(target) {
+  var nameEl = target.closest('.pname, .cname, .sage-rec-player');
+  if (!nameEl) return false;
+  var id = nameEl.getAttribute('data-profile-id');
+  if (!id) return false;
+  openDraftPlayerProfile(id);
+  return true;
+}
+
+document.addEventListener('click', function (e) {
+  handlePlayerProfileTrigger(e.target);
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  var nameEl = e.target.closest('.pname, .cname, .sage-rec-player');
+  if (!nameEl) return;
+  e.preventDefault();
+  handlePlayerProfileTrigger(e.target);
 });
 </script>
 
