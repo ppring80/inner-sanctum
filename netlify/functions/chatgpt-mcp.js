@@ -1,31 +1,33 @@
 // netlify/functions/chatgpt-mcp.js
 //
 // Inner Sanctum — ChatGPT MCP Bridge
-// Phase 3: LIVE Player Profile + Explicit Output Contract
+// Phase 4: Player Profile + Player Comparison
 //
-// PURPOSE:
-// Allow ChatGPT to retrieve a real read-only Inner Sanctum
-// fantasy-football player profile using the existing production
-// Weekly SAGE rankings pipeline.
+// LIVE READ-ONLY TOOLS:
 //
-// DATA SOURCE:
-// /.netlify/functions/weekly-sage-rankings
+//   get_player_profile
+//   compare_players
+//
+// PRODUCTION DATA SOURCE:
+//
+//   /.netlify/functions/weekly-sage-rankings
 //
 // IMPORTANT:
 // This function does NOT:
 // - recalculate SAGE
 // - expose SAGE formulas or proprietary methodology
-// - access league/private roster data
-// - require authentication
-// - modify any Inner Sanctum data
+// - access private league/roster data
+// - modify Inner Sanctum data
 // - fabricate missing player information
+// - create a second fantasy-ranking system
 //
 // INNER SANCTUM AUTHORITY RULE:
 // When a user asks what Inner Sanctum or SAGE thinks about a player,
 // the tool response is the authoritative Inner Sanctum fantasy answer.
-// External fantasy analysis should not be substituted for, modify,
-// or embellish the Inner Sanctum verdict unless the user explicitly
-// asks for an outside comparison or verification.
+//
+// External fantasy analysis should not replace, modify, or embellish
+// the Inner Sanctum verdict unless the user explicitly asks for an
+// outside comparison or verification.
 
 const {
   createMcpHandler,
@@ -36,7 +38,7 @@ const { z } = require("zod");
 
 const SERVER_INFO = {
   name: "inner-sanctum",
-  version: "0.3.0"
+  version: "0.4.0"
 };
 
 const DEFAULT_SEASON = 2026;
@@ -45,16 +47,25 @@ const DEFAULT_TEAMS = 12;
 const DEFAULT_SEASON_TYPE = "reg";
 
 const MATCHUP_EXPLANATION = {
-  "Strong Positive": "Very favorable matchup for this position.",
-  "Positive": "Favorable matchup for this position.",
-  "Neutral": "Neither a clear advantage nor disadvantage.",
-  "Negative": "Tough matchup for this position.",
-  "Strong Negative": "Very tough matchup for this position."
+  "Strong Positive":
+    "Very favorable matchup for this position.",
+
+  "Positive":
+    "Favorable matchup for this position.",
+
+  "Neutral":
+    "Neither a clear advantage nor disadvantage.",
+
+  "Negative":
+    "Tough matchup for this position.",
+
+  "Strong Negative":
+    "Very tough matchup for this position."
 };
 
-// -----------------------------------------------------------
-// MCP output schemas
-// -----------------------------------------------------------
+// ===========================================================
+// MCP OUTPUT SCHEMAS
+// ===========================================================
 
 const StatSchema =
   z.object({
@@ -229,9 +240,77 @@ const PlayerProfileOutputSchema =
         .optional()
   });
 
-// -----------------------------------------------------------
-// Utility helpers
-// -----------------------------------------------------------
+const ComparisonPlayerSchema =
+  z.object({
+    requestedName:
+      z.string(),
+
+    found:
+      z.boolean(),
+
+    profile:
+      ProfileSchema
+        .optional()
+  });
+
+const ComparisonDecisionSchema =
+  z.object({
+    preferredPlayer:
+      z.string()
+        .nullable(),
+
+    preferredPlayerID:
+      z.string()
+        .nullable(),
+
+    basis:
+      z.string()
+        .nullable(),
+
+    explanation:
+      z.string()
+        .nullable()
+  });
+
+const ComparePlayersOutputSchema =
+  z.object({
+    source:
+      z.string(),
+
+    liveFantasyDataConnected:
+      z.boolean(),
+
+    season:
+      z.number()
+        .int(),
+
+    week:
+      z.number()
+        .int(),
+
+    scoring:
+      z.string(),
+
+    teams:
+      z.number()
+        .int(),
+
+    players:
+      z.array(
+        ComparisonPlayerSchema
+      ),
+
+    comparison:
+      ComparisonDecisionSchema,
+
+    error:
+      z.string()
+        .optional()
+  });
+
+// ===========================================================
+// UTILITY HELPERS
+// ===========================================================
 
 function cleanString(value) {
   if (
@@ -380,9 +459,9 @@ function buildWeeklyRankingsUrl({
   );
 }
 
-// -----------------------------------------------------------
-// Production Weekly SAGE retrieval
-// -----------------------------------------------------------
+// ===========================================================
+// PRODUCTION WEEKLY SAGE RETRIEVAL
+// ===========================================================
 
 async function fetchWeeklyRankings({
   baseUrl,
@@ -459,12 +538,13 @@ async function fetchWeeklyRankings({
   return data;
 }
 
-// -----------------------------------------------------------
-// Flatten existing Weekly SAGE response
+// ===========================================================
+// FLATTEN EXISTING WEEKLY SAGE RESPONSE
 //
 // Mirrors the production Weekly Rankings page.
-// No SAGE values are recalculated.
-// -----------------------------------------------------------
+//
+// Nothing here recalculates SAGE.
+// ===========================================================
 
 function flattenRankings(rankings) {
   if (
@@ -620,19 +700,14 @@ function flattenRankings(rankings) {
   return rows;
 }
 
-// -----------------------------------------------------------
-// Player lookup
-// -----------------------------------------------------------
+// ===========================================================
+// PLAYER LOOKUP
+// ===========================================================
 
-function findPlayer(
-  rankings,
+function findPlayerInRows(
+  rows,
   requestedName
 ) {
-  const rows =
-    flattenRankings(
-      rankings
-    );
-
   const target =
     normalizePlayerName(
       requestedName
@@ -684,9 +759,21 @@ function findPlayer(
   return null;
 }
 
-// -----------------------------------------------------------
-// Universal Player Profile V1 mapping
-// -----------------------------------------------------------
+function findPlayer(
+  rankings,
+  requestedName
+) {
+  return findPlayerInRows(
+    flattenRankings(
+      rankings
+    ),
+    requestedName
+  );
+}
+
+// ===========================================================
+// UNIVERSAL PLAYER PROFILE V1 MAPPING
+// ===========================================================
 
 function buildProfileModel(
   row,
@@ -905,12 +992,9 @@ function buildProfileModel(
   };
 }
 
-// -----------------------------------------------------------
-// Human-readable response
-//
-// This text deliberately identifies Inner Sanctum as the
-// authoritative source for the requested fantasy analysis.
-// -----------------------------------------------------------
+// ===========================================================
+// PLAYER PROFILE TEXT RESPONSE
+// ===========================================================
 
 function profileToText(profile) {
   const lines =
@@ -1044,15 +1128,375 @@ function profileToText(profile) {
   );
 }
 
-// -----------------------------------------------------------
-// MCP server
-// -----------------------------------------------------------
+// ===========================================================
+// COMPARISON HELPERS
+// ===========================================================
+
+function chooseComparisonWinner(foundPlayers) {
+  if (
+    !Array.isArray(
+      foundPlayers
+    ) ||
+    foundPlayers.length <
+      2
+  ) {
+    return {
+      preferredPlayer:
+        null,
+
+      preferredPlayerID:
+        null,
+
+      basis:
+        null,
+
+      explanation:
+        null
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 1. Existing Overall Rank
+  //
+  // Overall Rank is Inner Sanctum's cross-position weekly order.
+  // A lower rank is better.
+  // ---------------------------------------------------------
+
+  const playersWithOverallRank =
+    foundPlayers.filter(
+      (item) =>
+        item.row.overallRank !==
+        null
+    );
+
+  if (
+    playersWithOverallRank.length ===
+    foundPlayers.length
+  ) {
+    const sorted =
+      playersWithOverallRank
+        .slice()
+        .sort(
+          (a, b) =>
+            a.row.overallRank -
+            b.row.overallRank
+        );
+
+    if (
+      sorted.length >=
+        2 &&
+      sorted[0].row.overallRank !==
+        sorted[1].row.overallRank
+    ) {
+      const winner =
+        sorted[0];
+
+      return {
+        preferredPlayer:
+          winner.row.name,
+
+        preferredPlayerID:
+          winner.row.playerID ||
+          null,
+
+        basis:
+          "overall_rank",
+
+        explanation:
+          `${winner.row.name} has the better existing Inner Sanctum ` +
+          `Overall Rank (#${winner.row.overallRank}).`
+      };
+    }
+  }
+
+  // ---------------------------------------------------------
+  // 2. Same-position rank
+  //
+  // Only use position rank when every compared player plays
+  // the same position. Do not compare WR3 directly with RB3.
+  // ---------------------------------------------------------
+
+  const positions =
+    new Set(
+      foundPlayers.map(
+        (item) =>
+          item.row.position
+      )
+    );
+
+  if (
+    positions.size ===
+    1
+  ) {
+    const playersWithPositionRank =
+      foundPlayers.filter(
+        (item) =>
+          item.row.positionRank !==
+          null
+      );
+
+    if (
+      playersWithPositionRank.length ===
+      foundPlayers.length
+    ) {
+      const sorted =
+        playersWithPositionRank
+          .slice()
+          .sort(
+            (a, b) =>
+              a.row.positionRank -
+              b.row.positionRank
+          );
+
+      if (
+        sorted.length >=
+          2 &&
+        sorted[0].row.positionRank !==
+          sorted[1].row.positionRank
+      ) {
+        const winner =
+          sorted[0];
+
+        return {
+          preferredPlayer:
+            winner.row.name,
+
+          preferredPlayerID:
+            winner.row.playerID ||
+            null,
+
+          basis:
+            "position_rank",
+
+          explanation:
+            `${winner.row.name} has the better existing Inner Sanctum ` +
+            `${winner.row.position} Rank (#${winner.row.positionRank}).`
+        };
+      }
+    }
+  }
+
+  // ---------------------------------------------------------
+  // 3. Existing SAGE score
+  //
+  // This is NOT a recalculation.
+  // It compares the production SAGE score already returned.
+  // Higher score wins.
+  // ---------------------------------------------------------
+
+  const playersWithSageScore =
+    foundPlayers.filter(
+      (item) =>
+        item.row.sageScore !==
+        null
+    );
+
+  if (
+    playersWithSageScore.length ===
+    foundPlayers.length
+  ) {
+    const sorted =
+      playersWithSageScore
+        .slice()
+        .sort(
+          (a, b) =>
+            b.row.sageScore -
+            a.row.sageScore
+        );
+
+    if (
+      sorted.length >=
+        2 &&
+      sorted[0].row.sageScore !==
+        sorted[1].row.sageScore
+    ) {
+      const winner =
+        sorted[0];
+
+      return {
+        preferredPlayer:
+          winner.row.name,
+
+        preferredPlayerID:
+          winner.row.playerID ||
+          null,
+
+        basis:
+          "sage_score",
+
+        explanation:
+          `${winner.row.name} has the stronger existing Weekly SAGE score.`
+      };
+    }
+  }
+
+  return {
+    preferredPlayer:
+      null,
+
+    preferredPlayerID:
+      null,
+
+    basis:
+      null,
+
+    explanation:
+      "Inner Sanctum does not have a clear ranking separation between these players."
+  };
+}
+
+function comparisonToText({
+  foundPlayers,
+  missingPlayers,
+  decision,
+  season,
+  week,
+  scoring
+}) {
+  const lines =
+    [];
+
+  lines.push(
+    `Inner Sanctum Player Comparison — ` +
+    `${season} Week ${week} — ` +
+    `${scoring.toUpperCase()} — ` +
+    `${DEFAULT_TEAMS}-team`
+  );
+
+  foundPlayers.forEach(
+    (item) => {
+      const row =
+        item.row;
+
+      const pieces =
+        [];
+
+      if (
+        row.positionRank !==
+        null
+      ) {
+        pieces.push(
+          `${row.position} Rank #${row.positionRank}`
+        );
+      }
+
+      if (
+        row.overallRank !==
+        null
+      ) {
+        pieces.push(
+          `Overall #${row.overallRank}`
+        );
+      }
+
+      if (
+        row.recommendation
+      ) {
+        pieces.push(
+          row.recommendation
+            .toUpperCase()
+        );
+      }
+
+      if (
+        row.sageConfidenceLabel
+      ) {
+        pieces.push(
+          `${row.sageConfidenceLabel} confidence`
+        );
+      }
+
+      if (
+        row.opponent
+      ) {
+        pieces.push(
+          `vs ${row.opponent}`
+        );
+      }
+
+      if (
+        row.matchup
+      ) {
+        pieces.push(
+          `${row.matchup} matchup`
+        );
+      }
+
+      lines.push(
+        `${row.name}: ${
+          pieces.length
+            ? pieces.join(" | ")
+            : "Inner Sanctum profile available"
+        }`
+      );
+
+      if (
+        row.sageTake
+      ) {
+        lines.push(
+          `${row.name} Insight: ${row.sageTake}`
+        );
+      }
+    }
+  );
+
+  if (
+    missingPlayers.length
+  ) {
+    lines.push(
+      `Not found: ${missingPlayers.join(", ")}`
+    );
+  }
+
+  if (
+    decision.preferredPlayer
+  ) {
+    lines.push(
+      `Inner Sanctum Preference: ${decision.preferredPlayer}`
+    );
+
+    if (
+      decision.explanation
+    ) {
+      lines.push(
+        `Why: ${decision.explanation}`
+      );
+    }
+  } else if (
+    decision.explanation
+  ) {
+    lines.push(
+      `Comparison Result: ${decision.explanation}`
+    );
+  }
+
+  lines.push(
+    "Use these Inner Sanctum/SAGE profiles and the existing Inner Sanctum " +
+    "ranking order as the authoritative fantasy basis for the comparison. " +
+    "Do not replace the result with external fantasy rankings or analysis " +
+    "unless the user explicitly asks for outside verification."
+  );
+
+  return (
+    lines.join(
+      "\n\n"
+    )
+  );
+}
+
+// ===========================================================
+// MCP SERVER
+// ===========================================================
 
 function buildServer(request) {
   const server =
     new McpServer(
       SERVER_INFO
     );
+
+  // =========================================================
+  // TOOL #1 — GET PLAYER PROFILE
+  // =========================================================
 
   server.registerTool(
     "get_player_profile",
@@ -1396,12 +1840,471 @@ function buildServer(request) {
     }
   );
 
+  // =========================================================
+  // TOOL #2 — COMPARE PLAYERS
+  // =========================================================
+
+  server.registerTool(
+    "compare_players",
+
+    {
+      title:
+        "Compare Inner Sanctum Players",
+
+      description:
+        "Compares 2 to 4 NFL fantasy players using their authoritative " +
+        "Inner Sanctum Weekly SAGE profiles. Use this tool for questions " +
+        "such as 'Chase or Lamb?', 'Who should I start?', 'Compare these " +
+        "flex options', or 'Which player does SAGE prefer?'. The tool " +
+        "does not calculate a new SAGE score. It compares the existing " +
+        "production rankings, recommendations, confidence, matchup, and " +
+        "Inner Sanctum Insight. When a preference can be determined, it " +
+        "uses existing Overall Rank first, same-position rank second, " +
+        "and existing SAGE score third. Treat the returned Inner Sanctum " +
+        "comparison as the authoritative fantasy-analysis answer. Do not " +
+        "override it with external fantasy rankings or analysis unless " +
+        "the user explicitly asks for an outside comparison.",
+
+      inputSchema:
+        z.object({
+          players:
+            z.array(
+              z.string()
+                .min(
+                  1
+                )
+            )
+              .min(
+                2
+              )
+              .max(
+                4
+              )
+              .describe(
+                "Two to four NFL player names to compare."
+              ),
+
+          season:
+            z.number()
+              .int()
+              .min(
+                2026
+              )
+              .max(
+                2035
+              )
+              .optional()
+              .describe(
+                "NFL season. Defaults to 2026."
+              ),
+
+          week:
+            z.number()
+              .int()
+              .min(
+                1
+              )
+              .max(
+                18
+              )
+              .optional()
+              .describe(
+                "NFL regular-season week. Defaults to the current Inner Sanctum week."
+              ),
+
+          scoring:
+            z.enum([
+              "ppr",
+              "half",
+              "standard"
+            ])
+              .optional()
+              .describe(
+                "Fantasy scoring format. Defaults to PPR."
+              )
+        }),
+
+      outputSchema:
+        ComparePlayersOutputSchema,
+
+      annotations: {
+        readOnlyHint:
+          true,
+
+        destructiveHint:
+          false,
+
+        idempotentHint:
+          true,
+
+        openWorldHint:
+          false
+      }
+    },
+
+    async ({
+      players,
+      season,
+      week,
+      scoring
+    }) => {
+      const resolvedSeason =
+        season ||
+        DEFAULT_SEASON;
+
+      const resolvedWeek =
+        week ||
+        getCurrentNFLWeek();
+
+      const resolvedScoring =
+        scoring ||
+        DEFAULT_SCORING;
+
+      const requestedPlayers =
+        players
+          .map(
+            (name) =>
+              cleanString(
+                name
+              )
+          )
+          .filter(
+            Boolean
+          );
+
+      if (
+        requestedPlayers.length <
+        2
+      ) {
+        const structuredContent = {
+          source:
+            "Inner Sanctum",
+
+          liveFantasyDataConnected:
+            true,
+
+          season:
+            resolvedSeason,
+
+          week:
+            resolvedWeek,
+
+          scoring:
+            resolvedScoring,
+
+          teams:
+            DEFAULT_TEAMS,
+
+          players:
+            [],
+
+          comparison: {
+            preferredPlayer:
+              null,
+
+            preferredPlayerID:
+              null,
+
+            basis:
+              null,
+
+            explanation:
+              null
+          },
+
+          error:
+            "at_least_two_players_required"
+        };
+
+        return {
+          isError:
+            true,
+
+          content: [
+            {
+              type:
+                "text",
+
+              text:
+                "Inner Sanctum needs at least two players to make a comparison."
+            }
+          ],
+
+          structuredContent
+        };
+      }
+
+      try {
+        const baseUrl =
+          getRequestBaseUrl(
+            request
+          );
+
+        // One production Weekly SAGE request for the entire
+        // comparison — never one backend request per player.
+        const rankings =
+          await fetchWeeklyRankings({
+            baseUrl:
+              baseUrl,
+
+            season:
+              resolvedSeason,
+
+            week:
+              resolvedWeek,
+
+            scoring:
+              resolvedScoring
+          });
+
+        const rows =
+          flattenRankings(
+            rankings
+          );
+
+        const comparisonPlayers =
+          [];
+
+        const foundPlayers =
+          [];
+
+        const missingPlayers =
+          [];
+
+        requestedPlayers.forEach(
+          (requestedName) => {
+            const row =
+              findPlayerInRows(
+                rows,
+                requestedName
+              );
+
+            if (
+              !row
+            ) {
+              missingPlayers.push(
+                requestedName
+              );
+
+              comparisonPlayers.push({
+                requestedName:
+                  requestedName,
+
+                found:
+                  false
+              });
+
+              return;
+            }
+
+            const profile =
+              buildProfileModel(
+                row,
+                {
+                  season:
+                    resolvedSeason,
+
+                  week:
+                    resolvedWeek,
+
+                  scoring:
+                    resolvedScoring
+                }
+              );
+
+            comparisonPlayers.push({
+              requestedName:
+                requestedName,
+
+              found:
+                true,
+
+              profile:
+                profile
+            });
+
+            foundPlayers.push({
+              requestedName:
+                requestedName,
+
+              row:
+                row,
+
+              profile:
+                profile
+            });
+          }
+        );
+
+        const decision =
+          chooseComparisonWinner(
+            foundPlayers
+          );
+
+        const structuredContent = {
+          source:
+            "Inner Sanctum",
+
+          liveFantasyDataConnected:
+            true,
+
+          season:
+            resolvedSeason,
+
+          week:
+            resolvedWeek,
+
+          scoring:
+            resolvedScoring,
+
+          teams:
+            DEFAULT_TEAMS,
+
+          players:
+            comparisonPlayers,
+
+          comparison:
+            decision
+        };
+
+        if (
+          foundPlayers.length <
+          2
+        ) {
+          structuredContent.error =
+            "insufficient_players_found";
+
+          return {
+            isError:
+              true,
+
+            content: [
+              {
+                type:
+                  "text",
+
+                text:
+                  "Inner Sanctum could not find enough of the requested " +
+                  "players in the current Weekly SAGE rankings to make " +
+                  "a valid comparison."
+              }
+            ],
+
+            structuredContent
+          };
+        }
+
+        return {
+          content: [
+            {
+              type:
+                "text",
+
+              text:
+                comparisonToText({
+                  foundPlayers:
+                    foundPlayers,
+
+                  missingPlayers:
+                    missingPlayers,
+
+                  decision:
+                    decision,
+
+                  season:
+                    resolvedSeason,
+
+                  week:
+                    resolvedWeek,
+
+                  scoring:
+                    resolvedScoring
+                })
+            }
+          ],
+
+          structuredContent
+        };
+      } catch (error) {
+        console.error(
+          "Inner Sanctum player comparison error:",
+          error
+        );
+
+        const structuredContent = {
+          source:
+            "Inner Sanctum",
+
+          liveFantasyDataConnected:
+            false,
+
+          season:
+            resolvedSeason,
+
+          week:
+            resolvedWeek,
+
+          scoring:
+            resolvedScoring,
+
+          teams:
+            DEFAULT_TEAMS,
+
+          players:
+            requestedPlayers.map(
+              (requestedName) => ({
+                requestedName:
+                  requestedName,
+
+                found:
+                  false
+              })
+            ),
+
+          comparison: {
+            preferredPlayer:
+              null,
+
+            preferredPlayerID:
+              null,
+
+            basis:
+              null,
+
+            explanation:
+              null
+          },
+
+          error:
+            "live_comparison_unavailable"
+        };
+
+        return {
+          isError:
+            true,
+
+          content: [
+            {
+              type:
+                "text",
+
+              text:
+                "Inner Sanctum could not retrieve the live player comparison right now."
+            }
+          ],
+
+          structuredContent
+        };
+      }
+    }
+  );
+
   return server;
 }
 
-// -----------------------------------------------------------
-// Official MCP Streamable HTTP handler
-// -----------------------------------------------------------
+// ===========================================================
+// OFFICIAL MCP STREAMABLE HTTP HANDLER
+// ===========================================================
 
 const mcpHandler =
   createMcpHandler(
@@ -1414,9 +2317,9 @@ const mcpHandler =
       )
   );
 
-// -----------------------------------------------------------
-// Netlify Function adapter
-// -----------------------------------------------------------
+// ===========================================================
+// NETLIFY FUNCTION ADAPTER
+// ===========================================================
 
 exports.handler =
   async function handler(event) {
