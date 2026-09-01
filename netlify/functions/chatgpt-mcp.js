@@ -1,13 +1,14 @@
 // netlify/functions/chatgpt-mcp.js
 //
 // Inner Sanctum — ChatGPT MCP Bridge
-// Phase 6: Player Profile + Player Comparison + Weekly Rankings
+// Phase 7: Public SAGE Tools + Protected League Link
 //
 // LIVE READ-ONLY TOOLS:
 //
 //   get_player_profile
 //   compare_players
 //   get_weekly_rankings
+//   get_linked_league  (OAuth protected)
 //
 // PRODUCTION DATA SOURCE:
 //
@@ -17,7 +18,7 @@
 // This function does NOT:
 // - recalculate SAGE
 // - expose SAGE formulas or proprietary methodology
-// - access private league/roster data
+// - expose private league/roster data without OAuth authorization
 // - modify Inner Sanctum data
 // - fabricate missing player information
 // - create a second fantasy-ranking system
@@ -28,11 +29,30 @@ const {
 } = require("@modelcontextprotocol/server");
 
 const { z } = require("zod");
+const crypto = require("crypto");
+
+const {
+  connectLambda,
+  getStore
+} = require("@netlify/blobs");
 
 const SERVER_INFO = {
   name: "inner-sanctum",
-  version: "0.6.0"
+  version: "0.7.0"
 };
+
+const AUTH_STORE = "chatgpt-oauth";
+const SNAPSHOT_STORE = "league-snapshots";
+const MCP_RESOURCE =
+  "https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp";
+const PROTECTED_RESOURCE_METADATA_URL =
+  "https://theinnersanctum.xyz/.well-known/oauth-protected-resource";
+const SCOPE_LEAGUE_READ =
+  "inner_sanctum.league.read";
+const PROTECTED_TOOL_NAMES =
+  new Set([
+    "get_linked_league"
+  ]);
 
 const DEFAULT_SEASON = 2026;
 const DEFAULT_SCORING = "ppr";
@@ -112,6 +132,27 @@ const PlayerProfileOutputSchema = z.object({
   scoring: z.string().optional(),
   error: z.string().optional(),
   profile: ProfileSchema.optional()
+});
+
+const LinkedLeagueOutputSchema = z.object({
+  connected: z.boolean(),
+  source: z.string(),
+  provider: z.string().nullable(),
+  league: z.object({
+    id: z.string().nullable(),
+    name: z.string().nullable(),
+    season: z.number().nullable(),
+    teamCount: z.number().nullable()
+  }).nullable(),
+  team: z.object({
+    id: z.string().nullable(),
+    name: z.string().nullable()
+  }).nullable(),
+  scoringFormat: z.string().nullable(),
+  rosterCount: z.number().int(),
+  syncedAt: z.string().nullable(),
+  readOnly: z.boolean(),
+  error: z.string().optional()
 });
 
 const ComparisonPlayerSchema = z.object({
@@ -1788,10 +1829,456 @@ function weeklyRankingsToText({
 }
 
 // ===========================================================
+// OAUTH / PROTECTED LEAGUE HELPERS
+// ===========================================================
+
+function sha256(value) {
+  return crypto
+    .createHash("sha256")
+    .update(String(value), "utf8")
+    .digest("hex");
+}
+
+function authBlobKey(
+  prefix,
+  token
+) {
+  return `${prefix}:${sha256(token)}`;
+}
+
+function getEventHeader(
+  event,
+  name
+) {
+  const headers =
+    event && event.headers
+      ? event.headers
+      : {};
+
+  const target =
+    String(name || "")
+      .toLowerCase();
+
+  for (
+    const [
+      key,
+      value
+    ] of Object.entries(
+      headers
+    )
+  ) {
+    if (
+      String(key)
+        .toLowerCase() ===
+      target
+    ) {
+      return value === undefined ||
+        value === null
+        ? ""
+        : String(value);
+    }
+  }
+
+  return "";
+}
+
+function getBearerToken(event) {
+  const authorization =
+    getEventHeader(
+      event,
+      "authorization"
+    ).trim();
+
+  const match =
+    authorization.match(
+      /^Bearer\s+(.+)$/i
+    );
+
+  return match
+    ? match[1].trim()
+    : "";
+}
+
+function parseMcpEnvelope(event) {
+  if (
+    !event ||
+    !event.body
+  ) {
+    return null;
+  }
+
+  try {
+    const raw =
+      event.isBase64Encoded
+        ? Buffer.from(
+            event.body,
+            "base64"
+          ).toString("utf8")
+        : String(
+            event.body
+          );
+
+    return JSON.parse(
+      raw
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+function getMcpRoute(event) {
+  let method =
+    getEventHeader(
+      event,
+      "mcp-method"
+    ).trim();
+
+  let name =
+    getEventHeader(
+      event,
+      "mcp-name"
+    ).trim();
+
+  if (
+    !method ||
+    (
+      method ===
+        "tools/call" &&
+      !name
+    )
+  ) {
+    const envelope =
+      parseMcpEnvelope(
+        event
+      );
+
+    if (
+      envelope &&
+      typeof envelope ===
+        "object"
+    ) {
+      method =
+        method ||
+        String(
+          envelope.method ||
+          ""
+        ).trim();
+
+      if (
+        !name &&
+        envelope.params &&
+        typeof envelope.params ===
+          "object"
+      ) {
+        name =
+          String(
+            envelope.params.name ||
+            ""
+          ).trim();
+      }
+    }
+  }
+
+  return {
+    method,
+    name
+  };
+}
+
+function isProtectedToolCall(event) {
+  const route =
+    getMcpRoute(
+      event
+    );
+
+  return (
+    route.method ===
+      "tools/call" &&
+    PROTECTED_TOOL_NAMES.has(
+      route.name
+    )
+  );
+}
+
+function oauthChallengeResponse(
+  error = "invalid_token",
+  description =
+    "OAuth authorization is required to read the linked Inner Sanctum league."
+) {
+  const challenge =
+    `Bearer resource_metadata="${PROTECTED_RESOURCE_METADATA_URL}", ` +
+    `scope="${SCOPE_LEAGUE_READ}", ` +
+    `error="${error}"`;
+
+  return {
+    statusCode: 401,
+
+    headers: {
+      "Content-Type":
+        "application/json; charset=utf-8",
+
+      "Cache-Control":
+        "no-store",
+
+      "WWW-Authenticate":
+        challenge,
+
+      "Access-Control-Allow-Origin":
+        "*",
+
+      "Access-Control-Allow-Methods":
+        "GET, POST, OPTIONS",
+
+      "Access-Control-Allow-Headers":
+        "Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name"
+    },
+
+    body:
+      JSON.stringify({
+        error,
+        error_description:
+          description
+      })
+  };
+}
+
+async function getStrongJson(
+  store,
+  key
+) {
+  return store.get(
+    key,
+    {
+      type: "json",
+      consistency: "strong"
+    }
+  );
+}
+
+async function validateLeagueAccess(
+  event
+) {
+  const token =
+    getBearerToken(
+      event
+    );
+
+  if (!token) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "A Bearer access token is required."
+    };
+  }
+
+  const authStore =
+    getStore({
+      name: AUTH_STORE
+    });
+
+  const accessRecord =
+    await getStrongJson(
+      authStore,
+      authBlobKey(
+        "access",
+        token
+      )
+    );
+
+  if (!accessRecord) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "The Inner Sanctum access token is invalid."
+    };
+  }
+
+  const expiresAt =
+    Number(
+      accessRecord.expiresAt ||
+      0
+    );
+
+  if (
+    !Number.isFinite(
+      expiresAt
+    ) ||
+    expiresAt <=
+      Math.floor(
+        Date.now() /
+        1000
+      )
+  ) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "The Inner Sanctum access token expired."
+    };
+  }
+
+  if (
+    accessRecord.resource !==
+    MCP_RESOURCE
+  ) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "The access token was not issued for this MCP resource."
+    };
+  }
+
+  const scopes =
+    Array.isArray(
+      accessRecord.scopes
+    )
+      ? accessRecord.scopes
+      : [];
+
+  if (
+    !scopes.includes(
+      SCOPE_LEAGUE_READ
+    )
+  ) {
+    return {
+      ok: false,
+      error: "insufficient_scope",
+      description:
+        "The access token does not include linked-league read access."
+    };
+  }
+
+  const snapshotKey =
+    typeof accessRecord.snapshotKey ===
+      "string"
+      ? accessRecord.snapshotKey
+      : "";
+
+  if (!snapshotKey) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "The access token is not bound to a linked league."
+    };
+  }
+
+  const snapshotStore =
+    getStore({
+      name: SNAPSHOT_STORE
+    });
+
+  const snapshot =
+    await getStrongJson(
+      snapshotStore,
+      snapshotKey
+    );
+
+  if (!snapshot) {
+    return {
+      ok: false,
+      error: "invalid_token",
+      description:
+        "The linked Inner Sanctum league was revoked or no longer exists."
+    };
+  }
+
+  return {
+    ok: true,
+    authInfo: {
+      token,
+      clientId:
+        accessRecord.clientId ||
+        null,
+      scopes,
+      resource:
+        accessRecord.resource,
+      expiresAt,
+      snapshotKey,
+      snapshot
+    }
+  };
+}
+
+function linkedLeagueToText(
+  snapshot
+) {
+  const leagueName =
+    snapshot &&
+    snapshot.league &&
+    snapshot.league.name
+      ? snapshot.league.name
+      : "Linked league";
+
+  const teamName =
+    snapshot &&
+    snapshot.team &&
+    snapshot.team.name
+      ? snapshot.team.name
+      : "Linked team";
+
+  const provider =
+    snapshot &&
+    snapshot.provider
+      ? String(
+          snapshot.provider
+        ).toUpperCase()
+      : "Provider unknown";
+
+  const rosterCount =
+    snapshot &&
+    Array.isArray(
+      snapshot.roster
+    )
+      ? snapshot.roster.length
+      : 0;
+
+  const lines = [
+    "Inner Sanctum linked league is authorized and available.",
+    `League: ${leagueName}`,
+    `Team: ${teamName}`,
+    `Provider: ${provider}`,
+    `Roster players: ${rosterCount}`
+  ];
+
+  if (
+    snapshot &&
+    snapshot.scoringFormat
+  ) {
+    lines.push(
+      `Scoring: ${snapshot.scoringFormat}`
+    );
+  }
+
+  if (
+    snapshot &&
+    snapshot.syncedAt
+  ) {
+    lines.push(
+      `Last synced: ${snapshot.syncedAt}`
+    );
+  }
+
+  lines.push(
+    "This is a read-only linked-league context check. No lineup or roster changes were made."
+  );
+
+  return lines.join(
+    "\n"
+  );
+}
+
+// ===========================================================
 // MCP SERVER
 // ===========================================================
 
-function buildServer(request) {
+function buildServer(
+  request,
+  authContext = null
+) {
   const server =
     new McpServer(
       SERVER_INFO
@@ -2668,23 +3155,177 @@ function buildServer(request) {
     }
   );
 
+  // =========================================================
+  // TOOL #4 — GET LINKED LEAGUE (OAUTH PROTECTED)
+  // =========================================================
+  //
+  // This is intentionally a narrow authorization bridge tool.
+  // It proves that ChatGPT can authorize against Inner Sanctum and
+  // resolve the correct linked league snapshot before personalized
+  // lineup optimization is layered on top of the same auth context.
+
+  server.registerTool(
+    "get_linked_league",
+
+    {
+      title:
+        "Get Linked Inner Sanctum League",
+
+      description:
+        "Returns the user's authorized read-only Inner Sanctum linked-league " +
+        "identity and connection summary. Use this tool when the user asks which " +
+        "league or fantasy team is connected to Inner Sanctum in ChatGPT, or when " +
+        "a personalized league-aware Inner Sanctum workflow needs to confirm its " +
+        "authorized league context. This tool requires OAuth scope " +
+        "inner_sanctum.league.read. It does not change a lineup, roster, league, " +
+        "or provider account.",
+
+      inputSchema:
+        z.object({}),
+
+      outputSchema:
+        LinkedLeagueOutputSchema,
+
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+
+    async () => {
+      const snapshot =
+        authContext &&
+        authContext.snapshot
+          ? authContext.snapshot
+          : null;
+
+      if (!snapshot) {
+        const structuredContent = {
+          connected: false,
+          source:
+            "Inner Sanctum League Link",
+          provider: null,
+          league: null,
+          team: null,
+          scoringFormat: null,
+          rosterCount: 0,
+          syncedAt: null,
+          readOnly: true,
+          error:
+            "authorization_required"
+        };
+
+        return {
+          isError: true,
+
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum league authorization is required."
+            }
+          ],
+
+          structuredContent
+        };
+      }
+
+      const league =
+        snapshot.league &&
+        typeof snapshot.league ===
+          "object"
+          ? snapshot.league
+          : {};
+
+      const team =
+        snapshot.team &&
+        typeof snapshot.team ===
+          "object"
+          ? snapshot.team
+          : {};
+
+      const structuredContent = {
+        connected: true,
+        source:
+          "Inner Sanctum League Link",
+        provider:
+          snapshot.provider ||
+          null,
+        league: {
+          id:
+            league.id ||
+            null,
+          name:
+            league.name ||
+            null,
+          season:
+            Number.isFinite(
+              Number(
+                league.season
+              )
+            )
+              ? Number(
+                  league.season
+                )
+              : null,
+          teamCount:
+            Number.isFinite(
+              Number(
+                league.teamCount
+              )
+            )
+              ? Number(
+                  league.teamCount
+                )
+              : null
+        },
+        team: {
+          id:
+            team.id ||
+            null,
+          name:
+            team.name ||
+            null
+        },
+        scoringFormat:
+          snapshot.scoringFormat ||
+          null,
+        rosterCount:
+          Array.isArray(
+            snapshot.roster
+          )
+            ? snapshot.roster.length
+            : 0,
+        syncedAt:
+          snapshot.syncedAt ||
+          null,
+        readOnly: true
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              linkedLeagueToText(
+                snapshot
+              )
+          }
+        ],
+
+        structuredContent
+      };
+    }
+  );
+
   return server;
 }
 
 // ===========================================================
 // OFFICIAL MCP STREAMABLE HTTP HANDLER
 // ===========================================================
-
-const mcpHandler =
-  createMcpHandler(
-    (ctx) =>
-      buildServer(
-        ctx &&
-        ctx.requestInfo
-          ? ctx.requestInfo
-          : null
-      )
-  );
 
 // ===========================================================
 // NETLIFY FUNCTION ADAPTER
@@ -2693,6 +3334,54 @@ const mcpHandler =
 exports.handler =
   async function handler(event) {
     try {
+      connectLambda(
+        event
+      );
+
+      if (
+        event.httpMethod ===
+        "OPTIONS"
+      ) {
+        return {
+          statusCode: 204,
+          headers: {
+            "Access-Control-Allow-Origin":
+              "*",
+            "Access-Control-Allow-Methods":
+              "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers":
+              "Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name",
+            "Access-Control-Expose-Headers":
+              "WWW-Authenticate"
+          },
+          body: ""
+        };
+      }
+
+      let authContext =
+        null;
+
+      if (
+        isProtectedToolCall(
+          event
+        )
+      ) {
+        const validation =
+          await validateLeagueAccess(
+            event
+          );
+
+        if (!validation.ok) {
+          return oauthChallengeResponse(
+            validation.error,
+            validation.description
+          );
+        }
+
+        authContext =
+          validation.authInfo;
+      }
+
       const headers =
         new Headers();
 
@@ -2770,6 +3459,18 @@ exports.handler =
           requestInit
         );
 
+      const mcpHandler =
+        createMcpHandler(
+          (ctx) =>
+            buildServer(
+              ctx &&
+              ctx.requestInfo
+                ? ctx.requestInfo
+                : null,
+              authContext
+            )
+        );
+
       const response =
         await mcpHandler.fetch(
           request
@@ -2798,7 +3499,12 @@ exports.handler =
       responseHeaders[
         "access-control-allow-headers"
       ] =
-        "Content-Type, Accept, MCP-Protocol-Version, Mcp-Method, Mcp-Name";
+        "Content-Type, Accept, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name";
+
+      responseHeaders[
+        "access-control-expose-headers"
+      ] =
+        "WWW-Authenticate";
 
       const body =
         await response.text();
