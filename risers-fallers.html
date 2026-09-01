@@ -33,7 +33,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 .main{max-width:1020px;margin:0 auto;padding:28px 24px}
 
-/* ── DESKTOP RISERS/FALLERS LAYOUT ── */
+/* ── DESKTOP RISERS/FALLERS LAYOUT (added) ── */
 .rf-grid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
 @media(min-width:981px){
   .rf-grid{grid-template-columns:minmax(0,7fr) minmax(0,3fr)}
@@ -44,7 +44,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .rf-main{min-width:0}
 .rf-side{min-width:0}
 
-/* ── MARKET SNAPSHOT PANEL ── */
+/* ── MARKET SNAPSHOT PANEL (added) ── */
 .market-snapshot-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
 .market-snapshot-title{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:0.5px;margin-bottom:10px}
 .market-snapshot-item{padding:10px 0;border-bottom:1px solid var(--border)}
@@ -73,23 +73,26 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 .teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
 @media(max-width:600px){.teaser-grid{grid-template-columns:1fr}}
-
-/* ── COMPACT UNLOCKED HEADLINE STRIP ──
-   Shown in place of .teaser-grid once the board is unlocked, so
-   unlocked customers reach the intelligence board faster. Reuses the
-   same riser/faller color vocabulary and the existing player-name
-   interactive treatment below -- no new visual language. */
-.rf-headline-strip{display:none;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
-@media(max-width:600px){.rf-headline-strip{grid-template-columns:1fr}}
-.rf-headline{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.rf-headline.riser{border-left:3px solid var(--green)}
-.rf-headline.faller{border-left:3px solid var(--red)}
-.rf-headline-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);white-space:nowrap}
-.rf-headline-name{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink)}
-.rf-headline-delta{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-left:auto;white-space:nowrap}
-.rf-headline-delta.up{color:var(--green)}
-.rf-headline-delta.down{color:var(--red)}
 .teaser-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
+
+/* Unlocked Acolyte view: keep the weekly headline, remove the repeated vertical bulk. */
+.teaser-grid.is-unlocked{gap:10px;margin-bottom:10px}
+.teaser-grid.is-unlocked .teaser-card{padding:10px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:10px}
+.teaser-grid.is-unlocked .teaser-eyebrow{margin:0;font-size:8px;letter-spacing:1.4px;white-space:nowrap}
+.teaser-grid.is-unlocked .teaser-name-row{margin:0;min-width:0;flex-wrap:nowrap}
+.teaser-grid.is-unlocked .teaser-name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teaser-grid.is-unlocked .teaser-stat{font-size:13px;margin:0;white-space:nowrap}
+.teaser-grid.is-unlocked .teaser-meta,
+.teaser-grid.is-unlocked .teaser-stat-label,
+.teaser-grid.is-unlocked .teaser-why-link,
+.teaser-grid.is-unlocked .teaser-free-tag,
+.teaser-grid.is-unlocked .adp-badge{display:none!important}
+
+@media(max-width:700px){
+  .teaser-grid.is-unlocked .teaser-card{grid-template-columns:1fr auto}
+  .teaser-grid.is-unlocked .teaser-eyebrow{grid-column:1/-1;margin-bottom:3px}
+}
+
 .teaser-card.riser{border-left:3px solid var(--green)}
 .teaser-card.faller{border-left:3px solid var(--red)}
 .teaser-eyebrow{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
@@ -122,9 +125,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .paywall-divider::before,.paywall-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,0.15)}
 .paywall-link{display:block;font-family:'Cinzel',serif;font-size:12px;color:#c9a84c;text-decoration:none;letter-spacing:0.5px;opacity:0.85}
 .paywall-link:hover{opacity:1}
+
 .preview-banner{background:linear-gradient(135deg,#3a2a0a,#1f1608);border:1px solid rgba(201,168,76,0.3);border-radius:var(--r);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:12px 18px;text-align:center;line-height:1.5;margin-bottom:20px}
 .preview-banner strong{color:#f5c842}
 .preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+
 .connection-banner{max-width:1040px;margin:12px auto 0;padding:10px 16px;border-radius:6px;font-size:12px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(46,125,50,0.08);border:1px solid rgba(46,125,50,0.3);color:#2e7d32}
 .connection-banner.show{display:flex}
 .connection-banner a{color:inherit;text-decoration:underline;font-weight:600}
@@ -150,136 +155,35 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .list-hdr.riser .list-hdr-title{color:var(--green)}
 .list-hdr.faller .list-hdr-title{color:var(--red)}
 
-.player-row{
-  padding:12px 18px;
-  border-bottom:1px solid var(--border);
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
-
+.player-row{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
 .player-row:last-child{border-bottom:none}
+.player-row-top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.player-name-block{display:flex;align-items:center;gap:6px;min-width:0}
+.player-rank{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:var(--dim);min-width:18px;text-align:right}
+.player-context-line{display:flex;align-items:center;gap:7px;margin-left:50px;min-height:16px}
+.player-primary-metric{font-weight:600;color:var(--ink)}
 
-.player-row-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-}
-
-.player-name-block{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  min-width:0;
-  flex:1;
-}
-
-.player-rank{
-  font-family:'JetBrains Mono',monospace;
-  font-size:10px;
-  font-weight:600;
-  color:var(--dim);
-  min-width:20px;
-  text-align:right;
-  flex-shrink:0;
-}
-
-.player-primary-metric{
-  font-weight:600;
-  color:var(--ink);
-}
-
-.pos-badge{
-  font-family:'JetBrains Mono',monospace;
-  font-size:9px;
-  font-weight:600;
-  padding:2px 6px;
-  border-radius:3px;
-  flex-shrink:0;
-}
-
+.pos-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px}
 .pos-badge.WR{background:rgba(184,146,26,0.15);color:var(--gold)}
 .pos-badge.RB{background:rgba(46,125,50,0.15);color:var(--green)}
 .pos-badge.TE{background:rgba(200,120,10,0.15);color:var(--amber)}
 
-.player-name{
-  font-size:13px;
-  font-weight:600;
-  color:var(--ink);
-  min-width:0;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
+.player-name{font-size:14px;font-weight:600;color:var(--ink);line-height:1.25;min-width:0}
 
 /* Universal Player Profile V1 — only player names are interactive. */
-.player-name[role="button"],
-.teaser-name[role="button"],
-.market-snapshot-value[role="button"],
-.rf-headline-name[role="button"]{
-  cursor:pointer;
-}
+.player-name[role="button"],.teaser-name[role="button"],.market-snapshot-value[role="button"]{cursor:pointer}
+.player-name[role="button"]:hover,.teaser-name[role="button"]:hover,.market-snapshot-value[role="button"]:hover{text-decoration:underline;text-underline-offset:2px}
+.player-name[role="button"]:focus-visible,.teaser-name[role="button"]:focus-visible,.market-snapshot-value[role="button"]:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:3px}
 
-.player-name[role="button"]:hover,
-.teaser-name[role="button"]:hover,
-.market-snapshot-value[role="button"]:hover,
-.rf-headline-name[role="button"]:hover{
-  text-decoration:underline;
-  text-underline-offset:2px;
-}
-
-.player-name[role="button"]:focus-visible,
-.teaser-name[role="button"]:focus-visible,
-.market-snapshot-value[role="button"]:focus-visible,
-.rf-headline-name[role="button"]:focus-visible{
-  outline:2px solid var(--gold);
-  outline-offset:2px;
-  border-radius:3px;
-}
-
-.player-team{
-  font-family:'JetBrains Mono',monospace;
-  font-size:10px;
-  color:var(--dim);
-}
-
-/* Secondary identity line -- team + TOP 50 ADP badge live on their own
-   line now, never competing horizontally with rank/position/name/delta. */
-.player-identity-line{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-/* Target Share is the emphasized stat; Snap Share/Targets stay in the
-   existing dim, secondary treatment on .player-row-detail below. */
-.player-stat-emphasis{
-  color:var(--ink);
-  font-weight:700;
-  font-size:11px;
-}
-
-.player-stat-secondary{
-  color:var(--dim);
-}
-
-.delta-val{
-  font-family:'JetBrains Mono',monospace;
-  font-size:14px;
-  font-weight:600;
-  white-space:nowrap;
-  flex-shrink:0;
-}
-
+.player-team{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim)}
+.delta-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;white-space:nowrap}
 .delta-val.up{color:var(--green)}
 .delta-val.down{color:var(--red)}
+.player-row-detail{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);margin-left:50px;white-space:nowrap}
 
-.player-row-detail{
-  font-family:'JetBrains Mono',monospace;
-  font-size:10px;
-  color:var(--dim);
+@media(max-width:700px){
+  .player-context-line,.player-row-detail{margin-left:0}
+  .player-row-detail{white-space:normal}
 }
 
 .empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
@@ -315,16 +219,12 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 fbq('init', '1748852649483750');
 fbq('track', 'PageView');
 </script>
-
-<noscript>
-<img height="1" width="1" style="display:none"
+<noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
-/>
-</noscript>
+/></noscript>
 <!-- End Meta Pixel Code -->
 
 </head>
-
 <body>
 
 <div class="hdr">
@@ -332,22 +232,19 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <span class="hdr-eyebrow">The Inner Sanctum</span>
     <h1 class="hdr-title">📈 Risers &amp; Fallers</h1>
   </div>
-
   <div class="hdr-right">
     <span class="lock-badge">🔒 Acolyte Feature</span>
-
     <a href="/" class="nav-link">🏠 Home</a>
 
     <div class="nav-dropdown" id="navDraftTools">
       <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navDraftTools')">
         🗡️ Draft Tools <span class="nav-dropdown-caret">▼</span>
       </button>
-
       <div class="nav-dropdown-menu">
-        <a href="/draft">📋 Draft Command Center</a>
-        <a href="/compare">🆚 Compare</a>
-        <a href="/auction">⚔️ Auction War Room</a>
-        <a href="/tiers">🏆 Oracle Tier List</a>
+      <a href="/draft">📋 Draft Command Center</a>
+      <a href="/compare">🆚 Compare</a>
+      <a href="/auction">⚔️ Auction War Room</a>
+      <a href="/tiers">🏆 Oracle Tier List</a>
       </div>
     </div>
 
@@ -355,12 +252,11 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
       <button class="nav-dropdown-trigger" onclick="toggleNavDropdown('navSeasonTools')">
         📅 Season Tools <span class="nav-dropdown-caret">▼</span>
       </button>
-
       <div class="nav-dropdown-menu">
-        <a href="/power-rankings">📊 League Power Rankings</a>
-        <a href="/weekly">📅 Weekly Rankings</a>
-        <a href="/survivor">☠️ Survivor Pool</a>
-        <a href="/connect-league">🔗 Link Your League</a>
+      <a href="/power-rankings">📊 League Power Rankings</a>
+      <a href="/weekly">📅 Weekly Rankings</a>
+      <a href="/survivor">☠️ Survivor Pool</a>
+      <a href="/connect-league">🔗 Link Your League</a>
       </div>
     </div>
 
@@ -370,10 +266,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 </div>
 
 <div class="status-bar" id="statusBar">
-  <span>
-    <span class="status-dot loading" id="statusDot"></span>
-    <span id="statusText">Loading trend data...</span>
-  </span>
+  <span><span class="status-dot loading" id="statusDot"></span><span id="statusText">Loading trend data...</span></span>
 </div>
 
 <div class="connection-banner" id="connectionBanner">
@@ -386,1377 +279,485 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <div class="intro">
     <div class="intro-icon">📈</div>
     <div class="intro-title">Who's trending, before your league notices</div>
-    <div class="intro-sub">
-      Real week-over-week target share shifts, pulled straight from box scores — not projections, not hot takes.
-      See who's actually earning more looks and who's losing their role.
-    </div>
+    <div class="intro-sub">Real week-over-week target share shifts, pulled straight from box scores — not projections, not hot takes. See who's actually earning more looks and who's losing their role.</div>
     <div class="week-badge" id="weekBadge">—</div>
   </div>
 
   <div class="help-panel">
-
     <button class="help-toggle" id="helpToggle" onclick="toggleHelp()">
       🔮 How to Use This Page — and What It's Actually Worth to You
       <span class="help-icon" id="helpIcon">▼</span>
     </button>
-
     <div class="help-body" id="helpBody">
-
       <div class="help-section-title">What these numbers mean</div>
-
-      <div class="help-rule">
-        <span>🎯</span>
-        <span>
-          <strong>Target share</strong> is the percent of his team's throws that went to that one player.
-          It's the single best early signal of whether a player's role is actually growing — well before
-          it shows up in touchdowns or points.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>👟</span>
-        <span>
-          <strong>Snap share</strong> is the percent of offensive plays a player was on the field for.
-          Shown alongside target share as context — rising snaps with flat targets usually means
-          blocking/decoy work, not real opportunity.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>📊</span>
-        <span>
-          Every player here had a real, meaningful number of targets in at least one of the two weeks
-          compared — noise players are filtered out before ranking, so what you see is signal,
-          not statistical fluff.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>🏷️</span>
-        <span>
-          A small <strong>TOP 50 ADP</strong> tag means that player was already a well-known,
-          highly-drafted name. A single week's dip there is often just normal variance.
-        </span>
-      </div>
+      <div class="help-rule"><span>🎯</span><span><strong>Target share</strong> is the percent of his team's throws that went to that one player. It's the single best early signal of whether a player's role is actually growing — well before it shows up in touchdowns or points.</span></div>
+      <div class="help-rule"><span>👟</span><span><strong>Snap share</strong> is the percent of offensive plays a player was on the field for. Shown alongside target share as context — rising snaps with flat targets usually means blocking/decoy work, not real opportunity.</span></div>
+      <div class="help-rule"><span>📊</span><span>Every player here had a real, meaningful number of targets in at least one of the two weeks compared — noise players (a single garbage-time catch, a punter's snap count) are filtered out before ranking, so what you see is signal, not statistical fluff.</span></div>
+      <div class="help-rule"><span>🏷️</span><span>A small <strong>TOP 50 ADP</strong> tag means that player was already a well-known, highly-drafted name. A single week's dip there is often just normal variance — a tough matchup, a game script that favored the run — since his baseline share is already high. The same swing means more for a player without that tag, since it's more likely to represent an actual new role.</span></div>
 
       <div class="help-section-title">Why this is worth paying attention to</div>
-
-      <div class="help-rule">
-        <span>⏱️</span>
-        <span>
-          Box scores tell you what already happened. Target share <strong>trend</strong> tells you
-          what's about to keep happening.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>💰</span>
-        <span>
-          This is the exact data an early waiver claim or a buy-low trade is built on — by the time
-          a riser shows up in weekly rankings or a national article, half your league has already added him.
-        </span>
-      </div>
+      <div class="help-rule"><span>⏱️</span><span>Box scores tell you what already happened. Target share <strong>trend</strong> tells you what's about to keep happening — a receiver's role rarely reverses itself in a single week.</span></div>
+      <div class="help-rule"><span>💰</span><span>This is the exact data an early waiver claim or a buy-low trade is built on — by the time a riser shows up in weekly rankings or a national article, half your league has already added him.</span></div>
 
       <div class="help-section-title">How to actually use it</div>
+      <div class="help-rule"><span>🟢</span><span><strong>Risers you don't own:</strong> priority waiver claim or FAAB bid this week, before the role change becomes obvious to everyone else.</span></div>
+      <div class="help-rule"><span>🟢</span><span><strong>Risers you already own:</strong> confidence to start them over a "name brand" player who's actually seeing fewer looks.</span></div>
+      <div class="help-rule"><span>🔴</span><span><strong>Fallers you own:</strong> a signal to sell high before the market catches on, or at minimum to bench them for a rising alternative.</span></div>
+      <div class="help-rule"><span>🔴</span><span><strong>Fallers on other rosters:</strong> a buy-low trade target — their price is about to drop further once their owner notices too.</span></div>
 
-      <div class="help-rule">
-        <span>🟢</span>
-        <span>
-          <strong>Risers you don't own:</strong> priority waiver claim or FAAB bid this week,
-          before the role change becomes obvious to everyone else.
-        </span>
-      </div>
+      <div class="help-callout">🔮 <em>"A single big game is a headline. Two straight weeks of rising target share is a trend — and in 38 seasons, I have never seen a trend reverse itself in the very week you finally decide to act on it."</em></div>
 
-      <div class="help-rule">
-        <span>🟢</span>
-        <span>
-          <strong>Risers you already own:</strong> confidence to start them over a "name brand"
-          player who's actually seeing fewer looks.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>🔴</span>
-        <span>
-          <strong>Fallers you own:</strong> a signal to sell high before the market catches on,
-          or at minimum to bench them for a rising alternative.
-        </span>
-      </div>
-
-      <div class="help-rule">
-        <span>🔴</span>
-        <span>
-          <strong>Fallers on other rosters:</strong> a buy-low trade target — their price is about
-          to drop further once their owner notices too.
-        </span>
-      </div>
-
-      <div class="help-callout">
-        🔮 <em>"A single big game is a headline. Two straight weeks of rising target share is a trend —
-        and in 38 seasons, I have never seen a trend reverse itself in the very week you finally decide
-        to act on it."</em>
-      </div>
-
-      <div class="help-rule">
-        <span>⚠️</span>
-        <span>
-          One caveat: early in the season, two weeks of data is still a small sample.
-          Treat these as strong leads worth acting on, not guarantees.
-        </span>
-      </div>
-
+      <div class="help-rule"><span>⚠️</span><span>One caveat: early in the season, two weeks of data is still a small sample. Treat these as strong leads worth acting on, not guarantees — pair them with the Oracle chat or Weekly Rankings before making a big trade off one week's swing.</span></div>
     </div>
   </div>
 
   <div class="teaser-grid" id="teaserGrid">
-
     <div class="teaser-card riser">
       <span class="teaser-free-tag">FREE</span>
-
       <div class="teaser-eyebrow">📈 This Week's Biggest Riser</div>
-
       <div class="teaser-name-row">
         <span class="teaser-name" id="teaserRiserName">—</span>
         <span class="adp-badge" id="teaserRiserAdpBadge" style="display:none"></span>
       </div>
-
       <div class="teaser-meta" id="teaserRiserMeta">—</div>
-
       <div class="teaser-stat" id="teaserRiserStat">—</div>
-
-      <div class="teaser-stat-label">
-        target share, week over week
-      </div>
-
-      <button class="teaser-why-link" onclick="openHelpAndScroll()">
-        Why is he here? →
-      </button>
+      <div class="teaser-stat-label">target share, week over week</div>
+      <button class="teaser-why-link" onclick="openHelpAndScroll()">Why is he here? →</button>
     </div>
 
     <div class="teaser-card faller">
       <span class="teaser-free-tag">FREE</span>
-
       <div class="teaser-eyebrow">📉 This Week's Biggest Faller</div>
-
       <div class="teaser-name-row">
         <span class="teaser-name" id="teaserFallerName">—</span>
         <span class="adp-badge" id="teaserFallerAdpBadge" style="display:none"></span>
       </div>
-
       <div class="teaser-meta" id="teaserFallerMeta">—</div>
-
       <div class="teaser-stat" id="teaserFallerStat">—</div>
-
-      <div class="teaser-stat-label">
-        target share, week over week
-      </div>
-
-      <button class="teaser-why-link" onclick="openHelpAndScroll()">
-        Why is he here? →
-      </button>
+      <div class="teaser-stat-label">target share, week over week</div>
+      <button class="teaser-why-link" onclick="openHelpAndScroll()">Why is he here? →</button>
     </div>
-
-  </div>
-
-  <div class="rf-headline-strip" id="headlineStrip">
-
-    <div class="rf-headline riser">
-      <span class="rf-headline-label">Biggest Riser</span>
-      <span class="rf-headline-name" id="headlineRiserName">—</span>
-      <span class="rf-headline-delta up" id="headlineRiserDelta">—</span>
-    </div>
-
-    <div class="rf-headline faller">
-      <span class="rf-headline-label">Biggest Faller</span>
-      <span class="rf-headline-name" id="headlineFallerName">—</span>
-      <span class="rf-headline-delta down" id="headlineFallerDelta">—</span>
-    </div>
-
   </div>
 
   <div id="paywallArea">
-
     <div class="paywall-card">
-
       <div class="paywall-icon">🔒</div>
-
-      <div class="paywall-title">
-        See the Full Top 15 Risers &amp; Fallers
-      </div>
-
-      <div class="paywall-sub">
-        The teaser above is free for everyone. Founding Acolytes get the complete weekly list —
-        every real mover, with snap share context and full target share history.
-      </div>
-
-      <input
-        type="password"
-        class="paywall-input"
-        id="paywallInput"
-        placeholder="Passcode"
-        autocomplete="off"
-        onkeydown="if(event.key==='Enter'){checkPaywallPasscode()}"
-      />
-
-      <button class="paywall-btn" onclick="checkPaywallPasscode()">
-        Unlock Full List
-      </button>
-
-      <div class="paywall-error" id="paywallError">
-        Incorrect passcode. Try again.
-      </div>
-
-      <button class="paywall-btn-secondary" onclick="enterPreviewMode()">
-        👁 Preview with Sample Data
-      </button>
-
-      <div class="paywall-divider">
-        OR
-      </div>
-
-      
-        href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Frisers-fallers"
-        class="paywall-link"
-        style="margin-bottom:8px"
-      >
-        🔑 Already a member? Login with Patreon
-      </a>
-
-      
-        href="https://www.patreon.com/TheInnerSanctum670"
-        target="_blank"
-        class="paywall-link"
-      >
-        ⚔️ Become a Founding Acolyte
-      </a>
-
+      <div class="paywall-title">See the Full Top 15 Risers &amp; Fallers</div>
+      <div class="paywall-sub">The teaser above is free for everyone. Founding Acolytes get the complete weekly list — every real mover, with snap share context and full target share history.</div>
+      <input type="password" class="paywall-input" id="paywallInput" placeholder="Passcode" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){checkPaywallPasscode()}"/>
+      <button class="paywall-btn" onclick="checkPaywallPasscode()">Unlock Full List</button>
+      <div class="paywall-error" id="paywallError">Incorrect passcode. Try again.</div>
+      <button class="paywall-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
+      <div class="paywall-divider">OR</div>
+      <a href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Frisers-fallers" class="paywall-link" style="margin-bottom:8px">🔑 Already a member? Login with Patreon</a>
+      <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="paywall-link">⚔️ Become a Founding Acolyte</a>
     </div>
   </div>
 
   <div id="fullListsArea" style="display:none">
-
     <div class="rf-grid">
 
       <div class="rf-main">
-
         <div class="pos-filter-bar" id="posFilterBar">
-
-          <button
-            class="pos-filter-btn active"
-            data-pos="ALL"
-            onclick="setPosFilter('ALL')"
-          >
-            ALL
-          </button>
-
-          <button
-            class="pos-filter-btn"
-            data-pos="RB"
-            onclick="setPosFilter('RB')"
-          >
-            RB
-          </button>
-
-          <button
-            class="pos-filter-btn"
-            data-pos="WR"
-            onclick="setPosFilter('WR')"
-          >
-            WR
-          </button>
-
-          <button
-            class="pos-filter-btn"
-            data-pos="TE"
-            onclick="setPosFilter('TE')"
-          >
-            TE
-          </button>
-
-          <button
-            class="hide-top50-toggle"
-            id="hideTop50Btn"
-            onclick="toggleHideTop50()"
-          >
-            🙈 Hide Top 50 ADP
-          </button>
-
+          <button class="pos-filter-btn active" data-pos="ALL" onclick="setPosFilter('ALL')">ALL</button>
+          <button class="pos-filter-btn" data-pos="RB" onclick="setPosFilter('RB')">RB</button>
+          <button class="pos-filter-btn" data-pos="WR" onclick="setPosFilter('WR')">WR</button>
+          <button class="pos-filter-btn" data-pos="TE" onclick="setPosFilter('TE')">TE</button>
+          <button class="hide-top50-toggle" id="hideTop50Btn" onclick="toggleHideTop50()">🙈 Hide Top 50 ADP</button>
         </div>
 
         <div class="lists-grid" id="listsGrid"></div>
-
       </div>
 
       <div class="rf-side">
-
-        <div
-          class="market-snapshot-panel"
-          id="marketSnapshotPanel"
-        >
-
-          <div class="market-snapshot-title">
-            📊 Market Snapshot
-          </div>
-
+        <div class="market-snapshot-panel" id="marketSnapshotPanel">
+          <div class="market-snapshot-title">📊 Market Snapshot</div>
           <div id="marketSnapshotList"></div>
-
         </div>
-
       </div>
 
     </div>
-
   </div>
 
 </div>
 
 <div class="attr">
-  Target share &amp; snap share:
-  <a href="https://tank01.com" target="_blank">
-    Tank01
-  </a>
+  Target share &amp; snap share: <a href="https://tank01.com" target="_blank">Tank01</a>
 </div>
 
 <script src="/shared-player-data.js"></script>
 <script src="/player-profile.js"></script>
 
 <script>
-
 var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
-
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
-
 var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
 
 var latestData = null;
-
 var curPosFilter = 'ALL';
-
 var hideTop50 = false;
-
 var top50AdpNames = null;
-
 var tank01TeamMap = null;
 
-
-/* ==========================================================
-   FORMATTERS
-   ========================================================== */
-
 function pct(n) {
-
   var value = Number(n);
-
-  return Number.isFinite(value)
-    ? (value * 100).toFixed(1) + '%'
-    : '—';
-
+  return Number.isFinite(value) ? (value * 100).toFixed(1) + '%' : '—';
 }
-
 
 function pctPoints(n) {
-
   var value = Number(n);
-
-  if (!Number.isFinite(value)) {
-    return '—';
-  }
-
+  if (!Number.isFinite(value)) return '—';
   var points = value * 100;
-
-  return (points > 0 ? '+' : '') +
-    points.toFixed(1) +
-    ' pts';
-
+  return (points > 0 ? '+' : '') + points.toFixed(1) + ' pts';
 }
-
-
-/* ==========================================================
-   TEAM / NAME HELPERS
-   ========================================================== */
 
 function correctedTeam(entry) {
-
-  if (!tank01TeamMap) {
-    return entry.team;
-  }
-
-  var live =
-    tank01TeamMap[
-      normalizePlayerName(entry.longName)
-    ];
-
-  return (
-    live &&
-    live.team
-  )
-    ? live.team
-    : entry.team;
-
+  if (!tank01TeamMap) return entry.team;
+  var live = tank01TeamMap[normalizePlayerName(entry.longName)];
+  return (live && live.team) ? live.team : entry.team;
 }
-
 
 function normalizeName(n) {
-
-  return (n || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
+  return (n || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-
-/* ==========================================================
-   UNIVERSAL PLAYER PROFILE V1
-   RISERS & FALLERS MAPPER
-   ========================================================== */
-
+// ═══════════════════════════════════════════════════════════
+// UNIVERSAL PLAYER PROFILE V1 — RISERS & FALLERS MAPPER
+// ═══════════════════════════════════════════════════════════
+// This page owns all trend-specific mapping. The shared
+// player-profile.js remains page-neutral. No new data fetches or
+// trend calculations are performed when a profile opens.
 function rfEscAttr(value) {
-
-  return String(
-    value == null
-      ? ''
-      : value
-  )
+  return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-
 }
-
 
 function getRisersFallersProfileId(entry) {
-
-  if (!entry) {
-    return '';
-  }
-
-  return (
-    entry.playerID ||
-    (
-      entry.longName +
-      '|' +
-      entry.pos
-    )
-  );
-
+  if (!entry) return '';
+  return entry.playerID || (entry.longName + '|' + entry.pos);
 }
 
-
 function getRisersFallersEntryById(id) {
-
-  if (!latestData) {
-    return null;
-  }
-
+  if (!latestData) return null;
   var groups = [
-
-    {
-      list: latestData.risers || [],
-      direction: 'riser'
-    },
-
-    {
-      list: latestData.fallers || [],
-      direction: 'faller'
-    }
-
+    { list: latestData.risers || [], direction: 'riser' },
+    { list: latestData.fallers || [], direction: 'faller' }
   ];
 
-  for (
-    var g = 0;
-    g < groups.length;
-    g++
-  ) {
+  for (var g = 0; g < groups.length; g++) {
+    for (var i = 0; i < groups[g].list.length; i++) {
+      var entry = groups[g].list[i];
 
-    for (
-      var i = 0;
-      i < groups[g].list.length;
-      i++
-    ) {
-
-      var entry =
-        groups[g].list[i];
-
-      if (
-        getRisersFallersProfileId(entry) === id
-      ) {
-
+      if (getRisersFallersProfileId(entry) === id) {
         return {
           entry: entry,
           direction: groups[g].direction
         };
-
       }
-
     }
-
   }
 
   return null;
-
 }
-
 
 function risersFallersProfileAttrs(entry) {
-
-  var id =
-    rfEscAttr(
-      getRisersFallersProfileId(entry)
-    );
-
-  return (
-    ' data-rf-profile-id="' +
-    id +
-    '" tabindex="0" role="button"'
-  );
-
+  var id = rfEscAttr(getRisersFallersProfileId(entry));
+  return ' data-rf-profile-id="' + id + '" tabindex="0" role="button"';
 }
 
-
-function setRisersFallersProfileTarget(
-  el,
-  entry
-) {
-
-  if (
-    !el ||
-    !entry
-  ) {
-    return;
-  }
+function setRisersFallersProfileTarget(el, entry) {
+  if (!el || !entry) return;
 
   el.setAttribute(
     'data-rf-profile-id',
     getRisersFallersProfileId(entry)
   );
 
-  el.setAttribute(
-    'tabindex',
-    '0'
-  );
-
-  el.setAttribute(
-    'role',
-    'button'
-  );
-
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('role', 'button');
 }
-
 
 function buildRisersFallersRisks(entry) {
-
-  if (
-    !entry ||
-    !top50AdpNames ||
-    !top50AdpNames.has(
-      normalizeName(entry.longName)
-    )
-  ) {
-
-    return null;
-
-  }
+  if (!entry || !top50AdpNames || !top50AdpNames.has(normalizeName(entry.longName))) return null;
 
   return [
-
     'Inside the Top 50 overall ADP — a one-week swing here is often normal variance for an established name, not a role change.'
-
   ];
-
 }
 
+function mapRisersFallersEntryToProfileModel(entry, direction) {
+  if (!entry) return null;
 
-function mapRisersFallersEntryToProfileModel(
-  entry,
-  direction
-) {
+  var previous = entry.previous || {};
+  var current = entry.current || {};
 
-  if (!entry) {
-    return null;
-  }
+  var delta = Number(entry.targetShareDelta);
 
-  var previous =
-    entry.previous || {};
+  var deltaText = Number.isFinite(delta)
+    ? pctPoints(delta)
+    : null;
 
-  var current =
-    entry.current || {};
-
-  var delta =
-    Number(
-      entry.targetShareDelta
-    );
-
-  var deltaText =
-    Number.isFinite(delta)
-      ? pctPoints(delta)
-      : null;
-
-  var trendLabel =
-    direction === 'riser'
-      ? 'Rising'
-      : 'Falling';
-
+  var trendLabel = direction === 'riser'
+    ? 'Rising'
+    : 'Falling';
 
   var contextStats = [
-
     {
       label: 'Trend',
       value: trendLabel
     }
-
   ];
 
-
-  if (
-    previous.targetSharePct != null &&
-    current.targetSharePct != null
-  ) {
-
+  if (previous.targetSharePct != null && current.targetSharePct != null) {
     contextStats.push({
-
       label: 'Target Share',
-
-      value:
-        pct(previous.targetSharePct) +
-        ' → ' +
-        pct(current.targetSharePct)
-
+      value: pct(previous.targetSharePct) + ' → ' + pct(current.targetSharePct)
     });
-
   }
-
 
   if (deltaText) {
-
     contextStats.push({
-
       label: 'Change',
       value: deltaText
-
     });
-
   }
 
-
-  if (
-    previous.offSnapPct != null &&
-    current.offSnapPct != null
-  ) {
-
+  if (previous.offSnapPct != null && current.offSnapPct != null) {
     contextStats.push({
-
       label: 'Snap Share',
-
-      value:
-        pct(previous.offSnapPct) +
-        ' → ' +
-        pct(current.offSnapPct)
-
+      value: pct(previous.offSnapPct) + ' → ' + pct(current.offSnapPct)
     });
-
   }
 
-
-  if (
-    previous.targets != null &&
-    current.targets != null
-  ) {
-
+  if (previous.targets != null && current.targets != null) {
     contextStats.push({
-
       label: 'Targets',
-
-      value:
-        String(previous.targets) +
-        ' → ' +
-        String(current.targets)
-
+      value: String(previous.targets) + ' → ' + String(current.targets)
     });
-
   }
-
 
   var weekNote = null;
 
-
-  if (
-    latestData &&
-    latestData.previousWeek != null &&
-    latestData.currentWeek != null
-  ) {
-
-    weekNote =
-      'Week ' +
-      latestData.previousWeek +
-      ' → Week ' +
-      latestData.currentWeek;
-
+  if (latestData && latestData.previousWeek != null && latestData.currentWeek != null) {
+    weekNote = 'Week ' + latestData.previousWeek + ' → Week ' + latestData.currentWeek;
   }
-
 
   return {
-
     identity: {
-
-      id:
-        getRisersFallersProfileId(entry),
-
-      playerID:
-        entry.playerID || null,
-
-      name:
-        entry.longName,
-
-      position:
-        entry.pos,
-
-      team:
-        correctedTeam(entry) || null,
-
-      photoUrl:
-        null
-
+      id: getRisersFallersProfileId(entry),
+      playerID: entry.playerID || null,
+      name: entry.longName,
+      position: entry.pos,
+      team: correctedTeam(entry) || null,
+      photoUrl: null
     },
 
+    verdict: null,
 
-    verdict:
-      null,
-
-
-    rankProjection:
-      null,
-
+    rankProjection: null,
 
     contextPanel: {
-
-      title:
-        'Trend & Opportunity',
-
-      stats:
-        contextStats,
-
-      note:
-        weekNote
-
+      title: 'Trend & Opportunity',
+      stats: contextStats,
+      note: weekNote
     },
 
+    recentForm: null,
 
-    recentForm:
-      null,
+    risks: buildRisersFallersRisks(entry),
 
+    outlookNote: null,
 
-    risks:
-      buildRisersFallersRisks(entry),
-
-
-    outlookNote:
-      null,
-
-
-    insight:
-      null
-
+    insight: null
   };
-
 }
 
-
 function openRisersFallersPlayerProfile(id) {
+  var found = getRisersFallersEntryById(id);
 
-  var found =
-    getRisersFallersEntryById(id);
+  if (!found) return;
 
-  if (!found) {
-    return;
-  }
-
-  if (
-    typeof PlayerProfile === 'undefined' ||
-    !PlayerProfile.open
-  ) {
-
-    return;
-
-  }
+  if (typeof PlayerProfile === 'undefined' || !PlayerProfile.open) return;
 
   PlayerProfile.open(
-
     mapRisersFallersEntryToProfileModel(
       found.entry,
       found.direction
     )
-
   );
-
 }
 
-
-/* ==========================================================
-   TOP 50 ADP
-   ========================================================== */
-
 async function fetchTop50AdpNames() {
-
   try {
+    var res = await fetch('/.netlify/functions/adp?scoring=ppr&teams=12&year=2026&count=300');
 
-    var res =
-      await fetch(
-        '/.netlify/functions/adp?scoring=ppr&teams=12&year=2026&count=300'
-      );
-
-
-    var data =
-      await res.json();
-
+    var data = await res.json();
 
     if (
       data.status === 'Error' ||
       !data.players ||
       !Array.isArray(data.players)
     ) {
-
       return null;
-
     }
 
+    var sorted = data.players
+      .filter(function(p){
+        return p.name;
+      })
+      .slice()
+      .sort(function(a, b){
+        return (parseFloat(a.adp) || 999) - (parseFloat(b.adp) || 999);
+      });
 
-    var sorted =
-      data.players
-
-        .filter(
-          function(p) {
-
-            return p.name;
-
-          }
-        )
-
-        .slice()
-
-        .sort(
-          function(a, b) {
-
-            return (
-              (parseFloat(a.adp) || 999) -
-              (parseFloat(b.adp) || 999)
-            );
-
-          }
-        );
-
-
-    var top50 =
-      sorted
-
-        .slice(0, 50)
-
-        .map(
-          function(p) {
-
-            return normalizeName(
-              p.name
-            );
-
-          }
-        );
-
+    var top50 = sorted
+      .slice(0, 50)
+      .map(function(p){
+        return normalizeName(p.name);
+      });
 
     return new Set(top50);
 
-  }
-  catch (e) {
-
+  } catch (e) {
     return null;
-
   }
-
 }
 
-
-/* ==========================================================
-   STATUS / HELP
-   ========================================================== */
-
-function setStatus(
-  state,
-  text
-) {
-
-  document
-    .getElementById(
-      'statusDot'
-    )
-    .className =
-      'status-dot ' +
-      state;
-
-
-  document
-    .getElementById(
-      'statusText'
-    )
-    .textContent =
-      text;
-
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
 }
-
 
 function toggleHelp() {
-
-  document
-    .getElementById(
-      'helpToggle'
-    )
-    .classList
-    .toggle('open');
-
-
-  document
-    .getElementById(
-      'helpIcon'
-    )
-    .classList
-    .toggle('open');
-
-
-  document
-    .getElementById(
-      'helpBody'
-    )
-    .classList
-    .toggle('open');
-
+  document.getElementById('helpToggle').classList.toggle('open');
+  document.getElementById('helpIcon').classList.toggle('open');
+  document.getElementById('helpBody').classList.toggle('open');
 }
 
-
-function setTeaserAdpBadge(
-  badgeEl,
-  entry
-) {
-
+function setTeaserAdpBadge(badgeEl, entry) {
   var isTop50 =
-
     top50AdpNames &&
-
     top50AdpNames.has(
-      normalizeName(
-        entry.longName
-      )
+      normalizeName(entry.longName)
     );
 
-
   if (isTop50) {
-
-    badgeEl.textContent =
-      'TOP 50 ADP';
-
+    badgeEl.textContent = 'TOP 50 ADP';
 
     badgeEl.title =
       'Inside the Top 50 overall ADP — a one-week swing here is often normal variance for an established name, not a role change. See How to Use This Page for more.';
 
-
-    badgeEl.style.display =
-      'inline-flex';
-
+    badgeEl.style.display = 'inline-flex';
+  } else {
+    badgeEl.style.display = 'none';
   }
-  else {
-
-    badgeEl.style.display =
-      'none';
-
-  }
-
 }
-
 
 function openHelpAndScroll() {
+  var body = document.getElementById('helpBody');
 
-  var body =
-    document.getElementById(
-      'helpBody'
-    );
-
-
-  if (
-    !body.classList.contains(
-      'open'
-    )
-  ) {
-
-    document
-      .getElementById(
-        'helpToggle'
-      )
-      .classList
-      .add('open');
-
-
-    document
-      .getElementById(
-        'helpIcon'
-      )
-      .classList
-      .add('open');
-
-
-    body.classList.add(
-      'open'
-    );
-
+  if (!body.classList.contains('open')) {
+    document.getElementById('helpToggle').classList.add('open');
+    document.getElementById('helpIcon').classList.add('open');
+    body.classList.add('open');
   }
 
-
-  document
-    .getElementById(
-      'helpToggle'
-    )
-    .scrollIntoView({
-
-      behavior: 'smooth',
-      block: 'start'
-
-    });
-
+  document.getElementById('helpToggle').scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
 }
-
-
-/* ==========================================================
-   TEASER
-   ========================================================== */
 
 function renderTeaser(data) {
+  if (!data.risers.length && !data.fallers.length) return;
 
-  if (
-    !data.risers.length &&
-    !data.fallers.length
-  ) {
+  if (data.risers.length) {
+    var r = data.risers[0];
 
-    return;
-
-  }
-
-
-  if (
-    data.risers.length
-  ) {
-
-    var r =
-      data.risers[0];
-
-
-    document
-      .getElementById(
-        'teaserRiserName'
-      )
-      .textContent =
-        r.longName;
-
+    document.getElementById('teaserRiserName').textContent = r.longName;
 
     setRisersFallersProfileTarget(
-
-      document.getElementById(
-        'teaserRiserName'
-      ),
-
+      document.getElementById('teaserRiserName'),
       r
-
     );
 
+    document.getElementById('teaserRiserMeta').textContent =
+      r.pos + ' · ' + correctedTeam(r);
 
-    document
-      .getElementById(
-        'teaserRiserMeta'
-      )
-      .textContent =
-
-        r.pos +
-        ' · ' +
-        correctedTeam(r);
-
-
-    document
-      .getElementById(
-        'teaserRiserStat'
-      )
-      .textContent =
-
-        pct(
-          r.previous.targetSharePct
-        ) +
-
-        ' → ' +
-
-        pct(
-          r.current.targetSharePct
-        ) +
-
-        ' (+' +
-
-        pct(
-          r.targetShareDelta
-        ) +
-
-        ')';
-
+    document.getElementById('teaserRiserStat').textContent =
+      document.getElementById('teaserGrid').classList.contains('is-unlocked')
+        ? '▲ ' + pctPoints(r.targetShareDelta)
+        : pct(r.previous.targetSharePct) + ' → ' + pct(r.current.targetSharePct) + ' (+' + pct(r.targetShareDelta) + ')';
 
     setTeaserAdpBadge(
-
-      document.getElementById(
-        'teaserRiserAdpBadge'
-      ),
-
+      document.getElementById('teaserRiserAdpBadge'),
       r
-
     );
-
   }
 
+  if (data.fallers.length) {
+    var f = data.fallers[0];
 
-  if (
-    data.fallers.length
-  ) {
-
-    var f =
-      data.fallers[0];
-
-
-    document
-      .getElementById(
-        'teaserFallerName'
-      )
-      .textContent =
-        f.longName;
-
+    document.getElementById('teaserFallerName').textContent = f.longName;
 
     setRisersFallersProfileTarget(
-
-      document.getElementById(
-        'teaserFallerName'
-      ),
-
+      document.getElementById('teaserFallerName'),
       f
-
     );
 
+    document.getElementById('teaserFallerMeta').textContent =
+      f.pos + ' · ' + correctedTeam(f);
 
-    document
-      .getElementById(
-        'teaserFallerMeta'
-      )
-      .textContent =
-
-        f.pos +
-        ' · ' +
-        correctedTeam(f);
-
-
-    document
-      .getElementById(
-        'teaserFallerStat'
-      )
-      .textContent =
-
-        pct(
-          f.previous.targetSharePct
-        ) +
-
-        ' → ' +
-
-        pct(
-          f.current.targetSharePct
-        ) +
-
-        ' (' +
-
-        pct(
-          f.targetShareDelta
-        ) +
-
-        ')';
-
+    document.getElementById('teaserFallerStat').textContent =
+      document.getElementById('teaserGrid').classList.contains('is-unlocked')
+        ? '▼ ' + pctPoints(f.targetShareDelta).replace('-', '')
+        : pct(f.previous.targetSharePct) + ' → ' + pct(f.current.targetSharePct) + ' (' + pct(f.targetShareDelta) + ')';
 
     setTeaserAdpBadge(
-
-      document.getElementById(
-        'teaserFallerAdpBadge'
-      ),
-
-      f
-
-    );
-
-  }
-
-
-  renderMarketSnapshot(
-    data
-  );
-
-}
-
-
-/* ==========================================================
-   COMPACT UNLOCKED HEADLINE STRIP
-
-   Shown instead of the teaser cards once unlocked -- same
-   already-loaded data, no new fetch, no new calculation. Reuses
-   pctPoints() exactly as specified and setRisersFallersProfileTarget()
-   so the player name stays the actionable target for the Universal
-   Player Profile.
-   ========================================================== */
-
-function renderHeadlineStrip(data) {
-
-  if (
-    !data ||
-    (
-      !data.risers.length &&
-      !data.fallers.length
-    )
-  ) {
-
-    return;
-
-  }
-
-
-  if (
-    data.risers.length
-  ) {
-
-    var r =
-      data.risers[0];
-
-
-    var riserNameEl =
-      document.getElementById(
-        'headlineRiserName'
-      );
-
-
-    riserNameEl.textContent =
-      r.longName;
-
-
-    setRisersFallersProfileTarget(
-      riserNameEl,
-      r
-    );
-
-
-    document
-      .getElementById(
-        'headlineRiserDelta'
-      )
-      .textContent =
-
-        '▲ ' +
-        pctPoints(
-          r.targetShareDelta
-        );
-
-  }
-
-
-  if (
-    data.fallers.length
-  ) {
-
-    var f =
-      data.fallers[0];
-
-
-    var fallerNameEl =
-      document.getElementById(
-        'headlineFallerName'
-      );
-
-
-    fallerNameEl.textContent =
-      f.longName;
-
-
-    setRisersFallersProfileTarget(
-      fallerNameEl,
+      document.getElementById('teaserFallerAdpBadge'),
       f
     );
-
-
-    document
-      .getElementById(
-        'headlineFallerDelta'
-      )
-      .textContent =
-
-        '▼ ' +
-        pctPoints(
-          f.targetShareDelta
-        )
-        .replace(
-          '-',
-          ''
-        );
-
   }
 
+  renderMarketSnapshot(data);
 }
 
-
-/* ==========================================================
-   MARKET SNAPSHOT
-
-   Derived entirely from the same data object already loaded.
-   No new fetches.
-   ========================================================== */
+// ═══════════════════════════════════════════════════════════
+// MARKET SNAPSHOT (added) — derived entirely from the same `data`
+// object renderTeaser()/renderFullLists() already render from
+// (data.risers, data.fallers, data.playerCount). No new fetches, no
+// new calculations — Biggest Riser/Faller reuse the same risers[0]/
+// fallers[0] the teaser cards already show, "Most X By Position" is
+// a plain count over the existing pos field, and Market Activity
+// reuses the same playerCount the status bar already displays.
+// Reads the FULL risers/fallers arrays (not the pos-filter/hide-
+// top50-filtered subset), same way the teaser cards above don't
+// change with those filters either — this is a page-level snapshot,
+// not a filtered view. Called from renderTeaser(), which already
+// runs on every fresh-data render.
+// ═══════════════════════════════════════════════════════════
 
 function topPositionCount(list) {
-
   var counts = {};
 
+  list.forEach(function (e) {
+    counts[e.pos] = (counts[e.pos] || 0) + 1;
+  });
 
-  list.forEach(
-    function(e) {
+  var bestPos = null;
+  var bestCount = 0;
 
-      counts[e.pos] =
-        (counts[e.pos] || 0) + 1;
-
+  Object.keys(counts).forEach(function (pos) {
+    if (counts[pos] > bestCount) {
+      bestCount = counts[pos];
+      bestPos = pos;
     }
-  );
-
-
-  var bestPos =
-    null;
-
-
-  var bestCount =
-    0;
-
-
-  Object
-    .keys(counts)
-    .forEach(
-      function(pos) {
-
-        if (
-          counts[pos] >
-          bestCount
-        ) {
-
-          bestCount =
-            counts[pos];
-
-          bestPos =
-            pos;
-
-        }
-
-      }
-    );
-
+  });
 
   return bestPos
     ? {
@@ -1764,1447 +765,694 @@ function topPositionCount(list) {
         count: bestCount
       }
     : null;
-
 }
 
-
 function renderMarketSnapshot(data) {
+  var panel = document.getElementById('marketSnapshotList');
 
-  var panel =
-    document.getElementById(
-      'marketSnapshotList'
-    );
+  if (!panel) return;
 
-
-  if (!panel) {
+  if (!data || (!data.risers.length && !data.fallers.length)) {
+    panel.innerHTML = '';
     return;
   }
 
+  var html = '';
 
-  if (
-    !data ||
-    (
-      !data.risers.length &&
-      !data.fallers.length
-    )
-  ) {
-
-    panel.innerHTML =
-      '';
-
-    return;
-
-  }
-
-
-  var html =
-    '';
-
-
-  if (
-    data.risers.length
-  ) {
-
-    var topRiser =
-      data.risers[0];
-
+  if (data.risers.length) {
+    var topRiser = data.risers[0];
 
     html +=
-
       '<div class="market-snapshot-item">' +
-
-        '<div class="market-snapshot-label">' +
-          'Biggest Riser' +
-        '</div>' +
-
+        '<div class="market-snapshot-label">Biggest Riser</div>' +
         '<div class="market-snapshot-value"' +
           risersFallersProfileAttrs(topRiser) +
         '>' +
-
           topRiser.longName +
-
         '</div>' +
-
-        '<div class="market-snapshot-sub">' +
-          '▲ ' +
-          pctPoints(
-            topRiser.targetShareDelta
-          ) +
+        '<div class="market-snapshot-sub">▲ ' +
+          pctPoints(topRiser.targetShareDelta) +
         '</div>' +
-
       '</div>';
-
   }
 
-
-  if (
-    data.fallers.length
-  ) {
-
-    var topFaller =
-      data.fallers[0];
-
+  if (data.fallers.length) {
+    var topFaller = data.fallers[0];
 
     html +=
-
       '<div class="market-snapshot-item">' +
-
-        '<div class="market-snapshot-label">' +
-          'Biggest Faller' +
-        '</div>' +
-
+        '<div class="market-snapshot-label">Biggest Faller</div>' +
         '<div class="market-snapshot-value"' +
           risersFallersProfileAttrs(topFaller) +
         '>' +
-
           topFaller.longName +
-
         '</div>' +
-
-        '<div class="market-snapshot-sub">' +
-
-          '▼ ' +
-
-          pctPoints(
-            topFaller.targetShareDelta
-          )
-          .replace(
-            '-',
-            ''
-          ) +
-
+        '<div class="market-snapshot-sub">▼ ' +
+          pctPoints(topFaller.targetShareDelta).replace('-', '') +
         '</div>' +
-
       '</div>';
-
   }
 
-
-  var riserPos =
-    topPositionCount(
-      data.risers
-    );
-
+  var riserPos = topPositionCount(data.risers);
 
   if (riserPos) {
-
     html +=
-
       '<div class="market-snapshot-item">' +
-
-        '<div class="market-snapshot-label">' +
-          'Most Risers' +
-        '</div>' +
-
+        '<div class="market-snapshot-label">Most Risers</div>' +
         '<div class="market-snapshot-value">' +
-
           riserPos.pos +
           ' · ' +
           riserPos.count +
-
         '</div>' +
-
       '</div>';
-
   }
 
-
-  var fallerPos =
-    topPositionCount(
-      data.fallers
-    );
-
+  var fallerPos = topPositionCount(data.fallers);
 
   if (fallerPos) {
-
     html +=
-
       '<div class="market-snapshot-item">' +
-
-        '<div class="market-snapshot-label">' +
-          'Most Fallers' +
-        '</div>' +
-
+        '<div class="market-snapshot-label">Most Fallers</div>' +
         '<div class="market-snapshot-value">' +
-
           fallerPos.pos +
           ' · ' +
           fallerPos.count +
-
         '</div>' +
-
       '</div>';
-
   }
 
-
-  if (
-    typeof data.playerCount ===
-    'number'
-  ) {
-
+  if (typeof data.playerCount === 'number') {
     html +=
-
       '<div class="market-snapshot-item">' +
-
-        '<div class="market-snapshot-label">' +
-          'Players Compared' +
-        '</div>' +
-
+        '<div class="market-snapshot-label">Players Compared</div>' +
         '<div class="market-snapshot-value">' +
-
           data.playerCount +
-
         '</div>' +
-
       '</div>';
-
   }
 
-
-  panel.innerHTML =
-    html;
-
+  panel.innerHTML = html;
 }
 
-
-/* ==========================================================
-   PLAYER ROW
-   ========================================================== */
-
-function playerRow(
-  entry,
-  direction,
-  rank
-) {
-
-  var deltaClass =
-    direction === 'riser'
-      ? 'up'
-      : 'down';
-
-
-  var deltaArrow =
-    direction === 'riser'
-      ? '▲'
-      : '▼';
-
-
-  var deltaText =
-    pctPoints(
-      entry.targetShareDelta
-    );
-
-
-  if (
-    direction === 'faller'
-  ) {
-
-    deltaText =
-      deltaText.replace(
-        '-',
-        ''
-      );
-
-  }
-
-
-  var rankText =
-    String(rank)
-      .padStart(
-        2,
-        '0'
-      );
-
-
-  var isTop50 =
-
-    top50AdpNames &&
-
-    top50AdpNames.has(
-      normalizeName(
-        entry.longName
-      )
-    );
-
-
-  var adpBadge =
-
-    isTop50
-
-      ? '<span class="adp-badge" title="Inside the Top 50 overall ADP — a one-week dip here is often normal variance for an established name, not a role change. See How to Use This Page for more.">TOP 50 ADP</span>'
-
-      : '';
-
-
-  return (
-
-    '<div class="player-row">' +
-
-
-      '<div class="player-row-top">' +
-
-
-        '<div class="player-name-block">' +
-
-
-          '<span class="player-rank">' +
-            rankText +
-          '</span>' +
-
-
-          '<span class="pos-badge ' +
-            entry.pos +
-          '">' +
-
-            entry.pos +
-
-          '</span>' +
-
-
-          '<span class="player-name"' +
-            risersFallersProfileAttrs(entry) +
-          '>' +
-
-            entry.longName +
-
-          '</span>' +
-
-
-        '</div>' +
-
-
-        '<span class="delta-val ' +
-          deltaClass +
-        '">' +
-
-          deltaArrow +
-          ' ' +
-          deltaText +
-
-        '</span>' +
-
-
-      '</div>' +
-
-
-      '<div class="player-identity-line">' +
-
-
-        '<span class="player-team">' +
-
-          correctedTeam(entry) +
-
-        '</span>' +
-
-
-        adpBadge +
-
-
-      '</div>' +
-
-
-      '<div class="player-row-detail">' +
-
-
-        '<span class="player-stat-emphasis">' +
-
-          'Target Share: ' +
-
-          pct(
-            entry.previous.targetSharePct
-          ) +
-
-          ' → ' +
-
-          pct(
-            entry.current.targetSharePct
-          ) +
-
-        '</span>' +
-
-
-        '<span class="player-stat-secondary">' +
-
-          ' &nbsp;·&nbsp; Snap Share: ' +
-
-          pct(
-            entry.previous.offSnapPct
-          ) +
-
-          ' → ' +
-
-          pct(
-            entry.current.offSnapPct
-          ) +
-
-
-          ' &nbsp;·&nbsp; Targets: ' +
-
-          entry.previous.targets +
-
-          ' → ' +
-
-          entry.current.targets +
-
-        '</span>' +
-
-
-      '</div>' +
-
-
-    '</div>'
-
+function playerRow(entry, direction, rank) {
+  var deltaClass = direction === 'riser'
+    ? 'up'
+    : 'down';
+
+  var deltaArrow = direction === 'riser'
+    ? '▲'
+    : '▼';
+
+  var deltaText = pctPoints(
+    entry.targetShareDelta
   );
 
-}
-
-
-/* ==========================================================
-   FILTERS
-   ========================================================== */
-
-function setPosFilter(pos) {
-
-  curPosFilter =
-    pos;
-
-
-  document
-    .querySelectorAll(
-      '.pos-filter-btn'
-    )
-    .forEach(
-      function(btn) {
-
-        btn.classList.toggle(
-
-          'active',
-
-          btn.dataset.pos === pos
-
-        );
-
-      }
-    );
-
-
-  if (latestData) {
-
-    renderFullLists(
-      latestData
-    );
-
+  if (direction === 'faller') {
+    deltaText = deltaText.replace('-', '');
   }
 
+  var rankText = String(rank).padStart(
+    2,
+    '0'
+  );
+
+  var isTop50 =
+    top50AdpNames &&
+    top50AdpNames.has(
+      normalizeName(entry.longName)
+    );
+
+  var adpBadge = isTop50
+    ? '<span class="adp-badge" title="Inside the Top 50 overall ADP — a one-week dip here is often normal variance for an established name, not a role change. See How to Use This Page for more.">TOP 50 ADP</span>'
+    : '';
+
+  return '<div class="player-row">' +
+
+    '<div class="player-row-top">' +
+
+      '<div class="player-name-block">' +
+
+        '<span class="player-rank">' +
+          rankText +
+        '</span>' +
+
+        '<span class="pos-badge ' +
+          entry.pos +
+        '">' +
+          entry.pos +
+        '</span>' +
+
+        '<span class="player-name"' +
+          risersFallersProfileAttrs(entry) +
+        '>' +
+          entry.longName +
+        '</span>' +
+
+      '</div>' +
+
+      '<span class="delta-val ' +
+        deltaClass +
+      '">' +
+        deltaArrow +
+        ' ' +
+        deltaText +
+      '</span>' +
+
+    '</div>' +
+
+    '<div class="player-context-line">' +
+
+      '<span class="player-team">' +
+        correctedTeam(entry) +
+      '</span>' +
+
+      adpBadge +
+
+    '</div>' +
+
+    '<div class="player-row-detail">' +
+
+      'Target share: ' +
+
+      '<span class="player-primary-metric">' +
+        pct(entry.previous.targetSharePct) +
+        ' → ' +
+        pct(entry.current.targetSharePct) +
+      '</span>' +
+
+      ' &nbsp;·&nbsp; Snap share: ' +
+      pct(entry.previous.offSnapPct) +
+      ' → ' +
+      pct(entry.current.offSnapPct) +
+
+      ' &nbsp;·&nbsp; Targets: ' +
+      entry.previous.targets +
+      ' → ' +
+      entry.current.targets +
+
+    '</div>' +
+
+  '</div>';
 }
 
+function setPosFilter(pos) {
+  curPosFilter = pos;
+
+  document.querySelectorAll('.pos-filter-btn').forEach(function(btn){
+    btn.classList.toggle(
+      'active',
+      btn.dataset.pos === pos
+    );
+  });
+
+  if (latestData) {
+    renderFullLists(latestData);
+  }
+}
 
 function toggleHideTop50() {
-
-  hideTop50 =
-    !hideTop50;
-
+  hideTop50 = !hideTop50;
 
   document
-    .getElementById(
-      'hideTop50Btn'
-    )
+    .getElementById('hideTop50Btn')
     .classList
     .toggle(
       'active',
       hideTop50
     );
 
-
   if (latestData) {
-
-    renderFullLists(
-      latestData
-    );
-
+    renderFullLists(latestData);
   }
-
 }
-
 
 function isTop50Adp(entry) {
-
   return !!(
-
     top50AdpNames &&
-
     top50AdpNames.has(
-      normalizeName(
-        entry.longName
-      )
+      normalizeName(entry.longName)
     )
-
   );
-
 }
-
-
-/* ==========================================================
-   FULL LISTS
-   ========================================================== */
 
 function renderFullLists(data) {
+  var grid = document.getElementById('listsGrid');
 
-  var grid =
-    document.getElementById(
-      'listsGrid'
-    );
-
-
-  if (
-    !data.risers.length &&
-    !data.fallers.length
-  ) {
-
+  if (!data.risers.length && !data.fallers.length) {
     grid.innerHTML =
-
       '<div class="empty-state" style="grid-column:1/-1">' +
-
-        '<div class="empty-icon">' +
-          '📊' +
-        '</div>' +
-
-        '<div class="empty-title">' +
-          'No trend data yet' +
-        '</div>' +
-
-        '<div class="empty-sub">' +
-
-          'Risers &amp; Fallers needs at least two completed weeks of the season to compare. ' +
-          'Check back once Week 2 wraps up.' +
-
-        '</div>' +
-
+        '<div class="empty-icon">📊</div>' +
+        '<div class="empty-title">No trend data yet</div>' +
+        '<div class="empty-sub">Risers &amp; Fallers needs at least two completed weeks of the season to compare. Check back once Week 2 wraps up.</div>' +
       '</div>';
 
-
     return;
-
   }
 
-
-  var risersFiltered =
-
-    data.risers.filter(
-      function(e) {
-
-        if (
-          curPosFilter !== 'ALL' &&
-          e.pos !== curPosFilter
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          hideTop50 &&
-          isTop50Adp(e)
-        ) {
-
-          return false;
-
-        }
-
-
-        return true;
-
-      }
-    );
-
-
-  var fallersFiltered =
-
-    data.fallers.filter(
-      function(e) {
-
-        if (
-          curPosFilter !== 'ALL' &&
-          e.pos !== curPosFilter
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          hideTop50 &&
-          isTop50Adp(e)
-        ) {
-
-          return false;
-
-        }
-
-
-        return true;
-
-      }
-    );
-
-
-  var risersHtml =
-
-    risersFiltered
-
-      .slice(
-        0,
-        15
-      )
-
-      .map(
-        function(
-          e,
-          index
-        ) {
-
-          return playerRow(
-            e,
-            'riser',
-            index + 1
-          );
-
-        }
-      )
-
-      .join('');
-
-
-  var fallersHtml =
-
-    fallersFiltered
-
-      .slice(
-        0,
-        15
-      )
-
-      .map(
-        function(
-          e,
-          index
-        ) {
-
-          return playerRow(
-            e,
-            'faller',
-            index + 1
-          );
-
-        }
-      )
-
-      .join('');
-
-
-  var filterLabel =
-
-    curPosFilter === 'ALL'
-      ? ''
-      : curPosFilter + ' ';
-
-
-  var top50Label =
-
-    hideTop50
-      ? ' outside the Top 50 ADP'
-      : '';
-
-
-  var noRisers =
-
-    !risersFiltered.length
-
-      ? '<div class="empty-state">' +
-
-          '<div class="empty-icon">' +
-            '📈' +
-          '</div>' +
-
-          '<div class="empty-sub">' +
-
-            'No ' +
-            filterLabel +
-            'risers' +
-            top50Label +
-            ' this week.' +
-
-          '</div>' +
-
-        '</div>'
-
-      : risersHtml;
-
-
-  var noFallers =
-
-    !fallersFiltered.length
-
-      ? '<div class="empty-state">' +
-
-          '<div class="empty-icon">' +
-            '📉' +
-          '</div>' +
-
-          '<div class="empty-sub">' +
-
-            'No ' +
-            filterLabel +
-            'fallers' +
-            top50Label +
-            ' this week.' +
-
-          '</div>' +
-
-        '</div>'
-
-      : fallersHtml;
-
+  var risersFiltered = data.risers.filter(function(e){
+    if (
+      curPosFilter !== 'ALL' &&
+      e.pos !== curPosFilter
+    ) {
+      return false;
+    }
+
+    if (
+      hideTop50 &&
+      isTop50Adp(e)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  var fallersFiltered = data.fallers.filter(function(e){
+    if (
+      curPosFilter !== 'ALL' &&
+      e.pos !== curPosFilter
+    ) {
+      return false;
+    }
+
+    if (
+      hideTop50 &&
+      isTop50Adp(e)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  var risersHtml = risersFiltered
+    .slice(0, 15)
+    .map(function(e, index){
+      return playerRow(
+        e,
+        'riser',
+        index + 1
+      );
+    })
+    .join('');
+
+  var fallersHtml = fallersFiltered
+    .slice(0, 15)
+    .map(function(e, index){
+      return playerRow(
+        e,
+        'faller',
+        index + 1
+      );
+    })
+    .join('');
+
+  var filterLabel = curPosFilter === 'ALL'
+    ? ''
+    : curPosFilter + ' ';
+
+  var top50Label = hideTop50
+    ? ' outside the Top 50 ADP'
+    : '';
+
+  var noRisers = !risersFiltered.length
+    ? '<div class="empty-state">' +
+        '<div class="empty-icon">📈</div>' +
+        '<div class="empty-sub">No ' +
+          filterLabel +
+          'risers' +
+          top50Label +
+          ' this week.' +
+        '</div>' +
+      '</div>'
+    : risersHtml;
+
+  var noFallers = !fallersFiltered.length
+    ? '<div class="empty-state">' +
+        '<div class="empty-icon">📉</div>' +
+        '<div class="empty-sub">No ' +
+          filterLabel +
+          'fallers' +
+          top50Label +
+          ' this week.' +
+        '</div>' +
+      '</div>'
+    : fallersHtml;
 
   grid.innerHTML =
-
     '<div class="list-col">' +
-
       '<div class="list-hdr riser">' +
-
-        '<span class="list-hdr-title">' +
-          '📈 Top Risers' +
-        '</span>' +
-
+        '<span class="list-hdr-title">📈 Top Risers</span>' +
       '</div>' +
-
       noRisers +
-
     '</div>' +
 
-
     '<div class="list-col">' +
-
       '<div class="list-hdr faller">' +
-
-        '<span class="list-hdr-title">' +
-          '📉 Top Fallers' +
-        '</span>' +
-
+        '<span class="list-hdr-title">📉 Top Fallers</span>' +
       '</div>' +
-
       noFallers +
-
     '</div>';
-
 }
-
-
-/* ==========================================================
-   PAYWALL
-   ========================================================== */
 
 function unlockFullLists() {
+  document.getElementById('paywallArea').style.display = 'none';
+  document.getElementById('fullListsArea').style.display = 'block';
 
-  document
-    .getElementById(
-      'paywallArea'
-    )
-    .style.display =
-      'none';
+  var teaserGrid = document.getElementById('teaserGrid');
 
-
-  document
-    .getElementById(
-      'teaserGrid'
-    )
-    .style.display =
-      'none';
-
-
-  document
-    .getElementById(
-      'headlineStrip'
-    )
-    .style.display =
-      'grid';
-
-
-  document
-    .getElementById(
-      'fullListsArea'
-    )
-    .style.display =
-      'block';
-
-
-  if (latestData) {
-
-    renderHeadlineStrip(
-      latestData
-    );
-
-
-    renderFullLists(
-      latestData
-    );
-
+  if (teaserGrid) {
+    teaserGrid.classList.add('is-unlocked');
   }
 
+  if (latestData) {
+    renderTeaser(latestData);
+    renderFullLists(latestData);
+  }
 }
 
-
 function checkPaywallPasscode() {
+  var input = document.getElementById('paywallInput');
+  var err = document.getElementById('paywallError');
 
-  var input =
-    document.getElementById(
-      'paywallInput'
-    );
+  var entered = input.value
+    .trim()
+    .toUpperCase();
 
-
-  var err =
-    document.getElementById(
-      'paywallError'
-    );
-
-
-  var entered =
-    input.value
-      .trim()
-      .toUpperCase();
-
-
-  if (
-    entered ===
-    ALLOWLIST_PASSCODE
-  ) {
-
+  if (entered === ALLOWLIST_PASSCODE) {
     try {
-
       sessionStorage.setItem(
-
         GATE_STORAGE_KEY,
-
         'true'
-
       );
-
-    }
-    catch (e) {}
-
+    } catch (e) {}
 
     unlockFullLists();
 
-  }
-  else {
-
-    err.classList.add(
-      'show'
-    );
-
-
-    input.value =
-      '';
-
-
+  } else {
+    err.classList.add('show');
+    input.value = '';
     input.focus();
-
   }
-
 }
-
 
 function enterPreviewMode() {
-
   try {
-
     sessionStorage.setItem(
-
       PREVIEW_STORAGE_KEY,
-
       'true'
-
     );
+  } catch (e) {}
 
-  }
-  catch (e) {}
-
-
-  document
-    .getElementById(
-      'paywallArea'
-    )
-    .innerHTML =
-
-      '<div class="preview-banner">' +
-
-        '👁 <strong>You\u2019re viewing a sample preview</strong> — ' +
-
-        'full Risers &amp; Fallers list below, no real subscription required. ' +
-
-        '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">' +
-
-          '⚔️ Become a Founding Acolyte' +
-
-        '</a> ' +
-
-        'to unlock everything sitewide.' +
-
-      '</div>';
-
+  document.getElementById('paywallArea').innerHTML =
+    '<div class="preview-banner">' +
+      '👁 <strong>You\u2019re viewing a sample preview</strong> — ' +
+      'full Risers &amp; Fallers list below, no real subscription required. ' +
+      '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">' +
+        '⚔️ Become a Founding Acolyte' +
+      '</a> to unlock everything sitewide.' +
+    '</div>';
 
   unlockFullLists();
-
 }
-
 
 function checkGateUnlocked() {
-
   try {
-
-    return (
-      sessionStorage.getItem(
-        GATE_STORAGE_KEY
-      ) === 'true'
-    );
-
-  }
-  catch (e) {
-
+    return sessionStorage.getItem(
+      GATE_STORAGE_KEY
+    ) === 'true';
+  } catch (e) {
     return false;
-
   }
-
 }
-
 
 function checkPreviewMode() {
-
   try {
-
-    return (
-      sessionStorage.getItem(
-        PREVIEW_STORAGE_KEY
-      ) === 'true'
-    );
-
-  }
-  catch (e) {
-
+    return sessionStorage.getItem(
+      PREVIEW_STORAGE_KEY
+    ) === 'true';
+  } catch (e) {
     return false;
-
   }
-
 }
 
-
 function checkOAuthSession() {
-
   return fetch(
-
     '/.netlify/functions/verify-session',
-
     {
       credentials: 'same-origin'
     }
-
   )
+    .then(function (res) {
+      return res.ok
+        ? res.json()
+        : null;
+    })
+    .then(function (data) {
+      if (
+        data &&
+        data.fullAccess === true
+      ) {
+        try {
+          sessionStorage.setItem(
+            GATE_STORAGE_KEY,
+            'true'
+          );
+        } catch (e) {}
 
-    .then(
-      function(res) {
+        unlockFullLists();
 
-        return res.ok
-          ? res.json()
-          : null;
-
+        return true;
       }
-    )
 
-    .then(
-      function(data) {
-
-        if (
-          data &&
-          data.fullAccess === true
-        ) {
-
-          try {
-
-            sessionStorage.setItem(
-
-              GATE_STORAGE_KEY,
-
-              'true'
-
-            );
-
-          }
-          catch (e) {}
-
-
-          unlockFullLists();
-
-
-          return true;
-
-        }
-
-
-        return false;
-
-      }
-    )
-
-    .catch(
-      function() {
-
-        return false;
-
-      }
-    );
-
+      return false;
+    })
+    .catch(function () {
+      return false;
+    });
 }
 
-
-/* ==========================================================
-   LOAD DATA
-   ========================================================== */
-
 async function loadData() {
-
   setStatus(
     'loading',
     'Loading trend data...'
   );
 
-
   fetchTop50AdpNames()
+    .then(function(names){
+      top50AdpNames = names;
 
-    .then(
-      function(names) {
+      if (latestData) {
+        renderTeaser(latestData);
 
-        top50AdpNames =
-          names;
-
-
-        if (latestData) {
-
-          renderTeaser(
-            latestData
-          );
-
-
-          if (
-            document
-              .getElementById(
-                'fullListsArea'
-              )
-              .style.display !==
-              'none'
-          ) {
-
-            renderHeadlineStrip(
-              latestData
-            );
-
-
-            renderFullLists(
-              latestData
-            );
-
-          }
-
+        if (
+          document
+            .getElementById('fullListsArea')
+            .style
+            .display !== 'none'
+        ) {
+          renderFullLists(latestData);
         }
-
       }
-    );
-
+    });
 
   fetchTank01PlayerMap()
+    .then(function(map){
+      tank01TeamMap = map;
 
-    .then(
-      function(map) {
+      if (latestData) {
+        renderTeaser(latestData);
 
-        tank01TeamMap =
-          map;
-
-
-        if (latestData) {
-
-          renderTeaser(
-            latestData
-          );
-
-
-          if (
-            document
-              .getElementById(
-                'fullListsArea'
-              )
-              .style.display !==
-              'none'
-          ) {
-
-            renderHeadlineStrip(
-              latestData
-            );
-
-
-            renderFullLists(
-              latestData
-            );
-
-          }
-
+        if (
+          document
+            .getElementById('fullListsArea')
+            .style
+            .display !== 'none'
+        ) {
+          renderFullLists(latestData);
         }
-
       }
-    )
-
-    .catch(
-      function() {
-
-        /* map stays null */
-
-      }
-    );
-
+    })
+    .catch(function(){
+      /* map stays null — entries fall back to their own team field, unchanged behavior */
+    });
 
   try {
+    var res = await fetch(
+      '/.netlify/functions/get-risers-fallers'
+    );
 
-    var res =
+    var data = await res.json();
 
-      await fetch(
-        '/.netlify/functions/get-risers-fallers'
-      );
-
-
-    var data =
-
-      await res.json();
-
-
-    if (
-      data.status !== 'Success'
-    ) {
-
+    if (data.status !== 'Success') {
       setStatus(
         'error',
         'Trend data unavailable'
       );
 
-
       return;
-
     }
 
-
-    latestData =
-      data;
-
+    latestData = data;
 
     document
-      .getElementById(
-        'weekBadge'
-      )
+      .getElementById('weekBadge')
       .textContent =
-
         'Week ' +
         data.previousWeek +
         ' → Week ' +
         data.currentWeek;
 
-
     setStatus(
-
       'live',
-
       data.playerCount +
       ' players compared · ' +
-      new Date(
-        data.computedAt
-      )
-      .toLocaleDateString()
-
+      new Date(data.computedAt).toLocaleDateString()
     );
 
-
-    renderTeaser(
-      data
-    );
-
+    renderTeaser(data);
 
     if (
       checkGateUnlocked() ||
       checkPreviewMode()
     ) {
-
       unlockFullLists();
-
-    }
-    else {
-
+    } else {
       checkOAuthSession();
-
     }
 
-  }
-  catch (e) {
-
+  } catch (e) {
     setStatus(
-
       'error',
-
       'Trend data unavailable — try refreshing'
-
     );
-
   }
-
 }
 
-
-/* ==========================================================
-   PLAYER PROFILE EVENT HANDLERS
-   ========================================================== */
-
+// Universal Player Profile V1 — delegated interaction so dynamically
+// rendered teaser/list/snapshot names all share one safe handler.
 document.addEventListener(
-
   'click',
+  function (event) {
+    var target = event.target.closest(
+      '[data-rf-profile-id]'
+    );
 
-  function(event) {
-
-    var target =
-      event.target.closest(
-        '[data-rf-profile-id]'
-      );
-
-
-    if (!target) {
-      return;
-    }
-
+    if (!target) return;
 
     openRisersFallersPlayerProfile(
-
       target.getAttribute(
         'data-rf-profile-id'
       )
-
     );
-
   }
-
 );
 
-
 document.addEventListener(
-
   'keydown',
-
-  function(event) {
-
+  function (event) {
     if (
       event.key !== 'Enter' &&
       event.key !== ' '
     ) {
-
-      return;
-
-    }
-
-
-    var target =
-      event.target.closest(
-        '[data-rf-profile-id]'
-      );
-
-
-    if (!target) {
       return;
     }
 
+    var target = event.target.closest(
+      '[data-rf-profile-id]'
+    );
+
+    if (!target) return;
 
     event.preventDefault();
 
-
     openRisersFallersPlayerProfile(
-
       target.getAttribute(
         'data-rf-profile-id'
       )
-
     );
-
   }
-
 );
-
 
 loadData();
-
 </script>
-
 
 <script>
-
-/* ==========================================================
-   GROUPED DROPDOWN NAV
-   ========================================================== */
-
+// ADDED — grouped dropdown nav toggle
 function toggleNavDropdown(id) {
+  var target = document.getElementById(id);
 
-  var target =
-    document.getElementById(
-      id
-    );
-
-
-  var wasOpen =
-    target.classList.contains(
-      'open'
-    );
-
+  var wasOpen = target.classList.contains(
+    'open'
+  );
 
   document
-    .querySelectorAll(
-      '.nav-dropdown.open'
-    )
-    .forEach(
-      function(d) {
-
-        d.classList.remove(
-          'open'
-        );
-
-      }
-    );
-
+    .querySelectorAll('.nav-dropdown.open')
+    .forEach(function (d) {
+      d.classList.remove('open');
+    });
 
   if (!wasOpen) {
-
-    target.classList.add(
-      'open'
-    );
-
+    target.classList.add('open');
   }
-
 }
 
-
 document.addEventListener(
-
   'click',
-
-  function(e) {
-
-    if (
-      !e.target.closest(
-        '.nav-dropdown'
-      )
-    ) {
-
+  function (e) {
+    if (!e.target.closest('.nav-dropdown')) {
       document
-        .querySelectorAll(
-          '.nav-dropdown.open'
-        )
-        .forEach(
-          function(d) {
-
-            d.classList.remove(
-              'open'
-            );
-
-          }
-        );
-
+        .querySelectorAll('.nav-dropdown.open')
+        .forEach(function (d) {
+          d.classList.remove('open');
+        });
     }
-
   }
-
 );
-
 </script>
-
 
 <script src="/league-connection.js"></script>
 
-
 <script>
-
 (function showConnectionBanner() {
-
   if (
-    typeof LeagueConnection ===
-    'undefined'
+    typeof LeagueConnection === 'undefined'
   ) {
-
     return;
-
   }
 
-
-  var active =
-    LeagueConnection
-      .getActiveProvider();
-
+  var active = LeagueConnection.getActiveProvider();
 
   if (!active) {
     return;
   }
 
+  var label = LeagueConnection.PROVIDERS[active]
+    ? LeagueConnection.PROVIDERS[active].label
+    : active;
 
-  var label =
+  var banner = document.getElementById(
+    'connectionBanner'
+  );
 
-    LeagueConnection.PROVIDERS[active]
-
-      ? LeagueConnection
-          .PROVIDERS[active]
-          .label
-
-      : active;
-
-
-  var banner =
-    document.getElementById(
-      'connectionBanner'
-    );
-
-
-  var text =
-    document.getElementById(
-      'connectionBannerText'
-    );
-
+  var text = document.getElementById(
+    'connectionBannerText'
+  );
 
   if (
     !banner ||
     !text
   ) {
-
     return;
-
   }
 
-
   text.textContent =
-
     '🔗 Connected to ' +
-
     label +
-
     ' — Risers & Fallers is league-wide trend data, not tied to your roster, but your connection is recognized site-wide.';
 
-
-  banner.classList.add(
-    'show'
-  );
-
+  banner.classList.add('show');
 })();
-
 </script>
 
 </body>
