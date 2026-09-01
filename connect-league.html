@@ -491,136 +491,6 @@ body{
   font-family:'JetBrains Mono',monospace;
 }
 
-.cbs-bookmark-install{
-  background:rgba(201,168,76,0.07);
-  border:1px solid rgba(201,168,76,0.28);
-  border-radius:8px;
-  padding:14px;
-  margin-bottom:16px;
-  text-align:center;
-}
-
-.cbs-bookmark-install strong{
-  display:block;
-  color:#e1c36a;
-  font-family:'Cinzel',serif;
-  font-size:12px;
-  letter-spacing:0.5px;
-  margin-bottom:6px;
-}
-
-.cbs-bookmark-install p{
-  color:#a08a5a;
-  font-size:11px;
-  line-height:1.6;
-  margin:0 0 10px;
-}
-
-.cbs-bookmark-link{
-  display:inline-block;
-  background:linear-gradient(135deg,#c9a84c,#8b6914);
-  color:#0a0600;
-  font-family:'Cinzel',serif;
-  font-size:12px;
-  font-weight:600;
-  letter-spacing:0.6px;
-  text-decoration:none;
-  border-radius:7px;
-  padding:10px 14px;
-  cursor:grab;
-  user-select:none;
-}
-
-.cbs-bookmark-link:active{
-  cursor:grabbing;
-}
-
-.cbs-bookmark-tip{
-  display:block;
-  margin-top:9px;
-  color:#7a6a45;
-  font-family:'JetBrains Mono',monospace;
-  font-size:9px;
-  line-height:1.5;
-}
-
-.cbs-mobile-install{
-  background:rgba(201,168,76,0.07);
-  border:1px solid rgba(201,168,76,0.28);
-  border-radius:8px;
-  padding:14px;
-  margin-bottom:16px;
-  text-align:left;
-}
-
-.cbs-mobile-title{
-  color:#e1c36a;
-  font-family:'Cinzel',serif;
-  font-size:13px;
-  letter-spacing:0.5px;
-  margin-bottom:7px;
-}
-
-.cbs-mobile-copy{
-  width:100%;
-  padding:12px 14px;
-  background:linear-gradient(135deg,#c9a84c,#8b6914);
-  color:#0a0600;
-  font-family:'Cinzel',serif;
-  font-size:12px;
-  font-weight:600;
-  border:none;
-  border-radius:7px;
-  cursor:pointer;
-  letter-spacing:0.5px;
-  margin:8px 0 10px;
-}
-
-.cbs-mobile-copy:active{
-  transform:translateY(1px);
-}
-
-.cbs-mobile-status{
-  min-height:18px;
-  font-family:'JetBrains Mono',monospace;
-  font-size:10px;
-  color:#a8d5a8;
-  margin-top:6px;
-}
-
-.cbs-mobile-step{
-  display:flex;
-  gap:9px;
-  align-items:flex-start;
-  margin:10px 0;
-  color:#a08a5a;
-  font-size:12px;
-  line-height:1.55;
-}
-
-.cbs-mobile-step-num{
-  width:20px;
-  height:20px;
-  min-width:20px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:rgba(201,168,76,0.13);
-  color:#e1c36a;
-  font-family:'JetBrains Mono',monospace;
-  font-size:10px;
-  margin-top:1px;
-}
-
-.cbs-mobile-note{
-  color:#7a6a45;
-  font-family:'JetBrains Mono',monospace;
-  font-size:9px;
-  line-height:1.55;
-  margin-top:10px;
-}
-
 .connect-btn{
   width:100%;
   padding:14px 20px;
@@ -701,6 +571,88 @@ body{
   background:rgba(21,101,192,0.08);
   border:1px solid rgba(80,140,210,0.25);
   color:#9ebfe6;
+}
+
+.chatgpt-link-panel{
+  display:none;
+  margin:0 0 20px;
+  padding:14px;
+  border:1px solid rgba(201,168,76,0.22);
+  border-radius:10px;
+  background:rgba(255,255,255,0.025);
+  text-align:left;
+}
+
+.chatgpt-link-panel.show{
+  display:block;
+}
+
+.chatgpt-link-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.chatgpt-link-title{
+  font-family:'Cinzel',serif;
+  font-size:13px;
+  color:#f2f1ef;
+  letter-spacing:0.5px;
+}
+
+.chatgpt-link-status{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  color:#8a7a55;
+  white-space:nowrap;
+}
+
+.chatgpt-link-status.ready{
+  color:#7dbb7d;
+}
+
+.chatgpt-link-copy{
+  font-size:11px;
+  color:#a08a5a;
+  line-height:1.6;
+  margin-bottom:12px;
+}
+
+.chatgpt-link-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.chatgpt-link-actions .connect-btn,
+.chatgpt-link-actions .secondary-btn{
+  width:auto;
+  flex:1;
+  min-width:170px;
+  margin-top:0;
+}
+
+.chatgpt-link-message{
+  display:none;
+  margin-top:10px;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.chatgpt-link-message.show{
+  display:block;
+}
+
+.chatgpt-link-message.success{
+  color:#a8d5a8;
+}
+
+.chatgpt-link-message.error{
+  color:#f0a8a8;
 }
 
 .applies-everywhere{
@@ -851,6 +803,52 @@ fbq('track','PageView');
       id="platformRow"
     ></div>
 
+    <div
+      class="chatgpt-link-panel"
+      id="chatgptLinkPanel"
+    >
+      <div class="chatgpt-link-head">
+        <div class="chatgpt-link-title">ChatGPT</div>
+        <div
+          class="chatgpt-link-status"
+          id="chatgptLinkStatus"
+        >
+          Not linked
+        </div>
+      </div>
+
+      <div
+        class="chatgpt-link-copy"
+        id="chatgptLinkCopy"
+      >
+        Use your connected league with Inner Sanctum inside ChatGPT.
+      </div>
+
+      <div class="chatgpt-link-actions">
+        <button
+          class="connect-btn"
+          id="chatgptLinkButton"
+          onclick="linkActiveLeagueToChatGpt()"
+        >
+          Use with ChatGPT
+        </button>
+
+        <button
+          class="secondary-btn"
+          id="chatgptUnlinkButton"
+          onclick="unlinkActiveLeagueFromChatGpt()"
+          style="display:none"
+        >
+          Unlink
+        </button>
+      </div>
+
+      <div
+        class="chatgpt-link-message"
+        id="chatgptLinkMessage"
+      ></div>
+    </div>
+
     <div id="providerForms"></div>
 
     <div class="applies-everywhere">
@@ -934,13 +932,6 @@ document.addEventListener(
 var selectedProvider =
   "cbs";
 
-/*
-  CBS browser-handoff state.
-
-  startCbsConnect() opens CBS in a script-created tab/window and keeps
-  the WindowProxy here. When the CBS bookmarklet finishes captureAll(),
-  it can post the sanitized result back to this exact opener window.
-*/
 var cbsConnectWindow =
   null;
 
@@ -950,29 +941,11 @@ var CBS_CAPTURE_MESSAGE =
 var CBS_FANTASY_ORIGIN =
   /^https:\/\/[^.]+\.football\.cbssports\.com$/i;
 
-/*
-  Added for account-level CBS league discovery (Phase 1). Kept
-  separate from CBS_CAPTURE_MESSAGE/CBS_FANTASY_ORIGIN above so the
-  existing capture-message security checks are not loosened — the
-  discovery branch in the message listener below only ever accepts
-  CBS_DISCOVERY_MESSAGE from CBS_ACCOUNT_ORIGIN, never the reverse.
-*/
-var CBS_DISCOVERY_MESSAGE =
-  "INNER_SANCTUM_CBS_DISCOVERY_RESULT";
+var CHATGPT_LINK_STORAGE_KEY =
+  "innerSanctum_chatgptLeagueLinks";
 
-var CBS_ACCOUNT_ORIGIN =
-  /^https:\/\/(www\.)?cbssports\.com$/i;
-
-/*
-  Holds the leagues discoverLeagues() found, so the multi-league
-  selector's click handler can navigate using the exact URL CBS
-  itself returned — never a URL built from user input.
-*/
-var discoveredCbsLeagues =
-  [];
-
-var CBS_MOBILE_PENDING_LEAGUE_KEY =
-  "innerSanctum.cbs.mobilePendingLeague";
+var CHATGPT_LINK_ENDPOINT =
+  "/.netlify/functions/league-snapshot";
 
 var STATUS_LABELS = {
   live:
@@ -990,6 +963,868 @@ var STATUS_LABELS = {
   beta:
     "Beta",
 };
+
+/*
+  ================================================================
+  CHATGPT LEAGUE LINK
+  ================================================================
+*/
+
+function readChatGptLinkState() {
+  try {
+    var raw =
+      localStorage.getItem(
+        CHATGPT_LINK_STORAGE_KEY
+      );
+
+    if (!raw) {
+      return {};
+    }
+
+    var parsed =
+      JSON.parse(raw);
+
+    return (
+      parsed &&
+      typeof parsed ===
+        "object"
+    )
+      ? parsed
+      : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function writeChatGptLinkState(
+  state
+) {
+  localStorage.setItem(
+    CHATGPT_LINK_STORAGE_KEY,
+    JSON.stringify(
+      state || {}
+    )
+  );
+}
+
+function getChatGptLinkForProvider(
+  provider
+) {
+  var state =
+    readChatGptLinkState();
+
+  return (
+    provider &&
+    state[provider]
+  )
+    ? state[provider]
+    : null;
+}
+
+function saveChatGptLinkForProvider(
+  provider,
+  linkData
+) {
+  var state =
+    readChatGptLinkState();
+
+  state[provider] =
+    linkData;
+
+  writeChatGptLinkState(
+    state
+  );
+}
+
+function clearChatGptLinkForProvider(
+  provider
+) {
+  var state =
+    readChatGptLinkState();
+
+  if (
+    provider &&
+    Object.prototype
+      .hasOwnProperty.call(
+        state,
+        provider
+      )
+  ) {
+    delete state[provider];
+  }
+
+  writeChatGptLinkState(
+    state
+  );
+}
+
+function getConnectedLeagueIdentity(
+  connection
+) {
+  if (!connection) {
+    return {
+      leagueId: null,
+      leagueName: null,
+      teamId: null,
+      teamName: null,
+    };
+  }
+
+  return {
+    leagueId:
+      connection.leagueId ||
+      connection
+        ?.league
+        ?.id ||
+      null,
+
+    leagueName:
+      connection.leagueName ||
+      connection
+        ?.league
+        ?.name ||
+      null,
+
+    teamId:
+      connection.teamId ||
+      connection
+        ?.team
+        ?.id ||
+      null,
+
+    teamName:
+      connection.teamName ||
+      connection
+        ?.team
+        ?.name ||
+      null,
+  };
+}
+
+function buildChatGptLeagueSnapshot(
+  provider,
+  connection
+) {
+  if (
+    !provider ||
+    !connection
+  ) {
+    throw new Error(
+      "Connect a league before using it with ChatGPT."
+    );
+  }
+
+  var identity =
+    getConnectedLeagueIdentity(
+      connection
+    );
+
+  var league =
+    connection.league &&
+    typeof connection.league ===
+      "object"
+      ? connection.league
+      : {};
+
+  var team =
+    connection.team &&
+    typeof connection.team ===
+      "object"
+      ? connection.team
+      : {};
+
+  var roster =
+    Array.isArray(
+      connection.roster
+    )
+      ? connection.roster
+      : [];
+
+  if (
+    !identity.leagueId ||
+    !identity.leagueName
+  ) {
+    throw new Error(
+      "This league connection does not yet include complete league identity. Sync the league and try again."
+    );
+  }
+
+  if (
+    !identity.teamId ||
+    !identity.teamName
+  ) {
+    throw new Error(
+      "This league connection does not yet include your team identity. Sync the league and try again."
+    );
+  }
+
+  if (!roster.length) {
+    throw new Error(
+      "This league connection does not yet include a roster. Sync the league and try again."
+    );
+  }
+
+  return {
+    provider:
+      provider,
+
+    league:
+      Object.assign(
+        {},
+        league,
+        {
+          id:
+            identity.leagueId,
+
+          name:
+            identity.leagueName,
+
+          season:
+            connection.season ||
+            league.season ||
+            null,
+
+          teamCount:
+            connection.teamCount ||
+            league.teamCount ||
+            null,
+
+          divisionCount:
+            connection.divisionCount ||
+            league.divisionCount ||
+            null,
+        }
+      ),
+
+    team:
+      Object.assign(
+        {},
+        team,
+        {
+          id:
+            identity.teamId,
+
+          name:
+            identity.teamName,
+        }
+      ),
+
+    scoringFormat:
+      connection.scoringFormat ||
+      connection
+        ?.settings
+        ?.scoringProfile
+        ?.format ||
+      connection
+        ?.meta
+        ?.dataQuality
+        ?.scoringFormat ||
+      null,
+
+    connectionMode:
+      connection.connectionMode ||
+      null,
+
+    readOnly:
+      true,
+
+    roster:
+      roster,
+
+    standings:
+      Array.isArray(
+        connection.standings
+      )
+        ? connection.standings
+        : [],
+
+    schedule:
+      Array.isArray(
+        connection.schedule
+      )
+        ? connection.schedule
+        : [],
+
+    matchup:
+      connection.matchup ||
+      null,
+
+    settings:
+      connection.settings ||
+      null,
+
+    meta:
+      connection.meta ||
+      null,
+
+    connectedAt:
+      connection.connectedAt ||
+      null,
+
+    syncedAt:
+      connection.syncedAt ||
+      new Date()
+        .toISOString(),
+  };
+}
+
+function setChatGptLinkMessage(
+  message,
+  type
+) {
+  var box =
+    document.getElementById(
+      "chatgptLinkMessage"
+    );
+
+  if (!box) {
+    return;
+  }
+
+  if (!message) {
+    box.className =
+      "chatgpt-link-message";
+
+    box.textContent =
+      "";
+
+    return;
+  }
+
+  box.className =
+    "chatgpt-link-message show " +
+    (
+      type === "error"
+        ? "error"
+        : "success"
+    );
+
+  box.textContent =
+    message;
+}
+
+function renderChatGptLinkPanel() {
+  var panel =
+    document.getElementById(
+      "chatgptLinkPanel"
+    );
+
+  if (!panel) {
+    return;
+  }
+
+  var provider =
+    LeagueConnection
+      .getActiveProvider();
+
+  if (!provider) {
+    panel.classList.remove(
+      "show"
+    );
+
+    return;
+  }
+
+  var connection =
+    LeagueConnection
+      .getConnection(
+        provider
+      );
+
+  if (!connection) {
+    panel.classList.remove(
+      "show"
+    );
+
+    return;
+  }
+
+  panel.classList.add(
+    "show"
+  );
+
+  var link =
+    getChatGptLinkForProvider(
+      provider
+    );
+
+  var status =
+    document.getElementById(
+      "chatgptLinkStatus"
+    );
+
+  var copy =
+    document.getElementById(
+      "chatgptLinkCopy"
+    );
+
+  var linkButton =
+    document.getElementById(
+      "chatgptLinkButton"
+    );
+
+  var unlinkButton =
+    document.getElementById(
+      "chatgptUnlinkButton"
+    );
+
+  if (
+    link &&
+    link.linkToken
+  ) {
+    status.textContent =
+      "Ready";
+
+    status.className =
+      "chatgpt-link-status ready";
+
+    copy.textContent =
+      "Your connected league is ready for Inner Sanctum inside ChatGPT. Future league syncs will refresh this snapshot automatically.";
+
+    linkButton.textContent =
+      "Refresh ChatGPT Link";
+
+    unlinkButton.style.display =
+      "block";
+  } else {
+    status.textContent =
+      "Not linked";
+
+    status.className =
+      "chatgpt-link-status";
+
+    copy.textContent =
+      "Use your connected league with Inner Sanctum inside ChatGPT. No code or token is required.";
+
+    linkButton.textContent =
+      "Use with ChatGPT";
+
+    unlinkButton.style.display =
+      "none";
+  }
+}
+
+function postLeagueSnapshotToChatGpt(
+  provider,
+  connection,
+  existingLink
+) {
+  var snapshot =
+    buildChatGptLeagueSnapshot(
+      provider,
+      connection
+    );
+
+  var body = {
+    snapshot:
+      snapshot,
+  };
+
+  var headers = {
+    "Content-Type":
+      "application/json",
+  };
+
+  if (
+    existingLink &&
+    existingLink.linkToken
+  ) {
+    body.linkToken =
+      existingLink.linkToken;
+
+    headers.Authorization =
+      "Bearer " +
+      existingLink.linkToken;
+  }
+
+  return fetch(
+    CHATGPT_LINK_ENDPOINT,
+    {
+      method:
+        "POST",
+
+      headers:
+        headers,
+
+      body:
+        JSON.stringify(
+          body
+        ),
+    }
+  )
+    .then(
+      function (res) {
+        return res
+          .json()
+          .catch(
+            function () {
+              return {};
+            }
+          )
+          .then(
+            function (data) {
+              return {
+                ok:
+                  res.ok,
+
+                status:
+                  res.status,
+
+                data:
+                  data,
+              };
+            }
+          );
+      }
+    )
+    .then(
+      function (result) {
+        if (
+          !result.ok ||
+          !result.data ||
+          !result.data.success
+        ) {
+          throw new Error(
+            result
+              ?.data
+              ?.error ||
+            "Could not link this league to ChatGPT."
+          );
+        }
+
+        var linkToken =
+          result
+            ?.data
+            ?.linkToken ||
+          existingLink
+            ?.linkToken ||
+          null;
+
+        if (!linkToken) {
+          throw new Error(
+            "The ChatGPT link was created but no secure link token was returned."
+          );
+        }
+
+        var identity =
+          getConnectedLeagueIdentity(
+            connection
+          );
+
+        var linkData = {
+          linkToken:
+            linkToken,
+
+          provider:
+            provider,
+
+          leagueId:
+            identity.leagueId,
+
+          teamId:
+            identity.teamId,
+
+          linkedAt:
+            existingLink
+              ?.linkedAt ||
+            new Date()
+              .toISOString(),
+
+          lastSyncedAt:
+            snapshot.syncedAt ||
+            new Date()
+              .toISOString(),
+        };
+
+        saveChatGptLinkForProvider(
+          provider,
+          linkData
+        );
+
+        return linkData;
+      }
+    );
+}
+
+function linkActiveLeagueToChatGpt() {
+  var provider =
+    LeagueConnection
+      .getActiveProvider();
+
+  var connection =
+    provider
+      ? LeagueConnection
+          .getConnection(
+            provider
+          )
+      : null;
+
+  var button =
+    document.getElementById(
+      "chatgptLinkButton"
+    );
+
+  if (
+    !provider ||
+    !connection
+  ) {
+    setChatGptLinkMessage(
+      "Connect a league first.",
+      "error"
+    );
+
+    return;
+  }
+
+  var existingLink =
+    getChatGptLinkForProvider(
+      provider
+    );
+
+  if (button) {
+    button.disabled =
+      true;
+
+    button.textContent =
+      existingLink
+        ? "Refreshing..."
+        : "Linking...";
+  }
+
+  setChatGptLinkMessage(
+    "",
+    "success"
+  );
+
+  postLeagueSnapshotToChatGpt(
+    provider,
+    connection,
+    existingLink
+  )
+    .then(
+      function () {
+        setChatGptLinkMessage(
+          existingLink
+            ? "✓ ChatGPT link refreshed."
+            : "✓ ChatGPT is ready to use this league.",
+          "success"
+        );
+
+        renderChatGptLinkPanel();
+      }
+    )
+    .catch(
+      function (err) {
+        setChatGptLinkMessage(
+          "⚠️ " +
+          (
+            err.message ||
+            "Could not link this league to ChatGPT."
+          ),
+          "error"
+        );
+
+        renderChatGptLinkPanel();
+      }
+    )
+    .finally(
+      function () {
+        if (button) {
+          button.disabled =
+            false;
+        }
+
+        renderChatGptLinkPanel();
+      }
+    );
+}
+
+function refreshChatGptLinkIfNeeded(
+  provider
+) {
+  var activeProvider =
+    provider ||
+    LeagueConnection
+      .getActiveProvider();
+
+  if (!activeProvider) {
+    return Promise.resolve(
+      false
+    );
+  }
+
+  var existingLink =
+    getChatGptLinkForProvider(
+      activeProvider
+    );
+
+  if (
+    !existingLink ||
+    !existingLink.linkToken
+  ) {
+    return Promise.resolve(
+      false
+    );
+  }
+
+  var connection =
+    LeagueConnection
+      .getConnection(
+        activeProvider
+      );
+
+  if (!connection) {
+    return Promise.resolve(
+      false
+    );
+  }
+
+  return postLeagueSnapshotToChatGpt(
+    activeProvider,
+    connection,
+    existingLink
+  )
+    .then(
+      function () {
+        setChatGptLinkMessage(
+          "✓ ChatGPT league snapshot refreshed automatically.",
+          "success"
+        );
+
+        renderChatGptLinkPanel();
+
+        return true;
+      }
+    )
+    .catch(
+      function (err) {
+        setChatGptLinkMessage(
+          "⚠️ League synced, but the ChatGPT snapshot could not refresh: " +
+          (
+            err.message ||
+            "Unknown error."
+          ),
+          "error"
+        );
+
+        renderChatGptLinkPanel();
+
+        return false;
+      }
+    );
+}
+
+function unlinkActiveLeagueFromChatGpt() {
+  var provider =
+    LeagueConnection
+      .getActiveProvider();
+
+  var link =
+    provider
+      ? getChatGptLinkForProvider(
+          provider
+        )
+      : null;
+
+  if (
+    !provider ||
+    !link ||
+    !link.linkToken
+  ) {
+    renderChatGptLinkPanel();
+    return;
+  }
+
+  var unlinkButton =
+    document.getElementById(
+      "chatgptUnlinkButton"
+    );
+
+  if (unlinkButton) {
+    unlinkButton.disabled =
+      true;
+
+    unlinkButton.textContent =
+      "Unlinking...";
+  }
+
+  fetch(
+    CHATGPT_LINK_ENDPOINT,
+    {
+      method:
+        "DELETE",
+
+      headers: {
+        Authorization:
+          "Bearer " +
+          link.linkToken,
+      },
+    }
+  )
+    .then(
+      function (res) {
+        return res
+          .json()
+          .catch(
+            function () {
+              return {};
+            }
+          )
+          .then(
+            function (data) {
+              if (
+                !res.ok ||
+                !data.success
+              ) {
+                throw new Error(
+                  data.error ||
+                  "Could not unlink ChatGPT."
+                );
+              }
+
+              return data;
+            }
+          );
+      }
+    )
+    .then(
+      function () {
+        clearChatGptLinkForProvider(
+          provider
+        );
+
+        setChatGptLinkMessage(
+          "✓ ChatGPT link removed.",
+          "success"
+        );
+      }
+    )
+    .catch(
+      function (err) {
+        setChatGptLinkMessage(
+          "⚠️ " +
+          (
+            err.message ||
+            "Could not unlink ChatGPT."
+          ),
+          "error"
+        );
+      }
+    )
+    .finally(
+      function () {
+        if (unlinkButton) {
+          unlinkButton.disabled =
+            false;
+
+          unlinkButton.textContent =
+            "Unlink";
+        }
+
+        renderChatGptLinkPanel();
+      }
+    );
+}
 
 function renderPlatformRow() {
   var row =
@@ -1203,6 +2038,7 @@ function selectPlatform(key) {
 
   renderPlatformRow();
   renderProviderForm();
+  renderChatGptLinkPanel();
 }
 
 function disconnectActive() {
@@ -1220,6 +2056,7 @@ function disconnectActive() {
   renderPlatformRow();
   renderConnectedBanner();
   renderProviderForm();
+  renderChatGptLinkPanel();
 }
 
 function renderProviderForm() {
@@ -1425,115 +2262,7 @@ function buildEspnForm() {
   ================================================================
   CBS
   ================================================================
-
-  CBS uses a browser-assisted, READ-ONLY connection.
-
-  Customer flow:
-
-    1. Inner Sanctum opens CBS in a new browser tab.
-    2. Customer signs into CBS normally and opens their league.
-    3. Customer clicks the Inner Sanctum CBS bookmark.
-    4. The bookmarklet runs CBSBrowserConnector.captureAll() inside
-       the authenticated CBS page.
-    5. The sanitized capture is sent directly back to this opener
-       window with window.postMessage().
-    6. receiveCbsConnection() stores the safe league context through
-       LeagueConnection.
-
-  No CBS password, cookies, session tokens, or write operations are
-  part of this flow.
 */
-
-function isMobileCbsBrowser() {
-  var ua = navigator.userAgent || "";
-  var touchMac =
-    navigator.platform === "MacIntel" &&
-    navigator.maxTouchPoints > 1;
-
-  return (
-    /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ||
-    touchMac
-  );
-}
-
-function isIosCbsBrowser() {
-  var ua = navigator.userAgent || "";
-  var touchMac =
-    navigator.platform === "MacIntel" &&
-    navigator.maxTouchPoints > 1;
-
-  return /iPhone|iPad|iPod/i.test(ua) || touchMac;
-}
-
-function isAndroidCbsBrowser() {
-  return /Android/i.test(navigator.userAgent || "");
-}
-
-window.copyCbsConnectCode = function () {
-  var code =
-    "javascript:(function(){var s=document.createElement('script');s.src='https://theinnersanctum.xyz/cbs-poc.js?ts='+Date.now();s.async=true;document.head.appendChild(s);}());";
-
-  var status =
-    document.getElementById("cbsMobileCopyStatus");
-
-  function success() {
-    if (status) {
-      status.textContent =
-        "✓ CBS Connect code copied.";
-    }
-  }
-
-  function failure() {
-    if (status) {
-      status.textContent =
-        "Could not copy automatically. Press and hold the code field below to copy it.";
-    }
-  }
-
-  if (
-    navigator.clipboard &&
-    window.isSecureContext
-  ) {
-    navigator.clipboard
-      .writeText(code)
-      .then(success)
-      .catch(function () {
-        fallbackCopy();
-      });
-  } else {
-    fallbackCopy();
-  }
-
-  function fallbackCopy() {
-    try {
-      var ta =
-        document.createElement("textarea");
-
-      ta.value = code;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      ta.style.pointerEvents = "none";
-
-      document.body.appendChild(ta);
-      ta.select();
-      ta.setSelectionRange(0, ta.value.length);
-
-      var ok =
-        document.execCommand("copy");
-
-      document.body.removeChild(ta);
-
-      if (ok) {
-        success();
-      } else {
-        failure();
-      }
-    } catch (err) {
-      failure();
-    }
-  }
-};
 
 function buildCbsForm() {
   var wrap =
@@ -1550,288 +2279,89 @@ function buildCbsForm() {
         "cbs"
       );
 
-  var mobile =
-    isMobileCbsBrowser();
+  var connectedMarkup =
+    "";
 
-  // Desktop browser extension detection. Mobile browsers do not get
-  // the desktop-extension path even if a UA quirk exposes the marker.
-  var extensionInstalled =
-    !mobile &&
-    document.documentElement.hasAttribute(
-      "data-inner-sanctum-cbs-extension"
-    );
-
-  if (!mobile && !extensionInstalled) {
-    var extensionObserver =
-      new MutationObserver(
-        function () {
-          if (
-            selectedProvider === "cbs" &&
-            document.documentElement.hasAttribute(
-              "data-inner-sanctum-cbs-extension"
-            )
-          ) {
-            extensionObserver.disconnect();
-            renderProviderForm();
-          }
-        }
-      );
-
-    extensionObserver.observe(
-      document.documentElement,
-      {
-        attributes: true,
-        attributeFilter: [
-          "data-inner-sanctum-cbs-extension"
-        ],
-      }
-    );
-
-    setTimeout(
-      function () {
-        extensionObserver.disconnect();
-      },
-      5000
-    );
-  }
-
-  var leagueId =
-    String(
-      existing
-        ?.leagueId ||
+  if (existing) {
+    var leagueName =
+      existing.leagueName ||
       existing
         ?.league
-        ?.id ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
+        ?.name ||
+      "CBS League";
 
-  var cbsBookmarklet =
-    "javascript:(function(){var s=document.createElement('script');s.src='https://theinnersanctum.xyz/cbs-poc.js?ts='+Date.now();s.async=true;document.head.appendChild(s);}());";
-
-  var bookmarkButtonMarkup =
-    '<a class="cbs-bookmark-link" href="' +
-      escapeHtml(
-        cbsBookmarklet
-      ) +
-      '" onclick="alert(\'Drag this button to your browser bookmarks bar to install it.\'); return false;">' +
-      'Inner Sanctum CBS Connect' +
-    '</a>' +
-    '<span class="cbs-bookmark-tip">Bookmarks bar hidden? Press Ctrl+Shift+B on Windows or ⌘+Shift+B on Mac.</span>';
-
-  var actionMarkup =
-    '<button class="connect-btn" onclick="startCbsConnect()">' +
-      (
-        existing
-          ? 'Sync CBS League'
-          : 'Open CBS Fantasy'
-      ) +
-    '</button>';
-
-  var readOnlyMarkup =
-    '<div class="pf-info">' +
-      '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
-    '</div>';
-
-  var firstTimeStepsMarkup =
-    '<span class="cbs-bookmark-tip" style="display:block;margin:0 0 14px;font-size:12px;line-height:1.6;color:#c9a84c;font-weight:600">Click CBS Connect once to find your league, then once more after your league opens to finish connecting.</span>' +
-
-    '<div class="pf-step">' +
-      '<span class="pf-step-num">1</span>' +
-      '<span><strong>Install CBS Connect once.</strong> Drag the gold Inner Sanctum CBS Connect button below to your browser bookmarks bar. You only need to do this once.</span>' +
-    '</div>' +
-
-    '<div class="cbs-bookmark-install">' +
-      bookmarkButtonMarkup +
-    '</div>' +
-
-    '<div class="pf-step">' +
-      '<span class="pf-step-num">2</span>' +
-      '<span><strong>Open CBS Fantasy.</strong> Click Open CBS Fantasy and sign into CBS normally if needed. Inner Sanctum will help find your CBS Fantasy Football league.</span>' +
-    '</div>' +
-
-    actionMarkup +
-
-    '<div class="pf-step">' +
-      '<span class="pf-step-num">3</span>' +
-      '<span><strong>Find your league.</strong> On the CBS Fantasy page, click Inner Sanctum CBS Connect in your bookmarks bar. Inner Sanctum will automatically find your CBS Fantasy Football league and open it. If you have more than one CBS league, Inner Sanctum will let you choose which one to connect.</span>' +
-    '</div>' +
-
-    '<div class="pf-step">' +
-      '<span class="pf-step-num">4</span>' +
-      '<span><strong>Connect your league.</strong> After CBS opens your league, click Inner Sanctum CBS Connect in your bookmarks bar one more time. Inner Sanctum will securely send your read-only league information back and confirm the connection.</span>' +
-    '</div>';
-
-  var returningMarkup =
-    actionMarkup +
-
-    '<div class="pf-help">' +
-      '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-        '🔖 Need CBS Connect again? ' +
-        '<span class="pf-help-icon">▼</span>' +
-      '</button>' +
-
-      '<div class="pf-help-body">' +
-        '<div class="cbs-bookmark-install" style="margin-bottom:0;">' +
-          '<strong>Reinstall the CBS Connect bookmark</strong>' +
-          '<p>Only use this if the Inner Sanctum CBS Connect bookmark is missing from your browser. Drag the gold button below to your bookmarks bar.</p>' +
-          bookmarkButtonMarkup +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="pf-help">' +
-      '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-        '📖 How CBS sync works ' +
-        '<span class="pf-help-icon">▼</span>' +
-      '</button>' +
-
-      '<div class="pf-help-body">' +
-        '<div class="pf-step">' +
-          '<span class="pf-step-num">1</span>' +
-          '<span>Click Sync CBS League. Inner Sanctum opens your connected CBS league.</span>' +
-        '</div>' +
-
-        '<div class="pf-step">' +
-          '<span class="pf-step-num">2</span>' +
-          '<span>Click Inner Sanctum CBS Connect in your bookmarks bar.</span>' +
-        '</div>' +
-
-        '<div class="pf-step">' +
-          '<span class="pf-step-num">3</span>' +
-          '<span>When the CBS Connect panel says your league was sent, click Return to Inner Sanctum.</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-
-  var bookmarkletJourneyMarkup =
-    existing
-      ? returningMarkup
-      : firstTimeStepsMarkup;
-
-  var primaryMarkup;
-
-  if (mobile) {
-    var mobilePlatform =
-      isIosCbsBrowser()
-        ? "iPhone / iPad"
-        : (isAndroidCbsBrowser()
-            ? "Android"
-            : "Mobile");
-
-    var mobileLaunchLabel =
+    var teamName =
+      existing.teamName ||
       existing
-        ? "Open CBS Fantasy to Sync"
-        : "Open CBS Fantasy";
+        ?.team
+        ?.name ||
+      "";
 
-    var mobileBrowserHint =
-      isIosCbsBrowser()
-        ? "In Safari, create any bookmark for this page, then edit that bookmark: rename it “Inner Sanctum CBS Connect” and replace its address with the copied CBS Connect code."
-        : "Create a bookmark for this page in your mobile browser, then edit it: rename it “Inner Sanctum CBS Connect” and replace its address with the copied CBS Connect code.";
-
-    var mobileRunHint =
-      isIosCbsBrowser()
-        ? "On the CBS Fantasy page, open your Safari bookmarks and tap “Inner Sanctum CBS Connect.”"
-        : "On the CBS Fantasy page, open your browser bookmarks and launch “Inner Sanctum CBS Connect.” If your browser does not execute JavaScript bookmarks from the bookmark manager, type the bookmark name in the address bar and select it from bookmarks.";
-
-    primaryMarkup =
-      '<div class="cbs-mobile-install">' +
-
-        '<div class="cbs-mobile-title">📱 CBS Connect for ' +
-          escapeHtml(mobilePlatform) +
-        '</div>' +
-
-        '<p style="color:#a08a5a;font-size:12px;line-height:1.6;margin:0 0 10px">' +
-          'Mobile browsers do not have a desktop bookmarks bar. Use this one-time setup instead.' +
-        '</p>' +
-
-        '<div class="cbs-mobile-step">' +
-          '<span class="cbs-mobile-step-num">1</span>' +
-          '<span><strong>Save this page as a bookmark.</strong> ' +
-            escapeHtml(mobileBrowserHint) +
-          '</span>' +
-        '</div>' +
-
-        '<button class="cbs-mobile-copy" type="button" onclick="copyCbsConnectCode()">' +
-          'COPY CBS CONNECT CODE' +
-        '</button>' +
-
-        '<div class="cbs-mobile-status" id="cbsMobileCopyStatus"></div>' +
-
-        '<div class="cbs-mobile-step">' +
-          '<span class="cbs-mobile-step-num">2</span>' +
-          '<span><strong>Open CBS Fantasy.</strong> Sign in normally if CBS asks.</span>' +
-        '</div>' +
-
-        '<button class="connect-btn" onclick="startCbsConnect()">' +
-          mobileLaunchLabel +
-        '</button>' +
-
-        '<div class="cbs-mobile-step">' +
-          '<span class="cbs-mobile-step-num">3</span>' +
-          '<span><strong>Run CBS Connect from CBS.</strong> ' +
-            escapeHtml(mobileRunHint) +
-          '</span>' +
-        '</div>' +
-
-        '<div class="cbs-mobile-step">' +
-          '<span class="cbs-mobile-step-num">4</span>' +
-          '<span><strong>Finish the connection.</strong> After CBS finds your league, tap Return to Inner Sanctum. Tap OPEN MY LEAGUE here, then run the same CBS Connect bookmark once more from your league page. Your sanitized league data will return here automatically.</span>' +
-        '</div>' +
-
-        '<div class="cbs-mobile-note">' +
-          'One-time setup. Inner Sanctum never asks for your CBS password or stores CBS cookies/session tokens.' +
-        '</div>' +
-
-      '</div>';
-
-  } else if (extensionInstalled) {
-    var primaryButtonMarkup =
+    var teamCount =
+      existing.teamCount ||
       existing
-        ? '<button class="connect-btn" id="cbsSyncBtn" data-league-id="' +
+        ?.league
+        ?.teamCount ||
+      null;
+
+    var scoringFormat =
+      existing.scoringFormat ||
+      existing
+        ?.settings
+        ?.scoringProfile
+        ?.format ||
+      "";
+
+    var details = [];
+
+    if (teamName) {
+      details.push(
+        teamName
+      );
+    }
+
+    if (teamCount) {
+      details.push(
+        teamCount +
+        " teams"
+      );
+    }
+
+    if (scoringFormat) {
+      details.push(
+        formatScoringLabel(
+          scoringFormat
+        )
+      );
+    }
+
+    connectedMarkup =
+      '<div class="result-box success show">' +
+        '<strong>✓ ' +
           escapeHtml(
-            leagueId
+            leagueName
           ) +
-          '">SYNC CBS LEAGUE</button>'
-        : '<button class="connect-btn" id="cbsConnectBtn">CONNECT CBS LEAGUE</button>';
+        ' connected</strong>' +
 
-    var supportingLineMarkup =
-      existing
-        ? '<p style="font-size:12px;color:var(--text3);margin:8px 0 14px">Opens your connected CBS league in a new tab and refreshes your data automatically. Keep this Inner Sanctum tab open.</p>'
-        : '<p style="font-size:12px;color:var(--text3);margin:8px 0 14px">You\'ll sign into CBS directly if needed. Keep this Inner Sanctum tab open while we connect your league.</p>';
-
-    var bookmarkletFallbackMarkup =
-      '<div class="pf-help">' +
-        '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
-          '🔧 Having trouble? Use the manual connect method ' +
-          '<span class="pf-help-icon">▼</span>' +
-        '</button>' +
-
-        '<div class="pf-help-body">' +
-          bookmarkletJourneyMarkup +
-        '</div>' +
+        (
+          details.length
+            ? '<br>' +
+              escapeHtml(
+                details.join(
+                  " · "
+                )
+              )
+            : ""
+        ) +
       '</div>';
-
-    primaryMarkup =
-      primaryButtonMarkup +
-      supportingLineMarkup +
-      bookmarkletFallbackMarkup;
-  } else {
-    primaryMarkup =
-      '<div class="pf-info">' +
-        '<strong>The Inner Sanctum CBS Connect browser extension is required for one-click CBS connection.</strong><br>' +
-        'Installation instructions are coming soon. In the meantime, you can connect manually below.' +
-      '</div>' +
-      bookmarkletJourneyMarkup;
   }
 
   wrap.innerHTML =
-    '<div class="beta-pill">CBS CONNECT</div>' +
+    '<div class="beta-pill">CBS Connect · Beta</div>' +
 
     '<div class="pf-info">' +
       '<strong>Connect CBS without sharing your CBS password.</strong><br>' +
-      'Inner Sanctum opens CBS in a separate tab and securely reads the fantasy league information needed for your tools.' +
+      'Inner Sanctum opens CBS in a separate tab. You sign into CBS normally, open your fantasy league, and use the Inner Sanctum CBS bookmark to send back read-only league information.' +
     '</div>' +
 
     '<div class="cbs-feature-grid">' +
@@ -1843,81 +2373,55 @@ function buildCbsForm() {
       '<div class="cbs-feature">League settings</div>' +
     '</div>' +
 
-    primaryMarkup +
+    '<div class="pf-help">' +
 
-    readOnlyMarkup +
+      '<button class="pf-help-toggle" onclick="togglePfHelp(this)">' +
+        '📖 How CBS Connect works ' +
+        '<span class="pf-help-icon">▼</span>' +
+      '</button>' +
+
+      '<div class="pf-help-body">' +
+
+        '<div class="pf-step">' +
+          '<span class="pf-step-num">1</span>' +
+          '<span>Click Connect CBS League below. CBS opens in a separate browser tab.</span>' +
+        '</div>' +
+
+        '<div class="pf-step">' +
+          '<span class="pf-step-num">2</span>' +
+          '<span>Sign into CBS normally if needed, then open the fantasy-football league you want to connect.</span>' +
+        '</div>' +
+
+        '<div class="pf-step">' +
+          '<span class="pf-step-num">3</span>' +
+          '<span>Click your Inner Sanctum CBS bookmark on the CBS league page. The sanitized read-only capture returns directly to this Inner Sanctum tab.</span>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>' +
+
+    '<div class="pf-info">' +
+      '<strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.' +
+    '</div>' +
+
+    connectedMarkup +
+
+    '<button class="connect-btn" onclick="startCbsConnect()">' +
+      (
+        existing
+          ? 'Sync CBS League'
+          : 'Connect CBS League'
+      ) +
+    '</button>' +
+
+    '<div class="connect-note">' +
+      'CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.' +
+    '</div>' +
 
     '<div class="result-box" id="cbsResult"></div>';
 
   return wrap;
 }
-
-/*
-  ================================================================
-  EXTENSION MULTI-LEAGUE SELECTION (added)
-  ================================================================
-  Called by the extension's service worker (via
-  chrome.scripting.executeScript, MAIN world) when
-  discoverLeagues() finds more than one CBS league. Reuses
-  cbsDiscoveredLeagueLabel() unchanged -- the same label logic the
-  bookmarklet's own multi-league selector already uses. Rendered
-  choices carry the EXACT discovered URL as a data attribute;
-  sanctum-content-bridge.js relays whichever one the customer clicks
-  to the service worker. This never constructs a URL itself.
-*/
-window.handleExtensionCbsLeagues =
-  function (leagues) {
-    var box =
-      document.getElementById(
-        "cbsResult"
-      );
-
-    if (!box) {
-      return;
-    }
-
-    if (
-      !leagues ||
-      !leagues.length
-    ) {
-      box.className =
-        "result-box error show";
-
-      box.textContent =
-        "⚠️ No CBS leagues were found.";
-
-      return;
-    }
-
-    var optionsHtml =
-      leagues
-        .map(
-          function (league) {
-            return (
-              '<button class="connect-btn cbs-extension-league-choice" style="display:block;width:100%;margin-top:6px" data-league-url="' +
-              escapeHtml(
-                league.url ||
-                ""
-              ) +
-              '">' +
-              escapeHtml(
-                cbsDiscoveredLeagueLabel(
-                  league
-                )
-              ) +
-              '</button>'
-            );
-          }
-        )
-        .join("");
-
-    box.className =
-      "result-box loading show";
-
-    box.innerHTML =
-      "<strong>Select your CBS league</strong>" +
-      optionsHtml;
-  };
 
 /*
   ================================================================
@@ -2235,12 +2739,6 @@ function connectEspn() {
             false;
         }
 
-        /*
-          Clear credential variables as soon as the request has
-          completed. They are intentionally NOT passed to
-          LeagueConnection.connect().
-        */
-
         s2 =
           null;
 
@@ -2326,14 +2824,6 @@ function connectEspn() {
   ================================================================
   CBS CONNECTION ENTRY POINT
   ================================================================
-
-  Inner Sanctum cannot inspect CBS directly because CBS is a
-  different origin. Instead, this page opens CBS and retains the
-  WindowProxy returned by window.open().
-
-  The CBS bookmarklet later executes inside the authenticated CBS
-  league page and can safely send the sanitized capture back to this
-  opener with window.opener.postMessage().
 */
 
 function startCbsConnect() {
@@ -2342,48 +2832,9 @@ function startCbsConnect() {
       "cbsResult"
     );
 
-  /*
-    If CBS has already been connected, use the stored CBS league ID
-    to reopen that league directly. For a first-time connection, or
-    if the stored ID is not a safe CBS hostname label, fall back to
-    the normal CBS Fantasy Football entry point.
-
-    Customers authenticate with CBS directly. Inner Sanctum never
-    receives the CBS username/password or browser session.
-  */
-  var existing =
-    LeagueConnection
-      .getConnection(
-        "cbs"
-      );
-
-  var leagueId =
-    String(
-      existing
-        ?.leagueId ||
-      existing
-        ?.league
-        ?.id ||
-      ""
-    )
-      .trim()
-      .toLowerCase();
-
-  var isSafeLeagueId =
-    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
-      leagueId
-    );
-
-  var cbsUrl =
-    isSafeLeagueId
-      ? "https://" +
-        leagueId +
-        ".football.cbssports.com/"
-      : "https://www.cbssports.com/fantasy/games/";
-
   cbsConnectWindow =
     window.open(
-      cbsUrl,
+      "https://www.cbssports.com/fantasy/football/",
       "innerSanctumCbsConnect"
     );
 
@@ -2400,38 +2851,21 @@ function startCbsConnect() {
   try {
     cbsConnectWindow.focus();
   } catch (e) {
-    // Focus is optional. The connection can still proceed.
   }
 
   box.className =
     "result-box loading show";
 
   box.innerHTML =
-    isSafeLeagueId
-      ? '<strong>Your CBS league opened in a separate tab.</strong><br>' +
-        'Click your Inner Sanctum CBS bookmark on the league page. ' +
-        'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.'
-      : '<strong>CBS opened in a separate tab.</strong><br>' +
-        'Sign into CBS normally if needed, then click your Inner Sanctum CBS bookmark — Inner Sanctum will find your league automatically. ' +
-        'Keep this Inner Sanctum tab open.';
+    '<strong>CBS opened in a separate tab.</strong><br>' +
+    'Sign into CBS normally if needed, open your fantasy league, then click your Inner Sanctum CBS bookmark. ' +
+    'Keep this Inner Sanctum tab open — your sanitized league capture will return here automatically.';
 }
 
 /*
   ================================================================
   CBS CONNECTION RECEIVER
   ================================================================
-
-  This is the stable handoff point for the browser helper.
-
-  The helper should supply the sanitized result returned by:
-
-      CBSBrowserConnector.captureAll()
-
-  Example:
-
-      window.receiveCbsConnection(capturedLeague);
-
-  This function intentionally accepts NO CBS credentials or cookies.
 */
 
 window.receiveCbsConnection =
@@ -2593,11 +3027,14 @@ window.receiveCbsConnection =
       selectedProvider =
         "cbs";
 
-      clearPendingMobileCbsLeague();
-
       renderPlatformRow();
       renderConnectedBanner();
       renderProviderForm();
+      renderChatGptLinkPanel();
+
+      refreshChatGptLinkIfNeeded(
+        "cbs"
+      );
 
       box =
         document.getElementById(
@@ -2676,66 +3113,11 @@ window.receiveCbsConnection =
   ================================================================
   CBS CROSS-ORIGIN MESSAGE RECEIVER
   ================================================================
-
-  Accept only the exact capture message sent from an authenticated
-  CBS Fantasy league origin.
-
-  Security boundaries:
-
-    - event.origin must be a *.football.cbssports.com HTTPS origin
-    - if startCbsConnect() opened a CBS window, event.source must be
-      that exact WindowProxy
-    - message type must match CBS_CAPTURE_MESSAGE
-    - payload is still validated again by receiveCbsConnection()
 */
 
 window.addEventListener(
   "message",
   function (event) {
-    /*
-      Discovery-phase branch (added). Handled and returned separately
-      from the capture-message checks below so the proven capture
-      path's origin/window/type validation is not touched or loosened.
-    */
-    if (
-      CBS_ACCOUNT_ORIGIN.test(
-        event.origin ||
-        ""
-      ) &&
-      (
-        !cbsConnectWindow ||
-        event.source ===
-          cbsConnectWindow
-      )
-    ) {
-      var discoveryMessage =
-        event.data;
-
-      if (
-        discoveryMessage &&
-        typeof discoveryMessage ===
-          "object" &&
-        discoveryMessage.type ===
-          CBS_DISCOVERY_MESSAGE &&
-        Array.isArray(
-          discoveryMessage.leagues
-        )
-      ) {
-        try {
-          handleCbsDiscoveryResult(
-            discoveryMessage.leagues
-          );
-        } catch (err) {
-          console.error(
-            "CBS discovery handoff failed:",
-            err
-          );
-        }
-
-        return;
-      }
-    }
-
     if (
       !CBS_FANTASY_ORIGIN.test(
         event.origin ||
@@ -2779,463 +3161,9 @@ window.addEventListener(
         "CBS connection handoff failed:",
         err
       );
-
-      // Added — previously this failure was console-only, so a
-      // customer whose CBS tab reported success would see nothing
-      // happen here with no explanation. receiveCbsConnection()
-      // itself already sets this same box on its OWN internal
-      // validation failures; this covers the case where it throws
-      // before reaching its own try/catch, or where a caller checks
-      // #cbsResult and finds it never updated.
-      var handoffErrorBox =
-        document.getElementById(
-          "cbsResult"
-        );
-
-      if (handoffErrorBox) {
-        handoffErrorBox.className =
-          "result-box error show";
-
-        handoffErrorBox.textContent =
-          "⚠️ " +
-          (
-            (err && err.message) ||
-            "CBS sent your league, but Inner Sanctum could not save the connection. Try Sync CBS League again."
-          );
-      }
     }
   }
 );
-
-/*
-  ================================================================
-  CBS DISCOVERY RESULT HANDLER (added)
-  ================================================================
-
-  Receives the leagues discoverLeagues() found on the CBS account
-  page. Never touches LeagueConnection — that only happens once a
-  real capture comes back through receiveCbsConnection() above.
-
-    - Exactly one league: navigate the CBS tab straight to it.
-      Cross-origin assignment to an opened window's .location is
-      permitted by the browser for the window's opener; reading
-      that window's location cross-origin is not, which is why this
-      whole discovery round-trip goes through postMessage instead.
-    - More than one league: show a minimal selector. Each option's
-      URL comes directly from the discovered league object, never
-      from reconstructing a URL out of user input.
-    - Zero leagues: show a plain explanation and a retry control.
-*/
-function cbsDiscoveredLeagueLabel(
-  league
-) {
-  var name =
-    league.leagueName ||
-    league.rawText ||
-    league.leagueId ||
-    "CBS league";
-
-  var team =
-    league.teamName;
-
-  return team
-    ? name + " — " + team
-    : name;
-}
-
-function isSafeDiscoveredCbsLeagueUrl(
-  url
-) {
-  try {
-    var parsed =
-      new URL(
-        String(
-          url ||
-          ""
-        )
-      );
-
-    return (
-      parsed.protocol ===
-        "https:" &&
-      /^[^.]+\.football\.cbssports\.com$/i.test(
-        parsed.hostname
-      )
-    );
-  } catch (e) {
-    return false;
-  }
-}
-
-function savePendingMobileCbsLeague(
-  league
-) {
-  if (
-    !league ||
-    !isSafeDiscoveredCbsLeagueUrl(
-      league.url
-    )
-  ) {
-    return;
-  }
-
-  try {
-    localStorage.setItem(
-      CBS_MOBILE_PENDING_LEAGUE_KEY,
-      JSON.stringify(
-        {
-          league:
-            league,
-          savedAt:
-            Date.now()
-        }
-      )
-    );
-  } catch (e) {
-    console.warn(
-      "Could not persist pending CBS mobile league.",
-      e
-    );
-  }
-}
-
-function getPendingMobileCbsLeague() {
-  try {
-    var raw =
-      localStorage.getItem(
-        CBS_MOBILE_PENDING_LEAGUE_KEY
-      );
-
-    if (!raw) {
-      return null;
-    }
-
-    var parsed =
-      JSON.parse(
-        raw
-      );
-
-    var league =
-      parsed &&
-      parsed.league;
-
-    var savedAt =
-      Number(
-        parsed &&
-        parsed.savedAt
-      );
-
-    /*
-      Keep this handoff short-lived. It only exists to survive the
-      CBS -> Inner Sanctum mobile Return button navigation.
-    */
-    if (
-      !league ||
-      !isSafeDiscoveredCbsLeagueUrl(
-        league.url
-      ) ||
-      !savedAt ||
-      Date.now() -
-        savedAt >
-        15 * 60 * 1000
-    ) {
-      localStorage.removeItem(
-        CBS_MOBILE_PENDING_LEAGUE_KEY
-      );
-
-      return null;
-    }
-
-    return league;
-  } catch (e) {
-    return null;
-  }
-}
-
-function clearPendingMobileCbsLeague() {
-  try {
-    localStorage.removeItem(
-      CBS_MOBILE_PENDING_LEAGUE_KEY
-    );
-  } catch (e) {
-    // Best-effort cleanup only.
-  }
-}
-
-function openPendingMobileCbsLeague() {
-  var league =
-    getPendingMobileCbsLeague();
-
-  var box =
-    document.getElementById(
-      "cbsResult"
-    );
-
-  if (
-    !league ||
-    !isSafeDiscoveredCbsLeagueUrl(
-      league.url
-    )
-  ) {
-    if (box) {
-      box.className =
-        "result-box error show";
-
-      box.innerHTML =
-        "⚠️ The saved CBS league link expired. " +
-        '<button class="connect-btn" onclick="startCbsConnect()">Start again</button>';
-    }
-
-    return;
-  }
-
-  if (box) {
-    box.className =
-      "result-box loading show";
-
-    box.innerHTML =
-      "<strong>Opening " +
-      escapeHtml(
-        cbsDiscoveredLeagueLabel(
-          league
-        )
-      ) +
-      "…</strong><br>" +
-      "Once your CBS league opens, run your Inner Sanctum CBS Connect bookmark one more time.";
-  }
-
-  /*
-    This page may itself be the CBS tab that was navigated back to
-    Inner Sanctum by the CBS Connect panel. Navigating THIS tab is
-    deterministic on mobile and preserves its opener relationship.
-  */
-  window.location.href =
-    league.url;
-}
-
-function renderPendingMobileCbsLeague() {
-  if (
-    !isMobileCbsBrowser()
-  ) {
-    return false;
-  }
-
-  var league =
-    getPendingMobileCbsLeague();
-
-  if (!league) {
-    return false;
-  }
-
-  var box =
-    document.getElementById(
-      "cbsResult"
-    );
-
-  if (!box) {
-    return false;
-  }
-
-  box.className =
-    "result-box success show";
-
-  box.innerHTML =
-    "<strong>✓ Found " +
-    escapeHtml(
-      cbsDiscoveredLeagueLabel(
-        league
-      )
-    ) +
-    ".</strong><br>" +
-    "Tap below to continue to your CBS league." +
-    '<br><br><button class="connect-btn" onclick="openPendingMobileCbsLeague()">OPEN MY LEAGUE</button>';
-
-  return true;
-}
-
-function handleCbsDiscoveryResult(
-  leagues
-) {
-  var box =
-    document.getElementById(
-      "cbsResult"
-    );
-
-  if (!box) {
-    return;
-  }
-
-  if (
-    !leagues ||
-    leagues.length ===
-      0
-  ) {
-    box.className =
-      "result-box error show";
-
-    box.innerHTML =
-      "⚠️ We couldn't find a CBS Fantasy Football league on this account. " +
-      "Make sure you're signed into the CBS account that owns or participates in your fantasy league." +
-      '<br><br><button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
-
-    return;
-  }
-
-  if (leagues.length === 1) {
-    /*
-      Desktop can keep the proven automatic navigation.
-
-      Mobile Chrome may receive the discovery result correctly but block
-      or ignore the opener-driven cross-origin navigation when it is not
-      attached to a fresh customer gesture. On mobile, keep the exact CBS
-      URL returned by discovery and let the customer explicitly tap
-      OPEN MY LEAGUE from Inner Sanctum. That click is the user gesture.
-    */
-    if (isMobileCbsBrowser()) {
-      discoveredCbsLeagues =
-        leagues;
-
-      savePendingMobileCbsLeague(
-        leagues[0]
-      );
-
-      box.className =
-        "result-box success show";
-
-      box.innerHTML =
-        "<strong>✓ Found " +
-        escapeHtml(
-          cbsDiscoveredLeagueLabel(
-            leagues[0]
-          )
-        ) +
-        ".</strong><br>" +
-        "Tap the button below to open your league." +
-        '<br><br><button class="connect-btn" onclick="selectDiscoveredCbsLeague(0)">OPEN MY LEAGUE</button>';
-
-      return;
-    }
-
-    box.className =
-      "result-box loading show";
-
-    box.innerHTML =
-      "<strong>Found " +
-      escapeHtml(
-        cbsDiscoveredLeagueLabel(
-          leagues[0]
-        )
-      ) +
-      ".</strong><br>Opening your league…";
-
-    if (
-      cbsConnectWindow &&
-      !cbsConnectWindow.closed
-    ) {
-      cbsConnectWindow.location.href =
-        leagues[0].url;
-    } else {
-      box.className =
-        "result-box error show";
-
-      box.innerHTML =
-        "⚠️ The CBS tab was closed before your league could open. " +
-        '<button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
-    }
-
-    return;
-  }
-
-  discoveredCbsLeagues =
-    leagues;
-
-  var optionsHtml =
-    leagues
-      .map(
-        function (
-          league,
-          index
-        ) {
-          return (
-            '<button class="connect-btn" style="display:block;width:100%;margin-top:6px" ' +
-            'onclick="selectDiscoveredCbsLeague(' +
-            index +
-            ')">' +
-            escapeHtml(
-              cbsDiscoveredLeagueLabel(
-                league
-              )
-            ) +
-            "</button>"
-          );
-        }
-      )
-      .join("");
-
-  box.className =
-    "result-box loading show";
-
-  box.innerHTML =
-    "<strong>Select your CBS league</strong>" +
-    optionsHtml;
-}
-
-function selectDiscoveredCbsLeague(
-  index
-) {
-  var league =
-    discoveredCbsLeagues[
-      index
-    ];
-
-  var box =
-    document.getElementById(
-      "cbsResult"
-    );
-
-  if (!league) {
-    return;
-  }
-
-  if (
-    !cbsConnectWindow ||
-    cbsConnectWindow.closed
-  ) {
-    if (box) {
-      box.className =
-        "result-box error show";
-
-      box.innerHTML =
-        "⚠️ The CBS tab was closed before your league could open. " +
-        '<button class="connect-btn" onclick="startCbsConnect()">Try again</button>';
-    }
-
-    return;
-  }
-
-  if (box) {
-    box.className =
-      "result-box loading show";
-
-    box.innerHTML =
-      "<strong>Opening " +
-      escapeHtml(
-        cbsDiscoveredLeagueLabel(
-          league
-        )
-      ) +
-      "…</strong>";
-  }
-
-  cbsConnectWindow.location.href =
-    league.url;
-
-  try {
-    cbsConnectWindow.focus();
-  } catch (e) {
-    // Focus is optional; the CBS tab has still been navigated.
-  }
-}
 
 /*
   ================================================================
@@ -3247,6 +3175,9 @@ function afterConnect() {
   renderPlatformRow();
   renderConnectedBanner();
   renderProviderForm();
+  renderChatGptLinkPanel();
+
+  refreshChatGptLinkIfNeeded();
 }
 
 /*
@@ -3268,14 +3199,7 @@ function afterConnect() {
   renderPlatformRow();
   renderConnectedBanner();
   renderProviderForm();
-
-  /*
-    Android Chrome: the CBS panel's Return to Inner Sanctum button
-    navigates the CBS tab itself back here. Restore the league that
-    discovery already found so the customer can continue instead of
-    starting over.
-  */
-  renderPendingMobileCbsLeague();
+  renderChatGptLinkPanel();
 })();
 </script>
 
