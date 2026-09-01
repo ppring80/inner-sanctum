@@ -73,6 +73,22 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 
 .teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
 @media(max-width:600px){.teaser-grid{grid-template-columns:1fr}}
+
+/* ── COMPACT UNLOCKED HEADLINE STRIP ──
+   Shown in place of .teaser-grid once the board is unlocked, so
+   unlocked customers reach the intelligence board faster. Reuses the
+   same riser/faller color vocabulary and the existing player-name
+   interactive treatment below -- no new visual language. */
+.rf-headline-strip{display:none;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:600px){.rf-headline-strip{grid-template-columns:1fr}}
+.rf-headline{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rf-headline.riser{border-left:3px solid var(--green)}
+.rf-headline.faller{border-left:3px solid var(--red)}
+.rf-headline-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.rf-headline-name{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--ink)}
+.rf-headline-delta{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-left:auto;white-space:nowrap}
+.rf-headline-delta.up{color:var(--green)}
+.rf-headline-delta.down{color:var(--red)}
 .teaser-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
 .teaser-card.riser{border-left:3px solid var(--green)}
 .teaser-card.faller{border-left:3px solid var(--red)}
@@ -156,6 +172,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   align-items:center;
   gap:8px;
   min-width:0;
+  flex:1;
 }
 
 .player-rank{
@@ -165,6 +182,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   color:var(--dim);
   min-width:20px;
   text-align:right;
+  flex-shrink:0;
 }
 
 .player-primary-metric{
@@ -178,6 +196,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   font-weight:600;
   padding:2px 6px;
   border-radius:3px;
+  flex-shrink:0;
 }
 
 .pos-badge.WR{background:rgba(184,146,26,0.15);color:var(--gold)}
@@ -188,25 +207,32 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   font-size:13px;
   font-weight:600;
   color:var(--ink);
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 /* Universal Player Profile V1 — only player names are interactive. */
 .player-name[role="button"],
 .teaser-name[role="button"],
-.market-snapshot-value[role="button"]{
+.market-snapshot-value[role="button"],
+.rf-headline-name[role="button"]{
   cursor:pointer;
 }
 
 .player-name[role="button"]:hover,
 .teaser-name[role="button"]:hover,
-.market-snapshot-value[role="button"]:hover{
+.market-snapshot-value[role="button"]:hover,
+.rf-headline-name[role="button"]:hover{
   text-decoration:underline;
   text-underline-offset:2px;
 }
 
 .player-name[role="button"]:focus-visible,
 .teaser-name[role="button"]:focus-visible,
-.market-snapshot-value[role="button"]:focus-visible{
+.market-snapshot-value[role="button"]:focus-visible,
+.rf-headline-name[role="button"]:focus-visible{
   outline:2px solid var(--gold);
   outline-offset:2px;
   border-radius:3px;
@@ -218,11 +244,33 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
   color:var(--dim);
 }
 
+/* Secondary identity line -- team + TOP 50 ADP badge live on their own
+   line now, never competing horizontally with rank/position/name/delta. */
+.player-identity-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* Target Share is the emphasized stat; Snap Share/Targets stay in the
+   existing dim, secondary treatment on .player-row-detail below. */
+.player-stat-emphasis{
+  color:var(--ink);
+  font-weight:700;
+  font-size:11px;
+}
+
+.player-stat-secondary{
+  color:var(--dim);
+}
+
 .delta-val{
   font-family:'JetBrains Mono',monospace;
   font-size:14px;
   font-weight:600;
   white-space:nowrap;
+  flex-shrink:0;
 }
 
 .delta-val.up{color:var(--green)}
@@ -510,6 +558,22 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 
   </div>
 
+  <div class="rf-headline-strip" id="headlineStrip">
+
+    <div class="rf-headline riser">
+      <span class="rf-headline-label">Biggest Riser</span>
+      <span class="rf-headline-name" id="headlineRiserName">—</span>
+      <span class="rf-headline-delta up" id="headlineRiserDelta">—</span>
+    </div>
+
+    <div class="rf-headline faller">
+      <span class="rf-headline-label">Biggest Faller</span>
+      <span class="rf-headline-name" id="headlineFallerName">—</span>
+      <span class="rf-headline-delta down" id="headlineFallerDelta">—</span>
+    </div>
+
+  </div>
+
   <div id="paywallArea">
 
     <div class="paywall-card">
@@ -550,7 +614,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
         OR
       </div>
 
-      <a
+      
         href="https://www.patreon.com/oauth2/authorize?response_type=code&client_id=l-54yQq9g0tfpbmzgAJkPaxzxLkzwvGtobg_nuESaPn17x8U48ULfGxHvF8bJ760&redirect_uri=https%3A%2F%2Ftheinnersanctum.xyz%2Foauth%2Fcallback&scope=identity%20identity.memberships&state=%2Frisers-fallers"
         class="paywall-link"
         style="margin-bottom:8px"
@@ -558,7 +622,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
         🔑 Already a member? Login with Patreon
       </a>
 
-      <a
+      
         href="https://www.patreon.com/TheInnerSanctum670"
         target="_blank"
         class="paywall-link"
@@ -1536,6 +1600,113 @@ function renderTeaser(data) {
 
 
 /* ==========================================================
+   COMPACT UNLOCKED HEADLINE STRIP
+
+   Shown instead of the teaser cards once unlocked -- same
+   already-loaded data, no new fetch, no new calculation. Reuses
+   pctPoints() exactly as specified and setRisersFallersProfileTarget()
+   so the player name stays the actionable target for the Universal
+   Player Profile.
+   ========================================================== */
+
+function renderHeadlineStrip(data) {
+
+  if (
+    !data ||
+    (
+      !data.risers.length &&
+      !data.fallers.length
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    data.risers.length
+  ) {
+
+    var r =
+      data.risers[0];
+
+
+    var riserNameEl =
+      document.getElementById(
+        'headlineRiserName'
+      );
+
+
+    riserNameEl.textContent =
+      r.longName;
+
+
+    setRisersFallersProfileTarget(
+      riserNameEl,
+      r
+    );
+
+
+    document
+      .getElementById(
+        'headlineRiserDelta'
+      )
+      .textContent =
+
+        '▲ ' +
+        pctPoints(
+          r.targetShareDelta
+        );
+
+  }
+
+
+  if (
+    data.fallers.length
+  ) {
+
+    var f =
+      data.fallers[0];
+
+
+    var fallerNameEl =
+      document.getElementById(
+        'headlineFallerName'
+      );
+
+
+    fallerNameEl.textContent =
+      f.longName;
+
+
+    setRisersFallersProfileTarget(
+      fallerNameEl,
+      f
+    );
+
+
+    document
+      .getElementById(
+        'headlineFallerDelta'
+      )
+      .textContent =
+
+        '▼ ' +
+        pctPoints(
+          f.targetShareDelta
+        )
+        .replace(
+          '-',
+          ''
+        );
+
+  }
+
+}
+
+
+/* ==========================================================
    MARKET SNAPSHOT
 
    Derived entirely from the same data object already loaded.
@@ -1900,16 +2071,6 @@ function playerRow(
           '</span>' +
 
 
-          '<span class="player-team">' +
-
-            correctedTeam(entry) +
-
-          '</span>' +
-
-
-          adpBadge +
-
-
         '</div>' +
 
 
@@ -1927,12 +2088,28 @@ function playerRow(
       '</div>' +
 
 
+      '<div class="player-identity-line">' +
+
+
+        '<span class="player-team">' +
+
+          correctedTeam(entry) +
+
+        '</span>' +
+
+
+        adpBadge +
+
+
+      '</div>' +
+
+
       '<div class="player-row-detail">' +
 
 
-        'Target share: ' +
+        '<span class="player-stat-emphasis">' +
 
-        '<span class="player-primary-metric">' +
+          'Target Share: ' +
 
           pct(
             entry.previous.targetSharePct
@@ -1947,26 +2124,30 @@ function playerRow(
         '</span>' +
 
 
-        ' &nbsp;·&nbsp; Snap share: ' +
+        '<span class="player-stat-secondary">' +
 
-        pct(
-          entry.previous.offSnapPct
-        ) +
+          ' &nbsp;·&nbsp; Snap Share: ' +
 
-        ' → ' +
+          pct(
+            entry.previous.offSnapPct
+          ) +
 
-        pct(
-          entry.current.offSnapPct
-        ) +
+          ' → ' +
+
+          pct(
+            entry.current.offSnapPct
+          ) +
 
 
-        ' &nbsp;·&nbsp; Targets: ' +
+          ' &nbsp;·&nbsp; Targets: ' +
 
-        entry.previous.targets +
+          entry.previous.targets +
 
-        ' → ' +
+          ' → ' +
 
-        entry.current.targets +
+          entry.current.targets +
+
+        '</span>' +
 
 
       '</div>' +
@@ -2338,6 +2519,22 @@ function unlockFullLists() {
 
   document
     .getElementById(
+      'teaserGrid'
+    )
+    .style.display =
+      'none';
+
+
+  document
+    .getElementById(
+      'headlineStrip'
+    )
+    .style.display =
+      'grid';
+
+
+  document
+    .getElementById(
       'fullListsArea'
     )
     .style.display =
@@ -2345,6 +2542,11 @@ function unlockFullLists() {
 
 
   if (latestData) {
+
+    renderHeadlineStrip(
+      latestData
+    );
+
 
     renderFullLists(
       latestData
@@ -2604,6 +2806,11 @@ async function loadData() {
               'none'
           ) {
 
+            renderHeadlineStrip(
+              latestData
+            );
+
+
             renderFullLists(
               latestData
             );
@@ -2640,6 +2847,11 @@ async function loadData() {
               .style.display !==
               'none'
           ) {
+
+            renderHeadlineStrip(
+              latestData
+            );
+
 
             renderFullLists(
               latestData
