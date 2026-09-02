@@ -1,14 +1,15 @@
 // netlify/functions/chatgpt-mcp.js
 //
 // Inner Sanctum — ChatGPT MCP Bridge
-// Phase 7: Public SAGE Tools + Protected League Link
+// Phase 8: Public SAGE Tools + Protected League Link + Lineup Recommendation
 //
 // LIVE READ-ONLY TOOLS:
 //
 //   get_player_profile
 //   compare_players
 //   get_weekly_rankings
-//   get_linked_league  (OAuth protected)
+//   get_linked_league          (OAuth protected)
+//   get_lineup_recommendation  (OAuth protected)
 //
 // PRODUCTION DATA SOURCE:
 //
@@ -22,6 +23,8 @@
 // - modify Inner Sanctum data
 // - fabricate missing player information
 // - create a second fantasy-ranking system
+// - invent generic/standard lineup requirements when the linked
+//   league's own captured settings don't clearly specify them
 
 const {
   createMcpHandler,
@@ -38,7 +41,7 @@ const {
 
 const SERVER_INFO = {
   name: "inner-sanctum",
-  version: "0.7.0"
+  version: "0.8.0"
 };
 
 const AUTH_STORE = "chatgpt-oauth";
@@ -148,6 +151,81 @@ const LinkedLeagueOutputSchema = z.object({
   rosterCount: z.number().int(),
   syncedAt: z.string().nullable(),
   readOnly: z.boolean(),
+  error: z.string().optional()
+});
+
+// ===========================================================
+// LINEUP RECOMMENDATION OUTPUT SCHEMAS
+//
+// The linked league's captured roster/settings shape originates
+// outside this codebase (a browser-side provider capture), so field
+// names below are read defensively rather than assumed -- see
+// extractRosterEntries()/extractLineupSlots() for exactly which
+// candidate field names are tried and why.
+// ===========================================================
+const LineupSlotAssignmentSchema = z.object({
+  slotLabel: z.string(),
+  eligiblePositions: z.array(z.string()),
+  playerID: z.string().nullable(),
+  player: z.string().nullable(),
+  position: z.string().nullable(),
+  team: z.string().nullable(),
+  recommendation: z.string().nullable(),
+  sageLabel: z.string().nullable(),
+  matchup: z.string().nullable(),
+  reason: z.string().nullable()
+});
+
+const LineupBenchPlayerSchema = z.object({
+  playerID: z.string().nullable(),
+  player: z.string(),
+  position: z.string().nullable(),
+  team: z.string().nullable(),
+  recommendation: z.string().nullable(),
+  sageLabel: z.string().nullable(),
+  reason: z.string().nullable()
+});
+
+const LineupUnmatchedPlayerSchema = z.object({
+  rosterName: z.string(),
+  rosterPosition: z.string().nullable(),
+  reason: z.string()
+});
+
+const LineupUnfilledSlotSchema = z.object({
+  slotLabel: z.string(),
+  eligiblePositions: z.array(z.string()),
+  reason: z.string()
+});
+
+const LineupContextSchema = z.object({
+  provider: z.string().nullable(),
+  league: z.object({
+    id: z.string().nullable(),
+    name: z.string().nullable(),
+    season: z.number().nullable(),
+    teamCount: z.number().nullable()
+  }),
+  team: z.object({
+    id: z.string().nullable(),
+    name: z.string().nullable()
+  }),
+  week: z.number().int(),
+  scoring: z.string(),
+  syncedAt: z.string().nullable()
+});
+
+const LineupRecommendationOutputSchema = z.object({
+  source: z.string(),
+  liveFantasyDataConnected: z.boolean(),
+  lineupRequirementsAvailable: z.boolean(),
+  readOnly: z.boolean(),
+  context: LineupContextSchema,
+  starters: z.array(LineupSlotAssignmentSchema),
+  bench: z.array(LineupBenchPlayerSchema),
+  unmatchedRosterPlayers: z.array(LineupUnmatchedPlayerSchema),
+  unfilledSlots: z.array(LineupUnfilledSlotSchema),
+  warnings: z.array(z.string()),
   error: z.string().optional()
 });
 
@@ -321,14 +399,15 @@ function buildWeeklyRankingsUrl({
   baseUrl,
   season,
   week,
-  scoring
+  scoring,
+  teams = DEFAULT_TEAMS
 }) {
   const params = new URLSearchParams({
     season: String(season),
     week: String(week),
     seasonType: DEFAULT_SEASON_TYPE,
     scoring: scoring,
-    teams: String(DEFAULT_TEAMS)
+    teams: String(teams)
   });
 
   return (
@@ -345,13 +424,15 @@ async function fetchWeeklyRankings({
   baseUrl,
   season,
   week,
-  scoring
+  scoring,
+  teams = DEFAULT_TEAMS
 }) {
   const url = buildWeeklyRankingsUrl({
     baseUrl,
     season,
     week,
-    scoring
+    scoring,
+    teams
   });
 
   const response = await fetch(
@@ -2285,6 +2366,1037 @@ function linkedLeagueToText(
 }
 
 // ===========================================================
+// LINEUP RECOMMENDATION — SNAPSHOT INTERPRETATION HELPERS
+//
+// snapshot.roster / snapshot.settings originate from a browser-side
+// provider capture that lives outside this codebase (see
+// league-snapshot.js's own "we intentionally preserve provider-
+// normalized... data rather than reducing everything to a tiny
+// common denominator" note) -- their exact inner field names are not
+// guaranteed. Every extractor below tries several reasonable
+// candidate field names and fails safe (returns null/empty plus an
+// explicit warning) rather than assuming a standard shape or
+// fabricating a default lineup.
+// ===========================================================
+
+// Deliberately does NOT fall back to DEFAULT_SCORING/PPR when the
+// linked league's captured scoring format is missing or unrecognized
+// -- Tool 5 (get_lineup_recommendation) must never silently assume
+// PPR for a personalized recommendation. Returns null in that case;
+// the caller is responsible for failing safe with an explicit
+// unsupported_scoring_format error rather than proceeding.
+const SAGE_SCORING_ALIASES = {
+  ppr: "ppr",
+  "full-ppr": "ppr",
+  "full ppr": "ppr",
+  full_ppr: "ppr",
+  "1 ppr": "ppr",
+  "1.0 ppr": "ppr",
+
+  "half-ppr": "half",
+  "half ppr": "half",
+  half_ppr: "half",
+  half: "half",
+  "0.5 ppr": "half",
+
+  standard: "standard",
+  "non-ppr": "standard",
+  "non ppr": "standard",
+  non_ppr: "standard",
+  "0 ppr": "standard"
+};
+
+function normalizeScoringForSage(scoringFormat) {
+  const key = String(
+    scoringFormat || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return (
+    SAGE_SCORING_ALIASES[key] ||
+    null
+  );
+}
+
+// Common single-letter/abbreviated shorthand seen across fantasy
+// providers for combined-eligibility slots (e.g. CBS-style "W/R/T").
+// Unrecognized tokens pass through uppercased as-is rather than being
+// dropped, so a real "RB"/"WR"/"TE"/"QB"/"K"/"DEF" token is never lost
+// just because it isn't in this alias map. "D/ST" is handled directly
+// in parsePositionList() before splitting (see its own comment), not
+// here, since by the time tokens reach this map "D/ST" has already
+// been collapsed to a single "DEF" token.
+const POSITION_TOKEN_ALIASES = {
+  Q: "QB",
+  R: "RB",
+  W: "WR",
+  T: "TE",
+  D: "DEF",
+  DST: "DEF",
+  PK: "K"
+};
+
+// Slot-label tokens that indicate a non-starting roster spot. These
+// are excluded from lineup requirements entirely -- a recommendation
+// tool has nothing meaningful to "require" for a bench/reserve spot.
+const NON_STARTING_SLOT_TOKENS = new Set([
+  "BN",
+  "BENCH",
+  "IR",
+  "IR/PUP",
+  "PUP",
+  "TAXI",
+  "TAXI SQUAD",
+  "RESERVE"
+]);
+
+function parsePositionList(raw) {
+  if (Array.isArray(raw)) {
+    return [
+      ...new Set(
+        raw
+          .flatMap(
+            (item) =>
+              parsePositionList(
+                item
+              )
+          )
+      )
+    ];
+  }
+
+  let text = String(
+    raw || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  if (!text) {
+    return [];
+  }
+
+  // "D/ST" must be protected BEFORE splitting on slash delimiters --
+  // splitting it naively would produce the bogus tokens ["D", "ST"]
+  // (with "D" separately aliasing to "DEF"), rather than the single
+  // correct "DEF" token. Collapsed to "DEF" directly here, which
+  // contains no delimiter characters and survives the split below
+  // as one token.
+  text = text.replace(
+    /D\/ST/g,
+    "DEF"
+  );
+
+  const tokens = text
+    .split(/[\/,+&-]|\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const positions = tokens.map(
+    (token) =>
+      POSITION_TOKEN_ALIASES[
+        token
+      ] || token
+  );
+
+  return [
+    ...new Set(
+      positions
+    )
+  ];
+}
+
+function isNonStartingSlotLabel(label) {
+  const text = String(
+    label || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  return NON_STARTING_SLOT_TOKENS.has(
+    text
+  );
+}
+
+// Literal "FLEX"/"SUPERFLEX" slot labels are a universal, unambiguous
+// fantasy-football convention (FLEX = RB/WR/TE, SUPERFLEX = QB/RB/WR/
+// TE) industry-wide -- expanding them here is interpreting a term the
+// provider itself used, not assuming a lineup construction the
+// provider never specified (a slot's COUNT and its presence at all
+// still come entirely from the captured settings, never invented).
+// A provider that instead expresses the same slot as a combined
+// position string (e.g. "RB/WR/TE") is handled by parsePositionList()
+// directly and never reaches this special case.
+function parseSlotEligiblePositions(label) {
+  const text = String(
+    label || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  if (text === "FLEX") {
+    return ["RB", "WR", "TE"];
+  }
+
+  if (
+    text === "SUPERFLEX" ||
+    text === "SFLEX"
+  ) {
+    return ["QB", "RB", "WR", "TE"];
+  }
+
+  return parsePositionList(
+    label
+  );
+}
+
+// Tries several reasonable candidate field names for a single roster
+// record. Returns null if the entry has no usable name at all.
+// Provider-specific player IDs (cbsPlayerId, espnPlayerId,
+// yahooPlayerId, sleeperPlayerId, a generic providerPlayerId, or a
+// bare id/playerId with no namespace indicated) live in a DIFFERENT
+// ID space than Weekly SAGE/Tank01 player IDs and must never be
+// treated as if they were the same value. Only fields explicitly
+// known to share the SAGE/Tank01 namespace are used for ID-based
+// matching; provider IDs are extracted separately, purely for
+// reference/display, and are never compared against a SAGE row's
+// playerID.
+function extractSageCompatibleId(entry) {
+  return cleanString(
+    entry.sagePlayerID !== undefined
+      ? entry.sagePlayerID
+      : entry.sagePlayerId !== undefined
+        ? entry.sagePlayerId
+        : entry.tank01PlayerID !== undefined
+          ? entry.tank01PlayerID
+          : entry.tank01PlayerId !== undefined
+            ? entry.tank01PlayerId
+            : entry.innerSanctumPlayerID !== undefined
+              ? entry.innerSanctumPlayerID
+              : entry.innerSanctumPlayerId
+  );
+}
+
+function extractProviderId(entry) {
+  return cleanString(
+    entry.cbsPlayerId !== undefined
+      ? entry.cbsPlayerId
+      : entry.espnPlayerId !== undefined
+        ? entry.espnPlayerId
+        : entry.yahooPlayerId !== undefined
+          ? entry.yahooPlayerId
+          : entry.sleeperPlayerId !== undefined
+            ? entry.sleeperPlayerId
+            : entry.providerPlayerId !== undefined
+              ? entry.providerPlayerId
+              : entry.playerId !== undefined
+                ? entry.playerId
+                : entry.id
+  );
+}
+
+function extractRosterEntry(entry) {
+  if (
+    !entry ||
+    typeof entry !== "object"
+  ) {
+    return null;
+  }
+
+  const name =
+    cleanString(
+      entry.name !== undefined
+        ? entry.name
+        : entry.playerName !== undefined
+          ? entry.playerName
+          : entry.fullName
+    );
+
+  if (!name) {
+    return null;
+  }
+
+  const eligiblePositions =
+    parsePositionList(
+      entry.position !== undefined
+        ? entry.position
+        : entry.pos !== undefined
+          ? entry.pos
+          : entry.eligiblePositions !== undefined
+            ? entry.eligiblePositions
+            : entry.eligiblePosition
+    );
+
+  const team =
+    cleanString(
+      entry.team !== undefined
+        ? entry.team
+        : entry.nflTeam !== undefined
+          ? entry.nflTeam
+          : entry.proTeam
+    );
+
+  return {
+    sageCompatibleId:
+      extractSageCompatibleId(
+        entry
+      ),
+    providerId:
+      extractProviderId(
+        entry
+      ),
+    name,
+    eligiblePositions,
+    team
+  };
+}
+
+function extractRosterEntries(snapshot) {
+  const roster =
+    snapshot &&
+    Array.isArray(
+      snapshot.roster
+    )
+      ? snapshot.roster
+      : [];
+
+  return roster
+    .map(
+      extractRosterEntry
+    )
+    .filter(Boolean);
+}
+
+// Tries the real, confirmed CBS connector schema first
+// (snapshot.settings.roster.positions[label] = {activeMin, activeMax,
+// rosterTotal} -- where, despite its name, activeMin is the CBS
+// source table's "Starters" column, i.e. the actual starter count
+// for that slot/label). Only activeMin is ever used for starter
+// counts; activeMax/rosterTotal are deliberately never used for this
+// purpose. Falls back to defensive parsing of other reasonable
+// provider-normalized shapes only if the real CBS shape isn't
+// present. Returns null (never a fabricated default lineup) when
+// nothing recognizable is found.
+function buildSlotsFromLabelCountEntries(entries) {
+  const slots = entries
+    .map(([label, count]) => {
+      const cleanLabel =
+        cleanString(label);
+
+      const numericCount =
+        num(count);
+
+      if (
+        !cleanLabel ||
+        isNonStartingSlotLabel(
+          cleanLabel
+        ) ||
+        !numericCount ||
+        numericCount < 1
+      ) {
+        return null;
+      }
+
+      const eligiblePositions =
+        parseSlotEligiblePositions(
+          cleanLabel
+        );
+
+      if (!eligiblePositions.length) {
+        return null;
+      }
+
+      return {
+        slotLabel: cleanLabel,
+        eligiblePositions,
+        count: numericCount
+      };
+    })
+    .filter(Boolean);
+
+  return slots.length
+    ? slots
+    : null;
+}
+
+function extractLineupSlotsFromRealCbsSchema(snapshot) {
+  const positions =
+    snapshot &&
+    snapshot.settings &&
+    typeof snapshot.settings === "object" &&
+    snapshot.settings.roster &&
+    typeof snapshot.settings.roster === "object" &&
+    snapshot.settings.roster.positions &&
+    typeof snapshot.settings.roster.positions === "object" &&
+    !Array.isArray(snapshot.settings.roster.positions)
+      ? snapshot.settings.roster.positions
+      : null;
+
+  if (!positions) {
+    return null;
+  }
+
+  const entries = Object.entries(
+    positions
+  ).map(([label, value]) => [
+    label,
+    value &&
+    typeof value === "object"
+      ? value.activeMin
+      : undefined
+  ]);
+
+  return buildSlotsFromLabelCountEntries(
+    entries
+  );
+}
+
+function extractLineupSlotsFromFallbackShapes(snapshot) {
+  const settings =
+    snapshot &&
+    snapshot.settings &&
+    typeof snapshot.settings === "object"
+      ? snapshot.settings
+      : null;
+
+  if (!settings) {
+    return null;
+  }
+
+  const arrayCandidates = [
+    settings.rosterPositions,
+    settings.lineupSlots,
+    settings.starterSlots,
+    settings.positions
+  ];
+
+  for (const candidate of arrayCandidates) {
+    if (
+      Array.isArray(candidate) &&
+      candidate.length
+    ) {
+      const entries = candidate.map(
+        (item) => [
+          item &&
+          (
+            item.position !== undefined
+              ? item.position
+              : item.slot !== undefined
+                ? item.slot
+                : item.label
+          ),
+          item &&
+          (
+            item.count !== undefined
+              ? item.count
+              : item.quantity !== undefined
+                ? item.quantity
+                : item.slots
+          )
+        ]
+      );
+
+      const slots =
+        buildSlotsFromLabelCountEntries(
+          entries
+        );
+
+      if (slots) {
+        return slots;
+      }
+    }
+  }
+
+  const objectCandidates = [
+    settings.rosterSlots,
+    settings.lineupSlots,
+    settings.starterPositions
+  ];
+
+  for (const candidate of objectCandidates) {
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      !Array.isArray(candidate)
+    ) {
+      const slots =
+        buildSlotsFromLabelCountEntries(
+          Object.entries(candidate)
+        );
+
+      if (slots) {
+        return slots;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractLineupSlots(snapshot) {
+  return (
+    extractLineupSlotsFromRealCbsSchema(
+      snapshot
+    ) ||
+    extractLineupSlotsFromFallbackShapes(
+      snapshot
+    )
+  );
+}
+
+// Expands {slotLabel, eligiblePositions, count} entries into one row
+// per individual starting spot (a "RB" slot with count 2 becomes two
+// separate assignable spots), and orders spots by eligibility-set
+// size ascending so single-position dedicated spots are matched
+// before broader FLEX/SUPERFLEX-style spots -- the same greedy
+// principle already used by weekly.html's own fillSlots()/
+// getRosterLineupAssignments() for this exact class of problem.
+function expandLineupSlots(slots) {
+  const expanded = [];
+
+  slots.forEach((slot) => {
+    for (let i = 0; i < slot.count; i += 1) {
+      expanded.push({
+        slotLabel: slot.slotLabel,
+        eligiblePositions: slot.eligiblePositions
+      });
+    }
+  });
+
+  return expanded.sort(
+    (a, b) =>
+      a.eligiblePositions.length -
+      b.eligiblePositions.length
+  );
+}
+
+// Identity matching: an explicit SAGE/Tank01-compatible player ID +
+// position first, when the roster entry actually has one; otherwise
+// normalized name+position. Provider-specific IDs (CBS, ESPN, Yahoo,
+// Sleeper, or a generic/bare id) are a different namespace from
+// SAGE/Tank01 IDs and are never used here -- see
+// extractSageCompatibleId()/extractProviderId() above. Position
+// compatibility is always required; name alone is never sufficient
+// when position conflicts.
+function matchRosterEntryToSageRow(
+  rosterEntry,
+  sageRows,
+  usedRowKeys
+) {
+  const rowKey = (row) =>
+    `${row.playerID || ""}|${normalizePlayerName(row.name)}|${row.position}`;
+
+  if (rosterEntry.sageCompatibleId) {
+    const byId = sageRows.find(
+      (row) =>
+        row.playerID &&
+        row.playerID === rosterEntry.sageCompatibleId &&
+        rosterEntry.eligiblePositions.includes(
+          row.position
+        ) &&
+        !usedRowKeys.has(
+          rowKey(row)
+        )
+    );
+
+    if (byId) {
+      return byId;
+    }
+  }
+
+  const normalizedName =
+    normalizePlayerName(
+      rosterEntry.name
+    );
+
+  const byName = sageRows.find(
+    (row) =>
+      normalizePlayerName(row.name) ===
+        normalizedName &&
+      rosterEntry.eligiblePositions.includes(
+        row.position
+      ) &&
+      !usedRowKeys.has(
+        rowKey(row)
+      )
+  );
+
+  return byName || null;
+}
+
+function buildLineupSageReason(row) {
+  if (row.sageTake) {
+    return row.sageTake;
+  }
+
+  const bits = [];
+
+  if (row.sageLabel) {
+    bits.push(row.sageLabel);
+  }
+
+  if (row.matchup) {
+    bits.push(
+      `${row.matchup} matchup`
+    );
+  }
+
+  return bits.length
+    ? bits.join(" · ")
+    : null;
+}
+
+function buildStarterRecord(
+  slot,
+  row
+) {
+  return {
+    slotLabel: slot.slotLabel,
+    eligiblePositions:
+      slot.eligiblePositions,
+    playerID:
+      row.playerID ||
+      null,
+    player: row.name,
+    position: row.position,
+    team: row.team || null,
+    recommendation:
+      row.recommendation
+        ? row.recommendation.toUpperCase()
+        : null,
+    sageLabel:
+      row.sageLabel ||
+      null,
+    matchup:
+      row.matchup ||
+      null,
+    reason:
+      buildLineupSageReason(
+        row
+      )
+  };
+}
+
+// Candidate preference for the optimizer's objective: existing
+// row.sageScore is primary; if a matched row has no SAGE score
+// (this happens today for Week 1, before enough data exists), falls
+// back to existing overallRank, then existing positionRank. This is
+// never a new/invented score -- it is entirely a read of values
+// Weekly SAGE already computed. The large offsets keep each tier
+// numerically distinct from the others so a rank-based fallback
+// value is never confused with a real SAGE score during comparison,
+// while still preserving correct relative ordering within a tier
+// (lower rank number = better = higher resulting value).
+function lineupPlayerValue(row) {
+  if (typeof row.sageScore === "number") {
+    return row.sageScore;
+  }
+
+  if (typeof row.overallRank === "number") {
+    return 1000 - row.overallRank;
+  }
+
+  if (typeof row.positionRank === "number") {
+    return 100 - row.positionRank;
+  }
+
+  return -Infinity;
+}
+
+function popcount(mask) {
+  let n = mask;
+  let count = 0;
+
+  while (n) {
+    count += n & 1;
+    n >>>= 1;
+  }
+
+  return count;
+}
+
+// Safe, non-crashing fallback for the rare oversized-league case that
+// exceeds the bitmask DP's safe slot limit (see
+// assignLineupSlotsOptimally() below). Orders slots narrowest-
+// eligibility-first and greedily assigns the best remaining eligible
+// player to each. This is a reasonable deterministic ordering, not
+// an invented ranking model -- but unlike the DP it is not guaranteed
+// to find the single best possible solution when slots' eligible
+// positions overlap in unusual ways.
+function assignLineupSlotsGreedyFallback(
+  expandedSlots,
+  matchedEntries
+) {
+  const orderedSlots = expandedSlots
+    .slice()
+    .sort(
+      (a, b) =>
+        a.eligiblePositions.length -
+        b.eligiblePositions.length
+    );
+
+  const available = matchedEntries
+    .slice()
+    .sort(
+      (a, b) =>
+        lineupPlayerValue(b.row) -
+        lineupPlayerValue(a.row)
+    );
+
+  const starters = [];
+  const unfilledSlots = [];
+
+  orderedSlots.forEach((slot) => {
+    const index = available.findIndex(
+      (entry) =>
+        slot.eligiblePositions.includes(
+          entry.row.position
+        )
+    );
+
+    if (index === -1) {
+      unfilledSlots.push({
+        slotLabel: slot.slotLabel,
+        eligiblePositions:
+          slot.eligiblePositions,
+        reason:
+          "No available roster player at a Weekly SAGE-matched eligible position could legally fill this slot."
+      });
+      return;
+    }
+
+    const [entry] = available.splice(
+      index,
+      1
+    );
+
+    starters.push(
+      buildStarterRecord(
+        slot,
+        entry.row
+      )
+    );
+  });
+
+  return {
+    starters,
+    bench: available,
+    unfilledSlots
+  };
+}
+
+// Exact assignment optimizer -- NOT a greedy heuristic. Overlapping
+// FLEX/SUPERFLEX/combined-eligibility slots (e.g. a "RB/WR" slot and
+// a separate "WR/TE" slot both eligible for the same WR) can make a
+// naive greedy assignment produce a legal but SUBOPTIMAL lineup, so
+// this solves the assignment exhaustively via bitmask dynamic
+// programming: state = which starting slots are filled so far,
+// transitioning one already-SAGE-matched player at a time. This is
+// solving legal slot assignment only -- it is not a new SAGE model;
+// every candidate's value comes entirely from lineupPlayerValue()'s
+// read of the row Weekly SAGE already returned. Objective, in order:
+// (1) maximize the number of legally filled starting slots, (2)
+// among equally-complete legal lineups, maximize total existing
+// SAGE/ranking preference.
+//
+// Bitmask-safety note: JS bitwise operators work on 32-bit SIGNED
+// integers, so bit 31 is the sign bit -- (1 << 31) - 1 does not
+// produce "all 31 bits set" the way naive reasoning suggests. The
+// true safe cap for a positive all-bits-set mask is 30 slots (bit
+// positions 0-29). Slot counts beyond that use the safe greedy
+// fallback above instead of risking incorrect bitmask arithmetic.
+const SAFE_SLOT_BITMASK_LIMIT = 30;
+
+function assignLineupSlotsOptimally(
+  expandedSlots,
+  matchedEntries
+) {
+  if (!expandedSlots.length) {
+    return {
+      starters: [],
+      bench: matchedEntries.slice(),
+      unfilledSlots: []
+    };
+  }
+
+  if (
+    expandedSlots.length >
+    SAFE_SLOT_BITMASK_LIMIT
+  ) {
+    return assignLineupSlotsGreedyFallback(
+      expandedSlots,
+      matchedEntries
+    );
+  }
+
+  const players = matchedEntries.map(
+    (entry) => ({
+      entry,
+      value:
+        lineupPlayerValue(
+          entry.row
+        )
+    })
+  );
+
+  // dp maps a slot-fill bitmask to the best {value, assignment}
+  // reachable using that exact set of filled slots, considering
+  // players processed so far. assignment is a list of
+  // {slotIndex, playerIndex} pairs.
+  let dp = new Map();
+
+  dp.set(0, {
+    value: 0,
+    assignment: []
+  });
+
+  players.forEach(
+    (player, playerIndex) => {
+      const next = new Map(
+        dp
+      );
+
+      dp.forEach((state, mask) => {
+        expandedSlots.forEach(
+          (slot, slotIndex) => {
+            const bit =
+              1 << slotIndex;
+
+            if (mask & bit) {
+              return;
+            }
+
+            if (
+              !slot.eligiblePositions.includes(
+                player.entry.row
+                  .position
+              )
+            ) {
+              return;
+            }
+
+            const newMask =
+              mask | bit;
+
+            const newValue =
+              state.value +
+              player.value;
+
+            const existing =
+              next.get(
+                newMask
+              );
+
+            if (
+              !existing ||
+              newValue >
+                existing.value
+            ) {
+              next.set(
+                newMask,
+                {
+                  value:
+                    newValue,
+                  assignment: [
+                    ...state.assignment,
+                    {
+                      slotIndex,
+                      playerIndex
+                    }
+                  ]
+                }
+              );
+            }
+          }
+        );
+      });
+
+      dp = next;
+    }
+  );
+
+  let best = null;
+
+  dp.forEach((state, mask) => {
+    const filled =
+      popcount(mask);
+
+    if (
+      !best ||
+      filled > best.filled ||
+      (
+        filled === best.filled &&
+        state.value > best.value
+      )
+    ) {
+      best = {
+        mask,
+        filled,
+        value: state.value,
+        assignment:
+          state.assignment
+      };
+    }
+  });
+
+  const filledSlotIndexes =
+    new Set(
+      best.assignment.map(
+        (a) => a.slotIndex
+      )
+    );
+
+  const usedPlayerIndexes =
+    new Set(
+      best.assignment.map(
+        (a) => a.playerIndex
+      )
+    );
+
+  const starters = best.assignment
+    .slice()
+    .sort(
+      (a, b) =>
+        a.slotIndex -
+        b.slotIndex
+    )
+    .map(
+      ({ slotIndex, playerIndex }) =>
+        buildStarterRecord(
+          expandedSlots[slotIndex],
+          players[playerIndex]
+            .entry.row
+        )
+    );
+
+  const unfilledSlots = expandedSlots
+    .map((slot, slotIndex) => ({
+      slot,
+      slotIndex
+    }))
+    .filter(
+      ({ slotIndex }) =>
+        !filledSlotIndexes.has(
+          slotIndex
+        )
+    )
+    .map(({ slot }) => ({
+      slotLabel: slot.slotLabel,
+      eligiblePositions:
+        slot.eligiblePositions,
+      reason:
+        "No available roster player at a Weekly SAGE-matched eligible position could legally fill this slot."
+    }));
+
+  const bench = matchedEntries.filter(
+    (_, index) =>
+      !usedPlayerIndexes.has(
+        index
+      )
+  );
+
+  return {
+    starters,
+    bench,
+    unfilledSlots
+  };
+}
+
+function lineupRecommendationToText({
+  context,
+  lineupRequirementsAvailable,
+  starters,
+  bench,
+  unmatchedRosterPlayers,
+  unfilledSlots,
+  warnings
+}) {
+  const lines = [];
+
+  lines.push(
+    `Inner Sanctum Lineup Recommendation — ${context.league.name || "Linked league"} — ` +
+    `${context.team.name || "Linked team"} — Week ${context.week} — ` +
+    `${context.scoring.toUpperCase()}`
+  );
+
+  if (!lineupRequirementsAvailable) {
+    lines.push(
+      "Lineup requirements could not be determined from the linked " +
+      "league's captured settings. No starters were assigned."
+    );
+  } else {
+    starters.forEach((slot) => {
+      if (!slot.player) {
+        return;
+      }
+
+      const pieces = [];
+
+      if (slot.recommendation) {
+        pieces.push(slot.recommendation);
+      }
+
+      if (slot.matchup) {
+        pieces.push(`${slot.matchup} matchup`);
+      }
+
+      lines.push(
+        `${slot.slotLabel}: ${slot.player} (${slot.position}${slot.team ? ", " + slot.team : ""})` +
+        (pieces.length ? ` — ${pieces.join(" | ")}` : "")
+      );
+
+      if (slot.reason) {
+        lines.push(`Inner Sanctum Insight: ${slot.reason}`);
+      }
+    });
+  }
+
+  if (unfilledSlots.length) {
+    lines.push(
+      "Unfilled slots: " +
+      unfilledSlots
+        .map((slot) => slot.slotLabel)
+        .join(", ")
+    );
+  }
+
+  if (bench.length) {
+    lines.push(
+      "Bench: " +
+      bench
+        .map(
+          (entry) =>
+            `${entry.player} (${entry.position})`
+        )
+        .join(", ")
+    );
+  }
+
+  if (unmatchedRosterPlayers.length) {
+    lines.push(
+      "Not matched to current Weekly SAGE data: " +
+      unmatchedRosterPlayers
+        .map((p) => p.rosterName)
+        .join(", ")
+    );
+  }
+
+  if (warnings.length) {
+    warnings.forEach((warning) => {
+      lines.push(`Note: ${warning}`);
+    });
+  }
+
+  lines.push(
+    "Source: Inner Sanctum Weekly SAGE, applied to your linked league's " +
+    "actual roster and captured lineup requirements. This is a read-only " +
+    "recommendation; no lineup or roster change was made with your provider."
+  );
+
+  return lines.join("\n\n");
+}
+
+// ===========================================================
 // MCP SERVER
 // ===========================================================
 
@@ -3330,6 +4442,493 @@ function buildServer(
 
         structuredContent
       };
+    }
+  );
+
+  // =========================================================
+  // TOOL #5 — GET LINEUP RECOMMENDATION (OAUTH PROTECTED)
+  // =========================================================
+  //
+  // Uses only the OAuth-authorized authContext.snapshot -- the
+  // actual linked roster (snapshot.roster) and the actual captured
+  // lineup requirements (snapshot.settings). Fetches Weekly SAGE
+  // exactly once and applies its existing ordering/signals to fill
+  // the linked league's own captured starting slots; it never
+  // recalculates a SAGE score or invents a generic/standard lineup
+  // when the captured settings don't clearly specify one. Read-only:
+  // never writes back to the provider.
+  server.registerTool(
+    "get_lineup_recommendation",
+
+    {
+      title:
+        "Get Inner Sanctum Lineup Recommendation",
+
+      description:
+        "Returns a read-only start/sit lineup recommendation for the user's " +
+        "OAuth-authorized linked Inner Sanctum league, using the actual linked " +
+        "roster and the league's own actual captured lineup requirements -- " +
+        "never a generic or assumed standard lineup. Applies the existing " +
+        "production Weekly SAGE ordering/signals to the linked roster; it does " +
+        "not calculate a new SAGE score or use outside fantasy analysis. " +
+        "Requires OAuth scope inner_sanctum.league.read. This tool never " +
+        "modifies a lineup, roster, league, or provider account -- it is " +
+        "read-only and only returns a recommendation.",
+
+      inputSchema:
+        z.object({
+          season:
+            z.number()
+              .int()
+              .min(2026)
+              .max(2035)
+              .optional()
+              .describe(
+                "NFL season. Defaults to 2026."
+              ),
+
+          week:
+            z.number()
+              .int()
+              .min(1)
+              .max(18)
+              .optional()
+              .describe(
+                "NFL regular-season week. Defaults to the current Inner Sanctum week."
+              )
+        }),
+
+      outputSchema:
+        LineupRecommendationOutputSchema,
+
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+
+    async ({
+      season,
+      week
+    }) => {
+      const resolvedWeek =
+        week ||
+        getCurrentNFLWeek();
+
+      const snapshot =
+        authContext &&
+        authContext.snapshot
+          ? authContext.snapshot
+          : null;
+
+      if (!snapshot) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum league authorization is required for a lineup recommendation."
+            }
+          ],
+          structuredContent: {
+            source: "Inner Sanctum",
+            liveFantasyDataConnected: false,
+            lineupRequirementsAvailable: false,
+            readOnly: true,
+            context: {
+              provider: null,
+              league: { id: null, name: null, season: null, teamCount: null },
+              team: { id: null, name: null },
+              week: resolvedWeek,
+              scoring: "unknown",
+              syncedAt: null
+            },
+            starters: [],
+            bench: [],
+            unmatchedRosterPlayers: [],
+            unfilledSlots: [],
+            warnings: [],
+            error: "authorization_required"
+          }
+        };
+      }
+
+      const league =
+        snapshot.league &&
+        typeof snapshot.league === "object"
+          ? snapshot.league
+          : {};
+
+      const team =
+        snapshot.team &&
+        typeof snapshot.team === "object"
+          ? snapshot.team
+          : {};
+
+      // Team count: strictly from the linked league's own captured
+      // teamCount. Never assumes 12 (DEFAULT_TEAMS) for a
+      // personalized lineup recommendation -- Tools 1-3 keep using
+      // DEFAULT_TEAMS, since that default is appropriate for their
+      // public/presentation context, but Tool 5 must fail safely
+      // instead of guessing here.
+      const rawTeamCount =
+        Number(
+          league.teamCount
+        );
+
+      const resolvedTeamCount =
+        Number.isFinite(rawTeamCount) &&
+        rawTeamCount > 1
+          ? rawTeamCount
+          : null;
+
+      // Scoring: strictly from the linked league's own captured
+      // scoringFormat, normalized via the explicit alias map above.
+      // normalizeScoringForSage() returns null for anything missing
+      // or unrecognized -- Tool 5 must never assume PPR.
+      const rawScoringFormat =
+        cleanString(
+          snapshot.scoringFormat
+        );
+
+      const resolvedScoring =
+        normalizeScoringForSage(
+          snapshot.scoringFormat
+        );
+
+      // Season: explicit request > the linked league's own captured
+      // season (if a valid positive number) > DEFAULT_SEASON.
+      const rawLeagueSeason =
+        Number(
+          league.season
+        );
+
+      const resolvedSeason =
+        season ||
+        (
+          Number.isFinite(rawLeagueSeason) &&
+          rawLeagueSeason > 0
+            ? rawLeagueSeason
+            : DEFAULT_SEASON
+        );
+
+      const context = {
+        provider:
+          snapshot.provider ||
+          null,
+        league: {
+          id: league.id || null,
+          name: league.name || null,
+          season:
+            Number.isFinite(Number(league.season))
+              ? Number(league.season)
+              : null,
+          teamCount:
+            Number.isFinite(Number(league.teamCount))
+              ? Number(league.teamCount)
+              : null
+        },
+        team: {
+          id: team.id || null,
+          name: team.name || null
+        },
+        week: resolvedWeek,
+        // Always a display string, whatever the outcome: the
+        // normalized SAGE-compatible value when resolution
+        // succeeded, otherwise the raw captured value (or "unknown")
+        // so the response stays transparent about what was actually
+        // captured -- the pass/fail signal itself lives in the
+        // dedicated error field below, not in this display value.
+        scoring:
+          resolvedScoring ||
+          rawScoringFormat ||
+          "unknown",
+        syncedAt:
+          snapshot.syncedAt ||
+          null
+      };
+
+      const warnings = [];
+
+      if (!resolvedTeamCount) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum could not determine your linked league's team count from its captured settings, so a lineup recommendation is not available. This was not defaulted to a 12-team league."
+            }
+          ],
+          structuredContent: {
+            source: "Inner Sanctum",
+            liveFantasyDataConnected: false,
+            lineupRequirementsAvailable: false,
+            readOnly: true,
+            context,
+            starters: [],
+            bench: [],
+            unmatchedRosterPlayers: [],
+            unfilledSlots: [],
+            warnings: [
+              "The linked league's captured team count is missing, non-numeric, or invalid, so Inner Sanctum did not assume a 12-team league."
+            ],
+            error: "league_team_count_unavailable"
+          }
+        };
+      }
+
+      if (!resolvedScoring) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum could not determine your linked league's scoring format from its captured settings, so a lineup recommendation is not available. This was not defaulted to PPR scoring."
+            }
+          ],
+          structuredContent: {
+            source: "Inner Sanctum",
+            liveFantasyDataConnected: false,
+            lineupRequirementsAvailable: false,
+            readOnly: true,
+            context,
+            starters: [],
+            bench: [],
+            unmatchedRosterPlayers: [],
+            unfilledSlots: [],
+            warnings: [
+              "The linked league's captured scoring format is missing or not recognized, so Inner Sanctum did not assume PPR scoring."
+            ],
+            error: "unsupported_scoring_format"
+          }
+        };
+      }
+
+      const rosterEntries =
+        extractRosterEntries(
+          snapshot
+        );
+
+      if (!rosterEntries.length) {
+        warnings.push(
+          "The linked league's captured roster is empty or could not be read."
+        );
+      }
+
+      const lineupSlots =
+        extractLineupSlots(
+          snapshot
+        );
+
+      const lineupRequirementsAvailable =
+        Array.isArray(lineupSlots) &&
+        lineupSlots.length > 0;
+
+      if (!lineupRequirementsAvailable) {
+        warnings.push(
+          "Lineup requirements could not be determined from the linked " +
+          "league's captured settings, so no starters were assigned."
+        );
+      }
+
+      try {
+        const baseUrl =
+          getRequestBaseUrl(
+            request
+          );
+
+        // Exactly one Weekly SAGE request for this tool invocation,
+        // for the entire roster. No second ranking or score
+        // calculation. Uses the linked league's own actual team
+        // count and scoring format -- never DEFAULT_TEAMS/PPR.
+        const rankings =
+          await fetchWeeklyRankings({
+            baseUrl,
+            season: resolvedSeason,
+            week: resolvedWeek,
+            scoring: resolvedScoring,
+            teams: resolvedTeamCount
+          });
+
+        const rows =
+          flattenRankings(
+            rankings
+          );
+
+        const usedRowKeys =
+          new Set();
+
+        const matchedEntries = [];
+        const unmatchedRosterPlayers = [];
+
+        rosterEntries.forEach(
+          (entry) => {
+            const row =
+              matchRosterEntryToSageRow(
+                entry,
+                rows,
+                usedRowKeys
+              );
+
+            if (!row) {
+              unmatchedRosterPlayers.push({
+                rosterName: entry.name,
+                rosterPosition:
+                  entry.eligiblePositions[0] ||
+                  null,
+                reason:
+                  "No matching player found in this week's Weekly SAGE rankings."
+              });
+              return;
+            }
+
+            usedRowKeys.add(
+              `${row.playerID || ""}|${normalizePlayerName(row.name)}|${row.position}`
+            );
+
+            matchedEntries.push({
+              entry,
+              row
+            });
+          }
+        );
+
+        let starters = [];
+        let bench = [];
+        let unfilledSlots = [];
+
+        if (lineupRequirementsAvailable) {
+          const expandedSlots =
+            expandLineupSlots(
+              lineupSlots
+            );
+
+          const assignment =
+            assignLineupSlotsOptimally(
+              expandedSlots,
+              matchedEntries
+            );
+
+          starters =
+            assignment.starters;
+
+          bench =
+            assignment.bench.map(
+              (item) => ({
+                playerID:
+                  item.row.playerID ||
+                  null,
+                player: item.row.name,
+                position: item.row.position,
+                team: item.row.team || null,
+                recommendation:
+                  item.row.recommendation
+                    ? item.row.recommendation.toUpperCase()
+                    : null,
+                sageLabel:
+                  item.row.sageLabel ||
+                  null,
+                reason:
+                  buildLineupSageReason(
+                    item.row
+                  )
+              })
+            );
+
+          unfilledSlots =
+            assignment.unfilledSlots;
+        } else {
+          bench = matchedEntries.map(
+            (item) => ({
+              playerID:
+                item.row.playerID ||
+                null,
+              player: item.row.name,
+              position: item.row.position,
+              team: item.row.team || null,
+              recommendation:
+                item.row.recommendation
+                  ? item.row.recommendation.toUpperCase()
+                  : null,
+              sageLabel:
+                item.row.sageLabel ||
+                null,
+              reason:
+                buildLineupSageReason(
+                  item.row
+                )
+            })
+          );
+        }
+
+        const structuredContent = {
+          source: "Inner Sanctum",
+          liveFantasyDataConnected: true,
+          lineupRequirementsAvailable,
+          readOnly: true,
+          context,
+          starters,
+          bench,
+          unmatchedRosterPlayers,
+          unfilledSlots,
+          warnings
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                lineupRecommendationToText({
+                  context,
+                  lineupRequirementsAvailable,
+                  starters,
+                  bench,
+                  unmatchedRosterPlayers,
+                  unfilledSlots,
+                  warnings
+                })
+            }
+          ],
+          structuredContent
+        };
+      } catch (error) {
+        console.error(
+          "Inner Sanctum lineup recommendation error:",
+          error
+        );
+
+        const structuredContent = {
+          source: "Inner Sanctum",
+          liveFantasyDataConnected: false,
+          lineupRequirementsAvailable,
+          readOnly: true,
+          context,
+          starters: [],
+          bench: [],
+          unmatchedRosterPlayers: [],
+          unfilledSlots: [],
+          warnings,
+          error: "live_lineup_recommendation_unavailable"
+        };
+
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum could not retrieve the live Weekly SAGE data needed for a lineup recommendation right now."
+            }
+          ],
+          structuredContent
+        };
+      }
     }
   );
 
