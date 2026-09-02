@@ -3,7 +3,7 @@
   ------------------------------------------------
   Browser-assisted, READ-ONLY CBS Fantasy connector.
 
-  VERSION 0.4.0
+  VERSION 0.3.1
 
   DESIGN PRINCIPLE
   ------------------------------------------------
@@ -90,12 +90,19 @@
     await CBSBrowserConnector.captureAll()
 
       Full multi-page CBS league capture.
+
+    CBSBrowserConnector.discoverLeagues()
+
+      Synchronous, read-only scan of the CURRENT page's DOM for
+      *.football.cbssports.com league links (e.g. on the CBS
+      Fantasy & Games account hub). Does not fetch, navigate, or
+      require an authenticated league subdomain to be loaded.
 */
 
 (function () {
   "use strict";
 
-  const VERSION = "0.4.0";
+  const VERSION = "0.3.1";
 
   const CBS_HOST_RE =
     /^([^.]+)\.football\.cbssports\.com$/i;
@@ -1033,676 +1040,163 @@
     let currentDivision =
       "";
 
-    const seenTeamIds =
-      new Set();
+    let headers =
+      [];
 
-    function normalizeHeader(value) {
-      return clean(value)
-        .replace(/[.]/g, "")
-        .replace(/\s+/g, "")
-        .toUpperCase();
-    }
-
-    function getCellLabel(cell) {
-      return normalizeHeader(
-        cell.getAttribute(
-          "data-label"
-        ) ||
-        cell.getAttribute(
-          "aria-label"
-        ) ||
-        ""
-      );
-    }
-
-    function parseRecord(value) {
-      const text =
-        clean(value);
-
-      const match =
-        text.match(
-          /(?:^|\s)(\d+)\s*[-–—]\s*(\d+)(?:\s*[-–—]\s*(\d+))?(?:\s|$)/
-        );
-
-      if (!match) {
-        return null;
-      }
-
-      return {
-        wins:
-          Number(match[1]),
-
-        losses:
-          Number(match[2]),
-
-        ties:
-          Number(match[3] || 0),
-      };
-    }
-
-    function makeGrid(table) {
-      const rows =
-        [...table.querySelectorAll(
-          "tr"
-        )];
-
-      const grid = [];
-
-      rows.forEach(
-        function (row, rowIndex) {
-          if (!grid[rowIndex]) {
-            grid[rowIndex] = [];
-          }
-
-          let columnIndex = 0;
-
-          const cells =
-            [...row.children].filter(
-              function (child) {
-                const tag =
-                  child.tagName
-                    ?.toLowerCase();
-
-                return (
-                  tag === "th" ||
-                  tag === "td"
-                );
-              }
-            );
-
-          cells.forEach(
+    doc.querySelectorAll(
+      "tr"
+    ).forEach(
+      function (row) {
+        const cells =
+          [...row.querySelectorAll(
+            "th,td"
+          )].map(
             function (cell) {
-              while (
-                grid[rowIndex][
-                  columnIndex
-                ] !== undefined
-              ) {
-                columnIndex++;
-              }
-
-              const rowSpan =
-                Math.max(
-                  1,
-                  integerOrNull(
-                    cell.getAttribute(
-                      "rowspan"
-                    )
-                  ) || 1
-                );
-
-              const colSpan =
-                Math.max(
-                  1,
-                  integerOrNull(
-                    cell.getAttribute(
-                      "colspan"
-                    )
-                  ) || 1
-                );
-
-              const entry = {
-                text:
-                  clean(
-                    cell.textContent
-                  ),
-
-                label:
-                  getCellLabel(
-                    cell
-                  ),
-
-                cell,
-              };
-
-              for (
-                let r = 0;
-                r < rowSpan;
-                r++
-              ) {
-                const targetRow =
-                  rowIndex + r;
-
-                if (!grid[targetRow]) {
-                  grid[targetRow] = [];
-                }
-
-                for (
-                  let c = 0;
-                  c < colSpan;
-                  c++
-                ) {
-                  grid[targetRow][
-                    columnIndex + c
-                  ] = entry;
-                }
-              }
-
-              columnIndex +=
-                colSpan;
+              return clean(
+                cell.textContent
+              );
             }
           );
+
+        if (!cells.length) {
+          return;
         }
-      );
-
-      return {
-        rows,
-        grid,
-      };
-    }
-
-    function findHeaderLabels(
-      rows,
-      grid,
-      dataRowIndex
-    ) {
-      const labels = [];
-
-      for (
-        let rowIndex = 0;
-        rowIndex < dataRowIndex;
-        rowIndex++
-      ) {
-        const row =
-          rows[rowIndex];
-
-        if (!row) {
-          continue;
-        }
-
-        const rowEntries =
-          grid[rowIndex] || [];
-
-        const headerLike =
-          row.querySelectorAll(
-            "th"
-          ).length > 0;
-
-        if (!headerLike) {
-          continue;
-        }
-
-        rowEntries.forEach(
-          function (entry, columnIndex) {
-            const normalized =
-              normalizeHeader(
-                entry?.text
-              );
-
-            if (normalized) {
-              labels[columnIndex] =
-                normalized;
-            }
-          }
-        );
-      }
-
-      return labels;
-    }
-
-    function valueFromAliases(
-      values,
-      aliases
-    ) {
-      for (const alias of aliases) {
-        const normalized =
-          normalizeHeader(alias);
 
         if (
-          Object.prototype
-            .hasOwnProperty.call(
-              values,
-              normalized
-            )
+          cells.length === 1 &&
+          /division$/i.test(
+            cells[0]
+          )
         ) {
-          return values[normalized];
+          currentDivision =
+            cells[0]
+              .replace(
+                /\s+division$/i,
+                ""
+              )
+              .trim();
+
+          return;
         }
-      }
 
-      return "";
-    }
-
-    function parseStandingsTable(
-      table
-    ) {
-      const built =
-        makeGrid(table);
-
-      const rows =
-        built.rows;
-
-      const grid =
-        built.grid;
-
-      let tableDivision =
-        currentDivision;
-
-      rows.forEach(
-        function (row, rowIndex) {
-          const directCells =
-            [...row.querySelectorAll(
-              ":scope > th, :scope > td"
-            )];
-
-          const directText =
-            directCells.map(
-              function (cell) {
-                return clean(
-                  cell.textContent
-                );
-              }
-            );
-
-          if (
-            directText.length === 1 &&
-            /division$/i.test(
-              directText[0]
-            )
-          ) {
-            tableDivision =
-              directText[0]
-                .replace(
-                  /\s+division$/i,
-                  ""
-                )
-                .trim();
-
-            currentDivision =
-              tableDivision;
-
-            return;
-          }
-
-          const teamLink =
-            row.querySelector(
-              'a[href*="/teams/"]'
-            );
-
-          if (!teamLink) {
-            return;
-          }
-
-          const teamId =
-            parseTeamIdFromHref(
-              teamLink.href
-            );
-
-          if (
-            !teamId ||
-            seenTeamIds.has(teamId)
-          ) {
-            return;
-          }
-
-          const rowEntries =
-            grid[rowIndex] || [];
-
-          const headerLabels =
-            findHeaderLabels(
-              rows,
-              grid,
-              rowIndex
-            );
-
-          const values = {};
-
-          rowEntries.forEach(
-            function (entry, columnIndex) {
-              if (!entry) {
-                return;
-              }
-
-              const ownLabel =
-                entry.label;
-
-              const headerLabel =
-                headerLabels[
-                  columnIndex
-                ] || "";
-
-              const label =
-                ownLabel ||
-                headerLabel;
-
-              if (
-                label &&
-                !Object.prototype
-                  .hasOwnProperty.call(
-                    values,
-                    label
-                  )
-              ) {
-                values[label] =
-                  entry.text;
-              }
+        if (
+          cells[0]
+            ?.toLowerCase() ===
+            "team" &&
+          cells.some(
+            function (value) {
+              return (
+                value
+                  .toUpperCase() ===
+                "PF"
+              );
             }
+          )
+        ) {
+          headers =
+            cells;
+
+          return;
+        }
+
+        const teamLink =
+          row.querySelector(
+            'a[href*="/teams/"]'
           );
 
-          const rowText =
-            clean(
-              row.textContent
-            );
-
-          const combinedRecord =
-            parseRecord(
-              valueFromAliases(
-                values,
-                [
-                  "W-L-T",
-                  "WLT",
-                  "RECORD",
-                  "REC",
-                ]
-              )
-            ) ||
-            parseRecord(
-              rowText
-            );
-
-          let wins =
-            integerOrNull(
-              valueFromAliases(
-                values,
-                ["W", "WINS"]
-              )
-            );
-
-          let losses =
-            integerOrNull(
-              valueFromAliases(
-                values,
-                ["L", "LOSSES"]
-              )
-            );
-
-          let ties =
-            integerOrNull(
-              valueFromAliases(
-                values,
-                ["T", "TIES"]
-              )
-            );
-
-          if (combinedRecord) {
-            if (wins === null) {
-              wins =
-                combinedRecord.wins;
-            }
-
-            if (losses === null) {
-              losses =
-                combinedRecord.losses;
-            }
-
-            if (ties === null) {
-              ties =
-                combinedRecord.ties;
-            }
-          }
-
-          const percentage =
-            numberOrNull(
-              valueFromAliases(
-                values,
-                [
-                  "PCT",
-                  "PCT%",
-                  "WIN%",
-                  "WINPCT",
-                ]
-              )
-            );
-
-          const gamesBack =
-            numberOrNull(
-              valueFromAliases(
-                values,
-                ["GB", "GBACK"]
-              )
-            );
-
-          const streak =
-            clean(
-              valueFromAliases(
-                values,
-                ["STREAK", "STRK"]
-              )
-            ) || null;
-
-          const divisionRecord =
-            clean(
-              valueFromAliases(
-                values,
-                [
-                  "DIV",
-                  "DIVISION",
-                  "DIVREC",
-                  "DIVRECORD",
-                ]
-              )
-            ) || null;
-
-          const pointsFor =
-            numberOrNull(
-              valueFromAliases(
-                values,
-                [
-                  "PF",
-                  "POINTSFOR",
-                  "PTSFOR",
-                  "POINTSF",
-                ]
-              )
-            );
-
-          const pointsAgainst =
-            numberOrNull(
-              valueFromAliases(
-                values,
-                [
-                  "PA",
-                  "POINTSAGAINST",
-                  "PTSAGAINST",
-                  "POINTSA",
-                ]
-              )
-            );
-
-          let weeks =
-            integerOrNull(
-              valueFromAliases(
-                values,
-                [
-                  "WKS",
-                  "WK",
-                  "WEEKS",
-                  "GP",
-                  "G",
-                ]
-              )
-            );
-
-          const recordParsed =
-            wins !== null &&
-            losses !== null;
-
-          if (
-            ties === null &&
-            recordParsed
-          ) {
-            ties = 0;
-          }
-
-          if (
-            weeks === null &&
-            recordParsed
-          ) {
-            weeks =
-              wins +
-              losses +
-              (ties || 0);
-          }
-
-          const scoringParsed =
-            pointsFor !== null ||
-            pointsAgainst !== null;
-
-          standings.push({
-            teamId,
-
-            teamName:
-              clean(
-                teamLink.textContent
-              ),
-
-            division:
-              tableDivision,
-
-            wins,
-
-            losses,
-
-            ties,
-
-            percentage,
-
-            gamesBack,
-
-            streak,
-
-            divisionRecord,
-
-            weeks,
-
-            pointsFor,
-
-            back:
-              numberOrNull(
-                valueFromAliases(
-                  values,
-                  ["BACK"]
-                )
-              ),
-
-            pointsAgainst,
-
-            recordParsed,
-
-            scoringParsed,
-          });
-
-          seenTeamIds.add(teamId);
+        if (!teamLink) {
+          return;
         }
-      );
-    }
 
-    const tables =
-      [...doc.querySelectorAll(
-        "table"
-      )];
+        const teamId =
+          parseTeamIdFromHref(
+            teamLink.href
+          );
 
-    tables.forEach(
-      parseStandingsTable
+        if (!teamId) {
+          return;
+        }
+
+        const values = {};
+
+        headers.forEach(
+          function (
+            header,
+            index
+          ) {
+            values[header] =
+              cells[index] ?? "";
+          }
+        );
+
+        standings.push({
+          teamId,
+
+          teamName:
+            clean(
+              teamLink.textContent
+            ),
+
+          division:
+            currentDivision,
+
+          wins:
+            integerOrNull(
+              values.W
+            ) ?? 0,
+
+          losses:
+            integerOrNull(
+              values.L
+            ) ?? 0,
+
+          ties:
+            integerOrNull(
+              values.T
+            ) ?? 0,
+
+          percentage:
+            numberOrNull(
+              values.PCT
+            ),
+
+          gamesBack:
+            numberOrNull(
+              values.GB
+            ),
+
+          streak:
+            clean(
+              values.Streak
+            ) || null,
+
+          divisionRecord:
+            clean(
+              values.Div
+            ) || null,
+
+          weeks:
+            integerOrNull(
+              values.Wks
+            ),
+
+          pointsFor:
+            numberOrNull(
+              values.PF
+            ),
+
+          back:
+            numberOrNull(
+              values.Back
+            ),
+
+          pointsAgainst:
+            numberOrNull(
+              values.PA
+            ),
+        });
+      }
     );
-
-    /*
-      Fallback for unusual CBS markup where standings rows are not inside
-      a normal table. Identity is still captured, but missing numeric data
-      remains null rather than being silently manufactured as zero.
-    */
-
-    if (!standings.length) {
-      doc.querySelectorAll(
-        "tr"
-      ).forEach(
-        function (row) {
-          const teamLink =
-            row.querySelector(
-              'a[href*="/teams/"]'
-            );
-
-          if (!teamLink) {
-            return;
-          }
-
-          const teamId =
-            parseTeamIdFromHref(
-              teamLink.href
-            );
-
-          if (
-            !teamId ||
-            seenTeamIds.has(teamId)
-          ) {
-            return;
-          }
-
-          const record =
-            parseRecord(
-              row.textContent
-            );
-
-          standings.push({
-            teamId,
-
-            teamName:
-              clean(
-                teamLink.textContent
-              ),
-
-            division:
-              currentDivision,
-
-            wins:
-              record?.wins ??
-              null,
-
-            losses:
-              record?.losses ??
-              null,
-
-            ties:
-              record?.ties ??
-              null,
-
-            percentage:
-              null,
-
-            gamesBack:
-              null,
-
-            streak:
-              null,
-
-            divisionRecord:
-              null,
-
-            weeks:
-              record
-                ? record.wins +
-                  record.losses +
-                  record.ties
-                : null,
-
-            pointsFor:
-              null,
-
-            back:
-              null,
-
-            pointsAgainst:
-              null,
-
-            recordParsed:
-              Boolean(record),
-
-            scoringParsed:
-              false,
-          });
-
-          seenTeamIds.add(teamId);
-        }
-      );
-    }
 
     return standings;
   }
@@ -2377,39 +1871,27 @@
           let mode =
             "status";
 
-          // Root-cause fix: this table has FIVE columns per position
-          // row -- [Position, Active Min, Starters, Active Max,
-          // Total Players] -- not the four the code previously
-          // assumed. The old fixed reads (cells[1]/[2]/[3]) landed on
-          // CBS's own near-always-zero "Active Min" column and its
-          // "Starters" column respectively, so our activeMin field
-          // ended up with 0 and our activeMax field ended up holding
-          // the real starter count instead. Column indices are
-          // resolved from the table's own header row by name first
-          // (robust to CBS reordering its columns); the indices below
-          // are used only as a fallback when header text can't be
-          // matched confidently, and reflect the real column order
-          // confirmed against a known league's captured settings
-          // (Position, Active Min, Starters, Active Max, Total
-          // Players) -- not an invented default.
-          let starterColumnIndex =
-            null;
-
-          let activeMaxColumnIndex =
-            null;
-
-          let totalPlayersColumnIndex =
-            null;
+          // TEMPORARY DIAGNOSTIC (remove once the real CBS rules
+          // table shape is confirmed): captures the raw table data
+          // directly into the returned settings object -- rather
+          // than only console.log -- specifically so it shows up in
+          // this connector's normal "Copy JSON" output with no need
+          // to find the correct DevTools console/tab context. Purely
+          // additive: does not read, alter, or otherwise affect any
+          // of the existing parsing logic below.
+          const diagnosticRulesTable = {
+            headerCells: null,
+            rawRows: [],
+          };
 
           rows.forEach(
             function (cells) {
-              // TEMPORARY DIAGNOSTIC (remove once the real CBS table
-              // shape is confirmed): logs every row in this whole
-              // table unconditionally, before any of the existing
-              // branches below run or return early. This does not
-              // assume "Position" is the correct header label to
-              // look for -- if that match below never fires, this
-              // still shows exactly what each row's real cells are.
+              diagnosticRulesTable
+                .rawRows
+                .push(
+                  cells.slice()
+                );
+
               console.log(
                 "[Inner Sanctum CBS Diagnostic] Roster/rules table row -- length:",
                 cells.length,
@@ -2424,58 +1906,12 @@
                 mode =
                   "position";
 
-                cells.forEach(
-                  function (
-                    headerCell,
-                    headerIndex
-                  ) {
-                    const headerText =
-                      String(
-                        headerCell ||
-                        ""
-                      )
-                        .trim()
-                        .toLowerCase();
+                diagnosticRulesTable.headerCells =
+                  cells.slice();
 
-                    if (
-                      headerText ===
-                      "starters"
-                    ) {
-                      starterColumnIndex =
-                        headerIndex;
-                    } else if (
-                      headerText ===
-                      "active max"
-                    ) {
-                      activeMaxColumnIndex =
-                        headerIndex;
-                    } else if (
-                      headerText ===
-                      "total players"
-                    ) {
-                      totalPlayersColumnIndex =
-                        headerIndex;
-                    }
-                  }
-                );
-
-                // TEMPORARY DIAGNOSTIC (remove once the real CBS
-                // table shape is confirmed): logs exactly what the
-                // header row and resolved column indices are, with
-                // no effect on parsing behavior below.
                 console.log(
                   "[Inner Sanctum CBS Diagnostic] Position table header cells (in order):",
                   cells
-                );
-
-                console.log(
-                  "[Inner Sanctum CBS Diagnostic] Resolved column indices -- starters:",
-                  starterColumnIndex,
-                  "activeMax:",
-                  activeMaxColumnIndex,
-                  "totalPlayers:",
-                  totalPlayersColumnIndex,
-                  "(null means header text did not match; the fallback indices 2/3/4 would be used instead)"
                 );
 
                 return;
@@ -2533,31 +1969,8 @@
                 mode ===
                   "position" &&
                 cells.length >=
-                  5
+                  4
               ) {
-                const resolvedStarterIndex =
-                  starterColumnIndex !==
-                  null
-                    ? starterColumnIndex
-                    : 2;
-
-                const resolvedActiveMaxIndex =
-                  activeMaxColumnIndex !==
-                  null
-                    ? activeMaxColumnIndex
-                    : 3;
-
-                const resolvedTotalPlayersIndex =
-                  totalPlayersColumnIndex !==
-                  null
-                    ? totalPlayersColumnIndex
-                    : 4;
-
-                const totalPlayersCell =
-                  cells[
-                    resolvedTotalPlayersIndex
-                  ];
-
                 settings
                   .roster
                   .positions[
@@ -2565,30 +1978,33 @@
                   ] = {
                     activeMin:
                       integerOrNull(
-                        cells[
-                          resolvedStarterIndex
-                        ]
+                        cells[1]
                       ),
 
                     activeMax:
                       integerOrNull(
-                        cells[
-                          resolvedActiveMaxIndex
-                        ]
+                        cells[2]
                       ),
 
                     rosterTotal:
-                      totalPlayersCell ===
+                      cells[3] ===
                       "No Limit"
                         ? null
                         : integerOrNull(
-
-                            totalPlayersCell
+                            cells[3]
                           ),
                   };
               }
             }
           );
+
+          // TEMPORARY DIAGNOSTIC: attached to the returned settings
+          // object (not just logged) so it travels with the normal
+          // capture output and appears in "Copy JSON" directly.
+          settings
+            .roster
+            .__diagnosticRulesTable =
+              diagnosticRulesTable;
 
           return;
         }
@@ -3877,46 +3293,6 @@
         ?.format ||
       null;
 
-    const standingsRecordCount =
-      standings.filter(
-        function (team) {
-          return (
-            team.recordParsed ===
-            true
-          );
-        }
-      ).length;
-
-    const standingsScoringCount =
-      standings.filter(
-        function (team) {
-          return (
-            team.scoringParsed ===
-            true
-          );
-        }
-      ).length;
-
-    if (
-      standings.length &&
-      standingsRecordCount <
-        standings.length
-    ) {
-      warnings.push(
-        "CBS standings team identity was captured, but record fields were not parsed for every team."
-      );
-    }
-
-    if (
-      standings.length &&
-      standingsScoringCount <
-        standings.length
-    ) {
-      warnings.push(
-        "CBS standings team identity was captured, but PF/PA fields were not parsed for every team."
-      );
-    }
-
     const dataQuality = {
       leagueIdentity:
         Boolean(
@@ -3952,22 +3328,6 @@
 
       standingsCount:
         standings.length,
-
-      standingsRecordCount,
-
-      standingsScoringCount,
-
-      standingsRecordCoverage:
-        standings.length
-          ? standingsRecordCount /
-            standings.length
-          : 0,
-
-      standingsScoringCoverage:
-        standings.length
-          ? standingsScoringCount /
-            standings.length
-          : 0,
 
       schedule:
         schedule.length > 0,
@@ -4151,6 +3511,175 @@
 
   /*
     ================================================================
+    ACCOUNT-LEVEL LEAGUE DISCOVERY (added in 0.3.1)
+    ================================================================
+
+    discoverLeagues() is intentionally decoupled from the
+    league-scoped capture path above. It is meant to run on a CBS
+    account/hub page such as https://www.cbssports.com/fantasy/games/
+    — NOT a *.football.cbssports.com league subdomain — so it does
+    NOT call assertCbsFantasyPage()/isCbsFantasyPage(). It reads only
+    the anchors already rendered in the current page's DOM: no fetch,
+    no navigation, no postMessage, no writes, no cookies/tokens.
+
+    "Reliability before completeness": this first pass uses only the
+    league links CBS already exposes on the current page. It does not
+    guess at undocumented CBS endpoints, and it will not invent a
+    leagueName/teamName split that the DOM doesn't clearly support —
+    those fields come back null rather than guessed when CBS hasn't
+    exposed enough structure to separate them reliably.
+  */
+
+  function parseLeagueAnchor(anchor) {
+    const href =
+      anchor.getAttribute(
+        "href"
+      );
+
+    if (!href) {
+      return null;
+    }
+
+    let resolved;
+
+    try {
+      resolved = new URL(
+        href,
+        location.href
+      );
+    } catch (e) {
+      return null;
+    }
+
+    const hostMatch =
+      resolved.hostname.match(
+        CBS_HOST_RE
+      );
+
+    if (!hostMatch) {
+      return null;
+    }
+
+    const leagueId =
+      hostMatch[1].toLowerCase();
+
+    const url =
+      resolved.origin + "/";
+
+    const rawText =
+      clean(
+        anchor.textContent
+      );
+
+    // Conservative leagueName/teamName extraction: only trust a
+    // split when the DOM gives an unambiguous structural signal.
+    // Otherwise leave both null rather than guess at a text split.
+    let leagueName = null;
+    let teamName = null;
+
+    const titleAttr =
+      clean(
+        anchor.getAttribute(
+          "title"
+        ) || ""
+      );
+
+    if (
+      titleAttr &&
+      titleAttr !== rawText
+    ) {
+      leagueName = titleAttr;
+    }
+
+    const nestedTextNodes =
+      Array.prototype.slice
+        .call(
+          anchor.querySelectorAll(
+            "span, small, em, strong"
+          )
+        )
+        .map(function (el) {
+          return clean(
+            el.textContent
+          );
+        })
+        .filter(Boolean);
+
+    if (nestedTextNodes.length === 2) {
+      teamName =
+        teamName || nestedTextNodes[0];
+
+      leagueName =
+        leagueName || nestedTextNodes[1];
+    }
+
+    if (!rawText && !leagueName) {
+      return null;
+    }
+
+    return {
+      leagueId,
+      leagueName,
+      teamName,
+      url,
+      rawText: rawText || null,
+    };
+  }
+
+  function discoverLeagues() {
+    console.log(
+      "[CBSBrowserConnector.discoverLeagues] scanning current page for CBS Fantasy Football league links…"
+    );
+
+    const anchors =
+      Array.prototype.slice.call(
+        document.querySelectorAll(
+          "a[href]"
+        )
+      );
+
+    const byLeagueId =
+      new Map();
+
+    for (const anchor of anchors) {
+      const league =
+        parseLeagueAnchor(
+          anchor
+        );
+
+      if (!league) {
+        continue;
+      }
+
+      if (
+        !byLeagueId.has(
+          league.leagueId
+        )
+      ) {
+        byLeagueId.set(
+          league.leagueId,
+          league
+        );
+      }
+    }
+
+    const leagues =
+      Array.from(
+        byLeagueId.values()
+      );
+
+    console.log(
+      "[CBSBrowserConnector.discoverLeagues] found " +
+        leagues.length +
+        " unique league(s) after dedup",
+      leagues
+    );
+
+    return leagues;
+  }
+
+  /*
+    ================================================================
     PUBLIC API
     ================================================================
   */
@@ -4164,6 +3693,8 @@
     capture,
 
     captureAll,
+
+    discoverLeagues,
 
     collectors: {
       standings:
