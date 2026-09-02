@@ -2403,6 +2403,20 @@
 
           rows.forEach(
             function (cells) {
+              // TEMPORARY DIAGNOSTIC (remove once the real CBS table
+              // shape is confirmed): logs every row in this whole
+              // table unconditionally, before any of the existing
+              // branches below run or return early. This does not
+              // assume "Position" is the correct header label to
+              // look for -- if that match below never fires, this
+              // still shows exactly what each row's real cells are.
+              console.log(
+                "[Inner Sanctum CBS Diagnostic] Roster/rules table row -- length:",
+                cells.length,
+                "cells:",
+                cells
+              );
+
               if (
                 cells[0] ===
                 "Position"
@@ -2443,6 +2457,25 @@
                         headerIndex;
                     }
                   }
+                );
+
+                // TEMPORARY DIAGNOSTIC (remove once the real CBS
+                // table shape is confirmed): logs exactly what the
+                // header row and resolved column indices are, with
+                // no effect on parsing behavior below.
+                console.log(
+                  "[Inner Sanctum CBS Diagnostic] Position table header cells (in order):",
+                  cells
+                );
+
+                console.log(
+                  "[Inner Sanctum CBS Diagnostic] Resolved column indices -- starters:",
+                  starterColumnIndex,
+                  "activeMax:",
+                  activeMaxColumnIndex,
+                  "totalPlayers:",
+                  totalPlayersColumnIndex,
+                  "(null means header text did not match; the fallback indices 2/3/4 would be used instead)"
                 );
 
                 return;
@@ -2549,6 +2582,7 @@
                       "No Limit"
                         ? null
                         : integerOrNull(
+
                             totalPlayersCell
                           ),
                   };
