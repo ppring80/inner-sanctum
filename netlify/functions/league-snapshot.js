@@ -1196,14 +1196,17 @@ exports.handler =
           );
 
         existingSnapshot =
+          // Fix (BlobsConsistencyError, production): this runtime
+          // does not provide the uncachedEdgeURL that @netlify/blobs
+          // requires for consistency: "strong" reads, which made this
+          // read throw immediately. Uses Netlify Blobs' own default
+          // (eventual) consistency instead -- no environment
+          // configuration invented, no other behavior changed.
           await store.get(
             existingKey,
             {
               type:
-                "json",
-
-              consistency:
-                "strong"
+                "json"
             }
           );
 
@@ -1373,14 +1376,15 @@ exports.handler =
 
       try {
         const snapshot =
+          // Fix (BlobsConsistencyError, production): see the same
+          // note above -- consistency: "strong" is unsupported in
+          // this runtime and is removed here too, falling back to
+          // Netlify Blobs' default (eventual) consistency only.
           await store.get(
             blobKey,
             {
               type:
-                "json",
-
-              consistency:
-                "strong"
+                "json"
             }
           );
 
@@ -1499,14 +1503,15 @@ exports.handler =
 
       try {
         const existing =
+          // Fix (BlobsConsistencyError, production): see the same
+          // note above -- consistency: "strong" is unsupported in
+          // this runtime and is removed here too, falling back to
+          // Netlify Blobs' default (eventual) consistency only.
           await store.get(
             blobKey,
             {
               type:
-                "json",
-
-              consistency:
-                "strong"
+                "json"
             }
           );
 
