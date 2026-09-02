@@ -147,10 +147,15 @@ const LinkedLeagueOutputSchema = z.object({
     id: z.string().nullable(),
     name: z.string().nullable()
   }).nullable(),
-  scoringFormat: z.string().nullable(),
+   scoringFormat: z.string().nullable(),
   rosterCount: z.number().int(),
   syncedAt: z.string().nullable(),
   readOnly: z.boolean(),
+  settings: z.object({
+    roster: z.object({
+      positions: z.record(z.any()).nullable()
+    })
+  }),
   error: z.string().optional()
 });
 
@@ -2330,12 +2335,29 @@ function linkedLeagueToText(
       ? snapshot.roster.length
       : 0;
 
+ const lineupPositions =
+    snapshot &&
+    snapshot.settings &&
+    typeof snapshot.settings === "object" &&
+    snapshot.settings.roster &&
+    typeof snapshot.settings.roster === "object" &&
+    snapshot.settings.roster.positions &&
+    typeof snapshot.settings.roster.positions === "object" &&
+    !Array.isArray(snapshot.settings.roster.positions)
+      ? snapshot.settings.roster.positions
+      : null;
+
+  const lineupSettingsCaptured =
+    lineupPositions &&
+    Object.keys(lineupPositions).length > 0;
+
   const lines = [
     "Inner Sanctum linked league is authorized and available.",
     `League: ${leagueName}`,
     `Team: ${teamName}`,
     `Provider: ${provider}`,
-    `Roster players: ${rosterCount}`
+    `Roster players: ${rosterCount}`,
+    `Lineup settings captured: ${lineupSettingsCaptured ? "YES" : "NO"}`
   ];
 
   if (
@@ -4338,9 +4360,13 @@ function buildServer(
           rosterCount: 0,
           syncedAt: null,
           readOnly: true,
+          settings: {
+            roster: {
+              positions: null
+            }
+          },
           error:
             "authorization_required"
-        };
 
         return {
           isError: true,
@@ -4423,10 +4449,26 @@ function buildServer(
           )
             ? snapshot.roster.length
             : 0,
-        syncedAt:
+       syncedAt:
           snapshot.syncedAt ||
           null,
-        readOnly: true
+        readOnly: true,
+        settings: {
+          roster: {
+            positions:
+              snapshot.settings &&
+              typeof snapshot.settings === "object" &&
+              snapshot.settings.roster &&
+              typeof snapshot.settings.roster === "object" &&
+              snapshot.settings.roster.positions &&
+              typeof snapshot.settings.roster.positions === "object" &&
+              !Array.isArray(
+                snapshot.settings.roster.positions
+              )
+                ? snapshot.settings.roster.positions
+                : null
+          }
+        }
       };
 
       return {
