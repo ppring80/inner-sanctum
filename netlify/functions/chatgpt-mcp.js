@@ -4367,6 +4367,7 @@ function buildServer(
           },
           error:
             "authorization_required"
+        };
 
         return {
           isError: true,
