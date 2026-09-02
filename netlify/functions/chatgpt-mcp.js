@@ -3379,6 +3379,28 @@ exports.handler =
           );
 
         if (!validation.ok) {
+          // Temporary diagnostic (remove once the rejection cause is
+          // confirmed): logs only the fixed OAuth error code/
+          // description already defined as static strings in
+          // validateLeagueAccess() above, plus the protected tool
+          // name. Never logs the Bearer token, any token hash,
+          // Authorization header, or snapshot/roster data.
+          console.warn(
+            "chatgpt-mcp: protected tool call rejected",
+            {
+              tool:
+                getMcpRoute(
+                  event
+                ).name,
+
+              error:
+                validation.error,
+
+              description:
+                validation.description
+            }
+          );
+
           return oauthChallengeResponse(
             validation.error,
             validation.description
