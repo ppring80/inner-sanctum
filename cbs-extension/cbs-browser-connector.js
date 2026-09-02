@@ -2377,6 +2377,30 @@
           let mode =
             "status";
 
+          // Root-cause fix: this table has FIVE columns per position
+          // row -- [Position, Active Min, Starters, Active Max,
+          // Total Players] -- not the four the code previously
+          // assumed. The old fixed reads (cells[1]/[2]/[3]) landed on
+          // CBS's own near-always-zero "Active Min" column and its
+          // "Starters" column respectively, so our activeMin field
+          // ended up with 0 and our activeMax field ended up holding
+          // the real starter count instead. Column indices are
+          // resolved from the table's own header row by name first
+          // (robust to CBS reordering its columns); the indices below
+          // are used only as a fallback when header text can't be
+          // matched confidently, and reflect the real column order
+          // confirmed against a known league's captured settings
+          // (Position, Active Min, Starters, Active Max, Total
+          // Players) -- not an invented default.
+          let starterColumnIndex =
+            null;
+
+          let activeMaxColumnIndex =
+            null;
+
+          let totalPlayersColumnIndex =
+            null;
+
           rows.forEach(
             function (cells) {
               if (
@@ -2385,6 +2409,41 @@
               ) {
                 mode =
                   "position";
+
+                cells.forEach(
+                  function (
+                    headerCell,
+                    headerIndex
+                  ) {
+                    const headerText =
+                      String(
+                        headerCell ||
+                        ""
+                      )
+                        .trim()
+                        .toLowerCase();
+
+                    if (
+                      headerText ===
+                      "starters"
+                    ) {
+                      starterColumnIndex =
+                        headerIndex;
+                    } else if (
+                      headerText ===
+                      "active max"
+                    ) {
+                      activeMaxColumnIndex =
+                        headerIndex;
+                    } else if (
+                      headerText ===
+                      "total players"
+                    ) {
+                      totalPlayersColumnIndex =
+                        headerIndex;
+                    }
+                  }
+                );
 
                 return;
               }
@@ -2441,8 +2500,31 @@
                 mode ===
                   "position" &&
                 cells.length >=
-                  4
+                  5
               ) {
+                const resolvedStarterIndex =
+                  starterColumnIndex !==
+                  null
+                    ? starterColumnIndex
+                    : 2;
+
+                const resolvedActiveMaxIndex =
+                  activeMaxColumnIndex !==
+                  null
+                    ? activeMaxColumnIndex
+                    : 3;
+
+                const resolvedTotalPlayersIndex =
+                  totalPlayersColumnIndex !==
+                  null
+                    ? totalPlayersColumnIndex
+                    : 4;
+
+                const totalPlayersCell =
+                  cells[
+                    resolvedTotalPlayersIndex
+                  ];
+
                 settings
                   .roster
                   .positions[
@@ -2450,20 +2532,24 @@
                   ] = {
                     activeMin:
                       integerOrNull(
-                        cells[1]
+                        cells[
+                          resolvedStarterIndex
+                        ]
                       ),
 
                     activeMax:
                       integerOrNull(
-                        cells[2]
+                        cells[
+                          resolvedActiveMaxIndex
+                        ]
                       ),
 
                     rosterTotal:
-                      cells[3] ===
+                      totalPlayersCell ===
                       "No Limit"
                         ? null
                         : integerOrNull(
-                            cells[3]
+                            totalPlayersCell
                           ),
                   };
               }
