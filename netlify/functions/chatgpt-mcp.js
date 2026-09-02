@@ -2042,6 +2042,14 @@ function oauthChallengeResponse(
   };
 }
 
+// Fix (BlobsConsistencyError, production): this runtime does not
+// provide the uncachedEdgeURL that @netlify/blobs requires for
+// consistency: "strong" reads, which made every read below throw
+// immediately. Reads now use Netlify Blobs' own default (eventual)
+// consistency instead -- no environment configuration is invented,
+// and no other read/write behavior changes. Function name kept
+// as-is (still called from its two existing sites below) to keep
+// this change to the minimum needed to stop the crash.
 async function getStrongJson(
   store,
   key
@@ -2049,8 +2057,7 @@ async function getStrongJson(
   return store.get(
     key,
     {
-      type: "json",
-      consistency: "strong"
+      type: "json"
     }
   );
 }
