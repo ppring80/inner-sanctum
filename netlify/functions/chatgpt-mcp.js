@@ -49,10 +49,6 @@ const PROTECTED_RESOURCE_METADATA_URL =
   "https://theinnersanctum.xyz/.well-known/oauth-protected-resource";
 const SCOPE_LEAGUE_READ =
   "inner_sanctum.league.read";
-const PROTECTED_TOOL_NAMES =
-  new Set([
-    "get_linked_league"
-  ]);
 
 const DEFAULT_SEASON = 2026;
 const DEFAULT_SCORING = "ppr";
@@ -1985,6 +1981,19 @@ function getMcpRoute(event) {
   };
 }
 
+// Architecture fix (production evidence: ChatGPT never attaches a
+// Bearer token to protected tools/call requests, even immediately
+// after OAuth completes). ChatGPT's OAuth is configured for the MCP
+// app/connector as a whole, not per tool -- selectively challenging
+// only one tool name is not a pattern the platform's connector-level
+// OAuth model supports. This now requires OAuth for every tools/call
+// request, regardless of which tool is being invoked, while leaving
+// every other MCP protocol method (initialize, tools/list,
+// notifications/*, etc.) completely unauthenticated -- those remain
+// how ChatGPT discovers the server and its full tool list before
+// authorization exists. The four tools' own logic and schemas are
+// unchanged; only whether a tools/call request is let through this
+// gate at all has changed.
 function isProtectedToolCall(event) {
   const route =
     getMcpRoute(
@@ -1993,10 +2002,7 @@ function isProtectedToolCall(event) {
 
   return (
     route.method ===
-      "tools/call" &&
-    PROTECTED_TOOL_NAMES.has(
-      route.name
-    )
+    "tools/call"
   );
 }
 
@@ -3379,28 +3385,6 @@ exports.handler =
           );
 
         if (!validation.ok) {
-          // Temporary diagnostic (remove once the rejection cause is
-          // confirmed): logs only the fixed OAuth error code/
-          // description already defined as static strings in
-          // validateLeagueAccess() above, plus the protected tool
-          // name. Never logs the Bearer token, any token hash,
-          // Authorization header, or snapshot/roster data.
-          console.warn(
-            "chatgpt-mcp: protected tool call rejected",
-            {
-              tool:
-                getMcpRoute(
-                  event
-                ).name,
-
-              error:
-                validation.error,
-
-              description:
-                validation.description
-            }
-          );
-
           return oauthChallengeResponse(
             validation.error,
             validation.description
