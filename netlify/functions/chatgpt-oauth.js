@@ -456,6 +456,15 @@ function validateResource(value) {
   );
 }
 
+// Fix (BlobsConsistencyError, production): this runtime does not
+// provide the uncachedEdgeURL that @netlify/blobs requires for
+// consistency: "strong" reads, which made every read below throw
+// immediately. Reads now use Netlify Blobs' own default (eventual)
+// consistency instead -- no environment configuration is invented,
+// and no other read/write behavior changes. See the deployment
+// review for the accepted propagation-window tradeoff this implies
+// for freshly-registered clients and freshly-issued authorization
+// codes specifically.
 async function getJson(
   store,
   key
@@ -463,9 +472,7 @@ async function getJson(
   return store.get(
     key,
     {
-      type: "json",
-      consistency:
-        "strong"
+      type: "json"
     }
   );
 }
