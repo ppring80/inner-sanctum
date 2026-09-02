@@ -132,6 +132,60 @@ function getQuery(event) {
   return event.queryStringParameters || {};
 }
 
+// Robust request-pathname detection (fix: Netlify .well-known rewrite
+// support). Netlify's rewrite for /.well-known/oauth-protected-resource
+// and /.well-known/oauth-authorization-server forwards the request to
+// this function, but the intended ?action=... query parameter does not
+// survive that rewrite. This reads the request's own pathname directly
+// from the Netlify event instead, so those two exact discovery paths
+// resolve correctly even with no action parameter present. Does not
+// change, remove, or reorder any existing ?action= routing below --
+// it only supplies a fallback value for `action` when the query
+// parameter itself is absent.
+function getRequestPath(event) {
+  if (safeString(event.path)) {
+    return safeString(event.path);
+  }
+
+  const rawUrl =
+    safeString(event.rawUrl);
+
+  if (!rawUrl) {
+    return "";
+  }
+
+  try {
+    return new URL(rawUrl).pathname;
+  } catch (error) {
+    return "";
+  }
+}
+
+// Maps the two standard OAuth discovery paths to their existing
+// ?action= equivalents. Matched by suffix so this is robust to
+// whatever prefix Netlify's rewrite leaves in front of the path
+// (the bare /.well-known/... path, or a function-prefixed variant)
+// without needing to enumerate every possible exact prefix.
+function detectWellKnownAction(path) {
+  const value =
+    safeString(path);
+
+  if (!value) {
+    return "";
+  }
+
+  if (value.endsWith("/oauth-protected-resource")) {
+    return "protected-resource";
+  }
+
+  if (value.endsWith("/oauth-authorization-server")) {
+    return "authorization-server";
+  }
+
+  return "";
+}
+
+
 function getHeader(event, name) {
   const headers =
     event.headers || {};
@@ -2426,11 +2480,24 @@ exports.handler =
           SNAPSHOT_STORE
       });
 
-    const action =
+    const queryAction =
       safeString(
         getQuery(
           event
         ).action
+      );
+
+    // Fix: falls back to detecting the standard OAuth discovery path
+    // directly from the request when the ?action= query parameter did
+    // not survive Netlify's .well-known rewrite. If queryAction is
+    // present, it is used exactly as before -- this fallback only
+    // ever applies when it is empty.
+    const action =
+      queryAction ||
+      detectWellKnownAction(
+        getRequestPath(
+          event
+        )
       );
 
     const method =
