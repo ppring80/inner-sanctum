@@ -2691,14 +2691,18 @@ function extractRosterEntries(snapshot) {
 
 // Tries the real, confirmed CBS connector schema first
 // (snapshot.settings.roster.positions[label] = {activeMin, activeMax,
-// rosterTotal} -- where, despite its name, activeMin is the CBS
-// source table's "Starters" column, i.e. the actual starter count
-// for that slot/label). Only activeMin is ever used for starter
-// counts; activeMax/rosterTotal are deliberately never used for this
-// purpose. Falls back to defensive parsing of other reasonable
-// provider-normalized shapes only if the real CBS shape isn't
-// present. Returns null (never a fabricated default lineup) when
-// nothing recognizable is found.
+// rosterTotal}). Live CBS evidence (captured via the connector's own
+// diagnostic build, cross-checked against CBS's separately-reported
+// league-wide Starters max) conclusively shows activeMax -- not
+// activeMin -- is the actual per-position starting-slot count: the
+// activeMax values for a real league (QB 1, RB 2, WR 2, TE 1,
+// RB-WR-TE 2, K 1, DST 1) sum to exactly 10, matching that league's
+// own Starters max of 10 exactly. activeMin was a mistaken earlier
+// assumption and is never used for starter counts. rosterTotal is
+// deliberately never used for this purpose either. Falls back to
+// defensive parsing of other reasonable provider-normalized shapes
+// only if the real CBS shape isn't present. Returns null (never a
+// fabricated default lineup) when nothing recognizable is found.
 function buildSlotsFromLabelCountEntries(entries) {
   const slots = entries
     .map(([label, count]) => {
@@ -2764,7 +2768,7 @@ function extractLineupSlotsFromRealCbsSchema(snapshot) {
     label,
     value &&
     typeof value === "object"
-      ? value.activeMin
+      ? value.activeMax
       : undefined
   ]);
 
