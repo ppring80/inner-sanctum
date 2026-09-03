@@ -3121,22 +3121,46 @@ function buildStarterRecord(
 // (this happens today for Week 1, before enough data exists), falls
 // back to existing overallRank, then existing positionRank. This is
 // never a new/invented score -- it is entirely a read of values
-// Weekly SAGE already computed. The large offsets keep each tier
-// numerically distinct from the others so a rank-based fallback
-// value is never confused with a real SAGE score during comparison,
-// while still preserving correct relative ordering within a tier
-// (lower rank number = better = higher resulting value).
+// Weekly SAGE already computed.
+//
+// Both rank-based tiers use the SAME offset base (RANK_VALUE_BASE)
+// rather than two different arbitrary magnitudes. Reason: overallRank
+// and positionRank are both derived from the exact same underlying
+// ADP sort in weekly-sage-week1-rankings.js (a single global sort for
+// overallRank, the same sort scoped to one position for positionRank)
+// -- for any two players at the SAME position, the two fields are
+// mathematically guaranteed to agree on which one is better, since
+// sorting the same values at a wider scope cannot reverse their
+// relative order at the narrower scope. Using two different offset
+// magnitudes (as before) meant that if one candidate's row happened
+// to be missing overallRank while a competitor's had it, the
+// competitor's value would land in a completely different numeric
+// range regardless of how good the positionRank-only candidate's
+// actual rank was -- a real bias that had nothing to do with true
+// relative quality, only with which field a given row happened to
+// have populated. A single shared base removes that bias entirely:
+// a candidate who only has positionRank is compared fairly against
+// one who has overallRank, on equal footing, whenever they end up
+// competing for the same slot (this matters most for dedicated,
+// single-position slots like K, where cross-position comparability
+// is irrelevant and a missing overallRank should never be
+// mishandled). overallRank remains checked first specifically
+// because it is the one signal that is safely comparable ACROSS
+// positions, which is required for correct FLEX-type slot
+// assignment; this ordering is unchanged from before.
+const RANK_VALUE_BASE = 1000000;
+
 function lineupPlayerValue(row) {
   if (typeof row.sageScore === "number") {
     return row.sageScore;
   }
 
   if (typeof row.overallRank === "number") {
-    return 1000 - row.overallRank;
+    return RANK_VALUE_BASE - row.overallRank;
   }
 
   if (typeof row.positionRank === "number") {
-    return 100 - row.positionRank;
+    return RANK_VALUE_BASE - row.positionRank;
   }
 
   return -Infinity;
