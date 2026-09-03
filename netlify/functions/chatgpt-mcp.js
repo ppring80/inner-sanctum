@@ -2,6 +2,7 @@
 //
 // Inner Sanctum — ChatGPT MCP Bridge
 // Phase 8: Public SAGE Tools + Protected League Link + Lineup Recommendation
+// Phase 9: Draft Outlook (context-free Draft SAGE signals)
 //
 // LIVE READ-ONLY TOOLS:
 //
@@ -10,10 +11,13 @@
 //   get_weekly_rankings
 //   get_linked_league          (OAuth protected)
 //   get_lineup_recommendation  (OAuth protected)
+//   get_draft_outlook
 //
 // PRODUCTION DATA SOURCE:
 //
 //   /.netlify/functions/weekly-sage-rankings
+//   /.netlify/functions/adp                    (get_draft_outlook only)
+//   Blobs "opportunity-intel" / "context-intel" (get_draft_outlook only)
 //
 // IMPORTANT:
 // This function does NOT:
@@ -25,6 +29,17 @@
 // - create a second fantasy-ranking system
 // - invent generic/standard lineup requirements when the linked
 //   league's own captured settings don't clearly specify them
+// - create a new draft score, or fabricate live-draft state
+//   (currentPick/nextUserPick) for get_draft_outlook -- that tool
+//   deliberately never touches draft-market-profile.js,
+//   draft-scarcity-profile.js, or draft-sage-synthesis.js's
+//   buildRecommendation(), all of which require real live-draft
+//   signals this MCP bridge has no way to supply. It reuses only the
+//   two Draft SAGE pillars that are genuinely context-free:
+//   draft-opportunity-profile.js (unmodified) and the existing
+//   "context-intel" cache's already-built contextProfile field --
+//   the same production intelligence Draft Command Center's own
+//   sage-recommend.js reads, minus the pieces that need a live draft.
 
 const {
   createMcpHandler,
@@ -38,6 +53,14 @@ const {
   connectLambda,
   getStore
 } = require("@netlify/blobs");
+
+// Unmodified reuse of the existing, already-validated Draft SAGE
+// Opportunity pillar (see draft-opportunity-profile.js's own header:
+// "THIS FILE DOES NOT REDEFINE ANYTHING... No score, no weighting, no
+// ranking"). Nothing in this file changes it or duplicates its logic.
+const {
+  buildDraftOpportunityProfile
+} = require("./draft-opportunity-profile.js");
 
 const SERVER_INFO = {
   name: "inner-sanctum",
@@ -178,6 +201,7 @@ const LineupSlotAssignmentSchema = z.object({
   recommendation: z.string().nullable(),
   sageLabel: z.string().nullable(),
   matchup: z.string().nullable(),
+  rosterStatus: z.string().nullable(),
   reason: z.string().nullable()
 });
 
@@ -188,12 +212,14 @@ const LineupBenchPlayerSchema = z.object({
   team: z.string().nullable(),
   recommendation: z.string().nullable(),
   sageLabel: z.string().nullable(),
+  rosterStatus: z.string().nullable(),
   reason: z.string().nullable()
 });
 
 const LineupUnmatchedPlayerSchema = z.object({
   rosterName: z.string(),
   rosterPosition: z.string().nullable(),
+  rosterStatus: z.string().nullable(),
   reason: z.string()
 });
 
@@ -231,6 +257,41 @@ const LineupRecommendationOutputSchema = z.object({
   unmatchedRosterPlayers: z.array(LineupUnmatchedPlayerSchema),
   unfilledSlots: z.array(LineupUnfilledSlotSchema),
   warnings: z.array(z.string()),
+  error: z.string().optional()
+});
+
+// ===========================================================
+// DRAFT OUTLOOK OUTPUT SCHEMA
+//
+// opportunityProfile/contextProfile are pass-through objects produced
+// entirely by draft-opportunity-profile.js and the existing
+// "context-intel" cache -- neither is redefined or re-validated
+// field-by-field here (same reasoning as get_linked_league's
+// settings.roster.positions above: an externally-produced structure
+// this file doesn't own the shape of).
+// ===========================================================
+
+const DraftPlayerOutlookSchema = z.object({
+  requestedName: z.string(),
+  found: z.boolean(),
+  player: z.object({
+    name: z.string(),
+    position: z.string(),
+    team: z.string().nullable()
+  }).nullable(),
+  adp: z.number().nullable(),
+  opportunityProfile: z.record(z.any()).nullable(),
+  contextProfile: z.record(z.any()).nullable(),
+  missing: z.array(z.string())
+});
+
+const GetDraftOutlookOutputSchema = z.object({
+  source: z.string(),
+  season: z.number().int(),
+  scoring: z.string(),
+  teams: z.number().int(),
+  players: z.array(DraftPlayerOutlookSchema),
+  note: z.string(),
   error: z.string().optional()
 });
 
@@ -2670,6 +2731,18 @@ function extractRosterEntry(entry) {
           : entry.proTeam
     );
 
+  // The CBS connector already captures a per-player roster status
+  // (active / reserve / injured, per cbs-browser-connector.js) --
+  // this reads that already-existing field as-is. No new status
+  // vocabulary is defined here, no value is treated as meaning
+  // "exclude this player," and an unrecognized/unfamiliar status
+  // string is passed through unchanged rather than dropped or
+  // reinterpreted.
+  const rosterStatus =
+    cleanString(
+      entry.status
+    );
+
   return {
     sageCompatibleId:
       extractSageCompatibleId(
@@ -2681,7 +2754,8 @@ function extractRosterEntry(entry) {
       ),
     name,
     eligiblePositions,
-    team
+    team,
+    rosterStatus
   };
 }
 
@@ -3087,7 +3161,8 @@ function buildLineupSageReason(row) {
 
 function buildStarterRecord(
   slot,
-  row
+  row,
+  rosterStatus
 ) {
   return {
     slotLabel: slot.slotLabel,
@@ -3108,6 +3183,13 @@ function buildStarterRecord(
       null,
     matchup:
       row.matchup ||
+      null,
+    // Roster-side status (active/reserve/injured, as captured by the
+    // CBS connector) -- purely informational. Never used to decide
+    // slot eligibility or optimizer value; this field only carries
+    // context through to the response so ChatGPT can mention it.
+    rosterStatus:
+      rosterStatus ||
       null,
     reason:
       buildLineupSageReason(
@@ -3236,7 +3318,10 @@ function assignLineupSlotsGreedyFallback(
     starters.push(
       buildStarterRecord(
         slot,
-        entry.row
+        entry.row,
+        entry.entry
+          ? entry.entry.rosterStatus
+          : null
       )
     );
   });
@@ -3428,7 +3513,13 @@ function assignLineupSlotsOptimally(
         buildStarterRecord(
           expandedSlots[slotIndex],
           players[playerIndex]
-            .entry.row
+            .entry.row,
+          players[playerIndex]
+            .entry.entry
+            ? players[playerIndex]
+                .entry.entry
+                .rosterStatus
+            : null
         )
     );
 
@@ -3508,6 +3599,16 @@ function lineupRecommendationToText({
         (pieces.length ? ` — ${pieces.join(" | ")}` : "")
       );
 
+      if (
+        slot.rosterStatus &&
+        slot.rosterStatus.toLowerCase() !==
+          "active"
+      ) {
+        lines.push(
+          `Roster status: ${slot.rosterStatus}`
+        );
+      }
+
       if (slot.reason) {
         lines.push(`Inner Sanctum Insight: ${slot.reason}`);
       }
@@ -3529,7 +3630,14 @@ function lineupRecommendationToText({
       bench
         .map(
           (entry) =>
-            `${entry.player} (${entry.position})`
+            `${entry.player} (${entry.position})` +
+            (
+              entry.rosterStatus &&
+              entry.rosterStatus.toLowerCase() !==
+                "active"
+                ? ` [${entry.rosterStatus}]`
+                : ""
+            )
         )
         .join(", ")
     );
@@ -3539,7 +3647,17 @@ function lineupRecommendationToText({
     lines.push(
       "Not matched to current Weekly SAGE data: " +
       unmatchedRosterPlayers
-        .map((p) => p.rosterName)
+        .map(
+          (p) =>
+            p.rosterName +
+            (
+              p.rosterStatus &&
+              p.rosterStatus.toLowerCase() !==
+                "active"
+                ? ` [${p.rosterStatus}]`
+                : ""
+            )
+        )
         .join(", ")
     );
   }
@@ -3554,6 +3672,364 @@ function lineupRecommendationToText({
     "Source: Inner Sanctum Weekly SAGE, applied to your linked league's " +
     "actual roster and captured lineup requirements. This is a read-only " +
     "recommendation; no lineup or roster change was made with your provider."
+  );
+
+  return lines.join("\n\n");
+}
+
+// ===========================================================
+// DRAFT OUTLOOK -- CONTEXT-FREE HELPERS
+//
+// Deliberately independent from Weekly SAGE's own
+// normalizePlayerName()/matchRosterEntryToSageRow() above -- Draft
+// SAGE and Weekly SAGE are kept as two entirely separate identity-
+// matching systems, matching sage-recommend.js's own established
+// convention (that file duplicates its own copy of these exact
+// helpers rather than importing them from anywhere else, for the
+// same independence reason -- see its own header comment). The
+// generational-suffix handling below matches sage-recommend.js's own
+// normalizePlayerName() exactly (word-boundary strip of
+// jr/sr/ii/iii/iv), which is NOT the same convention as Weekly
+// SAGE's separate stripGenerationalSuffix() tier above -- these are
+// two different systems' own pre-existing conventions, kept apart on
+// purpose, not a discrepancy.
+//
+// This whole section reuses ONLY context-free Draft SAGE signals:
+// live market ADP (adp.js) and the existing "opportunity-intel" /
+// "context-intel" Blobs caches, read exactly the same way
+// sage-recommend.js already reads them. It never touches
+// draft-market-profile.js, draft-scarcity-profile.js, or
+// draft-sage-synthesis.js's buildRecommendation() -- all three
+// require real live-draft state (currentPick, nextUserPick, a live
+// candidate/current/next-turn pool) that this MCP bridge has no way
+// to supply outside an actual synced draft session, and none of
+// that state is fabricated here.
+// ===========================================================
+
+const DEFAULT_DRAFT_ADP_COUNT = 300;
+const DEFAULT_DRAFT_TEAMS = 12;
+
+function normalizeDraftPlayerName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(
+      /[.\u0027\u2018\u2019]/g,
+      ""
+    )
+    .replace(
+      /-/g,
+      " "
+    )
+    .replace(
+      /\b(jr|sr|ii|iii|iv)\b/g,
+      ""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+function draftPlayerKey(player) {
+  return (
+    normalizeDraftPlayerName(
+      player.name
+    ) +
+    "|" +
+    String(
+      player.pos ||
+      ""
+    ).toUpperCase()
+  );
+}
+
+// Reads the existing "opportunity-intel" Blobs cache's raw record
+// exactly as sage-recommend.js's own getOpportunityRecord() does --
+// same store, same "latest" key, same records[playerKey] lookup.
+// Returns null (never a fabricated record) when the cache or this
+// specific player's entry isn't present.
+function getDraftOpportunityRecord(
+  cached,
+  player
+) {
+  const records =
+    cached &&
+    cached.records
+      ? cached.records
+      : {};
+
+  return (
+    records[
+      draftPlayerKey(player)
+    ] ||
+    null
+  );
+}
+
+// Reads the existing "context-intel" Blobs cache's already-built
+// contextProfile field exactly as sage-recommend.js's own
+// getProductionContextProfile() does. This file never calls
+// draft-context-profile.js's own build function directly -- the
+// cache already stores that function's output, so reading it here
+// is the same reuse pattern sage-recommend.js itself already uses,
+// not a new calculation.
+function getDraftContextProfileRecord(
+  cached,
+  player
+) {
+  const records =
+    cached &&
+    cached.records
+      ? cached.records
+      : {};
+
+  const record =
+    records[
+      draftPlayerKey(player)
+    ] ||
+    null;
+
+  if (
+    !record ||
+    record.contextStatus !==
+      "context-profiled"
+  ) {
+    return null;
+  }
+
+  return (
+    record.contextProfile ||
+    null
+  );
+}
+
+// Live market ADP pool -- the same context-free source Draft Command
+// Center itself uses, and the same one weekly-sage-week1-rankings.js
+// already calls this same way. No draft-position/pool-depth state is
+// requested or required.
+async function fetchDraftAdpPool({
+  baseUrl,
+  scoring,
+  teams,
+  season
+}) {
+  const params =
+    new URLSearchParams({
+      scoring,
+      teams:
+        String(teams),
+      year:
+        String(season),
+      count:
+        String(
+          DEFAULT_DRAFT_ADP_COUNT
+        )
+    });
+
+  const url =
+    `${baseUrl}/.netlify/functions/adp?${params.toString()}`;
+
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json"
+        }
+      }
+    );
+
+  let data = null;
+
+  try {
+    data =
+      await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (
+    !response.ok ||
+    !data ||
+    !Array.isArray(
+      data.players
+    )
+  ) {
+    throw new Error(
+      "Draft ADP pool could not be retrieved."
+    );
+  }
+
+  return data.players;
+}
+
+// Name-only lookup against the ADP pool: exact normalized-name match
+// first; if that fails and exactly one entry's name contains (or is
+// contained by) the requested name, uses that single unambiguous
+// match -- mirrors findPlayerInRows()'s own exact-then-single-
+// partial-match safety rule above. Never guesses between multiple
+// candidates.
+function findAdpEntryByName(
+  adpPool,
+  requestedName
+) {
+  const target =
+    normalizeDraftPlayerName(
+      requestedName
+    );
+
+  const exact =
+    adpPool.find(
+      (p) =>
+        normalizeDraftPlayerName(
+          p.name
+        ) === target
+    );
+
+  if (exact) {
+    return exact;
+  }
+
+  const partial =
+    adpPool.filter(
+      (p) => {
+        const candidate =
+          normalizeDraftPlayerName(
+            p.name
+          );
+
+        return (
+          candidate.includes(target) ||
+          target.includes(candidate)
+        );
+      }
+    );
+
+  return partial.length === 1
+    ? partial[0]
+    : null;
+}
+
+function draftOutlookToText({
+  players,
+  season,
+  scoring,
+  teams
+}) {
+  const lines = [];
+
+  lines.push(
+    `Inner Sanctum Draft Outlook — ${season} — ${scoring.toUpperCase()} — ${teams}-team ADP`
+  );
+
+  players.forEach((p) => {
+    if (!p.found) {
+      lines.push(
+        `${p.requestedName}: not found in the current ADP pool.`
+      );
+      return;
+    }
+
+    const pieces = [];
+
+    if (p.adp !== null) {
+      pieces.push(
+        `ADP ${p.adp.toFixed(1)}`
+      );
+    }
+
+    lines.push(
+      `${p.player.name} (${p.player.position}${p.player.team ? ", " + p.player.team : ""})` +
+      (
+        pieces.length
+          ? ` — ${pieces.join(" | ")}`
+          : ""
+      )
+    );
+
+    if (p.opportunityProfile) {
+      const op = p.opportunityProfile;
+
+      if (op.workload) {
+        lines.push(
+          `Workload: ${op.workload.level}`
+        );
+      }
+
+      if (op.roleDirection) {
+        lines.push(
+          `Role Direction: ${op.roleDirection.label} — ${op.roleDirection.explanation}`
+        );
+      }
+
+      if (op.roleStyle) {
+        lines.push(
+          `Role Style: ${op.roleStyle.label}`
+        );
+      }
+
+      if (op.evidence) {
+        lines.push(
+          `Evidence: ${op.evidence.level} (${op.evidence.explanation})`
+        );
+      }
+    } else {
+      lines.push(
+        "Opportunity Intelligence: not available for this player."
+      );
+    }
+
+    if (p.contextProfile) {
+      const cp = p.contextProfile;
+
+      if (
+        cp.environmentChange &&
+        cp.environmentChange.label
+      ) {
+        lines.push(
+          `Environment Change: ${cp.environmentChange.label}`
+        );
+      }
+
+      if (
+        cp.roleOpportunity &&
+        cp.roleOpportunity.label
+      ) {
+        lines.push(
+          `Role Opportunity: ${cp.roleOpportunity.label}`
+        );
+      }
+
+      if (
+        cp.rookieImpact &&
+        cp.rookieImpact.label
+      ) {
+        lines.push(
+          `Rookie Impact: ${cp.rookieImpact.label}`
+        );
+      }
+
+      if (
+        cp.contextConfidence &&
+        cp.contextConfidence.label
+      ) {
+        lines.push(
+          `Context Confidence: ${cp.contextConfidence.label}`
+        );
+      }
+    }
+  });
+
+  lines.push(
+    "Source: Inner Sanctum Draft SAGE — live market ADP plus existing " +
+    "Opportunity Intelligence and, when available, Context Intelligence. " +
+    "This reflects role, workload, and situational signals only -- it is " +
+    "not a live-draft-pick-position-aware recommendation (no pick number " +
+    "or draft-pool-depth signal is used here) and it does not declare a " +
+    "single preferred player. Use these real signals directly; do not " +
+    "substitute outside fantasy analysis, rankings, or projections."
   );
 
   return lines.join("\n\n");
@@ -3585,15 +4061,20 @@ function buildServer(
 
       description:
         "Returns the authoritative read-only Inner Sanctum/SAGE fantasy-football " +
-        "player profile from the production Weekly SAGE rankings pipeline. " +
-        "Use this tool whenever the user asks what Inner Sanctum or SAGE thinks " +
-        "about an NFL fantasy player, including weekly rank, start/flex/sit " +
-        "recommendation, confidence, matchup, ADP/value, risks, or Inner Sanctum " +
-        "Insight. Treat this tool's fantasy-analysis result as the authoritative " +
-        "Inner Sanctum answer. Do not substitute, modify, or embellish the " +
-        "Inner Sanctum fantasy verdict with external fantasy rankings, projections, " +
-        "news analysis, or other websites unless the user explicitly requests " +
-        "outside verification, comparison, or additional external context.",
+        "player profile from the production Weekly SAGE rankings pipeline for a " +
+        "single named NFL player, for the current or a specific week. Use this " +
+        "for a player's weekly fantasy outlook, matchup, start/flex/sit " +
+        "recommendation, confidence, ADP/value, risks, or Inner Sanctum Insight -- " +
+        "phrasings like 'what's [player]'s outlook this week', 'how does [player] " +
+        "matchup this week', 'should I start [player]', or 'what does SAGE/Inner " +
+        "Sanctum think of [player] this week'. This is current-week fantasy " +
+        "analysis, not draft evaluation (use get_draft_outlook for draft-target " +
+        "questions) and not a season-long or trade-value judgment. Treat this " +
+        "tool's fantasy-analysis result as the authoritative Inner Sanctum answer. " +
+        "Do not substitute, modify, or embellish the Inner Sanctum fantasy verdict " +
+        "with external fantasy rankings, projections, news analysis, or other " +
+        "websites unless the user explicitly requests outside verification, " +
+        "comparison, or additional external context.",
 
       inputSchema:
         z.object({
@@ -3827,12 +4308,20 @@ function buildServer(
         "Compare Inner Sanctum Players",
 
       description:
-        "Compares 2 to 4 NFL fantasy players using authoritative Inner Sanctum " +
-        "Weekly SAGE data. Use this tool for start/sit comparisons, flex decisions, " +
-        "'Player A or Player B?', and questions asking which player Inner Sanctum " +
-        "or SAGE prefers. The tool uses only existing production Weekly SAGE " +
-        "rankings, recommendation, confidence, matchup, ADP, SAGE signal, and " +
-        "Inner Sanctum Insight. It does not calculate a new SAGE score. " +
+        "Compares 2 to 4 NFL fantasy players for the current or a specific week " +
+        "using authoritative Inner Sanctum Weekly SAGE data. Use this tool for " +
+        "start/sit comparisons, flex decisions, 'Player A or Player B?', 'who " +
+        "does SAGE/Inner Sanctum prefer', and similar current-week player-vs-" +
+        "player questions -- including when a trade question is framed as 'who's " +
+        "the better player right now' or 'who would you rather have this week'. " +
+        "The tool uses only existing production Weekly SAGE rankings, " +
+        "recommendation, confidence, matchup, ADP, SAGE signal, and Inner " +
+        "Sanctum Insight. It does not calculate a new SAGE score, and its result " +
+        "is a current-week player-preference view, not a season-long or rest-of-" +
+        "season trade valuation, and not a draft-target evaluation (use " +
+        "get_draft_outlook for draft questions). If the user is deciding a trade, " +
+        "present this as SAGE's current view of who's the better player right " +
+        "now, not as a verdict on the trade itself. " +
         "IMPORTANT: unless externalAnalysisRequested is explicitly true because " +
         "the USER specifically asked for outside verification or outside context, " +
         "the returned Inner Sanctum comparison is EXCLUSIVE and complete. " +
@@ -4180,15 +4669,18 @@ function buildServer(
 
       description:
         "Returns authoritative Inner Sanctum Weekly SAGE fantasy-football " +
-        "rankings from the existing production Weekly SAGE leaderboard. " +
-        "Use this tool when the user asks for top players, weekly rankings, " +
-        "position rankings, FLEX rankings, Superflex rankings, or questions " +
-        "such as 'Who are Inner Sanctum's top 10 WRs this week?'. " +
-        "This tool does not calculate a new SAGE score or create a second " +
-        "ranking model. It retrieves and presents the existing production " +
-        "Inner Sanctum Weekly SAGE ordering. Unless the user explicitly asks " +
-        "for outside verification or additional external context, treat this " +
-        "result as the complete authoritative Inner Sanctum fantasy-ranking answer.",
+        "rankings from the existing production Weekly SAGE leaderboard for the " +
+        "current or a specific week. Use this tool for top players, weekly " +
+        "fantasy rankings, position rankings (top RB/WR/QB/TE this week), FLEX " +
+        "rankings, Superflex rankings, or questions such as 'Who are Inner " +
+        "Sanctum's top 10 WRs this week?'. This tool does not calculate a new " +
+        "SAGE score, create a second ranking model, or compute a sleeper/" +
+        "breakout score -- it retrieves and presents the existing production " +
+        "Inner Sanctum Weekly SAGE ordering for the current week only, not a " +
+        "draft-season or season-long ranking (use get_draft_outlook for draft " +
+        "questions). Unless the user explicitly asks for outside verification " +
+        "or additional external context, treat this result as the complete " +
+        "authoritative Inner Sanctum fantasy-ranking answer.",
 
       inputSchema:
         z.object({
@@ -4649,15 +5141,27 @@ function buildServer(
         "Get Inner Sanctum Lineup Recommendation",
 
       description:
-        "Returns a read-only start/sit lineup recommendation for the user's " +
-        "OAuth-authorized linked Inner Sanctum league, using the actual linked " +
-        "roster and the league's own actual captured lineup requirements -- " +
-        "never a generic or assumed standard lineup. Applies the existing " +
-        "production Weekly SAGE ordering/signals to the linked roster; it does " +
-        "not calculate a new SAGE score or use outside fantasy analysis. " +
-        "Requires OAuth scope inner_sanctum.league.read. This tool never " +
-        "modifies a lineup, roster, league, or provider account -- it is " +
-        "read-only and only returns a recommendation.",
+        "Returns a read-only start/sit lineup recommendation -- who should " +
+        "start, who to bench, and the single best legal lineup -- for the " +
+        "user's OAuth-authorized linked Inner Sanctum league, using the actual " +
+        "linked roster and the league's own actual captured lineup requirements " +
+        "-- never a generic or assumed standard lineup. Use this for phrasings " +
+        "like 'who should I start', 'start or sit my [position]', 'set my " +
+        "lineup', 'what's my best lineup this week', 'who should replace my " +
+        "injured/bye-week [player]', or 'who's my best replacement from my " +
+        "roster' -- this tool answers replacement questions from the players " +
+        "already on the user's own roster (the bench/unmatched players it " +
+        "returns, including each player's roster status where captured, ARE " +
+        "the replacement candidates). It does not know which players are " +
+        "available as free agents or on the waiver wire in the user's specific " +
+        "league, so it cannot answer 'who should I pick up' with a suggested " +
+        "name -- for a question about a specific named free agent, use " +
+        "get_player_profile instead. Applies the existing production Weekly " +
+        "SAGE ordering/signals to the linked roster; it does not calculate a " +
+        "new SAGE score or use outside fantasy analysis. Requires OAuth scope " +
+        "inner_sanctum.league.read. This tool never modifies a lineup, roster, " +
+        "league, or provider account -- it is read-only and only returns a " +
+        "recommendation.",
 
       inputSchema:
         z.object({
@@ -4965,6 +5469,9 @@ function buildServer(
                 rosterPosition:
                   entry.eligiblePositions[0] ||
                   null,
+                rosterStatus:
+                  entry.rosterStatus ||
+                  null,
                 reason:
                   "No matching player found in this week's Weekly SAGE rankings."
               });
@@ -5017,6 +5524,10 @@ function buildServer(
                 sageLabel:
                   item.row.sageLabel ||
                   null,
+                rosterStatus:
+                  item.entry &&
+                  item.entry.rosterStatus ||
+                  null,
                 reason:
                   buildLineupSageReason(
                     item.row
@@ -5041,6 +5552,10 @@ function buildServer(
                   : null,
               sageLabel:
                 item.row.sageLabel ||
+                null,
+              rosterStatus:
+                item.entry &&
+                item.entry.rosterStatus ||
                 null,
               reason:
                 buildLineupSageReason(
@@ -5108,6 +5623,432 @@ function buildServer(
               type: "text",
               text:
                 "Inner Sanctum could not retrieve the live Weekly SAGE data needed for a lineup recommendation right now."
+            }
+          ],
+          structuredContent
+        };
+      }
+    }
+  );
+
+  // =========================================================
+  // TOOL #6 — GET DRAFT OUTLOOK
+  // =========================================================
+  //
+  // Public (no OAuth), read-only, context-free Draft SAGE signals
+  // for one to four named players -- live market ADP plus the
+  // existing Opportunity Intelligence and Context Intelligence
+  // pillars, exactly as sage-recommend.js already reads them. Never
+  // touches Market/Scarcity or buildRecommendation() (all three
+  // require real live-draft state this bridge cannot supply), never
+  // fabricates currentPick/nextUserPick, never computes a combined
+  // draft score, and never touches Weekly SAGE (fetchWeeklyRankings/
+  // flattenRankings) -- Draft SAGE and Weekly SAGE stay completely
+  // separate systems in this file, as they already are in production.
+  server.registerTool(
+    "get_draft_outlook",
+
+    {
+      title:
+        "Get Inner Sanctum Draft Outlook",
+
+      description:
+        "Returns Inner Sanctum's existing, context-free Draft SAGE signals " +
+        "for one to four named NFL players -- live market ADP plus Opportunity " +
+        "Intelligence (role, workload, recent trend) and, when available, " +
+        "Context Intelligence (environment change, rookie immediate-impact " +
+        "case, evidence confidence). Use this tool for draft-outlook questions " +
+        "such as 'Who should I draft, Player A or Player B?', 'Which of these " +
+        "players does Inner Sanctum prefer for my draft?', 'What does Inner " +
+        "Sanctum think of Player X as a draft target?', or general draft-" +
+        "target questions about a named player outside of an active, live-" +
+        "synced draft session. This tool does NOT produce a single draft " +
+        "score, a declared 'winner', or a live-draft-pick-position-aware " +
+        "recommendation (no pick number or draft-pool-depth signal is used) " +
+        "-- it presents each named player's real ADP, role/workload signal, " +
+        "and situational context side by side so a comparison can be made " +
+        "from real signals, not a fabricated verdict. It is completely " +
+        "separate from Weekly SAGE (get_player_profile/compare_players/" +
+        "get_weekly_rankings), which covers current-week matchup-specific " +
+        "fantasy advice, not draft evaluation. Do not use this tool for " +
+        "trade, waiver, or in-season lineup questions.",
+
+      inputSchema:
+        z.object({
+          players:
+            z.array(
+              z.string().min(1)
+            )
+              .min(1)
+              .max(4)
+              .describe(
+                "One to four NFL player names to evaluate as draft targets, for example [\"Ashton Jeanty\", \"TreVeyon Henderson\"]."
+              ),
+
+          season:
+            z.number()
+              .int()
+              .min(2026)
+              .max(2035)
+              .optional()
+              .describe(
+                "NFL season. Defaults to 2026."
+              ),
+
+          scoring:
+            z.enum([
+              "ppr",
+              "half",
+              "standard"
+            ])
+              .optional()
+              .describe(
+                "Fantasy scoring format used for the ADP lookup. Defaults to PPR."
+              ),
+
+          teams:
+            z.number()
+              .int()
+              .min(6)
+              .max(20)
+              .optional()
+              .describe(
+                "League size used for the ADP lookup. Defaults to 12."
+              )
+        }),
+
+      outputSchema:
+        GetDraftOutlookOutputSchema,
+
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+
+    async ({
+      players,
+      season,
+      scoring,
+      teams
+    }) => {
+      const resolvedSeason =
+        season ||
+        DEFAULT_SEASON;
+
+      const resolvedScoring =
+        scoring ||
+        DEFAULT_SCORING;
+
+      const resolvedTeams =
+        teams ||
+        DEFAULT_DRAFT_TEAMS;
+
+      const requestedPlayers =
+        players
+          .map(
+            (name) =>
+              cleanString(
+                name
+              )
+          )
+          .filter(Boolean);
+
+      if (
+        requestedPlayers.length < 1
+      ) {
+        const structuredContent = {
+          source:
+            "Inner Sanctum Draft SAGE",
+          season:
+            resolvedSeason,
+          scoring:
+            resolvedScoring,
+          teams:
+            resolvedTeams,
+          players: [],
+          note:
+            "Live market ADP plus existing Opportunity and Context Intelligence only. No live-draft pick-position or pool-depth signal is used, and no combined draft score or single preferred player is produced.",
+          error:
+            "at_least_one_player_required"
+        };
+
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum needs at least one player name to build a draft outlook."
+            }
+          ],
+          structuredContent
+        };
+      }
+
+      try {
+        const baseUrl =
+          getRequestBaseUrl(
+            request
+          );
+
+        const adpPool =
+          await fetchDraftAdpPool({
+            baseUrl,
+            scoring:
+              resolvedScoring,
+            teams:
+              resolvedTeams,
+            season:
+              resolvedSeason
+          });
+
+        const opportunityStore =
+          getStore({
+            name:
+              "opportunity-intel"
+          });
+
+        const contextStore =
+          getStore({
+            name:
+              "context-intel"
+          });
+
+        const [
+          opportunityCache,
+          contextCache
+        ] =
+          await Promise.all([
+            opportunityStore
+              .get(
+                "latest",
+                {
+                  type:
+                    "json"
+                }
+              )
+              .catch(
+                () => null
+              ),
+
+            contextStore
+              .get(
+                "latest",
+                {
+                  type:
+                    "json"
+                }
+              )
+              .catch(
+                () => null
+              )
+          ]);
+
+        const results =
+          requestedPlayers.map(
+            (requestedName) => {
+              const adpEntry =
+                findAdpEntryByName(
+                  adpPool,
+                  requestedName
+                );
+
+              if (!adpEntry) {
+                return {
+                  requestedName,
+                  found: false,
+                  player: null,
+                  adp: null,
+                  opportunityProfile:
+                    null,
+                  contextProfile:
+                    null,
+                  missing: [
+                    "adp"
+                  ]
+                };
+              }
+
+              const player = {
+                name:
+                  adpEntry.name,
+                pos:
+                  String(
+                    adpEntry.position ||
+                    ""
+                  ).toUpperCase()
+              };
+
+              const missing = [];
+
+              const rawOpportunityRecord =
+                getDraftOpportunityRecord(
+                  opportunityCache,
+                  player
+                );
+
+              const opportunityProfile =
+                rawOpportunityRecord
+                  ? buildDraftOpportunityProfile(
+                      rawOpportunityRecord
+                    )
+                  : null;
+
+              if (!opportunityProfile) {
+                missing.push(
+                  "opportunity"
+                );
+              }
+
+              const contextProfile =
+                getDraftContextProfileRecord(
+                  contextCache,
+                  player
+                );
+
+              if (!contextProfile) {
+                missing.push(
+                  "context"
+                );
+              }
+
+              return {
+                requestedName,
+                found: true,
+                player: {
+                  name:
+                    adpEntry.name,
+                  position:
+                    player.pos,
+                  team:
+                    adpEntry.team ||
+                    null
+                },
+                adp:
+                  num(
+                    adpEntry.adp
+                  ),
+                opportunityProfile,
+                contextProfile,
+                missing
+              };
+            }
+          );
+
+        // Conservative, non-invented presentation order when 2+
+        // players are requested: ADP ascending, the same primary
+        // ordering signal sage-recommend.js itself falls back to
+        // when live-draft-position signals aren't available. This
+        // is presentation order only -- it is never described as a
+        // preference verdict.
+        const sorted =
+          results
+            .slice()
+            .sort(
+              (a, b) => {
+                if (
+                  a.found &&
+                  b.found
+                ) {
+                  if (
+                    a.adp === null &&
+                    b.adp === null
+                  ) {
+                    return 0;
+                  }
+
+                  if (a.adp === null) {
+                    return 1;
+                  }
+
+                  if (b.adp === null) {
+                    return -1;
+                  }
+
+                  return (
+                    a.adp -
+                    b.adp
+                  );
+                }
+
+                if (a.found) {
+                  return -1;
+                }
+
+                if (b.found) {
+                  return 1;
+                }
+
+                return 0;
+              }
+            );
+
+        const structuredContent = {
+          source:
+            "Inner Sanctum Draft SAGE",
+          season:
+            resolvedSeason,
+          scoring:
+            resolvedScoring,
+          teams:
+            resolvedTeams,
+          players:
+            sorted,
+          note:
+            "Live market ADP plus existing Opportunity and Context Intelligence only. No live-draft pick-position or pool-depth signal is used, and no combined draft score or single preferred player is produced."
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                draftOutlookToText({
+                  players:
+                    sorted,
+                  season:
+                    resolvedSeason,
+                  scoring:
+                    resolvedScoring,
+                  teams:
+                    resolvedTeams
+                })
+            }
+          ],
+          structuredContent
+        };
+      } catch (error) {
+        console.error(
+          "Inner Sanctum draft outlook error:",
+          error
+        );
+
+        const structuredContent = {
+          source:
+            "Inner Sanctum Draft SAGE",
+          season:
+            resolvedSeason,
+          scoring:
+            resolvedScoring,
+          teams:
+            resolvedTeams,
+          players: [],
+          note:
+            "Live market ADP plus existing Opportunity and Context Intelligence only. No live-draft pick-position or pool-depth signal is used, and no combined draft score or single preferred player is produced.",
+          error:
+            "live_draft_outlook_unavailable"
+        };
+
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text:
+                "Inner Sanctum could not retrieve the live Draft Outlook data right now."
             }
           ],
           structuredContent
