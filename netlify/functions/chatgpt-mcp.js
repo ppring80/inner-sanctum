@@ -340,6 +340,18 @@ function normalizePlayerName(value) {
     .toLowerCase()
     .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
+    // Strips invisible/zero-width characters (zero-width space,
+    // zero-width non-joiner/joiner, BOM, soft hyphen) on their own
+    // independent merits: this kind of character can end up embedded
+    // in browser-scraped provider text without being visible in it,
+    // and removing it can only allow a previously-blocked correct
+    // match to succeed -- it never makes two genuinely different
+    // visible names equal, so it carries no false-match risk. This
+    // is NOT the confirmed cause of any specific known mismatch (see
+    // the generational-suffix handling in matchRosterEntryToSageRow()
+    // below for that); it is retained purely as harmless, generally
+    // useful defensive normalization for scraped text.
+    .replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, "")
     .replace(/\s+/g, " ");
 }
 
@@ -2904,6 +2916,46 @@ function expandLineupSlots(slots) {
 // extractSageCompatibleId()/extractProviderId() above. Position
 // compatibility is always required; name alone is never sufficient
 // when position conflicts.
+//
+// Defense/team entities get one additional, narrowly-scoped tier:
+// provider text for a team defense varies far more than for an
+// individual player ("Broncos", "Denver Broncos", "Denver", "DEN"),
+// so an exact-name requirement misses real matches that team
+// identity resolves unambiguously. Team abbreviations are unique
+// across the league, so this tier is restricted strictly to entries
+// already eligible for the DEF position and requires the SAGE row
+// itself to be position "DEF" -- it is never applied to individual
+// skill-position players, so it cannot cross-match a real player on
+// the same team, and it cannot cross-match a different team's
+// defense.
+function normalizeTeamCode(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+// Confirmed real case: CBS captured "Kyle Pitts"; Weekly SAGE listed
+// the same player as "Kyle Pitts Sr." -- a generational-suffix
+// formatting difference between providers, not a typo or a different
+// person. Matches a fixed, enumerated set of trailing generational
+// suffix tokens only (Jr, Jr., Sr, Sr., II, III, IV) -- this is an
+// exact-equality comparison on a deterministically-defined
+// normalization, not fuzzy/partial/edit-distance name matching, and
+// nothing else about the name is altered.
+const GENERATIONAL_SUFFIX_PATTERN =
+  /[\s,]+(jr|sr|ii|iii|iv)\.?$/i;
+
+function stripGenerationalSuffix(
+  normalizedName
+) {
+  return normalizedName
+    .replace(
+      GENERATIONAL_SUFFIX_PATTERN,
+      ""
+    )
+    .trim();
+}
+
 function matchRosterEntryToSageRow(
   rosterEntry,
   sageRows,
@@ -2930,6 +2982,32 @@ function matchRosterEntryToSageRow(
     }
   }
 
+  if (
+    rosterEntry.eligiblePositions.includes(
+      "DEF"
+    ) &&
+    rosterEntry.team
+  ) {
+    const normalizedTeam =
+      normalizeTeamCode(
+        rosterEntry.team
+      );
+
+    const byTeam = sageRows.find(
+      (row) =>
+        row.position === "DEF" &&
+        normalizeTeamCode(row.team) ===
+          normalizedTeam &&
+        !usedRowKeys.has(
+          rowKey(row)
+        )
+    );
+
+    if (byTeam) {
+      return byTeam;
+    }
+  }
+
   const normalizedName =
     normalizePlayerName(
       rosterEntry.name
@@ -2947,7 +3025,42 @@ function matchRosterEntryToSageRow(
       )
   );
 
-  return byName || null;
+  if (byName) {
+    return byName;
+  }
+
+  // Last resort: same base name once a generational suffix is
+  // stripped from either side, same eligible position. Still an
+  // exact-equality comparison, not a fuzzy one -- but because
+  // stripping a suffix necessarily discards information that could
+  // distinguish two different real people (e.g. a genuine "Jr."/
+  // "Sr." pair both currently active at the same position), this
+  // only resolves when EXACTLY ONE remaining SAGE row matches. If
+  // stripping suffixes makes more than one row match, that is a
+  // real ambiguity this function must not silently guess through,
+  // so it returns unmatched rather than picking either candidate.
+  const strippedRosterName =
+    stripGenerationalSuffix(
+      normalizedName
+    );
+
+  const suffixToleredCandidates =
+    sageRows.filter(
+      (row) =>
+        stripGenerationalSuffix(
+          normalizePlayerName(row.name)
+        ) === strippedRosterName &&
+        rosterEntry.eligiblePositions.includes(
+          row.position
+        ) &&
+        !usedRowKeys.has(
+          rowKey(row)
+        )
+    );
+
+  return suffixToleredCandidates.length === 1
+    ? suffixToleredCandidates[0]
+    : null;
 }
 
 function buildLineupSageReason(row) {
