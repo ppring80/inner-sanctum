@@ -164,6 +164,21 @@
 [functions."refresh-def-snapshot"]
   schedule = "25 9 * * 2"
 
+# OPENAI PLUGIN DOMAIN VERIFICATION
+# OpenAI's plugin submission portal verifies ownership of
+# theinnersanctum.xyz by requesting the public well-known URL below.
+#
+# This is a Netlify rewrite (status 200), not a browser redirect.
+# The public verification URL remains:
+#
+# https://theinnersanctum.xyz/.well-known/openai-apps-challenge
+#
+# Netlify serves the response from openai-apps-challenge.js.
+[[redirects]]
+  from = "/.well-known/openai-apps-challenge"
+  to = "/.netlify/functions/openai-apps-challenge"
+  status = 200
+
 # CHATGPT / MCP OAUTH DISCOVERY
 # Standard OAuth discovery URLs used by ChatGPT when the
 # Inner Sanctum MCP app is configured with Authentication = OAuth.
