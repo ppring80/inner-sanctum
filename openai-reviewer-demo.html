@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Inner Sanctum SAGE — OpenAI Reviewer Access</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0d0a06;
+    color: #f2ead9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 440px;
+    background: #15100a;
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 14px;
+    padding: 32px 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+  }
+
+  h1 {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 20px;
+    letter-spacing: 0.4px;
+    color: #f5c842;
+    margin: 0 0 6px;
+  }
+
+  .sub {
+    color: #b8ac95;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 24px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: #cbbf9f;
+    margin: 0 0 6px;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0d0a06;
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #f2ead9;
+    font-size: 14px;
+  }
+
+  input[type="text"]:focus,
+  input[type="password"]:focus {
+    outline: none;
+    border-color: #c9a84c;
+  }
+
+  button {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    background: #c9a84c;
+    color: #15100a;
+    margin-top: 6px;
+  }
+
+  button:hover {
+    background: #f5c842;
+  }
+
+  .error {
+    display: none;
+    background: rgba(163, 33, 33, 0.15);
+    border: 1px solid rgba(163, 33, 33, 0.4);
+    color: #e88b8b;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-top: 14px;
+  }
+
+  .error.show {
+    display: block;
+  }
+
+  .confirm {
+    display: none;
+  }
+
+  .confirm.show {
+    display: block;
+  }
+
+  .confirm-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 18px;
+    color: #7ec98f;
+    margin: 0 0 12px;
+  }
+
+  .confirm p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #e7dfcc;
+    margin: 0 0 10px;
+  }
+
+  .confirm .league-name {
+    color: #f5c842;
+    font-weight: 700;
+  }
+
+  .note {
+    font-size: 12px;
+    color: #8a8070;
+    margin-top: 22px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <div id="loginView">
+    <h1>Inner Sanctum SAGE — OpenAI Reviewer Access</h1>
+    <p class="sub">
+      This page is exclusively for OpenAI plugin reviewers. It grants
+      access only to a synthetic demo league — no real customer data
+      is involved.
+    </p>
+
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" id="username" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){signIn()}">
+    </div>
+
+    <button type="button" onclick="signIn()">Sign In</button>
+
+    <div class="error" id="loginError">Incorrect username or password. Try again.</div>
+
+    <div class="note">
+      These credentials unlock only a synthetic demo league for review
+      purposes. They do not interact with Patreon, CBS, Sleeper, or
+      any real Inner Sanctum user account.
+    </div>
+  </div>
+
+  <div id="confirmView" class="confirm">
+    <div class="confirm-title">OpenAI Reviewer Demo League is ready.</div>
+    <p>
+      Return to ChatGPT, connect <span class="league-name">Inner Sanctum SAGE</span>,
+      and select <span class="league-name">OpenAI Reviewer Demo League</span> when prompted.
+    </p>
+    <div class="note">
+      This is a permanent, synthetic demo league created solely for
+      reviewer testing. It contains no real customer or league data.
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var REVIEWER_USERNAME = "openai-reviewer";
+  var REVIEWER_PASSWORD = "SAGE-OPENAI-REVIEW-2026";
+
+  var STORAGE_KEY = "innerSanctum_chatgptLeagueLinks";
+
+  var DEMO_LINK_TOKEN =
+    "RoJh47NXd2R62fiLJoo3C_miZAIqEBjisWI8MYySJl4";
+
+  var DEMO_LEAGUE_ID =
+    "demo-openai-reviewer-league-001";
+
+  var DEMO_TEAM_ID =
+    "demo-openai-reviewer-team-001";
+
+  function seedDemoLeagueLink() {
+    var nowIso = new Date().toISOString();
+
+    var value = {
+      cbs: {
+        linkToken: DEMO_LINK_TOKEN,
+        provider: "cbs",
+        leagueId: DEMO_LEAGUE_ID,
+        teamId: DEMO_TEAM_ID,
+        linkedAt: nowIso,
+        lastSyncedAt: nowIso
+      }
+    };
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(value)
+    );
+  }
+
+  window.signIn = function () {
+    var usernameInput = document.getElementById("username");
+    var passwordInput = document.getElementById("password");
+    var errorBox = document.getElementById("loginError");
+
+    var enteredUsername = usernameInput.value.trim();
+    var enteredPassword = passwordInput.value;
+
+    if (
+      enteredUsername === REVIEWER_USERNAME &&
+      enteredPassword === REVIEWER_PASSWORD
+    ) {
+      errorBox.classList.remove("show");
+
+      seedDemoLeagueLink();
+
+      document.getElementById("loginView").style.display = "none";
+      document.getElementById("confirmView").classList.add("show");
+    } else {
+      errorBox.classList.add("show");
+      passwordInput.value = "";
+      passwordInput.focus();
+    }
+  };
+})();
+</script>
+
+</body>
+</html>
