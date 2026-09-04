@@ -1,18 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════
-// GET RISERS & FALLERS — public frontend data endpoint
+// GET RISERS & FALLERS — entitlement-aware frontend data endpoint
 //
-// Reads whatever refresh-risers-fallers.js most recently cached (the
-// "latest" key) and returns it as clean, raw JSON for risers-fallers.html
-// to render and style itself. Distinct from view-risers-fallers.js,
-// which pre-formats everything into human-readable percentage strings
-// for manual eyeball-testing in a browser tab — this endpoint hands back
-// raw numbers (0.234, not "23.4%") so the frontend controls its own
-// formatting, colors, and badges.
+// Full Top 15 data is a Founding Acolyte benefit.
+// Anonymous/free visitors still receive the advertised headline preview:
+// top 1 riser + top 1 faller. The signed sanctum_session cookie is
+// verified server-side through the existing verify-session function.
 //
-// Same CORS/origin-check convention as adp.js (a GET, read-only proxy),
-// since this is called from the browser same as that function is.
+// Raw cached data remains unchanged; only the response shape is truncated
+// for non-entitled requests.
 // ═══════════════════════════════════════════════════════════════════════
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { handler: verifySessionHandler } = require("./verify-session");
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
@@ -25,23 +23,60 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
+async function hasFullAcolyteAccess(event) {
+  try {
+    const result = await verifySessionHandler({
+      ...event,
+      httpMethod: "GET",
+      body: null
+    });
+
+    if (!result || result.statusCode !== 200) {
+      return false;
+    }
+
+    const session =
+      typeof result.body === "string"
+        ? JSON.parse(result.body || "{}")
+        : (result.body || {});
+
+    return session.fullAccess === true;
+  } catch (err) {
+    console.log(
+      "Risers/Fallers auth verification failed:",
+      err && err.message ? err.message : String(err)
+    );
+    return false;
+  }
+}
+
 exports.handler = async (event) => {
   connectLambda(event);
 
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
+
   if (event.httpMethod !== "GET") {
-    return { statusCode: 405, headers: CORS_HEADERS, body: "Method Not Allowed" };
+    return {
+      statusCode: 405,
+      headers: CORS_HEADERS,
+      body: "Method Not Allowed"
+    };
   }
 
-  // Same empty-origin-allowed convention as adp.js — browsers often omit
-  // Origin on same-origin GET requests.
   const origin = event.headers.origin || event.headers.Origin || "";
-  const originAllowed = origin === "" || ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  const originAllowed =
+    origin === "" ||
+    ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+
   if (!originAllowed) {
     console.log(`Blocked request from origin: ${origin}`);
-    return { statusCode: 403, headers: CORS_HEADERS, body: JSON.stringify({ error: "Forbidden" }) };
+    return {
+      statusCode: 403,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: "Forbidden" })
+    };
   }
 
   try {
@@ -52,15 +87,32 @@ exports.handler = async (event) => {
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ status: "NoData", risers: [], fallers: [] })
+        body: JSON.stringify({
+          status: "NoData",
+          fullAccess: false,
+          risers: [],
+          fallers: []
+        })
       };
     }
+
+    const fullAccess = await hasFullAcolyteAccess(event);
+
+    const risers = fullAccess
+      ? (Array.isArray(data.risers) ? data.risers : [])
+      : (Array.isArray(data.risers) ? data.risers.slice(0, 1) : []);
+
+    const fallers = fullAccess
+      ? (Array.isArray(data.fallers) ? data.fallers : [])
+      : (Array.isArray(data.fallers) ? data.fallers.slice(0, 1) : []);
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
       body: JSON.stringify({
         status: "Success",
+        fullAccess,
+        preview: !fullAccess,
         computedAt: data.computedAt,
         season: data.season,
         currentWeek: data.currentWeek,
@@ -68,16 +120,20 @@ exports.handler = async (event) => {
         threshold: data.threshold,
         minTargetFloor: data.minTargetFloor,
         playerCount: data.playerCount,
-        risers: data.risers,
-        fallers: data.fallers
+        risers,
+        fallers
       })
     };
   } catch (err) {
     console.log("Handler error:", err.message);
+
     return {
       statusCode: 500,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ status: "Error", error: err.message })
+      body: JSON.stringify({
+        status: "Error",
+        error: err.message
+      })
     };
   }
 };
