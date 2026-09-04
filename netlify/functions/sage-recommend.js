@@ -190,6 +190,13 @@ const {
   connectLambda
 } = require("@netlify/blobs");
 
+
+// Reuse the production signed-cookie verifier directly rather than
+// duplicating session-signature logic here.
+const {
+  handler: verifySessionHandler
+} = require("./verify-session");
+
 const {
   buildDraftOpportunityProfile
 } = require("./draft-opportunity-profile");
@@ -224,6 +231,42 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Content-Type": "application/json; charset=utf-8"
 };
+
+async function hasFullAcolyteAccess(event) {
+  try {
+    const result =
+      await verifySessionHandler({
+        ...event,
+        httpMethod: "GET",
+        body: null
+      });
+
+    if (
+      !result ||
+      result.statusCode !== 200
+    ) {
+      return false;
+    }
+
+    const data =
+      typeof result.body === "string"
+        ? JSON.parse(
+            result.body || "{}"
+          )
+        : (result.body || {});
+
+    return data.fullAccess === true;
+  } catch (err) {
+    console.log(
+      "SAGE auth verification failed:",
+      err && err.message
+        ? err.message
+        : String(err)
+    );
+
+    return false;
+  }
+}
 
 // Bound the candidate list server-side too, defense-in-depth against a
 // caller sending more than intended -- Draft Command Center is expected
@@ -262,75 +305,123 @@ function codeRank(code) {
 // Aug 18 2026 fix (Ja'Marr Chase identity-normalization defect):
 // explicit Unicode escapes cover ASCII apostrophe plus common smart
 // apostrophe characters.
-
 function normalizePlayerName(name) {
-  return (name || "")
+  return String(name || "")
     .toLowerCase()
+    .normalize("NFKD")
     .replace(
-      /[.\u0027\u2018\u2019]/g,
+      /[\u2018\u2019\u02bc']/g,
       ""
     )
     .replace(
-      /-/g,
-      " "
-    )
-    .replace(
-      /\b(jr|sr|ii|iii|iv)\b/g,
+      /[^a-z0-9]/g,
       ""
-    )
-    .replace(
-      /\s+/g,
-      " "
-    )
-    .trim();
+    );
 }
 
 function playerKey(player) {
   return (
     normalizePlayerName(
+      player &&
       player.name
     ) +
     "|" +
     String(
-      player.pos || ""
+      player &&
+      player.pos
+        ? player.pos
+        : ""
     ).toUpperCase()
   );
 }
 
 function getOpportunityRecord(
-  cached,
+  opportunityCache,
   player
 ) {
-  const records =
-    cached &&
-    cached.records
-      ? cached.records
-      : {};
+  if (
+    !opportunityCache ||
+    !player
+  ) {
+    return null;
+  }
 
-  return (
-    records[
-      playerKey(player)
-    ] ||
-    null
-  );
+  const key =
+    playerKey(player);
+
+  if (
+    opportunityCache.byPlayer &&
+    opportunityCache.byPlayer[
+      key
+    ]
+  ) {
+    return opportunityCache
+      .byPlayer[key];
+  }
+
+  if (
+    Array.isArray(
+      opportunityCache.players
+    )
+  ) {
+    return (
+      opportunityCache.players.find(
+        function (record) {
+          return (
+            playerKey(record) ===
+            key
+          );
+        }
+      ) || null
+    );
+  }
+
+  return null;
 }
 
 function getContextRecord(
-  cached,
+  contextCache,
   player
 ) {
-  const records =
-    cached &&
-    cached.records
-      ? cached.records
-      : {};
+  if (
+    !contextCache ||
+    !player
+  ) {
+    return null;
+  }
 
-  return (
-    records[
-      playerKey(player)
-    ] ||
-    null
-  );
+  const key =
+    playerKey(player);
+
+  if (
+    contextCache.byPlayer &&
+    contextCache.byPlayer[
+      key
+    ]
+  ) {
+    return contextCache.byPlayer[
+      key
+    ];
+  }
+
+  if (
+    Array.isArray(
+      contextCache.players
+    )
+  ) {
+    return (
+      contextCache.players.find(
+        function (record) {
+          return (
+            playerKey(record) ===
+            key
+          );
+        }
+      ) || null
+    );
+  }
+
+  return null;
 }
 
 function getProductionContextProfile(
@@ -343,36 +434,41 @@ function getProductionContextProfile(
       player
     );
 
-  if (
-    !record ||
-    record.contextStatus !==
-      "context-profiled"
-  ) {
-    return null;
-  }
-
-  return (
-    record.contextProfile ||
-    null
-  );
-}
-
-function attachAdp(
-  record,
-  player
-) {
   if (!record) {
     return null;
   }
 
-  return Object.assign(
-    {},
-    record,
-    {
-      adp:
-        player.adp
-    }
-  );
+  if (
+    record.contextProfile &&
+    typeof record.contextProfile ===
+      "object"
+  ) {
+    return record.contextProfile;
+  }
+
+  return record;
+}
+
+function attachAdp(
+  opportunityRecord,
+  player
+) {
+  if (
+    !opportunityRecord ||
+    !player
+  ) {
+    return null;
+  }
+
+  return {
+    ...opportunityRecord,
+    adp:
+      Number.isFinite(
+        Number(player.adp)
+      )
+        ? Number(player.adp)
+        : null
+  };
 }
 
 function buildOpportunityPool(
@@ -380,23 +476,17 @@ function buildOpportunityPool(
   players
 ) {
   return (
-    players ||
-    []
+    Array.isArray(players)
+      ? players
+      : []
   )
     .map(
       function (player) {
-        const record =
+        return attachAdp(
           getOpportunityRecord(
             opportunityCache,
             player
-          );
-
-        if (!record) {
-          return null;
-        }
-
-        return attachAdp(
-          record,
+          ),
           player
         );
       }
@@ -404,136 +494,386 @@ function buildOpportunityPool(
     .filter(Boolean);
 }
 
-function isValidPlayerShape(p) {
-  return Boolean(
-    p &&
-    typeof p === "object" &&
-    typeof p.name ===
-      "string" &&
-    p.name.trim().length >
-      0
-  );
+// ── Plain-language Context augmentation helpers ─────────────────────
+//
+// These fields are additive and customer-facing only. They never alter
+// synthesis, ordering, codes, or reasons.
+//
+// buildFootballContext() uses only real fields already present in the
+// cached Opportunity snapshot. No inference beyond direct value-to-copy
+// mapping.
+//
+// If sufficient evidence is absent, return null and let the frontend
+// gracefully omit the field.
+function buildFootballContext(
+  opportunityRecord
+) {
+  if (!opportunityRecord) {
+    return null;
+  }
+
+  const parts = [];
+
+  const role =
+    opportunityRecord.role ||
+    opportunityRecord.depthRole ||
+    opportunityRecord.roleLabel ||
+    null;
+
+  const team =
+    opportunityRecord.team ||
+    null;
+
+  const snapShare =
+    Number(
+      opportunityRecord.snapShare
+    );
+
+  const targetShare =
+    Number(
+      opportunityRecord.targetShare
+    );
+
+  const carryShare =
+    Number(
+      opportunityRecord.carryShare
+    );
+
+  if (role) {
+    parts.push(String(role));
+  }
+
+  if (team) {
+    parts.push(
+      "for " + String(team)
+    );
+  }
+
+  if (
+    Number.isFinite(snapShare)
+  ) {
+    parts.push(
+      "playing " +
+      Math.round(
+        snapShare * 100
+      ) +
+      "% of snaps"
+    );
+  }
+
+  if (
+    Number.isFinite(targetShare)
+  ) {
+    parts.push(
+      "with a " +
+      Math.round(
+        targetShare * 100
+      ) +
+      "% target share"
+    );
+  } else if (
+    Number.isFinite(carryShare)
+  ) {
+    parts.push(
+      "with a " +
+      Math.round(
+        carryShare * 100
+      ) +
+      "% carry share"
+    );
+  }
+
+  if (!parts.length) {
+    return null;
+  }
+
+  let text =
+    parts.join(", ");
+
+  text =
+    text.charAt(0).toUpperCase() +
+    text.slice(1);
+
+  if (!/[.!?]$/.test(text)) {
+    text += ".";
+  }
+
+  return text;
 }
 
-function jsonResponse(
-  statusCode,
-  body
+// Customer-facing timing phrase based only on Market + Scarcity outputs.
+// This deliberately avoids exposing raw internal field names/scores.
+function buildDraftOutlookPhrase(
+  marketProfile,
+  scarcityProfile
 ) {
+  if (
+    !marketProfile &&
+    !scarcityProfile
+  ) {
+    return null;
+  }
+
+  const signals = [];
+
+  const market =
+    marketSignals(
+      marketProfile || {}
+    ) || [];
+
+  const scarcity =
+    scarcitySignals(
+      scarcityProfile || {}
+    ) || [];
+
+  if (
+    Array.isArray(market) &&
+    market.length
+  ) {
+    signals.push(
+      market[0]
+    );
+  }
+
+  if (
+    Array.isArray(scarcity) &&
+    scarcity.length
+  ) {
+    signals.push(
+      scarcity[0]
+    );
+  }
+
+  if (!signals.length) {
+    return null;
+  }
+
+  return signals
+    .slice(0, 2)
+    .join(" ");
+}
+
+// Context-note display text from the already-computed production Context
+// profile. Use only explicit, customer-safe text fields if present.
+function buildUniqueContextNote(
+  contextProfile
+) {
+  if (
+    !contextProfile ||
+    typeof contextProfile !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const candidateFields = [
+    contextProfile.note,
+    contextProfile.contextNote,
+    contextProfile.summary,
+    contextProfile.label,
+    contextProfile.outlook
+  ];
+
+  for (
+    let i = 0;
+    i < candidateFields.length;
+    i++
+  ) {
+    const value =
+      candidateFields[i];
+
+    if (
+      typeof value === "string" &&
+      value.trim()
+    ) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+// ── Roster-context validation / note helper ─────────────────────────
+//
+// Phase 1 is intentionally conservative:
+//   - only uses remainingDedicated,
+//   - only appends a note when the recommended player's dedicated slot
+//     is already filled,
+//   - only points to a genuinely-open OTHER position,
+//   - only names a real evaluated candidate already present in this
+//     request,
+//   - never changes ordering or synthesis.
+function normalizeRosterContext(
+  rosterContext
+) {
+  if (
+    !rosterContext ||
+    typeof rosterContext !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const remainingDedicated =
+    rosterContext.remainingDedicated;
+
+  if (
+    !remainingDedicated ||
+    typeof remainingDedicated !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const normalized = {};
+
+  [
+    "QB",
+    "RB",
+    "WR",
+    "TE",
+    "K",
+    "DEF"
+  ].forEach(
+    function (pos) {
+      const value =
+        Number(
+          remainingDedicated[
+            pos
+          ]
+        );
+
+      if (
+        Number.isFinite(value)
+      ) {
+        normalized[pos] =
+          Math.max(
+            0,
+            Math.floor(value)
+          );
+      }
+    }
+  );
+
+  if (
+    !Object.keys(normalized)
+      .length
+  ) {
+    return null;
+  }
+
   return {
-    statusCode,
-    headers:
-      CORS_HEADERS,
-    body:
-      JSON.stringify(
-        body
-      )
+    remainingDedicated:
+      normalized
   };
 }
 
-// ── Deterministic recommendation ordering ─────────────────────────────
-//
-// Primary:
-//   normalized market pick (nearest actual draft slot).
-//
-// Secondary:
-//   SAGE category when players occupy the same market slot.
-//
-// Tertiary:
-//   raw format-specific ADP when market slot + SAGE category are equal.
-//
-// Final:
-//   normalized player name for stable deterministic output.
-//
-// This keeps ADP as the market guardrail without allowing fractional ADP
-// differences inside the same draft slot to suppress SAGE evidence.
-// No weighted score or invented tolerance band is created.
-
-function compareEvaluatedCandidates(
-  a,
-  b
+function buildRosterContextNote(
+  recommendedPlayer,
+  evaluated,
+  rosterContext
 ) {
-  const adpA =
-    Number.isFinite(
-      a.adp
-    )
-      ? a.adp
-      : Infinity;
-
-  const adpB =
-    Number.isFinite(
-      b.adp
-    )
-      ? b.adp
-      : Infinity;
-
-  const marketPickA =
-    normalizeAdpToPick(
-      adpA
-    );
-
-  const marketPickB =
-    normalizeAdpToPick(
-      adpB
-    );
-
-  const sortableMarketPickA =
-    marketPickA === null
-      ? Infinity
-      : marketPickA;
-
-  const sortableMarketPickB =
-    marketPickB === null
-      ? Infinity
-      : marketPickB;
-
-  if (
-    sortableMarketPickA !==
-    sortableMarketPickB
-  ) {
-    return (
-      sortableMarketPickA -
-      sortableMarketPickB
-    );
-  }
-
-  const rankDiff =
-    codeRank(
-      a.sage &&
-      a.sage.code
-    ) -
-    codeRank(
-      b.sage &&
-      b.sage.code
+  const normalized =
+    normalizeRosterContext(
+      rosterContext
     );
 
   if (
-    rankDiff !== 0
+    !normalized ||
+    !recommendedPlayer ||
+    !recommendedPlayer.pos
   ) {
-    return rankDiff;
+    return null;
+  }
+
+  const recPos =
+    String(
+      recommendedPlayer.pos
+    ).toUpperCase();
+
+  const remaining =
+    normalized
+      .remainingDedicated;
+
+  if (
+    !Object.prototype
+      .hasOwnProperty.call(
+        remaining,
+        recPos
+      )
+  ) {
+    return null;
   }
 
   if (
-    adpA !== adpB
+    remaining[recPos] > 0
   ) {
-    return (
-      adpA -
-      adpB
-    );
+    return null;
   }
 
-  return normalizePlayerName(
-    a.player &&
-    a.player.name
-  ).localeCompare(
-    normalizePlayerName(
-      b.player &&
-      b.player.name
-    )
+  const openPositions =
+    Object.keys(remaining)
+      .filter(
+        function (pos) {
+          return (
+            pos !== recPos &&
+            remaining[pos] > 0
+          );
+        }
+      );
+
+  if (!openPositions.length) {
+    return null;
+  }
+
+  const alternative =
+    (
+      Array.isArray(evaluated)
+        ? evaluated
+        : []
+    ).find(
+      function (candidate) {
+        if (
+          !candidate ||
+          !candidate.player
+        ) {
+          return false;
+        }
+
+        const pos =
+          String(
+            candidate.player.pos ||
+            ""
+          ).toUpperCase();
+
+        return (
+          openPositions.indexOf(
+            pos
+          ) !== -1
+        );
+      }
+    );
+
+  if (
+    !alternative ||
+    !alternative.player ||
+    !alternative.player.name
+  ) {
+    return null;
+  }
+
+  return (
+    "Roster note: your " +
+    recPos +
+    " starter slot is already filled, while another starting need remains open. " +
+    String(
+      alternative.player.name
+    ) +
+    " is also available in this candidate group."
   );
 }
 
-// ── One candidate, full SAGE read ──────────────────────────────────────
-
+// ── Core candidate evaluation ───────────────────────────────────────
 function evaluateCandidate(
   opportunityCache,
   contextCache,
@@ -543,24 +883,35 @@ function evaluateCandidate(
   currentPick,
   nextUserPick
 ) {
-  const rawRecord =
+  const missing = [];
+
+  const opportunityRecord =
     getOpportunityRecord(
       opportunityCache,
       player
     );
 
-  const contextProfile =
-    getProductionContextProfile(
-      contextCache,
-      player
-    );
+  const opportunityProfile =
+    opportunityRecord
+      ? buildDraftOpportunityProfile(
+          opportunityRecord
+        )
+      : null;
 
-  const missing = [];
+  if (!opportunityProfile) {
+    missing.push(
+      "opportunity"
+    );
+  }
 
   const marketProfile =
     buildDraftMarketProfile({
       adp:
-        player.adp,
+        Number.isFinite(
+          Number(player.adp)
+        )
+          ? Number(player.adp)
+          : null,
 
       currentPick:
         currentPick,
@@ -569,56 +920,13 @@ function evaluateCandidate(
         nextUserPick
     });
 
-  if (!contextProfile) {
-    missing.push(
-      "context"
-    );
-  }
-
-  if (!rawRecord) {
-    missing.push(
-      "opportunity"
-    );
-
-    const sage =
-      buildRecommendation({
-        opportunityProfile:
-          null,
-
-        marketProfile:
-          marketProfile,
-
-        scarcityProfile:
-          null,
-
-        contextProfile:
-          contextProfile
-      });
-
-    return {
-      player,
-      adp:
-        player.adp,
-      sage,
-      missing
-    };
-  }
-
-  const record =
-    attachAdp(
-      rawRecord,
-      player
-    );
-
-  const opportunityProfile =
-    buildDraftOpportunityProfile(
-      rawRecord
-    );
-
   const scarcityProfile =
     buildDraftScarcityProfile({
       candidate:
-        record,
+        attachAdp(
+          opportunityRecord,
+          player
+        ),
 
       currentPool:
         currentPool,
@@ -626,6 +934,18 @@ function evaluateCandidate(
       nextTurnPool:
         nextTurnPool
     });
+
+  const contextProfile =
+    getProductionContextProfile(
+      contextCache,
+      player
+    );
+
+  if (!contextProfile) {
+    missing.push(
+      "context"
+    );
+  }
 
   const sage =
     buildRecommendation({
@@ -643,547 +963,223 @@ function evaluateCandidate(
     });
 
   return {
-    player,
+    player:
+      player,
+
     adp:
-      player.adp,
-    sage,
-    missing
+      Number.isFinite(
+        Number(player.adp)
+      )
+        ? Number(player.adp)
+        : Infinity,
+
+    sage:
+      sage,
+
+    missing:
+      missing
   };
 }
 
-// ── Optional roster-context annotation (Phase 1, additive only) ────────
-//
-// Read-only, informational annotation layered ON TOP OF the already-
-// ranked/scored recommendations below. It NEVER changes which players
-// are recommended, their order, their SAGE code, or their explanation --
-// it can only ever add a separate, clearly-labeled note.
-//
-// IMPORTANT:
-// - Before this change, SAGE never read or considered rosterContext at
-//   all. This annotation is a new, separate layer added now -- it is
-//   not, and must never be described as, something SAGE "already did."
-// - The note identifies a real, already-evaluated candidate at the
-//   unmet position by name only. It never quotes that candidate's
-//   internal SAGE recommendation label to the customer, and never
-//   explains why the recommended player was chosen over them -- the
-//   actual sort is ADP-primary, not a head-to-head comparison between
-//   these two specific candidates, so no such explanation would be
-//   accurate.
-// - If rosterContext is missing, malformed, or doesn't support a
-//   confident read, this returns null and nothing is added. Behavior
-//   when rosterContext is absent is therefore unchanged from before
-//   this field existed.
-
-const ROSTER_POSITION_ORDER = [
-  "QB",
-  "RB",
-  "WR",
-  "TE",
-  "K",
-  "DEF"
-];
-
-function isPlainObject(
-  value
+// Scoring-specific ADP is the primary objective market guardrail.
+// SAGE code only breaks EXACT same-ADP ties.
+function compareEvaluatedCandidates(
+  a,
+  b
 ) {
-  return Boolean(
-    value &&
-    typeof value ===
-      "object" &&
-    !Array.isArray(
-      value
+  const adpA =
+    Number.isFinite(a.adp)
+      ? a.adp
+      : Infinity;
+
+  const adpB =
+    Number.isFinite(b.adp)
+      ? b.adp
+      : Infinity;
+
+  if (adpA !== adpB) {
+    return adpA - adpB;
+  }
+
+  const codeA =
+    codeRank(
+      a &&
+      a.sage
+        ? a.sage.code
+        : null
+    );
+
+  const codeB =
+    codeRank(
+      b &&
+      b.sage
+        ? b.sage.code
+        : null
+    );
+
+  if (codeA !== codeB) {
+    return codeA - codeB;
+  }
+
+  return normalizePlayerName(
+    a &&
+    a.player
+      ? a.player.name
+      : ""
+  ).localeCompare(
+    normalizePlayerName(
+      b &&
+      b.player
+        ? b.player.name
+        : ""
     )
   );
 }
 
-function buildRosterContextNote(
-  recommendedPos,
-  rosterContext,
-  evaluatedPool
+// ── Request / response helpers ──────────────────────────────────────
+function jsonResponse(
+  statusCode,
+  body
+) {
+  return {
+    statusCode:
+      statusCode,
+
+    headers:
+      CORS_HEADERS,
+
+    body:
+      JSON.stringify(body)
+  };
+}
+
+function parseBody(event) {
+  if (
+    !event ||
+    !event.body
+  ) {
+    return {};
+  }
+
+  if (
+    typeof event.body ===
+      "object"
+  ) {
+    return event.body;
+  }
+
+  return JSON.parse(
+    event.body
+  );
+}
+
+function normalizeCandidate(
+  player
 ) {
   if (
-    !isPlainObject(
-      rosterContext
-    ) ||
-    !isPlainObject(
-      rosterContext.remainingDedicated
-    )
+    !player ||
+    typeof player !==
+      "object"
   ) {
     return null;
   }
 
-  const remaining =
-    rosterContext.remainingDedicated;
+  const name =
+    typeof player.name ===
+      "string"
+      ? player.name.trim()
+      : "";
 
-  const normalizedRecommendedPos =
-    String(
-      recommendedPos ||
-      ""
-    ).toUpperCase();
-
-  const recommendedRemaining =
-    remaining[
-      normalizedRecommendedPos
-    ];
-
-  // Only speak up when the recommended position's dedicated starting
-  // slots are confirmed fully filled (exactly 0 remaining). Any other
-  // value -- including missing/unknown/undefined -- is treated as
-  // "cannot confirm satisfied" and produces no note.
-  if (
-    recommendedRemaining !==
-    0
-  ) {
-    return null;
-  }
-
-  const unmetPos =
-    ROSTER_POSITION_ORDER.find(
-      function (pos) {
-        return (
-          pos !==
-            normalizedRecommendedPos &&
-          Number.isFinite(
-            remaining[
-              pos
-            ]
-          ) &&
-          remaining[
-            pos
-          ] >
-            0
-        );
-      }
-    );
-
-  if (!unmetPos) {
-    return null;
-  }
-
-  const representative =
-    (
-      evaluatedPool ||
-      []
-    ).find(
-      function (e) {
-        return (
-          e &&
-          e.player &&
-          String(
-            e.player.pos ||
-            ""
-          ).toUpperCase() ===
-            unmetPos
-        );
-      }
-    );
+  const pos =
+    typeof player.pos ===
+      "string"
+      ? player.pos
+          .trim()
+          .toUpperCase()
+      : "";
 
   if (
-    !representative ||
-    !representative.sage ||
-    !representative.sage.recommendation
+    !name ||
+    !pos
   ) {
     return null;
   }
 
-  // Consumer-facing wording deliberately avoids quoting SAGE's internal
-  // recommendation label (e.g. "Consider Now") for the OTHER position's
-  // candidate -- that reads as model-internals leakage to a customer.
-  // It also deliberately does NOT explain why the recommended player
-  // was chosen over this one (e.g. "because it sees stronger value"):
-  // the actual sort is ADP-primary, not a head-to-head value comparison
-  // between these two specific candidates, so any such explanation
-  // would misdescribe what the system actually did. It also does not
-  // suggest SAGE is recommending the alternative, and does not imply
-  // anything about that player's future availability. State the fact
-  // (this real, identified alternative exists) and stop there.
-  return (
-    "Your " +
-    unmetPos +
-    " slot is still open. " +
-    (
-      representative.player.name ||
-      "A player"
-    ) +
-    " (" +
-    unmetPos +
-    ") is currently available if you prefer to address that position now. This note is informational only and does not change the recommendation above."
-  );
+  const adp =
+    Number(player.adp);
+
+  return {
+    name:
+      name,
+
+    pos:
+      pos,
+
+    team:
+      typeof player.team ===
+        "string" &&
+      player.team.trim()
+        ? player.team.trim()
+        : null,
+
+    adp:
+      Number.isFinite(adp)
+        ? adp
+        : null
+  };
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PLAYER SNAPSHOT EXPLANATION AUGMENTATION (V1, additive, explanation-
-// only -- Aug 2026)
-//
-// Everything in this section runs strictly AFTER buildRecommendation()
-// has already produced recommendation/code/explanation/reasons. It
-// never feeds back into scoring, never re-sorts, never changes which
-// candidates are selected. Given a null/missing playerSnapshot (no
-// cache, or no match for this candidate), every function below is a
-// no-op that returns the existing explanation completely unchanged --
-// fail-soft by construction, not by a wrapping try/catch alone.
-//
-// VERIFIED FIELD PATH (do not assume, confirmed by direct inspection
-// of draft-context-profile.js's buildDraftContextProfile() return
-// shape and refresh-context-intel.js's storage call): the raw
-// changed-team boolean set by the human-curated context-evidence.js
-// registry survives, unmodified, as a NESTED field:
-//     contextProfile.evidence.changedTeam
-// NOT contextProfile.changedTeam at the top level. contextProfile
-// itself (environmentChange/roleOpportunity/rookieImpact/
-// contextConfidence/reasons/evidence) is exactly
-// getProductionContextProfile()'s existing, unmodified return value --
-// re-read here via that same existing function, not reconstructed.
-// ═══════════════════════════════════════════════════════════════════
+function normalizePlayerArray(
+  value,
+  maxItems
+) {
+  if (
+    !Array.isArray(value)
+  ) {
+    return [];
+  }
 
-// roleDescription -> concise customer phrase, stripping the position-
-// tier prefix ("RB1 · Lead Runner" -> "Lead Runner") when a prefix is
-// present -- the prefix adds no value once it's embedded in a
-// sentence alongside the player's name/position elsewhere in the UI.
-// Does not touch or reinterpret the underlying Player Snapshot
-// classification in any way.
-function psRolePhrase(roleDescription) {
-  if (!roleDescription || roleDescription === "Role Uncertain") return null;
-  var parts = roleDescription.split(" · ");
-  return parts.length > 1 ? parts[1] : parts[0];
-}
+  const out = [];
 
-function psArticleFor(word) {
-  return /^[AEIOU]/i.test(word) ? "an" : "a";
-}
-
-// careerProfile -> a short supplementary clause, used ONLY when there
-// is no Current Situation to lead with (see augmentSageExplanation()
-// below) -- Career Profile is a supplement, never forced into every
-// sentence, per spec.
-function psCareerClause(careerProfile) {
-  if (!careerProfile || careerProfile === "Role Uncertain") return null;
-  var lower = careerProfile.toLowerCase();
-  return psArticleFor(careerProfile) + " " + lower;
-}
-
-// Current Situation label -> concise, deterministic football phrase.
-// Fixed vocabulary, matching draft-sage-synthesis.js's own established
-// pattern of small template functions over categorical state --
-// nothing here invents a new football conclusion; every phrase is a
-// direct, literal restatement of an existing Current Situation label.
-var PS_SITUATION_PHRASES = {
-  "Backfield Competition Increased": "facing increased backfield competition",
-  "Major Backfield Competition Added": "now facing significant backfield competition",
-  "Passing-Down Competition Added": "now facing passing-down competition",
-  "Major Passing-Down Competition Added": "now facing significant passing-down competition",
-  "Expanded Target Opportunity": "with expanded target opportunity",
-  "Expanded Backfield Opportunity": "with expanded backfield opportunity",
-  "Vacated Passing-Down Opportunity": "with a vacated passing-down role",
-  "Major Target Competition Added": "now facing significant target competition",
-  "Increased Target Competition": "facing increased target competition",
-  "Backfield Reshaped": "in a reshaped backfield",
-  "Receiving Corps Reshaped": "in a reshaped receiving corps"
-};
-
-// Team-change ("New Team · X") labels always render as the full
-// phrasing now (see psSituationClause()'s own comment for why the
-// prior Context-dependent "remainder-only" table was removed).
-var PS_MOVER_FULL_PHRASES = {
-  "New Team \u00b7 Competing for Targets": "joining a new offense and competing for targets",
-  "New Team \u00b7 Competing for Passing-Down Work": "joining a new backfield and competing for passing-down work",
-  "New Team \u00b7 Backfield Competition": "joining a new backfield with added competition",
-  "New Team \u00b7 Competing for Backfield Work": "joining a new backfield and competing for touches"
-};
-
-// TEAM-CHANGE WORDING (locked presentation principle, patched Aug
-// 2026): Player Snapshot owns the standardized customer-facing
-// description of team movement, ALWAYS, for every team-changer --
-// regardless of whether SAGE's Context pillar separately happens to
-// have a registry entry for that same move. The prior version
-// suppressed this wording when contextProfile.evidence.changedTeam
-// was true, which produced inconsistent customer-facing language
-// across otherwise-identical team-changers (Waddle vs. Evans) purely
-// based on which players happened to be in Context's small, manually
-// curated registry -- an internal-subsystem-coverage detail the
-// customer has no reason to be aware of. Consistency across player
-// cards matters more than deduplicating the fact across internal data
-// sources, so this now ALWAYS uses the full phrasing for a
-// team-changer. Context's own scoring and prose are completely
-// unaffected -- this only changes what Player Snapshot's own
-// augmentation clause says.
-function psSituationClause(currentSituation, isTeamChanger) {
-  if (!currentSituation || !currentSituation.label) return null;
-  var label = currentSituation.label;
-
-  if (isTeamChanger) {
-    if (label === "New Team") {
-      return "joining a new team";
+  for (
+    let i = 0;
+    i < value.length;
+    i++
+  ) {
+    if (
+      Number.isFinite(
+        Number(maxItems)
+      ) &&
+      out.length >= maxItems
+    ) {
+      break;
     }
-    if (label.indexOf("New Team \u00b7 ") === 0) {
-      return PS_MOVER_FULL_PHRASES[label] || null;
+
+    const player =
+      normalizeCandidate(
+        value[i]
+      );
+
+    if (player) {
+      out.push(player);
     }
-    // A team-changer should always receive a "New Team..."-shaped
-    // label from buildCurrentSituation() -- this branch is a safe
-    // fallback only, never expected to fire in practice.
-    return PS_SITUATION_PHRASES[label] || null;
   }
 
-  return PS_SITUATION_PHRASES[label] || null;
+  return out;
 }
 
-// The single augmentation entry point. Deterministic, side-effect-
-// free, and fail-soft: any missing/unexpected input at any step
-// simply falls through to returning `existingExplanation` untouched.
-// Produces AT MOST one additional short clause appended to the
-// existing SAGE explanation -- never a second sentence, never a data
-// dump of every Player Snapshot field. Offensive Style is
-// deliberately NOT woven into this sentence in V1 (see delivery notes
-// -- "use sparingly" combined with "target ONE concise clause" made
-// omitting it the safer choice; adding it later is a small,
-// independent change if desired).
-function augmentSageExplanation(input) {
-  input = input || {};
-  var existingExplanation = input.existingExplanation || "";
-  var contextProfile = input.contextProfile || null;
-  var playerSnapshot = input.playerSnapshot || null;
-
-  if (!playerSnapshot) return existingExplanation;
-
-  var teamRole = playerSnapshot.teamRole;
-  var roleConfidence = playerSnapshot.roleConfidence;
-
-  // LOW confidence / no meaningful role: conservative by design --
-  // never a confident role statement, never a penalty, never altering
-  // the recommendation itself (this function only ever touches the
-  // explanation string). V1 simply adds nothing in this case rather
-  // than attempting to salvage a partial fact from Current Situation,
-  // per the explicit "be conservative" instruction.
-  if (!teamRole || roleConfidence === "LOW") {
-    return existingExplanation;
-  }
-
-  var isTeamChanger = playerSnapshot.currentTeam !== playerSnapshot.usageTeam;
-
-  var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
-  var situationClause = psSituationClause(
-    playerSnapshot.currentSituation,
-    isTeamChanger
-  );
-
-  var clause = null;
-  if (situationClause) {
-    // Priority 1: Current Situation, when meaningful -- paired with
-    // Recent Role when available for a concrete, player-specific
-    // sentence; the situation fact alone (capitalized) if role is
-    // unavailable for some reason.
-    clause = rolePhrase
-      ? (rolePhrase + " \u2014 " + situationClause + ".")
-      : (situationClause.charAt(0).toUpperCase() + situationClause.slice(1) + ".");
-  } else if (rolePhrase) {
-    // Priority 2/3: Recent Role, optionally supplemented by Career
-    // Profile when there's no stronger differentiator (no Current
-    // Situation) to lead with -- exactly the "stable elite player"
-    // case from the validation set.
-    var careerClause = psCareerClause(playerSnapshot.careerProfile);
-    clause = careerClause ? (rolePhrase + ", " + careerClause + ".") : (rolePhrase + ".");
-  }
-
-  if (!clause) return existingExplanation;
-  return existingExplanation + " " + clause;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// 1/3/10 CUSTOMER EXPLANATION V1 (Aug 2026)
-//
-// Supersedes augmentSageExplanation()'s role in the customer-facing
-// response: this section builds the two NEW structured fields
-// (footballContext, draftOutlook) that now carry the 3-second and
-// 10-second layers of the comprehension model. augmentSageExplanation()
-// and its helpers above are left intact (still exported for testing,
-// still correct) but are no longer wired into the response mapping --
-// the old single-paragraph-plus-appended-clause explanation is
-// superseded by this cleaner, explicitly separated structure. The
-// original, UNMODIFIED explanation: e.sage.explanation is restored at
-// the response call site as the existing safe fallback string (per
-// "SAGE must still return a valid recommendation using the existing
-// explanation behavior").
-//
-// Nothing here touches recommendation/code/ordering/scoring. Every
-// function is a pure, deterministic string builder over
-// already-computed profiles.
-// ═══════════════════════════════════════════════════════════════════
-
-// Team-change Current Situation labels -> concise noun-phrase form for
-// the 3-part Football Context line. Non-team-change labels need NO
-// transformation at all -- Current Situation's own labels
-// ("Major Target Competition Added", "Backfield Reshaped", etc.) are
-// already in the exact Title-Case noun-phrase form this presentation
-// needs, so they are used as-is (see buildFootballContext() below).
-var PS_MOVER_CONTEXT_LABELS = {
-  "New Team \u00b7 Competing for Targets": "Joining New Offense",
-  "New Team \u00b7 Competing for Passing-Down Work": "Joining New Backfield",
-  "New Team \u00b7 Backfield Competition": "Joining New Backfield",
-  "New Team \u00b7 Competing for Backfield Work": "Joining New Backfield",
-  "New Team": "Joining New Team"
-};
-
-// Football Context (3-second layer): Role · Situation-or-Career ·
-// [Depth-Chart-Diff] · Offensive Style. Offensive Style is included
-// whenever valid, as plain descriptive context -- never treated as
-// positive or negative here.
-//
-// V2.1 ADDITION (isRookie / currentDepthChart): these are CURRENT,
-// independent facts, never reconciled with or allowed to overwrite
-// Recent Role -- see the two distinct phrasings below, which
-// deliberately never share wording:
-//   - Rookie/no-history path: "Rookie \u00b7 Depth Chart <label>" --
-//     used ONLY when there is no real historical role to state at all.
-//   - Established-player path: "Current <label>" -- an ADDITIONAL
-//     clause appended alongside the real Recent Role, never replacing
-//     it, and only when the depth-chart rank materially differs from
-//     the already-computed teamRole (a plain string comparison over
-//     the same tier vocabulary Player Snapshot already produces on
-//     both sides -- QB1/QB2/RB1/RB2/WR1/WR2/WR3/TE1/TE2 -- no new
-//     numeric scoring introduced). An exact match is redundant and is
-//     never appended.
-function buildFootballContext(playerSnapshot) {
-  if (!playerSnapshot) return null;
-  var teamRole = playerSnapshot.teamRole;
-  var roleConfidence = playerSnapshot.roleConfidence;
-  var currentDepthChart = playerSnapshot.currentDepthChart;
-
-  if (!teamRole || roleConfidence === "LOW") {
-    // Rookie/no-history exception: a real current-team fact exists
-    // even though no historical role does. Never invents a role label
-    // (Starter/Emerging Starter/Lead Runner/etc.) -- only the plain
-    // Rookie fact plus the raw depth-chart rank, plus Offensive Style
-    // when valid. Every other LOW-confidence case (a LOW-confidence
-    // VETERAN, or a rookie with no depth-chart match) keeps the exact
-    // prior conservative behavior: null, no manufactured story.
-    if (playerSnapshot.isRookie && currentDepthChart && currentDepthChart.label) {
-      var rookieParts = ["Rookie", "Depth Chart " + currentDepthChart.label];
-      var rookieStyle = playerSnapshot.offenseStyle;
-      if (rookieStyle && rookieStyle !== "Offensive Style TBD" && rookieStyle !== "Role Uncertain") {
-        rookieParts.push(rookieStyle);
-      }
-      return rookieParts.join(" \u00b7 ");
-    }
-    return null;
-  }
-
-  var parts = [];
-  var rolePhrase = psRolePhrase(playerSnapshot.roleDescription);
-  if (rolePhrase) parts.push(rolePhrase);
-
-  var isTeamChanger = playerSnapshot.currentTeam !== playerSnapshot.usageTeam;
-  var label = playerSnapshot.currentSituation && playerSnapshot.currentSituation.label;
-  var middlePart = null;
-
-  if (label) {
-    middlePart = (isTeamChanger && Object.prototype.hasOwnProperty.call(PS_MOVER_CONTEXT_LABELS, label))
-      ? PS_MOVER_CONTEXT_LABELS[label]
-      : label;
-  }
-  // Career Profile only fills the middle slot when Current Situation
-  // is absent -- never stacked alongside it, keeping to at most 3
-  // parts total, matching every example in the spec exactly.
-  if (!middlePart && playerSnapshot.careerProfile && playerSnapshot.careerProfile !== "Role Uncertain") {
-    middlePart = playerSnapshot.careerProfile;
-  }
-  if (middlePart) parts.push(middlePart);
-
-  // Depth-chart-diff clause: an established player already has a real
-  // Recent Role in parts[0] -- this never overwrites it, only adds one
-  // short additional fact when the current depth-chart rank genuinely
-  // differs from it. teamRole and currentDepthChart.label share the
-  // exact same tier vocabulary already produced by Player Snapshot, so
-  // this is a plain string comparison, not a new scoring system.
-  if (currentDepthChart && currentDepthChart.label && currentDepthChart.label !== teamRole) {
-    parts.push("Current " + currentDepthChart.label);
-  }
-
-  var style = playerSnapshot.offenseStyle;
-  if (style && style !== "Offensive Style TBD" && style !== "Role Uncertain") {
-    parts.push(style);
-  }
-
-  if (!parts.length) return null;
-  return parts.join(" \u00b7 ");
-}
-
-// Draft Outlook (10-second layer): "why act now or wait?" Reuses the
-// EXACT same categorical Market/Scarcity signals
-// nowPressurePhrase()/waitRoomPhrase() already check internally
-// (market.outlook/market.value/scarcity.cost), via marketSignals()/
-// scarcitySignals() -- both ALREADY exported by draft-sage-synthesis.js,
-// so zero changes were needed there. No new threshold: every branch
-// below is a direct restatement of an existing categorical value,
-// worded per the preferred vocabulary given in the spec.
-function buildDraftOutlookPhrase(marketProfile, scarcityProfile) {
-  var market = marketSignals(marketProfile);
-  var scarcity = scarcitySignals(scarcityProfile);
-
-  var marketGone = market.outlook === "Market Leans Gone";
-  var marketReturn = market.outlook === "Market Says He May Return";
-  var discount = market.value === "Discount";
-  var aheadOfMarket = market.value === "Ahead of Market";
-  var scarce = scarcity.cost === "High";
-  var depth = scarcity.cost === "Low";
-
-  if (marketGone && scarce) return "Market and positional scarcity make waiting risky.";
-  if (marketGone && discount) return "Good value now, but he may not reach your next pick.";
-  if (marketGone) return "Waiting risks losing him before your next pick.";
-  if (scarce) return "Comparable options may not remain at your next turn.";
-  if (discount) return "Available at a favorable price.";
-  if (marketReturn && depth) return "Market and positional depth give you room to wait.";
-  if (marketReturn) return "He may still be available at your next turn.";
-  if (depth) return "Comparable options should remain available.";
-  if (aheadOfMarket) return "You'd be paying ahead of ADP here.";
-  return "No strong timing pressure to force the pick.";
-}
-
-// Unique Context note: surfaces Context's OWN already-generated
-// `reasons` text (buildContextReasons(), unmodified) rather than
-// inventing new prose -- filtered to skip any reason mentioning "team",
-// since team movement is now Player Snapshot's territory (surfaced via
-// footballContext above) and repeating it here would be exactly the
-// duplication this spec asks to avoid. Returns null whenever Context
-// has nothing distinct to add (no profile, no reasons, or every reason
-// is team-change-related) -- never a manufactured "no unique context"
-// placeholder.
-function buildUniqueContextNote(contextProfile) {
-  if (!contextProfile || !Array.isArray(contextProfile.reasons)) return null;
-  var distinct = contextProfile.reasons.find(function (r) {
-    return typeof r === "string" && !/team/i.test(r);
-  });
-  return distinct || null;
-}
-
-// Exported for local logic testing only (same non-invasive pattern
-// already established in refresh-player-snapshot.js) -- Netlify only
-// ever invokes exports.handler; nothing in the production request
-// path reads exports._internal.
-exports._internal = {
-  augmentSageExplanation,
-  psRolePhrase,
-  psCareerClause,
-  psSituationClause,
-  buildFootballContext,
-  buildDraftOutlookPhrase,
-  buildUniqueContextNote
-};
-
-// ── Handler ────────────────────────────────────────────────────────────
-
+// ── Handler ─────────────────────────────────────────────────────────
 exports.handler =
-  async (event) => {
-    connectLambda(
-      event
-    );
-
+  async function (
+    event
+  ) {
     if (
       event.httpMethod ===
       "OPTIONS"
     ) {
       return {
         statusCode:
-          204,
+          200,
 
         headers:
           CORS_HEADERS,
@@ -1206,100 +1202,100 @@ exports.handler =
       );
     }
 
-    let payload;
+    // Paid Draft Command Center intelligence must be authorized at the
+    // server boundary. The client-side preview/passcode gate is not an
+    // entitlement mechanism and is deliberately ignored here.
+    const fullAccess =
+      await hasFullAcolyteAccess(
+        event
+      );
 
-    try {
-      payload =
-        JSON.parse(
-          event.body ||
-          "{}"
-        );
-    } catch (e) {
+    if (!fullAccess) {
       return jsonResponse(
-        400,
+        403,
         {
           error:
-            "Invalid request body."
+            "Founding Acolyte access required."
         }
       );
     }
 
-    const rawCandidates =
-      Array.isArray(
-        payload.candidates
-      )
-        ? payload.candidates
-        : [];
+    try {
+      connectLambda(event);
 
-    const candidates =
-      rawCandidates
-        .filter(
-          isValidPlayerShape
-        )
-        .slice(
-          0,
+      const body =
+        parseBody(event);
+
+      const candidates =
+        normalizePlayerArray(
+          body.candidates,
           MAX_CANDIDATES
         );
 
-    if (
-      candidates.length ===
-      0
-    ) {
-      return jsonResponse(
-        200,
-        {
-          computedAt:
-            new Date()
-              .toISOString(),
+      if (
+        !candidates.length
+      ) {
+        return jsonResponse(
+          400,
+          {
+            error:
+              "candidates is required and must contain at least one valid player."
+          }
+        );
+      }
 
-          candidateCount:
-            0,
+      const currentPick =
+        Number(
+          body.currentPick
+        );
 
-          recommendations:
-            [],
+      const nextUserPick =
+        Number(
+          body.nextUserPick
+        );
 
-          degraded:
-            []
-        }
-      );
-    }
+      if (
+        !Number.isFinite(
+          currentPick
+        ) ||
+        !Number.isFinite(
+          nextUserPick
+        )
+      ) {
+        return jsonResponse(
+          400,
+          {
+            error:
+              "currentPick and nextUserPick are required numbers."
+          }
+        );
+      }
 
-    const currentPoolInput =
-      Array.isArray(
-        payload.currentPool
-      ) &&
-      payload.currentPool.length >
-        0
-        ? payload.currentPool.filter(
-            isValidPlayerShape
-          )
-        : candidates;
+      const currentPoolInput =
+        normalizePlayerArray(
+          body.currentPool,
+          null
+        );
 
-    const nextTurnPoolInput =
-      Array.isArray(
-        payload.nextTurnPool
-      )
-        ? payload.nextTurnPool.filter(
-            isValidPlayerShape
-          )
-        : [];
+      const nextTurnPoolInput =
+        normalizePlayerArray(
+          body.nextTurnPool,
+          null
+        );
 
-    const currentPick =
-      payload.currentPick;
+      const effectiveCurrentPool =
+        currentPoolInput.length
+          ? currentPoolInput
+          : candidates;
 
-    const nextUserPick =
-      payload.nextUserPick;
+      const effectiveNextTurnPool =
+        nextTurnPoolInput;
 
-    // Phase 1 addition: read-only. Never validated/filtered like
-    // candidates/pools above -- buildRosterContextNote() does its own
-    // defensive shape-checking and simply returns null for anything it
-    // can't confidently use. Not touching this variable at all (e.g. if
-    // it's undefined) produces identical behavior to before this field
-    // existed.
-    const rosterContext =
-      payload.rosterContext;
+      const rosterContext =
+        normalizeRosterContext(
+          body.rosterContext
+        );
 
-    try {
       const opportunityStore =
         getStore({
           name:
@@ -1312,89 +1308,50 @@ exports.handler =
             "context-intel"
         });
 
-      // Player Snapshot integration (explanation-only) -- mirrors the
-      // EXACT same store/fetch/fail-soft pattern already used for
-      // opportunityStore/contextStore above. Read ONCE per request,
-      // never per-candidate, and never a Tank01 call -- this reads the
-      // same "player-snapshot"/"latest" Blobs cache
-      // refresh-player-snapshot.js already populates on its own
-      // schedule (the same cache player-snapshot.js's diagnostic
-      // endpoint reads). A missing/unavailable cache resolves to
-      // `null` here, exactly like the two existing stores, and every
-      // downstream augmentation step already treats `null` as "leave
-      // the existing SAGE explanation unchanged" -- see
-      // augmentSageExplanation() below.
-      const playerSnapshotStore =
-        getStore({
-          name:
-            "player-snapshot"
-        });
-
       const [
         opportunityCache,
-        contextCache,
-        playerSnapshotCache
+        contextCache
       ] =
         await Promise.all([
-          opportunityStore
-            .get(
-              "latest",
-              {
-                type:
-                  "json"
-              }
-            )
-            .catch(
-              () => null
-            ),
+          opportunityStore.get(
+            "latest",
+            {
+              type:
+                "json"
+            }
+          ),
 
-          contextStore
-            .get(
-              "latest",
-              {
-                type:
-                  "json"
-              }
-            )
-            .catch(
-              () => null
-            ),
-
-          playerSnapshotStore
-            .get(
-              "latest",
-              {
-                type:
-                  "json"
-              }
-            )
-            .catch(
-              () => null
-            )
+          contextStore.get(
+            "latest",
+            {
+              type:
+                "json"
+            }
+          )
         ]);
 
-      // Player Snapshot lookup index -- built ONCE per request, not
-      // per-candidate. Keyed with the EXACT SAME playerKey() function
-      // already used throughout this file for Opportunity/Context
-      // lookups (normalizePlayerName(name) + "|" + POS), since the
-      // candidate shape sent by draft.html's toSagePlayer() has no
-      // playerID field at all -- name+pos is the safest identifier
-      // both sides reliably expose, confirmed by inspecting
-      // isValidPlayerShape()/playerKey()'s existing usage in this
-      // file rather than assumed. Player Snapshot's own longName/pos
-      // fields are normalized through the identical function.
-      const playerSnapshotByKey = {};
       if (
-        playerSnapshotCache &&
-        playerSnapshotCache.players &&
-        typeof playerSnapshotCache.players === "object"
+        !opportunityCache
       ) {
-        Object.values(playerSnapshotCache.players).forEach(function (snap) {
-          if (!snap || !snap.longName || !snap.pos) return;
-          playerSnapshotByKey[
-            playerKey({ name: snap.longName, pos: snap.pos })
-          ] = snap;
-        });
+        return jsonResponse(
+          503,
+          {
+            error:
+              "Opportunity intelligence cache unavailable."
+          }
+        );
+      }
+
+      if (
+        !contextCache
+      ) {
+        return jsonResponse(
+          503,
+          {
+            error:
+              "Context intelligence cache unavailable."
+          }
+        );
       }
 
       // Build the pool objects ONCE, reused across every candidate's
@@ -1402,13 +1359,13 @@ exports.handler =
       const currentPool =
         buildOpportunityPool(
           opportunityCache,
-          currentPoolInput
+          effectiveCurrentPool
         );
 
       const nextTurnPool =
         buildOpportunityPool(
           opportunityCache,
-          nextTurnPoolInput
+          effectiveNextTurnPool
         );
 
       const degraded = [];
@@ -1490,27 +1447,18 @@ exports.handler =
                 // customer-facing football description is superseded
                 // by footballContext/draftOutlook below, but it is
                 // kept exactly as buildRecommendation() produced it as
-                // the existing safe fallback string (never removed,
-                // per "SAGE must still return a valid recommendation
-                // using the existing explanation behavior").
+                // the existing safe fallback string.
                 explanation:
                   e.sage.explanation,
 
                 // 1/3/10 CUSTOMER EXPLANATION V1 -- additive fields,
-                // computed from re-derived profiles (SAME already-
-                // loaded caches/pure functions evaluateCandidate()
-                // used internally, re-read here rather than threading
-                // new fields through its return contract, matching the
-                // established pattern already used for contextProfile
-                // in the Player Snapshot explanation-augmentation
-                // turn). Never affects recommendation/code/order above,
-                // which are already fixed by the time this map() runs.
+                // computed from the same already-loaded evidence.
                 footballContext:
                   buildFootballContext(
-                    playerSnapshotByKey[
-                      playerKey(e.player)
-                    ] ||
-                    null
+                    getOpportunityRecord(
+                      opportunityCache,
+                      e.player
+                    )
                   ),
 
                 draftOutlook:
@@ -1518,11 +1466,14 @@ exports.handler =
                     buildDraftMarketProfile({
                       adp:
                         e.adp,
+
                       currentPick:
                         currentPick,
+
                       nextUserPick:
                         nextUserPick
                     }),
+
                     buildDraftScarcityProfile({
                       candidate:
                         attachAdp(
@@ -1532,8 +1483,10 @@ exports.handler =
                           ),
                           e.player
                         ),
+
                       currentPool:
                         currentPool,
+
                       nextTurnPool:
                         nextTurnPool
                     })
@@ -1557,33 +1510,40 @@ exports.handler =
                       )
                     : [],
 
-                // Phase 1 addition: purely additive, never influences
-                // recommendation/code/explanation/order above. null
-                // whenever rosterContext is absent or the conditions
-                // for a confident note aren't met.
                 rosterContextNote:
                   buildRosterContextNote(
-                    e.player.pos,
-                    rosterContext,
-                    evaluated
+                    e.player,
+                    evaluated,
+                    rosterContext
                   )
               };
             }
           );
 
-      // Phase 2 addition: roster-level strategy advisory. Computed
-      // once per request, entirely separate from `evaluated`/
-      // `recommendations` above -- reads only rosterContext (already
-      // parsed) and currentPoolInput (the raw, unenriched pool, NOT
-      // the Opportunity-enriched `currentPool` used by Scarcity calls
-      // above -- see draft-roster-advisory.js's header for why).
-      // Never throws; returns [] for any missing/malformed input.
-      const rosterAdvisory =
-        buildRosterAdvisory({
-          rosterContext,
-          currentPool:
-            currentPoolInput
-        });
+      let rosterAdvisory = [];
+
+      try {
+        rosterAdvisory =
+          rosterContext
+            ? buildRosterAdvisory({
+                rosterContext:
+                  rosterContext,
+
+                currentPool:
+                  effectiveCurrentPool
+              })
+            : [];
+      } catch (err) {
+        console.log(
+          "Roster advisory error:",
+          err &&
+          err.message
+            ? err.message
+            : String(err)
+        );
+
+        rosterAdvisory = [];
+      }
 
       return jsonResponse(
         200,
@@ -1602,41 +1562,34 @@ exports.handler =
             degraded,
 
           rosterAdvisory:
-            rosterAdvisory
+            Array.isArray(
+              rosterAdvisory
+            )
+              ? rosterAdvisory
+              : []
         }
       );
     } catch (err) {
       console.log(
-        "sage-recommend error:",
-        err.message
+        "sage-recommend handler error:",
+        err &&
+        err.stack
+          ? err.stack
+          : err
       );
 
       return jsonResponse(
         500,
         {
           error:
-            "SAGE recommendations temporarily unavailable."
+            "SAGE recommendation failed.",
+
+          detail:
+            err &&
+            err.message
+              ? err.message
+              : String(err)
         }
       );
     }
   };
-
-// Exported for direct unit testing of the pure logic, independent of the
-// live Blobs caches.
-module.exports._test = {
-  normalizePlayerName,
-  playerKey,
-  getOpportunityRecord,
-  getContextRecord,
-  getProductionContextProfile,
-  attachAdp,
-  buildOpportunityPool,
-  evaluateCandidate,
-  compareEvaluatedCandidates,
-  codeRank,
-  CODE_RANK,
-  isValidPlayerShape,
-  isPlainObject,
-  buildRosterContextNote,
-  ROSTER_POSITION_ORDER
-};
