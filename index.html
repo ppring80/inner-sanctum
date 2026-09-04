@@ -47,6 +47,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .btn-hero-primary:hover{background:var(--gold);transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,0.3)}
 .btn-hero-secondary{background:transparent;color:#f0e6cc;font-family:'Cinzel',serif;font-size:14px;padding:14px 32px;border-radius:var(--r);text-decoration:none;letter-spacing:2px;text-transform:uppercase;transition:all 0.2s;border:1px solid rgba(201,168,76,0.4)}
 .btn-hero-secondary:hover{border-color:var(--gold-lt);color:var(--gold-lt)}
+.hero-sage-note{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;color:rgba(240,230,204,0.55);margin-top:22px}
 .hero-stats{display:flex;gap:40px;justify-content:center;margin-top:60px;flex-wrap:wrap}
 .hero-stat{text-align:center}
 .hero-stat-num{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:600;color:var(--gold-lt);display:block}
@@ -242,11 +243,12 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <span class="hero-badge">AI-Powered Fantasy Football</span>
   <h1>Dominate Your Draft.<br><span>Win Your League.</span></h1>
   <div class="hero-kicker">Draft Smarter. Talk Trash Harder.</div>
-  <p class="hero-sub">AI-powered draft strategy built around your league — target prices, live auction tracking, tier lists, and start/sit calls, from three distinct advisors who actually know the data.</p>
+  <p class="hero-sub">AI-powered fantasy football intelligence built around your league — draft strategy, rankings, lineup decisions, player analysis and more, on The Inner Sanctum and inside ChatGPT.</p>
   <div class="hero-btns">
     <a href="/sanctum" class="btn-hero-primary">Try It Free</a>
     <a href="#tools" class="btn-hero-secondary">See the Draft Tools</a>
   </div>
+  <div class="hero-sage-note">🔮 Also arriving as Inner Sanctum SAGE inside ChatGPT — coming soon</div>
   <div class="hero-stats">
     <div class="hero-stat">
       <span class="hero-stat-num">3</span>
@@ -324,7 +326,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <div class="trust-grid">
       <div class="trust-item">
         <span class="trust-icon">🔗</span>
-        <div class="trust-name">Connect Your ESPN League</div>
+        <div class="trust-name">Connect Your League</div>
         <div class="trust-desc">Real roster and matchup data pulled directly from your own league.</div>
       </div>
       <div class="trust-item">
@@ -482,6 +484,51 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 </section>
 
+<!-- INNER SANCTUM SAGE (added) -->
+<section class="section section-alt" id="sage">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:48px">
+      <span class="section-badge">Inner Sanctum SAGE</span>
+      <h2 class="section-title">Your Fantasy Intelligence. Now Inside ChatGPT.</h2>
+      <p class="section-sub" style="margin:0 auto">Ask the fantasy questions you already ask ChatGPT — but get answers powered by Inner Sanctum's SAGE intelligence, scoring-aware analysis and league context.</p>
+      <div class="gold-divider"></div>
+    </div>
+    <div class="tools-grid">
+      <div class="tool-card">
+        <span class="tool-icon">🪪</span>
+        <div class="tool-name">Player Profile</div>
+        <p class="tool-desc">Everything that matters about a player in one concise view.</p>
+      </div>
+      <div class="tool-card">
+        <span class="tool-icon">🆚</span>
+        <div class="tool-name">Player Comparison</div>
+        <p class="tool-desc">Compare players directly for the decision you're trying to make.</p>
+      </div>
+      <div class="tool-card">
+        <span class="tool-icon">📅</span>
+        <div class="tool-name">Weekly Rankings</div>
+        <p class="tool-desc">Scoring-aware rankings and recommendations.</p>
+      </div>
+      <div class="tool-card">
+        <span class="tool-icon">🔗</span>
+        <div class="tool-name">Linked League</div>
+        <p class="tool-desc">Bring your actual fantasy league context into the conversation.</p>
+      </div>
+      <div class="tool-card">
+        <span class="tool-icon">📋</span>
+        <div class="tool-name">Lineup Recommendation</div>
+        <p class="tool-desc">Get help making the decisions that determine your week.</p>
+      </div>
+      <div class="tool-card">
+        <span class="tool-icon">🎯</span>
+        <div class="tool-name">Draft Outlook</div>
+        <p class="tool-desc">SAGE intelligence for player value and draft decisions.</p>
+      </div>
+    </div>
+    <p class="section-sub" style="text-align:center;margin:32px auto 0">No new interface to learn. No digging through spreadsheets. Just ask ChatGPT.</p>
+  </div>
+</section>
+
 <!-- PERSONAS -->
 <section class="section section-alt">
   <div class="container">
@@ -603,6 +650,9 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
           <div class="price-feature">Priority support</div>
           <div class="price-feature">Locked-in founding price forever</div>
         </div>
+        <!-- Inner Sanctum SAGE for ChatGPT could later be listed here as a
+             Founding Acolyte benefit, once a specific membership tier
+             entitlement for SAGE access is confirmed in production. -->
         <a href="/join" class="price-cta paid-cta">Become a Founding Member →</a>
         <div class="price-tbd">Via Patreon · Cancel anytime</div>
       </div>
