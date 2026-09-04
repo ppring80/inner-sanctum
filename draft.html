@@ -27,6 +27,11 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 
 /* ── ACOLYTE ACCESS GATE (added) ── */
 .gate-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a1108,#0d0804);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
+.acolyte-preview-banner{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#3a2a0a,#1f1608);border-bottom:1px solid rgba(201,168,76,0.3);color:#e8d9a8;font-family:'Lora',Georgia,serif;font-size:13px;padding:10px 24px;text-align:center;line-height:1.5}
+.acolyte-preview-banner strong{color:#f5c842}
+.acolyte-preview-banner a{color:#f5c842;text-decoration:underline;font-weight:600}
+.acolyte-preview-banner a:hover{opacity:0.85}
+@media(max-width:600px){.acolyte-preview-banner{font-size:12px;padding:8px 14px}}
 .gate-card{background:#15100a;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:36px 32px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,0,0,0.5)}
 .gate-icon{font-size:38px;margin-bottom:10px}
 .gate-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:#f2f1ef;margin-bottom:8px;letter-spacing:1px}
@@ -437,6 +442,8 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-note" style="margin-top:-8px;margin-bottom:14px">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
+    <div class="gate-divider">OR</div>
+    <button class="gate-btn-secondary" onclick="enterPreviewMode()">👁 Preview with Sample Data</button>
     <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="gate-link">⚔️ Become a Founding Acolyte</a>
   </div>
 </div>
@@ -488,9 +495,47 @@ function checkOAuthSession() {
     });
 }
 
+// PREVIEW MODE — full real access, no fixed/fake data needed since this
+// page's main cheat-sheet view takes no personal league inputs (same
+// reasoning as tiers.html's own preview mode). This is a completely
+// separate sessionStorage key from GATE_STORAGE_KEY, so entering
+// preview mode never sets, checks, or implies real Acolyte
+// authorization -- it only hides the overlay and shows a banner.
+var PREVIEW_STORAGE_KEY = 'sanctum_preview_mode';
+
+function isPreviewMode() {
+  try {
+    return sessionStorage.getItem(PREVIEW_STORAGE_KEY) === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function enterPreviewMode() {
+  try { sessionStorage.setItem(PREVIEW_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+  showAcolytePreviewBanner();
+}
+
+function showAcolytePreviewBanner() {
+  if (document.getElementById('acolytePreviewBanner')) return;
+  var banner = document.createElement('div');
+  banner.id = 'acolytePreviewBanner';
+  banner.className = 'acolyte-preview-banner';
+  banner.innerHTML =
+    '👁 <strong>You&rsquo;re viewing a sample preview</strong> — full Draft Command Center, no real league required. ' +
+    '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">⚔️ Become a Founding Acolyte</a> to unlock everything.';
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
 (function initGate() {
   if (checkGateUnlocked()) {
     document.getElementById('gateOverlay').style.display = 'none';
+    return;
+  }
+  if (isPreviewMode()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    showAcolytePreviewBanner();
     return;
   }
   checkOAuthSession();
