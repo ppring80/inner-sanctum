@@ -523,9 +523,44 @@ function showAcolytePreviewBanner() {
   banner.id = 'acolytePreviewBanner';
   banner.className = 'acolyte-preview-banner';
   banner.innerHTML =
-    '👁 <strong>You&rsquo;re viewing a sample preview</strong> — full Draft Command Center, no real league required. ' +
+    '👁 <strong>You&rsquo;re exploring a sample preview</strong> — this shows the Draft Command Center interface with sample data; recording picks, SAGE recommendations, and other paid workflow actions require Founding Acolyte access. ' +
     '<a href="https://www.patreon.com/TheInnerSanctum670" target="_blank">⚔️ Become a Founding Acolyte</a> to unlock everything.';
   document.body.insertBefore(banner, document.body.firstChild);
+}
+
+// PAID-ACTION GUARD — every paid/state-mutating Draft Command Center
+// action calls this FIRST, before doing anything else. If preview mode
+// is active it shows the conversion modal and returns true (meaning
+// "blocked, the caller must return immediately without performing the
+// action"); otherwise it returns false and the caller proceeds exactly
+// as before. This lives in the actual handler functions themselves
+// (not just hidden/disabled buttons), so DOM manipulation that
+// re-enables a button or calls a function directly from the console
+// still hits this same check every single time -- there is no code
+// path to any of the guarded functions that skips it. Reads
+// isPreviewMode() only -- never sets, checks, or implies
+// sanctum_acolyte_unlock or any server-side entitlement.
+function isPreviewBlocked() {
+  // Real Acolyte authorization always wins, even over a stale
+  // sanctum_preview_mode flag left over from earlier in this browser
+  // session -- e.g. a visitor who entered Preview, then genuinely
+  // logged in with Patreon. Checked fresh on every single guarded
+  // action, not just once at page load, so a session that becomes
+  // valid mid-session is honored immediately.
+  if (checkGateUnlocked()) return false;
+  if (!isPreviewMode()) return false;
+  showPreviewBlockedModal();
+  return true;
+}
+
+function showPreviewBlockedModal() {
+  var bg = document.getElementById('previewBlockedModalBg');
+  if (bg) bg.classList.add('on');
+}
+
+function closePreviewBlockedModal() {
+  var bg = document.getElementById('previewBlockedModalBg');
+  if (bg) bg.classList.remove('on');
 }
 
 (function initGate() {
@@ -536,6 +571,21 @@ function showAcolytePreviewBanner() {
   if (isPreviewMode()) {
     document.getElementById('gateOverlay').style.display = 'none';
     showAcolytePreviewBanner();
+    // Preview state may be stale -- still verify whether this visitor
+    // ALSO now has a genuinely valid Acolyte session (e.g. they logged
+    // in with Patreon after previously entering Preview earlier in
+    // this browser session). If so, unlockGate() sets the real flag,
+    // and the now-inaccurate preview banner is removed; every action
+    // guard (isPreviewBlocked()) independently re-checks
+    // checkGateUnlocked() on every call regardless of this outcome, so
+    // real access is honored correctly even if this check is still in
+    // flight when an action is attempted.
+    checkOAuthSession().then(function (isAuthorized) {
+      if (isAuthorized) {
+        var banner = document.getElementById('acolytePreviewBanner');
+        if (banner) banner.remove();
+      }
+    });
     return;
   }
   checkOAuthSession();
@@ -832,6 +882,24 @@ function showAcolytePreviewBanner() {
     <div class="btn-row" style="display:flex;gap:10px">
       <button class="hdr-btn" onclick="closeManualPickModal()">Cancel</button>
       <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="confirmManualPick()">Confirm Pick</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PREVIEW-BLOCKED CONVERSION MODAL (added) ═══
+     Shown whenever a preview-mode visitor attempts a paid workflow
+     action. This is presentation only -- it never sets, checks, or
+     implies sanctum_acolyte_unlock, and it never performs the action
+     that triggered it. See isPreviewBlocked() below. ═══ -->
+<div class="modal-bg" id="previewBlockedModalBg">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <button class="modal-x" onclick="closePreviewBlockedModal()">✕</button>
+    <div style="font-size:32px;margin-bottom:10px">🔒</div>
+    <div class="modal-ttl">Unlock the Full Draft Command Center</div>
+    <div style="margin:12px 0 20px;color:var(--text2);font-size:14px;line-height:1.6">Unlock the full Draft Command Center with Founding Acolyte access.</div>
+    <div class="btn-row" style="display:flex;flex-direction:column;gap:10px">
+      <a href="https://www.patreon.com/TheInnerSanctum670" target="_blank" class="hdr-btn" style="text-decoration:none;border-color:var(--gold-lt);color:var(--gold-lt)">⚔️ Become a Founding Acolyte</a>
+      <button class="hdr-btn" onclick="closePreviewBlockedModal()">Continue Exploring</button>
     </div>
   </div>
 </div>
@@ -1481,6 +1549,18 @@ function renderSagePanel(){
 // asynchronous, never awaited by anything that logs/removes a pick --
 // every call site fires this and moves on immediately.
 function refreshSageRecommendations(){
+  // Silent guard, not isPreviewBlocked() -- this function is an
+  // automatic side-effect of other (already-blocked) actions, never a
+  // direct button click itself, so it must never pop the conversion
+  // modal on its own. It just ensures the paid sage-recommend network
+  // call itself can never fire while previewing, no matter which
+  // caller reached this function, mirroring this function's own
+  // existing no-data early-return shape below.
+  if(isPreviewMode()){
+    sageRecommendations=null; sageRosterAdvisory=null; sageError=null; sageLoading=false;
+    renderSagePanel();
+    return;
+  }
   if(!draftSetupComplete()||isDraftComplete()){
     sageRecommendations=null; sageRosterAdvisory=null; sageError=null; sageLoading=false;
     renderSagePanel();
@@ -1587,6 +1667,7 @@ function draftActionLabel(amIOnClockNow){
 }
 
 function logDraftPick(name,pos){
+  if(isPreviewBlocked())return;
   if(!draftSetupComplete()){
     openSetupModal();
     return;
@@ -1658,6 +1739,7 @@ function closeManualPickModal(){
   pendingManualPick=null;
 }
 function confirmManualPick(){
+  if(isPreviewBlocked())return;
   if(!pendingManualPick)return;
   var teamId=document.getElementById('manualPickTeamSel').value;
   var pickNumber=nextPickNumber();
@@ -1668,12 +1750,14 @@ function confirmManualPick(){
 }
 
 function removePickById(id){
+  if(isPreviewBlocked())return;
   draftState.draftLog=draftState.draftLog.filter(function(e){return e.id!==id;});
   saveDraftState();
   afterDraftMutation();
 }
 
 function undoLastPick(){
+  if(isPreviewBlocked())return;
   if(!draftState.draftLog.length){ alert('No picks logged yet.'); return; }
   var maxEntry=draftState.draftLog.reduce(function(a,b){return b.pickNumber>a.pickNumber?b:a;});
   if(!confirm('Undo the most recent pick — '+maxEntry.player+' ('+maxEntry.pos+'), pick #'+maxEntry.pickNumber+'?'))return;
@@ -1814,6 +1898,7 @@ function mockPreflightSummaryText(){
 }
 
 function startMockDraft(){
+  if(isPreviewBlocked())return;
   if(mockModeActive)return;
   if(!draftSetupComplete()){
     openSetupModal();
@@ -1840,6 +1925,7 @@ function editDraftSetupFromMockPreflight(){
 }
 
 function confirmStartMockDraft(){
+  if(isPreviewBlocked())return;
   closeMockPreflight();
   if(mockModeActive)return;
   if(!draftSetupComplete()){
@@ -1866,6 +1952,7 @@ function confirmStartMockDraft(){
 }
 
 function restartMockDraft(){
+  if(isPreviewBlocked())return;
   if(!mockModeActive||!mockStartSnapshot)return;
   mockPaused=false;
   // Root-cause fix (Reset Draft bug): a still-in-flight batch from
@@ -1887,6 +1974,7 @@ function restartMockDraft(){
 }
 
 function exitMockDraft(){
+  if(isPreviewBlocked())return;
   if(!mockModeActive)return;
   mockModeActive=false;
   mockPaused=false;
@@ -1904,12 +1992,14 @@ function exitMockDraft(){
 }
 
 function pauseMockDraft(){
+  if(isPreviewBlocked())return;
   if(!mockModeActive)return;
   mockPaused=true;
   render();
 }
 
 function resumeMockDraft(){
+  if(isPreviewBlocked())return;
   if(!mockModeActive)return;
   mockPaused=false;
   render();
@@ -2167,6 +2257,7 @@ function closeReassignModal(){
   currentReassignId=null;
 }
 function applyReassign(){
+  if(isPreviewBlocked())return;
   if(currentReassignId==null)return;
   var newTeamId=document.getElementById('reassignTeamSel').value;
   var entry=draftState.draftLog.find(function(e){return e.id===currentReassignId;});
@@ -2175,6 +2266,7 @@ function applyReassign(){
   render();
 }
 function removeCurrentReassignPick(){
+  if(isPreviewBlocked())return;
   if(currentReassignId==null)return;
   var id=currentReassignId;
   closeReassignModal();
@@ -2183,6 +2275,7 @@ function removeCurrentReassignPick(){
 
 // ─── Draft Setup modal ───
 function openSetupModal(){
+  if(isPreviewBlocked())return;
   document.getElementById('setupNumTeams').value=String(draftState.teams.length||12);
   document.getElementById('setupNumRounds').value=String(draftState.numRounds||16);
   document.getElementById('setupDraftType').value=draftState.draftType||'snake';
@@ -2500,6 +2593,7 @@ function keeperValidationError(candidate,excludeId){
   return null;
 }
 function addKeeperFromForm(){
+  if(isPreviewBlocked())return;
   setKeeperFormError(null);
   var teamId=document.getElementById('keeperFormTeam').value;
   if(!keeperFormSelectedPlayer){
@@ -2529,6 +2623,7 @@ function addKeeperFromForm(){
   refreshSageRecommendations();
 }
 function removeKeeper(id){
+  if(isPreviewBlocked())return;
   draftState.keepers=draftState.keepers.filter(function(k){return k.id!==id;});
   saveDraftState();
   if(keeperEditingId===id)keeperEditingId=null;
@@ -2609,6 +2704,7 @@ function renderKeeperSection(){
   }).join('');
 }
 function saveSetup(){
+  if(isPreviewBlocked())return;
   var n=parseInt(document.getElementById('setupNumTeams').value);
   var newTeams=[];
   for(var i=1;i<=n;i++){
@@ -2653,6 +2749,7 @@ function saveSetup(){
 // slot, roster construction, and scoring controls remain configured so the
 // customer can immediately set up a new draft without rebuilding the league. ───
 function clearDrafted(){
+  if(isPreviewBlocked())return;
   if(!confirm('Reset the entire draft? This clears all drafted players, all keeper/frozen-player assignments, and any active Mock Draft. Your league structure and roster settings will be kept.'))return;
 
   // If Reset is pressed during Mock Draft, invalidate that automation batch
