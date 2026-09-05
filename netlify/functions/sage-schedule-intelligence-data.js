@@ -1,26 +1,38 @@
 // netlify/functions/sage-schedule-intelligence-data.js
 //
-// SAGE — SCHEDULE INTELLIGENCE DATA BUILDER V1.1
+// SAGE — SCHEDULE INTELLIGENCE DATA BUILDER V1.2
 //
 // PURPOSE
 // -------
 // Build trustworthy league-wide RB Schedule Intelligence from:
 //
-//   Tank01 player list
+//   Tank01 archived historical team rosters
+//   + Tank01 player metadata
 //   + Tank01 historical player game logs
 //   + authoritative Weekly SAGE schedule
 //   + sage-schedule-intelligence.js calculations
 //
-// THIS FILE OWNS
-// --------------
-// - historical RB discovery
-// - historical RB game collection
-// - historical team / opponent resolution
-// - game deduplication
-// - schedule collection
-// - data-quality diagnostics
-// - coverage validation
-// - final Schedule Intelligence assembly
+// WHY V1.2 EXISTS
+// ---------------
+// The original historical-player discovery path used getNFLPlayerList.
+// In live testing that endpoint returned exactly 1,000 player records and
+// only 69 RB candidates, which produced just 291 matched historical RB
+// game rows and insufficient defense samples.
+//
+// V1.2 therefore DOES NOT use getNFLPlayerList as the authoritative
+// historical population.
+//
+// Instead:
+//
+//   1. Build the complete historical regular-season schedule.
+//   2. Take multiple archived roster snapshots for all 32 teams.
+//   3. Union the historical player IDs.
+//   4. Resolve player metadata/position.
+//   5. Keep historical RBs.
+//   6. Fetch their game logs.
+//   7. Join only regular-season games.
+//   8. Calculate defense-vs-RB fantasy production.
+//   9. Apply quality gates before the result can be trusted.
 //
 // THIS FILE DOES NOT
 // ------------------
@@ -45,18 +57,16 @@ const {
   buildDefenseRbRatings,
   buildLeagueScheduleIntelligence,
   buildScheduleInsight
-} =
-  require(
-    "./sage-schedule-intelligence.js"
-  );
+} = require(
+  "./sage-schedule-intelligence.js"
+);
 
 
 const {
   buildWeeklySchedule
-} =
-  require(
-    "./weekly-sage-schedule.js"
-  );
+} = require(
+  "./weekly-sage-schedule.js"
+);
 
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -80,51 +90,75 @@ const DEFAULT_TARGET_SEASON =
 
 
 /*
-  Request more than a regular-season maximum.
-
-  The important point is that we NEVER rely on Tank01's default
-  getNFLGamesForPlayer game count.
+  Never rely on Tank01's default getNFLGamesForPlayer limit.
 */
 const PLAYER_GAME_REQUEST_LIMIT =
   25;
 
 
 /*
-  Keep pressure on Tank01 intentionally low.
+  Keep API pressure low.
 
-  This is a build / refresh path, not a customer-request path.
+  This is a build/refresh operation, not a customer-facing request path.
 */
-const PLAYER_CONCURRENCY =
+const PLAYER_INFO_CONCURRENCY =
+  3;
+
+
+const PLAYER_GAME_CONCURRENCY =
   2;
 
 
+const ROSTER_CONCURRENCY =
+  4;
+
+
 /*
-  Basic quality gates.
+  Historical roster snapshots.
 
-  These are intentionally conservative.
+  Rather than use a single opening-day roster, we derive snapshot dates
+  from several points in the actual historical regular-season schedule.
 
-  A defense normally plays 17 regular-season games. We should see
-  substantially more than the 4-10 defense samples produced by the
-  first incomplete collector.
+  This helps capture:
+  - opening-day players
+  - midseason additions
+  - late-season additions
+  - players who changed teams
 
-  We do not require exactly 17 because:
-  - a Tank01 player may be missing
-  - positional classifications may vary
-  - historical game evidence may occasionally be incomplete
-
-  But a league-wide result averaging only a handful of games per
-  defense is NOT acceptable Schedule Intelligence.
+  Snapshot weeks are intentionally spread across the season.
 */
-const MIN_ACCEPTABLE_DEFENSE_GAMES =
-  12;
+const HISTORICAL_ROSTER_SNAPSHOT_WEEKS =
+  [
+    1,
+    6,
+    12,
+    18
+  ];
 
 
-const MIN_ACCEPTABLE_DEFENSES =
-  28;
+/*
+  Quality thresholds.
 
+  A defense normally has 17 regular-season games.
 
-const MIN_ACCEPTABLE_HISTORICAL_ROWS =
+  We do not demand perfection because source feeds can occasionally miss
+  a player record, but we do demand broad league coverage before the data
+  may be called production-trustworthy.
+*/
+const MIN_ACCEPTABLE_HISTORICAL_RB_ROWS =
   450;
+
+
+const MIN_DEFENSE_GAMES_SAMPLE =
+  14;
+
+
+const MIN_DEFENSES_WITH_GOOD_SAMPLE =
+  30;
+
+
+const MIN_AVERAGE_DEFENSE_GAMES =
+  15;
 
 
 const DEFAULT_EARLY_WEEKS =
@@ -271,6 +305,19 @@ function round(
 }
 
 
+function sleep(
+  milliseconds
+) {
+  return new Promise(
+    resolve =>
+      setTimeout(
+        resolve,
+        milliseconds
+      )
+  );
+}
+
+
 function jsonResponse(
   statusCode,
   body
@@ -294,6 +341,47 @@ function jsonResponse(
       )
   };
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// TEAM LIST
+// ═══════════════════════════════════════════════════════════════════════
+
+const NFL_TEAMS =
+  [
+    "ARI",
+    "ATL",
+    "BAL",
+    "BUF",
+    "CAR",
+    "CHI",
+    "CIN",
+    "CLE",
+    "DAL",
+    "DEN",
+    "DET",
+    "GB",
+    "HOU",
+    "IND",
+    "JAX",
+    "KC",
+    "LV",
+    "LAC",
+    "LAR",
+    "MIA",
+    "MIN",
+    "NE",
+    "NO",
+    "NYG",
+    "NYJ",
+    "PHI",
+    "PIT",
+    "SF",
+    "SEA",
+    "TB",
+    "TEN",
+    "WSH"
+  ];
 
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -355,6 +443,7 @@ function playerPositionOf(
     player.pos ??
     player.position ??
     player.positionAbv ??
+    player.positionAbbreviation ??
     ""
   );
 }
@@ -400,21 +489,80 @@ function tank01Headers() {
 }
 
 
+function tank01ErrorFromPayload(
+  endpoint,
+  data
+) {
+  if (
+    !data ||
+    typeof data !==
+      "object"
+  ) {
+    return null;
+  }
+
+  const error =
+    data.error ??
+    data.message ??
+    null;
+
+  if (
+    !error
+  ) {
+    return null;
+  }
+
+  return new Error(
+    `Tank01 ${endpoint} failed: ${String(
+      error
+    )}`
+  );
+}
+
+
 async function tank01Fetch(
   endpoint,
-  params
+  params = {}
 ) {
   const query =
-    new URLSearchParams(
-      params ||
-      {}
-    ).toString();
+    new URLSearchParams();
+
+  for (
+    const [
+      key,
+      value
+    ]
+    of Object.entries(
+      params
+    )
+  ) {
+    if (
+      value ===
+        undefined ||
+      value ===
+        null ||
+      value ===
+        ""
+    ) {
+      continue;
+    }
+
+    query.set(
+      key,
+      String(
+        value
+      )
+    );
+  }
+
+  const queryString =
+    query.toString();
 
   const url =
     `https://${TANK01_HOST}/${endpoint}` +
     (
-      query
-        ? `?${query}`
+      queryString
+        ? `?${queryString}`
         : ""
     );
 
@@ -458,6 +606,18 @@ async function tank01Fetch(
       if (
         response.ok
       ) {
+        const payloadError =
+          tank01ErrorFromPayload(
+            endpoint,
+            data
+          );
+
+        if (
+          payloadError
+        ) {
+          throw payloadError;
+        }
+
         return data;
       }
 
@@ -476,13 +636,6 @@ async function tank01Fetch(
       ) {
         detail =
           data.error;
-      } else if (
-        data &&
-        typeof data.body ===
-          "string"
-      ) {
-        detail =
-          data.body;
       }
 
       lastError =
@@ -490,12 +643,11 @@ async function tank01Fetch(
           `Tank01 ${endpoint} failed: ${detail}`
         );
 
-      /*
-        Retry only server/rate-limit style failures.
-      */
       if (
-        response.status !== 429 &&
-        response.status < 500
+        response.status !==
+          429 &&
+        response.status <
+          500
       ) {
         throw lastError;
       }
@@ -510,16 +662,9 @@ async function tank01Fetch(
       attempt <
       maxAttempts
     ) {
-      const delay =
+      await sleep(
         attempt *
-        500;
-
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            delay
-          )
+        750
       );
     }
   }
@@ -562,9 +707,7 @@ function unwrapBody(
       } catch (
         error
       ) {
-        /*
-          Keep raw body.
-        */
+        // Keep raw body.
       }
     }
 
@@ -572,105 +715,6 @@ function unwrapBody(
   }
 
   return data;
-}
-
-
-function extractPlayers(
-  data
-) {
-  const body =
-    unwrapBody(
-      data
-    );
-
-  if (
-    Array.isArray(
-      body
-    )
-  ) {
-    return body;
-  }
-
-  if (
-    body &&
-    Array.isArray(
-      body.players
-    )
-  ) {
-    return body.players;
-  }
-
-  if (
-    data &&
-    Array.isArray(
-      data.players
-    )
-  ) {
-    return data.players;
-  }
-
-  return [];
-}
-
-
-function extractPlayerGames(
-  data
-) {
-  const body =
-    unwrapBody(
-      data
-    );
-
-  if (
-    !body
-  ) {
-    return [];
-  }
-
-  if (
-    Array.isArray(
-      body
-    )
-  ) {
-    return body
-      .filter(
-        game =>
-          game &&
-          typeof game ===
-            "object"
-      );
-  }
-
-  if (
-    typeof body ===
-      "object"
-  ) {
-    return Object.entries(
-      body
-    )
-      .map(
-        ([
-          gameID,
-          game
-        ]) => ({
-          ...(game || {}),
-
-          gameID:
-            (
-              game &&
-              game.gameID
-            ) ||
-            gameID
-        })
-      )
-      .filter(
-        game =>
-          game &&
-          game.gameID
-      );
-  }
-
-  return [];
 }
 
 
@@ -692,7 +736,7 @@ async function mapWithConcurrency(
 
   if (
     source.length ===
-    0
+      0
   ) {
     return [];
   }
@@ -822,8 +866,11 @@ async function buildSeasonSchedules({
   /*
     Intentionally serialized.
 
-    We use the proven Weekly SAGE schedule builder as the
-    authoritative source for game/week/team context.
+    Weekly SAGE schedule remains authoritative for:
+    - NFL week
+    - game ID
+    - team pairing
+    - game date
   */
   for (
     const week
@@ -1066,6 +1113,1004 @@ function flattenSchedules(
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// ARCHIVE DATE SELECTION
+// ═══════════════════════════════════════════════════════════════════════
+
+function normalizeArchiveDate(
+  value
+) {
+  const text =
+    String(
+      value ||
+      ""
+    )
+      .replace(
+        /[^0-9]/g,
+        ""
+      )
+      .trim();
+
+  return /^\d{8}$/.test(
+    text
+  )
+    ? text
+    : null;
+}
+
+
+function gameDateToArchiveDate(
+  value
+) {
+  return normalizeArchiveDate(
+    value
+  );
+}
+
+
+function snapshotDatesFromSchedules(
+  historicalSchedules
+) {
+  const byWeek =
+    new Map();
+
+  for (
+    const schedule
+    of (
+      Array.isArray(
+        historicalSchedules
+      )
+        ? historicalSchedules
+        : []
+    )
+  ) {
+    const week =
+      integer(
+        schedule &&
+        (
+          schedule.week ??
+          schedule.gameWeek
+        ),
+        null
+      );
+
+    if (
+      !HISTORICAL_ROSTER_SNAPSHOT_WEEKS
+        .includes(
+          week
+        )
+    ) {
+      continue;
+    }
+
+    const dates =
+      (
+        Array.isArray(
+          schedule.games
+        )
+          ? schedule.games
+          : []
+      )
+        .map(
+          game =>
+            gameDateToArchiveDate(
+              game &&
+              game.gameDate
+            )
+        )
+        .filter(
+          Boolean
+        )
+        .sort();
+
+    if (
+      dates.length ===
+      0
+    ) {
+      continue;
+    }
+
+    /*
+      Use the latest game date in the selected week.
+
+      That gives the snapshot a chance to reflect roster transactions
+      made earlier in the week.
+    */
+    byWeek.set(
+      week,
+      dates[
+        dates.length -
+        1
+      ]
+    );
+  }
+
+  const snapshots =
+    [];
+
+  for (
+    const week
+    of HISTORICAL_ROSTER_SNAPSHOT_WEEKS
+  ) {
+    const archiveDate =
+      byWeek.get(
+        week
+      );
+
+    if (
+      archiveDate
+    ) {
+      snapshots.push({
+        week,
+        archiveDate
+      });
+    }
+  }
+
+  return snapshots;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// ARCHIVED ROSTER EXTRACTION
+// ═══════════════════════════════════════════════════════════════════════
+
+function extractArchivedRosterIDs(
+  data
+) {
+  const body =
+    unwrapBody(
+      data
+    );
+
+  if (
+    !body ||
+    typeof body !==
+      "object"
+  ) {
+    return [];
+  }
+
+  const roster =
+    body.roster ??
+    body.Roster ??
+    [];
+
+  if (
+    Array.isArray(
+      roster
+    )
+  ) {
+    return roster
+      .map(
+        item => {
+          if (
+            typeof item ===
+              "string" ||
+            typeof item ===
+              "number"
+          ) {
+            return String(
+              item
+            ).trim();
+          }
+
+          if (
+            item &&
+            typeof item ===
+              "object"
+          ) {
+            return playerIDOf(
+              item
+            );
+          }
+
+          return "";
+        }
+      )
+      .filter(
+        Boolean
+      );
+  }
+
+  if (
+    roster &&
+    typeof roster ===
+      "object"
+  ) {
+    return Object.entries(
+      roster
+    )
+      .map(
+        ([
+          key,
+          item
+        ]) =>
+          playerIDOf(
+            item
+          ) ||
+          String(
+            key
+          ).trim()
+      )
+      .filter(
+        Boolean
+      );
+  }
+
+  return [];
+}
+
+
+async function fetchArchivedRoster({
+  team,
+  archiveDate
+}) {
+  const data =
+    await tank01Fetch(
+      "getNFLTeamRoster",
+      {
+        teamAbv:
+          team,
+
+        archiveDate
+      }
+    );
+
+  return {
+    team,
+
+    archiveDate,
+
+    playerIDs:
+      extractArchivedRosterIDs(
+        data
+      )
+  };
+}
+
+
+async function buildHistoricalRosterUniverse({
+  historicalSchedules
+}) {
+  const snapshots =
+    snapshotDatesFromSchedules(
+      historicalSchedules
+    );
+
+  if (
+    snapshots.length ===
+      0
+  ) {
+    throw new Error(
+      "Could not derive historical roster snapshot dates from the regular-season schedule."
+    );
+  }
+
+  const requests =
+    [];
+
+  for (
+    const snapshot
+    of snapshots
+  ) {
+    for (
+      const team
+      of NFL_TEAMS
+    ) {
+      requests.push({
+        team,
+
+        week:
+          snapshot.week,
+
+        archiveDate:
+          snapshot.archiveDate
+      });
+    }
+  }
+
+  const rosterResults =
+    await mapWithConcurrency(
+      requests,
+      ROSTER_CONCURRENCY,
+
+      async request => {
+        try {
+          const result =
+            await fetchArchivedRoster(
+              request
+            );
+
+          return {
+            ...request,
+
+            playerIDs:
+              result.playerIDs,
+
+            error:
+              null
+          };
+        } catch (
+          error
+        ) {
+          return {
+            ...request,
+
+            playerIDs:
+              [],
+
+            error:
+              error &&
+              error.message
+                ? error.message
+                : String(
+                    error
+                  )
+          };
+        }
+      }
+    );
+
+  const playerMembership =
+    new Map();
+
+  const rosterErrors =
+    [];
+
+  let rosterPlayerEntries =
+    0;
+
+  for (
+    const result
+    of rosterResults
+  ) {
+    if (
+      result.error
+    ) {
+      rosterErrors.push({
+        team:
+          result.team,
+
+        week:
+          result.week,
+
+        archiveDate:
+          result.archiveDate,
+
+        error:
+          result.error
+      });
+
+      continue;
+    }
+
+    rosterPlayerEntries +=
+      result.playerIDs.length;
+
+    for (
+      const playerID
+      of result.playerIDs
+    ) {
+      if (
+        !playerMembership.has(
+          playerID
+        )
+      ) {
+        playerMembership.set(
+          playerID,
+          {
+            playerID,
+
+            teams:
+              new Set(),
+
+            snapshots:
+              []
+          }
+        );
+      }
+
+      const membership =
+        playerMembership.get(
+          playerID
+        );
+
+      membership.teams.add(
+        result.team
+      );
+
+      membership.snapshots.push({
+        team:
+          result.team,
+
+        week:
+          result.week,
+
+        archiveDate:
+          result.archiveDate
+      });
+    }
+  }
+
+  const players =
+    Array.from(
+      playerMembership.values()
+    )
+      .map(
+        item => ({
+          playerID:
+            item.playerID,
+
+          historicalTeams:
+            Array.from(
+              item.teams
+            ),
+
+          snapshots:
+            item.snapshots
+        })
+      );
+
+  return {
+    snapshots,
+
+    rosterRequests:
+      requests.length,
+
+    rosterCallsSucceeded:
+      rosterResults.length -
+      rosterErrors.length,
+
+    rosterErrors,
+
+    rosterPlayerEntries,
+
+    uniqueHistoricalPlayerIDs:
+      players.length,
+
+    players
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// CURRENT METADATA CACHE
+// ═══════════════════════════════════════════════════════════════════════
+
+function extractCurrentTeamRosterPlayers(
+  data
+) {
+  const body =
+    unwrapBody(
+      data
+    );
+
+  if (
+    !Array.isArray(
+      body
+    )
+  ) {
+    return [];
+  }
+
+  const players =
+    [];
+
+  for (
+    const team
+    of body
+  ) {
+    if (
+      !team ||
+      typeof team !==
+        "object"
+    ) {
+      continue;
+    }
+
+    const roster =
+      team.Roster ??
+      team.roster ??
+      null;
+
+    if (
+      Array.isArray(
+        roster
+      )
+    ) {
+      for (
+        const player
+        of roster
+      ) {
+        if (
+          player &&
+          typeof player ===
+            "object"
+        ) {
+          players.push(
+            player
+          );
+        }
+      }
+
+      continue;
+    }
+
+    if (
+      roster &&
+      typeof roster ===
+        "object"
+    ) {
+      for (
+        const [
+          playerID,
+          player
+        ]
+        of Object.entries(
+          roster
+        )
+      ) {
+        if (
+          player &&
+          typeof player ===
+            "object"
+        ) {
+          players.push({
+            ...player,
+
+            playerID:
+              playerIDOf(
+                player
+              ) ||
+              String(
+                playerID
+              )
+          });
+        }
+      }
+    }
+  }
+
+  return players;
+}
+
+
+async function buildCurrentMetadataMap() {
+  const map =
+    new Map();
+
+  let sourceCount =
+    0;
+
+  /*
+    getNFLTeams(rosters=true) is used only as a cheap metadata cache.
+
+    It is NOT authoritative for the historical population.
+  */
+  try {
+    const teamsData =
+      await tank01Fetch(
+        "getNFLTeams",
+        {
+          rosters:
+            "true"
+        }
+      );
+
+    const currentPlayers =
+      extractCurrentTeamRosterPlayers(
+        teamsData
+      );
+
+    sourceCount =
+      currentPlayers.length;
+
+    for (
+      const player
+      of currentPlayers
+    ) {
+      const playerID =
+        playerIDOf(
+          player
+        );
+
+      if (
+        !playerID
+      ) {
+        continue;
+      }
+
+      map.set(
+        playerID,
+        player
+      );
+    }
+  } catch (
+    error
+  ) {
+    /*
+      Fail-soft.
+
+      Missing current metadata only means more getNFLPlayerInfo calls.
+    */
+  }
+
+  return {
+    map,
+
+    sourceCount
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLAYER INFORMATION
+// ═══════════════════════════════════════════════════════════════════════
+
+function extractPlayerInfo(
+  data
+) {
+  const body =
+    unwrapBody(
+      data
+    );
+
+  if (
+    !body
+  ) {
+    return null;
+  }
+
+  if (
+    Array.isArray(
+      body
+    )
+  ) {
+    return (
+      body[0] ||
+      null
+    );
+  }
+
+  if (
+    typeof body ===
+      "object"
+  ) {
+    /*
+      Normal direct player object.
+    */
+    if (
+      playerIDOf(
+        body
+      ) ||
+      playerNameOf(
+        body
+      ) ||
+      playerPositionOf(
+        body
+      )
+    ) {
+      return body;
+    }
+
+    /*
+      Defensive fallback for a map keyed by playerID.
+    */
+    const values =
+      Object.values(
+        body
+      );
+
+    for (
+      const value
+      of values
+    ) {
+      if (
+        value &&
+        typeof value ===
+          "object"
+      ) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+
+async function resolveHistoricalPlayerMetadata({
+  historicalRosterUniverse
+}) {
+  const currentMetadata =
+    await buildCurrentMetadataMap();
+
+  const resolved =
+    [];
+
+  const unresolved =
+    [];
+
+  const infoRequests =
+    [];
+
+  for (
+    const historicalPlayer
+    of historicalRosterUniverse.players
+  ) {
+    const cached =
+      currentMetadata
+        .map
+        .get(
+          historicalPlayer.playerID
+        );
+
+    if (
+      cached &&
+      playerPositionOf(
+        cached
+      )
+    ) {
+      resolved.push({
+        playerID:
+          historicalPlayer.playerID,
+
+        name:
+          playerNameOf(
+            cached
+          ),
+
+        position:
+          playerPositionOf(
+            cached
+          ),
+
+        currentTeam:
+          playerTeamOf(
+            cached
+          ),
+
+        historicalTeams:
+          historicalPlayer
+            .historicalTeams,
+
+        snapshots:
+          historicalPlayer
+            .snapshots,
+
+        metadataSource:
+          "getNFLTeams-roster"
+      });
+    } else {
+      infoRequests.push(
+        historicalPlayer
+      );
+    }
+  }
+
+  const infoResults =
+    await mapWithConcurrency(
+      infoRequests,
+      PLAYER_INFO_CONCURRENCY,
+
+      async historicalPlayer => {
+        try {
+          const data =
+            await tank01Fetch(
+              "getNFLPlayerInfo",
+              {
+                playerID:
+                  historicalPlayer.playerID
+              }
+            );
+
+          const player =
+            extractPlayerInfo(
+              data
+            );
+
+          if (
+            !player
+          ) {
+            return {
+              historicalPlayer,
+
+              player:
+                null,
+
+              error:
+                "Player information was empty."
+            };
+          }
+
+          return {
+            historicalPlayer,
+
+            player,
+
+            error:
+              null
+          };
+        } catch (
+          error
+        ) {
+          return {
+            historicalPlayer,
+
+            player:
+              null,
+
+            error:
+              error &&
+              error.message
+                ? error.message
+                : String(
+                    error
+                  )
+          };
+        }
+      }
+    );
+
+  for (
+    const result
+    of infoResults
+  ) {
+    if (
+      result.error ||
+      !result.player
+    ) {
+      unresolved.push({
+        playerID:
+          result
+            .historicalPlayer
+            .playerID,
+
+        historicalTeams:
+          result
+            .historicalPlayer
+            .historicalTeams,
+
+        error:
+          result.error ||
+          "Missing player information."
+      });
+
+      continue;
+    }
+
+    resolved.push({
+      playerID:
+        result
+          .historicalPlayer
+          .playerID,
+
+      name:
+        playerNameOf(
+          result.player
+        ),
+
+      position:
+        playerPositionOf(
+          result.player
+        ),
+
+      currentTeam:
+        playerTeamOf(
+          result.player
+        ),
+
+      historicalTeams:
+        result
+          .historicalPlayer
+          .historicalTeams,
+
+      snapshots:
+        result
+          .historicalPlayer
+          .snapshots,
+
+      metadataSource:
+        "getNFLPlayerInfo"
+    });
+  }
+
+  return {
+    currentRosterMetadataRecords:
+      currentMetadata
+        .sourceCount,
+
+    metadataResolvedFromCurrentRoster:
+      resolved.filter(
+        item =>
+          item.metadataSource ===
+          "getNFLTeams-roster"
+      ).length,
+
+    playerInfoRequests:
+      infoRequests.length,
+
+    playerInfoResolved:
+      resolved.filter(
+        item =>
+          item.metadataSource ===
+          "getNFLPlayerInfo"
+      ).length,
+
+    unresolved,
+
+    players:
+      resolved
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLAYER GAME EXTRACTION
+// ═══════════════════════════════════════════════════════════════════════
+
+function extractPlayerGames(
+  data
+) {
+  const body =
+    unwrapBody(
+      data
+    );
+
+  if (
+    !body
+  ) {
+    return [];
+  }
+
+  if (
+    Array.isArray(
+      body
+    )
+  ) {
+    return body
+      .filter(
+        game =>
+          game &&
+          typeof game ===
+            "object"
+      );
+  }
+
+  if (
+    typeof body ===
+      "object"
+  ) {
+    return Object.entries(
+      body
+    )
+      .map(
+        ([
+          gameID,
+          game
+        ]) => ({
+          ...(game || {}),
+
+          gameID:
+            (
+              game &&
+              game.gameID
+            ) ||
+            gameID
+        })
+      )
+      .filter(
+        game =>
+          game &&
+          game.gameID
+      );
+  }
+
+  return [];
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // HISTORICAL TEAM / OPPONENT RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -1140,11 +2185,17 @@ function historicalTeamCandidates(
       game &&
       game.playerTeam,
 
-      player &&
-      player.historicalTeam,
+      ...(
+        player &&
+        Array.isArray(
+          player.historicalTeams
+        )
+          ? player.historicalTeams
+          : []
+      ),
 
       player &&
-      player.team
+      player.currentTeam
     ];
 
   const result =
@@ -1210,8 +2261,8 @@ function inferHistoricalTeam({
   }
 
   /*
-    If Tank01 gives an explicit opponent but not player team,
-    derive the player team from the schedule.
+    If Tank01 gives explicit opponent but no historical team,
+    derive the player's team from the authoritative schedule.
   */
   const explicitOpponent =
     normalizeTeam(
@@ -1300,6 +2351,14 @@ function normalizeHistoricalPlayerGame({
       gameID
     );
 
+  /*
+    This is no longer automatically an error.
+
+    getNFLGamesForPlayer can return preseason and postseason games.
+    Our authoritative baseline is regular season only, so games that
+    do not exist in the 18-week regular-season map are deliberately
+    excluded.
+  */
   if (
     !scheduleGame
   ) {
@@ -1308,7 +2367,7 @@ function normalizeHistoricalPlayerGame({
         false,
 
       reason:
-        "schedule-game-not-found",
+        "outside-regular-season-schedule",
 
       gameID,
 
@@ -1485,141 +2544,52 @@ async function loadHistoricalRbGames({
   baselineSeason,
   historicalSchedules
 }) {
-  /*
-    IMPORTANT:
-
-    all=true is intentional.
-
-    We want the broadest Tank01 player population available rather
-    than relying on a filtered active-player list.
-  */
-  const playerListData =
-    await tank01Fetch(
-      "getNFLPlayerList",
-      {
-        all:
-          "true"
-      }
-    );
-
-  const allPlayers =
-    extractPlayers(
-      playerListData
-    );
-
-  const rbCandidates =
-    allPlayers
-      .filter(
-        player =>
-          playerPositionOf(
-            player
-          ) ===
-            DEFAULT_POSITION
-      )
-      .map(
-        player => ({
-          playerID:
-            playerIDOf(
-              player
-            ),
-
-          name:
-            playerNameOf(
-              player
-            ),
-
-          team:
-            playerTeamOf(
-              player
-            ),
-
-          rawPosition:
-            playerPositionOf(
-              player
-            )
-        })
-      )
-      .filter(
-        player =>
-          Boolean(
-            player.playerID
-          )
-      );
-
-  /*
-    Remove duplicate player IDs from player-list evidence.
-  */
-  const uniqueCandidates =
-    [];
-
-  const candidateIDs =
-    new Set();
-
-  for (
-    const player
-    of rbCandidates
-  ) {
-    if (
-      candidateIDs.has(
-        player.playerID
-      )
-    ) {
-      continue;
-    }
-
-    candidateIDs.add(
-      player.playerID
-    );
-
-    uniqueCandidates.push(
-      player
-    );
-  }
-
   const gameMap =
     buildGameMap(
       historicalSchedules
     );
 
-  const diagnostics = {
-    totalPlayerListRecords:
-      allPlayers.length,
 
-    rbCandidateRecords:
-      rbCandidates.length,
+  // ───────────────────────────────────────────────────────────────────
+  // A. Historical roster universe
+  // ───────────────────────────────────────────────────────────────────
 
-    uniqueRbCandidates:
-      uniqueCandidates.length,
+  const rosterUniverse =
+    await buildHistoricalRosterUniverse({
+      historicalSchedules
+    });
 
-    rawHistoricalGameRecords:
-      0,
 
-    matchedHistoricalGameRecords:
-      0,
+  // ───────────────────────────────────────────────────────────────────
+  // B. Resolve positions
+  // ───────────────────────────────────────────────────────────────────
 
-    duplicateHistoricalGameRecords:
-      0,
+  const metadata =
+    await resolveHistoricalPlayerMetadata({
+      historicalRosterUniverse:
+        rosterUniverse
+    });
 
-    missingGameID:
-      0,
 
-    missingScheduleGame:
-      0,
+  const rbCandidates =
+    metadata.players
+      .filter(
+        player =>
+          normalizePosition(
+            player.position
+          ) ===
+            DEFAULT_POSITION
+      );
 
-    unresolvedHistoricalTeam:
-      0,
 
-    unresolvedOpponent:
-      0
-  };
-
-  const collectionProblems =
-    [];
+  // ───────────────────────────────────────────────────────────────────
+  // C. Load RB game logs
+  // ───────────────────────────────────────────────────────────────────
 
   const playerResults =
     await mapWithConcurrency(
-      uniqueCandidates,
-      PLAYER_CONCURRENCY,
+      rbCandidates,
+      PLAYER_GAME_CONCURRENCY,
 
       async player => {
         try {
@@ -1645,7 +2615,7 @@ async function loadHistoricalRbGames({
               data
             );
 
-          const normalizedRows =
+          const matchedRows =
             [];
 
           const rejectedRows =
@@ -1665,7 +2635,7 @@ async function loadHistoricalRbGames({
             if (
               normalized.ok
             ) {
-              normalizedRows.push(
+              matchedRows.push(
                 normalized.row
               );
             } else {
@@ -1694,13 +2664,13 @@ async function loadHistoricalRbGames({
             playerName:
               player.name,
 
-            currentTeam:
-              player.team,
+            historicalTeams:
+              player.historicalTeams,
 
             rawGamesReturned:
               games.length,
 
-            normalizedRows,
+            matchedRows,
 
             rejectedRows,
 
@@ -1717,13 +2687,13 @@ async function loadHistoricalRbGames({
             playerName:
               player.name,
 
-            currentTeam:
-              player.team,
+            historicalTeams:
+              player.historicalTeams,
 
             rawGamesReturned:
               0,
 
-            normalizedRows:
+            matchedRows:
               [],
 
             rejectedRows:
@@ -1741,14 +2711,47 @@ async function loadHistoricalRbGames({
       }
     );
 
+
+  // ───────────────────────────────────────────────────────────────────
+  // D. Diagnostics
+  // ───────────────────────────────────────────────────────────────────
+
+  const diagnostics = {
+    rawHistoricalGameRecords:
+      0,
+
+    regularSeasonMatchedRecords:
+      0,
+
+    outsideRegularSeasonRecords:
+      0,
+
+    missingGameID:
+      0,
+
+    unresolvedHistoricalTeam:
+      0,
+
+    unresolvedOpponent:
+      0,
+
+    duplicateHistoricalGameRecords:
+      0
+  };
+
+
   const playerErrors =
     [];
 
-  const allNormalizedRows =
+  const collectionProblems =
+    [];
+
+  const allMatchedRows =
     [];
 
   const playerGameCounts =
     [];
+
 
   for (
     const result
@@ -1759,8 +2762,8 @@ async function loadHistoricalRbGames({
         result.rawGamesReturned;
 
     diagnostics
-      .matchedHistoricalGameRecords +=
-        result.normalizedRows.length;
+      .regularSeasonMatchedRecords +=
+        result.matchedRows.length;
 
     if (
       result.error
@@ -1772,8 +2775,8 @@ async function loadHistoricalRbGames({
         playerName:
           result.playerName,
 
-        currentTeam:
-          result.currentTeam,
+        historicalTeams:
+          result.historicalTeams,
 
         error:
           result.error
@@ -1789,15 +2792,15 @@ async function loadHistoricalRbGames({
       switch (
         rejected.reason
       ) {
-        case "missing-game-id":
+        case "outside-regular-season-schedule":
           diagnostics
-            .missingGameID +=
+            .outsideRegularSeasonRecords +=
               1;
           break;
 
-        case "schedule-game-not-found":
+        case "missing-game-id":
           diagnostics
-            .missingScheduleGame +=
+            .missingGameID +=
               1;
           break;
 
@@ -1817,9 +2820,17 @@ async function loadHistoricalRbGames({
           break;
       }
 
+      /*
+        Do not spam the warnings block with expected preseason/postseason
+        exclusions.
+
+        Only unexpected normalization problems belong here.
+      */
       if (
+        rejected.reason !==
+          "outside-regular-season-schedule" &&
         collectionProblems.length <
-        100
+          100
       ) {
         collectionProblems.push({
           playerID:
@@ -1828,8 +2839,8 @@ async function loadHistoricalRbGames({
           playerName:
             result.playerName,
 
-          currentTeam:
-            result.currentTeam,
+          historicalTeams:
+            result.historicalTeams,
 
           gameID:
             rejected.gameID,
@@ -1840,8 +2851,8 @@ async function loadHistoricalRbGames({
       }
     }
 
-    allNormalizedRows.push(
-      ...result.normalizedRows
+    allMatchedRows.push(
+      ...result.matchedRows
     );
 
     playerGameCounts.push({
@@ -1851,41 +2862,60 @@ async function loadHistoricalRbGames({
       playerName:
         result.playerName,
 
-      currentTeam:
-        result.currentTeam,
+      historicalTeams:
+        result.historicalTeams,
 
       rawGamesReturned:
         result.rawGamesReturned,
 
-      matchedGames:
-        result.normalizedRows.length,
+      matchedRegularSeasonGames:
+        result.matchedRows.length,
 
-      rejectedGames:
-        result.rejectedRows.length
+      excludedNonRegularGames:
+        result.rejectedRows
+          .filter(
+            row =>
+              row.reason ===
+              "outside-regular-season-schedule"
+          )
+          .length,
+
+      rejectedUnexpectedGames:
+        result.rejectedRows
+          .filter(
+            row =>
+              row.reason !==
+              "outside-regular-season-schedule"
+          )
+          .length
     });
   }
 
+
   const deduped =
     dedupeHistoricalRows(
-      allNormalizedRows
+      allMatchedRows
     );
+
 
   diagnostics
     .duplicateHistoricalGameRecords =
       deduped.duplicateCount;
 
-  /*
-    Sort diagnostics with highest-volume players first.
-  */
+
   playerGameCounts.sort(
     (a, b) =>
-      b.matchedGames -
-      a.matchedGames
+      b.matchedRegularSeasonGames -
+      a.matchedRegularSeasonGames
   );
 
+
   return {
-    candidatesFound:
-      uniqueCandidates.length,
+    rosterUniverse,
+
+    metadata,
+
+    rbCandidates,
 
     playersLoaded:
       playerResults.length,
@@ -1905,7 +2935,7 @@ async function loadHistoricalRbGames({
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// COVERAGE DIAGNOSTICS
+// DEFENSE COVERAGE
 // ═══════════════════════════════════════════════════════════════════════
 
 function buildDefenseCoverage(
@@ -1936,8 +2966,7 @@ function buildDefenseCoverage(
             ),
 
           fantasyPointsAllowed:
-            item
-              .fantasyPointsAllowed,
+            item.fantasyPointsAllowed,
 
           rank:
             item.rank,
@@ -1952,19 +2981,22 @@ function buildDefenseCoverage(
           b.gamesSampled
       );
 
-  const completeEnough =
+
+  const goodSample =
     rows.filter(
       item =>
         item.gamesSampled >=
-        MIN_ACCEPTABLE_DEFENSE_GAMES
+        MIN_DEFENSE_GAMES_SAMPLE
     );
+
 
   const belowThreshold =
     rows.filter(
       item =>
         item.gamesSampled <
-        MIN_ACCEPTABLE_DEFENSE_GAMES
+        MIN_DEFENSE_GAMES_SAMPLE
     );
+
 
   const totalGames =
     rows.reduce(
@@ -1977,6 +3009,7 @@ function buildDefenseCoverage(
       0
     );
 
+
   const averageGamesSampled =
     rows.length > 0
       ? round(
@@ -1986,15 +3019,16 @@ function buildDefenseCoverage(
         )
       : 0;
 
+
   return {
     defensesRated:
       rows.length,
 
     defensesMeetingMinimumSample:
-      completeEnough.length,
+      goodSample.length,
 
     minimumGamesRequired:
-      MIN_ACCEPTABLE_DEFENSE_GAMES,
+      MIN_DEFENSE_GAMES_SAMPLE,
 
     averageGamesSampled,
 
@@ -2018,6 +3052,10 @@ function buildDefenseCoverage(
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════
+// QUALITY GATE
+// ═══════════════════════════════════════════════════════════════════════
+
 function buildQualityGate({
   historical,
   defenseCoverage,
@@ -2025,6 +3063,7 @@ function buildQualityGate({
 }) {
   const checks =
     [];
+
 
   function addCheck(
     name,
@@ -2046,33 +3085,70 @@ function buildQualityGate({
     });
   }
 
+
+  addCheck(
+    "historical-roster-errors",
+
+    historical
+      .rosterUniverse
+      .rosterErrors
+      .length ===
+      0,
+
+    historical
+      .rosterUniverse
+      .rosterErrors
+      .length,
+
+    0
+  );
+
+
+  addCheck(
+    "historical-player-metadata",
+
+    historical
+      .metadata
+      .unresolved
+      .length ===
+      0,
+
+    historical
+      .metadata
+      .unresolved
+      .length,
+
+    0
+  );
+
+
   addCheck(
     "historical-rb-game-volume",
 
     historical
       .playerGames
       .length >=
-      MIN_ACCEPTABLE_HISTORICAL_ROWS,
+      MIN_ACCEPTABLE_HISTORICAL_RB_ROWS,
 
     historical
       .playerGames
       .length,
 
-    `>= ${MIN_ACCEPTABLE_HISTORICAL_ROWS}`
+    `>= ${MIN_ACCEPTABLE_HISTORICAL_RB_ROWS}`
   );
 
 
   addCheck(
-    "defenses-rated",
+    "all-defenses-rated",
 
     defenseCoverage
-      .defensesRated >=
-      MIN_ACCEPTABLE_DEFENSES,
+      .defensesRated ===
+      32,
 
     defenseCoverage
       .defensesRated,
 
-    `>= ${MIN_ACCEPTABLE_DEFENSES}`
+    32
   );
 
 
@@ -2081,17 +3157,67 @@ function buildQualityGate({
 
     defenseCoverage
       .defensesMeetingMinimumSample >=
-      MIN_ACCEPTABLE_DEFENSES,
+      MIN_DEFENSES_WITH_GOOD_SAMPLE,
 
     defenseCoverage
       .defensesMeetingMinimumSample,
 
-    `>= ${MIN_ACCEPTABLE_DEFENSES}`
+    `>= ${MIN_DEFENSES_WITH_GOOD_SAMPLE}`
   );
 
 
   addCheck(
-    "player-api-errors",
+    "average-defense-game-sample",
+
+    defenseCoverage
+      .averageGamesSampled >=
+      MIN_AVERAGE_DEFENSE_GAMES,
+
+    defenseCoverage
+      .averageGamesSampled,
+
+    `>= ${MIN_AVERAGE_DEFENSE_GAMES}`
+  );
+
+
+  addCheck(
+    "unexpected-team-resolution-errors",
+
+    (
+      historical
+        .diagnostics
+        .unresolvedHistoricalTeam ===
+        0 &&
+      historical
+        .diagnostics
+        .unresolvedOpponent ===
+        0
+    ),
+
+    {
+      unresolvedHistoricalTeam:
+        historical
+          .diagnostics
+          .unresolvedHistoricalTeam,
+
+      unresolvedOpponent:
+        historical
+          .diagnostics
+          .unresolvedOpponent
+    },
+
+    {
+      unresolvedHistoricalTeam:
+        0,
+
+      unresolvedOpponent:
+        0
+    }
+  );
+
+
+  addCheck(
+    "player-game-api-errors",
 
     historical
       .playerErrors
@@ -2123,6 +3249,7 @@ function buildQualityGate({
       check =>
         !check.passed
     );
+
 
   return {
     passed:
@@ -2174,6 +3301,7 @@ async function buildRbScheduleIntelligence({
       DEFAULT_TARGET_SEASON
     );
 
+
   const normalizedBaselineSeason =
     integer(
       baselineSeason,
@@ -2181,10 +3309,12 @@ async function buildRbScheduleIntelligence({
       1
     );
 
+
   const normalizedScoring =
     normalizeScoring(
       scoring
     );
+
 
   const normalizedSeasonType =
     normalizeSeasonType(
@@ -2193,8 +3323,7 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 1
-  // Build prior-season schedule
+  // STEP 1 — Historical regular-season schedule
   // ════════════════════════════════════════════════════════════════════
 
   const historicalSchedules =
@@ -2211,8 +3340,7 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 2
-  // Collect historical RB player games
+  // STEP 2 — Historical RB universe + game evidence
   // ════════════════════════════════════════════════════════════════════
 
   const historical =
@@ -2225,15 +3353,13 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 3
-  // Calculate defense-vs-RB ratings
+  // STEP 3 — Defense-vs-RB ratings
   // ════════════════════════════════════════════════════════════════════
 
   const defenseRatings =
     buildDefenseRbRatings({
       playerGames:
-        historical
-          .playerGames,
+        historical.playerGames,
 
       scoring:
         normalizedScoring
@@ -2241,8 +3367,7 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 4
-  // Validate historical defense coverage
+  // STEP 4 — Defense coverage diagnostics
   // ════════════════════════════════════════════════════════════════════
 
   const defenseCoverage =
@@ -2252,8 +3377,7 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 5
-  // Build target-season schedule
+  // STEP 5 — Target-season schedule
   // ════════════════════════════════════════════════════════════════════
 
   const targetSchedules =
@@ -2276,8 +3400,7 @@ async function buildRbScheduleIntelligence({
 
 
   // ════════════════════════════════════════════════════════════════════
-  // STEP 6
-  // Quality gate BEFORE calling the output trusted
+  // STEP 6 — Quality gate
   // ════════════════════════════════════════════════════════════════════
 
   const qualityGate =
@@ -2291,17 +3414,10 @@ async function buildRbScheduleIntelligence({
     });
 
 
-  /*
-    We still calculate the schedule result when the quality gate fails.
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 7 — Schedule Intelligence calculation
+  // ════════════════════════════════════════════════════════════════════
 
-    WHY:
-    - diagnostics remain inspectable
-    - development is easier
-    - we can see exactly what coverage remains missing
-
-    BUT:
-    trustedForProduction is false and consumers must not use it.
-  */
   const intelligence =
     buildLeagueScheduleIntelligence({
       schedule:
@@ -2350,7 +3466,7 @@ async function buildRbScheduleIntelligence({
       "sage-schedule-intelligence",
 
     schemaVersion:
-      2,
+      3,
 
     generatedAt:
       new Date()
@@ -2378,6 +3494,17 @@ async function buildRbScheduleIntelligence({
       baseline:
         "Prior regular-season RB fantasy production allowed by defense.",
 
+      historicalPopulation:
+        "Historical player population is derived from multiple archived Tank01 team-roster snapshots rather than getNFLPlayerList.",
+
+      rosterSnapshotWeeks:
+        HISTORICAL_ROSTER_SNAPSHOT_WEEKS,
+
+      rosterSnapshotDates:
+        historical
+          .rosterUniverse
+          .snapshots,
+
       playerGameRequestLimit:
         PLAYER_GAME_REQUEST_LIMIT,
 
@@ -2387,6 +3514,9 @@ async function buildRbScheduleIntelligence({
       rankingDirection:
         "Defense rank 1 allows the most RB fantasy points and is therefore the most favorable RB matchup.",
 
+      nonRegularSeasonHandling:
+        "Preseason and postseason player-game records are excluded because only games present in the authoritative regular-season schedule are accepted.",
+
       byeHandling:
         "Bye and missing weeks are excluded from schedule averages rather than scored as zero.",
 
@@ -2394,7 +3524,7 @@ async function buildRbScheduleIntelligence({
         "Schedule Intelligence remains separate from the core Draft SAGE recommendation calculation in V1.",
 
       qualityRule:
-        "Schedule Intelligence must pass historical evidence coverage checks before trustedForProduction becomes true."
+        "Schedule Intelligence must pass historical population, defense coverage, schedule, and error checks before trustedForProduction becomes true."
     },
 
     windows: {
@@ -2414,22 +3544,79 @@ async function buildRbScheduleIntelligence({
         )
     },
 
+    historicalRosterCollection: {
+      snapshotCount:
+        historical
+          .rosterUniverse
+          .snapshots
+          .length,
+
+      snapshots:
+        historical
+          .rosterUniverse
+          .snapshots,
+
+      rosterRequests:
+        historical
+          .rosterUniverse
+          .rosterRequests,
+
+      rosterCallsSucceeded:
+        historical
+          .rosterUniverse
+          .rosterCallsSucceeded,
+
+      rosterErrors:
+        historical
+          .rosterUniverse
+          .rosterErrors
+          .length,
+
+      rosterPlayerEntries:
+        historical
+          .rosterUniverse
+          .rosterPlayerEntries,
+
+      uniqueHistoricalPlayerIDs:
+        historical
+          .rosterUniverse
+          .uniqueHistoricalPlayerIDs
+    },
+
+    metadataCollection: {
+      currentRosterMetadataRecords:
+        historical
+          .metadata
+          .currentRosterMetadataRecords,
+
+      metadataResolvedFromCurrentRoster:
+        historical
+          .metadata
+          .metadataResolvedFromCurrentRoster,
+
+      playerInfoRequests:
+        historical
+          .metadata
+          .playerInfoRequests,
+
+      playerInfoResolved:
+        historical
+          .metadata
+          .playerInfoResolved,
+
+      unresolvedPlayerMetadata:
+        historical
+          .metadata
+          .unresolved
+          .length,
+
+      historicalRbCandidates:
+        historical
+          .rbCandidates
+          .length
+    },
+
     collection: {
-      totalPlayerListRecords:
-        historical
-          .diagnostics
-          .totalPlayerListRecords,
-
-      rbCandidateRecords:
-        historical
-          .diagnostics
-          .rbCandidateRecords,
-
-      uniqueRbCandidates:
-        historical
-          .diagnostics
-          .uniqueRbCandidates,
-
       rbPlayersLoaded:
         historical
           .playersLoaded,
@@ -2444,6 +3631,16 @@ async function buildRbScheduleIntelligence({
           .playerGames
           .length,
 
+      regularSeasonMatchedRecords:
+        historical
+          .diagnostics
+          .regularSeasonMatchedRecords,
+
+      outsideRegularSeasonRecords:
+        historical
+          .diagnostics
+          .outsideRegularSeasonRecords,
+
       duplicateHistoricalGameRecords:
         historical
           .diagnostics
@@ -2453,11 +3650,6 @@ async function buildRbScheduleIntelligence({
         historical
           .diagnostics
           .missingGameID,
-
-      missingScheduleGame:
-        historical
-          .diagnostics
-          .missingScheduleGame,
 
       unresolvedHistoricalTeam:
         historical
@@ -2492,12 +3684,30 @@ async function buildRbScheduleIntelligence({
     defenseCoverage,
 
     warnings: {
+      rosterErrors:
+        historical
+          .rosterUniverse
+          .rosterErrors
+          .slice(
+            0,
+            100
+          ),
+
+      unresolvedPlayerMetadata:
+        historical
+          .metadata
+          .unresolved
+          .slice(
+            0,
+            100
+          ),
+
       playerErrors:
         historical
           .playerErrors
           .slice(
             0,
-            50
+            100
           ),
 
       collectionProblems:
@@ -2635,6 +3845,9 @@ exports.handler =
           evidenceType:
             "sage-schedule-intelligence",
 
+          schemaVersion:
+            3,
+
           trustedForProduction:
             false,
 
@@ -2658,6 +3871,14 @@ exports.handler =
 // EXPORTS FOR TESTING / FUTURE REFRESHER
 // ═══════════════════════════════════════════════════════════════════════
 
+exports.NFL_TEAMS =
+  NFL_TEAMS;
+
+
+exports.HISTORICAL_ROSTER_SNAPSHOT_WEEKS =
+  HISTORICAL_ROSTER_SNAPSHOT_WEEKS;
+
+
 exports.buildRbScheduleIntelligence =
   buildRbScheduleIntelligence;
 
@@ -2674,8 +3895,44 @@ exports.flattenSchedules =
   flattenSchedules;
 
 
-exports.extractPlayers =
-  extractPlayers;
+exports.normalizeRequestedWeeks =
+  normalizeRequestedWeeks;
+
+
+exports.normalizeArchiveDate =
+  normalizeArchiveDate;
+
+
+exports.snapshotDatesFromSchedules =
+  snapshotDatesFromSchedules;
+
+
+exports.extractArchivedRosterIDs =
+  extractArchivedRosterIDs;
+
+
+exports.fetchArchivedRoster =
+  fetchArchivedRoster;
+
+
+exports.buildHistoricalRosterUniverse =
+  buildHistoricalRosterUniverse;
+
+
+exports.extractCurrentTeamRosterPlayers =
+  extractCurrentTeamRosterPlayers;
+
+
+exports.buildCurrentMetadataMap =
+  buildCurrentMetadataMap;
+
+
+exports.extractPlayerInfo =
+  extractPlayerInfo;
+
+
+exports.resolveHistoricalPlayerMetadata =
+  resolveHistoricalPlayerMetadata;
 
 
 exports.extractPlayerGames =
@@ -2712,7 +3969,3 @@ exports.buildDefenseCoverage =
 
 exports.buildQualityGate =
   buildQualityGate;
-
-
-exports.normalizeRequestedWeeks =
-  normalizeRequestedWeeks;
