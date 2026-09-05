@@ -102,15 +102,24 @@ function rankLabel(window) {
     return "-";
   }
 
-  return (
-    window.scheduleRankLabel ||
-    window.rankLabel ||
-    (
-      window.scheduleRank !== undefined
-        ? String(window.scheduleRank)
-        : "-"
-    )
-  );
+  if (window.scheduleRankLabel) {
+    return window.scheduleRankLabel;
+  }
+
+  if (window.rankLabel) {
+    return window.rankLabel;
+  }
+
+  if (
+    window.scheduleRank !== undefined &&
+    window.scheduleRank !== null
+  ) {
+    return String(
+      window.scheduleRank
+    );
+  }
+
+  return "-";
 }
 
 function outlook(window) {
@@ -139,8 +148,11 @@ function score(window) {
           ? window.averageDifficulty
           : null;
 
-  return Number.isFinite(Number(value))
-    ? Number(value)
+  const numeric =
+    Number(value);
+
+  return Number.isFinite(numeric)
+    ? numeric
     : null;
 }
 
@@ -152,8 +164,34 @@ function formatRank(window) {
   );
 }
 
+function numericRank(label) {
+  if (
+    label === null ||
+    label === undefined
+  ) {
+    return null;
+  }
+
+  const cleaned =
+    String(label)
+      .replace(
+        "T-",
+        ""
+      )
+      .trim();
+
+  const value =
+    Number(cleaned);
+
+  return Number.isFinite(value)
+    ? value
+    : null;
+}
+
 /**
- * Build the 32-team RB defensive difficulty board.
+ * STEP 1
+ * ------
+ * Build the 32-team preseason RB defensive difficulty board.
  */
 const defenseBoard =
   buildRbDefenseDifficulty(
@@ -174,13 +212,46 @@ if (
   );
 }
 
+if (
+  !Array.isArray(
+    defenseBoard.ratings
+  ) ||
+  defenseBoard.ratings.length !== 32
+) {
+  fail(
+    "Expected 32 RB defense ratings; received " +
+      (
+        Array.isArray(
+          defenseBoard.ratings
+        )
+          ? defenseBoard.ratings.length
+          : 0
+      ) +
+      ".\n" +
+      JSON.stringify(
+        defenseBoard,
+        null,
+        2
+      )
+  );
+}
+
 /**
+ * STEP 2
+ * ------
  * Build complete 2026 league Schedule Intelligence.
+ *
+ * IMPORTANT:
+ * buildLeagueRbScheduleIntelligence expects the actual array of
+ * defense ratings, not the wrapper returned by
+ * buildRbDefenseDifficulty().
  */
 const scheduleBoard =
   buildLeagueRbScheduleIntelligence({
     schedule: GAMES,
-    defenseRatings: defenseBoard,
+
+    defenseRatings:
+      defenseBoard.ratings,
   });
 
 if (
@@ -198,18 +269,27 @@ if (
 }
 
 /**
- * Support the current model output shape.
+ * Support the current model output shape while keeping this report
+ * isolated from production logic.
  */
 const teams =
-  Array.isArray(scheduleBoard.teams)
+  Array.isArray(
+    scheduleBoard.teams
+  )
     ? scheduleBoard.teams
-    : Array.isArray(scheduleBoard.schedules)
+    : Array.isArray(
+        scheduleBoard.schedules
+      )
       ? scheduleBoard.schedules
-      : Array.isArray(scheduleBoard.teamSchedules)
+      : Array.isArray(
+          scheduleBoard.teamSchedules
+        )
         ? scheduleBoard.teamSchedules
         : [];
 
-if (teams.length !== 32) {
+if (
+  teams.length !== 32
+) {
   fail(
     "Expected 32 team schedule rows; received " +
       teams.length +
@@ -222,12 +302,16 @@ if (teams.length !== 32) {
   );
 }
 
+/**
+ * Normalize the board into a simple human-review shape.
+ */
 const normalized =
   teams.map(function (row) {
     const team =
       row.team ||
       row.teamAbv ||
-      row.teamAbbr;
+      row.teamAbbr ||
+      null;
 
     const early =
       getWindow(
@@ -263,16 +347,24 @@ const normalized =
       team,
 
       earlyRank:
-        rankLabel(early),
+        rankLabel(
+          early
+        ),
 
       earlyOutlook:
-        outlook(early),
+        outlook(
+          early
+        ),
 
       fullRank:
-        rankLabel(full),
+        rankLabel(
+          full
+        ),
 
       fullOutlook:
-        outlook(full),
+        outlook(
+          full
+        ),
 
       p1416Rank:
         rankLabel(
@@ -305,10 +397,14 @@ const normalized =
         ),
 
       earlyScore:
-        score(early),
+        score(
+          early
+        ),
 
       fullScore:
-        score(full),
+        score(
+          full
+        ),
 
       p1416Score:
         score(
@@ -346,46 +442,53 @@ const normalized =
  * Sort by Full Season schedule rank.
  *
  * Schedule direction:
- * #1 = easiest / most favorable RB schedule.
+ * #1 = easiest / best RB schedule.
  */
 normalized.sort(function (a, b) {
   const aRank =
-    Number(
-      String(
-        a.fullRank
-      ).replace(
-        "T-",
-        ""
-      )
+    numericRank(
+      a.fullRank
     );
 
   const bRank =
-    Number(
-      String(
-        b.fullRank
-      ).replace(
-        "T-",
-        ""
-      )
+    numericRank(
+      b.fullRank
     );
 
   if (
-    Number.isFinite(aRank) &&
-    Number.isFinite(bRank) &&
+    aRank !== null &&
+    bRank !== null &&
     aRank !== bRank
   ) {
     return aRank - bRank;
   }
 
+  if (
+    aRank !== null &&
+    bRank === null
+  ) {
+    return -1;
+  }
+
+  if (
+    aRank === null &&
+    bRank !== null
+  ) {
+    return 1;
+  }
+
   return String(
-    a.team
+    a.team || ""
   ).localeCompare(
     String(
-      b.team
+      b.team || ""
     )
   );
 });
 
+/**
+ * MAIN HUMAN-REVIEW BOARD
+ */
 console.log(
   "\n=============================================================="
 );
@@ -440,6 +543,11 @@ console.table(
   })
 );
 
+/**
+ * CONTINUOUS SCORE REVIEW
+ *
+ * Higher opponent difficulty score = harder schedule.
+ */
 console.log(
   "\nDETAILED SCORES"
 );
@@ -484,22 +592,38 @@ console.table(
 );
 
 /**
- * Specific validation comparison:
+ * SPECIFIC VALIDATION
+ * -------------------
  * Christian McCaffrey vs De'Von Achane.
  */
 const sf =
   normalized.find(
     function (row) {
-      return row.team === "SF";
+      return (
+        row.team ===
+        "SF"
+      );
     }
   );
 
 const mia =
   normalized.find(
     function (row) {
-      return row.team === "MIA";
+      return (
+        row.team ===
+        "MIA"
+      );
     }
   );
+
+if (
+  !sf ||
+  !mia
+) {
+  fail(
+    "Could not locate both SF and MIA in the completed schedule board."
+  );
+}
 
 console.log(
   "\nMcCAFFREY vs ACHANE CHECK"
@@ -515,27 +639,27 @@ console.table([
 
     "W1-4":
       formatRank(
-        sf && sf._early
+        sf._early
       ),
 
     Full:
       formatRank(
-        sf && sf._full
+        sf._full
       ),
 
     "W14-16":
       formatRank(
-        sf && sf._p1416
+        sf._p1416
       ),
 
     "W15-17":
       formatRank(
-        sf && sf._p1517
+        sf._p1517
       ),
 
     "W14-17":
       formatRank(
-        sf && sf._p1417
+        sf._p1417
       ),
   },
 
@@ -548,27 +672,27 @@ console.table([
 
     "W1-4":
       formatRank(
-        mia && mia._early
+        mia._early
       ),
 
     Full:
       formatRank(
-        mia && mia._full
+        mia._full
       ),
 
     "W14-16":
       formatRank(
-        mia && mia._p1416
+        mia._p1416
       ),
 
     "W15-17":
       formatRank(
-        mia && mia._p1517
+        mia._p1517
       ),
 
     "W14-17":
       formatRank(
-        mia && mia._p1417
+        mia._p1417
       ),
   },
 ]);
