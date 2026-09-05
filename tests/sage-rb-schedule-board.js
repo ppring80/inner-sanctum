@@ -6,95 +6,208 @@
  *
  * PURPOSE
  * -------
- * Produce a readable 32-team Schedule Intelligence board from the
- * already-tested preseason RB schedule model.
+ * Produce a readable 32-team Schedule Intelligence board using the
+ * exact same working invocation pattern as:
+ *
+ *   tests/sage-rb-schedule-2026.test.js
  *
  * THIS FILE:
- * - changes no model logic
+ * - changes no production logic
  * - makes no network calls
  * - makes no Tank01 calls
  * - writes no data
- * - only reads the existing modules and prints results
+ * - only prints the already-tested Schedule Intelligence output
  */
 
 const {
-  buildRbDefenseDifficulty,
-} = require(
-  "../netlify/functions/sage-rb-defense-difficulty.js"
-);
-
-const {
-  buildLeagueRbScheduleIntelligence,
+  buildLeagueRbScheduleIntelligence
 } = require(
   "../netlify/functions/sage-rb-schedule-preseason.js"
 );
 
 const {
-  GAMES,
+  buildRbDefenseDifficulty
+} = require(
+  "../netlify/functions/sage-rb-defense-difficulty.js"
+);
+
+const {
+  GAMES
 } = require(
   "../netlify/functions/data/nfl-2026-schedule.js"
 );
 
-/**
- * Current 2026 Draft Command Center DEF market board.
- *
- * Lower ADP = stronger market perception.
- */
-const DEF_MARKET = [
-  { name: "Houston Texans", team: "HOU", adp: 153.8 },
-  { name: "Denver Broncos", team: "DEN", adp: 164.8 },
-  { name: "Los Angeles Rams", team: "LAR", adp: 165.8 },
-  { name: "Seattle Seahawks", team: "SEA", adp: 168.4 },
-  { name: "Philadelphia Eagles", team: "PHI", adp: 176.2 },
-  { name: "Minnesota Vikings", team: "MIN", adp: 187.4 },
-  { name: "Pittsburgh Steelers", team: "PIT", adp: 187.7 },
-  { name: "New England Patriots", team: "NE", adp: 187.8 },
-  { name: "Jacksonville Jaguars", team: "JAX", adp: 189.7 },
-  { name: "Los Angeles Chargers", team: "LAC", adp: 192.2 },
-  { name: "Baltimore Ravens", team: "BAL", adp: 197.7 },
-  { name: "Green Bay Packers", team: "GB", adp: 208.1 },
-  { name: "Kansas City Chiefs", team: "KC", adp: 210.5 },
-  { name: "Detroit Lions", team: "DET", adp: 220.2 },
-  { name: "Cleveland Browns", team: "CLE", adp: 222.0 },
-  { name: "Buffalo Bills", team: "BUF", adp: 225.1 },
-  { name: "Tennessee Titans", team: "TEN", adp: 240.6 },
-  { name: "Dallas Cowboys", team: "DAL", adp: 253.9 },
-  { name: "New Orleans Saints", team: "NO", adp: 263.3 },
-  { name: "San Francisco 49ers", team: "SF", adp: 264.9 },
-  { name: "New York Giants", team: "NYG", adp: 267.1 },
-  { name: "Cincinnati Bengals", team: "CIN", adp: 272.0 },
-  { name: "Chicago Bears", team: "CHI", adp: 272.7 },
-  { name: "Las Vegas Raiders", team: "LV", adp: 272.9 },
-  { name: "Atlanta Falcons", team: "ATL", adp: 274.2 },
-  { name: "Washington Commanders", team: "WSH", adp: 276.5 },
-  { name: "Indianapolis Colts", team: "IND", adp: 279.1 },
-  { name: "Carolina Panthers", team: "CAR", adp: 297.3 },
-  { name: "Tampa Bay Buccaneers", team: "TB", adp: 302.9 },
-  { name: "Arizona Cardinals", team: "ARI", adp: 304.0 },
-  { name: "New York Jets", team: "NYJ", adp: 319.4 },
-  { name: "Miami Dolphins", team: "MIA", adp: 324.1 },
-];
+const DEF_MARKET_2026 = Object.freeze([
+  {
+    name: "Houston Texans",
+    team: "HOU",
+    adp: 153.8
+  },
+  {
+    name: "Denver Broncos",
+    team: "DEN",
+    adp: 164.8
+  },
+  {
+    name: "Los Angeles Rams",
+    team: "LAR",
+    adp: 165.8
+  },
+  {
+    name: "Seattle Seahawks",
+    team: "SEA",
+    adp: 168.4
+  },
+  {
+    name: "Philadelphia Eagles",
+    team: "PHI",
+    adp: 176.2
+  },
+  {
+    name: "Minnesota Vikings",
+    team: "MIN",
+    adp: 187.4
+  },
+  {
+    name: "Pittsburgh Steelers",
+    team: "PIT",
+    adp: 187.7
+  },
+  {
+    name: "New England Patriots",
+    team: "NE",
+    adp: 187.8
+  },
+  {
+    name: "Jacksonville Jaguars",
+    team: "JAX",
+    adp: 189.7
+  },
+  {
+    name: "Los Angeles Chargers",
+    team: "LAC",
+    adp: 192.2
+  },
+  {
+    name: "Baltimore Ravens",
+    team: "BAL",
+    adp: 197.7
+  },
+  {
+    name: "Green Bay Packers",
+    team: "GB",
+    adp: 208.1
+  },
+  {
+    name: "Kansas City Chiefs",
+    team: "KC",
+    adp: 210.5
+  },
+  {
+    name: "Detroit Lions",
+    team: "DET",
+    adp: 220.2
+  },
+  {
+    name: "Cleveland Browns",
+    team: "CLE",
+    adp: 222.0
+  },
+  {
+    name: "Buffalo Bills",
+    team: "BUF",
+    adp: 225.1
+  },
+  {
+    name: "Tennessee Titans",
+    team: "TEN",
+    adp: 240.6
+  },
+  {
+    name: "Dallas Cowboys",
+    team: "DAL",
+    adp: 253.9
+  },
+  {
+    name: "New Orleans Saints",
+    team: "NO",
+    adp: 263.3
+  },
+  {
+    name: "San Francisco 49ers",
+    team: "SF",
+    adp: 264.9
+  },
+  {
+    name: "New York Giants",
+    team: "NYG",
+    adp: 267.1
+  },
+  {
+    name: "Cincinnati Bengals",
+    team: "CIN",
+    adp: 272.0
+  },
+  {
+    name: "Chicago Bears",
+    team: "CHI",
+    adp: 272.7
+  },
+  {
+    name: "Las Vegas Raiders",
+    team: "LV",
+    adp: 272.9
+  },
+  {
+    name: "Atlanta Falcons",
+    team: "ATL",
+    adp: 274.2
+  },
+  {
+    name: "Washington Commanders",
+    team: "WAS",
+    adp: 276.5
+  },
+  {
+    name: "Indianapolis Colts",
+    team: "IND",
+    adp: 279.1
+  },
+  {
+    name: "Carolina Panthers",
+    team: "CAR",
+    adp: 297.3
+  },
+  {
+    name: "Tampa Bay Buccaneers",
+    team: "TB",
+    adp: 302.9
+  },
+  {
+    name: "Arizona Cardinals",
+    team: "ARI",
+    adp: 304.0
+  },
+  {
+    name: "New York Jets",
+    team: "NYJ",
+    adp: 319.4
+  },
+  {
+    name: "Miami Dolphins",
+    team: "MIA",
+    adp: 324.1
+  }
+]);
 
 function fail(message) {
   console.error(
     "\nSCHEDULE BOARD ERROR:\n" +
-      message +
-      "\n"
+    message +
+    "\n"
   );
 
   process.exit(1);
-}
-
-function getWindow(teamRow, key) {
-  if (
-    !teamRow ||
-    !teamRow.windows ||
-    !teamRow.windows[key]
-  ) {
-    return null;
-  }
-
-  return teamRow.windows[key];
 }
 
 function rankLabel(window) {
@@ -106,13 +219,10 @@ function rankLabel(window) {
     return window.scheduleRankLabel;
   }
 
-  if (window.rankLabel) {
-    return window.rankLabel;
-  }
-
   if (
-    window.scheduleRank !== undefined &&
-    window.scheduleRank !== null
+    Number.isFinite(
+      window.scheduleRank
+    )
   ) {
     return String(
       window.scheduleRank
@@ -122,7 +232,7 @@ function rankLabel(window) {
   return "-";
 }
 
-function outlook(window) {
+function outlookLabel(window) {
   if (!window) {
     return "-";
   }
@@ -134,361 +244,159 @@ function outlook(window) {
   );
 }
 
-function score(window) {
-  if (!window) {
-    return null;
-  }
-
-  const value =
-    window.averageDifficultyScore !== undefined
-      ? window.averageDifficultyScore
-      : window.difficultyScore !== undefined
-        ? window.difficultyScore
-        : window.averageDifficulty !== undefined
-          ? window.averageDifficulty
-          : null;
-
-  const numeric =
-    Number(value);
-
-  return Number.isFinite(numeric)
-    ? numeric
-    : null;
-}
-
-function formatRank(window) {
-  return (
-    rankLabel(window) +
-    " " +
-    outlook(window)
-  );
-}
-
-function numericRank(label) {
+function scoreValue(window) {
   if (
-    label === null ||
-    label === undefined
+    !window ||
+    !Number.isFinite(
+      window.averageDifficultyScore
+    )
   ) {
     return null;
   }
 
-  const cleaned =
-    String(label)
-      .replace(
-        "T-",
-        ""
-      )
-      .trim();
+  return Number(
+    window.averageDifficultyScore
+      .toFixed(4)
+  );
+}
 
-  const value =
-    Number(cleaned);
-
-  return Number.isFinite(value)
-    ? value
-    : null;
+function displayWindow(window) {
+  return (
+    rankLabel(window) +
+    " " +
+    outlookLabel(window)
+  );
 }
 
 /**
  * STEP 1
- * ------
- * Build the 32-team preseason RB defensive difficulty board.
+ * Build defensive difficulty exactly as the passing test does.
  */
-const defenseBoard =
+const defense =
   buildRbDefenseDifficulty(
-    DEF_MARKET
+    DEF_MARKET_2026
   );
 
 if (
-  !defenseBoard ||
-  defenseBoard.available !== true
+  !defense ||
+  defense.available !== true
 ) {
   fail(
     "RB defensive difficulty board was unavailable.\n" +
-      JSON.stringify(
-        defenseBoard,
-        null,
-        2
-      )
-  );
-}
-
-if (
-  !Array.isArray(
-    defenseBoard.ratings
-  ) ||
-  defenseBoard.ratings.length !== 32
-) {
-  fail(
-    "Expected 32 RB defense ratings; received " +
-      (
-        Array.isArray(
-          defenseBoard.ratings
-        )
-          ? defenseBoard.ratings.length
-          : 0
-      ) +
-      ".\n" +
-      JSON.stringify(
-        defenseBoard,
-        null,
-        2
-      )
+    JSON.stringify(
+      defense,
+      null,
+      2
+    )
   );
 }
 
 /**
  * STEP 2
- * ------
- * Build complete 2026 league Schedule Intelligence.
- *
- * IMPORTANT:
- * buildLeagueRbScheduleIntelligence expects the actual array of
- * defense ratings, not the wrapper returned by
- * buildRbDefenseDifficulty().
+ * Build league Schedule Intelligence using the exact same function
+ * signature as the known-good end-to-end test.
  */
-const scheduleBoard =
-  buildLeagueRbScheduleIntelligence({
-    schedule: GAMES,
-
-    defenseRatings:
-      defenseBoard.ratings,
-  });
+const result =
+  buildLeagueRbScheduleIntelligence(
+    GAMES,
+    defense
+  );
 
 if (
-  !scheduleBoard ||
-  scheduleBoard.available !== true
+  !result ||
+  result.available !== true
 ) {
   fail(
     "League RB Schedule Intelligence was unavailable.\n" +
-      JSON.stringify(
-        scheduleBoard,
-        null,
-        2
-      )
-  );
-}
-
-/**
- * Support the current model output shape while keeping this report
- * isolated from production logic.
- */
-const teams =
-  Array.isArray(
-    scheduleBoard.teams
-  )
-    ? scheduleBoard.teams
-    : Array.isArray(
-        scheduleBoard.schedules
-      )
-      ? scheduleBoard.schedules
-      : Array.isArray(
-          scheduleBoard.teamSchedules
-        )
-        ? scheduleBoard.teamSchedules
-        : [];
-
-if (
-  teams.length !== 32
-) {
-  fail(
-    "Expected 32 team schedule rows; received " +
-      teams.length +
-      ".\n" +
-      JSON.stringify(
-        scheduleBoard,
-        null,
-        2
-      )
-  );
-}
-
-/**
- * Normalize the board into a simple human-review shape.
- */
-const normalized =
-  teams.map(function (row) {
-    const team =
-      row.team ||
-      row.teamAbv ||
-      row.teamAbbr ||
-      null;
-
-    const early =
-      getWindow(
-        row,
-        "earlySeason"
-      );
-
-    const full =
-      getWindow(
-        row,
-        "fullSeason"
-      );
-
-    const playoffs1416 =
-      getWindow(
-        row,
-        "playoffs14to16"
-      );
-
-    const playoffs1517 =
-      getWindow(
-        row,
-        "playoffs15to17"
-      );
-
-    const playoffs1417 =
-      getWindow(
-        row,
-        "playoffs14to17"
-      );
-
-    return {
-      team,
-
-      earlyRank:
-        rankLabel(
-          early
-        ),
-
-      earlyOutlook:
-        outlook(
-          early
-        ),
-
-      fullRank:
-        rankLabel(
-          full
-        ),
-
-      fullOutlook:
-        outlook(
-          full
-        ),
-
-      p1416Rank:
-        rankLabel(
-          playoffs1416
-        ),
-
-      p1416Outlook:
-        outlook(
-          playoffs1416
-        ),
-
-      p1517Rank:
-        rankLabel(
-          playoffs1517
-        ),
-
-      p1517Outlook:
-        outlook(
-          playoffs1517
-        ),
-
-      p1417Rank:
-        rankLabel(
-          playoffs1417
-        ),
-
-      p1417Outlook:
-        outlook(
-          playoffs1417
-        ),
-
-      earlyScore:
-        score(
-          early
-        ),
-
-      fullScore:
-        score(
-          full
-        ),
-
-      p1416Score:
-        score(
-          playoffs1416
-        ),
-
-      p1517Score:
-        score(
-          playoffs1517
-        ),
-
-      p1417Score:
-        score(
-          playoffs1417
-        ),
-
-      _early:
-        early,
-
-      _full:
-        full,
-
-      _p1416:
-        playoffs1416,
-
-      _p1517:
-        playoffs1517,
-
-      _p1417:
-        playoffs1417,
-    };
-  });
-
-/**
- * Sort by Full Season schedule rank.
- *
- * Schedule direction:
- * #1 = easiest / best RB schedule.
- */
-normalized.sort(function (a, b) {
-  const aRank =
-    numericRank(
-      a.fullRank
-    );
-
-  const bRank =
-    numericRank(
-      b.fullRank
-    );
-
-  if (
-    aRank !== null &&
-    bRank !== null &&
-    aRank !== bRank
-  ) {
-    return aRank - bRank;
-  }
-
-  if (
-    aRank !== null &&
-    bRank === null
-  ) {
-    return -1;
-  }
-
-  if (
-    aRank === null &&
-    bRank !== null
-  ) {
-    return 1;
-  }
-
-  return String(
-    a.team || ""
-  ).localeCompare(
-    String(
-      b.team || ""
+    JSON.stringify(
+      result,
+      null,
+      2
     )
   );
-});
+}
+
+if (
+  !Array.isArray(
+    result.teams
+  ) ||
+  result.teams.length !== 32
+) {
+  fail(
+    "Expected 32 team rows; received " +
+    (
+      Array.isArray(
+        result.teams
+      )
+        ? result.teams.length
+        : 0
+    ) +
+    "."
+  );
+}
 
 /**
- * MAIN HUMAN-REVIEW BOARD
+ * Flatten only the fields already proven by the passing test.
  */
+const board =
+  result.teams.map(
+    function (team) {
+      const windows =
+        team.windows;
+
+      return {
+        team:
+          team.team,
+
+        early:
+          windows.earlySeason,
+
+        full:
+          windows.fullSeason,
+
+        playoffs1416:
+          windows.playoffs14to16,
+
+        playoffs1517:
+          windows.playoffs15to17,
+
+        playoffs1417:
+          windows.playoffs14to17
+      };
+    }
+  );
+
+/**
+ * Sort by full-season Schedule Intelligence rank.
+ *
+ * Schedule rank direction:
+ *   #1 = easiest / best RB schedule
+ */
+board.sort(
+  function (a, b) {
+    const aRank =
+      a.full.scheduleRank;
+
+    const bRank =
+      b.full.scheduleRank;
+
+    if (
+      aRank !== bRank
+    ) {
+      return (
+        aRank -
+        bRank
+      );
+    }
+
+    return (
+      a.team.localeCompare(
+        b.team
+      )
+    );
+  }
+);
+
 console.log(
   "\n=============================================================="
 );
@@ -498,106 +406,129 @@ console.log(
 );
 
 console.log(
-  "Schedule rank direction: #1 = easiest / most favorable"
+  "Schedule rank: #1 = easiest / most favorable RB schedule"
 );
 
 console.log(
-  "Defense difficulty direction: #1 = hardest RB defense"
+  "Difficulty score: lower = easier schedule"
 );
 
 console.log(
   "==============================================================\n"
 );
 
+/**
+ * Primary 32-team review board.
+ */
 console.table(
-  normalized.map(function (row) {
-    return {
-      Team:
-        row.team,
+  board.map(
+    function (row) {
+      return {
+        Team:
+          row.team,
 
-      "W1-4":
-        row.earlyRank +
-        " " +
-        row.earlyOutlook,
+        "Weeks 1-4":
+          displayWindow(
+            row.early
+          ),
 
-      Full:
-        row.fullRank +
-        " " +
-        row.fullOutlook,
+        "Full Season":
+          displayWindow(
+            row.full
+          ),
 
-      "W14-16":
-        row.p1416Rank +
-        " " +
-        row.p1416Outlook,
+        "Weeks 14-16":
+          displayWindow(
+            row.playoffs1416
+          ),
 
-      "W15-17":
-        row.p1517Rank +
-        " " +
-        row.p1517Outlook,
+        "Weeks 15-17":
+          displayWindow(
+            row.playoffs1517
+          ),
 
-      "W14-17":
-        row.p1417Rank +
-        " " +
-        row.p1417Outlook,
-    };
-  })
+        "Weeks 14-17":
+          displayWindow(
+            row.playoffs1417
+          )
+      };
+    }
+  )
 );
 
 /**
- * CONTINUOUS SCORE REVIEW
- *
- * Higher opponent difficulty score = harder schedule.
+ * Detailed score board.
  */
 console.log(
-  "\nDETAILED SCORES"
+  "\nDETAILED DIFFICULTY SCORES"
 );
 
 console.table(
-  normalized.map(function (row) {
-    return {
-      Team:
-        row.team,
+  board.map(
+    function (row) {
+      return {
+        Team:
+          row.team,
 
-      "W1-4 Rank":
-        row.earlyRank,
+        "W1-4 Rank":
+          rankLabel(
+            row.early
+          ),
 
-      "W1-4 Score":
-        row.earlyScore,
+        "W1-4 Score":
+          scoreValue(
+            row.early
+          ),
 
-      "Full Rank":
-        row.fullRank,
+        "Full Rank":
+          rankLabel(
+            row.full
+          ),
 
-      "Full Score":
-        row.fullScore,
+        "Full Score":
+          scoreValue(
+            row.full
+          ),
 
-      "W14-16 Rank":
-        row.p1416Rank,
+        "W14-16 Rank":
+          rankLabel(
+            row.playoffs1416
+          ),
 
-      "W14-16 Score":
-        row.p1416Score,
+        "W14-16 Score":
+          scoreValue(
+            row.playoffs1416
+          ),
 
-      "W15-17 Rank":
-        row.p1517Rank,
+        "W15-17 Rank":
+          rankLabel(
+            row.playoffs1517
+          ),
 
-      "W15-17 Score":
-        row.p1517Score,
+        "W15-17 Score":
+          scoreValue(
+            row.playoffs1517
+          ),
 
-      "W14-17 Rank":
-        row.p1417Rank,
+        "W14-17 Rank":
+          rankLabel(
+            row.playoffs1417
+          ),
 
-      "W14-17 Score":
-        row.p1417Score,
-    };
-  })
+        "W14-17 Score":
+          scoreValue(
+            row.playoffs1417
+          )
+      };
+    }
+  )
 );
 
 /**
- * SPECIFIC VALIDATION
- * -------------------
- * Christian McCaffrey vs De'Von Achane.
+ * Specific comparison we have already validated in the test.
  */
 const sf =
-  normalized.find(
+  board.find(
     function (row) {
       return (
         row.team ===
@@ -607,7 +538,7 @@ const sf =
   );
 
 const mia =
-  normalized.find(
+  board.find(
     function (row) {
       return (
         row.team ===
@@ -621,12 +552,12 @@ if (
   !mia
 ) {
   fail(
-    "Could not locate both SF and MIA in the completed schedule board."
+    "Could not locate SF and MIA in the completed board."
   );
 }
 
 console.log(
-  "\nMcCAFFREY vs ACHANE CHECK"
+  "\nMcCAFFREY vs ACHANE"
 );
 
 console.table([
@@ -637,30 +568,30 @@ console.table([
     Team:
       "SF",
 
-    "W1-4":
-      formatRank(
-        sf._early
+    "Weeks 1-4":
+      displayWindow(
+        sf.early
       ),
 
-    Full:
-      formatRank(
-        sf._full
+    "Full Season":
+      displayWindow(
+        sf.full
       ),
 
-    "W14-16":
-      formatRank(
-        sf._p1416
+    "Weeks 14-16":
+      displayWindow(
+        sf.playoffs1416
       ),
 
-    "W15-17":
-      formatRank(
-        sf._p1517
+    "Weeks 15-17":
+      displayWindow(
+        sf.playoffs1517
       ),
 
-    "W14-17":
-      formatRank(
-        sf._p1417
-      ),
+    "Weeks 14-17":
+      displayWindow(
+        sf.playoffs1417
+      )
   },
 
   {
@@ -670,31 +601,31 @@ console.table([
     Team:
       "MIA",
 
-    "W1-4":
-      formatRank(
-        mia._early
+    "Weeks 1-4":
+      displayWindow(
+        mia.early
       ),
 
-    Full:
-      formatRank(
-        mia._full
+    "Full Season":
+      displayWindow(
+        mia.full
       ),
 
-    "W14-16":
-      formatRank(
-        mia._p1416
+    "Weeks 14-16":
+      displayWindow(
+        mia.playoffs1416
       ),
 
-    "W15-17":
-      formatRank(
-        mia._p1517
+    "Weeks 15-17":
+      displayWindow(
+        mia.playoffs1517
       ),
 
-    "W14-17":
-      formatRank(
-        mia._p1417
-      ),
-  },
+    "Weeks 14-17":
+      displayWindow(
+        mia.playoffs1417
+      )
+  }
 ]);
 
 console.log(
