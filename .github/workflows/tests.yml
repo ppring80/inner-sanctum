@@ -39,3 +39,5 @@ jobs:
 
       - name: Run Patreon multi-membership regression tests
         run: node tests/patreon-multi-membership.test.js
+             - name: Run 2026 RB Schedule Intelligence tests
+        run: node tests/sage-rb-schedule-2026.test.js
