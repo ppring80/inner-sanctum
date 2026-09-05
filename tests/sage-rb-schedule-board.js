@@ -32,7 +32,7 @@ const {
 const {
   GAMES,
 } = require(
-  "../data/nfl-2026-schedule.js"
+  "../netlify/functions/data/nfl-2026-schedule.js"
 );
 
 /**
@@ -153,7 +153,7 @@ function formatRank(window) {
 }
 
 /**
- * 1. Build 32-team RB defensive difficulty board.
+ * Build the 32-team RB defensive difficulty board.
  */
 const defenseBoard =
   buildRbDefenseDifficulty(
@@ -165,12 +165,17 @@ if (
   defenseBoard.available !== true
 ) {
   fail(
-    "RB defensive difficulty board was unavailable."
+    "RB defensive difficulty board was unavailable.\n" +
+      JSON.stringify(
+        defenseBoard,
+        null,
+        2
+      )
   );
 }
 
 /**
- * 2. Build complete league schedule intelligence.
+ * Build complete 2026 league Schedule Intelligence.
  */
 const scheduleBoard =
   buildLeagueRbScheduleIntelligence({
@@ -193,7 +198,7 @@ if (
 }
 
 /**
- * Support the likely result shapes without changing model behavior.
+ * Support the current model output shape.
  */
 const teams =
   Array.isArray(scheduleBoard.teams)
@@ -208,7 +213,12 @@ if (teams.length !== 32) {
   fail(
     "Expected 32 team schedule rows; received " +
       teams.length +
-      "."
+      ".\n" +
+      JSON.stringify(
+        scheduleBoard,
+        null,
+        2
+      )
   );
 }
 
@@ -333,10 +343,10 @@ const normalized =
   });
 
 /**
- * Sort primarily by Full Season schedule rank.
+ * Sort by Full Season schedule rank.
  *
  * Schedule direction:
- * #1 = easiest / best RB schedule.
+ * #1 = easiest / most favorable RB schedule.
  */
 normalized.sort(function (a, b) {
   const aRank =
@@ -389,7 +399,7 @@ console.log(
 );
 
 console.log(
-  "Defense difficulty: #1 = hardest RB defense"
+  "Defense difficulty direction: #1 = hardest RB defense"
 );
 
 console.log(
@@ -407,7 +417,7 @@ console.table(
         " " +
         row.earlyOutlook,
 
-      "Full":
+      Full:
         row.fullRank +
         " " +
         row.fullOutlook,
@@ -430,9 +440,6 @@ console.table(
   })
 );
 
-/**
- * Detailed football-review board.
- */
 console.log(
   "\nDETAILED SCORES"
 );
@@ -477,7 +484,8 @@ console.table(
 );
 
 /**
- * Specific known validation comparison.
+ * Specific validation comparison:
+ * Christian McCaffrey vs De'Von Achane.
  */
 const sf =
   normalized.find(
@@ -510,7 +518,7 @@ console.table([
         sf && sf._early
       ),
 
-    "Full":
+    Full:
       formatRank(
         sf && sf._full
       ),
@@ -543,7 +551,7 @@ console.table([
         mia && mia._early
       ),
 
-    "Full":
+    Full:
       formatRank(
         mia && mia._full
       ),
