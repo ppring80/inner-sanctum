@@ -1,54 +1,43 @@
 // netlify/functions/sage-schedule-intelligence-data.js
 //
-// SAGE — SCHEDULE INTELLIGENCE DATA BUILDER V1
+// SAGE — SCHEDULE INTELLIGENCE DATA BUILDER V1.1
 //
 // PURPOSE
 // -------
-// Build the real data inputs required by:
+// Build trustworthy league-wide RB Schedule Intelligence from:
 //
-//   sage-schedule-intelligence.js
+//   Tank01 player list
+//   + Tank01 historical player game logs
+//   + authoritative Weekly SAGE schedule
+//   + sage-schedule-intelligence.js calculations
 //
-// This file owns DATA COLLECTION / NORMALIZATION only.
+// THIS FILE OWNS
+// --------------
+// - historical RB discovery
+// - historical RB game collection
+// - historical team / opponent resolution
+// - game deduplication
+// - schedule collection
+// - data-quality diagnostics
+// - coverage validation
+// - final Schedule Intelligence assembly
 //
-// It:
-// - loads the Tank01 NFL player list
-// - identifies RBs
-// - loads historical RB game logs
-// - joins those game logs to authoritative Weekly SAGE schedule evidence
-// - determines the defense faced in each historical game
-// - loads the target-season NFL schedule
-// - feeds the normalized evidence into Schedule Intelligence
+// THIS FILE DOES NOT
+// ------------------
+// - modify Draft SAGE scoring
+// - modify Draft SAGE recommendation order
+// - modify Opportunity Intelligence
+// - modify Context Intelligence
+// - modify Market Intelligence
+// - modify Scarcity Intelligence
+// - modify draft-sage-synthesis.js
 //
-// It DOES NOT:
-// - alter Draft SAGE recommendation ordering
-// - alter Opportunity Intelligence
-// - alter Context Intelligence
-// - alter Market Intelligence
-// - alter Scarcity Intelligence
-// - alter draft-sage-synthesis.js
-// - calculate a hidden player score
-//
-// V1 DEFAULT
-// ----------
-// Target season:     2026
-// Baseline season:   target season - 1 (2025)
-// Position:          RB
-// Season type:       regular season
-//
-// Historical defensive strength is therefore based on the prior completed
-// regular season until current-season blending is added in a later version.
-//
-// IMPORTANT AGGREGATION RULE
-// --------------------------
-// sage-schedule-intelligence.js is responsible for:
-//
-//   1. scoring each RB game
-//   2. summing all opposing RB production within the same NFL game
-//   3. averaging those TEAM-RB game totals for each defense
-//
-// That avoids bias toward teams that simply use more running backs.
+// IMPORTANT V1 RULE
+// -----------------
+// Schedule Intelligence remains a separate, explainable signal.
 //
 // ═══════════════════════════════════════════════════════════════════════
+
 
 const {
   normalizeTeam,
@@ -61,6 +50,7 @@ const {
     "./sage-schedule-intelligence.js"
   );
 
+
 const {
   buildWeeklySchedule
 } =
@@ -68,17 +58,74 @@ const {
     "./weekly-sage-schedule.js"
   );
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════
+
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+
 
 const DEFAULT_SEASON_TYPE =
   "reg";
 
+
 const DEFAULT_POSITION =
   "RB";
 
+
 const DEFAULT_TARGET_SEASON =
   2026;
+
+
+/*
+  Request more than a regular-season maximum.
+
+  The important point is that we NEVER rely on Tank01's default
+  getNFLGamesForPlayer game count.
+*/
+const PLAYER_GAME_REQUEST_LIMIT =
+  25;
+
+
+/*
+  Keep pressure on Tank01 intentionally low.
+
+  This is a build / refresh path, not a customer-request path.
+*/
+const PLAYER_CONCURRENCY =
+  2;
+
+
+/*
+  Basic quality gates.
+
+  These are intentionally conservative.
+
+  A defense normally plays 17 regular-season games. We should see
+  substantially more than the 4-10 defense samples produced by the
+  first incomplete collector.
+
+  We do not require exactly 17 because:
+  - a Tank01 player may be missing
+  - positional classifications may vary
+  - historical game evidence may occasionally be incomplete
+
+  But a league-wide result averaging only a handful of games per
+  defense is NOT acceptable Schedule Intelligence.
+*/
+const MIN_ACCEPTABLE_DEFENSE_GAMES =
+  12;
+
+
+const MIN_ACCEPTABLE_DEFENSES =
+  28;
+
+
+const MIN_ACCEPTABLE_HISTORICAL_ROWS =
+  450;
+
 
 const DEFAULT_EARLY_WEEKS =
   [
@@ -87,6 +134,7 @@ const DEFAULT_EARLY_WEEKS =
     3,
     4
   ];
+
 
 const DEFAULT_SEASON_WEEKS =
   [
@@ -110,6 +158,7 @@ const DEFAULT_SEASON_WEEKS =
     18
   ];
 
+
 const DEFAULT_PLAYOFF_WEEKS =
   [
     14,
@@ -118,49 +167,40 @@ const DEFAULT_PLAYOFF_WEEKS =
     17
   ];
 
-/*
-  Keep Tank01 pressure intentionally controlled.
-
-  This mirrors the production discipline already used by Weekly SAGE
-  population builders rather than blasting every player request at once.
-*/
-const PLAYER_CONCURRENCY =
-  2;
-
 
 // ═══════════════════════════════════════════════════════════════════════
-// GENERIC HELPERS
+// BASIC HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 
 function num(
   value
 ) {
-  const n =
+  const result =
     Number(
       value
     );
 
   return Number.isFinite(
-    n
+    result
   )
-    ? n
+    ? result
     : 0;
 }
 
 
 function integer(
   value,
-  fallback
+  fallback = null
 ) {
-  const n =
+  const result =
     Number(
       value
     );
 
   return Number.isInteger(
-    n
+    result
   )
-    ? n
+    ? result
     : fallback;
 }
 
@@ -195,17 +235,87 @@ function normalizeSeasonType(
 }
 
 
+function round(
+  value,
+  digits = 2
+) {
+  const n =
+    Number(
+      value
+    );
+
+  if (
+    !Number.isFinite(
+      n
+    )
+  ) {
+    return null;
+  }
+
+  const factor =
+    Math.pow(
+      10,
+      digits
+    );
+
+  return (
+    Math.round(
+      (
+        n +
+        Number.EPSILON
+      ) *
+      factor
+    ) /
+    factor
+  );
+}
+
+
+function jsonResponse(
+  statusCode,
+  body
+) {
+  return {
+    statusCode,
+
+    headers: {
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        "no-store"
+    },
+
+    body:
+      JSON.stringify(
+        body,
+        null,
+        2
+      )
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLAYER HELPERS
+// ═══════════════════════════════════════════════════════════════════════
+
 function playerIDOf(
   player
 ) {
+  if (
+    !player ||
+    typeof player !==
+      "object"
+  ) {
+    return "";
+  }
+
   return String(
-    player &&
-    (
-      player.playerID ??
-      player.playerId ??
-      player.id ??
-      ""
-    )
+    player.playerID ??
+    player.playerId ??
+    player.id ??
+    ""
   ).trim();
 }
 
@@ -265,33 +375,9 @@ function playerTeamOf(
     player.teamAbv ??
     player.team ??
     player.teamAbbr ??
+    player.teamAbbreviation ??
     ""
   );
-}
-
-
-function jsonResponse(
-  statusCode,
-  body
-) {
-  return {
-    statusCode,
-
-    headers: {
-      "Content-Type":
-        "application/json",
-
-      "Cache-Control":
-        "no-store"
-    },
-
-    body:
-      JSON.stringify(
-        body,
-        null,
-        2
-      )
-  };
 }
 
 
@@ -332,64 +418,118 @@ async function tank01Fetch(
         : ""
     );
 
-  const response =
-    await fetch(
-      url,
-      {
-        method:
-          "GET",
+  const maxAttempts =
+    4;
 
-        headers:
-          tank01Headers()
-      }
-    );
-
-  let data =
+  let lastError =
     null;
 
-  try {
-    data =
-      await response.json();
-  } catch (
-    error
+  for (
+    let attempt = 1;
+    attempt <= maxAttempts;
+    attempt += 1
   ) {
-    data =
-      null;
-  }
+    try {
+      const response =
+        await fetch(
+          url,
+          {
+            method:
+              "GET",
 
-  if (
-    !response.ok
-  ) {
-    let detail =
-      `HTTP ${response.status}`;
+            headers:
+              tank01Headers()
+          }
+        );
 
-    if (
-      data &&
-      data.message
+      let data =
+        null;
+
+      try {
+        data =
+          await response.json();
+      } catch (
+        error
+      ) {
+        data =
+          null;
+      }
+
+      if (
+        response.ok
+      ) {
+        return data;
+      }
+
+      let detail =
+        `HTTP ${response.status}`;
+
+      if (
+        data &&
+        data.message
+      ) {
+        detail =
+          data.message;
+      } else if (
+        data &&
+        data.error
+      ) {
+        detail =
+          data.error;
+      } else if (
+        data &&
+        typeof data.body ===
+          "string"
+      ) {
+        detail =
+          data.body;
+      }
+
+      lastError =
+        new Error(
+          `Tank01 ${endpoint} failed: ${detail}`
+        );
+
+      /*
+        Retry only server/rate-limit style failures.
+      */
+      if (
+        response.status !== 429 &&
+        response.status < 500
+      ) {
+        throw lastError;
+      }
+    } catch (
+      error
     ) {
-      detail =
-        data.message;
-    } else if (
-      data &&
-      data.error
-    ) {
-      detail =
-        data.error;
-    } else if (
-      data &&
-      typeof data.body ===
-        "string"
-    ) {
-      detail =
-        data.body;
+      lastError =
+        error;
     }
 
-    throw new Error(
-      `Tank01 ${endpoint} failed: ${detail}`
-    );
+    if (
+      attempt <
+      maxAttempts
+    ) {
+      const delay =
+        attempt *
+        500;
+
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            delay
+          )
+      );
+    }
   }
 
-  return data;
+  throw (
+    lastError ||
+    new Error(
+      `Tank01 ${endpoint} failed.`
+    )
+  );
 }
 
 
@@ -422,7 +562,9 @@ function unwrapBody(
       } catch (
         error
       ) {
-        // Leave body unchanged.
+        /*
+          Keep raw body.
+        */
       }
     }
 
@@ -471,23 +613,6 @@ function extractPlayers(
 }
 
 
-/*
-  Tank01 getNFLGamesForPlayer currently returns body either as:
-
-    [
-      game,
-      game
-    ]
-
-  or as:
-
-    {
-      GAME_ID: game,
-      GAME_ID: game
-    }
-
-  Normalize both into one array while preserving gameID.
-*/
 function extractPlayerGames(
   data
 ) {
@@ -507,7 +632,13 @@ function extractPlayerGames(
       body
     )
   ) {
-    return body;
+    return body
+      .filter(
+        game =>
+          game &&
+          typeof game ===
+            "object"
+      );
   }
 
   if (
@@ -516,21 +647,27 @@ function extractPlayerGames(
   ) {
     return Object.entries(
       body
-    ).map(
-      ([
-        gameID,
-        game
-      ]) => ({
-        ...(game || {}),
+    )
+      .map(
+        ([
+          gameID,
+          game
+        ]) => ({
+          ...(game || {}),
 
-        gameID:
-          (
-            game &&
-            game.gameID
-          ) ||
-          gameID
-      })
-    );
+          gameID:
+            (
+              game &&
+              game.gameID
+            ) ||
+            gameID
+        })
+      )
+      .filter(
+        game =>
+          game &&
+          game.gameID
+      );
   }
 
   return [];
@@ -553,6 +690,13 @@ async function mapWithConcurrency(
       ? items
       : [];
 
+  if (
+    source.length ===
+    0
+  ) {
+    return [];
+  }
+
   const limit =
     Math.max(
       1,
@@ -570,7 +714,7 @@ async function mapWithConcurrency(
   let nextIndex =
     0;
 
-  async function runWorker() {
+  async function workerLoop() {
     while (
       true
     ) {
@@ -595,22 +739,22 @@ async function mapWithConcurrency(
     }
   }
 
-  const workers =
-    [];
-
   const workerCount =
     Math.min(
       limit,
       source.length
     );
 
+  const workers =
+    [];
+
   for (
-    let i = 0;
-    i < workerCount;
-    i += 1
+    let index = 0;
+    index < workerCount;
+    index += 1
   ) {
     workers.push(
-      runWorker()
+      workerLoop()
     );
   }
 
@@ -626,6 +770,40 @@ async function mapWithConcurrency(
 // SCHEDULE COLLECTION
 // ═══════════════════════════════════════════════════════════════════════
 
+function normalizeRequestedWeeks(
+  weeks
+) {
+  return Array.from(
+    new Set(
+      (
+        Array.isArray(
+          weeks
+        )
+          ? weeks
+          : []
+      )
+        .map(
+          week =>
+            integer(
+              week,
+              null
+            )
+        )
+        .filter(
+          week =>
+            Number.isInteger(
+              week
+            ) &&
+            week > 0
+        )
+    )
+  ).sort(
+    (a, b) =>
+      a - b
+  );
+}
+
+
 async function buildSeasonSchedules({
   season,
   seasonType =
@@ -634,44 +812,18 @@ async function buildSeasonSchedules({
     DEFAULT_SEASON_WEEKS
 }) {
   const requestedWeeks =
-    Array.from(
-      new Set(
-        (
-          Array.isArray(
-            weeks
-          )
-            ? weeks
-            : []
-        )
-          .map(
-            week =>
-              integer(
-                week,
-                null
-              )
-          )
-          .filter(
-            week =>
-              Number.isInteger(
-                week
-              ) &&
-              week > 0
-          )
-      )
-    ).sort(
-      (a, b) =>
-        a - b
+    normalizeRequestedWeeks(
+      weeks
     );
 
   const schedules =
     [];
 
   /*
-    Deliberately serialized.
+    Intentionally serialized.
 
-    buildWeeklySchedule is the existing authoritative schedule builder
-    and itself calls Tank01. Schedule collection happens once per build,
-    so reliability is more important than making 18 parallel API calls.
+    We use the proven Weekly SAGE schedule builder as the
+    authoritative source for game/week/team context.
   */
   for (
     const week
@@ -688,6 +840,17 @@ async function buildSeasonSchedules({
 
         seasonType
       });
+
+    if (
+      !schedule ||
+      !Array.isArray(
+        schedule.games
+      )
+    ) {
+      throw new Error(
+        `Weekly schedule build failed structural validation for ${season} Week ${week}.`
+      );
+    }
 
     schedules.push(
       schedule
@@ -753,6 +916,13 @@ function buildGameMap(
           game.home
         );
 
+      if (
+        !away ||
+        !home
+      ) {
+        continue;
+      }
+
       gameMap.set(
         String(
           game.gameID
@@ -796,6 +966,9 @@ function flattenSchedules(
   const games =
     [];
 
+  const seen =
+    new Set();
+
   for (
     const schedule
     of (
@@ -806,7 +979,7 @@ function flattenSchedules(
         : []
     )
   ) {
-    const week =
+    const scheduleWeek =
       integer(
         schedule &&
         (
@@ -835,25 +1008,55 @@ function flattenSchedules(
         continue;
       }
 
+      const gameID =
+        String(
+          game.gameID
+        );
+
+      if (
+        seen.has(
+          gameID
+        )
+      ) {
+        continue;
+      }
+
+      const away =
+        normalizeTeam(
+          game.away
+        );
+
+      const home =
+        normalizeTeam(
+          game.home
+        );
+
+      if (
+        !away ||
+        !home
+      ) {
+        continue;
+      }
+
+      seen.add(
+        gameID
+      );
+
       games.push({
         ...game,
+
+        gameID,
 
         week:
           integer(
             game.week ??
             game.gameWeek,
-            week
+            scheduleWeek
           ),
 
-        away:
-          normalizeTeam(
-            game.away
-          ),
+        away,
 
-        home:
-          normalizeTeam(
-            game.home
-          )
+        home
       });
     }
   }
@@ -863,7 +1066,7 @@ function flattenSchedules(
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// HISTORICAL RB GAME NORMALIZATION
+// HISTORICAL TEAM / OPPONENT RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════
 
 function opponentForTeam(
@@ -896,83 +1099,119 @@ function opponentForTeam(
     normalizedTeam ===
     away
   ) {
-    return home || null;
+    return (
+      home ||
+      null
+    );
   }
 
   if (
     normalizedTeam ===
     home
   ) {
-    return away || null;
+    return (
+      away ||
+      null
+    );
   }
 
   return null;
 }
 
 
+function historicalTeamCandidates(
+  game,
+  player
+) {
+  const rawCandidates =
+    [
+      game &&
+      game.teamAbv,
+
+      game &&
+      game.team,
+
+      game &&
+      game.teamAbbr,
+
+      game &&
+      game.teamAbbreviation,
+
+      game &&
+      game.playerTeam,
+
+      player &&
+      player.historicalTeam,
+
+      player &&
+      player.team
+    ];
+
+  const result =
+    [];
+
+  const seen =
+    new Set();
+
+  for (
+    const candidate
+    of rawCandidates
+  ) {
+    const normalized =
+      normalizeTeam(
+        candidate
+      );
+
+    if (
+      !normalized ||
+      seen.has(
+        normalized
+      )
+    ) {
+      continue;
+    }
+
+    seen.add(
+      normalized
+    );
+
+    result.push(
+      normalized
+    );
+  }
+
+  return result;
+}
+
+
 function inferHistoricalTeam({
   game,
   scheduleGame,
-  currentTeam
+  player
 }) {
-  /*
-    Prefer team identity embedded in the historical game record.
+  const candidates =
+    historicalTeamCandidates(
+      game,
+      player
+    );
 
-    Current roster team is only a fallback because players can change
-    NFL teams between the baseline season and target season.
-  */
-  const possibleHistoricalTeam =
-    normalizeTeam(
-      game &&
-      (
-        game.teamAbv ??
-        game.team ??
-        game.teamAbbr ??
-        game.playerTeam ??
-        ""
+  for (
+    const team
+    of candidates
+  ) {
+    if (
+      opponentForTeam(
+        scheduleGame,
+        team
       )
-    );
-
-  if (
-    possibleHistoricalTeam
-  ) {
-    const opponent =
-      opponentForTeam(
-        scheduleGame,
-        possibleHistoricalTeam
-      );
-
-    if (
-      opponent
     ) {
-      return possibleHistoricalTeam;
-    }
-  }
-
-  const normalizedCurrentTeam =
-    normalizeTeam(
-      currentTeam
-    );
-
-  if (
-    normalizedCurrentTeam
-  ) {
-    const opponent =
-      opponentForTeam(
-        scheduleGame,
-        normalizedCurrentTeam
-      );
-
-    if (
-      opponent
-    ) {
-      return normalizedCurrentTeam;
+      return team;
     }
   }
 
   /*
-    Last-resort support for Tank01 game records that may expose an
-    explicit opponent/team pairing using alternate fields.
+    If Tank01 gives an explicit opponent but not player team,
+    derive the player team from the schedule.
   */
   const explicitOpponent =
     normalizeTeam(
@@ -981,6 +1220,7 @@ function inferHistoricalTeam({
         game.opponent ??
         game.opponentAbv ??
         game.opp ??
+        game.oppAbv ??
         ""
       )
     );
@@ -1004,20 +1244,30 @@ function inferHistoricalTeam({
       explicitOpponent ===
       away
     ) {
-      return home || null;
+      return (
+        home ||
+        null
+      );
     }
 
     if (
       explicitOpponent ===
       home
     ) {
-      return away || null;
+      return (
+        away ||
+        null
+      );
     }
   }
 
   return null;
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// HISTORICAL GAME NORMALIZATION
+// ═══════════════════════════════════════════════════════════════════════
 
 function normalizeHistoricalPlayerGame({
   player,
@@ -1028,7 +1278,16 @@ function normalizeHistoricalPlayerGame({
     !game ||
     !game.gameID
   ) {
-    return null;
+    return {
+      ok:
+        false,
+
+      reason:
+        "missing-game-id",
+
+      row:
+        null
+    };
   }
 
   const gameID =
@@ -1044,22 +1303,42 @@ function normalizeHistoricalPlayerGame({
   if (
     !scheduleGame
   ) {
-    return null;
+    return {
+      ok:
+        false,
+
+      reason:
+        "schedule-game-not-found",
+
+      gameID,
+
+      row:
+        null
+    };
   }
 
   const team =
     inferHistoricalTeam({
       game,
       scheduleGame,
-
-      currentTeam:
-        player.team
+      player
     });
 
   if (
     !team
   ) {
-    return null;
+    return {
+      ok:
+        false,
+
+      reason:
+        "historical-team-not-resolved",
+
+      gameID,
+
+      row:
+        null
+    };
   }
 
   const defense =
@@ -1071,52 +1350,149 @@ function normalizeHistoricalPlayerGame({
   if (
     !defense
   ) {
-    return null;
+    return {
+      ok:
+        false,
+
+      reason:
+        "opponent-not-resolved",
+
+      gameID,
+
+      row:
+        null
+    };
   }
 
   return {
-    ...game,
+    ok:
+      true,
 
-    gameID,
+    reason:
+      null,
 
-    playerID:
-      player.playerID,
+    row: {
+      ...game,
 
-    playerName:
-      player.name,
+      gameID,
 
-    position:
-      DEFAULT_POSITION,
+      playerID:
+        player.playerID,
 
-    team,
+      playerName:
+        player.name,
 
-    defense,
+      position:
+        DEFAULT_POSITION,
 
-    opponent:
+      team,
+
       defense,
 
-    week:
-      scheduleGame.week,
+      opponent:
+        defense,
 
-    sageWeek:
-      scheduleGame.week,
+      week:
+        scheduleGame.week,
 
-    sageGameDate:
-      scheduleGame.gameDate,
+      sageWeek:
+        scheduleGame.week,
 
-    sageGameTime:
-      scheduleGame.gameTime,
+      sageGameDate:
+        scheduleGame.gameDate,
 
-    sageGameStatus:
-      scheduleGame.gameStatus
+      sageGameTime:
+        scheduleGame.gameTime,
+
+      sageGameStatus:
+        scheduleGame.gameStatus
+    }
   };
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// DEDUPLICATION
+// ═══════════════════════════════════════════════════════════════════════
+
+function dedupeHistoricalRows(
+  rows
+) {
+  const seen =
+    new Set();
+
+  const result =
+    [];
+
+  let duplicateCount =
+    0;
+
+  for (
+    const row
+    of (
+      Array.isArray(
+        rows
+      )
+        ? rows
+        : []
+    )
+  ) {
+    if (
+      !row ||
+      !row.playerID ||
+      !row.gameID
+    ) {
+      continue;
+    }
+
+    const key =
+      `${row.playerID}|${row.gameID}`;
+
+    if (
+      seen.has(
+        key
+      )
+    ) {
+      duplicateCount +=
+        1;
+
+      continue;
+    }
+
+    seen.add(
+      key
+    );
+
+    result.push(
+      row
+    );
+  }
+
+  return {
+    rows:
+      result,
+
+    duplicateCount
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// HISTORICAL RB COLLECTION
+// ═══════════════════════════════════════════════════════════════════════
 
 async function loadHistoricalRbGames({
   baselineSeason,
   historicalSchedules
 }) {
+  /*
+    IMPORTANT:
+
+    all=true is intentional.
+
+    We want the broadest Tank01 player population available rather
+    than relying on a filtered active-player list.
+  */
   const playerListData =
     await tank01Fetch(
       "getNFLPlayerList",
@@ -1126,13 +1502,13 @@ async function loadHistoricalRbGames({
       }
     );
 
-  const players =
+  const allPlayers =
     extractPlayers(
       playerListData
     );
 
   const rbCandidates =
-    players
+    allPlayers
       .filter(
         player =>
           playerPositionOf(
@@ -1155,6 +1531,11 @@ async function loadHistoricalRbGames({
           team:
             playerTeamOf(
               player
+            ),
+
+          rawPosition:
+            playerPositionOf(
+              player
             )
         })
       )
@@ -1165,17 +1546,79 @@ async function loadHistoricalRbGames({
           )
       );
 
+  /*
+    Remove duplicate player IDs from player-list evidence.
+  */
+  const uniqueCandidates =
+    [];
+
+  const candidateIDs =
+    new Set();
+
+  for (
+    const player
+    of rbCandidates
+  ) {
+    if (
+      candidateIDs.has(
+        player.playerID
+      )
+    ) {
+      continue;
+    }
+
+    candidateIDs.add(
+      player.playerID
+    );
+
+    uniqueCandidates.push(
+      player
+    );
+  }
+
   const gameMap =
     buildGameMap(
       historicalSchedules
     );
 
-  const unmatched =
+  const diagnostics = {
+    totalPlayerListRecords:
+      allPlayers.length,
+
+    rbCandidateRecords:
+      rbCandidates.length,
+
+    uniqueRbCandidates:
+      uniqueCandidates.length,
+
+    rawHistoricalGameRecords:
+      0,
+
+    matchedHistoricalGameRecords:
+      0,
+
+    duplicateHistoricalGameRecords:
+      0,
+
+    missingGameID:
+      0,
+
+    missingScheduleGame:
+      0,
+
+    unresolvedHistoricalTeam:
+      0,
+
+    unresolvedOpponent:
+      0
+  };
+
+  const collectionProblems =
     [];
 
   const playerResults =
     await mapWithConcurrency(
-      rbCandidates,
+      uniqueCandidates,
       PLAYER_CONCURRENCY,
 
       async player => {
@@ -1190,7 +1633,10 @@ async function loadHistoricalRbGames({
                 season:
                   String(
                     baselineSeason
-                  )
+                  ),
+
+                numberOfGames:
+                  PLAYER_GAME_REQUEST_LIMIT
               }
             );
 
@@ -1199,14 +1645,17 @@ async function loadHistoricalRbGames({
               data
             );
 
-          const normalized =
+          const normalizedRows =
+            [];
+
+          const rejectedRows =
             [];
 
           for (
             const game
             of games
           ) {
-            const row =
+            const normalized =
               normalizeHistoricalPlayerGame({
                 player,
                 game,
@@ -1214,33 +1663,25 @@ async function loadHistoricalRbGames({
               });
 
             if (
-              row
+              normalized.ok
             ) {
-              normalized.push(
-                row
+              normalizedRows.push(
+                normalized.row
               );
-            } else if (
-              game &&
-              game.gameID &&
-              gameMap.has(
-                String(
-                  game.gameID
-                )
-              )
-            ) {
-              unmatched.push({
-                playerID:
-                  player.playerID,
-
-                playerName:
-                  player.name,
-
-                currentTeam:
-                  player.team,
+            } else {
+              rejectedRows.push({
+                reason:
+                  normalized.reason,
 
                 gameID:
-                  String(
+                  normalized.gameID ||
+                  (
+                    game &&
                     game.gameID
+                      ? String(
+                          game.gameID
+                        )
+                      : null
                   )
               });
             }
@@ -1253,8 +1694,15 @@ async function loadHistoricalRbGames({
             playerName:
               player.name,
 
-            games:
-              normalized,
+            currentTeam:
+              player.team,
+
+            rawGamesReturned:
+              games.length,
+
+            normalizedRows,
+
+            rejectedRows,
 
             error:
               null
@@ -1269,7 +1717,16 @@ async function loadHistoricalRbGames({
             playerName:
               player.name,
 
-            games:
+            currentTeam:
+              player.team,
+
+            rawGamesReturned:
+              0,
+
+            normalizedRows:
+              [],
+
+            rejectedRows:
               [],
 
             error:
@@ -1284,16 +1741,27 @@ async function loadHistoricalRbGames({
       }
     );
 
-  const playerGames =
+  const playerErrors =
     [];
 
-  const playerErrors =
+  const allNormalizedRows =
+    [];
+
+  const playerGameCounts =
     [];
 
   for (
     const result
     of playerResults
   ) {
+    diagnostics
+      .rawHistoricalGameRecords +=
+        result.rawGamesReturned;
+
+    diagnostics
+      .matchedHistoricalGameRecords +=
+        result.normalizedRows.length;
+
     if (
       result.error
     ) {
@@ -1304,34 +1772,378 @@ async function loadHistoricalRbGames({
         playerName:
           result.playerName,
 
+        currentTeam:
+          result.currentTeam,
+
         error:
           result.error
       });
+
+      continue;
     }
 
-    playerGames.push(
-      ...result.games
+    for (
+      const rejected
+      of result.rejectedRows
+    ) {
+      switch (
+        rejected.reason
+      ) {
+        case "missing-game-id":
+          diagnostics
+            .missingGameID +=
+              1;
+          break;
+
+        case "schedule-game-not-found":
+          diagnostics
+            .missingScheduleGame +=
+              1;
+          break;
+
+        case "historical-team-not-resolved":
+          diagnostics
+            .unresolvedHistoricalTeam +=
+              1;
+          break;
+
+        case "opponent-not-resolved":
+          diagnostics
+            .unresolvedOpponent +=
+              1;
+          break;
+
+        default:
+          break;
+      }
+
+      if (
+        collectionProblems.length <
+        100
+      ) {
+        collectionProblems.push({
+          playerID:
+            result.playerID,
+
+          playerName:
+            result.playerName,
+
+          currentTeam:
+            result.currentTeam,
+
+          gameID:
+            rejected.gameID,
+
+          reason:
+            rejected.reason
+        });
+      }
+    }
+
+    allNormalizedRows.push(
+      ...result.normalizedRows
     );
+
+    playerGameCounts.push({
+      playerID:
+        result.playerID,
+
+      playerName:
+        result.playerName,
+
+      currentTeam:
+        result.currentTeam,
+
+      rawGamesReturned:
+        result.rawGamesReturned,
+
+      matchedGames:
+        result.normalizedRows.length,
+
+      rejectedGames:
+        result.rejectedRows.length
+    });
   }
+
+  const deduped =
+    dedupeHistoricalRows(
+      allNormalizedRows
+    );
+
+  diagnostics
+    .duplicateHistoricalGameRecords =
+      deduped.duplicateCount;
+
+  /*
+    Sort diagnostics with highest-volume players first.
+  */
+  playerGameCounts.sort(
+    (a, b) =>
+      b.matchedGames -
+      a.matchedGames
+  );
 
   return {
     candidatesFound:
-      rbCandidates.length,
+      uniqueCandidates.length,
 
     playersLoaded:
       playerResults.length,
 
-    playerGames,
+    playerGames:
+      deduped.rows,
 
     playerErrors,
 
-    unmatched
+    collectionProblems,
+
+    playerGameCounts,
+
+    diagnostics
   };
 }
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// FULL SCHEDULE INTELLIGENCE BUILD
+// COVERAGE DIAGNOSTICS
+// ═══════════════════════════════════════════════════════════════════════
+
+function buildDefenseCoverage(
+  defenseRatings
+) {
+  const ratings =
+    Array.isArray(
+      defenseRatings
+    )
+      ? defenseRatings
+      : [];
+
+  const rows =
+    ratings
+      .filter(
+        item =>
+          item &&
+          item.defense
+      )
+      .map(
+        item => ({
+          defense:
+            item.defense,
+
+          gamesSampled:
+            num(
+              item.gamesSampled
+            ),
+
+          fantasyPointsAllowed:
+            item
+              .fantasyPointsAllowed,
+
+          rank:
+            item.rank,
+
+          outlook:
+            item.outlook
+        })
+      )
+      .sort(
+        (a, b) =>
+          a.gamesSampled -
+          b.gamesSampled
+      );
+
+  const completeEnough =
+    rows.filter(
+      item =>
+        item.gamesSampled >=
+        MIN_ACCEPTABLE_DEFENSE_GAMES
+    );
+
+  const belowThreshold =
+    rows.filter(
+      item =>
+        item.gamesSampled <
+        MIN_ACCEPTABLE_DEFENSE_GAMES
+    );
+
+  const totalGames =
+    rows.reduce(
+      (
+        sum,
+        item
+      ) =>
+        sum +
+        item.gamesSampled,
+      0
+    );
+
+  const averageGamesSampled =
+    rows.length > 0
+      ? round(
+          totalGames /
+          rows.length,
+          2
+        )
+      : 0;
+
+  return {
+    defensesRated:
+      rows.length,
+
+    defensesMeetingMinimumSample:
+      completeEnough.length,
+
+    minimumGamesRequired:
+      MIN_ACCEPTABLE_DEFENSE_GAMES,
+
+    averageGamesSampled,
+
+    lowestGamesSampled:
+      rows.length > 0
+        ? rows[0]
+            .gamesSampled
+        : 0,
+
+    highestGamesSampled:
+      rows.length > 0
+        ? rows[
+            rows.length -
+            1
+          ]
+            .gamesSampled
+        : 0,
+
+    belowThreshold
+  };
+}
+
+
+function buildQualityGate({
+  historical,
+  defenseCoverage,
+  targetScheduleGames
+}) {
+  const checks =
+    [];
+
+  function addCheck(
+    name,
+    passed,
+    actual,
+    expected
+  ) {
+    checks.push({
+      name,
+
+      passed:
+        Boolean(
+          passed
+        ),
+
+      actual,
+
+      expected
+    });
+  }
+
+  addCheck(
+    "historical-rb-game-volume",
+
+    historical
+      .playerGames
+      .length >=
+      MIN_ACCEPTABLE_HISTORICAL_ROWS,
+
+    historical
+      .playerGames
+      .length,
+
+    `>= ${MIN_ACCEPTABLE_HISTORICAL_ROWS}`
+  );
+
+
+  addCheck(
+    "defenses-rated",
+
+    defenseCoverage
+      .defensesRated >=
+      MIN_ACCEPTABLE_DEFENSES,
+
+    defenseCoverage
+      .defensesRated,
+
+    `>= ${MIN_ACCEPTABLE_DEFENSES}`
+  );
+
+
+  addCheck(
+    "defenses-with-adequate-sample",
+
+    defenseCoverage
+      .defensesMeetingMinimumSample >=
+      MIN_ACCEPTABLE_DEFENSES,
+
+    defenseCoverage
+      .defensesMeetingMinimumSample,
+
+    `>= ${MIN_ACCEPTABLE_DEFENSES}`
+  );
+
+
+  addCheck(
+    "player-api-errors",
+
+    historical
+      .playerErrors
+      .length ===
+      0,
+
+    historical
+      .playerErrors
+      .length,
+
+    0
+  );
+
+
+  addCheck(
+    "target-schedule-game-count",
+
+    targetScheduleGames >=
+      270,
+
+    targetScheduleGames,
+
+    ">= 270"
+  );
+
+
+  const failedChecks =
+    checks.filter(
+      check =>
+        !check.passed
+    );
+
+  return {
+    passed:
+      failedChecks.length ===
+      0,
+
+    status:
+      failedChecks.length ===
+      0
+        ? "PASS"
+        : "FAIL",
+
+    checks,
+
+    failedChecks
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN BUILD
 // ═══════════════════════════════════════════════════════════════════════
 
 async function buildRbScheduleIntelligence({
@@ -1379,13 +2191,12 @@ async function buildRbScheduleIntelligence({
       seasonType
     );
 
-  /*
-    Step 1:
-    Build prior-season schedules.
 
-    These are used to map Tank01 historical player GAME_ID records to
-    NFL week, historical team and defense faced.
-  */
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 1
+  // Build prior-season schedule
+  // ════════════════════════════════════════════════════════════════════
+
   const historicalSchedules =
     await buildSeasonSchedules({
       season:
@@ -1398,10 +2209,12 @@ async function buildRbScheduleIntelligence({
         DEFAULT_SEASON_WEEKS
     });
 
-  /*
-    Step 2:
-    Collect every RB historical player-game row and attach the defense.
-  */
+
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 2
+  // Collect historical RB player games
+  // ════════════════════════════════════════════════════════════════════
+
   const historical =
     await loadHistoricalRbGames({
       baselineSeason:
@@ -1410,27 +2223,39 @@ async function buildRbScheduleIntelligence({
       historicalSchedules
     });
 
-  /*
-    Step 3:
-    Let the calculation module score each game and calculate defense
-    versus RB ratings.
 
-    #1 defense rank here means EASIEST for fantasy RB scoring:
-    the defense allowed the most RB fantasy points per NFL game.
-  */
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 3
+  // Calculate defense-vs-RB ratings
+  // ════════════════════════════════════════════════════════════════════
+
   const defenseRatings =
     buildDefenseRbRatings({
       playerGames:
-        historical.playerGames,
+        historical
+          .playerGames,
 
       scoring:
         normalizedScoring
     });
 
-  /*
-    Step 4:
-    Build the target-season schedule.
-  */
+
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 4
+  // Validate historical defense coverage
+  // ════════════════════════════════════════════════════════════════════
+
+  const defenseCoverage =
+    buildDefenseCoverage(
+      defenseRatings
+    );
+
+
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 5
+  // Build target-season schedule
+  // ════════════════════════════════════════════════════════════════════
+
   const targetSchedules =
     await buildSeasonSchedules({
       season:
@@ -1443,15 +2268,39 @@ async function buildRbScheduleIntelligence({
         DEFAULT_SEASON_WEEKS
     });
 
+
   const targetSchedule =
     flattenSchedules(
       targetSchedules
     );
 
+
+  // ════════════════════════════════════════════════════════════════════
+  // STEP 6
+  // Quality gate BEFORE calling the output trusted
+  // ════════════════════════════════════════════════════════════════════
+
+  const qualityGate =
+    buildQualityGate({
+      historical,
+
+      defenseCoverage,
+
+      targetScheduleGames:
+        targetSchedule.length
+    });
+
+
   /*
-    Step 5:
-    Join opponent defensive strength to each team's target schedule
-    and aggregate the requested schedule horizons.
+    We still calculate the schedule result when the quality gate fails.
+
+    WHY:
+    - diagnostics remain inspectable
+    - development is easier
+    - we can see exactly what coverage remains missing
+
+    BUT:
+    trustedForProduction is false and consumers must not use it.
   */
   const intelligence =
     buildLeagueScheduleIntelligence({
@@ -1470,13 +2319,7 @@ async function buildRbScheduleIntelligence({
       playoffWeeks
     });
 
-  /*
-    Step 6:
-    Add one concise consumer-facing Schedule Intelligence sentence
-    per team.
 
-    The underlying weekly evidence remains intact for detailed views.
-  */
   const teams =
     (
       intelligence &&
@@ -1497,16 +2340,24 @@ async function buildRbScheduleIntelligence({
         })
       );
 
+
+  // ════════════════════════════════════════════════════════════════════
+  // FINAL RESPONSE
+  // ════════════════════════════════════════════════════════════════════
+
   return {
     evidenceType:
       "sage-schedule-intelligence",
 
     schemaVersion:
-      1,
+      2,
 
     generatedAt:
       new Date()
         .toISOString(),
+
+    trustedForProduction:
+      qualityGate.passed,
 
     position:
       DEFAULT_POSITION,
@@ -1525,7 +2376,10 @@ async function buildRbScheduleIntelligence({
 
     methodology: {
       baseline:
-        "Prior regular season RB fantasy production allowed by defense.",
+        "Prior regular-season RB fantasy production allowed by defense.",
+
+      playerGameRequestLimit:
+        PLAYER_GAME_REQUEST_LIMIT,
 
       gameAggregation:
         "All opposing RB production is summed within each NFL game before defense averages are calculated.",
@@ -1537,42 +2391,87 @@ async function buildRbScheduleIntelligence({
         "Bye and missing weeks are excluded from schedule averages rather than scored as zero.",
 
       scheduleSignal:
-        "Schedule Intelligence remains separate from the core Draft SAGE recommendation calculation in V1."
+        "Schedule Intelligence remains separate from the core Draft SAGE recommendation calculation in V1.",
+
+      qualityRule:
+        "Schedule Intelligence must pass historical evidence coverage checks before trustedForProduction becomes true."
     },
 
     windows: {
       earlySeason:
-        earlyWeeks,
+        normalizeRequestedWeeks(
+          earlyWeeks
+        ),
 
       fullSeason:
-        seasonWeeks,
+        normalizeRequestedWeeks(
+          seasonWeeks
+        ),
 
       fantasyPlayoffs:
-        playoffWeeks
+        normalizeRequestedWeeks(
+          playoffWeeks
+        )
     },
 
     collection: {
-      rbCandidatesFound:
+      totalPlayerListRecords:
         historical
-          .candidatesFound,
+          .diagnostics
+          .totalPlayerListRecords,
+
+      rbCandidateRecords:
+        historical
+          .diagnostics
+          .rbCandidateRecords,
+
+      uniqueRbCandidates:
+        historical
+          .diagnostics
+          .uniqueRbCandidates,
 
       rbPlayersLoaded:
         historical
           .playersLoaded,
+
+      rawHistoricalGameRecords:
+        historical
+          .diagnostics
+          .rawHistoricalGameRecords,
 
       historicalRbGameRows:
         historical
           .playerGames
           .length,
 
+      duplicateHistoricalGameRecords:
+        historical
+          .diagnostics
+          .duplicateHistoricalGameRecords,
+
+      missingGameID:
+        historical
+          .diagnostics
+          .missingGameID,
+
+      missingScheduleGame:
+        historical
+          .diagnostics
+          .missingScheduleGame,
+
+      unresolvedHistoricalTeam:
+        historical
+          .diagnostics
+          .unresolvedHistoricalTeam,
+
+      unresolvedOpponent:
+        historical
+          .diagnostics
+          .unresolvedOpponent,
+
       playerErrors:
         historical
           .playerErrors
-          .length,
-
-      unmatchedHistoricalGames:
-        historical
-          .unmatched
           .length,
 
       historicalScheduleWeeks:
@@ -1588,18 +2487,32 @@ async function buildRbScheduleIntelligence({
           .length
     },
 
+    qualityGate,
+
+    defenseCoverage,
+
     warnings: {
       playerErrors:
         historical
-          .playerErrors,
-
-      unmatchedHistoricalGames:
-        historical
-          .unmatched
+          .playerErrors
           .slice(
             0,
             50
+          ),
+
+      collectionProblems:
+        historical
+          .collectionProblems
+          .slice(
+            0,
+            100
           )
+    },
+
+    diagnostics: {
+      playerGameCounts:
+        historical
+          .playerGameCounts
     },
 
     defenseRatings,
@@ -1610,7 +2523,7 @@ async function buildRbScheduleIntelligence({
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// HTTP ENDPOINT
+// HTTP HANDLER
 // ═══════════════════════════════════════════════════════════════════════
 
 exports.handler =
@@ -1631,6 +2544,7 @@ exports.handler =
       );
     }
 
+
     if (
       !process.env
         .TANK01_API_KEY
@@ -1644,10 +2558,12 @@ exports.handler =
       );
     }
 
+
     const query =
       event
         .queryStringParameters ||
       {};
+
 
     const targetSeason =
       integer(
@@ -1656,6 +2572,7 @@ exports.handler =
         DEFAULT_TARGET_SEASON
       );
 
+
     const baselineSeason =
       integer(
         query.baselineSeason,
@@ -1663,16 +2580,19 @@ exports.handler =
         1
       );
 
+
     const scoring =
       normalizeScoring(
         query.scoring ||
         "ppr"
       );
 
+
     const seasonType =
       normalizeSeasonType(
         query.seasonType
       );
+
 
     try {
       const result =
@@ -1695,6 +2615,7 @@ exports.handler =
             DEFAULT_PLAYOFF_WEEKS
         });
 
+
       return jsonResponse(
         200,
         result
@@ -1707,11 +2628,15 @@ exports.handler =
         error
       );
 
+
       return jsonResponse(
         502,
         {
           evidenceType:
             "sage-schedule-intelligence",
+
+          trustedForProduction:
+            false,
 
           error:
             "Could not build RB Schedule Intelligence.",
@@ -1730,32 +2655,64 @@ exports.handler =
 
 
 // ═══════════════════════════════════════════════════════════════════════
-// TEST / FUTURE REFRESH EXPORTS
+// EXPORTS FOR TESTING / FUTURE REFRESHER
 // ═══════════════════════════════════════════════════════════════════════
 
 exports.buildRbScheduleIntelligence =
   buildRbScheduleIntelligence;
 
+
 exports.buildSeasonSchedules =
   buildSeasonSchedules;
+
 
 exports.buildGameMap =
   buildGameMap;
 
+
 exports.flattenSchedules =
   flattenSchedules;
+
 
 exports.extractPlayers =
   extractPlayers;
 
+
 exports.extractPlayerGames =
   extractPlayerGames;
+
 
 exports.opponentForTeam =
   opponentForTeam;
 
+
+exports.historicalTeamCandidates =
+  historicalTeamCandidates;
+
+
+exports.inferHistoricalTeam =
+  inferHistoricalTeam;
+
+
 exports.normalizeHistoricalPlayerGame =
   normalizeHistoricalPlayerGame;
 
+
+exports.dedupeHistoricalRows =
+  dedupeHistoricalRows;
+
+
 exports.loadHistoricalRbGames =
   loadHistoricalRbGames;
+
+
+exports.buildDefenseCoverage =
+  buildDefenseCoverage;
+
+
+exports.buildQualityGate =
+  buildQualityGate;
+
+
+exports.normalizeRequestedWeeks =
+  normalizeRequestedWeeks;
