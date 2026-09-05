@@ -42,3 +42,6 @@ jobs:
 
       - name: Run 2026 RB Schedule Intelligence tests
         run: node tests/sage-rb-schedule-2026.test.js
+
+      - name: Print 2026 RB Schedule Intelligence board
+        run: node tests/sage-rb-schedule-board.js
