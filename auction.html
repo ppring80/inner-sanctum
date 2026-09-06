@@ -895,8 +895,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- ═══ STEP 5 — LIVE DRAFT TRACKER ═══ -->
 <div class="panel" id="panel-5">
-  <p class="panel-title">Live Draft Tracker</p>
-  <p class="panel-sub">Log each pick as it happens. The Oracle tracks inflation and alerts you to value in real time.</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="panel-title">Live Draft Tracker</p>
+      <p class="panel-sub" style="margin-bottom:0">Log each pick as it happens. The Oracle tracks inflation and alerts you to value in real time.</p>
+    </div>
+    <div class="btn-row no-print" style="margin:0">
+      <button class="btn btn-danger" onclick="resetDraft()">↻ Reset Draft</button>
+    </div>
+  </div>
 
   <div class="step5-grid">
     <div class="step5-main">
@@ -2547,19 +2554,48 @@ function updateOracleLive(player, price, team, projected) {
 // STEP 5 — RESET DRAFT
 // ═══════════════════════════════════════════════════════════
 function resetDraft() {
-  if (confirm('Reset the entire draft log? This cannot be undone.')) {
-    state.draftLog = [];
-    state.nextPickId = 1;
-    state.userTeam = null;
-    var myTeamSel = document.getElementById('myTeamSelect');
-    if (myTeamSel) myTeamSel.value = '';
-    renderDraftLog();
-    renderTeams();
-    updateTrackerStats();
-    document.getElementById('liveOracle').textContent = 'The draft has been reset. The ancient scrolls are blank once more. Begin again, seeker.';
-    renderDecisionPanel(runDecisionEngine(state, allPlayers));
-    clearAuctionState();
+  var pickCount = state.draftLog ? state.draftLog.length : 0;
+  var message = pickCount > 0
+    ? 'Reset this draft and erase all ' + pickCount + ' logged picks? League setup, strategy, price sheet, and your selected team will be kept. This cannot be undone.'
+    : 'Reset this draft? League setup, strategy, price sheet, and your selected team will be kept.';
+
+  if (!confirm(message)) return;
+
+  // Clear draft activity only. Preserve league configuration, strategy,
+  // customized price sheet, team names, and the user's selected team so
+  // the room is immediately ready for a fresh draft.
+  state.draftLog = [];
+  state.nextPickId = 1;
+  lastDecisionResult = null;
+
+  var playerInput = document.getElementById('pickPlayer');
+  var positionInput = document.getElementById('pickPosition');
+  var nflTeamInput = document.getElementById('pickNflTeam');
+  var projectedInput = document.getElementById('pickProjected');
+  var priceInput = document.getElementById('pickPrice');
+  var dropdown = document.getElementById('playerDropdown');
+
+  if (playerInput) playerInput.value = '';
+  if (positionInput) positionInput.value = '';
+  if (nflTeamInput) nflTeamInput.value = '';
+  if (projectedInput) projectedInput.value = '';
+  if (priceInput) priceInput.value = '';
+  if (dropdown) {
+    dropdown.innerHTML = '';
+    dropdown.classList.remove('show');
   }
+
+  renderDraftLog();
+  renderTeams();
+  updateTrackerStats();
+  renderDecisionPanel(runDecisionEngine(state, allPlayers));
+
+  var oracle = document.getElementById('liveOracle');
+  if (oracle) oracle.textContent = 'Draft reset complete. League setup, strategy, price sheet, and your selected team are still in place. Ready for Pick 1.';
+
+  // Replace the persisted active draft with the clean draft state rather
+  // than deleting the setup the user already configured.
+  saveAuctionState();
 }
 </script>
 
