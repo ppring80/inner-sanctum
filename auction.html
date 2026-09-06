@@ -1,3 +1,4 @@
+
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -901,6 +902,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="step5-main">
       <div class="tracker-stats">
         <div class="stat-card"><div class="stat-label">Your Budget Left</div><div class="stat-val good" id="myBudgetLeft">$200</div></div>
+        <div class="stat-card"><div class="stat-label">Your Max Bid</div><div class="stat-val good" id="myMaxBid">$187</div></div>
         <div class="stat-card"><div class="stat-label">Players Drafted</div><div class="stat-val" id="playersDrafted">0</div></div>
         <div class="stat-card"><div class="stat-label">Avg Price Paid</div><div class="stat-val" id="avgPricePaid">—</div></div>
         <div class="stat-card"><div class="stat-label">Market Inflation</div><div class="stat-val warn" id="inflationVal">0%</div></div>
@@ -2046,7 +2048,7 @@ function initTracker() {
 
   populateMyTeamSelect();
 
-  document.getElementById('myBudgetLeft').textContent = '$' + state.budget;
+  updateTrackerStats();
   renderTeams();
 }
 
@@ -2232,6 +2234,28 @@ function renderDecisionPanel(result) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// STEP 5 — MAX BID
+// Reserve at least $1 for every roster spot that would remain
+// after winning the next player. This is budget capacity, not
+// a recommendation ceiling; player-specific Max Bid still comes
+// from the decision engine.
+// ═══════════════════════════════════════════════════════════
+function getTotalRosterSlots() {
+  if (!state.roster) return 0;
+  return Object.keys(state.roster).reduce(function(total, slot) {
+    return total + (parseInt(state.roster[slot], 10) || 0);
+  }, 0);
+}
+
+function calculateMaxBid(budgetLeft, playersRostered) {
+  var totalRosterSlots = getTotalRosterSlots();
+  var openRosterSpots = Math.max(0, totalRosterSlots - playersRostered);
+  if (openRosterSpots <= 0) return 0;
+  var dollarsToReserve = Math.max(0, openRosterSpots - 1);
+  return Math.max(1, budgetLeft - dollarsToReserve);
+}
+
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — UPDATE STATS
 // ═══════════════════════════════════════════════════════════
 function updateTrackerStats() {
@@ -2239,8 +2263,10 @@ function updateTrackerStats() {
   var totalMarketBudget = state.budget * state.numTeams;
   var totalSpent = log.reduce(function(a, p){ return a + p.price; }, 0);
   var myTeam = state.userTeam;
-  var mySpent = log.filter(function(p){ return p.team === myTeam; }).reduce(function(a, p){ return a + p.price; }, 0);
+  var myPicks = log.filter(function(p){ return p.team === myTeam; });
+  var mySpent = myPicks.reduce(function(a, p){ return a + p.price; }, 0);
   var myLeft = state.budget - mySpent;
+  var myMaxBid = calculateMaxBid(myLeft, myPicks.length);
   var avg = log.length > 0 ? Math.round(totalSpent / log.length) : 0;
 
   var withProjection = log.filter(function(p){ return p.projected && p.projected > 0; });
@@ -2259,6 +2285,12 @@ function updateTrackerStats() {
   var budgetEl = document.getElementById('myBudgetLeft');
   budgetEl.textContent = '$' + myLeft;
   budgetEl.className = 'stat-val ' + (myLeft > state.budget * 0.5 ? 'good' : myLeft > state.budget * 0.25 ? 'warn' : 'danger');
+
+  var maxBidEl = document.getElementById('myMaxBid');
+  if (maxBidEl) {
+    maxBidEl.textContent = '$' + myMaxBid;
+    maxBidEl.className = 'stat-val ' + (myMaxBid > state.budget * 0.25 ? 'good' : myMaxBid > 10 ? 'warn' : 'danger');
+  }
 
   var pctSpent = Math.min(100, Math.round((totalSpent / totalMarketBudget) * 100));
   var fill = document.getElementById('inflationFill');
@@ -2366,6 +2398,7 @@ function renderTeams() {
     var picks = state.draftLog.filter(function(p){ return p.team === name; });
     var spent = picks.reduce(function(a, p){ return a + p.price; }, 0);
     var left = state.budget - spent;
+    var maxBid = calculateMaxBid(left, picks.length);
     var pct = Math.min(100, Math.round((spent / state.budget) * 100));
     var fillColor = pct < 50 ? 'var(--green)' : pct < 75 ? 'var(--amber)' : 'var(--red)';
     var playerList = picks.map(function(p){ return p.player + (p.pos ? ' (' + p.pos + ')' : ''); }).join(', ');
@@ -2376,6 +2409,10 @@ function renderTeams() {
       '<div class="team-budget-row">' +
         '<span class="team-budget-label">Remaining</span>' +
         '<span class="team-budget-val">$' + left + '</span>' +
+      '</div>' +
+      '<div class="team-budget-row">' +
+        '<span class="team-budget-label">Max Bid</span>' +
+        '<span class="team-budget-val">$' + maxBid + '</span>' +
       '</div>' +
       '<div class="team-track"><div class="team-fill" style="width:' + pct + '%;background:' + fillColor + '"></div></div>' +
       '<div class="team-players">' + (playerList || 'No picks yet') + '</div>';
