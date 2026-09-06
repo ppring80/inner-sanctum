@@ -569,6 +569,244 @@ function compareEvaluatedCandidates(
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 3 — ROSTER-AWARE, POSITION-DIVERSE SELECTION
+//
+// Everything above this point (evaluateCandidate, compareEvaluatedCandidates,
+// the standalone sort) is completely UNCHANGED by this addition. This is
+// a separate, additive selection layer applied AFTER that sort -- it
+// never touches any individual candidate's finalScore, code,
+// explanation, or reasons. This mirrors the same "keep evaluation
+// pure, diversify selection" pattern already proven in
+// decision-engine.js's own selectRecommendationSet() for Auction.
+//
+// Root cause this addresses: the previous selection was simply
+// `evaluated.slice(0, MAX_RECOMMENDATIONS)` on the standalone sort
+// above. If several top-standalone candidates happened to share a
+// position, all of them could appear in the final list, even when
+// that position's dedicated/flex starting slots were already
+// confirmed full -- recommendations reflected pure standalone value,
+// never the roster actually being built.
+//
+// rosterContext (Draft Command Center's computeRosterNeed() output)
+// already arrives on every request -- confirmed directly in
+// draft.html: `rosterContext:computeRosterNeed()` sends the entire
+// object, which already includes remainingDedicated, remainingFlex,
+// and flexEligible. Previously these fields were read only to build
+// the separate rosterContextNote/rosterAdvisory TEXT fields below
+// (Phase 1/2), never to influence which players made the list. No new
+// client payload field is introduced by this change.
+// ═══════════════════════════════════════════════════════════════════
+
+// Per-position need classification. Mirrors decision-engine.js's own
+// DIRECT > FLEX > (bench) > NONE tiers in spirit, so both tools share
+// the same idea of what "need" means, even though they don't share
+// code. sage-recommend.js has no bench-capacity signal the way
+// Auction's userRoster does (rosterContext reports starting-slot
+// need, not bench depth), so "not DIRECT, not FLEX" is classified
+// SATISFIED -- the more conservative reading, since it can only make
+// a position LESS likely to be limited here, never invents bench
+// capacity that was never actually reported.
+function positionNeedTier(
+  pos,
+  rosterContext
+) {
+  if (
+    !isPlainObject(
+      rosterContext
+    ) ||
+    !isPlainObject(
+      rosterContext.remainingDedicated
+    )
+  ) {
+    return "UNKNOWN";
+  }
+
+  const normalizedPos =
+    String(
+      pos ||
+      ""
+    ).toUpperCase();
+
+  const remainingDedicated =
+    rosterContext.remainingDedicated[
+      normalizedPos
+    ];
+
+  if (
+    typeof remainingDedicated === "number" &&
+    remainingDedicated > 0
+  ) {
+    return "DIRECT";
+  }
+
+  const flexEligible =
+    Array.isArray(
+      rosterContext.flexEligible
+    )
+      ? rosterContext.flexEligible
+      : [];
+
+  const remainingFlex =
+    rosterContext.remainingFlex;
+
+  if (
+    flexEligible.indexOf(
+      normalizedPos
+    ) !== -1 &&
+    typeof remainingFlex === "number" &&
+    remainingFlex > 0
+  ) {
+    return "FLEX";
+  }
+
+  return "SATISFIED";
+}
+
+// A SATISFIED-position candidate remains recommendable on exceptional
+// value alone -- defined here as SAGE's own existing top category
+// (codeRank 0, "take-now"). This reuses an existing, already-
+// meaningful threshold rather than introducing a new invented score
+// or cutoff, directly satisfying "do not hard-block a position just
+// because its starting slots are filled."
+function isExceptionalValue(
+  evaluatedEntry
+) {
+  return (
+    codeRank(
+      evaluatedEntry.sage &&
+      evaluatedEntry.sage.code
+    ) === 0
+  );
+}
+
+// Soft per-position cap within one recommendation batch: at most half
+// the batch (rounded up) from a single position. This is a
+// conservative, explainable threshold chosen so a 5-recommendation
+// batch can show at most 3 from one position -- enough that a
+// genuinely dominant position isn't starved, but not so many that the
+// whole list is effectively one position. The cap is skipped entirely
+// during backfill (below) whenever there simply aren't enough
+// non-clustered alternatives, so real recommendations are never
+// withheld purely to satisfy diversity for its own sake.
+function maxPerPosition(
+  maxRecommendations
+) {
+  return Math.max(
+    1,
+    Math.ceil(
+      maxRecommendations / 2
+    )
+  );
+}
+
+function selectDiverseRecommendations(
+  evaluated,
+  rosterContext,
+  maxRecommendations
+) {
+  // No rosterContext at all (e.g. an older client, or a caller that
+  // never supplies one) -- behavior is byte-identical to before this
+  // function existed.
+  if (
+    !isPlainObject(
+      rosterContext
+    )
+  ) {
+    return evaluated.slice(
+      0,
+      maxRecommendations
+    );
+  }
+
+  const perPositionCount = {};
+  const selected = [];
+  const deferred = [];
+  const cap =
+    maxPerPosition(
+      maxRecommendations
+    );
+
+  evaluated.forEach(
+    function (entry) {
+      if (
+        selected.length >=
+        maxRecommendations
+      ) {
+        return;
+      }
+
+      const pos =
+        String(
+          (
+            entry.player &&
+            entry.player.pos
+          ) ||
+          ""
+        ).toUpperCase();
+
+      const needTier =
+        positionNeedTier(
+          pos,
+          rosterContext
+        );
+
+      const alreadyAtThisPos =
+        perPositionCount[pos] ||
+        0;
+
+      const positionSatisfiedAndNotExceptional =
+        needTier === "SATISFIED" &&
+        !isExceptionalValue(
+          entry
+        );
+
+      const positionAtCap =
+        alreadyAtThisPos >=
+        cap;
+
+      if (
+        positionSatisfiedAndNotExceptional ||
+        positionAtCap
+      ) {
+        deferred.push(
+          entry
+        );
+        return;
+      }
+
+      selected.push(
+        entry
+      );
+
+      perPositionCount[pos] =
+        alreadyAtThisPos + 1;
+    }
+  );
+
+  // Backfill from deferred candidates, in their original standalone
+  // order, whenever there aren't enough diverse/need-matched
+  // candidates to fill the batch. Diversity is preferred here, never
+  // enforced at the cost of returning fewer real recommendations than
+  // the pool actually supports.
+  let deferredIndex = 0;
+
+  while (
+    selected.length <
+      maxRecommendations &&
+    deferredIndex <
+      deferred.length
+  ) {
+    selected.push(
+      deferred[deferredIndex]
+    );
+
+    deferredIndex++;
+  }
+
+  return selected;
+}
+
 // ── One candidate, full SAGE read ──────────────────────────────────────
 
 function evaluateCandidate(
@@ -1518,12 +1756,17 @@ exports.handler =
         compareEvaluatedCandidates
       );
 
+      // Phase 3: position-diverse, roster-need-aware selection from
+      // the standalone-sorted list above -- see selectDiverseRecommendations()
+      // for the full rationale. rosterContext is the same variable
+      // already read further down for rosterContextNote/rosterAdvisory;
+      // this is simply an additional use of it, not a new field.
       const recommendations =
-        evaluated
-          .slice(
-            0,
-            MAX_RECOMMENDATIONS
-          )
+        selectDiverseRecommendations(
+          evaluated,
+          rosterContext,
+          MAX_RECOMMENDATIONS
+        )
           .map(
             function (e) {
               return {
@@ -1704,6 +1947,9 @@ module.exports._test = {
   compareEvaluatedCandidates,
   codeRank,
   CODE_RANK,
+  positionNeedTier,
+  isExceptionalValue,
+  selectDiverseRecommendations,
   isValidPlayerShape,
   isPlainObject,
   buildRosterContextNote,
