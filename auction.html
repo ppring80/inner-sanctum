@@ -922,12 +922,16 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="form-group autocomplete-wrap">
             <label>Player Name</label>
             <input type="text" id="pickPlayer" placeholder="Type to search players..." autocomplete="off"
-              oninput="searchPlayers(this.value)" onfocus="searchPlayers(this.value)"/>
+              oninput="handlePlayerInput(this.value)" onfocus="searchPlayers(this.value)"/>
             <div class="player-dropdown" id="playerDropdown"></div>
           </div>
           <div class="form-group">
             <label>Position</label>
             <input type="text" id="pickPosition" placeholder="Auto" readonly/>
+          </div>
+          <div class="form-group">
+            <label>NFL Team</label>
+            <input type="text" id="pickNflTeam" placeholder="Auto" readonly/>
           </div>
           <div class="form-group">
             <label>$ Projected</label>
@@ -948,7 +952,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="draft-log" id="draftLog">
           <div class="log-title" style="margin-top:16px">Draft Log</div>
           <table class="log-table">
-            <thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Team</th><th class="no-print"></th></tr></thead>
+            <thead><tr><th>#</th><th>Player</th><th>NFL</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Drafted By</th><th class="no-print"></th></tr></thead>
             <tbody id="draftLogBody"></tbody>
           </table>
         </div>
@@ -1690,15 +1694,50 @@ function buildDefRankLookup(adpPlayersByPosition) {
 // PLAYER AUTOCOMPLETE
 // ═══════════════════════════════════════════════════════════
 var allPlayers = [];
+
+function getPlayerNflTeam(playerName) {
+  if (!playerName || !allPlayers || !allPlayers.length) return '';
+  var normalizedName = playerName.trim().toLowerCase();
+  var match = allPlayers.find(function(p){
+    return p.name && p.name.trim().toLowerCase() === normalizedName;
+  });
+  return match && match.team ? match.team : '';
+}
+
+function backfillDraftLogNflTeams() {
+  if (!state.draftLog || !state.draftLog.length || !allPlayers.length) return;
+  var changed = false;
+  state.draftLog.forEach(function(pick){
+    if (!pick.nflTeam) {
+      var nflTeam = getPlayerNflTeam(pick.player);
+      if (nflTeam) {
+        pick.nflTeam = nflTeam;
+        changed = true;
+      }
+    }
+  });
+  if (changed) saveAuctionState();
+}
+
+function handlePlayerInput(query) {
+  var nflTeamEl = document.getElementById('pickNflTeam');
+  if (nflTeamEl) nflTeamEl.value = '';
+  searchPlayers(query);
+}
+
 function loadTank01Players() {
   fetchTank01PlayerList()
     .then(function(list){
       allPlayers = list || [];
-      // A restored draft may have rendered its first recommendation panel
-      // against an empty allPlayers list if this fetch hadn't resolved yet
-      // -- refresh it now that real data has arrived.
-      if (state.step >= 5 && state.userTeam) {
-        renderDecisionPanel(runDecisionEngine(state, allPlayers));
+      backfillDraftLogNflTeams();
+      // A restored draft may have rendered before player data resolved.
+      // Refresh every NFL-team-aware surface once the real player list arrives.
+      if (state.step >= 5) {
+        renderDraftLog();
+        renderTeams();
+        if (state.userTeam) {
+          renderDecisionPanel(runDecisionEngine(state, allPlayers));
+        }
       }
     })
     .catch(function(){ console.log('Tank01 player-data unavailable'); });
@@ -1734,6 +1773,7 @@ function searchPlayers(query) {
     item.onclick = function(){
       document.getElementById('pickPlayer').value = p.name;
       document.getElementById('pickPosition').value = p.pos;
+      document.getElementById('pickNflTeam').value = p.team || '';
       document.getElementById('pickProjected').value = proj || '';
       dd.style.display = 'none';
       document.getElementById('pickPrice').focus();
@@ -2093,15 +2133,17 @@ function logPick() {
   var projected = parseInt(document.getElementById('pickProjected').value) || null;
   var price = parseInt(document.getElementById('pickPrice').value);
   var team = document.getElementById('pickTeam').value;
+  var nflTeam = document.getElementById('pickNflTeam').value.trim() || getPlayerNflTeam(player) || '';
 
   if (!player || !price || price < 1) {
     document.getElementById('liveOracle').textContent = 'Enter a player name and price before logging, seeker.';
     return;
   }
 
-  state.draftLog.push({ id: state.nextPickId++, player:player, pos:pos||'—', projected:projected, price:price, team:team });
+  state.draftLog.push({ id: state.nextPickId++, player:player, nflTeam:nflTeam, pos:pos||'—', projected:projected, price:price, team:team });
   document.getElementById('pickPlayer').value = '';
   document.getElementById('pickPosition').value = '';
+  document.getElementById('pickNflTeam').value = '';
   document.getElementById('pickProjected').value = '';
   document.getElementById('pickPrice').value = '';
 
@@ -2149,9 +2191,10 @@ function renderRecommendationCard(rec, isLast) {
       (SAGE_ACTION_BADGE_STYLE[rec.sageAction] || '') + '">' + rec.sageActionLabel + '</span>'
     : '';
   var explanationText = rec.sageExplanation || rec.rationale;
+  var nflTeam = rec.nflTeam || getPlayerNflTeam(rec.player) || '—';
   return '<div style="margin-bottom:10px;padding-bottom:10px;' + borderStyle + '">' +
     '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px">' + label + sageBadge + '</div>' +
-    '<div style="font-weight:600">' + rec.player + ' <span style="opacity:0.6;font-weight:400">(' + rec.pos + ')</span></div>' +
+    '<div style="font-weight:600">' + rec.player + ' <span style="opacity:0.6;font-weight:400">' + nflTeam + ' · ' + rec.pos + '</span></div>' +
     '<div style="font-size:13px;opacity:0.85">Max Bid: $' + rec.maxPrice + ' &nbsp;•&nbsp; Decision Score: ' + rec.decisionScore + '</div>' +
     '<div style="font-size:12px;opacity:0.7;margin-top:2px">' + explanationText + '</div>' +
     '</div>';
@@ -2358,10 +2401,12 @@ function renderDraftLog() {
       classification.tier === 'VALUE' ? '<span style="color:var(--green)">$' + Math.abs(diff) + ' value</span>' :
       '<span style="color:var(--muted)">' + (diff > 0 ? '+$' + diff : diff < 0 ? '-$' + Math.abs(diff) : '$0') + ' (on projection)</span>';
     var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
+    var nflTeam = p.nflTeam || getPlayerNflTeam(p.player) || '—';
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="dim">#' + entry.num + '</td>' +
       '<td>' + p.player + '</td>' +
+      '<td class="dim">' + nflTeam + '</td>' +
       '<td><span class="pos-pill" style="' + posStyle + '">' + p.pos + '</span></td>' +
       '<td class="mono">$' + p.price + '</td>' +
       '<td class="dim">' + (p.projected ? '$' + p.projected : '—') + '</td>' +
@@ -2401,7 +2446,10 @@ function renderTeams() {
     var maxBid = calculateMaxBid(left, picks.length);
     var pct = Math.min(100, Math.round((spent / state.budget) * 100));
     var fillColor = pct < 50 ? 'var(--green)' : pct < 75 ? 'var(--amber)' : 'var(--red)';
-    var playerList = picks.map(function(p){ return p.player + (p.pos ? ' (' + p.pos + ')' : ''); }).join(', ');
+    var playerList = picks.map(function(p){
+      var nflTeam = p.nflTeam || getPlayerNflTeam(p.player) || '—';
+      return p.player + ' (' + nflTeam + (p.pos ? ' · ' + p.pos : '') + ')';
+    }).join(', ');
     var div = document.createElement('div');
     div.className = 'team-card';
     div.innerHTML =
