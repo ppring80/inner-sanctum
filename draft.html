@@ -95,6 +95,21 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .dbadge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 .main{padding:16px 24px;max-width:1200px;margin:0 auto}
 
+/* ═══ DESKTOP TWO-COLUMN WORKSPACE (layout-only addition) ═══
+   Wraps the existing #sagePanel and #main as side-by-side siblings.
+   Pure CSS/structural change -- #sagePanel and #main keep their
+   exact IDs, so renderSageRecommendations()/render() continue
+   targeting the same elements with zero JS changes. #rosterPanel and
+   #dbar are NOT part of this wrapper and remain above it, unchanged. */
+.draft-workspace{display:flex;gap:20px;align-items:flex-start;padding:0 24px;max-width:1600px;margin:0 auto}
+.draft-workspace #sagePanel{flex:0 0 35%;max-width:35%;min-width:0;padding:10px 0;border-bottom:none;border-right:1px solid var(--border)}
+.draft-workspace #main{flex:1 1 65%;min-width:0;max-width:none;margin:0;padding:16px 0 16px 20px;overflow-x:auto}
+@media(max-width:900px){
+  .draft-workspace{flex-direction:column;padding:0 12px;gap:0}
+  .draft-workspace #sagePanel{flex:none;max-width:100%;width:100%;padding:10px 0;border-right:none;border-bottom:1px solid var(--border)}
+  .draft-workspace #main{flex:none;max-width:100%;width:100%;padding:16px 0}
+}
+
 /* SEARCH RESULTS — flat list shown when search active */
 .search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
 .search-results-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
@@ -705,16 +720,18 @@ function closePreviewBlockedModal() {
   <button class="howto-link" onclick="openOnboardingModal()">ℹ How Draft Tracking Works</button>
 </div>
 
-<div class="sage-panel no-print" id="sagePanel"></div>
-
 <div class="roster-panel no-print" id="rosterPanel"></div>
 
 <div class="drafted-bar no-print" id="dbar">
   <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase">Drafted: —</span>
 </div>
 
-<div class="main" id="main">
-  <div class="loading"><div class="ring"></div><div class="loading-lbl">The Oracle consults the scrolls...</div></div>
+<div class="draft-workspace">
+  <div class="sage-panel no-print" id="sagePanel"></div>
+
+  <div class="main" id="main">
+    <div class="loading"><div class="ring"></div><div class="loading-lbl">The Oracle consults the scrolls...</div></div>
+  </div>
 </div>
 
 <div class="attr no-print">
