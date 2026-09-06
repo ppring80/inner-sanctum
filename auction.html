@@ -952,7 +952,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="draft-log" id="draftLog">
           <div class="log-title" style="margin-top:16px">Draft Log</div>
           <table class="log-table">
-            <thead><tr><th>#</th><th>Player</th><th>NFL</th><th>Pos</th><th>Paid</th><th>Projected</th><th>Value</th><th>Drafted By</th><th class="no-print"></th></tr></thead>
+            <thead><tr><th>#</th><th>Player</th><th>NFL</th><th>Pos</th><th>Slot</th><th>Paid</th><th>Projected</th><th>Value</th><th>Drafted By</th><th class="no-print"></th></tr></thead>
             <tbody id="draftLogBody"></tbody>
           </table>
         </div>
@@ -2299,6 +2299,57 @@ function calculateMaxBid(budgetLeft, playersRostered) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// STEP 5 — ROSTER SLOT ASSIGNMENT
+// Derived display state only: slots are recomputed from draft order after
+// every render, so removals/undo automatically reflow the roster without
+// mutating or persisting draftLog entries. Dedicated starter slots fill
+// first, then FLEX (QB also eligible in Superflex/2QB), then Bench.
+// ═══════════════════════════════════════════════════════════
+function buildRosterSlotAssignments() {
+  var assignments = {};
+  var dedicatedPositions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+  var flexEligible = state.leagueFormat === 'superflex'
+    ? ['QB', 'RB', 'WR', 'TE']
+    : ['RB', 'WR', 'TE'];
+
+  state.teamNames.forEach(function(teamName) {
+    var used = { QB:0, RB:0, WR:0, TE:0, K:0, DEF:0, FLEX:0, BENCH:0 };
+    var teamPicks = state.draftLog.filter(function(p) { return p.team === teamName; });
+
+    teamPicks.forEach(function(pick) {
+      var pos = pick.pos || '—';
+      var configuredDedicated = dedicatedPositions.indexOf(pos) !== -1
+        ? (parseInt(state.roster[pos], 10) || 0)
+        : 0;
+
+      if (configuredDedicated > used[pos]) {
+        used[pos] += 1;
+        assignments[pick.id] = pos + used[pos];
+        return;
+      }
+
+      var configuredFlex = parseInt(state.roster.FLEX, 10) || 0;
+      if (flexEligible.indexOf(pos) !== -1 && configuredFlex > used.FLEX) {
+        used.FLEX += 1;
+        assignments[pick.id] = 'FLEX' + used.FLEX;
+        return;
+      }
+
+      var configuredBench = parseInt(state.roster.BENCH, 10) || 0;
+      if (configuredBench > used.BENCH) {
+        used.BENCH += 1;
+        assignments[pick.id] = 'Bench ' + used.BENCH;
+        return;
+      }
+
+      assignments[pick.id] = 'No Slot';
+    });
+  });
+
+  return assignments;
+}
+
+// ═══════════════════════════════════════════════════════════
 // STEP 5 — UPDATE STATS
 // ═══════════════════════════════════════════════════════════
 function updateTrackerStats() {
@@ -2388,6 +2439,7 @@ function classifyTransactionValue(price, projected) {
 // ═══════════════════════════════════════════════════════════
 function renderDraftLog() {
   var log = state.draftLog;
+  var rosterSlots = buildRosterSlotAssignments();
   document.getElementById('draftLog').style.display = log.length > 0 ? 'block' : 'none';
   var tbody = document.getElementById('draftLogBody');
   tbody.innerHTML = '';
@@ -2408,6 +2460,7 @@ function renderDraftLog() {
       '<td>' + p.player + '</td>' +
       '<td class="dim">' + nflTeam + '</td>' +
       '<td><span class="pos-pill" style="' + posStyle + '">' + p.pos + '</span></td>' +
+      '<td class="dim">' + (rosterSlots[p.id] || '—') + '</td>' +
       '<td class="mono">$' + p.price + '</td>' +
       '<td class="dim">' + (p.projected ? '$' + p.projected : '—') + '</td>' +
       '<td style="font-size:11px">' + diffStr + '</td>' +
@@ -2438,6 +2491,7 @@ function removePick(id) {
 // ═══════════════════════════════════════════════════════════
 function renderTeams() {
   var grid = document.getElementById('teamsGrid');
+  var rosterSlots = buildRosterSlotAssignments();
   grid.innerHTML = '';
   state.teamNames.forEach(function(name){
     var picks = state.draftLog.filter(function(p){ return p.team === name; });
@@ -2448,7 +2502,8 @@ function renderTeams() {
     var fillColor = pct < 50 ? 'var(--green)' : pct < 75 ? 'var(--amber)' : 'var(--red)';
     var playerList = picks.map(function(p){
       var nflTeam = p.nflTeam || getPlayerNflTeam(p.player) || '—';
-      return p.player + ' (' + nflTeam + (p.pos ? ' · ' + p.pos : '') + ')';
+      var rosterSlot = rosterSlots[p.id] || '—';
+      return p.player + ' (' + nflTeam + (p.pos ? ' · ' + p.pos : '') + ' · ' + rosterSlot + ')';
     }).join(', ');
     var div = document.createElement('div');
     div.className = 'team-card';
