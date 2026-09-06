@@ -77,6 +77,19 @@ var STRATEGY_SCORE_NEUTRAL = 0.5;
 // returning three RBs may be correct").
 var ALTERNATIVE_TARGET_CLOSE_SCORE_MARGIN = 0.15;
 
+// Value Target diversity margin (relative, not absolute): a
+// different-position candidate must score at least 90% of the single
+// best value-role-score to be preferred over a same-position repeat.
+// This is deliberately narrower than Alternative's own 0.15 margin
+// above, and is a preference, not a gate -- consistent with Pat's own
+// documented philosophy just above (3 same-position recommendations
+// can be correct when scarcity is real). If the best remaining
+// candidates are genuinely, significantly stronger at one position,
+// this margin will not find a qualifying alternative, and Value
+// Target falls back to the original best-by-value-role-score choice
+// regardless of position, exactly as before this addition.
+var VALUE_TARGET_DIVERSITY_RELATIVE_MARGIN = 0.9;
+
 // Value Target is chosen by this composite instead of finalScore rank —
 // re-weighting the SAME existing factor scores (valueScore, budgetScore,
 // inflationScore) toward value/affordability rather than need/strategy.
@@ -804,11 +817,32 @@ function selectRecommendationSet(sortedDiagnostics, decisionState) {
   // Value Target: best remaining candidate (excluding whoever was
   // already selected) by a value/budget-weighted composite, not by
   // finalScore rank — this is what keeps it from being "just #3."
+  //
+  // Diversity addition: when a genuinely competitive different-
+  // position candidate exists (a different position from BOTH Primary
+  // and Alternative, scoring within 10% of the single best
+  // value-role-score available), prefer it over a same-position
+  // repeat -- this is the gap left after Alternative Target's own
+  // existing diversity preference: Alternative already avoids
+  // repeating Primary's position, but nothing previously stopped
+  // Value from repeating either of the first two. The 10% margin is
+  // relative to computeValueRoleScore's own composite (not an
+  // absolute constant, since VALUE_ROLE_WEIGHT_* could change), so a
+  // real value gap is never overridden purely to force variety. Falls
+  // back to the unchanged prior behavior (best value-role-score
+  // regardless of position) whenever no such candidate exists --
+  // exceptional same-position value is never blocked.
   var remainingForValue = remainingAfterPrimary.filter(function (d) { return d !== altCandidate; });
   if (!remainingForValue.length) return { recommendations: selected, moreTargets: [] };
-  var valueCandidate = remainingForValue.slice().sort(function (a, b) {
+  var byValueRoleScore = remainingForValue.slice().sort(function (a, b) {
     return computeValueRoleScore(b) - computeValueRoleScore(a);
+  });
+  var bestValueRoleScore = computeValueRoleScore(byValueRoleScore[0]);
+  var diverseValueCandidate = byValueRoleScore.filter(function (d) {
+    return d.pos !== primary.pos && d.pos !== altCandidate.pos &&
+      computeValueRoleScore(d) >= bestValueRoleScore * VALUE_TARGET_DIVERSITY_RELATIVE_MARGIN;
   })[0];
+  var valueCandidate = diverseValueCandidate || byValueRoleScore[0];
   selected.push(buildRecommendationEntry('VALUE', valueCandidate, decisionState, selected));
 
   var moreTargets = buildMoreTargets(viable, [primary, altCandidate, valueCandidate], decisionState);
