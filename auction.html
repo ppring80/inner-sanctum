@@ -225,6 +225,32 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .inflation-track{background:var(--bg2);border-radius:4px;height:8px;overflow:hidden}
 .inflation-fill{height:100%;border-radius:4px;transition:width 0.4s,background 0.4s;background:var(--green)}
 
+
+/* ── LIVE NOMINATION BOARD ── */
+.nomination-board{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.nomination-board-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.nomination-board-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:1px}
+.nomination-board-sub{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45}
+.nomination-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.nomination-search{min-width:180px;flex:1;padding:7px 9px!important;font-size:12px!important}
+.nomination-tabs{display:flex;gap:5px;flex-wrap:wrap}
+.nomination-tab{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:5px 9px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.5px;color:var(--muted);cursor:pointer}
+.nomination-tab.active{background:rgba(184,146,26,.1);border-color:var(--gold);color:var(--gold);font-weight:600}
+.nomination-table-wrap{overflow-x:auto}
+.nomination-table{width:100%;border-collapse:collapse}
+.nomination-table th{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);font-family:'JetBrains Mono',monospace;padding:6px 7px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.nomination-table td{padding:8px 7px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.nomination-table tbody tr{cursor:pointer;transition:background .12s}
+.nomination-table tbody tr:hover{background:#f8f6f0}
+.nomination-player{font-weight:600;color:var(--ink);white-space:nowrap}
+.nomination-team{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+.nomination-price{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--gold);white-space:nowrap}
+.nomination-max{font-family:'JetBrains Mono',monospace;color:var(--green);white-space:nowrap}
+.nomination-sage{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.nomination-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px}
+.nomination-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:9px;font-size:10px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+.nomination-more{background:transparent;border:none;color:var(--gold);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;text-decoration:underline}
+
 /* ── PICK ENTRY ── */
 .pick-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;container-type:inline-size}
 .pick-entry-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:12px;letter-spacing:1px}
@@ -921,6 +947,37 @@ document.addEventListener('DOMContentLoaded', function () {
           <span id="inflationPct">0% of total market budget used</span>
         </div>
         <div class="inflation-track"><div class="inflation-fill" id="inflationFill" style="width:0%"></div></div>
+      </div>
+
+
+      <div class="nomination-board no-print" id="nominationBoard">
+        <div class="nomination-board-hdr">
+          <div>
+            <div class="nomination-board-title">⚔️ Live Nomination Board</div>
+            <div class="nomination-board-sub">Available players at a glance. Suggested Bid comes from your personalized price model; SAGE Max appears when SAGE has a live ceiling for that player. Click any player to load the pick form.</div>
+          </div>
+        </div>
+        <div class="nomination-controls">
+          <input class="nomination-search" type="text" id="nominationSearch" placeholder="Find an available player..." oninput="renderNominationBoard()"/>
+          <div class="nomination-tabs" id="nominationTabs">
+            <button type="button" class="nomination-tab active" data-pos="ALL" onclick="setNominationFilter('ALL')">ALL</button>
+            <button type="button" class="nomination-tab" data-pos="RB" onclick="setNominationFilter('RB')">RB</button>
+            <button type="button" class="nomination-tab" data-pos="WR" onclick="setNominationFilter('WR')">WR</button>
+            <button type="button" class="nomination-tab" data-pos="QB" onclick="setNominationFilter('QB')">QB</button>
+            <button type="button" class="nomination-tab" data-pos="TE" onclick="setNominationFilter('TE')">TE</button>
+            <button type="button" class="nomination-tab" data-pos="FLEX" onclick="setNominationFilter('FLEX')">FLEX</button>
+          </div>
+        </div>
+        <div class="nomination-table-wrap">
+          <table class="nomination-table">
+            <thead><tr><th>Player</th><th>Pos</th><th>NFL</th><th>Suggested Bid</th><th>SAGE Max</th><th>Signal</th></tr></thead>
+            <tbody id="nominationBoardBody"><tr><td colspan="6" class="nomination-empty">Loading available players...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="nomination-foot">
+          <span id="nominationCount">—</span>
+          <button type="button" class="nomination-more" id="nominationMoreBtn" onclick="toggleNominationExpanded()">Show More</button>
+        </div>
       </div>
 
       <div class="pick-entry">
@@ -1742,6 +1799,7 @@ function loadTank01Players() {
       if (state.step >= 5) {
         renderDraftLog();
         renderTeams();
+        renderNominationBoard();
         if (state.userTeam) {
           renderDecisionPanel(runDecisionEngine(state, allPlayers));
         }
@@ -2097,6 +2155,7 @@ function initTracker() {
 
   updateTrackerStats();
   renderTeams();
+  renderNominationBoard();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2128,6 +2187,7 @@ function setUserTeam() {
   var sel = document.getElementById('myTeamSelect');
   state.userTeam = sel.value || null;
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  renderNominationBoard();
   saveAuctionState();
 }
 
@@ -2157,6 +2217,7 @@ function logPick() {
   updateTrackerStats();
   renderDraftLog();
   renderTeams();
+  renderNominationBoard();
   updateOracleLive(player, price, team, projected);
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
   saveAuctionState();
@@ -2281,6 +2342,148 @@ function renderDecisionPanel(result) {
   }
 
   text.innerHTML = cards + moreHtml;
+  renderNominationBoard();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 5 — LIVE NOMINATION BOARD
+// Uses existing player data, personalized playerPriceLookup, draftLog and
+// cached decision-engine output. It does not introduce a second pricing
+// model: Suggested Bid is the existing personalized projected value; SAGE
+// Max is shown only when the decision engine has produced a live ceiling.
+// Drafted players are removed automatically.
+// ═══════════════════════════════════════════════════════════
+var nominationFilter = 'ALL';
+var nominationExpanded = false;
+
+function setNominationFilter(pos) {
+  nominationFilter = pos || 'ALL';
+  nominationExpanded = false;
+  document.querySelectorAll('.nomination-tab').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.pos === nominationFilter);
+  });
+  renderNominationBoard();
+}
+
+function toggleNominationExpanded() {
+  nominationExpanded = !nominationExpanded;
+  renderNominationBoard();
+}
+
+function getLiveSageTargetMap() {
+  var map = {};
+  var result = lastDecisionResult;
+  if (!result) return map;
+  var combined = (result.recommendations || []).concat(result.moreTargets || []);
+  combined.forEach(function(rec) {
+    if (!rec || !rec.player) return;
+    map[rec.player.trim().toLowerCase()] = rec;
+  });
+  return map;
+}
+
+function getNominationSignal(rec) {
+  if (!rec) return 'Available';
+  if (rec.sageActionLabel) return rec.sageActionLabel;
+  return DECISION_ROLE_LABELS[rec.role] || 'SAGE Target';
+}
+
+function nominationSignalStyle(rec) {
+  if (!rec) return 'color:var(--dim)';
+  if (rec.sageAction === 'TAKE_NOW') return 'color:var(--green);font-weight:700';
+  if (rec.sageAction === 'CONSIDER_NOW') return 'color:var(--gold);font-weight:700';
+  if (rec.sageAction === 'CAUTION') return 'color:var(--amber)';
+  return 'color:var(--muted)';
+}
+
+function loadNominationPlayer(playerName) {
+  var p = allPlayers.find(function(candidate) {
+    return candidate.name && candidate.name.trim().toLowerCase() === playerName.trim().toLowerCase();
+  });
+  if (!p) return;
+  document.getElementById('pickPlayer').value = p.name;
+  document.getElementById('pickPosition').value = p.pos || '';
+  document.getElementById('pickNflTeam').value = p.team || '';
+  document.getElementById('pickProjected').value = getProjectedValue(p.name, p.pos) || '';
+  document.getElementById('pickPrice').focus();
+}
+
+function renderNominationBoard() {
+  var body = document.getElementById('nominationBoardBody');
+  if (!body) return;
+  var countEl = document.getElementById('nominationCount');
+  var moreBtn = document.getElementById('nominationMoreBtn');
+  var searchEl = document.getElementById('nominationSearch');
+  var query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  if (!allPlayers || !allPlayers.length) {
+    body.innerHTML = '<tr><td colspan="6" class="nomination-empty">Loading available players...</td></tr>';
+    if (countEl) countEl.textContent = 'Waiting for player data';
+    if (moreBtn) moreBtn.style.display = 'none';
+    return;
+  }
+
+  var drafted = {};
+  (state.draftLog || []).forEach(function(pick) {
+    if (pick.player) drafted[pick.player.trim().toLowerCase()] = true;
+  });
+  var sageMap = getLiveSageTargetMap();
+  var flexEligible = state.leagueFormat === 'superflex' ? ['QB','RB','WR','TE'] : ['RB','WR','TE'];
+
+  var available = allPlayers.filter(function(p) {
+    if (!p || !p.name || drafted[p.name.trim().toLowerCase()]) return false;
+    if (nominationFilter !== 'ALL') {
+      if (nominationFilter === 'FLEX') {
+        if (flexEligible.indexOf(p.pos) === -1) return false;
+      } else if (p.pos !== nominationFilter) return false;
+    }
+    if (query && p.name.toLowerCase().indexOf(query) === -1 &&
+        String(p.team || '').toLowerCase().indexOf(query) === -1 &&
+        String(p.pos || '').toLowerCase().indexOf(query) === -1) return false;
+    return true;
+  }).map(function(p) {
+    var key = p.name.trim().toLowerCase();
+    var suggested = getProjectedValue(p.name, p.pos) || 1;
+    return { player:p, suggested:suggested, sage:sageMap[key] || null };
+  });
+
+  available.sort(function(a, b) {
+    var aSage = a.sage ? 1 : 0;
+    var bSage = b.sage ? 1 : 0;
+    if (aSage !== bSage) return bSage - aSage;
+    if (a.sage && b.sage && a.sage.decisionScore !== b.sage.decisionScore) return (b.sage.decisionScore || 0) - (a.sage.decisionScore || 0);
+    if (a.suggested !== b.suggested) return b.suggested - a.suggested;
+    return a.player.name.localeCompare(b.player.name);
+  });
+
+  var limit = nominationExpanded ? 40 : 12;
+  var visible = available.slice(0, limit);
+  if (!visible.length) {
+    body.innerHTML = '<tr><td colspan="6" class="nomination-empty">No available players match this view.</td></tr>';
+  } else {
+    body.innerHTML = visible.map(function(item) {
+      var p = item.player;
+      var rec = item.sage;
+      var maxText = rec && typeof rec.maxPrice === 'number' ? '$' + rec.maxPrice : '—';
+      var posStyle = POS_COLORS[p.pos] || 'background:rgba(100,100,100,0.15);color:#888';
+      var safeName = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      var encodedName = encodeURIComponent(p.name);
+      return '<tr onclick="loadNominationPlayer(decodeURIComponent(\'' + encodedName + '\'))" title="Load ' + safeName + ' into Log a Pick">' +
+        '<td class="nomination-player">' + safeName + '</td>' +
+        '<td><span class="pos-pill" style="' + posStyle + '">' + (p.pos || '—') + '</span></td>' +
+        '<td class="nomination-team">' + (p.team || '—') + '</td>' +
+        '<td class="nomination-price">$' + item.suggested + '</td>' +
+        '<td class="nomination-max">' + maxText + '</td>' +
+        '<td class="nomination-sage" style="' + nominationSignalStyle(rec) + '">' + getNominationSignal(rec) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  if (countEl) countEl.textContent = available.length + ' available' + (available.length > visible.length ? ' · showing ' + visible.length : '');
+  if (moreBtn) {
+    moreBtn.style.display = available.length > 12 ? 'inline-block' : 'none';
+    moreBtn.textContent = nominationExpanded ? 'Show Top 12' : 'Show More';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2488,6 +2691,7 @@ function removePick(id) {
   updateTrackerStats();
   renderDraftLog();
   renderTeams();
+  renderNominationBoard();
   document.getElementById('liveOracle').textContent = removed.player + ' has been struck from the record, seeker — the ledger corrects itself.';
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
   saveAuctionState();
@@ -2589,6 +2793,7 @@ function resetDraft() {
   renderTeams();
   updateTrackerStats();
   renderDecisionPanel(runDecisionEngine(state, allPlayers));
+  renderNominationBoard();
 
   var oracle = document.getElementById('liveOracle');
   if (oracle) oracle.textContent = 'Draft reset complete. League setup, strategy, price sheet, and your selected team are still in place. Ready for Pick 1.';
