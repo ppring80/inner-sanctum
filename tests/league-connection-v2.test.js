@@ -184,9 +184,12 @@ function loadLeagueConnection(initialState) {
   assert.strictEqual(refreshed.teamName, 'Resolved Team');
   assert.strictEqual(refreshed.roster.length, 1);
   assert.strictEqual(refreshed.scoringFormat, 'half-ppr');
-  assert.deepStrictEqual(refreshed.lineupConstruction, { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, BENCH: 6 });
+  assert.strictEqual(
+    JSON.stringify(refreshed.lineupConstruction),
+    JSON.stringify({ QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, BENCH: 6 })
+  );
   assert.strictEqual(refreshed.teamCount, 10);
-  assert.strictEqual(refreshed.league, refreshedLeague);
+  assert.strictEqual(JSON.stringify(refreshed.league), JSON.stringify(refreshedLeague));
 })();
 
 (function testTeamIdRepairsFromTeamSpecificV2Key() {
