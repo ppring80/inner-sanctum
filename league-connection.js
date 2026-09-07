@@ -3,148 +3,39 @@
   -------------------------------------------
   Shared fantasy-league connection state.
 
-  Include this file on any Inner Sanctum page that needs to know:
-
-    - whether a fantasy league has been connected
-    - which provider is active
-    - safe connection metadata for that provider
-
-  <script src="/league-connection.js"></script>
-
-  IMPORTANT ARCHITECTURE
+  V2 ARCHITECTURE
   -------------------------------------------
+  A customer can have MANY league/team connections, including multiple
+  leagues on the same provider. One connection is active at a time and
+  becomes the context consumed by Weekly Rankings and other tools.
 
-  This file is ONLY the shared connection-state layer.
+  Storage V2:
 
-  It does NOT:
+    {
+      schemaVersion: 2,
+      activeConnectionId: "espn:1094040685:7",
+      connections: {
+        "espn:1094040685:7": { ... },
+        "espn:99887766:3": { ... },
+        "cbs:12345:10": { ... }
+      }
+    }
 
-    - authenticate with fantasy providers
-    - call provider APIs
-    - inspect browser cookies
-    - store provider passwords
-    - store OAuth secrets
-    - normalize provider league data
+  Existing V1 state ({ activeProvider, connections: { espn: {...} } })
+  is migrated automatically and preserved. Legacy read methods remain
+  available so existing pages can move to connection-aware behavior
+  incrementally without breaking.
 
-  Provider-specific authentication/data collection belongs elsewhere:
-
-    Sleeper
-      Existing Sleeper integration.
-
-    Yahoo
-      Official Yahoo API/OAuth path when access is available.
-
-    ESPN
-      ESPN backend integration.
-
-    CBS
-      cbs-browser-connector.js
-      Browser-assisted, read-only CBS league capture.
-
-  Provider normalization belongs in:
-
-      provider-adapters.js
-
-
-  PROVIDER STATUS MEANINGS
+  IMPORTANT SECURITY BOUNDARY
   -------------------------------------------
-
-  live
-    Production-supported and considered broadly reliable.
-
-  beta
-    Real integration exists and has been proven against real league
-    data, but still needs broader production testing across additional
-    leagues/configurations.
-
-  pending
-    Integration depends on external approval/access before it can be
-    completed.
-
-  planned
-    Product/integration direction exists but the functional connection
-    mechanism has not yet been proven.
-
-
-  CURRENT PROVIDER STRATEGY
-  -------------------------------------------
-
-  Sleeper
-    - LIVE
-    - Existing supported integration.
-
-  Yahoo
-    - PENDING
-    - Waiting on official Yahoo Fantasy API access/approval.
-    - Should use supported Yahoo OAuth/API rather than unofficial
-      browser/session workarounds.
-
-  ESPN
-    - BETA
-    - Real backend integration exists.
-    - Remains beta until proven across a broader range of ESPN leagues.
-
-  CBS
-    - BETA
-    - Browser-assisted, READ-ONLY integration has been proven against
-      a real CBS Commissioner fantasy-football league.
-    - CBS users authenticate normally with CBS in their own browser.
-    - Inner Sanctum reads only fantasy information CBS has already
-      exposed to that authenticated browser session.
-    - Proven CBS data surfaces include:
-        league identity
-        fantasy team identity
-        roster
-        CBS player IDs
-        player positions
-        NFL teams
-        roster status
-        standings
-        divisions
-        points for / points against
-        schedule
-        opponent CBS team IDs
-        home / away
-        roster settings
-        lineup requirements
-        scoring rules
-        scoring format
-        playoff structure
-    - CBS connection is intentionally READ ONLY.
-    - No CBS password collection.
-    - No cookie extraction into LeagueConnection state.
-    - No CAPTCHA bypass.
-    - No lineup or transaction writes.
-    - Remains beta until tested across additional CBS league formats
-      and configurations.
-
-
-  SECURITY RULE
-  -------------------------------------------
-
   localStorage contains ONLY safe connection metadata and sanitized
-  league data needed by Inner Sanctum.
-
-  NEVER store secrets here, including:
-
-    - provider passwords
-    - browser cookies
-    - CBS session/access tokens
-    - ESPN espn_s2
-    - ESPN SWID
-    - Yahoo OAuth access tokens
-    - Yahoo refresh tokens
-    - authorization headers
-    - CAPTCHA data
+  league data. Provider passwords, cookies, OAuth tokens, ESPN espn_s2,
+  ESPN SWID, CBS sessions, authorization headers, and similar secrets
+  must never be persisted here.
 */
 
 (function () {
   "use strict";
-
-  /*
-    ================================================================
-    PROVIDER REGISTRY
-    ================================================================
-  */
 
   const PROVIDERS = {
     sleeper: {
@@ -154,7 +45,6 @@
       connectionMode: "provider",
       readOnly: true,
     },
-
     yahoo: {
       label: "Yahoo",
       status: "pending",
@@ -162,12 +52,6 @@
       connectionMode: "oauth",
       readOnly: true,
     },
-
-    /*
-      ESPN integration exists and works, but remains beta until it is
-      battle-tested against a broader range of real ESPN leagues.
-    */
-
     espn: {
       label: "ESPN",
       status: "beta",
@@ -175,19 +59,6 @@
       connectionMode: "backend",
       readOnly: true,
     },
-
-    /*
-      CBS browser-assisted integration has now been proven against a
-      real CBS Commissioner league.
-
-      The user logs into CBS normally.
-
-      cbs-browser-connector.js performs a READ-ONLY collection of
-      sanitized fantasy league data exposed to that browser session.
-
-      No CBS credential or session secret belongs in this state layer.
-    */
-
     cbs: {
       label: "CBS",
       status: "beta",
@@ -197,567 +68,505 @@
     },
   };
 
-  /*
-    ================================================================
-    STORAGE
-    ================================================================
-  */
+  const STORAGE_KEY = "innerSanctum_leagueConnections";
+  const SCHEMA_VERSION = 2;
 
-  const STORAGE_KEY =
-    "innerSanctum_leagueConnections";
+  const BLOCKED_KEYS = new Set([
+    "password",
+    "pass",
+    "passwd",
+    "cookie",
+    "cookies",
+    "token",
+    "accessToken",
+    "access_token",
+    "refreshToken",
+    "refresh_token",
+    "authorization",
+    "Authorization",
+    "espn_s2",
+    "espnS2",
+    "SWID",
+    "swid",
+    "session",
+    "sessionId",
+    "session_id",
+    "cbsToken",
+    "cbsSession",
+  ]);
 
   function emptyState() {
     return {
-      activeProvider: null,
+      schemaVersion: SCHEMA_VERSION,
+      activeConnectionId: null,
       connections: {},
     };
   }
 
+  function sanitizeValue(value) {
+    if (value === null || value === undefined) return value;
+    if (Array.isArray(value)) return value.map(sanitizeValue);
+    if (typeof value !== "object") return value;
+
+    const output = {};
+    Object.keys(value).forEach(function (key) {
+      if (BLOCKED_KEYS.has(key)) return;
+      output[key] = sanitizeValue(value[key]);
+    });
+    return output;
+  }
+
+  function textOrNull(value) {
+    if (value === null || value === undefined) return null;
+    const text = String(value).trim();
+    return text ? text : null;
+  }
+
+  function getLeagueId(data) {
+    return textOrNull(
+      data?.leagueId ??
+      data?.league?.id ??
+      data?.league?.leagueId
+    );
+  }
+
+  function getTeamId(data) {
+    return textOrNull(
+      data?.teamId ??
+      data?.team?.id ??
+      data?.team?.teamId
+    );
+  }
+
+  function getLeagueName(data) {
+    return textOrNull(
+      data?.leagueName ??
+      data?.league?.name
+    );
+  }
+
+  function getTeamName(data) {
+    return textOrNull(
+      data?.teamName ??
+      data?.team?.name
+    );
+  }
+
+  function cleanConnectionPart(value) {
+    return encodeURIComponent(String(value || "unknown").trim().toLowerCase());
+  }
+
+  function buildConnectionId(provider, data) {
+    const leagueId = getLeagueId(data);
+    const teamId = getTeamId(data);
+    const leagueFallback = getLeagueName(data) || "league";
+    const base = provider + ":" + cleanConnectionPart(leagueId || leagueFallback);
+    return teamId ? base + ":" + cleanConnectionPart(teamId) : base;
+  }
+
+  function sameLeague(a, b) {
+    const aLeagueId = getLeagueId(a);
+    const bLeagueId = getLeagueId(b);
+
+    if (aLeagueId && bLeagueId) return aLeagueId === bLeagueId;
+
+    const aName = getLeagueName(a);
+    const bName = getLeagueName(b);
+    return Boolean(aName && bName && aName === bName);
+  }
+
+  function sameTeamOrUpgradeable(existing, incoming) {
+    const existingTeamId = getTeamId(existing);
+    const incomingTeamId = getTeamId(incoming);
+
+    if (!existingTeamId || !incomingTeamId) return true;
+    return existingTeamId === incomingTeamId;
+  }
+
+  function normalizeConnection(provider, data, existing) {
+    const safeData = sanitizeValue(data || {});
+    const previous = existing || {};
+    const now = new Date().toISOString();
+
+    const merged = {
+      ...previous,
+      ...safeData,
+      provider,
+      connectionMode:
+        safeData.connectionMode ||
+        previous.connectionMode ||
+        PROVIDERS[provider]?.connectionMode ||
+        null,
+      readOnly:
+        safeData.readOnly ??
+        previous.readOnly ??
+        PROVIDERS[provider]?.readOnly ??
+        true,
+      connectedAt:
+        previous.connectedAt ||
+        safeData.connectedAt ||
+        now,
+      syncedAt:
+        safeData.syncedAt ||
+        now,
+    };
+
+    merged.leagueId = getLeagueId(merged);
+    merged.leagueName = getLeagueName(merged);
+    merged.teamId = getTeamId(merged);
+    merged.teamName = getTeamName(merged);
+
+    return merged;
+  }
+
+  function migrateLegacyState(parsed) {
+    const next = emptyState();
+    const legacyConnections =
+      parsed?.connections && typeof parsed.connections === "object"
+        ? parsed.connections
+        : {};
+
+    Object.keys(legacyConnections).forEach(function (provider) {
+      if (!PROVIDERS[provider]) return;
+      const raw = legacyConnections[provider];
+      if (!raw || typeof raw !== "object") return;
+
+      const connection = normalizeConnection(provider, raw, null);
+      const id = buildConnectionId(provider, connection);
+      connection.connectionId = id;
+      next.connections[id] = connection;
+
+      if (parsed.activeProvider === provider) {
+        next.activeConnectionId = id;
+      }
+    });
+
+    if (!next.activeConnectionId) {
+      const ids = Object.keys(next.connections);
+      next.activeConnectionId = ids.length ? ids[0] : null;
+    }
+
+    return next;
+  }
+
+  function normalizeV2State(parsed) {
+    const next = emptyState();
+    const source =
+      parsed?.connections && typeof parsed.connections === "object"
+        ? parsed.connections
+        : {};
+
+    Object.keys(source).forEach(function (id) {
+      const raw = source[id];
+      const provider = raw?.provider;
+      if (!provider || !PROVIDERS[provider] || !raw || typeof raw !== "object") return;
+
+      const connection = normalizeConnection(provider, raw, raw);
+      connection.connectionId = id;
+      next.connections[id] = connection;
+    });
+
+    next.activeConnectionId =
+      parsed?.activeConnectionId && next.connections[parsed.activeConnectionId]
+        ? parsed.activeConnectionId
+        : null;
+
+    if (!next.activeConnectionId) {
+      const ids = Object.keys(next.connections);
+      next.activeConnectionId = ids.length ? ids[0] : null;
+    }
+
+    return next;
+  }
+
   function readState() {
-    /*
-      FUTURE:
-      Once Inner Sanctum user accounts persist league connections on
-      the backend, this local state can become a cache/fallback around
-      an account-level endpoint such as:
-
-        /.netlify/functions/get-league-connections
-
-      Until then, localStorage is the shared site-wide connection state.
-    */
-
     try {
-      const raw =
-        localStorage.getItem(
-          STORAGE_KEY
-        );
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return emptyState();
 
-      if (!raw) {
-        return emptyState();
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return emptyState();
+
+      if (parsed.schemaVersion === SCHEMA_VERSION) {
+        return normalizeV2State(parsed);
       }
 
-      const parsed =
-        JSON.parse(raw);
-
-      /*
-        Defensive validation so a damaged/localStorage value does not
-        break every connected-league page.
-      */
-
-      if (
-        !parsed ||
-        typeof parsed !== "object"
-      ) {
-        return emptyState();
-      }
-
-      return {
-        activeProvider:
-          typeof parsed.activeProvider ===
-          "string"
-            ? parsed.activeProvider
-            : null,
-
-        connections:
-          parsed.connections &&
-          typeof parsed.connections ===
-            "object"
-            ? parsed.connections
-            : {},
-      };
+      const migrated = migrateLegacyState(parsed);
+      writeState(migrated);
+      return migrated;
     } catch (e) {
       return emptyState();
     }
   }
 
   function writeState(state) {
-    /*
-      SECURITY:
-
-      This function must never be used to persist provider secrets.
-
-      Safe examples:
-
-        provider
-        leagueId
-        leagueName
-        teamId
-        teamName
-        season
-        scoringFormat
-        teamCount
-        connectionMode
-        connectedAt
-        syncedAt
-        sanitized league/roster data
-
-      Unsafe examples:
-
-        password
-        cookie
-        token
-        accessToken
-        refreshToken
-        espn_s2
-        SWID
-        authorization header
-    */
-
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(state)
+      JSON.stringify({
+        schemaVersion: SCHEMA_VERSION,
+        activeConnectionId: state.activeConnectionId || null,
+        connections: sanitizeValue(state.connections || {}),
+      })
     );
   }
 
-  /*
-    ================================================================
-    SAFE CONNECTION SANITIZATION
-    ================================================================
-
-    LeagueConnection should not rely on every provider flow remembering
-    to remove secrets.
-
-    Strip known secret-shaped fields before anything reaches storage.
-
-    This is defense-in-depth, not a substitute for provider-specific
-    secure handling.
-  */
-
-  const BLOCKED_KEYS = new Set([
-    "password",
-    "pass",
-    "passwd",
-
-    "cookie",
-    "cookies",
-
-    "token",
-    "accessToken",
-    "access_token",
-    "refreshToken",
-    "refresh_token",
-
-    "authorization",
-    "Authorization",
-
-    "espn_s2",
-    "espnS2",
-
-    "SWID",
-    "swid",
-
-    "session",
-    "sessionId",
-    "session_id",
-
-    "cbsToken",
-    "cbsSession",
-  ]);
-
-  function sanitizeValue(value) {
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      return value.map(
-        sanitizeValue
-      );
-    }
-
-    if (
-      typeof value !==
-      "object"
-    ) {
-      return value;
-    }
-
-    const output = {};
-
-    Object.keys(value).forEach(
-      function (key) {
-        if (
-          BLOCKED_KEYS.has(key)
-        ) {
-          return;
-        }
-
-        output[key] =
-          sanitizeValue(
-            value[key]
-          );
-      }
-    );
-
-    return output;
+  function allConnections(state) {
+    return Object.keys(state.connections)
+      .map(function (id) { return state.connections[id]; })
+      .sort(function (a, b) {
+        const aTime = Date.parse(a.syncedAt || a.connectedAt || 0) || 0;
+        const bTime = Date.parse(b.syncedAt || b.connectedAt || 0) || 0;
+        return bTime - aTime;
+      });
   }
 
-  /*
-    ================================================================
-    CONNECTION OBJECT
-    ================================================================
-  */
+  function findProviderConnections(state, provider) {
+    return allConnections(state).filter(function (connection) {
+      return connection.provider === provider;
+    });
+  }
+
+  function findExistingConnection(state, provider, data) {
+    const incomingId = textOrNull(data?.connectionId);
+    if (incomingId && state.connections[incomingId]) {
+      return { id: incomingId, connection: state.connections[incomingId] };
+    }
+
+    const matches = findProviderConnections(state, provider).filter(function (candidate) {
+      return sameLeague(candidate, data) && sameTeamOrUpgradeable(candidate, data);
+    });
+
+    if (!matches.length) return null;
+
+    const exactTeam = getTeamId(data);
+    if (exactTeam) {
+      const exact = matches.find(function (candidate) {
+        return getTeamId(candidate) === exactTeam;
+      });
+      if (exact) return { id: exact.connectionId, connection: exact };
+    }
+
+    const unresolved = matches.find(function (candidate) {
+      return !getTeamId(candidate);
+    });
+
+    const selected = unresolved || matches[0];
+    return { id: selected.connectionId, connection: selected };
+  }
+
+  function upsertConnection(provider, data, forceExistingId) {
+    if (!PROVIDERS[provider]) {
+      throw new Error("Unknown league provider: " + provider);
+    }
+    if (!data || typeof data !== "object") {
+      throw new Error("LeagueConnection.connect requires connection data.");
+    }
+
+    const state = readState();
+    const existingMatch = forceExistingId && state.connections[forceExistingId]
+      ? { id: forceExistingId, connection: state.connections[forceExistingId] }
+      : findExistingConnection(state, provider, data);
+
+    const connection = normalizeConnection(
+      provider,
+      data,
+      existingMatch ? existingMatch.connection : null
+    );
+
+    const newId = buildConnectionId(provider, connection);
+    connection.connectionId = newId;
+
+    if (existingMatch && existingMatch.id !== newId) {
+      delete state.connections[existingMatch.id];
+    }
+
+    state.connections[newId] = connection;
+    state.activeConnectionId = newId;
+    writeState(state);
+
+    return connection;
+  }
 
   const LeagueConnection = {
     PROVIDERS,
+    STORAGE_KEY,
+    SCHEMA_VERSION,
 
-    /*
-      ------------------------------------------------
-      READS
-      ------------------------------------------------
-    */
+    getActiveConnectionId() {
+      return readState().activeConnectionId;
+    },
+
+    getActiveConnection() {
+      const state = readState();
+      return state.activeConnectionId
+        ? state.connections[state.activeConnectionId] || null
+        : null;
+    },
 
     getActiveProvider() {
-      return (
-        readState()
-          .activeProvider
-      );
+      return this.getActiveConnection()?.provider || null;
     },
 
+    getAllConnections() {
+      return allConnections(readState());
+    },
+
+    getConnectionsByProvider(provider) {
+      if (!PROVIDERS[provider]) return [];
+      return findProviderConnections(readState(), provider);
+    },
+
+    getConnectionById(connectionId) {
+      return readState().connections[connectionId] || null;
+    },
+
+    /*
+      Legacy compatibility: returns one representative connection per
+      provider. The active connection wins for its provider; otherwise
+      the most recently synced connection is returned.
+    */
     getConnections() {
-      return (
-        readState()
-          .connections
-      );
+      const state = readState();
+      const output = {};
+      const active = state.activeConnectionId
+        ? state.connections[state.activeConnectionId]
+        : null;
+
+      Object.keys(PROVIDERS).forEach(function (provider) {
+        const list = findProviderConnections(state, provider);
+        if (!list.length) return;
+        output[provider] =
+          active && active.provider === provider
+            ? active
+            : list[0];
+      });
+
+      return output;
     },
 
+    /* Legacy provider lookup. */
     getConnection(provider) {
-      return (
-        readState()
-          .connections[
-            provider
-          ] || null
-      );
+      if (!PROVIDERS[provider]) return null;
+      const active = this.getActiveConnection();
+      if (active && active.provider === provider) return active;
+      const list = this.getConnectionsByProvider(provider);
+      return list.length ? list[0] : null;
     },
 
     isConnected(provider) {
-      return Boolean(
-        readState()
-          .connections[
-            provider
-          ]
-      );
+      return this.getConnectionsByProvider(provider).length > 0;
     },
 
     hasAnyConnection() {
-      return (
-        Object.keys(
-          readState()
-            .connections
-        ).length > 0
-      );
+      return this.getAllConnections().length > 0;
     },
-
-    /*
-      Returns the currently active connection object or null.
-    */
-
-    getActiveConnection() {
-      const state =
-        readState();
-
-      if (
-        !state.activeProvider
-      ) {
-        return null;
-      }
-
-      return (
-        state.connections[
-          state.activeProvider
-        ] || null
-      );
-    },
-
-    /*
-      ------------------------------------------------
-      CONNECTION WRITE
-      ------------------------------------------------
-
-      data may contain safe metadata and sanitized league information.
-
-      Provider secrets are removed before persistence.
-    */
 
     connect(provider, data) {
-      if (
-        !PROVIDERS[
-          provider
-        ]
-      ) {
-        throw new Error(
-          "Unknown league provider: " +
-          provider
-        );
-      }
-
-      if (
-        !data ||
-        typeof data !==
-          "object"
-      ) {
-        throw new Error(
-          "LeagueConnection.connect requires connection data."
-        );
-      }
-
-      const state =
-        readState();
-
-      const safeData =
-        sanitizeValue(
-          data
-        );
-
-      const existing =
-        state.connections[
-          provider
-        ] || {};
-
-      const now =
-        new Date()
-          .toISOString();
-
-      state.connections[
-        provider
-      ] = {
-        ...existing,
-        ...safeData,
-
-        provider,
-
-        connectionMode:
-          safeData
-            .connectionMode ||
-          PROVIDERS[
-            provider
-          ].connectionMode ||
-          null,
-
-        readOnly:
-          safeData
-            .readOnly ??
-          PROVIDERS[
-            provider
-          ].readOnly ??
-          true,
-
-        connectedAt:
-          existing
-            .connectedAt ||
-          safeData
-            .connectedAt ||
-          now,
-
-        syncedAt:
-          safeData
-            .syncedAt ||
-          now,
-      };
-
-      state.activeProvider =
-        provider;
-
-      writeState(
-        state
-      );
-
-      return state.connections[
-        provider
-      ];
+      return upsertConnection(provider, data, null);
     },
-
-    /*
-      ------------------------------------------------
-      SYNC EXISTING CONNECTION
-      ------------------------------------------------
-
-      Used when a provider such as CBS refreshes its sanitized league
-      data after the original connection.
-
-      connectedAt is preserved.
-      syncedAt is refreshed.
-    */
 
     update(provider, data) {
-      if (
-        !PROVIDERS[
-          provider
-        ]
-      ) {
-        throw new Error(
-          "Unknown league provider: " +
-          provider
-        );
+      if (!PROVIDERS[provider]) {
+        throw new Error("Unknown league provider: " + provider);
       }
 
-      const state =
-        readState();
-
+      const active = this.getActiveConnection();
       const existing =
-        state.connections[
-          provider
-        ];
+        active && active.provider === provider
+          ? active
+          : this.getConnection(provider);
 
       if (!existing) {
-        throw new Error(
-          "Cannot update provider that is not connected: " +
-          provider
-        );
+        throw new Error("Cannot update provider that is not connected: " + provider);
       }
 
-      const safeData =
-        sanitizeValue(
-          data || {}
-        );
+      return upsertConnection(provider, data || {}, existing.connectionId);
+    },
 
-      state.connections[
-        provider
-      ] = {
-        ...existing,
-        ...safeData,
+    updateConnection(connectionId, data) {
+      const existing = this.getConnectionById(connectionId);
+      if (!existing) {
+        throw new Error("Cannot update unknown connection: " + connectionId);
+      }
+      return upsertConnection(existing.provider, data || {}, connectionId);
+    },
 
-        provider,
-
-        connectedAt:
-          existing
-            .connectedAt,
-
-        syncedAt:
-          new Date()
-            .toISOString(),
-      };
-
-      writeState(
-        state
-      );
-
-      return state.connections[
-        provider
-      ];
+    setActiveConnection(connectionId) {
+      const state = readState();
+      if (connectionId !== null && !state.connections[connectionId]) {
+        throw new Error("Cannot activate unknown connection: " + connectionId);
+      }
+      state.activeConnectionId = connectionId;
+      writeState(state);
+      return connectionId ? state.connections[connectionId] : null;
     },
 
     /*
-      ------------------------------------------------
-      ACTIVE PROVIDER
-      ------------------------------------------------
+      Legacy provider activation. With multiple leagues on one provider,
+      the most recently synced connection for that provider is selected.
     */
-
     setActiveProvider(provider) {
-      if (
-        provider !== null &&
-        !PROVIDERS[
-          provider
-        ]
-      ) {
-        throw new Error(
-          "Unknown league provider: " +
-          provider
-        );
+      if (provider === null) {
+        this.setActiveConnection(null);
+        return;
+      }
+      if (!PROVIDERS[provider]) {
+        throw new Error("Unknown league provider: " + provider);
+      }
+      const list = this.getConnectionsByProvider(provider);
+      if (!list.length) {
+        throw new Error("Cannot activate a provider that is not connected: " + provider);
+      }
+      this.setActiveConnection(list[0].connectionId);
+    },
+
+    disconnectConnection(connectionId) {
+      const state = readState();
+      if (!state.connections[connectionId]) return;
+
+      delete state.connections[connectionId];
+
+      if (state.activeConnectionId === connectionId) {
+        const remaining = allConnections(state);
+        state.activeConnectionId = remaining.length
+          ? remaining[0].connectionId
+          : null;
       }
 
-      const state =
-        readState();
-
-      if (
-        provider &&
-        !state.connections[
-          provider
-        ]
-      ) {
-        throw new Error(
-          "Cannot activate a provider that is not connected: " +
-          provider
-        );
-      }
-
-      state.activeProvider =
-        provider;
-
-      writeState(
-        state
-      );
+      writeState(state);
     },
 
     /*
-      ------------------------------------------------
-      DISCONNECT
-      ------------------------------------------------
+      Legacy behavior adapted for multi-league state: disconnect only the
+      currently active (or most recent) connection for that provider,
+      never every league on the provider in one silent action.
     */
-
     disconnect(provider) {
-      const state =
-        readState();
-
-      delete state.connections[
-        provider
-      ];
-
-      if (
-        state.activeProvider ===
-        provider
-      ) {
-        const remaining =
-          Object.keys(
-            state.connections
-          );
-
-        state.activeProvider =
-          remaining.length
-            ? remaining[0]
-            : null;
-      }
-
-      writeState(
-        state
-      );
+      const active = this.getActiveConnection();
+      const target =
+        active && active.provider === provider
+          ? active
+          : this.getConnection(provider);
+      if (target) this.disconnectConnection(target.connectionId);
     },
 
     disconnectAll() {
-      writeState(
-        emptyState()
-      );
+      writeState(emptyState());
     },
 
-    /*
-      ------------------------------------------------
-      DIAGNOSTICS
-      ------------------------------------------------
-
-      Returns safe provider/connection metadata useful for debugging
-      the Link League screen.
-
-      No blocked credential fields are returned because those fields
-      should never have entered storage.
-    */
-
     getSummary() {
-      const state =
-        readState();
-
+      const active = this.getActiveConnection();
+      const all = this.getAllConnections();
       return {
-        activeProvider:
-          state.activeProvider,
-
-        connectedProviders:
-          Object.keys(
-            state.connections
-          ),
-
-        providers:
-          PROVIDERS,
+        schemaVersion: SCHEMA_VERSION,
+        activeConnectionId: active?.connectionId || null,
+        activeProvider: active?.provider || null,
+        connectionCount: all.length,
+        connectedProviders: Array.from(new Set(all.map(function (c) { return c.provider; }))),
+        providers: PROVIDERS,
       };
     },
   };
 
-  /*
-    ================================================================
-    PUBLIC API
-    ================================================================
-  */
-
-  window.LeagueConnection =
-    LeagueConnection;
+  window.LeagueConnection = LeagueConnection;
 })();
