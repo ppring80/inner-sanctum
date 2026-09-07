@@ -302,9 +302,34 @@
     renderEspnTeamStep(LeagueConnection.getActiveConnection());
   }
 
+  function watchConnectLeagueProviderForm() {
+    if (!isConnectLeaguePage() || typeof MutationObserver === "undefined") return;
+    const host = document.getElementById("providerForms");
+    if (!host || host.dataset.innerSanctumTeamObserver === "1") return;
+
+    host.dataset.innerSanctumTeamObserver = "1";
+    let scheduled = false;
+    const observer = new MutationObserver(function () {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(function () {
+        scheduled = false;
+        renderEspnTeamStep(LeagueConnection.getActiveConnection());
+      }, 0);
+    });
+
+    /*
+      connect-league rebuilds #providerForms after a successful provider sync.
+      Watch only direct child replacement so restoring the ESPN team step inside
+      the form does not trigger the observer again.
+    */
+    observer.observe(host, { childList:true });
+  }
+
   function init() {
     repairActiveEspnTeamContext();
     refresh();
+    watchConnectLeagueProviderForm();
     repairWeeklySourceOnLoad();
   }
 
