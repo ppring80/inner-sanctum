@@ -5,28 +5,43 @@ const assert = require('assert');
 const source = fs.readFileSync(path.join(__dirname, '..', 'team-context.js'), 'utf8');
 
 assert.ok(
-  source.includes('function watchConnectLeagueProviderForm()'),
-  'team-context should watch the connect-league provider form for rerenders'
+  source.includes('function resolveActiveEspnTeamAutomatically()'),
+  'ESPN team context should resolve automatically from safe identity hints'
 );
 
 assert.ok(
-  source.includes('new MutationObserver(function ()'),
-  'connect-league team selection should use a MutationObserver so the ESPN selector survives provider-form rebuilds'
+  source.includes('ESPN_TEAM_PREF_KEY'),
+  'resolved ESPN team identity should persist independently of disconnectable league state'
 );
 
 assert.ok(
-  source.includes('observer.observe(host, { childList:true })'),
-  'the observer should watch direct providerForms child replacement without observing its own ESPN step insertion'
+  source.includes('CHATGPT_LINK_STORAGE_KEY'),
+  'an existing ChatGPT league link may safely recover the matching ESPN team identity'
 );
 
 assert.ok(
-  source.includes('renderEspnTeamStep(LeagueConnection.getActiveConnection())'),
-  'provider-form rerenders should restore the ESPN team-selection step from current connection state'
+  source.includes('function inferEspnTeamFromRoster(connection)'),
+  'a high-confidence saved Weekly roster fingerprint should be available as an automatic fallback'
 );
 
 assert.ok(
-  source.includes('watchConnectLeagueProviderForm();'),
-  'the connect-league provider-form observer should initialize with the shared team context'
+  source.includes('best.matches < 3'),
+  'roster inference must require multiple matching players before resolving a team'
+);
+
+assert.ok(
+  !source.includes('renderEspnTeamStep'),
+  'the removed customer-facing ESPN team-selection step must not return'
+);
+
+assert.ok(
+  !source.includes('innerSanctumEspnTeamSelect'),
+  'team-context must not render an ESPN team dropdown'
+);
+
+assert.ok(
+  !source.includes('MutationObserver'),
+  'automatic ESPN resolution should not depend on restoring a removed selector after rerenders'
 );
 
 console.log('team-context-connect-flow.test.js passed');
