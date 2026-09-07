@@ -124,6 +124,33 @@
     }).filter(function (player) { return Boolean(player.name); });
   }
 
+  function repairActiveEspnDefenseIdentity() {
+    const connection = LeagueConnection.getActiveConnection();
+    if (!connection || connection.provider !== "espn" || !connection.teamId) return false;
+    if (!Array.isArray(connection?.league?.teams) || !connection.league.teams.length) return false;
+
+    const rawTeam = connection.league.teams.find(function (team) {
+      return String(team?.id ?? "") === String(connection.teamId);
+    });
+    if (!rawTeam) return false;
+
+    const normalizedRoster = normalizeEspnRoster(rawTeam, connection.league);
+    const currentRoster = Array.isArray(connection.roster) ? connection.roster : [];
+    const normalizedDefense = normalizedRoster.find(function (player) { return player.position === "D/ST"; });
+    const currentDefense = currentRoster.find(function (player) {
+      return player?.position === "D/ST" || player?.position === "DEF" || player?.position === "DST";
+    });
+
+    if (!normalizedDefense) return false;
+    if (currentDefense && currentDefense.name === normalizedDefense.name && currentRoster.length === normalizedRoster.length) return false;
+
+    LeagueConnection.updateConnection(connection.connectionId, {
+      roster: normalizedRoster,
+      syncedAt: connection.syncedAt || new Date().toISOString()
+    });
+    return true;
+  }
+
   function detectEspnScoringFormat(league) {
     const items = Array.isArray(league?.settings?.scoringSettings?.scoringItems)
       ? league.settings.scoringSettings.scoringItems : [];
@@ -280,12 +307,16 @@
   }
 
   function init() {
+    repairActiveEspnDefenseIdentity();
     refresh();
     repairWeeklySourceOnLoad();
   }
 
   window.addEventListener("innerSanctum:leagueContextChanged", function () {
-    setTimeout(refresh, 0);
+    setTimeout(function () {
+      repairActiveEspnDefenseIdentity();
+      refresh();
+    }, 0);
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once:true }); else init();
