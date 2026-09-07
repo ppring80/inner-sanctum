@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
       - name: Run canonical regression gate
         run: npm test
 
