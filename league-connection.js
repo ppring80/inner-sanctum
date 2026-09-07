@@ -323,22 +323,25 @@
   window.LeagueConnection = LeagueConnection;
 
   /*
-    Load the shared team-context layer on every page that already includes
-    LeagueConnection. This keeps the customer experience consistent without
-    forcing each tool to implement its own league/team picker.
+    Load the shared team-context layer on every browser page that already
+    includes LeagueConnection. The document guard keeps this state module
+    safe to execute in Node-based regression tests and other non-browser
+    consumers without changing browser behavior.
   */
-  function loadTeamContext() {
-    if (document.querySelector('script[data-inner-sanctum-team-context]')) return;
-    const script = document.createElement("script");
-    script.src = "/team-context.js";
-    script.defer = true;
-    script.setAttribute("data-inner-sanctum-team-context", "1");
-    document.head.appendChild(script);
-  }
+  if (typeof document !== "undefined") {
+    function loadTeamContext() {
+      if (document.querySelector('script[data-inner-sanctum-team-context]')) return;
+      const script = document.createElement("script");
+      script.src = "/team-context.js";
+      script.defer = true;
+      script.setAttribute("data-inner-sanctum-team-context", "1");
+      document.head.appendChild(script);
+    }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadTeamContext, { once: true });
-  } else {
-    loadTeamContext();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", loadTeamContext, { once: true });
+    } else {
+      loadTeamContext();
+    }
   }
 })();
