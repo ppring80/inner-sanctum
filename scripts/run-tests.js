@@ -17,8 +17,10 @@
 // the complete regression picture. Each suite's stdout/stderr is
 // preserved exactly as if it were run directly.
 //
-// Built-in Node only (fs, path, child_process) — no test framework and
-// no new dependency.
+// tests/test-runtime-bootstrap.js is preloaded into each child process.
+// It supplies test-only compatibility for browser-only globals and auth
+// dependencies that production pages/functions provide outside the unit
+// harness. It is never loaded by Netlify or customer-facing pages.
 //
 // Exit code: 0 if every suite passed, 1 if any suite failed.
 
@@ -30,6 +32,7 @@ const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const TESTS_DIR = path.join(REPO_ROOT, 'tests');
+const TEST_BOOTSTRAP = path.join(TESTS_DIR, 'test-runtime-bootstrap.js');
 
 const SUITES = fs
   .readdirSync(TESTS_DIR, { withFileTypes: true })
@@ -42,16 +45,25 @@ if (SUITES.length === 0) {
   process.exit(1);
 }
 
+if (!fs.existsSync(TEST_BOOTSTRAP)) {
+  console.error('Missing test bootstrap: ' + TEST_BOOTSTRAP);
+  process.exit(1);
+}
+
 const results = [];
 
 SUITES.forEach((relPath) => {
   const fullPath = path.join(REPO_ROOT, relPath);
   console.log('\n=== ' + relPath + ' ===');
 
-  const result = spawnSync(process.execPath, [fullPath], {
-    cwd: REPO_ROOT,
-    stdio: 'inherit',
-  });
+  const result = spawnSync(
+    process.execPath,
+    ['-r', TEST_BOOTSTRAP, fullPath],
+    {
+      cwd: REPO_ROOT,
+      stdio: 'inherit',
+    }
+  );
 
   results.push({
     suite: relPath,
