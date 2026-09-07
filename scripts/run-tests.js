@@ -1,48 +1,46 @@
 #!/usr/bin/env node
 // scripts/run-tests.js
 //
-// Unified local regression gate for the SAGE pillar test suites plus
-// the giveaway redemption suites.
+// Canonical Inner Sanctum regression gate.
 //
-// Runs all ten suites below, in order, even if an earlier one fails —
-// so a single `npm test` run surfaces every suite's result at once
-// rather than stopping at the first failure. Each suite's own
-// stdout/stderr is preserved exactly as if it were run directly.
+// Every JavaScript test file in /tests whose name ends in `.test.js`
+// is part of this gate automatically. This keeps local `npm test` and
+// GitHub Actions aligned and prevents new regression suites from being
+// added to the repository without being exercised by the canonical
+// test command.
 //
-// Built-in Node only (child_process) — no test framework, no new
-// dependency. Individual suites remain independently runnable exactly
-// as before, e.g.:
-//   node tests/draft-market-profile.test.js
+// Diagnostic/reporting scripts that do not end in `.test.js` (for
+// example sage-rb-schedule-board.js) are intentionally excluded from
+// the pass/fail regression gate and can still be run separately.
 //
-// This script does not modify any test file or any production code.
+// All suites run even if an earlier one fails so one execution surfaces
+// the complete regression picture. Each suite's stdout/stderr is
+// preserved exactly as if it were run directly.
 //
-// Exit code: 0 if all suites passed, 1 if any suite failed.
+// Built-in Node only (fs, path, child_process) — no test framework and
+// no new dependency.
+//
+// Exit code: 0 if every suite passed, 1 if any suite failed.
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.join(__dirname, '..');
+const TESTS_DIR = path.join(REPO_ROOT, 'tests');
 
-const SUITES = [
-  'tests/draft-market-profile.test.js',
-  'tests/draft-opportunity-profile.test.js',
-  'tests/refresh-opportunity-intel-scheduled.test.js',
-  'tests/draft-scarcity-profile.test.js',
-  'tests/draft-context-profile.test.js',
-  'tests/draft-sage-synthesis.test.js',
-  'tests/redeem-giveaway-code.test.js',
-  'tests/weekly-oauth-session.test.js',
-  'tests/sage-recommend.test.js',
-  'tests/draft-sage-integration.test.js',
-  'tests/draft-roster-advisory.test.js',
-  'tests/draft-command-center-keepers.test.js',
-  'tests/draft-command-center-mock.test.js',
-  'tests/draft-command-center-reset.test.js',
-  'tests/decision-engine.test.js',
-  'tests/draft-command-center-board.test.js',
-];
+const SUITES = fs
+  .readdirSync(TESTS_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && entry.name.endsWith('.test.js'))
+  .map((entry) => `tests/${entry.name}`)
+  .sort();
+
+if (SUITES.length === 0) {
+  console.error('No regression test suites found in tests/*.test.js');
+  process.exit(1);
+}
 
 const results = [];
 
