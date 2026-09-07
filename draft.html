@@ -139,7 +139,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .prow:hover{background:#f8f6f0}
 .prow.drafted{opacity:0.3;text-decoration:line-through}
 .prow.mypick{background:#fffbe0;box-shadow:inset 0 0 0 2px var(--gold-lt)}
-.prow td{padding:7px 10px;vertical-align:middle}
+.prow td{padding:8px 10px;vertical-align:middle;line-height:1.35}
 .r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
 .r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
 .pname{font-size:14px;font-weight:600;color:var(--text)}
@@ -313,6 +313,10 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .roster-hdr-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .roster-title{font-weight:700;letter-spacing:1px;color:var(--text);text-transform:uppercase;font-size:11px}
 .roster-groups{color:var(--text3);flex:1}
+.roster-progress-row{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
+.roster-progress-item{color:var(--text2);font-size:11px}
+.roster-progress-item b{color:var(--gold-lt);letter-spacing:0.5px}
+.roster-groups-detail{color:var(--text3);width:100%;margin-bottom:6px;font-size:11px}
 .roster-groups b{color:#7a5f10;font-weight:600}
 .roster-toggle{background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:Lora,serif;white-space:nowrap}
 .roster-toggle:hover{border-color:var(--gold);color:var(--gold)}
@@ -367,7 +371,7 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .sage-rec-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
 .sage-rec-player{font-family:Lora,serif;font-weight:600;font-size:16px;color:var(--text)}
 .sage-rec-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
-.sage-rec-label{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:rgba(201,168,76,0.15);color:#8a6a10;border:1px solid rgba(201,168,76,0.3);white-space:nowrap}
+.sage-rec-label{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:3px 10px;border-radius:10px;background:rgba(201,168,76,0.15);color:#8a6a10;border:1px solid rgba(201,168,76,0.3);white-space:nowrap}
 .sage-code-take-now,.sage-code-strong-consideration{background:rgba(42,110,42,0.12);color:#2a6e2a;border-color:rgba(42,110,42,0.3)}
 .sage-code-caution,.sage-code-wait,.sage-code-pass-for-now{background:rgba(184,48,32,0.1);color:#a03020;border-color:rgba(184,48,32,0.25)}
 .sage-code-needs-more-evidence{background:rgba(122,122,118,0.12);color:#6a6a66;border-color:rgba(122,122,118,0.25)}
@@ -382,9 +386,9 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
    matching .sage-rec-reasons' existing small/muted treatment exactly,
    so it never visually competes with the two lines above it. */
 .sage-rec-football-context{font-family:Lora,serif;font-weight:600;font-size:15px;color:var(--text);line-height:1.4;margin-top:2px}
-.sage-rec-draft-outlook{font-family:Lora,serif;font-size:15px;font-style:italic;color:var(--text2);line-height:1.4;margin-top:4px}
-.sage-rec-context-note{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text3);margin-top:4px}
-.sage-rec-reasons{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text3);margin-top:3px}
+.sage-rec-draft-outlook{font-family:Lora,serif;font-size:12px;font-style:italic;color:var(--text3);line-height:1.4;margin-top:4px}
+.sage-rec-context-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:4px;opacity:0.85}
+.sage-rec-reasons{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px;opacity:0.85}
 .sage-showmore-btn{margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:3px 10px;cursor:pointer;font-size:10px;font-family:Lora,serif}
 .sage-showmore-btn:hover{border-color:var(--gold);color:var(--gold)}
 .sage-roster-watch{margin-top:10px;background:#fffbf0;border:1px solid rgba(201,168,76,0.35);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;padding:9px 12px}
@@ -2913,20 +2917,24 @@ function renderClockStatus(){
   var onClockTeam=slot?draftState.teams[slot-1]:null;
   var teamLabel=onClockTeam?onClockTeam.name.toUpperCase():'—';
   var away=distanceToMySlot(pn);
+  // Visual Pass V2: "Round X" is a purely presentational derivation from
+  // the SAME pn/numTeams this function already computed above -- not a
+  // new pick/turn calculation, and nothing else reads or depends on it.
+  var roundLabel=(numTeams>0)?('ROUND '+Math.ceil(pn/numTeams)+' · '):'';
 
   if(draftState.myTeamId && away===0){
     el.classList.add('mine');
     var b2b=myBackToBackPickInfo(pn);
     var line1=b2b.isBackToBack
       ?'YOU\'RE ON THE CLOCK — Back-to-back picks: Pick '+b2b.position+' of '+b2b.total
-      :'YOU\'RE ON THE CLOCK — PICK '+pn;
+      :'YOU\'RE ON THE CLOCK — '+roundLabel+'PICK '+pn;
     el.innerHTML=
       '<div class="clock-line1">'+line1+'</div>'+
       '<div class="clock-line2">Choose a player below and click <strong>Draft to My Team</strong></div>';
     return;
   }
 
-  var line1='PICK '+pn+' — '+teamLabel+' ON THE CLOCK';
+  var line1=roundLabel+'PICK '+pn+' — '+teamLabel+' ON THE CLOCK';
   var line2='';
   if(draftState.myTeamId && away!=null){
     var myNextPick=pn+away;
@@ -3111,8 +3119,38 @@ function renderMyRoster(){
     return pa-pb;
   });
 
+  // Visual Pass V2 (presentation only): the roster strip now leads with
+  // a compact "QB 0/1 · RB 1/2 · ..." positional-progress readout
+  // instead of a name list, per the approved "answer in one second:
+  // what have I drafted and what do I still need" goal. This calls the
+  // SAME existing computeRosterNeed() already used elsewhere (e.g. the
+  // rosterContext sent to sage-recommend.js) -- no new roster state, no
+  // new calculation, just an additional read of an already-computed
+  // result. FLEX/SUPERFLEX are included only when the league's own
+  // configured cfg actually has them (cfg.FLEX/cfg.SUPERFLEX > 0),
+  // never hard-coded. The full name-list detail (previously the only
+  // view) is preserved unchanged, one click away via the existing
+  // View/Hide Full Roster toggle -- nothing it showed before is gone.
+  var need=computeRosterNeed(draftState.myTeamId);
+  var cfg=need.configured||{};
+  var progressParts=['QB','RB','WR','TE','K','DEF'].filter(function(pos){
+    return (cfg[pos]||0)>0;
+  }).map(function(pos){
+    var filledForPos=Math.min(need.filled[pos]||0,cfg[pos]||0);
+    return '<span class="roster-progress-item"><b>'+pos+'</b> '+filledForPos+'/'+(cfg[pos]||0)+'</span>';
+  });
+  if((cfg.FLEX||0)>0){
+    var flexFilled=Math.max(0,(cfg.FLEX||0)-(need.remainingFlex||0));
+    progressParts.push('<span class="roster-progress-item"><b>FLEX</b> '+flexFilled+'/'+(cfg.FLEX||0)+'</span>');
+  }
+  if((cfg.SUPERFLEX||0)>0){
+    var sflexFilled=Math.max(0,(cfg.SUPERFLEX||0)-(need.remainingSuperflex||0));
+    progressParts.push('<span class="roster-progress-item"><b>SFLX</b> '+sflexFilled+'/'+(cfg.SUPERFLEX||0)+'</span>');
+  }
+  var progressHtml='<div class="roster-progress-row">'+progressParts.join('')+'</div>';
+
   if(!mine.length){
-    el.innerHTML='<div class="roster-hdr-row"><span class="roster-title">My Team — 0 Players</span></div>';
+    el.innerHTML='<div class="roster-hdr-row"><span class="roster-title">My Team — 0 Players</span></div>'+progressHtml;
     return;
   }
 
@@ -3134,10 +3172,13 @@ function renderMyRoster(){
   el.innerHTML=
     '<div class="roster-hdr-row">'+
       '<span class="roster-title">My Team — '+mine.length+' Player'+(mine.length===1?'':'s')+'</span>'+
-      '<span class="roster-groups">'+groupsHtml+'</span>'+
       '<button type="button" class="roster-toggle" onclick="toggleRosterDetail()">'+(rosterDetailOpen?'Hide Full Roster':'View Full Roster')+'</button>'+
     '</div>'+
-    '<div class="roster-detail'+(rosterDetailOpen?' open':'')+'">'+detailHtml+'</div>';
+    progressHtml+
+    '<div class="roster-detail'+(rosterDetailOpen?' open':'')+'">'+
+      '<div class="roster-groups-detail">'+groupsHtml+'</div>'+
+      detailHtml+
+    '</div>';
 }
 
 // ═══════════════════════════════════════════════════════════
