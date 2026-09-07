@@ -76,9 +76,9 @@ const canonicalCodes = expectedIds
 assert(canonicalCodes.length === 32, 'Expected exactly 32 NFL defense identities');
 assert(new Set(canonicalCodes).size === 32, 'Each NFL defense must have a unique canonical identity');
 
-const normalizeMatch = teamContextSource.match(/function normalizeEspnRoster\(team, league\) \{[\s\S]*?\n  \}\n\n  function repairActiveEspnDefenseIdentity/);
+const normalizeMatch = teamContextSource.match(/function normalizeEspnRoster\(team, league\) \{[\s\S]*?\n  \}\n\n  function detectEspnScoringFormat/);
 assert(normalizeMatch, 'Could not locate normalizeEspnRoster in team-context.js');
-const normalizeSource = normalizeMatch[0].replace(/\n\n  function repairActiveEspnDefenseIdentity$/, '');
+const normalizeSource = normalizeMatch[0].replace(/\n\n  function detectEspnScoringFormat$/, '');
 
 const context = {
   ESPN_POSITION_BY_ID: extractConstObject(teamContextSource, 'ESPN_POSITION_BY_ID'),
