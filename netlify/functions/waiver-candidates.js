@@ -4,58 +4,39 @@
 //
 // PROVIDER-NEUTRAL WAIVER CANDIDATE INTELLIGENCE
 // ------------------------------------------------
-// PURPOSE
-// Join a connected league's provider-reported available-player pool to
-// intelligence Inner Sanctum already produces:
+// Provider availability is authoritative. This service joins only players
+// explicitly reported as FREE_AGENT / FREEAGENT / WAIVERS to intelligence
+// Inner Sanctum already produces:
 //
 //   provider availability -> Weekly SAGE -> Risers & Fallers -> roster context
 //
-// This function DOES NOT:
-// - create a new SAGE score
-// - alter Weekly SAGE rankings or recommendations
-// - invent player availability
-// - submit adds/drops/waiver claims
-// - calculate FAAB bids
-// - guess through conflicting player identity evidence
-//
-// The provider's availablePlayers array is the gate. A player who is not
-// present there can never appear as a waiver candidate from this service.
-//
-// MATCHING POLICY
-// ----------------
-// Provider player IDs are retained as metadata but are NOT treated as the
-// universal Inner Sanctum player identity. V1 matching uses normalized name
-// plus corroborating NFL team and position when those fields are available.
-// Conflicting team/position evidence returns an unmatched candidate rather
-// than silently joining the wrong player.
+// It does not calculate a new SAGE/waiver score, invent availability,
+// calculate FAAB, or submit transactions.
 
 const { connectLambda, getStore } = require('@netlify/blobs');
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean)
+  ? process.env.ALLOWED_ORIGINS.split(',').map((value) => value.trim()).filter(Boolean)
   : ['https://theinnersanctum.xyz'];
 
 const SUPPORTED_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
-
-const CORS_BASE = {
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json',
-  Vary: 'Origin'
-};
 
 function isOriginAllowed(origin) {
   return !origin || ALLOWED_ORIGINS.includes(origin);
 }
 
 function corsHeaders(origin) {
-  const headers = { ...CORS_BASE };
+  const headers = {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json',
+    Vary: 'Origin'
+  };
+
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
   }
+
   return headers;
 }
 
@@ -65,6 +46,23 @@ function jsonResponse(statusCode, body, origin) {
     headers: corsHeaders(origin),
     body: JSON.stringify(body)
   };
+}
+
+function firstDefined() {
+  for (let i = 0; i < arguments.length; i += 1) {
+    if (arguments[i] !== undefined && arguments[i] !== null) {
+      return arguments[i];
+    }
+  }
+  return undefined;
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function normalizeName(value) {
@@ -88,43 +86,41 @@ function normalizeTeam(value) {
 }
 
 function normalizePosition(value) {
-  const pos = String(value || '').trim().toUpperCase();
-  if (['DST', 'D/ST', 'D-ST', 'DEFENSE'].includes(pos)) {
+  const position = String(value || '').trim().toUpperCase();
+  if (['DST', 'D/ST', 'D-ST', 'DEFENSE'].includes(position)) {
     return 'DEF';
   }
-  return pos;
-}
-
-function numberOrNull(value) {
-  if (value === undefined || value === null || value === '') {
-    return null;
-  }
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function firstDefined() {
-  for (let i = 0; i < arguments.length; i += 1) {
-    if (arguments[i] !== undefined && arguments[i] !== null) {
-      return arguments[i];
-    }
-  }
-  return undefined;
+  return position;
 }
 
 function getPlayerName(player) {
-  return firstDefined(player?.name, player?.longName, player?.fullName, player?.playerName) || '';
+  return firstDefined(
+    player?.name,
+    player?.longName,
+    player?.fullName,
+    player?.playerName
+  ) || '';
 }
 
 function getPlayerTeam(player) {
   return normalizeTeam(
-    firstDefined(player?.team, player?.nflTeam, player?.teamAbv, player?.proTeam)
+    firstDefined(
+      player?.team,
+      player?.nflTeam,
+      player?.teamAbv,
+      player?.teamAbbreviation,
+      player?.proTeam
+    )
   );
 }
 
 function getPlayerPosition(player) {
   return normalizePosition(
-    firstDefined(player?.position, player?.pos, player?.defaultPosition)
+    firstDefined(
+      player?.position,
+      player?.pos,
+      player?.defaultPosition
+    )
   );
 }
 
@@ -151,6 +147,7 @@ function compatibleIdentity(candidate, evidence) {
 
 function findIdentityMatch(candidate, evidenceRows) {
   const normalizedCandidateName = normalizeName(getPlayerName(candidate));
+
   if (!normalizedCandidateName) {
     return { match: null, reason: 'missing_name' };
   }
@@ -164,14 +161,14 @@ function findIdentityMatch(candidate, evidenceRows) {
   }
 
   const compatible = [];
-  const conflictReasons = new Set();
+  const conflicts = new Set();
 
   nameMatches.forEach((row) => {
     const result = compatibleIdentity(candidate, row);
     if (result.ok) {
       compatible.push(row);
     } else if (result.reason) {
-      conflictReasons.add(result.reason);
+      conflicts.add(result.reason);
     }
   });
 
@@ -183,11 +180,11 @@ function findIdentityMatch(candidate, evidenceRows) {
     return { match: null, reason: 'ambiguous_name' };
   }
 
-  if (conflictReasons.has('team_mismatch')) {
+  if (conflicts.has('team_mismatch')) {
     return { match: null, reason: 'team_mismatch' };
   }
 
-  if (conflictReasons.has('position_mismatch')) {
+  if (conflicts.has('position_mismatch')) {
     return { match: null, reason: 'position_mismatch' };
   }
 
@@ -207,9 +204,11 @@ function flattenWeeklyRankings(weeklyData) {
       rows.push({
         ...row,
         _sagePosition: position,
-        _sagePositionRank: numberOrNull(
-          firstDefined(row?.rank, row?.positionRank, row?.weeklyRank)
-        ) || index + 1
+        _sagePositionRank:
+          numberOrNull(
+            firstDefined(row?.positionRank, row?.rank, row?.weeklyRank)
+          ) ||
+          index + 1
       });
     });
   });
@@ -220,13 +219,11 @@ function flattenWeeklyRankings(weeklyData) {
 function buildTrendRows(risersFallersData) {
   const rows = [];
 
-  (Array.isArray(risersFallersData?.risers) ? risersFallersData.risers : []).forEach(
-    (row) => rows.push({ ...row, _trendDirection: 'RISER' })
-  );
+  (Array.isArray(risersFallersData?.risers) ? risersFallersData.risers : [])
+    .forEach((row) => rows.push({ ...row, _trendDirection: 'RISER' }));
 
-  (Array.isArray(risersFallersData?.fallers) ? risersFallersData.fallers : []).forEach(
-    (row) => rows.push({ ...row, _trendDirection: 'FALLER' })
-  );
+  (Array.isArray(risersFallersData?.fallers) ? risersFallersData.fallers : [])
+    .forEach((row) => rows.push({ ...row, _trendDirection: 'FALLER' }));
 
   return rows;
 }
@@ -236,17 +233,42 @@ function extractSageEvidence(row) {
     return null;
   }
 
+  // Weeks 2-18 positional leaderboards use nested row.sage.* fields.
+  // Week 1 uses explicit baseline fields such as positionRank,
+  // recommendation, sageScore:null, and rankingScore. Support both shapes
+  // without pretending Week 1 baseline evidence is a SAGE score.
+  const nestedSage =
+    row?.sage && typeof row.sage === 'object'
+      ? row.sage
+      : null;
+
   return {
     position: row._sagePosition || getPlayerPosition(row) || null,
     positionRank: row._sagePositionRank || null,
     sageScore: numberOrNull(
-      firstDefined(row?.sageScore, row?.score, row?.SAGE)
+      firstDefined(
+        nestedSage?.score,
+        row?.sageScore,
+        row?.score,
+        row?.SAGE
+      )
     ),
-    recommendation:
-      firstDefined(row?.recommendation, row?.verdict, row?.label) || null,
-    confidence: firstDefined(row?.confidence, row?.confidenceBand) || null,
+    sageLabel: firstDefined(nestedSage?.label, row?.sageLabel, row?.label) || null,
+    recommendation: firstDefined(row?.recommendation, row?.verdict) || null,
+    confidence: numberOrNull(
+      firstDefined(
+        nestedSage?.confidence,
+        row?.confidence,
+        row?.confidenceBand
+      )
+    ),
+    confidenceLabel:
+      firstDefined(nestedSage?.confidenceLabel, row?.confidenceLabel) || null,
     sageTake: row?.sageTake || null,
-    opponent: firstDefined(row?.opponent, row?.opp) || null
+    opponent: firstDefined(row?.opponent, row?.opp) || null,
+    baselineEvidenceType: row?.baselineEvidenceType || null,
+    rankingScore: numberOrNull(row?.rankingScore),
+    adp: numberOrNull(row?.adp)
   };
 }
 
@@ -269,20 +291,16 @@ function extractTrendEvidence(row) {
 }
 
 function rankRosterAtPosition(roster, sageRows, position) {
-  const relevantRoster = (Array.isArray(roster) ? roster : []).filter(
-    (player) => getPlayerPosition(player) === position
-  );
-
-  return relevantRoster.map((player) => {
-    const sageMatch = findIdentityMatch(player, sageRows);
-    const sage = extractSageEvidence(sageMatch.match);
-
-    return {
-      player,
-      sage,
-      matchReason: sageMatch.reason
-    };
-  });
+  return (Array.isArray(roster) ? roster : [])
+    .filter((player) => getPlayerPosition(player) === position)
+    .map((player) => {
+      const sageMatch = findIdentityMatch(player, sageRows);
+      return {
+        player,
+        sage: extractSageEvidence(sageMatch.match),
+        matchReason: sageMatch.reason
+      };
+    });
 }
 
 function compareCandidateToRoster(candidateSage, rosterEvidence) {
@@ -294,7 +312,7 @@ function compareCandidateToRoster(candidateSage, rosterEvidence) {
     };
   }
 
-  const comparable = rosterEvidence
+  const comparable = (Array.isArray(rosterEvidence) ? rosterEvidence : [])
     .filter((entry) => entry.sage && entry.sage.positionRank)
     .sort((a, b) => b.sage.positionRank - a.sage.positionRank);
 
@@ -332,11 +350,62 @@ function compareCandidateToRoster(candidateSage, rosterEvidence) {
 function isProviderAvailableStatus(player) {
   const status = String(
     firstDefined(player?.availabilityStatus, player?.status) || ''
-  )
-    .trim()
-    .toUpperCase();
+  ).trim().toUpperCase();
 
   return ['FREE_AGENT', 'FREEAGENT', 'WAIVERS'].includes(status);
+}
+
+function resolveConnectionInput(body) {
+  const connection =
+    body?.connection && typeof body.connection === 'object'
+      ? body.connection
+      : null;
+
+  const provider = String(
+    firstDefined(body?.provider, connection?.provider) || ''
+  ).trim().toLowerCase();
+
+  // ESPN currently persists the espn-league response as connection.league.
+  // The ESPN function adds availablePlayers inside that object. Also accept
+  // top-level availability so future providers can use the same endpoint.
+  const availablePlayers = firstDefined(
+    body?.availablePlayers,
+    connection?.availablePlayers,
+    connection?.league?.availablePlayers
+  );
+
+  const roster = firstDefined(body?.roster, connection?.roster);
+
+  const league =
+    connection?.league && typeof connection.league === 'object'
+      ? connection.league
+      : {};
+
+  return {
+    provider,
+    availablePlayers: Array.isArray(availablePlayers) ? availablePlayers : [],
+    roster: Array.isArray(roster) ? roster : [],
+    season: Number(
+      firstDefined(body?.season, connection?.season, league?.season) ||
+      new Date().getFullYear()
+    ),
+    week: Number(firstDefined(body?.week, league?.scoringPeriodId)),
+    scoring:
+      firstDefined(
+        body?.scoring,
+        body?.scoringFormat,
+        connection?.scoringFormat,
+        connection?.settings?.scoringProfile?.format
+      ) || 'ppr',
+    teams: Number(
+      firstDefined(body?.teams, body?.teamCount, connection?.teamCount, league?.size) || 12
+    ),
+    availabilityMeta: firstDefined(
+      body?.availabilityMeta,
+      connection?.availabilityMeta,
+      connection?.league?.availabilityMeta
+    ) || null
+  };
 }
 
 function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersData }) {
@@ -354,7 +423,6 @@ function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersD
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
         : [];
-      const rosterImpact = compareCandidateToRoster(sage, rosterEvidence);
 
       return {
         providerPlayerId:
@@ -375,18 +443,23 @@ function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersD
         },
         sage,
         trend,
-        rosterImpact
+        rosterImpact: compareCandidateToRoster(sage, rosterEvidence)
       };
     });
 }
 
 function getBaseUrl(event) {
   const headers = event.headers || {};
-  const proto = headers['x-forwarded-proto'] || headers['X-Forwarded-Proto'] || 'https';
+  const proto =
+    headers['x-forwarded-proto'] ||
+    headers['X-Forwarded-Proto'] ||
+    'https';
   const host = headers.host || headers.Host;
+
   if (!host) {
     throw new Error('Could not determine host.');
   }
+
   return `${proto}://${host}`;
 }
 
@@ -415,7 +488,7 @@ async function fetchWeeklyData(event, season, week, scoring, teams) {
   if (!response.ok || !data) {
     throw new Error(
       (data && (data.error || data.detail)) ||
-        `Weekly SAGE unavailable (HTTP ${response.status}).`
+      `Weekly SAGE unavailable (HTTP ${response.status}).`
     );
   }
 
@@ -428,9 +501,6 @@ async function readRisersFallers(event) {
     const store = getStore({ name: 'risers-fallers' });
     return (await store.get('latest', { type: 'json' })) || null;
   } catch (error) {
-    // Trend data is supporting evidence, never a prerequisite for waiver
-    // candidate enrichment. Weekly SAGE + provider availability can still
-    // produce useful output when Risers & Fallers is unavailable.
     return null;
   }
 }
@@ -443,11 +513,7 @@ exports.handler = async function (event) {
   }
 
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: corsHeaders(origin),
-      body: ''
-    };
+    return { statusCode: 204, headers: corsHeaders(origin), body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
@@ -461,38 +527,35 @@ exports.handler = async function (event) {
     return jsonResponse(400, { error: 'Invalid JSON body.' }, origin);
   }
 
-  const provider = String(body.provider || '').trim().toLowerCase();
-  const availablePlayers = Array.isArray(body.availablePlayers)
-    ? body.availablePlayers
-    : [];
-  const roster = Array.isArray(body.roster) ? body.roster : [];
-  const season = Number(body.season || new Date().getFullYear());
-  const week = Number(body.week);
-  const scoring = body.scoring || body.scoringFormat || 'ppr';
-  const teams = Number(body.teams || body.teamCount || 12);
+  const input = resolveConnectionInput(body);
 
-  if (!provider) {
+  if (!input.provider) {
     return jsonResponse(400, { error: 'provider is required.' }, origin);
   }
 
-  if (!Number.isInteger(week) || week < 1 || week > 18) {
-    return jsonResponse(400, { error: 'week must be an integer from 1 through 18.' }, origin);
+  if (!Number.isInteger(input.week) || input.week < 1 || input.week > 18) {
+    return jsonResponse(
+      400,
+      { error: 'week must be an integer from 1 through 18.' },
+      origin
+    );
   }
 
-  if (!availablePlayers.length) {
+  if (!input.availablePlayers.length) {
     return jsonResponse(
       200,
       {
         evidenceType: 'waiver-candidates',
-        schemaVersion: 1,
+        schemaVersion: 2,
         generatedAt: new Date().toISOString(),
-        provider,
-        season,
-        week,
+        provider: input.provider,
+        season: input.season,
+        week: input.week,
         candidates: [],
         metadata: {
           availablePlayersReceived: 0,
           candidatesReturned: 0,
+          availabilityMeta: input.availabilityMeta,
           note:
             'No provider-reported available players were supplied. This service never invents league availability.'
         }
@@ -503,13 +566,19 @@ exports.handler = async function (event) {
 
   try {
     const [weeklyData, risersFallersData] = await Promise.all([
-      fetchWeeklyData(event, season, week, scoring, teams),
+      fetchWeeklyData(
+        event,
+        input.season,
+        input.week,
+        input.scoring,
+        input.teams
+      ),
       readRisersFallers(event)
     ]);
 
     const candidates = enrichCandidates({
-      availablePlayers,
-      roster,
+      availablePlayers: input.availablePlayers,
+      roster: input.roster,
       weeklyData,
       risersFallersData
     });
@@ -518,18 +587,21 @@ exports.handler = async function (event) {
       200,
       {
         evidenceType: 'waiver-candidates',
-        schemaVersion: 1,
+        schemaVersion: 2,
         generatedAt: new Date().toISOString(),
-        provider,
-        season,
-        week,
+        provider: input.provider,
+        season: input.season,
+        week: input.week,
         candidates,
         metadata: {
-          availablePlayersReceived: availablePlayers.length,
+          availablePlayersReceived: input.availablePlayers.length,
           candidatesReturned: candidates.length,
-          sageMatched: candidates.filter((candidate) => candidate.identity.sageMatched).length,
-          trendMatched: candidates.filter((candidate) => candidate.identity.trendMatched).length,
+          sageMatched:
+            candidates.filter((candidate) => candidate.identity.sageMatched).length,
+          trendMatched:
+            candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
+          availabilityMeta: input.availabilityMeta,
           methodology:
             'Provider availability is authoritative. Weekly SAGE and Risers & Fallers are joined as existing evidence; no new waiver score is calculated.'
         }
@@ -548,8 +620,6 @@ exports.handler = async function (event) {
   }
 };
 
-// Pure helpers are exported only for regression tests. The Netlify handler
-// remains the production entry point.
 exports._test = {
   normalizeName,
   normalizeTeam,
@@ -557,7 +627,9 @@ exports._test = {
   findIdentityMatch,
   flattenWeeklyRankings,
   buildTrendRows,
+  extractSageEvidence,
   compareCandidateToRoster,
   isProviderAvailableStatus,
+  resolveConnectionInput,
   enrichCandidates
 };
