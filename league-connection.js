@@ -30,6 +30,11 @@
     "swid", "session", "sessionId", "session_id", "cbsToken", "cbsSession"
   ]);
 
+  const TEAM_CONTEXT_FIELDS = [
+    "teamId", "teamName", "team", "roster", "scoringFormat",
+    "lineupConstruction", "teamCount"
+  ];
+
   function emptyState() {
     return { schemaVersion: SCHEMA_VERSION, activeConnectionId: null, connections: {} };
   }
@@ -74,9 +79,40 @@
     return teamId ? base + ":" + cleanPart(teamId) : base;
   }
 
+  function teamIdFromConnectionId(provider, connectionId) {
+    if (!provider || !connectionId) return null;
+    const parts = String(connectionId).split(":");
+    if (parts.length < 3 || parts[0] !== provider) return null;
+    try {
+      return textOrNull(decodeURIComponent(parts.slice(2).join(":")));
+    } catch (e) {
+      return textOrNull(parts.slice(2).join(":"));
+    }
+  }
+
+  function sameLeague(a, b) {
+    const aId = leagueIdOf(a), bId = leagueIdOf(b);
+    if (aId && bId) return aId === bId;
+    const aName = leagueNameOf(a), bName = leagueNameOf(b);
+    return Boolean(aName && bName && aName === bName);
+  }
+
+  function preserveResolvedTeamContext(previous, safe) {
+    if (!previous || !teamIdOf(previous)) return safe;
+    if (teamIdOf(safe)) return safe;
+    if (!sameLeague(previous, safe)) return safe;
+
+    const protectedSafe = { ...safe };
+    TEAM_CONTEXT_FIELDS.forEach(function (field) {
+      if (previous[field] !== undefined) protectedSafe[field] = previous[field];
+    });
+    return protectedSafe;
+  }
+
   function normalizeConnection(provider, data, existing) {
-    const safe = sanitizeValue(data || {});
     const previous = existing || {};
+    let safe = sanitizeValue(data || {});
+    safe = preserveResolvedTeamContext(previous, safe);
     const now = new Date().toISOString();
     const merged = {
       ...previous,
@@ -92,13 +128,6 @@
     merged.teamId = teamIdOf(merged);
     merged.teamName = teamNameOf(merged);
     return merged;
-  }
-
-  function sameLeague(a, b) {
-    const aId = leagueIdOf(a), bId = leagueIdOf(b);
-    if (aId && bId) return aId === bId;
-    const aName = leagueNameOf(a), bName = leagueNameOf(b);
-    return Boolean(aName && bName && aName === bName);
   }
 
   function sameTeamOrUpgradeable(a, b) {
@@ -136,7 +165,14 @@
     Object.keys(source).forEach(function (id) {
       const raw = source[id];
       if (!raw || typeof raw !== "object" || !PROVIDERS[raw.provider]) return;
-      const connection = normalizeConnection(raw.provider, raw, raw);
+
+      let repairableRaw = raw;
+      if (!teamIdOf(raw)) {
+        const keyedTeamId = teamIdFromConnectionId(raw.provider, id);
+        if (keyedTeamId) repairableRaw = { ...raw, teamId: keyedTeamId };
+      }
+
+      const connection = normalizeConnection(raw.provider, repairableRaw, repairableRaw);
       connection.connectionId = id;
       next.connections[id] = connection;
     });
