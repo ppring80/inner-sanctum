@@ -4,51 +4,39 @@
 // WHY THIS FILE EXISTS: ESPN has no official public Fantasy API — no
 // developer program, no app registration, no OAuth. The known working
 // path used by actively-maintained community libraries is ESPN's own
-// undocumented v3 endpoint, the same one fantasy.espn.com itself calls:
+// undocumented v3 endpoint, the same one fantasy.espn.com itself calls.
 //
-//   GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/
-//       {season}/segments/0/leagues/{leagueId}?view=mTeam&view=mRoster&
-//       view=mMatchup&view=mSettings
+// This function performs two READ-ONLY ESPN requests:
+//
+//   1. League state:
+//      view=mTeam&view=mRoster&view=mMatchup&view=mSettings
+//
+//   2. League-specific player availability:
+//      view=kona_player_info
+//      with x-fantasy-filter status FREEAGENT / WAIVERS
 //
 // AUTH MODEL:
 //   - PUBLIC leagues: no authentication is required.
-//   - PRIVATE leagues: the same request is made with the visitor's own
-//     espn_s2 and SWID browser-cookie values attached as a Cookie header.
-//
-//     These values represent a session ESPN already issued after the
-//     customer authenticated directly with ESPN. Inner Sanctum does not
-//     obtain, guess, or store an ESPN password.
-//
-// WHY THIS IS SERVER-SIDE:
-// ESPN does not send CORS headers permitting theinnersanctum.xyz to call
-// this endpoint directly from the browser. The Netlify function performs
-// the ESPN request server-side and returns the result to Inner Sanctum.
+//   - PRIVATE leagues: requests use the visitor's own espn_s2 and SWID
+//     values for the current request only.
 //
 // CREDENTIAL HANDLING:
 // espn_s2 and SWID:
 //   - arrive only in the current POST request;
-//   - are used only for the outbound ESPN request;
+//   - are used only for outbound ESPN requests;
 //   - are never intentionally logged;
 //   - are never stored by this function;
 //   - are NOT persisted in LeagueConnection.
 //
-// connect-league.html clears its local credential variables after the
-// request completes and persists only safe league-connection metadata
-// and ESPN's returned league data.
-//
-// RESPONSE SHAPE:
-// ESPN's response is large and deeply nested. This function intentionally
-// returns ESPN's raw league JSON as-is. It does not normalize the response
-// into provider-adapters.js's shared league shape.
-//
-// Real ESPN response shapes should be validated before relying on a
-// normalizeEspnData() implementation for production decision logic.
+// AVAILABILITY PHILOSOPHY:
+// The availability request is deliberately non-fatal. If ESPN changes the
+// undocumented kona_player_info behavior, an otherwise valid league
+// connection must continue to work. In that case availablePlayers is []
+// and availabilityMeta reports the failure rather than fabricating data.
 //
 // KNOWN FRAGILITY:
-// This is an undocumented, unsupported ESPN endpoint. ESPN may change its
-// response shape or access behavior without notice. If it begins failing
-// broadly, first check whether maintained ESPN fantasy community libraries
-// are experiencing the same breakage.
+// ESPN's Fantasy endpoint is undocumented and unsupported. ESPN may change
+// response shape or access behavior without notice.
 // ═══════════════════════════════════════════════════════════════════════
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
@@ -68,13 +56,53 @@ const VIEWS = [
   "mSettings"
 ];
 
-/**
- * Return true only when the browser Origin exactly matches one of the
- * configured approved origins.
- *
- * An empty Origin is permitted because some direct/server-side requests
- * do not send the Origin header at all.
- */
+const AVAILABLE_PLAYER_LIMIT = 1000;
+
+const POSITION_BY_ID = {
+  0: "QB",
+  2: "RB",
+  4: "WR",
+  6: "TE",
+  16: "D/ST",
+  17: "K"
+};
+
+const NFL_TEAM_BY_ID = {
+  0: null,
+  1: "ATL",
+  2: "BUF",
+  3: "CHI",
+  4: "CIN",
+  5: "CLE",
+  6: "DAL",
+  7: "DEN",
+  8: "DET",
+  9: "GB",
+  10: "TEN",
+  11: "IND",
+  12: "KC",
+  13: "LV",
+  14: "LAR",
+  15: "MIA",
+  16: "MIN",
+  17: "NE",
+  18: "NO",
+  19: "NYG",
+  20: "NYJ",
+  21: "PHI",
+  22: "ARI",
+  23: "PIT",
+  24: "LAC",
+  25: "SF",
+  26: "SEA",
+  27: "TB",
+  28: "WSH",
+  29: "CAR",
+  30: "JAX",
+  33: "BAL",
+  34: "HOU"
+};
+
 function isOriginAllowed(origin) {
   if (!origin) {
     return true;
@@ -83,12 +111,6 @@ function isOriginAllowed(origin) {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
-/**
- * Build CORS headers for the current request.
- *
- * Never return Access-Control-Allow-Origin: * for this endpoint because
- * private-league requests may contain ESPN session values.
- */
 function buildCorsHeaders(origin) {
   const headers = {
     "Access-Control-Allow-Headers":
@@ -116,27 +138,11 @@ function buildCorsHeaders(origin) {
   return headers;
 }
 
-async function fetchEspnLeague({
-  leagueId,
-  season,
+function buildEspnHeaders({
   espn_s2,
-  swid
+  swid,
+  fantasyFilter = null
 }) {
-  const viewParams =
-    VIEWS
-      .map(
-        (view) =>
-          `view=${encodeURIComponent(view)}`
-      )
-      .join("&");
-
-  const url =
-    `${ESPN_BASE_URL}/` +
-    `${encodeURIComponent(season)}/` +
-    `segments/0/leagues/` +
-    `${encodeURIComponent(leagueId)}` +
-    `?${viewParams}`;
-
   const headers = {
     "User-Agent":
       "Mozilla/5.0 " +
@@ -146,15 +152,42 @@ async function fetchEspnLeague({
       "Chrome/125.0 Safari/537.36"
   };
 
-  // Public leagues do not need a Cookie header.
-  //
-  // Private leagues use both values together. We deliberately do not
-  // send a partial credential header when only one value was supplied.
   if (espn_s2 && swid) {
     headers.Cookie =
       `espn_s2=${espn_s2}; SWID=${swid}`;
   }
 
+  if (fantasyFilter) {
+    headers["x-fantasy-filter"] =
+      JSON.stringify(fantasyFilter);
+  }
+
+  return headers;
+}
+
+function buildLeagueUrl({
+  leagueId,
+  season,
+  params
+}) {
+  const query =
+    new URLSearchParams(params);
+
+  return (
+    `${ESPN_BASE_URL}/` +
+    `${encodeURIComponent(season)}/` +
+    `segments/0/leagues/` +
+    `${encodeURIComponent(leagueId)}` +
+    `?${query.toString()}`
+  );
+}
+
+async function fetchEspnJson({
+  url,
+  espn_s2,
+  swid,
+  fantasyFilter = null
+}) {
   const response =
     await fetch(
       url,
@@ -163,7 +196,11 @@ async function fetchEspnLeague({
           "GET",
 
         headers:
-          headers
+          buildEspnHeaders({
+            espn_s2,
+            swid,
+            fantasyFilter
+          })
       }
     );
 
@@ -209,6 +246,336 @@ async function fetchEspnLeague({
     data:
       data
   };
+}
+
+async function fetchEspnLeague({
+  leagueId,
+  season,
+  espn_s2,
+  swid
+}) {
+  const params = {};
+
+  VIEWS.forEach(
+    function (view) {
+      if (!params.view) {
+        params.view = [];
+      }
+
+      params.view.push(view);
+    }
+  );
+
+  const viewParams =
+    VIEWS
+      .map(
+        (view) =>
+          `view=${encodeURIComponent(view)}`
+      )
+      .join("&");
+
+  const url =
+    `${ESPN_BASE_URL}/` +
+    `${encodeURIComponent(season)}/` +
+    `segments/0/leagues/` +
+    `${encodeURIComponent(leagueId)}` +
+    `?${viewParams}`;
+
+  return fetchEspnJson({
+    url,
+    espn_s2,
+    swid
+  });
+}
+
+function getCurrentScoringPeriod(leagueData) {
+  const candidates = [
+    leagueData?.scoringPeriodId,
+    leagueData?.status?.currentScoringPeriod,
+    leagueData?.status?.currentMatchupPeriod,
+    leagueData?.status?.latestScoringPeriod
+  ];
+
+  for (const candidate of candidates) {
+    const value = Number(candidate);
+
+    if (
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= 18
+    ) {
+      return value;
+    }
+  }
+
+  return 1;
+}
+
+async function fetchEspnAvailablePlayers({
+  leagueId,
+  season,
+  scoringPeriodId,
+  espn_s2,
+  swid
+}) {
+  const url =
+    buildLeagueUrl({
+      leagueId,
+      season,
+      params: {
+        view:
+          "kona_player_info",
+
+        scoringPeriodId:
+          String(scoringPeriodId)
+      }
+    });
+
+  const fantasyFilter = {
+    players: {
+      filterStatus: {
+        value: [
+          "FREEAGENT",
+          "WAIVERS"
+        ]
+      },
+
+      filterSlotIds: {
+        value: []
+      },
+
+      limit:
+        AVAILABLE_PLAYER_LIMIT,
+
+      sortPercOwned: {
+        sortPriority:
+          1,
+
+        sortAsc:
+          false
+      },
+
+      sortDraftRanks: {
+        sortPriority:
+          100,
+
+        sortAsc:
+          true,
+
+        value:
+          "STANDARD"
+      }
+    }
+  };
+
+  return fetchEspnJson({
+    url,
+    espn_s2,
+    swid,
+    fantasyFilter
+  });
+}
+
+function numberOrNull(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const n =
+    Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : null;
+}
+
+function normalizeAvailabilityStatus(value) {
+  const status =
+    String(value || "")
+      .trim()
+      .toUpperCase();
+
+  if (status === "WAIVERS") {
+    return "WAIVERS";
+  }
+
+  if (
+    status === "FREEAGENT" ||
+    status === "FREE_AGENT"
+  ) {
+    return "FREE_AGENT";
+  }
+
+  return status || null;
+}
+
+function findProjectedPoints(player, scoringPeriodId) {
+  const directCandidates = [
+    player?.projectedPoints,
+    player?.projected,
+    player?.projectedScore
+  ];
+
+  for (const candidate of directCandidates) {
+    const n =
+      numberOrNull(candidate);
+
+    if (n !== null) {
+      return n;
+    }
+  }
+
+  const stats =
+    Array.isArray(player?.stats)
+      ? player.stats
+      : [];
+
+  const projection =
+    stats.find(
+      function (stat) {
+        return (
+          Number(stat?.scoringPeriodId) ===
+            Number(scoringPeriodId) &&
+          Number(stat?.statSourceId) === 1 &&
+          numberOrNull(stat?.appliedTotal) !== null
+        );
+      }
+    );
+
+  return projection
+    ? numberOrNull(
+        projection.appliedTotal
+      )
+    : null;
+}
+
+function normalizeEspnAvailablePlayers(
+  rawData,
+  scoringPeriodId
+) {
+  const rows =
+    Array.isArray(rawData?.players)
+      ? rawData.players
+      : [];
+
+  const normalized = [];
+  const seen = new Set();
+
+  rows.forEach(
+    function (entry) {
+      const player =
+        entry?.player &&
+        typeof entry.player ===
+          "object"
+          ? entry.player
+          : entry;
+
+      const playerId =
+        player?.id ??
+        entry?.id ??
+        null;
+
+      const name =
+        String(
+          player?.fullName ||
+          player?.name ||
+          ""
+        ).trim();
+
+      if (!name) {
+        return;
+      }
+
+      const key =
+        playerId !== null &&
+        playerId !== undefined
+          ? String(playerId)
+          : name.toLowerCase();
+
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+
+      const defaultPositionId =
+        numberOrNull(
+          player?.defaultPositionId
+        );
+
+      const proTeamId =
+        numberOrNull(
+          player?.proTeamId
+        );
+
+      const percentOwned =
+        numberOrNull(
+          entry?.percentOwned ??
+          player?.percentOwned ??
+          player?.ownership?.percentOwned
+        );
+
+      const percentStarted =
+        numberOrNull(
+          entry?.percentStarted ??
+          player?.percentStarted ??
+          player?.ownership?.percentStarted
+        );
+
+      const rawStatus =
+        entry?.status ??
+        player?.status ??
+        null;
+
+      normalized.push({
+        providerPlayerId:
+          playerId !== null &&
+          playerId !== undefined
+            ? String(playerId)
+            : null,
+
+        name,
+
+        position:
+          defaultPositionId !== null
+            ? POSITION_BY_ID[
+                defaultPositionId
+              ] || null
+            : null,
+
+        nflTeam:
+          proTeamId !== null
+            ? NFL_TEAM_BY_ID[
+                proTeamId
+              ] || null
+            : null,
+
+        availabilityStatus:
+          normalizeAvailabilityStatus(
+            rawStatus
+          ),
+
+        percentOwned,
+
+        percentStarted,
+
+        projectedPoints:
+          findProjectedPoints(
+            player,
+            scoringPeriodId
+          ),
+
+        scoringPeriodId:
+          scoringPeriodId
+      });
+    }
+  );
+
+  return normalized;
 }
 
 exports.handler =
@@ -330,12 +697,6 @@ exports.handler =
       };
     }
 
-    /*
-      If either private-session value is supplied, require both.
-
-      This catches accidental half-configurations before sending a request
-      ESPN is guaranteed to reject.
-    */
     if (
       Boolean(espn_s2) !==
       Boolean(swid)
@@ -363,17 +724,11 @@ exports.handler =
     try {
       const result =
         await fetchEspnLeague({
-          leagueId:
-            leagueId,
-
+          leagueId,
           season:
             seasonYear,
-
-          espn_s2:
-            espn_s2,
-
-          swid:
-            swid
+          espn_s2,
+          swid
         });
 
       if (
@@ -434,6 +789,87 @@ exports.handler =
         };
       }
 
+      const scoringPeriodId =
+        getCurrentScoringPeriod(
+          result.data
+        );
+
+      let availablePlayers = [];
+
+      let availabilityMeta = {
+        available:
+          false,
+
+        source:
+          "espn-kona_player_info",
+
+        scoringPeriodId,
+
+        count:
+          0,
+
+        warning:
+          null
+      };
+
+      try {
+        const availabilityResult =
+          await fetchEspnAvailablePlayers({
+            leagueId,
+            season:
+              seasonYear,
+            scoringPeriodId,
+            espn_s2,
+            swid
+          });
+
+        if (availabilityResult.data) {
+          availablePlayers =
+            normalizeEspnAvailablePlayers(
+              availabilityResult.data,
+              scoringPeriodId
+            );
+
+          availabilityMeta = {
+            available:
+              true,
+
+            source:
+              "espn-kona_player_info",
+
+            scoringPeriodId,
+
+            count:
+              availablePlayers.length,
+
+            warning:
+              null
+          };
+        } else {
+          availabilityMeta.warning =
+            availabilityResult.error ===
+              "auth"
+              ? "ESPN league connected, but ESPN did not authorize the availability request."
+              : "ESPN league connected, but the availability request was unavailable.";
+        }
+      } catch (availabilityError) {
+        availabilityMeta.warning =
+          "ESPN league connected, but player availability could not be collected.";
+      }
+
+      /*
+        Put availability INSIDE the league object as well as at the
+        response top level. connect-league.html already persists the
+        returned league object, so this makes the new data flow through
+        the existing connection path without changing credential handling
+        or requiring a second client-side storage implementation.
+      */
+      const leagueWithAvailability = {
+        ...result.data,
+        availablePlayers,
+        availabilityMeta
+      };
+
       return {
         statusCode:
           200,
@@ -447,14 +883,14 @@ exports.handler =
               true,
 
             league:
-              result.data
+              leagueWithAvailability,
+
+            availablePlayers,
+
+            availabilityMeta
           })
       };
     } catch (err) {
-      /*
-        Log only the error message. Never log the incoming payload because
-        a private-league request may contain espn_s2 and SWID.
-      */
       console.log(
         "espn-league handler error:",
         err &&
