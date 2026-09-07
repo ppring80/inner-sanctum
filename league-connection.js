@@ -3,279 +3,146 @@
   -------------------------------------------
   Shared fantasy-league connection state.
 
-  V2 ARCHITECTURE
-  -------------------------------------------
-  A customer can have MANY league/team connections, including multiple
-  leagues on the same provider. One connection is active at a time and
-  becomes the context consumed by Weekly Rankings and other tools.
+  V2: one customer may have many league/team connections, including
+  multiple leagues on the same provider. One connection is active and
+  becomes the context used by connected-league tools.
 
-  Storage V2:
-
-    {
-      schemaVersion: 2,
-      activeConnectionId: "espn:1094040685:7",
-      connections: {
-        "espn:1094040685:7": { ... },
-        "espn:99887766:3": { ... },
-        "cbs:12345:10": { ... }
-      }
-    }
-
-  Existing V1 state ({ activeProvider, connections: { espn: {...} } })
-  is migrated automatically and preserved. Legacy read methods remain
-  available so existing pages can move to connection-aware behavior
-  incrementally without breaking.
-
-  IMPORTANT SECURITY BOUNDARY
-  -------------------------------------------
-  localStorage contains ONLY safe connection metadata and sanitized
-  league data. Provider passwords, cookies, OAuth tokens, ESPN espn_s2,
-  ESPN SWID, CBS sessions, authorization headers, and similar secrets
-  must never be persisted here.
+  SECURITY: only sanitized league/team metadata belongs in localStorage.
+  Provider passwords, cookies, OAuth tokens, ESPN espn_s2/SWID, CBS
+  sessions, authorization headers, and similar secrets are stripped.
 */
-
 (function () {
   "use strict";
 
   const PROVIDERS = {
-    sleeper: {
-      label: "Sleeper",
-      status: "live",
-      icon: "🏈",
-      connectionMode: "provider",
-      readOnly: true,
-    },
-    yahoo: {
-      label: "Yahoo",
-      status: "pending",
-      icon: "🟣",
-      connectionMode: "oauth",
-      readOnly: true,
-    },
-    espn: {
-      label: "ESPN",
-      status: "beta",
-      icon: "🔴",
-      connectionMode: "backend",
-      readOnly: true,
-    },
-    cbs: {
-      label: "CBS",
-      status: "beta",
-      icon: "🔵",
-      connectionMode: "browser-assisted",
-      readOnly: true,
-    },
+    sleeper: { label: "Sleeper", status: "live", icon: "🏈", connectionMode: "provider", readOnly: true },
+    yahoo: { label: "Yahoo", status: "pending", icon: "🟣", connectionMode: "oauth", readOnly: true },
+    espn: { label: "ESPN", status: "beta", icon: "🔴", connectionMode: "backend", readOnly: true },
+    cbs: { label: "CBS", status: "beta", icon: "🔵", connectionMode: "browser-assisted", readOnly: true },
   };
 
   const STORAGE_KEY = "innerSanctum_leagueConnections";
   const SCHEMA_VERSION = 2;
-
   const BLOCKED_KEYS = new Set([
-    "password",
-    "pass",
-    "passwd",
-    "cookie",
-    "cookies",
-    "token",
-    "accessToken",
-    "access_token",
-    "refreshToken",
-    "refresh_token",
-    "authorization",
-    "Authorization",
-    "espn_s2",
-    "espnS2",
-    "SWID",
-    "swid",
-    "session",
-    "sessionId",
-    "session_id",
-    "cbsToken",
-    "cbsSession",
+    "password", "pass", "passwd", "cookie", "cookies", "token",
+    "accessToken", "access_token", "refreshToken", "refresh_token",
+    "authorization", "Authorization", "espn_s2", "espnS2", "SWID",
+    "swid", "session", "sessionId", "session_id", "cbsToken", "cbsSession"
   ]);
 
   function emptyState() {
-    return {
-      schemaVersion: SCHEMA_VERSION,
-      activeConnectionId: null,
-      connections: {},
-    };
+    return { schemaVersion: SCHEMA_VERSION, activeConnectionId: null, connections: {} };
   }
 
   function sanitizeValue(value) {
     if (value === null || value === undefined) return value;
     if (Array.isArray(value)) return value.map(sanitizeValue);
     if (typeof value !== "object") return value;
-
-    const output = {};
+    const out = {};
     Object.keys(value).forEach(function (key) {
       if (BLOCKED_KEYS.has(key)) return;
-      output[key] = sanitizeValue(value[key]);
+      out[key] = sanitizeValue(value[key]);
     });
-    return output;
+    return out;
   }
 
   function textOrNull(value) {
     if (value === null || value === undefined) return null;
     const text = String(value).trim();
-    return text ? text : null;
+    return text || null;
   }
 
-  function getLeagueId(data) {
-    return textOrNull(
-      data?.leagueId ??
-      data?.league?.id ??
-      data?.league?.leagueId
-    );
+  function leagueIdOf(data) {
+    return textOrNull(data?.leagueId ?? data?.league?.id ?? data?.league?.leagueId);
   }
-
-  function getTeamId(data) {
-    return textOrNull(
-      data?.teamId ??
-      data?.team?.id ??
-      data?.team?.teamId
-    );
+  function teamIdOf(data) {
+    return textOrNull(data?.teamId ?? data?.team?.id ?? data?.team?.teamId);
   }
-
-  function getLeagueName(data) {
-    return textOrNull(
-      data?.leagueName ??
-      data?.league?.name
-    );
+  function leagueNameOf(data) {
+    return textOrNull(data?.leagueName ?? data?.league?.name ?? data?.league?.settings?.name);
   }
-
-  function getTeamName(data) {
-    return textOrNull(
-      data?.teamName ??
-      data?.team?.name
-    );
+  function teamNameOf(data) {
+    return textOrNull(data?.teamName ?? data?.team?.name);
   }
-
-  function cleanConnectionPart(value) {
+  function cleanPart(value) {
     return encodeURIComponent(String(value || "unknown").trim().toLowerCase());
   }
-
   function buildConnectionId(provider, data) {
-    const leagueId = getLeagueId(data);
-    const teamId = getTeamId(data);
-    const leagueFallback = getLeagueName(data) || "league";
-    const base = provider + ":" + cleanConnectionPart(leagueId || leagueFallback);
-    return teamId ? base + ":" + cleanConnectionPart(teamId) : base;
-  }
-
-  function sameLeague(a, b) {
-    const aLeagueId = getLeagueId(a);
-    const bLeagueId = getLeagueId(b);
-
-    if (aLeagueId && bLeagueId) return aLeagueId === bLeagueId;
-
-    const aName = getLeagueName(a);
-    const bName = getLeagueName(b);
-    return Boolean(aName && bName && aName === bName);
-  }
-
-  function sameTeamOrUpgradeable(existing, incoming) {
-    const existingTeamId = getTeamId(existing);
-    const incomingTeamId = getTeamId(incoming);
-
-    if (!existingTeamId || !incomingTeamId) return true;
-    return existingTeamId === incomingTeamId;
+    const leagueId = leagueIdOf(data);
+    const teamId = teamIdOf(data);
+    const base = provider + ":" + cleanPart(leagueId || leagueNameOf(data) || "league");
+    return teamId ? base + ":" + cleanPart(teamId) : base;
   }
 
   function normalizeConnection(provider, data, existing) {
-    const safeData = sanitizeValue(data || {});
+    const safe = sanitizeValue(data || {});
     const previous = existing || {};
     const now = new Date().toISOString();
-
     const merged = {
       ...previous,
-      ...safeData,
+      ...safe,
       provider,
-      connectionMode:
-        safeData.connectionMode ||
-        previous.connectionMode ||
-        PROVIDERS[provider]?.connectionMode ||
-        null,
-      readOnly:
-        safeData.readOnly ??
-        previous.readOnly ??
-        PROVIDERS[provider]?.readOnly ??
-        true,
-      connectedAt:
-        previous.connectedAt ||
-        safeData.connectedAt ||
-        now,
-      syncedAt:
-        safeData.syncedAt ||
-        now,
+      connectionMode: safe.connectionMode || previous.connectionMode || PROVIDERS[provider]?.connectionMode || null,
+      readOnly: safe.readOnly ?? previous.readOnly ?? PROVIDERS[provider]?.readOnly ?? true,
+      connectedAt: previous.connectedAt || safe.connectedAt || now,
+      syncedAt: safe.syncedAt || now,
     };
-
-    merged.leagueId = getLeagueId(merged);
-    merged.leagueName = getLeagueName(merged);
-    merged.teamId = getTeamId(merged);
-    merged.teamName = getTeamName(merged);
-
+    merged.leagueId = leagueIdOf(merged);
+    merged.leagueName = leagueNameOf(merged);
+    merged.teamId = teamIdOf(merged);
+    merged.teamName = teamNameOf(merged);
     return merged;
+  }
+
+  function sameLeague(a, b) {
+    const aId = leagueIdOf(a), bId = leagueIdOf(b);
+    if (aId && bId) return aId === bId;
+    const aName = leagueNameOf(a), bName = leagueNameOf(b);
+    return Boolean(aName && bName && aName === bName);
+  }
+
+  function sameTeamOrUpgradeable(a, b) {
+    const aId = teamIdOf(a), bId = teamIdOf(b);
+    if (!aId || !bId) return true;
+    return aId === bId;
+  }
+
+  function writeState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
+      activeConnectionId: state.activeConnectionId || null,
+      connections: sanitizeValue(state.connections || {})
+    }));
   }
 
   function migrateLegacyState(parsed) {
     const next = emptyState();
-    const legacyConnections =
-      parsed?.connections && typeof parsed.connections === "object"
-        ? parsed.connections
-        : {};
-
-    Object.keys(legacyConnections).forEach(function (provider) {
-      if (!PROVIDERS[provider]) return;
-      const raw = legacyConnections[provider];
-      if (!raw || typeof raw !== "object") return;
-
-      const connection = normalizeConnection(provider, raw, null);
+    const source = parsed?.connections && typeof parsed.connections === "object" ? parsed.connections : {};
+    Object.keys(source).forEach(function (provider) {
+      if (!PROVIDERS[provider] || !source[provider] || typeof source[provider] !== "object") return;
+      const connection = normalizeConnection(provider, source[provider], null);
       const id = buildConnectionId(provider, connection);
       connection.connectionId = id;
       next.connections[id] = connection;
-
-      if (parsed.activeProvider === provider) {
-        next.activeConnectionId = id;
-      }
+      if (parsed.activeProvider === provider) next.activeConnectionId = id;
     });
-
-    if (!next.activeConnectionId) {
-      const ids = Object.keys(next.connections);
-      next.activeConnectionId = ids.length ? ids[0] : null;
-    }
-
+    if (!next.activeConnectionId) next.activeConnectionId = Object.keys(next.connections)[0] || null;
     return next;
   }
 
   function normalizeV2State(parsed) {
     const next = emptyState();
-    const source =
-      parsed?.connections && typeof parsed.connections === "object"
-        ? parsed.connections
-        : {};
-
+    const source = parsed?.connections && typeof parsed.connections === "object" ? parsed.connections : {};
     Object.keys(source).forEach(function (id) {
       const raw = source[id];
-      const provider = raw?.provider;
-      if (!provider || !PROVIDERS[provider] || !raw || typeof raw !== "object") return;
-
-      const connection = normalizeConnection(provider, raw, raw);
+      if (!raw || typeof raw !== "object" || !PROVIDERS[raw.provider]) return;
+      const connection = normalizeConnection(raw.provider, raw, raw);
       connection.connectionId = id;
       next.connections[id] = connection;
     });
-
-    next.activeConnectionId =
-      parsed?.activeConnectionId && next.connections[parsed.activeConnectionId]
-        ? parsed.activeConnectionId
-        : null;
-
-    if (!next.activeConnectionId) {
-      const ids = Object.keys(next.connections);
-      next.activeConnectionId = ids.length ? ids[0] : null;
-    }
-
+    next.activeConnectionId = parsed?.activeConnectionId && next.connections[parsed.activeConnectionId]
+      ? parsed.activeConnectionId
+      : (Object.keys(next.connections)[0] || null);
     return next;
   }
 
@@ -283,14 +150,9 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return emptyState();
-
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return emptyState();
-
-      if (parsed.schemaVersion === SCHEMA_VERSION) {
-        return normalizeV2State(parsed);
-      }
-
+      if (parsed.schemaVersion === SCHEMA_VERSION) return normalizeV2State(parsed);
       const migrated = migrateLegacyState(parsed);
       writeState(migrated);
       return migrated;
@@ -299,91 +161,57 @@
     }
   }
 
-  function writeState(state) {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        schemaVersion: SCHEMA_VERSION,
-        activeConnectionId: state.activeConnectionId || null,
-        connections: sanitizeValue(state.connections || {}),
-      })
-    );
-  }
-
   function allConnections(state) {
-    return Object.keys(state.connections)
-      .map(function (id) { return state.connections[id]; })
-      .sort(function (a, b) {
-        const aTime = Date.parse(a.syncedAt || a.connectedAt || 0) || 0;
-        const bTime = Date.parse(b.syncedAt || b.connectedAt || 0) || 0;
-        return bTime - aTime;
-      });
-  }
-
-  function findProviderConnections(state, provider) {
-    return allConnections(state).filter(function (connection) {
-      return connection.provider === provider;
+    return Object.keys(state.connections).map(function (id) { return state.connections[id]; }).sort(function (a, b) {
+      const at = Date.parse(a.syncedAt || a.connectedAt || 0) || 0;
+      const bt = Date.parse(b.syncedAt || b.connectedAt || 0) || 0;
+      return bt - at;
     });
   }
 
-  function findExistingConnection(state, provider, data) {
-    const incomingId = textOrNull(data?.connectionId);
-    if (incomingId && state.connections[incomingId]) {
-      return { id: incomingId, connection: state.connections[incomingId] };
-    }
+  function providerConnections(state, provider) {
+    return allConnections(state).filter(function (c) { return c.provider === provider; });
+  }
 
-    const matches = findProviderConnections(state, provider).filter(function (candidate) {
+  function findExisting(state, provider, data) {
+    if (data?.connectionId && state.connections[data.connectionId]) {
+      return { id: data.connectionId, connection: state.connections[data.connectionId] };
+    }
+    const matches = providerConnections(state, provider).filter(function (candidate) {
       return sameLeague(candidate, data) && sameTeamOrUpgradeable(candidate, data);
     });
-
     if (!matches.length) return null;
-
-    const exactTeam = getTeamId(data);
-    if (exactTeam) {
-      const exact = matches.find(function (candidate) {
-        return getTeamId(candidate) === exactTeam;
-      });
+    const wantedTeam = teamIdOf(data);
+    if (wantedTeam) {
+      const exact = matches.find(function (candidate) { return teamIdOf(candidate) === wantedTeam; });
       if (exact) return { id: exact.connectionId, connection: exact };
     }
-
-    const unresolved = matches.find(function (candidate) {
-      return !getTeamId(candidate);
-    });
-
-    const selected = unresolved || matches[0];
-    return { id: selected.connectionId, connection: selected };
+    const unresolved = matches.find(function (candidate) { return !teamIdOf(candidate); });
+    const chosen = unresolved || matches[0];
+    return { id: chosen.connectionId, connection: chosen };
   }
 
-  function upsertConnection(provider, data, forceExistingId) {
-    if (!PROVIDERS[provider]) {
-      throw new Error("Unknown league provider: " + provider);
-    }
-    if (!data || typeof data !== "object") {
-      throw new Error("LeagueConnection.connect requires connection data.");
-    }
+  function emitChanged(detail) {
+    try {
+      window.dispatchEvent(new CustomEvent("innerSanctum:leagueContextChanged", { detail: detail || {} }));
+    } catch (e) {}
+  }
 
+  function upsert(provider, data, forcedId) {
+    if (!PROVIDERS[provider]) throw new Error("Unknown league provider: " + provider);
+    if (!data || typeof data !== "object") throw new Error("LeagueConnection.connect requires connection data.");
     const state = readState();
-    const existingMatch = forceExistingId && state.connections[forceExistingId]
-      ? { id: forceExistingId, connection: state.connections[forceExistingId] }
-      : findExistingConnection(state, provider, data);
-
-    const connection = normalizeConnection(
-      provider,
-      data,
-      existingMatch ? existingMatch.connection : null
-    );
-
+    const existingMatch = forcedId && state.connections[forcedId]
+      ? { id: forcedId, connection: state.connections[forcedId] }
+      : findExisting(state, provider, data);
+    const connection = normalizeConnection(provider, data, existingMatch?.connection || null);
     const newId = buildConnectionId(provider, connection);
     connection.connectionId = newId;
-
-    if (existingMatch && existingMatch.id !== newId) {
-      delete state.connections[existingMatch.id];
-    }
-
+    if (existingMatch && existingMatch.id !== newId) delete state.connections[existingMatch.id];
     state.connections[newId] = connection;
     state.activeConnectionId = newId;
     writeState(state);
-
+    emitChanged({ type: "upsert", connectionId: newId, provider: provider });
     return connection;
   }
 
@@ -392,103 +220,49 @@
     STORAGE_KEY,
     SCHEMA_VERSION,
 
-    getActiveConnectionId() {
-      return readState().activeConnectionId;
-    },
-
+    getActiveConnectionId() { return readState().activeConnectionId; },
     getActiveConnection() {
       const state = readState();
-      return state.activeConnectionId
-        ? state.connections[state.activeConnectionId] || null
-        : null;
+      return state.activeConnectionId ? state.connections[state.activeConnectionId] || null : null;
     },
+    getActiveProvider() { return this.getActiveConnection()?.provider || null; },
+    getAllConnections() { return allConnections(readState()); },
+    getConnectionsByProvider(provider) { return PROVIDERS[provider] ? providerConnections(readState(), provider) : []; },
+    getConnectionById(id) { return readState().connections[id] || null; },
 
-    getActiveProvider() {
-      return this.getActiveConnection()?.provider || null;
-    },
-
-    getAllConnections() {
-      return allConnections(readState());
-    },
-
-    getConnectionsByProvider(provider) {
-      if (!PROVIDERS[provider]) return [];
-      return findProviderConnections(readState(), provider);
-    },
-
-    getConnectionById(connectionId) {
-      return readState().connections[connectionId] || null;
-    },
-
-    /*
-      Legacy compatibility: returns one representative connection per
-      provider. The active connection wins for its provider; otherwise
-      the most recently synced connection is returned.
-    */
+    /* Legacy compatibility: one representative connection per provider. */
     getConnections() {
       const state = readState();
-      const output = {};
-      const active = state.activeConnectionId
-        ? state.connections[state.activeConnectionId]
-        : null;
-
+      const active = state.activeConnectionId ? state.connections[state.activeConnectionId] : null;
+      const out = {};
       Object.keys(PROVIDERS).forEach(function (provider) {
-        const list = findProviderConnections(state, provider);
+        const list = providerConnections(state, provider);
         if (!list.length) return;
-        output[provider] =
-          active && active.provider === provider
-            ? active
-            : list[0];
+        out[provider] = active && active.provider === provider ? active : list[0];
       });
-
-      return output;
+      return out;
     },
 
-    /* Legacy provider lookup. */
     getConnection(provider) {
       if (!PROVIDERS[provider]) return null;
       const active = this.getActiveConnection();
-      if (active && active.provider === provider) return active;
-      const list = this.getConnectionsByProvider(provider);
-      return list.length ? list[0] : null;
+      if (active?.provider === provider) return active;
+      return this.getConnectionsByProvider(provider)[0] || null;
     },
+    isConnected(provider) { return this.getConnectionsByProvider(provider).length > 0; },
+    hasAnyConnection() { return this.getAllConnections().length > 0; },
 
-    isConnected(provider) {
-      return this.getConnectionsByProvider(provider).length > 0;
-    },
-
-    hasAnyConnection() {
-      return this.getAllConnections().length > 0;
-    },
-
-    connect(provider, data) {
-      return upsertConnection(provider, data, null);
-    },
-
+    connect(provider, data) { return upsert(provider, data, null); },
     update(provider, data) {
-      if (!PROVIDERS[provider]) {
-        throw new Error("Unknown league provider: " + provider);
-      }
-
       const active = this.getActiveConnection();
-      const existing =
-        active && active.provider === provider
-          ? active
-          : this.getConnection(provider);
-
-      if (!existing) {
-        throw new Error("Cannot update provider that is not connected: " + provider);
-      }
-
-      return upsertConnection(provider, data || {}, existing.connectionId);
+      const existing = active?.provider === provider ? active : this.getConnection(provider);
+      if (!existing) throw new Error("Cannot update provider that is not connected: " + provider);
+      return upsert(provider, data || {}, existing.connectionId);
     },
-
     updateConnection(connectionId, data) {
       const existing = this.getConnectionById(connectionId);
-      if (!existing) {
-        throw new Error("Cannot update unknown connection: " + connectionId);
-      }
-      return upsertConnection(existing.provider, data || {}, connectionId);
+      if (!existing) throw new Error("Cannot update unknown connection: " + connectionId);
+      return upsert(existing.provider, data || {}, connectionId);
     },
 
     setActiveConnection(connectionId) {
@@ -498,75 +272,73 @@
       }
       state.activeConnectionId = connectionId;
       writeState(state);
+      emitChanged({ type: "activate", connectionId: connectionId });
       return connectionId ? state.connections[connectionId] : null;
     },
 
-    /*
-      Legacy provider activation. With multiple leagues on one provider,
-      the most recently synced connection for that provider is selected.
-    */
     setActiveProvider(provider) {
-      if (provider === null) {
-        this.setActiveConnection(null);
-        return;
-      }
-      if (!PROVIDERS[provider]) {
-        throw new Error("Unknown league provider: " + provider);
-      }
-      const list = this.getConnectionsByProvider(provider);
-      if (!list.length) {
-        throw new Error("Cannot activate a provider that is not connected: " + provider);
-      }
-      this.setActiveConnection(list[0].connectionId);
+      if (provider === null) return this.setActiveConnection(null);
+      if (!PROVIDERS[provider]) throw new Error("Unknown league provider: " + provider);
+      const connection = this.getConnectionsByProvider(provider)[0];
+      if (!connection) throw new Error("Cannot activate a provider that is not connected: " + provider);
+      return this.setActiveConnection(connection.connectionId);
     },
 
     disconnectConnection(connectionId) {
       const state = readState();
       if (!state.connections[connectionId]) return;
-
       delete state.connections[connectionId];
-
       if (state.activeConnectionId === connectionId) {
-        const remaining = allConnections(state);
-        state.activeConnectionId = remaining.length
-          ? remaining[0].connectionId
-          : null;
+        state.activeConnectionId = allConnections(state)[0]?.connectionId || null;
       }
-
       writeState(state);
+      emitChanged({ type: "disconnect", connectionId: connectionId });
     },
 
-    /*
-      Legacy behavior adapted for multi-league state: disconnect only the
-      currently active (or most recent) connection for that provider,
-      never every league on the provider in one silent action.
-    */
+    /* Legacy provider disconnect removes one connection, not every league. */
     disconnect(provider) {
       const active = this.getActiveConnection();
-      const target =
-        active && active.provider === provider
-          ? active
-          : this.getConnection(provider);
+      const target = active?.provider === provider ? active : this.getConnection(provider);
       if (target) this.disconnectConnection(target.connectionId);
     },
 
     disconnectAll() {
       writeState(emptyState());
+      emitChanged({ type: "disconnectAll" });
     },
 
     getSummary() {
-      const active = this.getActiveConnection();
-      const all = this.getAllConnections();
+      const state = readState();
       return {
         schemaVersion: SCHEMA_VERSION,
-        activeConnectionId: active?.connectionId || null,
-        activeProvider: active?.provider || null,
-        connectionCount: all.length,
-        connectedProviders: Array.from(new Set(all.map(function (c) { return c.provider; }))),
+        activeConnectionId: state.activeConnectionId,
+        activeProvider: this.getActiveProvider(),
+        connectionCount: Object.keys(state.connections).length,
+        connectedProviders: Array.from(new Set(allConnections(state).map(function (c) { return c.provider; }))),
         providers: PROVIDERS,
       };
     },
   };
 
   window.LeagueConnection = LeagueConnection;
+
+  /*
+    Load the shared team-context layer on every page that already includes
+    LeagueConnection. This keeps the customer experience consistent without
+    forcing each tool to implement its own league/team picker.
+  */
+  function loadTeamContext() {
+    if (document.querySelector('script[data-inner-sanctum-team-context]')) return;
+    const script = document.createElement("script");
+    script.src = "/team-context.js";
+    script.defer = true;
+    script.setAttribute("data-inner-sanctum-team-context", "1");
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadTeamContext, { once: true });
+  } else {
+    loadTeamContext();
+  }
 })();
