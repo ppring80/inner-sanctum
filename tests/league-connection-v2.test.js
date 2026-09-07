@@ -35,6 +35,7 @@ function loadLeagueConnection(initialState) {
     Number,
     Boolean,
     encodeURIComponent,
+    decodeURIComponent,
   };
 
   vm.createContext(sandbox);
@@ -121,22 +122,99 @@ function loadLeagueConnection(initialState) {
   const { api } = loadLeagueConnection();
 
   const unresolved = api.connect('espn', {
-    leagueId: '1094040685',
-    leagueName: 'LA League',
+    leagueId: '400',
+    leagueName: 'Upgrade League',
   });
 
   const resolved = api.updateConnection(unresolved.connectionId, {
-    leagueId: '1094040685',
-    leagueName: 'LA League',
+    leagueId: '400',
+    leagueName: 'Upgrade League',
     teamId: '14',
-    teamName: 'Old School',
-    roster: [{ name: 'Joe Burrow', position: 'QB', team: 'CIN' }],
+    teamName: 'Selected Team',
+    roster: [{ name: 'Quarterback One', position: 'QB', team: 'CIN' }],
   });
 
   assert.notStrictEqual(resolved.connectionId, unresolved.connectionId);
   assert.strictEqual(api.getAllConnections().length, 1);
-  assert.strictEqual(api.getActiveConnection().teamName, 'Old School');
+  assert.strictEqual(api.getActiveConnection().teamName, 'Selected Team');
   assert.strictEqual(api.getActiveConnection().roster.length, 1);
+})();
+
+(function testIncompleteRefreshPreservesResolvedTeamContext() {
+  const { api } = loadLeagueConnection();
+
+  const unresolved = api.connect('espn', {
+    leagueId: '700',
+    leagueName: 'Refresh League',
+    league: { id: '700', name: 'Refresh League', teams: [] },
+  });
+
+  const resolved = api.updateConnection(unresolved.connectionId, {
+    teamId: '8',
+    teamName: 'Resolved Team',
+    team: { id: '8', name: 'Resolved Team' },
+    roster: [{ name: 'Player One', position: 'RB', team: 'DET' }],
+    scoringFormat: 'half-ppr',
+    lineupConstruction: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, BENCH: 6 },
+    teamCount: 10,
+  });
+
+  const refreshedLeague = {
+    id: '700',
+    name: 'Refresh League',
+    teams: [{ id: 8, name: 'Resolved Team' }],
+  };
+
+  const refreshed = api.connect('espn', {
+    leagueId: '700',
+    leagueName: 'Refresh League',
+    league: refreshedLeague,
+    teamId: null,
+    teamName: null,
+    team: null,
+    roster: [],
+    scoringFormat: null,
+    lineupConstruction: null,
+    teamCount: null,
+  });
+
+  assert.strictEqual(refreshed.connectionId, resolved.connectionId);
+  assert.strictEqual(api.getAllConnections().length, 1);
+  assert.strictEqual(refreshed.teamId, '8');
+  assert.strictEqual(refreshed.teamName, 'Resolved Team');
+  assert.strictEqual(refreshed.roster.length, 1);
+  assert.strictEqual(refreshed.scoringFormat, 'half-ppr');
+  assert.deepStrictEqual(refreshed.lineupConstruction, { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, BENCH: 6 });
+  assert.strictEqual(refreshed.teamCount, 10);
+  assert.strictEqual(refreshed.league, refreshedLeague);
+})();
+
+(function testTeamIdRepairsFromTeamSpecificV2Key() {
+  const state = {
+    schemaVersion: 2,
+    activeConnectionId: 'espn:800:6',
+    connections: {
+      'espn:800:6': {
+        connectionId: 'espn:800:6',
+        provider: 'espn',
+        leagueId: '800',
+        leagueName: 'Repair League',
+        teamId: null,
+        teamName: 'Repair Team',
+        roster: [{ name: 'Player Two', position: 'WR', team: 'DAL' }],
+        scoringFormat: 'half-ppr',
+      },
+    },
+  };
+
+  const { api } = loadLeagueConnection(state);
+  const active = api.getActiveConnection();
+
+  assert.strictEqual(active.connectionId, 'espn:800:6');
+  assert.strictEqual(active.teamId, '6');
+  assert.strictEqual(active.teamName, 'Repair Team');
+  assert.strictEqual(active.roster.length, 1);
+  assert.strictEqual(active.scoringFormat, 'half-ppr');
 })();
 
 (function testSecretsNeverPersist() {
