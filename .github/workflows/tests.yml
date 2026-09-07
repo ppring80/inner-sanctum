@@ -19,29 +19,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run Draft Fit unit tests
-        run: node tests/draft-fit-profile.test.js
-
-      - name: Run Draft Fit scenario tests
-        run: node tests/draft-fit-scenarios.test.js
-
-      - name: Run Draft Intelligence scenario tests
-        run: node tests/draft-intelligence-scenarios.test.js
-
-      - name: Run Draft Intelligence ranking tests
-        run: node tests/draft-intelligence-ranking.test.js
-
-      - name: Run Draft Intelligence output contract tests
-        run: node tests/draft-intelligence-output.test.js
-
-      - name: Run Draft Intelligence explanation tests
-        run: node tests/draft-intelligence-explanations.test.js
-
-      - name: Run Patreon multi-membership regression tests
-        run: node tests/patreon-multi-membership.test.js
-
-      - name: Run 2026 RB Schedule Intelligence tests
-        run: node tests/sage-rb-schedule-2026.test.js
+      - name: Run canonical regression gate
+        run: npm test
 
       - name: Print 2026 RB Schedule Intelligence board
+        if: success()
         run: node tests/sage-rb-schedule-board.js
