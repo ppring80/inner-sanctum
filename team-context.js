@@ -2,6 +2,10 @@
   THE INNER SANCTUM — team-context.js
   --------------------------------------
   Shared customer-facing league/team context.
+
+  ESPN team identity is resolved automatically. There is no separate
+  customer-facing "select your team" step. Resolution uses safe persisted
+  identity hints first, then a high-confidence roster fingerprint fallback.
 */
 (function () {
   "use strict";
@@ -9,6 +13,8 @@
   if (typeof window.LeagueConnection === "undefined") return;
 
   const MANUAL_WEEKLY_KEY = "sanctum_weekly_manual_roster_v1";
+  const ESPN_TEAM_PREF_KEY = "innerSanctum_espnTeamPreference_v1";
+  const CHATGPT_LINK_STORAGE_KEY = "innerSanctum_chatgptLeagueLinks";
   const ESPN_POSITION_BY_ID = { 0:"QB", 2:"RB", 4:"WR", 6:"TE", 16:"D/ST", 17:"K" };
   const ESPN_TEAM_BY_ID = {
     0:null,1:"ATL",2:"BUF",3:"CHI",4:"CIN",5:"CLE",6:"DAL",7:"DEN",8:"DET",9:"GB",
@@ -32,7 +38,11 @@
   }
 
   function teamName(connection) {
-    return connection?.teamName || connection?.team?.name || "Team not selected";
+    return connection?.teamName || connection?.team?.name || "Team not resolved";
+  }
+
+  function leagueId(connection) {
+    return String(connection?.leagueId || connection?.league?.id || "").trim();
   }
 
   function scoringLabel(value) {
@@ -70,6 +80,14 @@
     if (value === null || value === undefined || value === "") return null;
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeName(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "");
   }
 
   function findEspnProjection(player, scoringPeriodId) {
@@ -148,15 +166,115 @@
     };
   }
 
+  function readJson(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (e) { return null; }
+  }
+
+  function readEspnPreferences() {
+    return readJson(ESPN_TEAM_PREF_KEY) || {};
+  }
+
+  function saveEspnPreference(connection) {
+    const lid = leagueId(connection);
+    const tid = String(connection?.teamId || connection?.team?.id || "").trim();
+    if (!lid || !tid) return;
+    try {
+      const prefs = readEspnPreferences();
+      prefs[lid] = { teamId:tid, teamName:teamName(connection) };
+      localStorage.setItem(ESPN_TEAM_PREF_KEY, JSON.stringify(prefs));
+    } catch (e) {}
+  }
+
+  function preferredEspnTeamId(connection) {
+    const lid = leagueId(connection);
+    if (!lid) return null;
+
+    const pref = readEspnPreferences()[lid];
+    if (pref?.teamId) return String(pref.teamId);
+
+    const links = readJson(CHATGPT_LINK_STORAGE_KEY);
+    const espnLink = links?.espn;
+    if (espnLink && String(espnLink.leagueId || "") === lid && espnLink.teamId) {
+      return String(espnLink.teamId);
+    }
+
+    return null;
+  }
+
+  function manualRosterNames() {
+    const stored = readJson(MANUAL_WEEKLY_KEY);
+    const players = Array.isArray(stored?.players) ? stored.players : [];
+    return new Set(players.map(function (player) {
+      return normalizeName(player?.name || player?.displayName || "");
+    }).filter(Boolean));
+  }
+
+  function inferEspnTeamFromRoster(connection) {
+    const teams = Array.isArray(connection?.league?.teams) ? connection.league.teams : [];
+    const known = manualRosterNames();
+    if (known.size < 3 || !teams.length) return null;
+
+    const scored = teams.map(function (team) {
+      const roster = normalizeEspnRoster(team, connection.league);
+      const names = new Set();
+      roster.forEach(function (player) {
+        names.add(normalizeName(player.displayName || player.name));
+        names.add(normalizeName(player.name));
+      });
+      let matches = 0;
+      known.forEach(function (name) { if (names.has(name)) matches += 1; });
+      return { team:team, matches:matches };
+    }).sort(function (a,b) { return b.matches - a.matches; });
+
+    const best = scored[0];
+    const second = scored[1];
+    if (!best || best.matches < 3) return null;
+    if (second && best.matches <= second.matches) return null;
+    return best.team;
+  }
+
+  function findAutomaticEspnTeam(connection) {
+    if (!connection || connection.provider !== "espn") return null;
+    const teams = Array.isArray(connection?.league?.teams) ? connection.league.teams : [];
+    if (!teams.length) return null;
+
+    const preferredId = preferredEspnTeamId(connection);
+    if (preferredId) {
+      const preferred = teams.find(function (team) {
+        return String(team?.id ?? "") === preferredId;
+      });
+      if (preferred) return preferred;
+    }
+
+    return inferEspnTeamFromRoster(connection);
+  }
+
   function sameJson(a, b) {
     try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null); }
     catch (e) { return false; }
   }
 
-  function repairActiveEspnTeamContext() {
+  function resolveActiveEspnTeamAutomatically() {
     const connection = LeagueConnection.getActiveConnection();
-    if (!connection || connection.provider !== "espn" || !connection.teamId) return false;
+    if (!connection || connection.provider !== "espn") return false;
     if (!Array.isArray(connection?.league?.teams) || !connection.league.teams.length) return false;
+
+    if (!connection.teamId) {
+      const inferred = findAutomaticEspnTeam(connection);
+      if (!inferred) return false;
+      const updated = LeagueConnection.updateConnection(
+        connection.connectionId,
+        buildEspnTeamContextPatch(connection, inferred)
+      );
+      saveEspnPreference(updated);
+      forceWeeklyConnectedSource();
+      return true;
+    }
 
     const rawTeam = connection.league.teams.find(function (team) {
       return String(team?.id ?? "") === String(connection.teamId);
@@ -172,28 +290,15 @@
       !sameJson(connection.roster, patch.roster) ||
       !sameJson(connection.lineupConstruction, patch.lineupConstruction);
 
-    if (!needsRepair) return false;
-    LeagueConnection.updateConnection(connection.connectionId, patch);
-    forceWeeklyConnectedSource();
-    return true;
-  }
+    if (needsRepair) {
+      const updated = LeagueConnection.updateConnection(connection.connectionId, patch);
+      saveEspnPreference(updated);
+      forceWeeklyConnectedSource();
+      return true;
+    }
 
-  function resolveEspnTeam(connection, team) {
-    const updated = LeagueConnection.updateConnection(
-      connection.connectionId,
-      buildEspnTeamContextPatch(connection, team)
-    );
-    forceWeeklyConnectedSource();
-    return updated;
-  }
-
-  function needsEspnTeamSelection(connection) {
-    return connection?.provider === "espn" && !connection?.teamId &&
-      Array.isArray(connection?.league?.teams) && connection.league.teams.length > 0;
-  }
-
-  function isConnectLeaguePage() {
-    return /\/connect-league(?:\.html)?(?:$|[?#])/i.test(window.location.pathname + window.location.search);
+    saveEspnPreference(connection);
+    return false;
   }
 
   function ensureStyles() {
@@ -206,12 +311,6 @@
       .is-team-context-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:#8a7a55}
       .is-team-context-select{background:#21180d;border:1px solid rgba(201,168,76,.35);color:#f2f1ef;border-radius:6px;padding:7px 30px 7px 10px;font:12px 'Lora',Georgia,serif;max-width:min(520px,100%)}
       .is-team-context-meta{color:#8f7f5d;font-size:11px}.is-team-context-chip{font-family:'Cinzel',serif;color:#f2f1ef;font-size:12px}
-      .is-espn-team-step{margin-top:14px;padding:14px;border:1px solid rgba(201,168,76,.25);border-radius:8px;background:rgba(255,255,255,.025);text-align:left}
-      .is-espn-team-step-title{font:600 13px 'Lora',Georgia,serif;color:#f2f1ef;margin-bottom:4px}
-      .is-espn-team-step-copy{font:11px/1.5 'Lora',Georgia,serif;color:#8a7a55;margin-bottom:10px}
-      .is-espn-team-step select{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(201,168,76,.25);color:#f2f1ef;font:13px 'Lora',Georgia,serif;padding:10px 12px;border-radius:6px;margin-bottom:9px}
-      .is-espn-team-step button{width:100%;padding:12px 16px;background:linear-gradient(135deg,#c9a84c,#8b6914);color:#0a0600;font:600 13px 'Cinzel',serif;border:0;border-radius:8px;cursor:pointer;letter-spacing:.6px}
-      .is-espn-team-step button:disabled{opacity:.45;cursor:not-allowed}
       @media(max-width:600px){.is-team-context-bar{padding:8px 12px}.is-team-context-select{width:100%;max-width:100%}}
     `;
     document.head.appendChild(style);
@@ -220,7 +319,7 @@
   function connectionOptionLabel(connection) {
     const provider = providerLabel(connection), team = teamName(connection), league = leagueName(connection);
     if (connection.teamId) return team + " · " + provider + " · " + league;
-    return league + " · " + provider + " · Team setup incomplete";
+    return league + " · " + provider + " · Team identity resolving";
   }
 
   function renderContextBar() {
@@ -257,36 +356,6 @@
     });
   }
 
-  function renderEspnTeamStep(connection) {
-    const old = document.getElementById("innerSanctumEspnTeamStep");
-    if (old) old.remove();
-    if (!isConnectLeaguePage() || !needsEspnTeamSelection(connection)) return;
-    const form = document.querySelector("#providerForms .provider-form.show");
-    if (!form) return;
-    ensureStyles();
-    const teams = connection.league.teams.slice().sort(function (a,b) { return teamDisplayName(a).localeCompare(teamDisplayName(b)); });
-    const step = document.createElement("div");
-    step.className = "is-espn-team-step";
-    step.id = "innerSanctumEspnTeamStep";
-    step.innerHTML = '<div class="is-espn-team-step-title">' + esc(leagueName(connection)) + '</div>' +
-      '<div class="is-espn-team-step-copy">One last step — select your team.</div>' +
-      '<select id="innerSanctumEspnTeamSelect"><option value="">Select your team</option>' +
-      teams.map(function (team,index) { return '<option value="' + index + '">' + esc(teamDisplayName(team)) + '</option>'; }).join("") +
-      '</select><button type="button" id="innerSanctumEspnTeamConfirm" disabled>Finish ESPN Connection</button>';
-    form.appendChild(step);
-    const select = document.getElementById("innerSanctumEspnTeamSelect");
-    const button = document.getElementById("innerSanctumEspnTeamConfirm");
-    select.addEventListener("change", function () { button.disabled = select.value === ""; });
-    button.addEventListener("click", function () {
-      const team = teams[Number(select.value)];
-      if (!team) return;
-      button.disabled = true;
-      button.textContent = "Connecting…";
-      resolveEspnTeam(connection, team);
-      window.location.reload();
-    });
-  }
-
   function repairWeeklySourceOnLoad() {
     const active = LeagueConnection.getActiveConnection();
     if (!active || !Array.isArray(active.roster) || !active.roster.length) return;
@@ -298,45 +367,19 @@
   }
 
   function refresh() {
+    resolveActiveEspnTeamAutomatically();
     renderContextBar();
-    renderEspnTeamStep(LeagueConnection.getActiveConnection());
-  }
-
-  function watchConnectLeagueProviderForm() {
-    if (!isConnectLeaguePage() || typeof MutationObserver === "undefined") return;
-    const host = document.getElementById("providerForms");
-    if (!host || host.dataset.innerSanctumTeamObserver === "1") return;
-
-    host.dataset.innerSanctumTeamObserver = "1";
-    let scheduled = false;
-    const observer = new MutationObserver(function () {
-      if (scheduled) return;
-      scheduled = true;
-      setTimeout(function () {
-        scheduled = false;
-        renderEspnTeamStep(LeagueConnection.getActiveConnection());
-      }, 0);
-    });
-
-    /*
-      connect-league rebuilds #providerForms after a successful provider sync.
-      Watch only direct child replacement so restoring the ESPN team step inside
-      the form does not trigger the observer again.
-    */
-    observer.observe(host, { childList:true });
   }
 
   function init() {
-    repairActiveEspnTeamContext();
     refresh();
-    watchConnectLeagueProviderForm();
     repairWeeklySourceOnLoad();
   }
 
   window.addEventListener("innerSanctum:leagueContextChanged", function () {
     setTimeout(function () {
-      repairActiveEspnTeamContext();
       refresh();
+      repairWeeklySourceOnLoad();
     }, 0);
   });
 
