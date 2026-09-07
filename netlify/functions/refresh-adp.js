@@ -12,6 +12,13 @@
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 
+// Netlify supports JavaScript scheduled-function configuration inline.
+// Keeping this beside the writer makes the provider boundary explicit:
+// this function is scheduled, not a customer-callable refresh route.
+exports.config = {
+  schedule: "@daily"
+};
+
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const STORE_NAME = "draft-adp";
 
