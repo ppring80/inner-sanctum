@@ -97,12 +97,26 @@
       const player = playerPoolEntry?.player || entry?.player || {};
       const defaultPositionId = numberOrNull(player?.defaultPositionId);
       const proTeamId = numberOrNull(player?.proTeamId);
+      const nflTeam = proTeamId !== null ? (ESPN_TEAM_BY_ID[proTeamId] || "") : "";
+      const providerDisplayName = String(player?.fullName || player?.name || "").trim();
+      const isDefense = defaultPositionId === 16;
+
+      /*
+        Weekly SAGE identifies DEF records by canonical NFL team code
+        (HOU, SF, DAL, etc.). ESPN often returns a display name such as
+        "Houston Texans" for the same roster slot. Canonicalize ONLY ESPN
+        D/ST names to the NFL team code while preserving ESPN's display name.
+        Every QB/RB/WR/TE/K name remains untouched.
+      */
+      const canonicalName = isDefense && nflTeam ? nflTeam : providerDisplayName;
+
       return {
         providerPlayerId: player?.id != null ? String(player.id) : null,
-        name: String(player?.fullName || player?.name || "").trim(),
+        name: canonicalName,
+        displayName: providerDisplayName || canonicalName,
         position: defaultPositionId !== null ? (ESPN_POSITION_BY_ID[defaultPositionId] || "") : "",
-        team: proTeamId !== null ? (ESPN_TEAM_BY_ID[proTeamId] || "") : "",
-        nflTeam: proTeamId !== null ? (ESPN_TEAM_BY_ID[proTeamId] || "") : "",
+        team: nflTeam,
+        nflTeam: nflTeam,
         projectedPoints: findEspnProjection(player, scoringPeriodId),
         lineupSlotId: entry?.lineupSlotId ?? null,
         status: playerPoolEntry?.status || null
