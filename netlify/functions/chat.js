@@ -84,26 +84,15 @@ const INPUT_RATE_PER_TOKEN = 2.00 / 1_000_000;
 const OUTPUT_RATE_PER_TOKEN = 10.00 / 1_000_000;
 const SPEND_STORE_NAME = "claude-spend";
 
-// Returns "YYYY-MM-DD" in UTC. Using UTC (not local time) so the daily
-// boundary is unambiguous regardless of where this function executes —
-// Netlify Functions don't run in a fixed timezone, and "today" needs a
-// single consistent definition for the daily total to mean anything.
 function todayKeyUTC() {
-  return new Date().toISOString().slice(0, 10); // e.g. "2026-06-22"
+  return new Date().toISOString().slice(0, 10);
 }
 
 async function logSpend({ inputTokens, outputTokens, persona }) {
   const cost = (inputTokens * INPUT_RATE_PER_TOKEN) + (outputTokens * OUTPUT_RATE_PER_TOKEN);
-  const store = getStore({ name: SPEND_STORE_NAME }); // must be called inside the handler — see #114 build notes
+  const store = getStore({ name: SPEND_STORE_NAME });
   const key = `daily:${todayKeyUTC()}`;
 
-  // Read-modify-write. Netlify Blobs uses eventual consistency by
-  // default (updates propagate within ~60s), which means two requests
-  // landing within the same second could theoretically both read the
-  // same starting value and one increment could be lost — acceptable
-  // here since this is a monitoring/alerting tool, not a billing
-  // ledger; being off by a few cents on a high-traffic day doesn't
-  // change whether the $50 threshold was crossed in any meaningful way.
   let existing;
   try {
     existing = await store.get(key, { type: "json" });
@@ -121,8 +110,9 @@ async function logSpend({ inputTokens, outputTokens, persona }) {
 
 // ═══════════════════════════════════════
 // TANK01 DATA FETCHER
-// Each call wrapped independently — one failure
-// does not affect others or block the response.
+// Remaining live chat calls are intentionally bounded and reviewed
+// separately. Depth charts are NOT fetched here; chat reads the
+// scheduled current-nfl-facts Blob cache instead.
 // ═══════════════════════════════════════
 async function fetchTank01(endpoint, params = {}) {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
@@ -142,12 +132,6 @@ async function fetchTank01(endpoint, params = {}) {
   return await response.json();
 }
 
-// ═══════════════════════════════════════
-// NFL WEEK CALCULATOR
-// 2026 season starts September 9, 2026.
-// Returns "1" during offseason/preseason.
-// UPDATE seasonStart each year.
-// ═══════════════════════════════════════
 function getCurrentNFLWeek() {
   const seasonStart = new Date("2026-09-09");
   const now = new Date();
@@ -156,16 +140,10 @@ function getCurrentNFLWeek() {
   return String(Math.max(1, Math.min(18, Math.floor(diffDays / 7) + 1)));
 }
 
-// ═══════════════════════════════════════
-// LIVE NFL CONTEXT BUILDER
-// Assembles data sources from Tank01.
-// Any individual source can fail silently —
-// response continues with whatever data loaded.
-// ═══════════════════════════════════════
 async function getLiveNFLContext() {
   const contextParts = [];
 
-  // 1. Top NFL news headlines
+  // 1. Top NFL news headlines — bounded live provider call.
   try {
     const news = await fetchTank01("getNFLNews", { topNews: "true", maxItems: "5" });
     if (news?.body?.length > 0) {
@@ -179,21 +157,9 @@ async function getLiveNFLContext() {
     console.log("Tank01 news fetch failed:", e.message);
   }
 
-  // 2. Injury data — no standalone endpoint. REMOVED 2026-07-11
-  // (checklist #215) after confirming via RapidAPI's live endpoint
-  // list and 365-day changelog that Tank01's NFL API has no
-  // getNFLInjuries-style endpoint (unlike their MLB API's
-  // getMLBInjuriesByDate) — the original call here was 404ing
-  // silently on every request since this was built.
-  //
-  // UPDATE, same day: injury data does exist after all — it's bundled
-  // per-player inside getNFLTeamRoster responses (see item 4 below),
-  // not in a standalone endpoint. Real injury status is restored via
-  // that route as of tonight.
-
-  // 3. Current ADP data
+  // 2. Current ADP data — bounded live provider call.
   try {
-    const adp = await fetchTank01("getNFLADP", { season: "2026" });  // UPDATE EACH SEASON
+    const adp = await fetchTank01("getNFLADP", { season: "2026" });
     if (adp?.body?.length > 0) {
       const adpList = adp.body
         .slice(0, 20)
@@ -205,29 +171,7 @@ async function getLiveNFLContext() {
     console.log("Tank01 ADP fetch failed:", e.message);
   }
 
-  // 4. Player exp/injury lookup — reads the cache built by the
-  // refresh-player-data scheduled function (see that file). That
-  // function calls getNFLTeamRoster once per team (32 calls, done on
-  // a schedule) rather than this doing it live on every chat message,
-  // which would add several seconds of latency and burn through the
-  // daily API budget fast.
-  //
-  // ADDED 2026-07-11 (checklist #215, resolves last night's open
-  // item): confirmed via live diagnostic that getNFLTeamRoster
-  // returns "exp" ("R" for rookie, a number string like "4" for
-  // veterans) and a nested "injury" object per player — the exact
-  // data missing when the depth chart fix landed earlier tonight,
-  // and the actual fix for the Hampton/Skattebo/Dart/McMillan
-  // rookie-mislabel bug. This also restores real injury status, which
-  // was removed entirely last night after concluding (correctly, for
-  // a standalone injuries endpoint; incorrectly, as it turns out, for
-  // per-player injury data bundled into roster responses) that
-  // Tank01's NFL API had no injury data at all.
-  //
-  // If the cache is missing (e.g. before the scheduled function's
-  // first run) or unreadable, this fails non-fatally — the roster
-  // lines below just won't have exp/injury detail, same fallback
-  // behavior as every other Tank01 source in this function.
+  // 3. Player exp/injury data comes from the scheduled player-data cache.
   let playerLookup = {};
   let playerDataAge = null;
   try {
@@ -241,90 +185,64 @@ async function getLiveNFLContext() {
     console.log("Player data cache read failed:", e.message);
   }
 
-  // 5. NFL depth charts — authoritative source for current team
-  // assignments AND (as of tonight) rookie/vet status and injury
-  // status, merged in per player from the cache built above.
-  // Resolves player team changes from free agency and trades.
-  // Depth charts themselves are updated multiple times per day by
-  // Tank01; the exp/injury overlay refreshes on the schedule set in
-  // netlify.toml for refresh-player-data (see that file).
-  //
-  // FIXED 2026-07-11 (checklist #215, real root cause): this parser
-  // was written assuming depth.body was an OBJECT keyed directly by
-  // team, e.g. depth.body["ARI"].QB = [...]. Pat found via RapidAPI's
-  // live response inspector that the actual shape is completely
-  // different: depth.body is an ARRAY of 32 team objects, each with
-  // { depthChart: { QB: [...], RB: [...], ... }, teamAbv: "ARI",
-  // teamID: "1" } — the position arrays are nested ONE LEVEL DEEPER,
-  // inside depthChart, not directly on the team object. The old code's
-  // own safety check (Array.isArray(players)) silently skipped
-  // everything every single time, since at the level it was actually
-  // reading, it never found a real array — meaning depth chart data
-  // has likely NEVER once reached the model since this was built. This
-  // is almost certainly the true root cause of the stale
-  // rookie-status/team-assignment bug Pat found (Jaxson Dart called a
-  // rookie, Aaron Rodgers still shown on the Jets), not the earlier
-  // slice-width or instruction-wording theories — those were real
-  // improvements but were never the actual blocker.
+  // 4. Depth charts come from refresh-current-nfl-facts.js's scheduled
+  // current-nfl-facts/latest cache. A customer chat request therefore
+  // cannot trigger getNFLDepthCharts. If the cache is unavailable,
+  // this block simply degrades away exactly as the old live fetch did.
   try {
-    const depth = await fetchTank01("getNFLDepthCharts");
-    if (Array.isArray(depth?.body)) {
+    const store = getStore({ name: "current-nfl-facts" });
+    const depth = await store.get("latest", { type: "json" });
+
+    if (depth?.teams && typeof depth.teams === "object") {
       const rosterLines = [];
-      depth.body.forEach(teamEntry => {
-        const team = teamEntry.teamAbv || teamEntry.teamID || "UNK";
-        const positions = teamEntry.depthChart;
-        if (!positions) return;
-        Object.keys(positions).forEach(pos => {
-          const players = positions[pos];
+
+      Object.entries(depth.teams).forEach(([team, positions]) => {
+        if (!positions || typeof positions !== "object") return;
+
+        Object.entries(positions).forEach(([pos, players]) => {
           if (!Array.isArray(players)) return;
+
           players.slice(0, 4).forEach(p => {
-            if (!p.longName) return;
-            const extra = playerLookup[p.playerID];
+            if (!p || !p.longName) return;
+
+            const extra = p.playerID ? playerLookup[p.playerID] : null;
             let tags = "";
+
             if (extra) {
               if (extra.exp === "R") {
                 tags += ", Rookie";
               } else if (extra.exp) {
                 tags += `, Yr ${extra.exp}`;
               }
+
               if (extra.injury?.designation) {
                 tags += `, Injury: ${extra.injury.designation}${extra.injury.description ? " (" + extra.injury.description + ")" : ""}`;
               }
             }
+
             rosterLines.push(`${p.longName} (${pos}, ${team}${tags})`);
           });
         });
       });
+
       if (rosterLines.length > 0) {
-        const ageNote = playerDataAge ? ` — exp/injury data as of ${playerDataAge}` : "";
-        contextParts.push(`CURRENT NFL ROSTERS (depth charts updated daily${ageNote}):\n${rosterLines.join("\n")}`);
+        const playerAgeNote = playerDataAge
+          ? ` — exp/injury data as of ${playerDataAge}`
+          : "";
+        const depthAgeNote = depth.generatedAt
+          ? `; depth chart cache as of ${depth.generatedAt}`
+          : "";
+
+        contextParts.push(
+          `CURRENT NFL ROSTERS (scheduled depth-chart cache${playerAgeNote}${depthAgeNote}):\n${rosterLines.join("\n")}`
+        );
       }
     }
   } catch (e) {
-    console.log("Tank01 depth charts fetch failed:", e.message);
+    console.log("Current NFL facts cache read failed:", e.message);
   }
 
-  // 6. FULL INJURY REPORT — added 2026-07-11 (checklist follow-up to
-  // #122/#123, found via the new automated QA fact-checker's first
-  // real runs). The depth chart list above only covers the top 4
-  // players per position per team, since that's what getNFLDepthCharts
-  // returns — meaning a backup guard, LB, or anyone outside a team's
-  // top options never appears there at all, EVEN THOUGH the player-data
-  // cache (built from getNFLTeamRoster, item 4 above) has real
-  // exp/injury data for essentially the whole 53-man roster, not just
-  // starters. Confirmed via the QA dashboard: the model was correctly
-  // declining ("I don't have current data") for players like a backup
-  // OL with a real Questionable/biceps designation or a backup LB who'd
-  // had actual shoulder surgery — the SAFE fallback working exactly as
-  // instructed, but still missing the real, known answer, since that
-  // answer never reached the model in the first place.
-  //
-  // Fix: build a SEPARATE list of every player in the full cache who
-  // has a real (non-empty) injury designation, regardless of whether
-  // they made the depth-chart cut. Injury counts are a small fraction
-  // of the full player pool at any given time, so this stays compact
-  // even though it draws from the entire ~2,700-player cache rather
-  // than the depth-chart slice.
+  // 5. Full league-wide injury report from the scheduled player cache.
   if (playerLookup && Object.keys(playerLookup).length > 0) {
     const injuryLines = [];
     Object.values(playerLookup).forEach(p => {
@@ -341,45 +259,17 @@ async function getLiveNFLContext() {
   return contextParts.join("\n\n");
 }
 
-// ═══════════════════════════════════════
-// MAIN HANDLER
-// ═══════════════════════════════════════
 exports.handler = async (event) => {
-
-  // Required for Netlify Blobs to work in this function's runtime mode
-  // (Lambda compatibility mode — this file uses the classic
-  // exports.handler signature rather than the newer native format).
-  // Without this, getStore() throws MissingBlobsEnvironmentError even
-  // in a real production deploy, not just local dev. Must be called
-  // before any getStore()/logSpend() call below. See checklist #114
-  // build notes — this was the actual fix after the dependency-manifest
-  // fix (package.json) got the build itself passing.
   connectLambda(event);
 
-  // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
 
-  // Only allow POST
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: CORS_HEADERS, body: "Method Not Allowed" };
   }
 
-  // ── Origin check ──────────────────────────────────────────
-  // FIXED (July 2026 #49 site review): this previously used
-  // `ALLOWED_ORIGINS.some(o => origin.startsWith(o))`, which is a
-  // substring-prefix check, not an exact-match check. That meant a
-  // lookalike domain like https://theinnersanctum.xyz.evil-domain.com
-  // would also pass — its origin string literally starts with
-  // "https://theinnersanctum.xyz", even though it's a completely
-  // different, attacker-controlled site. Anyone hosting a page at
-  // such a domain could call this function directly, generating real
-  // Anthropic API spend on this account, bypassing the client-side
-  // question-limit logic entirely (that logic lives in sanctum.html's
-  // JS, not here — this endpoint had no other gate). Switched to an
-  // exact match against the ALLOWED_ORIGINS list, confirmed clean in
-  // Netlify (no trailing slash, no stray whitespace) as of this fix.
   const origin = event.headers.origin || event.headers.Origin || "";
   const originAllowed = ALLOWED_ORIGINS.includes(origin);
   if (!originAllowed) {
@@ -394,67 +284,12 @@ exports.handler = async (event) => {
   try {
     const { model, max_tokens, system, messages } = JSON.parse(event.body);
 
-    // Fetch live NFL context from Tank01 (non-fatal)
     let liveDataContext = "";
     try {
       liveDataContext = await getLiveNFLContext();
     } catch (e) {
-      console.log("Tank01 context fetch failed:", e.message);
+      console.log("NFL context fetch failed:", e.message);
     }
-
-    // ── Build system prompt as content blocks for prompt caching ──────────
-    // FIXED 2026-07-04 (checklist #165, re-fixed — see #188): this
-    // caching structure was originally believed shipped 2026-06-30, but
-    // Anthropic Console confirmed "Prompt caching: Not enabled" / "—
-    // tokens reused" on this account, meaning it was NEVER actually live
-    // in this file. Root cause: the June 30 edit was accidentally made
-    // to a stray duplicate chat.js sitting at the repo ROOT (outside
-    // netlify/functions/, so Netlify never deploys or runs it) instead
-    // of this real, deployed file — this file still had the old
-    // single-string `enhancedSystem` approach with no cache_control at
-    // all. Root-level duplicate has been deleted (see #188) to prevent
-    // this exact confusion from recurring.
-    //
-    // Block 1 (CACHED): the static persona system prompt passed in from
-    // the frontend. This never changes between requests for the same
-    // persona, so Anthropic caches it after the first call and bills
-    // subsequent requests at ~10% of normal input token cost.
-    // cache_control: ephemeral gives a 5-minute TTL that resets on
-    // every hit — in practice, active sessions keep this cached
-    // continuously.
-    //
-    // Block 2 (NOT CACHED): live Tank01 data — different every call
-    // since it reflects current news, ADP, and depth charts.
-    // Caching this would defeat the purpose of fetching it live.
-    //
-    // If Tank01 returned nothing, we send only the cached block (no
-    // empty second block) to avoid sending a content block with an
-    // empty string.
-    //
-    // BROADENED 2026-07-11, REVISED SAME DAY (checklist #215 — stale
-    // player-knowledge fix, two passes):
-    //
-    // Pass 1 (earlier tonight): the CRITICAL INSTRUCTION only told the
-    // model to defer to live data for TEAM ASSIGNMENTS, and told it to
-    // hedge on experience/injury since no data source existed for
-    // either. In testing, this reduced but didn't eliminate the
-    // problem — Trash Lord still called 2025-draft-class players
-    // "rookies" in Week 1 2026 (Hampton, Skattebo, Dart, McMillan),
-    // since an instruction to hedge competes against the model's own
-    // strongly-held training-data belief and doesn't reliably win.
-    //
-    // Pass 2 (this revision): discovered getNFLTeamRoster actually
-    // returns real exp/injury data per player (see item 4 in
-    // getLiveNFLContext). The instruction no longer just tells the
-    // model to hedge — it points to real per-player tags ("Rookie",
-    // "Yr 4", "Injury: Questionable") now present in the roster lines
-    // themselves, which is a much stronger override than an
-    // instruction alone. Hedging language is kept ONLY for players who
-    // don't appear in the live data at all, where it's still true that
-    // no current info exists. Background details Tank01 doesn't supply
-    // at all (e.g. exact games-started counts) remain subject to the
-    // model's own knowledge and judgment.
-    // ───────────────────────────────────────────────────────────────
 
     const systemBlocks = [
       {
@@ -480,7 +315,6 @@ exports.handler = async (event) => {
       });
     }
 
-    // Call Claude API
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
       model,
@@ -489,14 +323,6 @@ exports.handler = async (event) => {
       messages
     });
 
-    // ── Spend logging (added — checklist #114) ──────────────────
-    // Fire-and-forget-but-awaited: we await it so any error is caught
-    // by this try/catch below rather than becoming an unhandled
-    // promise rejection, but a logging failure never overrides the
-    // successful response already computed above. The persona name
-    // is inferred from the system prompt's first ~30 chars as a cheap
-    // label for the byPersona breakdown — not exact, but good enough
-    // for "which persona drove today's spend" at a glance.
     try {
       const usage = response.usage || {};
       const personaLabel =
@@ -512,7 +338,6 @@ exports.handler = async (event) => {
       console.log("Spend logging failed (non-fatal):", logErr.message);
     }
 
-    // Extract all text blocks from the response
     const fullText = response.content
       .filter(block => block.type === "text")
       .map(block => block.text)
