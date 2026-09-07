@@ -2,14 +2,6 @@
   THE INNER SANCTUM — team-context.js
   --------------------------------------
   Shared customer-facing league/team context.
-
-  Goals:
-  - keep league connection simple;
-  - support multiple teams across multiple providers;
-  - make one selected team the source of roster/scoring/settings context;
-  - prevent a saved manual Weekly roster from silently overriding a valid
-    connected roster after the customer changes teams;
-  - resolve ESPN public-league team identity explicitly without a modal.
 */
 (function () {
   "use strict";
@@ -100,16 +92,7 @@
       const nflTeam = proTeamId !== null ? (ESPN_TEAM_BY_ID[proTeamId] || "") : "";
       const providerDisplayName = String(player?.fullName || player?.name || "").trim();
       const isDefense = defaultPositionId === 16;
-
-      /*
-        Weekly SAGE identifies DEF records by canonical NFL team code
-        (HOU, SF, DAL, etc.). ESPN often returns a display name such as
-        "Houston Texans" for the same roster slot. Canonicalize ONLY ESPN
-        D/ST names to the NFL team code while preserving ESPN's display name.
-        Every QB/RB/WR/TE/K name remains untouched.
-      */
       const canonicalName = isDefense && nflTeam ? nflTeam : providerDisplayName;
-
       return {
         providerPlayerId: player?.id != null ? String(player.id) : null,
         name: canonicalName,
@@ -122,33 +105,6 @@
         status: playerPoolEntry?.status || null
       };
     }).filter(function (player) { return Boolean(player.name); });
-  }
-
-  function repairActiveEspnDefenseIdentity() {
-    const connection = LeagueConnection.getActiveConnection();
-    if (!connection || connection.provider !== "espn" || !connection.teamId) return false;
-    if (!Array.isArray(connection?.league?.teams) || !connection.league.teams.length) return false;
-
-    const rawTeam = connection.league.teams.find(function (team) {
-      return String(team?.id ?? "") === String(connection.teamId);
-    });
-    if (!rawTeam) return false;
-
-    const normalizedRoster = normalizeEspnRoster(rawTeam, connection.league);
-    const currentRoster = Array.isArray(connection.roster) ? connection.roster : [];
-    const normalizedDefense = normalizedRoster.find(function (player) { return player.position === "D/ST"; });
-    const currentDefense = currentRoster.find(function (player) {
-      return player?.position === "D/ST" || player?.position === "DEF" || player?.position === "DST";
-    });
-
-    if (!normalizedDefense) return false;
-    if (currentDefense && currentDefense.name === normalizedDefense.name && currentRoster.length === normalizedRoster.length) return false;
-
-    LeagueConnection.updateConnection(connection.connectionId, {
-      roster: normalizedRoster,
-      syncedAt: connection.syncedAt || new Date().toISOString()
-    });
-    return true;
   }
 
   function detectEspnScoringFormat(league) {
@@ -168,25 +124,65 @@
     return { QB:get(0), RB:get(2), WR:get(4), TE:get(6), FLEX:get(23), SUPERFLEX:get(7), K:get(17), DEF:get(16), BENCH:get(20), IR:get(21) };
   }
 
-  function resolveEspnTeam(connection, team) {
-    const oldId = connection.connectionId;
-    const league = connection.league || {};
+  function buildEspnTeamContextPatch(connection, team) {
+    const league = connection?.league || {};
     const name = teamDisplayName(team);
     const normalizedTeam = {
       id: team?.id != null ? String(team.id) : null,
-      name:name, location:team?.location || null, nickname:team?.nickname || null,
-      abbrev:team?.abbrev || null, playoffSeed:team?.playoffSeed ?? null, record:team?.record || null
+      name:name,
+      location:team?.location || null,
+      nickname:team?.nickname || null,
+      abbrev:team?.abbrev || null,
+      playoffSeed:team?.playoffSeed ?? null,
+      record:team?.record || null
     };
-    const updated = LeagueConnection.updateConnection(oldId, {
-      teamId:normalizedTeam.id,
-      teamName:name,
-      team:normalizedTeam,
-      roster:normalizeEspnRoster(team, league),
-      scoringFormat:connection.scoringFormat || detectEspnScoringFormat(league),
-      lineupConstruction:normalizeEspnLineup(league),
-      teamCount:Array.isArray(league?.teams) ? league.teams.length : connection.teamCount,
-      syncedAt:new Date().toISOString()
+    return {
+      teamId: normalizedTeam.id,
+      teamName: name,
+      team: normalizedTeam,
+      roster: normalizeEspnRoster(team, league),
+      scoringFormat: detectEspnScoringFormat(league) || connection?.scoringFormat || null,
+      lineupConstruction: normalizeEspnLineup(league),
+      teamCount: Array.isArray(league?.teams) ? league.teams.length : connection?.teamCount,
+      syncedAt: connection?.syncedAt || new Date().toISOString()
+    };
+  }
+
+  function sameJson(a, b) {
+    try { return JSON.stringify(a ?? null) === JSON.stringify(b ?? null); }
+    catch (e) { return false; }
+  }
+
+  function repairActiveEspnTeamContext() {
+    const connection = LeagueConnection.getActiveConnection();
+    if (!connection || connection.provider !== "espn" || !connection.teamId) return false;
+    if (!Array.isArray(connection?.league?.teams) || !connection.league.teams.length) return false;
+
+    const rawTeam = connection.league.teams.find(function (team) {
+      return String(team?.id ?? "") === String(connection.teamId);
     });
+    if (!rawTeam) return false;
+
+    const patch = buildEspnTeamContextPatch(connection, rawTeam);
+    const needsRepair =
+      String(connection.teamName || "") !== String(patch.teamName || "") ||
+      String(connection.scoringFormat || "") !== String(patch.scoringFormat || "") ||
+      Number(connection.teamCount || 0) !== Number(patch.teamCount || 0) ||
+      !sameJson(connection.team, patch.team) ||
+      !sameJson(connection.roster, patch.roster) ||
+      !sameJson(connection.lineupConstruction, patch.lineupConstruction);
+
+    if (!needsRepair) return false;
+    LeagueConnection.updateConnection(connection.connectionId, patch);
+    forceWeeklyConnectedSource();
+    return true;
+  }
+
+  function resolveEspnTeam(connection, team) {
+    const updated = LeagueConnection.updateConnection(
+      connection.connectionId,
+      buildEspnTeamContextPatch(connection, team)
+    );
     forceWeeklyConnectedSource();
     return updated;
   }
@@ -307,14 +303,14 @@
   }
 
   function init() {
-    repairActiveEspnDefenseIdentity();
+    repairActiveEspnTeamContext();
     refresh();
     repairWeeklySourceOnLoad();
   }
 
   window.addEventListener("innerSanctum:leagueContextChanged", function () {
     setTimeout(function () {
-      repairActiveEspnDefenseIdentity();
+      repairActiveEspnTeamContext();
       refresh();
     }, 0);
   });
