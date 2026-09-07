@@ -2,50 +2,9 @@
 //
 // WEEKLY SAGE — UNIFIED WEEKLY RANKINGS ENDPOINT
 //
-// PURPOSE
-// -------
-// The ONE customer-facing entry point for Weekly Rankings. Fetches
-// the six existing, already-validated positional leaderboards
-// (weekly-sage-qb-leaderboard, -rb-leaderboard, -wr-leaderboard,
-// -te-leaderboard, -k-leaderboard, -def-leaderboard) and returns them
-// combined under one normalized response shape.
-//
-// This function does NOT:
-// - recalculate any score
-// - alter ranking/order within a position
-// - change any recommendation (START/FLEX/SIT)
-// - merge positions into one cross-position rank
-// - call Tank01 directly
-// - rebuild any snapshot
-//
-// Each position's leaderboard array is passed through EXACTLY as that
-// leaderboard already produced it -- this file only fans out to the
-// four existing endpoints and reshapes the four responses into one
-// envelope. The only addition made here is a new sageTake field per
-// player (see sage-take.js) -- a deterministic, read-only explanation
-// string built from fields the leaderboard already returned. It never
-// alters score, order, recommendation, confidence, matchup, role, or
-// production, and any failure producing it yields null rather than
-// blocking the response.
-//
-// FAILURE PHILOSOPHY
-// -------------------
-// If a given position's leaderboard cannot be produced (its own
-// cache is missing/stale, etc.), that position's `positions.<POS>`
-// array is empty and the specific error is reported under
-// `failures.<POS>` -- it is NEVER silently replaced with an empty
-// array that looks like "zero eligible players this week." The
-// overall HTTP response still returns 200 as long as AT LEAST ONE
-// position succeeded, since a partial Weekly Rankings page (e.g. "QB
-// data is temporarily unavailable, but RB/WR/TE are ready") is more
-// useful to a customer than an all-or-nothing failure. If ALL SIX
-// positions fail, the response is a clear 502 -- never a fabricated
-// "empty rankings" 200.
-//
-// Example:
-// /.netlify/functions/weekly-sage-rankings?season=2025&week=8
-//
-// ═══════════════════════════════════════════════════════════════════════
+// Customer-facing entry point for Weekly Rankings. It combines the
+// position-specific leaderboards without recalculating their scores,
+// order, or recommendations.
 
 const DEFAULT_SEASON_TYPE = "reg";
 
@@ -91,6 +50,52 @@ function getBaseUrl(event) {
     throw new Error("Could not determine host.");
   }
   return `${proto}://${host}`;
+}
+
+/*
+  Connected-roster identity contract for team defenses
+  ----------------------------------------------------
+  ESPN's roster payload identifies a defense by its NFL team abbreviation
+  (for example HOU), while the Week 1 ADP source names that same entry
+  "Houston Texans". Weekly's My Roster pipeline intentionally matches by
+  exact name, and Weeks 2-18 DEF leaderboards already use the team code as
+  both `name` and `team`.
+
+  Normalize ONLY the Week 1 DEF rows at the unified Weekly boundary so the
+  customer-facing identity is stable across all 18 weeks:
+
+      ESPN HOU D/ST -> connected roster name HOU -> Weekly DEF name HOU
+
+  Keep the source's full team name as displayName for any future UI that
+  wants it. This does not change ADP, rank, recommendation, score, or order,
+  and it leaves the Draft Command ADP endpoint untouched.
+*/
+function normalizeWeek1DefenseIdentity(positions) {
+  const normalized = {
+    ...(positions || {})
+  };
+
+  normalized.DEF = Array.isArray(normalized.DEF)
+    ? normalized.DEF.map(function (row) {
+        if (!row || !row.team) {
+          return row;
+        }
+
+        const team = String(row.team).trim().toUpperCase();
+        if (!team) {
+          return row;
+        }
+
+        return {
+          ...row,
+          displayName: row.displayName || row.name || null,
+          name: team,
+          team
+        };
+      })
+    : [];
+
+  return normalized;
 }
 
 async function fetchPositionLeaderboard({ baseUrl, position, season, week, seasonType }) {
@@ -197,11 +202,12 @@ exports.handler = async function (event) {
         seasonType,
         scoring,
         teams: Number(teams),
-        positions: data.positions,
+        positions: normalizeWeek1DefenseIdentity(data.positions),
         failures: data.failures,
         metadata: {
           ...data.metadata,
-          route: "week1-adp-baseline"
+          route: "week1-adp-baseline",
+          defenseIdentity: "canonical-nfl-team-code"
         }
       });
     } catch (error) {
@@ -212,9 +218,6 @@ exports.handler = async function (event) {
     }
   }
 
-  // Fetch all six positional leaderboards in parallel. Each is
-  // completely independent -- one position's failure never blocks or
-  // alters another's result.
   const results = await Promise.all(
     POSITIONS.map(position =>
       fetchPositionLeaderboard({ baseUrl, position, season, week: targetWeek, seasonType })
@@ -228,31 +231,10 @@ exports.handler = async function (event) {
   POSITIONS.forEach((position, index) => {
     const result = results[index];
     if (result.ok) {
-      // Passed through EXACTLY as the positional leaderboard produced
-      // it -- this file never touches score, order, or recommendation
-      // fields within a position's own leaderboard array.
       const leaderboard = Array.isArray(result.data.leaderboard)
         ? result.data.leaderboard
         : [];
 
-      // Deterministic explanation layer -- see sage-take.js. This
-      // .map() only ADDS a new sageTake field to each existing
-      // element, in place, at its existing index. It never filters,
-      // sorts, splices, or otherwise changes array length or order,
-      // and it never touches sageScore, recommendation, confidence,
-      // matchup, role, or production. Any failure inside
-      // buildWeek2PlusSageTake() is caught internally and yields
-      // null -- it can never throw here.
-      //
-      // K and DEF are excluded from this call: their own leaderboard
-      // files (weekly-sage-k-leaderboard.js's buildKSageTake(),
-      // weekly-sage-def-leaderboard.js's buildDefSageTake()) already
-      // compute their own position-specific sageTake locally, since
-      // neither uses the QB/RB/WR/TE role/production/matchup model
-      // this function builds its explanation from. Their rows are
-      // passed through with their own sageTake exactly as their
-      // leaderboard produced it -- QB/RB/WR/TE behavior here is
-      // completely unchanged.
       const usesOwnSageTake = position === "K" || position === "DEF";
       positions[position] = leaderboard.map((row) => ({
         ...row,
