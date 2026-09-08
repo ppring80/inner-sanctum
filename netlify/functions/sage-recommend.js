@@ -190,6 +190,11 @@ const {
   connectLambda
 } = require("@netlify/blobs");
 
+// Used by hasDraftSageAccess() below (HMAC verification of the
+// separate, narrowly-scoped draft_sage_session cookie -- see its own
+// header comment).
+const crypto = require("crypto");
+
 
 // Reuse the production signed-cookie verifier directly rather than
 // duplicating session-signature logic here.
@@ -256,6 +261,98 @@ async function hasFullAcolyteAccess(event) {
       err && err.message
         ? err.message
         : String(err)
+    );
+    return false;
+  }
+}
+
+// ── Narrowly scoped Draft SAGE access (P0 fix) ──────────────────────────
+//
+// Independent of hasFullAcolyteAccess() above -- never sets, checks, or
+// implies fullAccess, and is never treated as fullAccess anywhere in
+// this file. This is what lets a Draft passcode customer reach SAGE
+// without granting them (or requiring) real Founding Acolyte access.
+//
+// SHARED LOGIC, NOT SHARED IMPORT, matching verify-session.js's own
+// documented convention for exactly this situation: independent copies
+// of the cookie-extraction and signature-verification primitives,
+// rather than importing verify-session.js's sanctum_session-specific
+// logic and repurposing it for a different cookie name and scope.
+function extractDraftSageCookie(cookieHeader, name) {
+  if (!cookieHeader || typeof cookieHeader !== "string") return null;
+  const parts = cookieHeader.split(";");
+  for (let i = 0; i < parts.length; i++) {
+    const [rawKey, ...rawVal] = parts[i].split("=");
+    if (!rawKey) continue;
+    if (rawKey.trim() === name) {
+      return rawVal.join("=").trim();
+    }
+  }
+  return null;
+}
+
+function base64urlDecodeDraftSage(str) {
+  return Buffer.from(
+    str.replace(/-/g, "+").replace(/_/g, "/"),
+    "base64"
+  ).toString("utf8");
+}
+
+function verifyDraftSageSession(cookie, secret) {
+  try {
+    if (!cookie || typeof cookie !== "string" || !cookie.includes(".")) {
+      return null;
+    }
+    const [encodedPayload, signature] = cookie.split(".");
+    if (!encodedPayload || !signature) return null;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(encodedPayload)
+      .digest("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+    if (
+      sigBuf.length !== expectedBuf.length ||
+      !crypto.timingSafeEqual(sigBuf, expectedBuf)
+    ) {
+      return null;
+    }
+
+    const payload = JSON.parse(base64urlDecodeDraftSage(encodedPayload));
+    if (!payload.exp || Date.now() > payload.exp) return null;
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function hasDraftSageAccess(event) {
+  try {
+    const secret = process.env.COOKIE_SIGNING_SECRET;
+    if (!secret) return false; // fails closed, same convention as hasFullAcolyteAccess's own dependency
+
+    const cookieHeader =
+      (event.headers && (event.headers.cookie || event.headers.Cookie)) || "";
+    const rawSession = extractDraftSageCookie(cookieHeader, "draft_sage_session");
+    const payload = verifyDraftSageSession(rawSession, secret);
+
+    if (!payload) return false;
+
+    // The scope check is what makes this genuinely narrow rather than
+    // just differently-named -- a validly signed payload that isn't
+    // explicitly scoped "draft_sage_access" (e.g. if some other cookie
+    // format ever collided) is rejected here.
+    return payload.scope === "draft_sage_access";
+  } catch (err) {
+    console.log(
+      "Draft SAGE session verification failed:",
+      err && err.message ? err.message : String(err)
     );
     return false;
   }
@@ -1492,7 +1589,18 @@ exports.handler =
         event
       );
 
-    if (!fullAccess) {
+    // P0 fix: a Patreon fullAccess session is checked first (unchanged
+    // priority and behavior); if absent, a narrowly-scoped Draft SAGE
+    // session is accepted as an alternate path -- hasDraftSageAccess()
+    // never sets or reads fullAccess, so this can never upgrade a Draft
+    // session into Founding Acolyte access anywhere, including here.
+    const authorized =
+      fullAccess ||
+      hasDraftSageAccess(
+        event
+      );
+
+    if (!authorized) {
       return jsonResponse(
         403,
         {
@@ -1527,15 +1635,56 @@ exports.handler =
         ? payload.candidates
         : [];
 
+    // P0 fix: drafted/unavailable player identities, sent as raw
+    // {name, pos} pairs (never pre-computed keys -- draft.html's own
+    // client-side key() normalization differs from playerKey() below,
+    // so keys computed on the client would not reliably match here;
+    // canonicalizing exactly once, server-side, with the same function
+    // already used for every other identity comparison in this file,
+    // is what keeps this a single canonical scheme rather than two
+    // competing ones). Missing/malformed payload.draftedPlayers
+    // degrades to an empty set -- an older client that hasn't picked up
+    // the corresponding draft.html change yet gets exactly today's
+    // behavior, not an error.
+    const draftedPlayersRaw =
+      Array.isArray(
+        payload.draftedPlayers
+      )
+        ? payload.draftedPlayers
+        : [];
+
+    const draftedKeySet =
+      new Set(
+        draftedPlayersRaw
+          .filter(
+            isValidPlayerShape
+          )
+          .map(
+            playerKey
+          )
+      );
+
+    function excludeDrafted(list) {
+      return list.filter(
+        function (p) {
+          return !draftedKeySet.has(
+            playerKey(p)
+          );
+        }
+      );
+    }
+
     const candidates =
-      rawCandidates
-        .filter(
-          isValidPlayerShape
-        )
-        .slice(
-          0,
-          MAX_CANDIDATES
-        );
+      excludeDrafted(
+        rawCandidates
+          .filter(
+            isValidPlayerShape
+          )
+          .slice(
+            0,
+            MAX_CANDIDATES
+          )
+      );
 
     if (
       candidates.length ===
@@ -1561,24 +1710,28 @@ exports.handler =
     }
 
     const currentPoolInput =
-      Array.isArray(
-        payload.currentPool
-      ) &&
-      payload.currentPool.length >
-        0
-        ? payload.currentPool.filter(
-            isValidPlayerShape
-          )
-        : candidates;
+      excludeDrafted(
+        Array.isArray(
+          payload.currentPool
+        ) &&
+        payload.currentPool.length >
+          0
+          ? payload.currentPool.filter(
+              isValidPlayerShape
+            )
+          : candidates
+      );
 
     const nextTurnPoolInput =
-      Array.isArray(
-        payload.nextTurnPool
-      )
-        ? payload.nextTurnPool.filter(
-            isValidPlayerShape
-          )
-        : [];
+      excludeDrafted(
+        Array.isArray(
+          payload.nextTurnPool
+        )
+          ? payload.nextTurnPool.filter(
+              isValidPlayerShape
+            )
+          : []
+      );
 
     const currentPick =
       payload.currentPick;
@@ -1880,6 +2033,23 @@ exports.handler =
                   )
               };
             }
+          )
+          // P0 fix -- defense-in-depth (requirement 9): an independent,
+          // final check at the response boundary itself. `candidates`
+          // was already filtered against draftedKeySet above, so this
+          // should normally be a no-op; it exists specifically so that
+          // no future code path between that filter and this response
+          // (a merge, a cache, an unforeseen addition) could ever let a
+          // drafted identity reach the customer, without relying on
+          // that earlier filter alone.
+          .filter(
+            function (r) {
+              return !draftedKeySet.has(
+                playerKey(
+                  r.player
+                )
+              );
+            }
           );
 
       // Phase 2 addition: roster-level strategy advisory. Computed
@@ -1953,5 +2123,7 @@ module.exports._test = {
   isValidPlayerShape,
   isPlainObject,
   buildRosterContextNote,
-  ROSTER_POSITION_ORDER
+  ROSTER_POSITION_ORDER,
+  hasFullAcolyteAccess,
+  hasDraftSageAccess
 };
