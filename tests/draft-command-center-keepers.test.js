@@ -1290,6 +1290,99 @@ test('Rail: SAGE Roster Watch is deterministic text, not an AI call -- no fetch 
   assert.ok(sandbox.document.getElementById('rosterRail').innerHTML.includes('SAGE Roster Watch'));
 });
 
+// ═══════════════════════════════════════════════════════════
+// BUG FIX REGRESSION: mock draft completing at "167 of 168"
+//
+// Root cause (confirmed via direct simulation with the real engine
+// functions, not a reimplementation): renderClockStatus()'s
+// DRAFT COMPLETE banner used draftState.draftLog.length alone, which
+// never includes keeper entries (draftLog and keepers are deliberately
+// separate arrays -- see buildDraftIndex()'s own comment). Any league
+// with at least one keeper therefore always undercounted the banner
+// by exactly the keeper count, even though the draft had genuinely,
+// correctly completed -- nextPickNumber()/teamOnClock()/the mock
+// automation loop were never the source of this; no pick was ever
+// actually skipped.
+// ═══════════════════════════════════════════════════════════
+
+test('BUG FIX: DRAFT COMPLETE banner reads full total (not "N-1 of N") when a keeper occupies a pick slot', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 12, 'team-01');
+  sandbox.draftState.numRounds = 14; // 12 teams x 14 rounds = 168 total pick slots
+  // One keeper (team-05's own round-14 slot) means the draft is
+  // genuinely complete after only 167 LIVE picks -- the 168th slot is
+  // filled by the keeper, never by a draftLog entry.
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-05', player: 'Kept RB', pos: 'RB', round: 14 }];
+  sandbox.draftState.draftLog = [];
+  for (let pn = 1; pn <= 168; pn++) {
+    const teamId = sandbox.teamOnClock(pn);
+    if (sandbox.keeperPickNumber(sandbox.draftState.keepers[0]) === pn) continue; // this exact slot belongs to the keeper, never a live pick
+    sandbox.draftState.draftLog.push({ id: pn, pickNumber: pn, player: 'Player ' + pn, pos: 'RB', teamId });
+  }
+  assert.strictEqual(sandbox.draftState.draftLog.length, 167, 'sanity check: exactly 167 live picks logged, 1 slot is the keeper');
+  assert.strictEqual(sandbox.isDraftComplete(), true, 'the draft must correctly recognize itself as complete');
+  sandbox.renderClockStatus();
+  const html = sandbox.document.getElementById('clockBar').innerHTML;
+  assert.ok(html.includes('168 OF 168 PICKS RECORDED'), 'banner must read the full 168, not 167: ' + html);
+  assert.ok(!html.includes('167 OF 168'), 'banner must never undercount by the keeper: ' + html);
+});
+
+test('BUG FIX: final-pick completion at slot 12 (12 teams x 14 rounds, my team at the LAST slot) -- no keeper, full simulation via real engine functions', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 12, 'team-12');
+  sandbox.draftState.numRounds = 14;
+
+  // Full, faithful simulation: only ever call runMockAutomationUntilUserTurn()
+  // to start/resume automation (matching the real confirmStartMockDraft()/
+  // logDraftPick()-internal trigger), and logDraftPick() directly for my
+  // own picks -- exactly the same real functions a live click uses.
+  sandbox.mockModeActive = true;
+  let timerQueue = [];
+  sandbox.setTimeout = (fn) => { timerQueue.push(fn); };
+  function drain() { let n = 0; while (timerQueue.length && n < 500) { timerQueue.shift()(); n++; } }
+
+  // Minimal available-player pool covering every position for 12x14.
+  sandbox.adpByPos = {};
+  ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].forEach((pos) => {
+    sandbox.adpByPos[pos] = [];
+    for (let i = 1; i <= 60; i++) {
+      const name = pos + '-Player-' + i;
+      sandbox.adpByPos[pos].push({ name, pos, team: 'AAA', adp: i, key: sandbox.playerKey(name, pos) });
+    }
+  });
+
+  sandbox.runMockAutomationUntilUserTurn();
+  drain();
+  let guard = 0;
+  while (!sandbox.isDraftComplete() && guard < 300) {
+    guard++;
+    const pn = sandbox.nextPickNumber();
+    const teamId = sandbox.teamOnClock(pn);
+    if (!teamId) break;
+    if (teamId === sandbox.draftState.myTeamId) {
+      const available = sandbox.buildAvailablePlayersSortedByAdp();
+      assert.ok(available.length > 0, 'must never stall for lack of available players at pick ' + pn);
+      sandbox.logDraftPick(available[0].name, available[0].pos);
+      drain();
+    } else {
+      assert.fail('automation stalled at pick ' + pn + ' for team ' + teamId + ' without it being my turn or the draft being complete');
+    }
+  }
+
+  assert.strictEqual(sandbox.draftState.draftLog.length, 168, 'all 168 picks must be recorded');
+  assert.strictEqual(sandbox.isDraftComplete(), true);
+  const perTeam = {};
+  sandbox.draftState.teams.forEach((t) => (perTeam[t.id] = 0));
+  sandbox.draftState.draftLog.forEach((e) => (perTeam[e.teamId] = (perTeam[e.teamId] || 0) + 1));
+  Object.keys(perTeam).forEach((id) => assert.strictEqual(perTeam[id], 14, id + ' must have exactly 14 picks'));
+
+  sandbox.renderClockStatus();
+  const html = sandbox.document.getElementById('clockBar').innerHTML;
+  assert.ok(html.includes('168 OF 168 PICKS RECORDED'), 'final banner must read 168 of 168: ' + html);
+});
+
 console.log(`draft-command-center-keepers.test.js: ${passed}/${passed + failed} passed`);
 if (failures.length) {
   failures.forEach((f) => console.error('FAIL:', f));
