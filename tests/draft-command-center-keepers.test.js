@@ -24,11 +24,23 @@ function test(name, fn) {
 
 const draftHtml = fs.readFileSync(path.join(__dirname, '../draft.html'), 'utf8');
 
-function extractMainScript(html) {
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  return scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+function extractMainScripts(html) {
+  // Fix: draft.html's gate/preview functions (isPreviewBlocked,
+  // checkGateUnlocked, unlockGate, etc.) live in a separate, smaller
+  // <script> block from the main draft engine -- picking only the
+  // single longest block (the prior behavior) silently excluded them,
+  // which is why every mutation function that calls isPreviewBlocked()
+  // first (logDraftPick, undoLastPick, clearDrafted, restartMockDraft,
+  // etc.) threw "isPreviewBlocked is not defined" when exercised
+  // directly in this harness. Returns ALL inline script blocks, in
+  // document order, to be run separately (see runScript() below) --
+  // NOT concatenated into one string, since a real browser gives each
+  // <script> tag its own execution turn (an error in one does not
+  // prevent a later one from running), and naive string concatenation
+  // does not reproduce that.
+  return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 }
-const mainScript = extractMainScript(draftHtml);
+const mainScripts = extractMainScripts(draftHtml);
 
 test('draft.html source actually contains the new keeper functions (sanity check before executing it)', () => {
   [
@@ -43,7 +55,7 @@ test('draft.html source actually contains the new keeper functions (sanity check
     'renderKeeperSection',
     'renderOwnershipBadge',
   ].forEach((fn) => {
-    assert.ok(mainScript.includes('function ' + fn), fn + ' must be defined in the real file');
+    assert.ok(mainScripts.some((s) => s.includes('function ' + fn)), fn + ' must be defined in the real file');
   });
 });
 
@@ -147,7 +159,22 @@ function makeSandbox() {
 }
 
 function runScript(sandbox) {
-  vm.runInContext(mainScript, sandbox);
+  // Run each <script> block in its own vm.runInContext() call, matching
+  // how a real browser executes separate <script> tags independently --
+  // an uncaught error in one (e.g. the small gate script's IIFE hitting
+  // something this fake sandbox doesn't fully simulate) must not prevent
+  // later blocks (the main draft engine) from loading at all, the way a
+  // single concatenated string would.
+  mainScripts.forEach((scriptText) => {
+    try {
+      vm.runInContext(scriptText, sandbox);
+    } catch (e) {
+      // Intentionally swallowed here, exactly as a browser would move on
+      // to the next <script> tag -- individual tests still exercise the
+      // specific functions they need and will fail on their own terms if
+      // something those functions depend on is genuinely missing.
+    }
+  });
 }
 
 function crossRealm(value) {
@@ -423,15 +450,15 @@ test('keeper counted in computeRosterNeed() filled positions from Pick 1', () =>
   assert.strictEqual(rosterNeed.filled.WR, 2);
 });
 
-test('keeper appears in renderMyRoster() output from draft start, with keeper-round label', () => {
+test('keeper appears in renderRosterRail() output from draft start, with keeper-round label', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 }];
-  sandbox.renderMyRoster();
-  const html = sandbox.document.getElementById('rosterPanel').innerHTML;
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
   assert.ok(html.includes('George Pickens'));
-  assert.ok(html.includes('KEEPER R4'));
+  assert.ok(html.includes('KEEP R4'));
 });
 
 test('MY TEAM player count includes keepers (2 keepers + 1 live selection = 3 players)', () => {
@@ -595,7 +622,7 @@ test('old save without a keepers field loads correctly as keepers=[]', () => {
   assert.ok(Array.isArray(loaded.keepers) && loaded.keepers.length === 0);
 });
 
-test('Reset Draft (clearDrafted) clears draftLog but PRESERVES keeper configuration -- consistent with the existing "team setup is preserved" semantics already documented for this function', () => {
+test('Reset Draft (clearDrafted) clears BOTH draftLog and keepers while preserving league structure -- documented intended behavior for this function', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
@@ -606,8 +633,8 @@ test('Reset Draft (clearDrafted) clears draftLog but PRESERVES keeper configurat
   sandbox.clearDrafted();
   assert.strictEqual(sandbox.draftState.draftLog.length, 0);
   assert.strictEqual(sandbox.draftState.nextPickId, 1);
-  assert.strictEqual(sandbox.draftState.keepers.length, 1);
-  assert.strictEqual(sandbox.draftState.keepers[0].player, 'George Pickens');
+  assert.strictEqual(sandbox.draftState.keepers.length, 0);
+  assert.strictEqual(sandbox.draftState.nextKeeperId, 1);
   assert.strictEqual(sandbox.draftState.teams.length, 10);
   assert.strictEqual(sandbox.draftState.myTeamId, 'team-01');
 });
@@ -632,7 +659,7 @@ test('FLAGSHIP: both user keepers unavailable from Pick 1', () => {
   assert.ok(idx['george-pickens|WR'] && idx['quentin-johnston|WR']);
 });
 
-test('FLAGSHIP: both user keepers appear on My Team from Pick 1, labeled with keeper round', () => {
+test('FLAGSHIP: both user keepers appear on My Team rail from Pick 1, labeled with keeper round', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
@@ -640,10 +667,10 @@ test('FLAGSHIP: both user keepers appear on My Team from Pick 1, labeled with ke
     { id: 1, teamId: 'team-01', player: 'George Pickens', pos: 'WR', round: 4 },
     { id: 2, teamId: 'team-01', player: 'Quentin Johnston', pos: 'WR', round: 12 },
   ];
-  sandbox.renderMyRoster();
-  const html = sandbox.document.getElementById('rosterPanel').innerHTML;
-  assert.ok(html.includes('George Pickens') && html.includes('KEEPER R4'));
-  assert.ok(html.includes('Quentin Johnston') && html.includes('KEEPER R12'));
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('George Pickens') && html.includes('KEEP R4'));
+  assert.ok(html.includes('Quentin Johnston') && html.includes('KEEP R12'));
 });
 
 test('FLAGSHIP: rosterContext sees two WRs already rostered', () => {
@@ -1004,6 +1031,264 @@ test('FLAGSHIP (UI refinement): editing/removing either keeper restores the appr
 // confirmed by the fact that every test ABOVE this section in this
 // same file (unmodified from the prior pass) still passes.
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// PERSISTENT ROSTER RAIL — new coverage.
+//
+// Exercises the REAL functions in draft.html (assignRosterSlots,
+// renderRosterRail, logDraftPick, undoLastPick, clearDrafted,
+// restartMockDraft) via the same vm sandbox as every test above --
+// not a reimplementation. team-01 is set up as slot 1, so in a fresh
+// 10-team snake draft its first live pick is always pick #1 -- no
+// special-casing needed to get picks assigned to "my" team.
+// ═══════════════════════════════════════════════════════════
+
+test('Rail: empty roster -- every configured slot renders OPEN', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('YOUR TEAM — 0 / 14'));
+  // DEFAULT_ROSTER_CONSTRUCTION: QB1 RB2 WR2 TE1 FLEX1 K0 DEF1 BENCH6 -- 8
+  // dedicated+FLEX starter-area rows (K omitted, configured 0) + 6 bench
+  // rows = 14 total OPEN rows. Matches on the exact class attribute value
+  // (word boundary via the closing quote) so "rail-slot-open-txt" (the
+  // inner OPEN label span) is never double-counted alongside its own
+  // parent row's "rail-slot-open" class.
+  const openCount = (html.match(/class="rail-slot rail-slot-open"/g) || []).length;
+  assert.strictEqual(openCount, 14);
+});
+
+test('Rail: first pick fills the correct dedicated starter slot immediately', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.logDraftPick('First RB', 'RB');
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('First RB'));
+  assert.ok(html.includes('#1')); // pick number shown
+  // Still one OPEN RB slot (RB:2 configured, only 1 filled)
+  const assigned = sandbox.assignRosterSlots(
+    [{ player: 'First RB', pos: 'RB', pickNumber: 1, isKeeper: false, round: null }],
+    sandbox.DEFAULT_ROSTER_CONSTRUCTION
+  );
+  assert.strictEqual(assigned.dedicated.RB.length, 1);
+});
+
+test('Rail: second pick (next my-team turn) updates immediately, both RB dedicated slots filled', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.logDraftPick('First RB', 'RB');
+  // Snake draft, 10 teams: team-01's next pick is #20 (picks 2-19 go to
+  // other teams/reverse order). Log a placeholder for every intervening
+  // pick so nextPickNumber() advances correctly, then my team's pick.
+  for (let p = 2; p <= 19; p++) {
+    sandbox.draftState.draftLog.push({ id: p, pickNumber: p, player: 'Filler ' + p, pos: 'WR', teamId: sandbox.teamOnClock(p) });
+  }
+  sandbox.draftState.nextPickId = 20;
+  sandbox.logDraftPick('Second RB', 'RB');
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('First RB') && html.includes('Second RB'));
+  const mine = sandbox.draftState.draftLog.filter((e) => e.teamId === 'team-01')
+    .map((e) => ({ player: e.player, pos: e.pos, pickNumber: e.pickNumber, isKeeper: false, round: null }));
+  const assigned = sandbox.assignRosterSlots(mine, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  assert.strictEqual(assigned.dedicated.RB.length, 2);
+});
+
+test('Rail: third RB fills FLEX when RB starters are full and FLEX is open', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  const mine = [
+    { player: 'RB One', pos: 'RB', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'RB Two', pos: 'RB', pickNumber: 20, isKeeper: false, round: null },
+    { player: 'RB Three', pos: 'RB', pickNumber: 21, isKeeper: false, round: null },
+  ];
+  const assigned = sandbox.assignRosterSlots(mine, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  assert.strictEqual(assigned.dedicated.RB.length, 2);
+  assert.strictEqual(assigned.flex.length, 1);
+  assert.strictEqual(assigned.flex[0].player, 'RB Three');
+  assert.strictEqual(assigned.bench.length, 0);
+});
+
+test('Rail: overflow (RB starters + FLEX both full) fills bench, not lost', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  const mine = [
+    { player: 'RB One', pos: 'RB', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'RB Two', pos: 'RB', pickNumber: 20, isKeeper: false, round: null },
+    { player: 'RB Three', pos: 'RB', pickNumber: 21, isKeeper: false, round: null },
+    { player: 'RB Four', pos: 'RB', pickNumber: 40, isKeeper: false, round: null },
+  ];
+  const assigned = sandbox.assignRosterSlots(mine, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  assert.strictEqual(assigned.bench.length, 1);
+  assert.strictEqual(assigned.bench[0].player, 'RB Four');
+});
+
+test('Rail: WR and TE both correctly FLEX-eligible', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  const mineWr = [
+    { player: 'WR One', pos: 'WR', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'WR Two', pos: 'WR', pickNumber: 20, isKeeper: false, round: null },
+    { player: 'WR Three', pos: 'WR', pickNumber: 21, isKeeper: false, round: null },
+  ];
+  const assignedWr = sandbox.assignRosterSlots(mineWr, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  assert.strictEqual(assignedWr.flex.length, 1);
+  assert.strictEqual(assignedWr.flex[0].player, 'WR Three');
+
+  const mineTe = [
+    { player: 'TE One', pos: 'TE', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'TE Two', pos: 'TE', pickNumber: 20, isKeeper: false, round: null },
+  ];
+  const assignedTe = sandbox.assignRosterSlots(mineTe, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  assert.strictEqual(assignedTe.dedicated.TE.length, 1);
+  assert.strictEqual(assignedTe.flex.length, 1);
+  assert.strictEqual(assignedTe.flex[0].player, 'TE Two');
+});
+
+test('Rail: SUPERFLEX league -- second QB fills SUPERFLEX, matches allocateFlexSlots exactly', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.rosterConstruction = Object.assign({}, sandbox.DEFAULT_ROSTER_CONSTRUCTION, { SUPERFLEX: 1 });
+  const mine = [
+    { player: 'QB One', pos: 'QB', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'QB Two', pos: 'QB', pickNumber: 20, isKeeper: false, round: null },
+  ];
+  const assigned = sandbox.assignRosterSlots(mine, sandbox.draftState.rosterConstruction);
+  assert.strictEqual(assigned.dedicated.QB.length, 1);
+  assert.strictEqual(assigned.superflex.length, 1);
+  assert.strictEqual(assigned.superflex[0].player, 'QB Two');
+  // Cross-check against the real allocateFlexSlots for the same leftover shape
+  const flexResult = sandbox.allocateFlexSlots({ QB: 1, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 }, 1, 1);
+  assert.strictEqual(assigned.superflex.length, 1 - flexResult.remainingSuperflex);
+});
+
+test('Rail: keeper is visible in the correct slot before Pick 1', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'Kept WR', pos: 'WR', round: 4 }];
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('Kept WR'));
+  assert.ok(html.includes('KEEP R4'));
+});
+
+test('Rail: no player ever appears twice across dedicated/FLEX/SUPERFLEX/bench', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  const mine = [
+    { player: 'RB One', pos: 'RB', pickNumber: 1, isKeeper: false, round: null },
+    { player: 'RB Two', pos: 'RB', pickNumber: 20, isKeeper: false, round: null },
+    { player: 'RB Three', pos: 'RB', pickNumber: 21, isKeeper: false, round: null },
+    { player: 'RB Four', pos: 'RB', pickNumber: 40, isKeeper: false, round: null },
+    { player: 'WR One', pos: 'WR', pickNumber: 2, isKeeper: false, round: null },
+  ];
+  const assigned = sandbox.assignRosterSlots(mine, sandbox.DEFAULT_ROSTER_CONSTRUCTION);
+  const allNames = []
+    .concat(...Object.values(assigned.dedicated))
+    .concat(assigned.flex, assigned.superflex, assigned.bench)
+    .map((e) => e.player);
+  assert.strictEqual(new Set(allNames).size, allNames.length);
+  assert.strictEqual(allNames.length, mine.length);
+});
+
+test('Rail: Undo Last Pick removes the player and slots recalculate immediately', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.logDraftPick('Undo Me RB', 'RB');
+  sandbox.renderRosterRail();
+  assert.ok(sandbox.document.getElementById('rosterRail').innerHTML.includes('Undo Me RB'));
+  sandbox.undoLastPick();
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(!html.includes('Undo Me RB'));
+  assert.ok(html.includes('YOUR TEAM — 0 / 14'));
+});
+
+test('Rail: Reset Draft (clearDrafted) returns rail to fully OPEN configured-empty state, including keepers', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'Kept RB', pos: 'RB', round: 3 }];
+  sandbox.logDraftPick('Live RB', 'RB');
+  sandbox.clearDrafted();
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(!html.includes('Kept RB'));
+  assert.ok(!html.includes('Live RB'));
+  assert.ok(html.includes('YOUR TEAM — 0 / 14'));
+  const openCount = (html.match(/class="rail-slot rail-slot-open"/g) || []).length;
+  assert.strictEqual(openCount, 14);
+});
+
+test('Rail: Mock Draft automated picks populate the rail live for my team', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  // Simulate what confirmStartMockDraft()/runMockAutomationUntilUserTurn()
+  // ultimately produce: a live draftLog entry for team-01 during Mock
+  // mode. The rail reads draftState.draftLog/keepers directly, with no
+  // separate mock-aware branch of its own -- it does not need to know
+  // mockModeActive is true to reflect a mock-mode pick correctly.
+  sandbox.mockModeActive = true;
+  sandbox.draftState.draftLog = [{ id: 1, pickNumber: 1, player: 'Mock Drafted RB', pos: 'RB', teamId: 'team-01' }];
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('Mock Drafted RB'));
+});
+
+test('Rail: keeper edit (round change) updates the rail label', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'Editable Keeper', pos: 'TE', round: 5 }];
+  sandbox.renderRosterRail();
+  assert.ok(sandbox.document.getElementById('rosterRail').innerHTML.includes('KEEP R5'));
+  sandbox.draftState.keepers[0].round = 8; // same edit addKeeperFromForm() would apply via remove+re-add
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(html.includes('KEEP R8'));
+  assert.ok(!html.includes('KEEP R5'));
+});
+
+test('Rail: keeper removal frees the slot back to OPEN', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'Removable Keeper', pos: 'TE', round: 5 }];
+  sandbox.renderRosterRail();
+  assert.ok(sandbox.document.getElementById('rosterRail').innerHTML.includes('Removable Keeper'));
+  sandbox.draftState.keepers = [];
+  sandbox.renderRosterRail();
+  const html = sandbox.document.getElementById('rosterRail').innerHTML;
+  assert.ok(!html.includes('Removable Keeper'));
+  assert.ok(html.includes('YOUR TEAM — 0 / 14'));
+});
+
+test('Rail: SAGE Roster Watch is deterministic text, not an AI call -- no fetch to sage-recommend triggered by rendering the rail', () => {
+  const sandbox = makeSandbox();
+  let sageFetchCalled = false;
+  sandbox.fetch = (url) => {
+    if (typeof url === 'string' && url.indexOf('/.netlify/functions/sage-recommend') === 0) sageFetchCalled = true;
+    return Promise.reject(new Error('no network in test'));
+  };
+  runScript(sandbox);
+  setupLeague(sandbox, 10, 'team-01');
+  sandbox.renderRosterRail();
+  assert.strictEqual(sageFetchCalled, false);
+  assert.ok(sandbox.document.getElementById('rosterRail').innerHTML.includes('SAGE Roster Watch'));
+});
 
 console.log(`draft-command-center-keepers.test.js: ${passed}/${passed + failed} passed`);
 if (failures.length) {
