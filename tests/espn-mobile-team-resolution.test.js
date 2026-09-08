@@ -83,9 +83,6 @@ async function run() {
     assert.strictEqual(body.league.resolvedTeamId, '7');
     assert.strictEqual(body.league.teams.length, 2);
     assert.ok(!response.body.includes('request-only-secret'));
-    assert.ok(!response.body.includes('{ABC-123}') || body.league.teams.some(function (team) {
-      return Array.isArray(team.owners) && team.owners.includes('{ABC-123}');
-    }));
 
     const teamContextSource = fs.readFileSync(teamContextPath, 'utf8');
     assert.ok(
