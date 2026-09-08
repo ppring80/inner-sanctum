@@ -458,7 +458,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
 
     <input type="password" class="gate-input" id="gateInput" placeholder="Passcode" autocomplete="off"
       onkeydown="if(event.key==='Enter'){checkGatePasscode()}"/>
-    <button class="gate-btn" onclick="checkGatePasscode()">Unlock</button>
+    <button class="gate-btn" id="gateUnlockBtn" onclick="checkGatePasscode()">Unlock</button>
     <div class="gate-note" style="margin-top:-8px;margin-bottom:14px">Passcode is for special invite access only — most Founding Acolytes should use Patreon login above</div>
     <div class="gate-error" id="gateError">Incorrect passcode. Try again.</div>
     <div class="gate-divider">OR</div>
@@ -467,7 +467,6 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   </div>
 </div>
 <script>
-var ALLOWLIST_PASSCODE = 'SANCTUM-TEST';
 var GATE_STORAGE_KEY = 'sanctum_acolyte_unlock';
 
 function checkGateUnlocked() {
@@ -483,17 +482,47 @@ function unlockGate() {
   document.getElementById('gateOverlay').style.display = 'none';
 }
 
+// P0 fix: the passcode is no longer compared client-side at all -- no
+// hardcoded value exists anywhere in this file to read from page
+// source. The entered value is sent to /.netlify/functions/draft-invite-session,
+// which validates it server-side against DRAFT_INVITE_PASSCODE only. On
+// success that endpoint also sets the narrowly-scoped draft_sage_session
+// cookie (HttpOnly -- this page never sees or handles it directly),
+// which is what lets refreshSageRecommendations()'s subsequent request
+// succeed. On any failure (wrong passcode, or the server/config being
+// unavailable), the gate stays locked and the existing error message
+// shows -- fail closed in both cases, identically.
 function checkGatePasscode() {
   var input = document.getElementById('gateInput');
   var err = document.getElementById('gateError');
-  var entered = input.value.trim().toUpperCase();
-  if (entered === ALLOWLIST_PASSCODE) {
-    unlockGate();
-  } else {
-    err.classList.add('show');
-    input.value = '';
-    input.focus();
-  }
+  var btn = document.getElementById('gateUnlockBtn');
+  var entered = input.value.trim();
+  if (!entered) return;
+
+  err.classList.remove('show');
+  if (btn) btn.disabled = true;
+
+  fetch('/.netlify/functions/draft-invite-session', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passcode: entered })
+  })
+    .then(function (res) { return res.ok; })
+    .catch(function () { return false; })
+    .then(function (ok) {
+      if (btn) btn.disabled = false;
+      if (ok) {
+        unlockGate();
+        if (typeof refreshSageRecommendations === 'function') {
+          refreshSageRecommendations();
+        }
+      } else {
+        err.classList.add('show');
+        input.value = '';
+        input.focus();
+      }
+    });
 }
 
 function checkOAuthSession() {
@@ -1633,6 +1662,7 @@ function refreshSageRecommendations(){
 
   fetch('/.netlify/functions/sage-recommend',{
     method:'POST',
+    credentials:'same-origin',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
       candidates:candidates,
@@ -1641,7 +1671,15 @@ function refreshSageRecommendations(){
       currentPick:currentPick,
       nextUserPick:nextUserPick,
       scoring:scoringEl?scoringEl.value:undefined,
-      rosterContext:computeRosterNeed()
+      rosterContext:computeRosterNeed(),
+      // P0 fix: raw {name,pos} pairs, not this file's own key() strings
+      // -- the server canonicalizes identity with its own playerKey(),
+      // which uses different normalization than key() here (this file's
+      // key() and sage-recommend.js's playerKey() were never the same
+      // scheme), so sending pre-computed keys would silently fail to
+      // match there. buildDraftIndex() already merges live picks and
+      // keepers into one map -- reused exactly as-is.
+      draftedPlayers:Object.values(buildDraftIndex()).map(function(e){return {name:e.player,pos:e.pos};})
     })
   })
     .then(function(res){ return res.json().catch(function(){return {};}).then(function(data){ return {ok:res.ok,data:data}; }); })
