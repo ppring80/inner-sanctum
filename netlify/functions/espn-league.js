@@ -103,6 +103,46 @@ const NFL_TEAM_BY_ID = {
   34: "HOU"
 };
 
+function normalizeEspnOwnerId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^\{/, "")
+    .replace(/\}$/, "")
+    .toLowerCase();
+}
+
+function resolveTeamIdFromSwid(leagueData, swid) {
+  const ownerId = normalizeEspnOwnerId(swid);
+
+  if (!ownerId) {
+    return null;
+  }
+
+  const teams = Array.isArray(leagueData?.teams)
+    ? leagueData.teams
+    : [];
+
+  const matchedTeam = teams.find(function (team) {
+    const owners = [];
+
+    if (team?.primaryOwner) {
+      owners.push(team.primaryOwner);
+    }
+
+    if (Array.isArray(team?.owners)) {
+      owners.push(...team.owners);
+    }
+
+    return owners.some(function (owner) {
+      return normalizeEspnOwnerId(owner) === ownerId;
+    });
+  });
+
+  return matchedTeam?.id !== null && matchedTeam?.id !== undefined
+    ? String(matchedTeam.id)
+    : null;
+}
+
 function isOriginAllowed(origin) {
   if (!origin) {
     return true;
@@ -789,6 +829,12 @@ exports.handler =
         };
       }
 
+      const resolvedTeamId =
+        resolveTeamIdFromSwid(
+          result.data,
+          swid
+        );
+
       const scoringPeriodId =
         getCurrentScoringPeriod(
           result.data
@@ -863,9 +909,13 @@ exports.handler =
         returned league object, so this makes the new data flow through
         the existing connection path without changing credential handling
         or requiring a second client-side storage implementation.
+
+        resolvedTeamId is a safe, non-secret identity hint derived from the
+        request-only SWID. The SWID itself is never persisted or returned.
       */
       const leagueWithAvailability = {
         ...result.data,
+        resolvedTeamId,
         availablePlayers,
         availabilityMeta
       };
