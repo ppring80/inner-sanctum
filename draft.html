@@ -160,9 +160,9 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .prow:hover{background:#f8f6f0}
 .prow.drafted{opacity:0.3;text-decoration:line-through}
 .prow.mypick{background:#fffbe0;box-shadow:inset 0 0 0 2px var(--gold-lt)}
-.prow td{padding:8px 10px;vertical-align:middle;line-height:1.35}
-.r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:34px}
-.r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:34px}
+.prow td{padding:6px 8px;vertical-align:middle;line-height:1.35}
+.r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:28px}
+.r-pos{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text);width:28px}
 .pname{font-size:14px;font-weight:600;color:var(--text)}
 /* Universal Player Profile V1 (added) -- smallest clickable-name
    affordance only; does not touch the Player Profile visual system
@@ -171,20 +171,20 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .pname:hover,.cname:hover,.sage-rec-player:hover{text-decoration:underline}
 .pname:focus-visible,.cname:focus-visible,.sage-rec-player:focus-visible{outline:2px solid var(--gold-lt);outline-offset:2px;border-radius:3px}
 .pteam-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-top:1px}
-.bye-td{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;width:40px;color:var(--amber);font-weight:600}
-.adp-td{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);text-align:center;width:52px}
-.str-td{text-align:center;width:68px}
+.bye-td{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;width:32px;color:var(--amber);font-weight:600}
+.adp-td{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);text-align:center;width:44px}
+.str-td{text-align:center;width:52px}
 .sbadge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-size:10px;font-weight:600}
 .s-hi{background:#e8f5e9;color:#2a6e2a;border:1px solid #a5d6a7}
 .s-md{background:#fffde7;color:#8a7010;border:1px solid #fff176}
 .s-lo{background:#fce4ec;color:#8a2020;border:1px solid #ef9a9a}
-.inj-td{width:140px}
+.inj-td{width:100px}
 .ibadge{display:inline-flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px}
 .ibadge.Out,.ibadge.IR{background:#fce4ec;color:#c0392b;border:1px solid #ef9a9a}
 .ibadge.Doubtful{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
 .ibadge.Questionable{background:#fffde7;color:#f57f17;border:1px solid #fff176}
 .ibadge.PUP{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8}
-.act-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:4px 10px;cursor:pointer;font-family:Lora,serif;transition:all 0.15s;white-space:nowrap}
+.act-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:11px;padding:4px 8px;cursor:pointer;font-family:Lora,serif;transition:all 0.15s;white-space:nowrap}
 .act-btn:hover{border-color:var(--gold);color:var(--gold)}
 .act-btn.draft-btn{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);color:var(--gold)}
 .act-btn.draft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
@@ -1746,6 +1746,21 @@ function refreshSageRecommendations(){
 // still calls the exact same logDraftPick() either way).
 function draftActionLabel(amIOnClockNow){
   return amIOnClockNow?'Draft to My Team':'Record Pick';
+}
+
+// Table-row-only short variant (Draft-active table width hotfix): the
+// table's action column has no explicit width and the button's
+// white-space:nowrap means its full text directly widens the row, so
+// when this button reads "Draft to My Team" (on-clock) the table can
+// overflow the now-narrower #main column. Click behavior and the
+// underlying logDraftPick() call are completely unchanged -- only the
+// visible text is shortened, with the full original label preserved as
+// the button's title attribute for accessibility/tooltip. "Record Pick"
+// is already short and returned unchanged. Card view (.cdraft-btn) has
+// more available width and is not affected by this -- it continues to
+// use draftActionLabel() directly, unchanged.
+function draftActionLabelTableShort(amIOnClockNow){
+  return amIOnClockNow?'Draft':'Record Pick';
 }
 
 function logDraftPick(name,pos){
@@ -4065,7 +4080,7 @@ function render(){
         var injHtml=inj2?'<span class="ibadge '+inj2.cls+'"'+injTitle+'>'+inj2.icon+' '+inj2.label+'</span>':'<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
         var inCmp=cmpList.indexOf(p.key)!==-1;
         var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
-        var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+        var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" title="'+draftActionLabel(amIOnClockNow)+'" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabelTableShort(amIOnClockNow)+'</button>';
         var tr=document.createElement('tr');
         tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
         tr.id='row-'+p.key;
@@ -4166,7 +4181,7 @@ function renderAll(){
       var safeName=p.name.replace(/'/g,"\\'");
       var inCmp=cmpList.indexOf(p.key)!==-1;
       var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
-      var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+      var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" title="'+draftActionLabel(amIOnClockNow)+'" onclick="logDraftPick(\''+safeName+'\',\''+p.pos+'\')">'+draftActionLabelTableShort(amIOnClockNow)+'</button>';
       var tr=document.createElement('tr');
       tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
       tr.id='row-'+p.key;
@@ -4274,7 +4289,7 @@ function renderSearch(){
       '<span style="color:var(--green);font-size:11px;font-family:\'JetBrains Mono\',monospace">✓</span>';
     var safeName=p.name.replace(/'/g,"\\'");
     var ownBadge=dk?renderOwnershipBadge(entry,isMine):'';
-    var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabel(amIOnClockNow)+'</button>';
+    var actionCell=dk?ownBadge:'<button class="act-btn draft-btn" title="'+draftActionLabel(amIOnClockNow)+'" onclick="logDraftPick(\''+safeName+'\',\''+pos+'\')">'+draftActionLabelTableShort(amIOnClockNow)+'</button>';
     var tr=document.createElement('tr');
     tr.className='prow'+(dk?(entry.isKeeper?' keeper':(isMine?' mypick':' drafted')):'');
     tr.id='srow-'+p.key;
