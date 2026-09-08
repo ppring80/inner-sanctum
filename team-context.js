@@ -25,7 +25,7 @@
 
   function esc(value) {
     return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+      .replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
   }
 
   function providerLabel(connection) {
@@ -193,6 +193,9 @@
   function preferredEspnTeamId(connection) {
     const lid = leagueId(connection);
     if (!lid) return null;
+
+    const serverResolvedId = String(connection?.league?.resolvedTeamId || "").trim();
+    if (serverResolvedId) return serverResolvedId;
 
     const pref = readEspnPreferences()[lid];
     if (pref?.teamId) return String(pref.teamId);
