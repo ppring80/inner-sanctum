@@ -194,6 +194,9 @@
     const lid = leagueId(connection);
     if (!lid) return null;
 
+    const serverResolvedId = String(connection?.league?.resolvedTeamId || "").trim();
+    if (serverResolvedId) return serverResolvedId;
+
     const pref = readEspnPreferences()[lid];
     if (pref?.teamId) return String(pref.teamId);
 
