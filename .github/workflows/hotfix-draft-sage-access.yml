@@ -1,0 +1,159 @@
+name: Hotfix Draft SAGE Access
+
+on:
+  push:
+    paths:
+      - '.github/workflows/hotfix-draft-sage-access.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch passcode access into server session
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          draft = Path('draft.html')
+          text = draft.read_text()
+
+          old = """function unlockGate() {
+  try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+}
+"""
+          new = """function ensureInviteServerSession() {
+  return fetch('/.netlify/functions/invite-session', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ passcode: ALLOWLIST_PASSCODE })
+  })
+    .then(function (res) { return res.ok; })
+    .catch(function () { return false; });
+}
+
+function unlockGate() {
+  try { sessionStorage.setItem(GATE_STORAGE_KEY, 'true'); } catch (e) {}
+  document.getElementById('gateOverlay').style.display = 'none';
+  ensureInviteServerSession().then(function (ok) {
+    if (ok && typeof refreshSageRecommendations === 'function') {
+      refreshSageRecommendations();
+    }
+  });
+}
+"""
+          if text.count(old) != 1:
+              raise SystemExit(f'unlockGate anchor count was {text.count(old)}, expected 1')
+          text = text.replace(old, new, 1)
+
+          old2 = """  if (checkGateUnlocked()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    return;
+  }
+"""
+          new2 = """  if (checkGateUnlocked()) {
+    document.getElementById('gateOverlay').style.display = 'none';
+    ensureInviteServerSession().then(function (ok) {
+      if (ok && typeof refreshSageRecommendations === 'function') {
+        refreshSageRecommendations();
+      }
+    });
+    return;
+  }
+"""
+          if text.count(old2) != 1:
+              raise SystemExit(f'initGate anchor count was {text.count(old2)}, expected 1')
+          text = text.replace(old2, new2, 1)
+          draft.write_text(text)
+
+          invite = Path('netlify/functions/invite-session.js')
+          invite.write_text(r'''const crypto = require("crypto");
+
+const COOKIE_NAME = "sanctum_session";
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "https://theinnersanctum.xyz",
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json; charset=utf-8"
+};
+
+function base64url(input) {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function signSession(payload, secret) {
+  const encoded = base64url(JSON.stringify(payload));
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(encoded)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `${encoded}.${signature}`;
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+  }
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, headers: CORS_HEADERS, body: JSON.stringify({ error: "POST only" }) };
+  }
+
+  const secret = process.env.COOKIE_SIGNING_SECRET;
+  const expectedPasscode = process.env.DRAFT_INVITE_PASSCODE || "SANCTUM-TEST";
+  if (!secret) {
+    return { statusCode: 503, headers: CORS_HEADERS, body: JSON.stringify({ error: "Session service unavailable" }) };
+  }
+
+  let body = {};
+  try { body = JSON.parse(event.body || "{}"); } catch (_) {}
+  if (!body.passcode || body.passcode !== expectedPasscode) {
+    return { statusCode: 403, headers: CORS_HEADERS, body: JSON.stringify({ error: "Invalid invite passcode" }) };
+  }
+
+  const ttlSeconds = 60 * 60 * 12;
+  const payload = {
+    fullAccess: true,
+    source: "draft-invite-passcode",
+    exp: Date.now() + ttlSeconds * 1000
+  };
+  const session = signSession(payload, secret);
+  const cookie = `${COOKIE_NAME}=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${ttlSeconds}`;
+
+  return {
+    statusCode: 200,
+    headers: { ...CORS_HEADERS, "Set-Cookie": cookie },
+    body: JSON.stringify({ fullAccess: true })
+  };
+};
+''')
+          PY
+
+          git diff --check
+          grep -q "ensureInviteServerSession" draft.html
+          grep -q "draft-invite-passcode" netlify/functions/invite-session.js
+
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add draft.html netlify/functions/invite-session.js
+          git commit -m "Restore SAGE for passcode Draft access"
+          git push origin HEAD:main
