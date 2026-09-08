@@ -2980,7 +2980,36 @@ function renderClockStatus(){
     // fully available. If the final pick is later undone, the very next
     // render() call re-evaluates isDraftComplete() (false again) and this
     // falls straight through to the normal on-the-clock display below.
-    el.innerHTML='<div class="clock-line1">DRAFT COMPLETE — '+draftState.draftLog.length+' OF '+totalDraftPicks()+' PICKS RECORDED</div>';
+    //
+    // Bug fix (mock draft completing at "167 of 168"): totalDraftPicks()
+    // counts every pick SLOT in the draft (teams*rounds), including any
+    // slot a keeper occupies -- a keeper never becomes a draftState.draftLog
+    // entry (see buildDraftIndex()'s own comment: keepers and draftLog
+    // are deliberately separate arrays), so draftLog.length alone always
+    // undercounts a completed draft by exactly the number of keepers in
+    // the league, even though every pick slot -- live or keeper -- has
+    // genuinely been resolved and isDraftComplete() is correctly true.
+    // This never reflects a missed/skipped pick; nextPickNumber()/
+    // teamOnClock()/the mock automation loop all already correctly treat
+    // a keeper-occupied pick number as filled (see nextPickNumber()'s own
+    // keeper-skip logic) and were never the source of this discrepancy --
+    // only this display line was undercounting. Matches the same
+    // "live picks + keepers" combined total already used correctly
+    // elsewhere (see renderMyRoster()'s own liveMine.length+keeperMine.length).
+    //
+    // Only counts a keeper whose own resolved pick number actually falls
+    // within the current draft length (<=totalDraftPicks()) -- the exact
+    // same bound nextPickNumber()'s own keeper-skip while-loop already
+    // applies -- so a keeper configured for a round beyond a since-reduced
+    // Number of Rounds is correctly excluded here too, and this count can
+    // never exceed totalDraftPicks().
+    var total=totalDraftPicks();
+    var inBoundsKeeperCount=(draftState.keepers||[]).filter(function(k){
+      var pn=keeperPickNumber(k);
+      return pn&&pn<=total;
+    }).length;
+    var recordedTotal=draftState.draftLog.length+inBoundsKeeperCount;
+    el.innerHTML='<div class="clock-line1">DRAFT COMPLETE — '+recordedTotal+' OF '+total+' PICKS RECORDED</div>';
     return;
   }
   if(draftState.draftType==='manual'){
