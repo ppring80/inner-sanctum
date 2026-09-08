@@ -101,10 +101,10 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
    exact IDs, so renderSageRecommendations()/render() continue
    targeting the same elements with zero JS changes. #rosterPanel and
    #dbar are NOT part of this wrapper and remain above it, unchanged. */
-.draft-workspace{display:flex;gap:20px;align-items:flex-start;padding:0 24px;max-width:1600px;margin:0 auto}
-.draft-workspace #sagePanel{flex:0 0 35%;max-width:35%;min-width:0;padding:10px 0;border-bottom:none;border-right:1px solid var(--border)}
-.draft-workspace #main{flex:1 1 auto;min-width:0;max-width:none;margin:0;padding:16px 0 16px 20px;overflow-x:auto}
-.draft-workspace .roster-rail{flex:0 0 280px;max-width:280px;min-width:0;padding:10px 0 10px 20px;border-left:1px solid var(--border)}
+.draft-workspace{display:flex;gap:16px;align-items:flex-start;padding:0 24px;max-width:1600px;margin:0 auto}
+.draft-workspace #sagePanel{flex:0 0 29%;max-width:29%;min-width:0;padding:10px 0;border-bottom:none;border-right:1px solid var(--border)}
+.draft-workspace #main{flex:1 1 auto;min-width:0;max-width:none;margin:0;padding:16px 0 16px 16px;overflow-x:auto}
+.draft-workspace .roster-rail{flex:0 0 250px;max-width:250px;min-width:0;padding:10px 0 10px 16px;border-left:1px solid var(--border)}
 
 /* ═══ PERSISTENT ROSTER RAIL ═══
    Right-hand workspace column, populated by renderRosterRail(). Reuses
