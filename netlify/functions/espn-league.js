@@ -58,13 +58,18 @@ const VIEWS = [
 
 const AVAILABLE_PLAYER_LIMIT = 1000;
 
-const POSITION_BY_ID = {
-  0: "QB",
+// ESPN uses one ID system for a player's primary/default position
+// (player.defaultPositionId) and a completely different ID system for
+// lineup slots (used elsewhere for roster/lineup construction). These IDs
+// below are defaultPositionId values only and must NOT be replaced with
+// ESPN lineup-slot IDs: QB=1, RB=2, WR=3, TE=4, K=5, D/ST=16.
+const ESPN_DEFAULT_POSITION_BY_ID = {
+  1: "QB",
   2: "RB",
-  4: "WR",
-  6: "TE",
-  16: "D/ST",
-  17: "K"
+  3: "WR",
+  4: "TE",
+  5: "K",
+  16: "D/ST"
 };
 
 const NFL_TEAM_BY_ID = {
@@ -582,7 +587,7 @@ function normalizeEspnAvailablePlayers(
 
         position:
           defaultPositionId !== null
-            ? POSITION_BY_ID[
+            ? ESPN_DEFAULT_POSITION_BY_ID[
                 defaultPositionId
               ] || null
             : null,
@@ -964,3 +969,8 @@ exports.handler =
       };
     }
   };
+
+exports._test = {
+  normalizeEspnAvailablePlayers,
+  ESPN_DEFAULT_POSITION_BY_ID
+};
