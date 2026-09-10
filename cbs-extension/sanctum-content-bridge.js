@@ -1,100 +1,90 @@
 /*
   THE INNER SANCTUM — SANCTUM CONTENT BRIDGE
 
-  Runs on:
-
-      theinnersanctum.xyz/connect-league
-      www.theinnersanctum.xyz/connect-league
-
-  PURPOSE
-  ------------------------------------------------
-  The normal Inner Sanctum webpage cannot call chrome.runtime
-  directly.
-
-  This extension content script listens for the CBS connect button,
-  sends a request to the extension service worker, and lets the
-  service worker deliver the sanitized CBS capture back into:
-
-      window.receiveCbsConnection(...)
-
-  It also keeps the CBS customer-facing instructions aligned with
-  the current seamless extension flow. The page may still contain
-  legacy bookmark copy while the extension is being rolled out;
-  this bridge replaces that copy whenever the CBS form is rendered.
-
-  SECURITY
-  ------------------------------------------------
-  This script never receives or handles:
-
-    - CBS passwords
-    - CBS cookies
-    - CBS session tokens
-    - authorization headers
-
-  It only starts the read-only CBS connection workflow.
+  Runs on The Inner Sanctum Link Your League page. It intercepts CBS and
+  ESPN connect actions and hands them to the browser extension so customers
+  can authenticate normally on the provider site without copying passwords,
+  cookies, SWID, espn_s2, or developer-tool values.
 */
 
 (function () {
   "use strict";
 
-  function isCbsSelected() {
-    return Boolean(
+  function selectedProvider() {
+    const selected =
       document.querySelector(
-        "#platform-cbs.selected"
-      )
-    );
-  }
-
-  function getCbsConnectButton() {
-    const resultBox =
-      document.getElementById(
-        "cbsResult"
+        ".platform-btn.selected"
       );
 
-    if (!resultBox) {
+    if (!selected?.id) {
       return null;
     }
 
-    const form =
-      resultBox.closest(
-        ".provider-form"
-      );
-
-    if (!form) {
-      return null;
-    }
-
-    return form.querySelector(
-      ".connect-btn"
+    return selected.id.replace(
+      /^platform-/,
+      ""
     );
   }
 
-  function getCbsForm() {
-    const resultBox =
+  function getProviderForm(
+    provider
+  ) {
+    const result =
       document.getElementById(
-        "cbsResult"
+        provider + "Result"
       );
 
-    return resultBox
-      ? resultBox.closest(
+    return result
+      ? result.closest(
           ".provider-form"
         )
       : null;
   }
 
-  function getCbsResultBox() {
-    return document.getElementById(
-      "cbsResult"
-    );
+  function getProviderButton(
+    provider
+  ) {
+    const form =
+      getProviderForm(provider);
+
+    return form
+      ? form.querySelector(
+          ".connect-btn"
+        )
+      : null;
+  }
+
+  function showStatus(
+    provider,
+    type,
+    message
+  ) {
+    const box =
+      document.getElementById(
+        provider + "Result"
+      );
+
+    if (!box) {
+      return;
+    }
+
+    box.className =
+      "result-box " +
+      type +
+      " show";
+
+    box.textContent = message;
   }
 
   function refreshCbsCopy() {
-    if (!isCbsSelected()) {
+    if (
+      selectedProvider() !== "cbs"
+    ) {
       return;
     }
 
     const form =
-      getCbsForm();
+      getProviderForm("cbs");
 
     if (!form) {
       return;
@@ -117,59 +107,124 @@
       );
 
     if (steps.length >= 3) {
-      const stepThreeText =
+      const text =
         steps[2].querySelector(
           "span:last-child"
         );
 
-      if (stepThreeText) {
-        stepThreeText.textContent =
+      if (text) {
+        text.textContent =
           "Inner Sanctum detects the league automatically and sends the sanitized read-only connection back to this tab.";
       }
     }
   }
 
-  function showStatus(
-    type,
-    message
-  ) {
-    const box =
-      getCbsResultBox();
-
-    if (!box) {
+  function refreshEspnCopy() {
+    if (
+      selectedProvider() !== "espn"
+    ) {
       return;
     }
 
-    box.className =
-      "result-box " +
-      type +
-      " show";
+    const form =
+      getProviderForm("espn");
 
-    box.textContent =
-      message;
-  }
+    if (!form) {
+      return;
+    }
 
-  async function beginCbsConnect() {
-    refreshCbsCopy();
+    form
+      .querySelectorAll(
+        ".pf-group, #espnPrivateFields"
+      )
+      .forEach(function (el) {
+        el.style.display = "none";
+      });
+
+    let info =
+      form.querySelector(
+        ".inner-sanctum-espn-connect-info"
+      );
+
+    if (!info) {
+      info =
+        document.createElement(
+          "div"
+        );
+
+      info.className =
+        "pf-info inner-sanctum-espn-connect-info";
+
+      const button =
+        getProviderButton("espn");
+
+      if (button) {
+        form.insertBefore(
+          info,
+          button
+        );
+      }
+    }
+
+    if (info) {
+      info.innerHTML =
+        "<strong>Connect ESPN securely.</strong><br>" +
+        "Inner Sanctum opens ESPN in a separate tab. Sign into ESPN normally and open the league you want to connect. Inner Sanctum will detect it automatically — no Developer Tools, SWID, or espn_s2 copy/paste required.";
+    }
 
     const button =
-      getCbsConnectButton();
+      getProviderButton("espn");
 
     if (button) {
-      button.disabled =
-        true;
+      button.textContent =
+        "Connect ESPN League";
+    }
+
+    const note =
+      form.querySelector(
+        ".connect-note"
+      );
+
+    if (note) {
+      note.textContent =
+        "ESPN Connect is in beta. Inner Sanctum uses your already signed-in ESPN browser session only to read the fantasy league you choose.";
+    }
+  }
+
+  function refreshProviderCopy() {
+    refreshCbsCopy();
+    refreshEspnCopy();
+  }
+
+  async function beginConnect(
+    provider
+  ) {
+    refreshProviderCopy();
+
+    const button =
+      getProviderButton(provider);
+
+    if (button) {
+      button.disabled = true;
     }
 
     showStatus(
+      provider,
       "loading",
-      "🔵 CBS opened. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
+      provider === "cbs"
+        ? "🔵 CBS opened. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
+        : "🔴 ESPN opened. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
     );
+
+    const messageType =
+      provider === "cbs"
+        ? "INNER_SANCTUM_START_CBS_CONNECT"
+        : "INNER_SANCTUM_START_ESPN_CONNECT";
 
     try {
       const response =
         await chrome.runtime.sendMessage({
-          type:
-            "INNER_SANCTUM_START_CBS_CONNECT"
+          type: messageType
         });
 
       if (
@@ -178,50 +233,37 @@
       ) {
         throw new Error(
           response?.error ||
-          "CBS connection failed."
+          provider.toUpperCase() +
+            " connection failed."
         );
       }
-
-      /*
-        The service worker calls:
-
-          window.receiveCbsConnection(captured)
-
-        directly inside the Inner Sanctum page's MAIN world.
-
-        That function updates LeagueConnection and refreshes the
-        connected CBS UI.
-
-        No additional storage work belongs here.
-      */
     } catch (err) {
+      const raw =
+        err?.message ||
+        provider.toUpperCase() +
+          " connection failed.";
+
+      const message =
+        /Extension context invalidated/i
+          .test(raw)
+          ? "Inner Sanctum Connect was updated. Refresh this page and try again."
+          : raw;
+
       showStatus(
+        provider,
         "error",
-        "⚠️ " +
-          (
-            err?.message ||
-            "CBS connection failed."
-          )
+        "⚠️ " + message
       );
     } finally {
       if (button) {
-        button.disabled =
-          false;
+        button.disabled = false;
       }
     }
   }
 
-  /*
-    The CBS provider form is rebuilt whenever the selected provider
-    changes or a connection refreshes. Keep the seamless-flow copy
-    correct after each rebuild without modifying page state.
-  */
-
   const observer =
     new MutationObserver(
-      function () {
-        refreshCbsCopy();
-      }
+      refreshProviderCopy
     );
 
   observer.observe(
@@ -232,19 +274,18 @@
     }
   );
 
-  refreshCbsCopy();
-
-  /*
-    Intercept the CBS connect button before the page's normal
-    startCbsConnect() handler runs.
-
-    We only intercept when CBS is the currently selected provider.
-  */
+  refreshProviderCopy();
 
   document.addEventListener(
     "click",
     function (event) {
-      if (!isCbsSelected()) {
+      const provider =
+        selectedProvider();
+
+      if (
+        provider !== "cbs" &&
+        provider !== "espn"
+      ) {
         return;
       }
 
@@ -260,7 +301,7 @@
       event.preventDefault();
       event.stopImmediatePropagation();
 
-      beginCbsConnect();
+      beginConnect(provider);
     },
     true
   );
