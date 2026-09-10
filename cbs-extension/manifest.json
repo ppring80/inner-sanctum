@@ -46,7 +46,7 @@
     },
     {
       "matches": [
-        "https://fantasy.espn.com/*"
+        "https://fantasy.espn.com/football/*"
       ],
       "js": [
         "espn-main-bridge.js"
@@ -56,7 +56,7 @@
     },
     {
       "matches": [
-        "https://fantasy.espn.com/*"
+        "https://fantasy.espn.com/football/*"
       ],
       "js": [
         "espn-content-bridge.js"
