@@ -17,6 +17,11 @@
 
       window.receiveCbsConnection(...)
 
+  It also keeps the CBS customer-facing instructions aligned with
+  the current seamless extension flow. The page may still contain
+  legacy bookmark copy while the extension is being rolled out;
+  this bridge replaces that copy whenever the CBS form is rendered.
+
   SECURITY
   ------------------------------------------------
   This script never receives or handles:
@@ -64,10 +69,64 @@
     );
   }
 
+  function getCbsForm() {
+    const resultBox =
+      document.getElementById(
+        "cbsResult"
+      );
+
+    return resultBox
+      ? resultBox.closest(
+          ".provider-form"
+        )
+      : null;
+  }
+
   function getCbsResultBox() {
     return document.getElementById(
       "cbsResult"
     );
+  }
+
+  function refreshCbsCopy() {
+    if (!isCbsSelected()) {
+      return;
+    }
+
+    const form =
+      getCbsForm();
+
+    if (!form) {
+      return;
+    }
+
+    const infoBlocks =
+      form.querySelectorAll(
+        ".pf-info"
+      );
+
+    if (infoBlocks.length) {
+      infoBlocks[0].innerHTML =
+        "<strong>Connect CBS securely.</strong><br>" +
+        "Inner Sanctum opens CBS in a separate tab. Sign into CBS normally and open the league you want to connect. Inner Sanctum will detect it automatically.";
+    }
+
+    const steps =
+      form.querySelectorAll(
+        ".pf-step"
+      );
+
+    if (steps.length >= 3) {
+      const stepThreeText =
+        steps[2].querySelector(
+          "span:last-child"
+        );
+
+      if (stepThreeText) {
+        stepThreeText.textContent =
+          "Inner Sanctum detects the league automatically and sends the sanitized read-only connection back to this tab.";
+      }
+    }
   }
 
   function showStatus(
@@ -91,6 +150,8 @@
   }
 
   async function beginCbsConnect() {
+    refreshCbsCopy();
+
     const button =
       getCbsConnectButton();
 
@@ -101,7 +162,7 @@
 
     showStatus(
       "loading",
-      "🔵 Connecting to your open CBS Fantasy league..."
+      "🔵 CBS opened. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
     );
 
     try {
@@ -149,6 +210,29 @@
       }
     }
   }
+
+  /*
+    The CBS provider form is rebuilt whenever the selected provider
+    changes or a connection refreshes. Keep the seamless-flow copy
+    correct after each rebuild without modifying page state.
+  */
+
+  const observer =
+    new MutationObserver(
+      function () {
+        refreshCbsCopy();
+      }
+    );
+
+  observer.observe(
+    document.documentElement,
+    {
+      childList: true,
+      subtree: true
+    }
+  );
+
+  refreshCbsCopy();
 
   /*
     Intercept the CBS connect button before the page's normal
