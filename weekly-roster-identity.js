@@ -24,6 +24,36 @@
     }
   }
 
+  function lineupNumber(value) {
+    var n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
+  function applyConnectedLineupConstruction(connection) {
+    if (!connection || !connection.lineupConstruction) return false;
+    if (typeof window.state === 'undefined' || !window.state) return false;
+
+    var source = connection.lineupConstruction;
+    var current = window.state.lineupConstruction || {};
+    var next = {};
+    var keys = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DEF', 'BENCH'];
+    var changed = false;
+
+    keys.forEach(function (key) {
+      var raw = source[key];
+      if (raw === undefined && key === 'SUPERFLEX') raw = source.SFLEX;
+      var parsed = lineupNumber(raw);
+      next[key] = parsed === null ? (lineupNumber(current[key]) === null ? 0 : Number(current[key])) : parsed;
+      if (Number(current[key]) !== next[key]) changed = true;
+    });
+
+    if (!changed) return false;
+
+    window.state.lineupConstruction = next;
+    if (typeof window.renderLineupFields === 'function') window.renderLineupFields();
+    return true;
+  }
+
   function applyWeeklyRosterIdentity() {
     if (!isWeeklyPage()) return false;
     if (typeof window.PlayerIdentity === 'undefined') return false;
@@ -43,6 +73,8 @@
     if (Array.isArray(window.state.connectedRosterNames)) {
       window.state.connectedRosterNames = resolvedNames.slice();
     }
+
+    applyConnectedLineupConstruction(connection);
 
     if (typeof window.renderTable === 'function') window.renderTable();
     return true;
@@ -122,4 +154,5 @@
   window.addEventListener('innerSanctum:leagueContextChanged', runSoon);
 
   window.applyWeeklyRosterIdentity = applyWeeklyRosterIdentity;
+  window.applyConnectedLineupConstruction = applyConnectedLineupConstruction;
 })();
