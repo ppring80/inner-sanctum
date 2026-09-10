@@ -91,13 +91,31 @@
     window.loadWeeklyRankings = wrappedLoadWeeklyRankings;
   }
 
+  /*
+    Weekly presentation polish is intentionally loaded from this already
+    Weekly-only helper instead of competing with league-connection.js loader
+    changes. That keeps the proven player-identity/DEF connection path intact.
+  */
+  function loadWeeklyLineupPolish() {
+    if (!isWeeklyPage()) return;
+    if (typeof document === 'undefined' || !document.head || typeof document.createElement !== 'function') return;
+    if (typeof document.querySelector === 'function' && document.querySelector('script[data-inner-sanctum-weekly-lineup-polish]')) return;
+
+    var script = document.createElement('script');
+    script.src = '/weekly-lineup-polish.js';
+    script.setAttribute('data-inner-sanctum-weekly-lineup-polish', '1');
+    document.head.appendChild(script);
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       wrapWeeklyRankingsLoader();
+      loadWeeklyLineupPolish();
       runSoon();
     }, { once: true });
   } else {
     wrapWeeklyRankingsLoader();
+    loadWeeklyLineupPolish();
     runSoon();
   }
 
