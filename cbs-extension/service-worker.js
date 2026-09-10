@@ -372,11 +372,23 @@ async function deliverEspnToSanctum(
         );
       }
 
-      if (
+      const isConnected =
+        typeof window.LeagueConnection.isConnected ===
+          "function" &&
         window.LeagueConnection.isConnected(
           "espn"
-        )
-      ) {
+        );
+
+      if (isConnected) {
+        if (
+          typeof window.LeagueConnection.update !==
+          "function"
+        ) {
+          throw new Error(
+            "The Inner Sanctum league connection updater is unavailable."
+          );
+        }
+
         window.LeagueConnection.update(
           "espn",
           connectionData
@@ -678,6 +690,55 @@ async function openProviderAndWait(
   };
 }
 
+async function trackExistingProviderTab(
+  provider,
+  sanctumTabId,
+  providerTabId
+) {
+  const isCbs =
+    provider === "cbs";
+
+  const key =
+    isCbs
+      ? CBS_PENDING_KEY
+      : ESPN_PENDING_KEY;
+
+  await setPending(
+    key,
+    {
+      sanctumTabId,
+      providerTabId,
+      startedAt: Date.now()
+    }
+  );
+
+  await showSanctumStatus(
+    sanctumTabId,
+    provider,
+    "loading",
+    isCbs
+      ? "🔵 CBS is open. Open the league you want to connect — Inner Sanctum will detect it automatically."
+      : "🔴 ESPN is open. Open the league you want to connect — Inner Sanctum will detect it automatically."
+  );
+
+  try {
+    await chrome.tabs.update(
+      providerTabId,
+      { active: true }
+    );
+  } catch (err) {
+    console.warn(
+      "Could not focus the existing provider tab.",
+      err
+    );
+  }
+
+  return {
+    success: true,
+    pending: true
+  };
+}
+
 async function handleProviderConnect(
   provider,
   sender
@@ -725,8 +786,14 @@ async function handleProviderConnect(
           );
     } catch (err) {
       console.warn(
-        "Active provider tab was not ready; opening the normal connection flow.",
+        "Active provider tab was not ready; tracking it until the selected league is opened.",
         err
+      );
+
+      return trackExistingProviderTab(
+        provider,
+        sanctumTab.id,
+        activeTab.id
       );
     }
   }
