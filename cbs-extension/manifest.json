@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "The Inner Sanctum — CBS Connect",
-  "version": "0.2.0",
-  "description": "Read-only CBS Fantasy league connection helper for The Inner Sanctum.",
+  "name": "The Inner Sanctum — Connect",
+  "version": "0.3.0",
+  "description": "Read-only fantasy league connection helper for The Inner Sanctum.",
 
   "permissions": [
     "tabs",
@@ -12,6 +12,8 @@
 
   "host_permissions": [
     "https://*.football.cbssports.com/*",
+    "https://fantasy.espn.com/*",
+    "https://lm-api-reads.fantasy.espn.com/*",
     "https://theinnersanctum.xyz/*",
     "https://www.theinnersanctum.xyz/*"
   ],
@@ -44,6 +46,26 @@
     },
     {
       "matches": [
+        "https://fantasy.espn.com/*"
+      ],
+      "js": [
+        "espn-main-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://fantasy.espn.com/*"
+      ],
+      "js": [
+        "espn-content-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": [
         "https://theinnersanctum.xyz/connect-league*",
         "https://www.theinnersanctum.xyz/connect-league*"
       ],
@@ -56,6 +78,6 @@
   ],
 
   "action": {
-    "default_title": "The Inner Sanctum — CBS Connect"
+    "default_title": "The Inner Sanctum — Connect"
   }
 }
