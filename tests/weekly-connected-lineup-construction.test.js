@@ -30,6 +30,7 @@ const cbsConnection = {
         RB: { activeMin: 2, activeMax: 4, rosterTotal: null },
         WR: { activeMin: 2, activeMax: 4, rosterTotal: null },
         TE: { activeMin: 1, activeMax: 3, rosterTotal: null },
+        'RB-WR-TE': { activeMin: 2, activeMax: 2, rosterTotal: null },
         K: { activeMin: 1, activeMax: 1, rosterTotal: null },
         'D/ST': { activeMin: 1, activeMax: 1, rosterTotal: null }
       }
@@ -85,7 +86,7 @@ assert.ok(derived, 'CBS settings should derive a normalized lineup construction'
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(derived)),
   { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0, K: 1, DEF: 1, BENCH: 4 },
-  'CBS Active total minus fixed-position minima should produce two FLEX starters'
+  'CBS composite RB-WR-TE rule should normalize to two FLEX starters'
 );
 
 const applied = windowObj.applyWeeklyRosterIdentity();
@@ -100,6 +101,21 @@ assert.strictEqual(windowObj.state.lineupConstruction.DEF, 1);
 assert.strictEqual(windowObj.state.lineupConstruction.BENCH, 4);
 assert.strictEqual(lineupFieldsRendered, 1, 'Lineup setup UI should refresh after connected construction is applied');
 assert.ok(rendered >= 1, 'Weekly table should rerender after identity/lineup context is applied');
+
+// CBS without an explicit composite row can still derive FLEX from the Active total.
+const inferredFlex = windowObj.deriveCbsLineupConstruction({
+  provider: 'cbs',
+  settings: {
+    roster: {
+      statusLimits: { Active: { min: 10, max: 10 } },
+      positions: {
+        QB: { activeMin: 1 }, RB: { activeMin: 2 }, WR: { activeMin: 2 }, TE: { activeMin: 1 },
+        K: { activeMin: 1 }, DEF: { activeMin: 1 }
+      }
+    }
+  }
+});
+assert.strictEqual(inferredFlex.FLEX, 2);
 
 // A normalized provider shape still works and SFLEX aliases into SUPERFLEX.
 windowObj.applyConnectedLineupConstruction({
