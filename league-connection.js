@@ -35,6 +35,96 @@
     "lineupConstruction", "teamCount"
   ];
 
+  /*
+    Team-defense identity contract
+    ------------------------------
+    Weekly Rankings matches a connected roster to ranking rows by exact
+    player name. Team defenses are the exception to normal player identity:
+    providers may call the same defense "Houston Texans D/ST", "HST", or
+    "HOU" while Weekly uses one canonical NFL team code.
+
+    Canonicalize defenses here, at the shared connection boundary, so every
+    provider and every connected-league consumer sees the same identity.
+    Existing persisted connections are repaired on read because V2 state is
+    normalized through normalizeConnection().
+  */
+  const DEFENSE_TEAM_ALIASES = {
+    ARI: "ARI", ARZ: "ARI", ARIZONA: "ARI", ARIZONACARDINALS: "ARI",
+    ATL: "ATL", ATLANTA: "ATL", ATLANTAFALCONS: "ATL",
+    BAL: "BAL", BLT: "BAL", BALTIMORE: "BAL", BALTIMORERAVENS: "BAL",
+    BUF: "BUF", BUFFALO: "BUF", BUFFALOBILLS: "BUF",
+    CAR: "CAR", CAROLINA: "CAR", CAROLINAPANTHERS: "CAR",
+    CHI: "CHI", CHICAGO: "CHI", CHICAGOBEARS: "CHI",
+    CIN: "CIN", CINCINNATI: "CIN", CINCINNATIBENGALS: "CIN",
+    CLE: "CLE", CLEVELAND: "CLE", CLEVELANDBROWNS: "CLE",
+    DAL: "DAL", DALLAS: "DAL", DALLASCOWBOYS: "DAL",
+    DEN: "DEN", DENVER: "DEN", DENVERBRONCOS: "DEN",
+    DET: "DET", DETROIT: "DET", DETROITLIONS: "DET",
+    GB: "GB", GBP: "GB", GREENBAY: "GB", GREENBAYPACKERS: "GB",
+    HOU: "HOU", HST: "HOU", HOUSTON: "HOU", HOUSTONTEXANS: "HOU",
+    IND: "IND", INDIANAPOLIS: "IND", INDIANAPOLISCOLTS: "IND",
+    JAX: "JAX", JAC: "JAX", JACKSONVILLE: "JAX", JACKSONVILLEJAGUARS: "JAX",
+    KC: "KC", KCC: "KC", KANSASCITY: "KC", KANSASCITYCHIEFS: "KC",
+    LV: "LV", LVR: "LV", OAK: "LV", LASVEGAS: "LV", LASVEGASRAIDERS: "LV",
+    LAC: "LAC", SD: "LAC", SDC: "LAC", LOSANGELESCHARGERS: "LAC", LACHARGERS: "LAC",
+    LAR: "LAR", STL: "LAR", LOSANGELESRAMS: "LAR", LARAMS: "LAR",
+    MIA: "MIA", MIAMI: "MIA", MIAMIDOLPHINS: "MIA",
+    MIN: "MIN", MINNESOTA: "MIN", MINNESOTAVIKINGS: "MIN",
+    NE: "NE", NEP: "NE", NEWENGLAND: "NE", NEWENGLANDPATRIOTS: "NE",
+    NO: "NO", NOS: "NO", NEWORLEANS: "NO", NEWORLEANSSAINTS: "NO",
+    NYG: "NYG", NEWYORKGIANTS: "NYG", NYGIANTS: "NYG",
+    NYJ: "NYJ", NEWYORKJETS: "NYJ", NYJETS: "NYJ",
+    PHI: "PHI", PHILADELPHIA: "PHI", PHILADELPHIAEAGLES: "PHI",
+    PIT: "PIT", PITTSBURGH: "PIT", PITTSBURGHSTEELERS: "PIT",
+    SEA: "SEA", SEATTLE: "SEA", SEATTLESEAHAWKS: "SEA",
+    SF: "SF", SFO: "SF", SANFRANCISCO: "SF", SANFRANCISCO49ERS: "SF",
+    TB: "TB", TBB: "TB", TAMPA: "TB", TAMPABAY: "TB", TAMPABAYBUCCANEERS: "TB",
+    TEN: "TEN", TENNESSEE: "TEN", TENNESSEETITANS: "TEN",
+    WSH: "WSH", WAS: "WSH", WFT: "WSH", WASHINGTON: "WSH", WASHINGTONCOMMANDERS: "WSH"
+  };
+
+  function defenseAliasKey(value) {
+    return String(value || "")
+      .toUpperCase()
+      .replace(/D\/?ST/g, "")
+      .replace(/DEFENSE/g, "")
+      .replace(/[^A-Z0-9]/g, "");
+  }
+
+  function isDefensePosition(position) {
+    const key = String(position || "")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "");
+    return key === "DEF" || key === "DST" || key === "D";
+  }
+
+  function normalizeDefenseRoster(roster) {
+    if (!Array.isArray(roster)) return roster;
+
+    return roster.map(function (player) {
+      if (!player || typeof player !== "object" || !isDefensePosition(player.position || player.pos)) {
+        return player;
+      }
+
+      const candidates = [player.nflTeam, player.team, player.name, player.displayName];
+      let canonical = null;
+      for (let i = 0; i < candidates.length; i++) {
+        canonical = DEFENSE_TEAM_ALIASES[defenseAliasKey(candidates[i])] || null;
+        if (canonical) break;
+      }
+
+      if (!canonical) return player;
+
+      return {
+        ...player,
+        displayName: player.displayName || player.name || canonical,
+        name: canonical,
+        team: canonical,
+        nflTeam: canonical
+      };
+    });
+  }
+
   function emptyState() {
     return { schemaVersion: SCHEMA_VERSION, activeConnectionId: null, connections: {} };
   }
@@ -127,6 +217,7 @@
     merged.leagueName = leagueNameOf(merged);
     merged.teamId = teamIdOf(merged);
     merged.teamName = teamNameOf(merged);
+    merged.roster = normalizeDefenseRoster(merged.roster);
     return merged;
   }
 
