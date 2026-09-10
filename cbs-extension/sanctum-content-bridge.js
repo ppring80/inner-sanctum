@@ -16,14 +16,30 @@
         ".platform-btn.selected"
       );
 
-    if (!selected?.id) {
-      return null;
+    if (selected?.id) {
+      return selected.id.replace(
+        /^platform-/,
+        ""
+      );
     }
 
-    return selected.id.replace(
-      /^platform-/,
-      ""
-    );
+    if (
+      document.querySelector(
+        "#platform-cbs.selected"
+      )
+    ) {
+      return "cbs";
+    }
+
+    if (
+      document.querySelector(
+        "#platform-espn.selected"
+      )
+    ) {
+      return "espn";
+    }
+
+    return null;
   }
 
   function getProviderForm(
@@ -54,6 +70,30 @@
       : null;
   }
 
+  function setTextIfChanged(
+    element,
+    value
+  ) {
+    if (
+      element &&
+      element.textContent !== value
+    ) {
+      element.textContent = value;
+    }
+  }
+
+  function setHtmlIfChanged(
+    element,
+    value
+  ) {
+    if (
+      element &&
+      element.innerHTML !== value
+    ) {
+      element.innerHTML = value;
+    }
+  }
+
   function showStatus(
     provider,
     type,
@@ -68,12 +108,19 @@
       return;
     }
 
-    box.className =
+    const className =
       "result-box " +
       type +
       " show";
 
-    box.textContent = message;
+    if (box.className !== className) {
+      box.className = className;
+    }
+
+    setTextIfChanged(
+      box,
+      message
+    );
   }
 
   function refreshCbsCopy() {
@@ -96,9 +143,11 @@
       );
 
     if (infoBlocks.length) {
-      infoBlocks[0].innerHTML =
+      setHtmlIfChanged(
+        infoBlocks[0],
         "<strong>Connect CBS securely.</strong><br>" +
-        "Inner Sanctum opens CBS in a separate tab. Sign into CBS normally and open the league you want to connect. Inner Sanctum will detect it automatically.";
+          "Inner Sanctum opens CBS in a separate tab. Sign into CBS normally and open the league you want to connect. Inner Sanctum will detect it automatically."
+      );
     }
 
     const steps =
@@ -112,10 +161,10 @@
           "span:last-child"
         );
 
-      if (text) {
-        text.textContent =
-          "Inner Sanctum detects the league automatically and sends the sanitized read-only connection back to this tab.";
-      }
+      setTextIfChanged(
+        text,
+        "Inner Sanctum detects the league automatically and sends the sanitized read-only connection back to this tab."
+      );
     }
   }
 
@@ -138,7 +187,11 @@
         ".pf-group, #espnPrivateFields"
       )
       .forEach(function (el) {
-        el.style.display = "none";
+        if (
+          el.style.display !== "none"
+        ) {
+          el.style.display = "none";
+        }
       });
 
     let info =
@@ -166,29 +219,29 @@
       }
     }
 
-    if (info) {
-      info.innerHTML =
-        "<strong>Connect ESPN securely.</strong><br>" +
-        "Inner Sanctum opens ESPN in a separate tab. Sign into ESPN normally and open the league you want to connect. Inner Sanctum will detect it automatically — no Developer Tools, SWID, or espn_s2 copy/paste required.";
-    }
+    setHtmlIfChanged(
+      info,
+      "<strong>Connect ESPN securely.</strong><br>" +
+        "Inner Sanctum opens ESPN in a separate tab. Sign into ESPN normally and open the league you want to connect. Inner Sanctum will detect it automatically — no Developer Tools, SWID, or espn_s2 copy/paste required."
+    );
 
     const button =
       getProviderButton("espn");
 
-    if (button) {
-      button.textContent =
-        "Connect ESPN League";
-    }
+    setTextIfChanged(
+      button,
+      "Connect ESPN League"
+    );
 
     const note =
       form.querySelector(
         ".connect-note"
       );
 
-    if (note) {
-      note.textContent =
-        "ESPN Connect is in beta. Inner Sanctum uses your already signed-in ESPN browser session only to read the fantasy league you choose.";
-    }
+    setTextIfChanged(
+      note,
+      "ESPN Connect is in beta. Inner Sanctum uses your already signed-in ESPN browser session only to read the fantasy league you choose."
+    );
   }
 
   function refreshProviderCopy() {
@@ -261,9 +314,24 @@
     }
   }
 
+  let refreshQueued = false;
+
+  function queueRefresh() {
+    if (refreshQueued) {
+      return;
+    }
+
+    refreshQueued = true;
+
+    queueMicrotask(function () {
+      refreshQueued = false;
+      refreshProviderCopy();
+    });
+  }
+
   const observer =
     new MutationObserver(
-      refreshProviderCopy
+      queueRefresh
     );
 
   observer.observe(
