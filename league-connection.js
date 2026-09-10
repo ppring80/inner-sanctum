@@ -456,19 +456,27 @@
     consumers without changing browser behavior.
   */
   if (typeof document !== "undefined") {
-    function loadTeamContext() {
-      if (document.querySelector('script[data-inner-sanctum-team-context]')) return;
+    function appendScriptOnce(src, dataAttribute) {
+      if (document.querySelector('script[' + dataAttribute + ']')) return;
       const script = document.createElement("script");
-      script.src = "/team-context.js";
+      script.src = src;
       script.defer = true;
-      script.setAttribute("data-inner-sanctum-team-context", "1");
+      script.setAttribute(dataAttribute, "1");
       document.head.appendChild(script);
     }
 
+    function loadPageContext() {
+      appendScriptOnce("/team-context.js", "data-inner-sanctum-team-context");
+
+      if (/^\/weekly(?:\.html)?\/?$/i.test(window.location.pathname)) {
+        appendScriptOnce("/weekly-lineup-polish.js", "data-inner-sanctum-weekly-lineup-polish");
+      }
+    }
+
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", loadTeamContext, { once: true });
+      document.addEventListener("DOMContentLoaded", loadPageContext, { once: true });
     } else {
-      loadTeamContext();
+      loadPageContext();
     }
   }
 })();
