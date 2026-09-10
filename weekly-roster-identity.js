@@ -42,47 +42,68 @@
       .replace(/[^A-Z]/g, '');
   }
 
-  function cbsActiveCount(entry) {
+  /*
+    CBS position rows are roster-limit rows, not guaranteed starter counts.
+    A zero Active Min means "no minimum roster constraint" and must never
+    overwrite Weekly's already-known lineup baseline with zero starters.
+    Only a positive Active Min is strong enough evidence to replace a fixed
+    starter count. Active Max is intentionally NOT used for fixed positions
+    because it can include FLEX-driven roster capacity (for example RB max 4).
+  */
+  function cbsRequiredStarterCount(entry) {
     if (!entry || typeof entry !== 'object') return null;
     var min = lineupNumber(entry.activeMin);
-    if (min !== null) return min;
-    return lineupNumber(entry.activeMax);
+    return min !== null && min > 0 ? min : null;
   }
 
-  function cbsStatusCount(statusLimits, pattern) {
+  /*
+    CBS status rows represent slot capacity. In live captures Active/Reserve
+    can legitimately have min=0 while max carries the actual usable slot
+    count. Prefer max here, falling back to min only when max is absent.
+  */
+  function cbsStatusCapacity(statusLimits, pattern) {
     if (!statusLimits || typeof statusLimits !== 'object') return null;
     var keys = Object.keys(statusLimits);
     for (var i = 0; i < keys.length; i++) {
       if (!pattern.test(String(keys[i]))) continue;
       var row = statusLimits[keys[i]] || {};
-      var min = lineupNumber(row.min);
       var max = lineupNumber(row.max);
-      if (min !== null) return min;
+      var min = lineupNumber(row.min);
       if (max !== null) return max;
+      if (min !== null) return min;
     }
     return null;
   }
 
   /*
-    CBS stores lineup rules under settings.roster.positions rather than the
-    normalized lineupConstruction shape used by Weekly. Fixed-position
-    starters come from each row's Active Min. CBS also exposes the total
-    number of Active roster slots; any required Active slots left after the
-    fixed minima are flexible starters. If CBS supplies a composite position
-    row (for example RB-WR-TE or QB-RB-WR-TE), use it to distinguish FLEX
-    from SUPERFLEX. Otherwise the remaining offensive slots are normal FLEX.
+    CBS stores lineup-related roster rules under settings.roster.positions.
+    These rows can contain zero Active Min values even when the league has
+    normal starters, so CBS-derived construction must be merged onto Weekly's
+    existing lineup baseline rather than replacing it with zeroes.
+
+    Positive position minima can safely refine fixed starter counts. The CBS
+    Active status capacity gives total starters; after fixed starters are
+    accounted for, remaining active slots become FLEX/SUPERFLEX. Composite
+    position rows still identify whether the flexible slot includes QB.
   */
-  function deriveCbsLineupConstruction(connection) {
+  function deriveCbsLineupConstruction(connection, fallbackLineup) {
     if (!connection || String(connection.provider || '').toLowerCase() !== 'cbs') return null;
 
     var rosterSettings = connection.settings && connection.settings.roster;
     var positions = rosterSettings && rosterSettings.positions;
     if (!positions || typeof positions !== 'object') return null;
 
+    var fallback = fallbackLineup || {};
     var next = {
-      QB: 0, RB: 0, WR: 0, TE: 0,
-      FLEX: 0, SUPERFLEX: 0, K: 0, DEF: 0,
-      BENCH: 0
+      QB: lineupNumber(fallback.QB) === null ? 0 : Number(fallback.QB),
+      RB: lineupNumber(fallback.RB) === null ? 0 : Number(fallback.RB),
+      WR: lineupNumber(fallback.WR) === null ? 0 : Number(fallback.WR),
+      TE: lineupNumber(fallback.TE) === null ? 0 : Number(fallback.TE),
+      FLEX: 0,
+      SUPERFLEX: 0,
+      K: lineupNumber(fallback.K) === null ? 0 : Number(fallback.K),
+      DEF: lineupNumber(fallback.DEF) === null ? 0 : Number(fallback.DEF),
+      BENCH: lineupNumber(fallback.BENCH) === null ? 0 : Number(fallback.BENCH)
     };
     var fixedKeys = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
     var compositeFlex = 0;
@@ -90,18 +111,17 @@
     var sawPositionRule = false;
 
     Object.keys(positions).forEach(function (label) {
-      var count = cbsActiveCount(positions[label]);
-      if (count === null) return;
-
       var normalized = normalizedCbsPositionLabel(label);
       var hasQB = normalized.indexOf('QB') !== -1;
       var hasRB = normalized.indexOf('RB') !== -1;
       var hasWR = normalized.indexOf('WR') !== -1;
       var hasTE = normalized.indexOf('TE') !== -1;
       var offensiveCount = (hasQB ? 1 : 0) + (hasRB ? 1 : 0) + (hasWR ? 1 : 0) + (hasTE ? 1 : 0);
+      var count = cbsRequiredStarterCount(positions[label]);
 
       if (offensiveCount >= 2) {
         sawPositionRule = true;
+        if (count === null) return;
         if (hasQB) compositeSuperflex = Math.max(compositeSuperflex, count);
         else compositeFlex = Math.max(compositeFlex, count);
         return;
@@ -109,8 +129,8 @@
 
       for (var i = 0; i < fixedKeys.length; i++) {
         if (normalized === fixedKeys[i]) {
-          next[fixedKeys[i]] = count;
           sawPositionRule = true;
+          if (count !== null) next[fixedKeys[i]] = count;
           return;
         }
       }
@@ -122,7 +142,7 @@
     next.SUPERFLEX = compositeSuperflex;
 
     var statusLimits = rosterSettings.statusLimits || {};
-    var activeTotal = cbsStatusCount(statusLimits, /^(active|starters?|starting)$/i);
+    var activeTotal = cbsStatusCapacity(statusLimits, /^(active|starters?|starting)$/i);
     var fixedTotal = fixedKeys.reduce(function (sum, key) {
       return sum + (lineupNumber(next[key]) || 0);
     }, 0);
@@ -134,26 +154,30 @@
         if (compositeSuperflex > 0 && compositeFlex === 0) next.SUPERFLEX += remaining;
         else next.FLEX += remaining;
       }
+    } else if (alreadyFlexible === 0) {
+      next.FLEX = lineupNumber(fallback.FLEX) === null ? 0 : Number(fallback.FLEX);
+      next.SUPERFLEX = lineupNumber(fallback.SUPERFLEX) === null ? 0 : Number(fallback.SUPERFLEX);
     }
 
-    var reserveTotal = cbsStatusCount(statusLimits, /^(reserve|bench)$/i);
+    var reserveTotal = cbsStatusCapacity(statusLimits, /^(reserve|bench)$/i);
     if (reserveTotal !== null) next.BENCH = reserveTotal;
 
     return next;
   }
 
-  function getConnectedLineupConstruction(connection) {
+  function getConnectedLineupConstruction(connection, fallbackLineup) {
     if (!connection) return null;
     if (connection.lineupConstruction) return connection.lineupConstruction;
-    return deriveCbsLineupConstruction(connection);
+    return deriveCbsLineupConstruction(connection, fallbackLineup);
   }
 
   function applyConnectedLineupConstruction(connection) {
-    var source = getConnectedLineupConstruction(connection);
-    if (!source) return false;
     if (typeof window.state === 'undefined' || !window.state) return false;
 
     var current = window.state.lineupConstruction || {};
+    var source = getConnectedLineupConstruction(connection, current);
+    if (!source) return false;
+
     var next = {};
     var keys = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DEF', 'BENCH'];
     var changed = false;

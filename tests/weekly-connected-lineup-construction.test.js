@@ -16,23 +16,28 @@ const document = {
   addEventListener() {}
 };
 
+/*
+  Mirrors the live CBS failure shape that produced SIT/BENCH for everyone:
+  CBS roster-limit rows can report Active Min = 0 while Active Max carries
+  capacity. Those zero minima must not erase Weekly's fixed starter baseline.
+*/
 const cbsConnection = {
   provider: 'cbs',
   roster: [{ name: 'Patrick Mahomes', position: 'QB' }],
   settings: {
     roster: {
       statusLimits: {
-        Active: { min: 10, max: 10 },
-        Reserve: { min: 4, max: 4 }
+        Active: { min: 0, max: 10 },
+        Reserve: { min: 0, max: 4 }
       },
       positions: {
-        QB: { activeMin: 1, activeMax: 1, rosterTotal: null },
-        RB: { activeMin: 2, activeMax: 4, rosterTotal: null },
-        WR: { activeMin: 2, activeMax: 4, rosterTotal: null },
-        TE: { activeMin: 1, activeMax: 3, rosterTotal: null },
-        'RB-WR-TE': { activeMin: 2, activeMax: 2, rosterTotal: null },
-        K: { activeMin: 1, activeMax: 1, rosterTotal: null },
-        'D/ST': { activeMin: 1, activeMax: 1, rosterTotal: null }
+        QB: { activeMin: 0, activeMax: 1, rosterTotal: null },
+        RB: { activeMin: 0, activeMax: 4, rosterTotal: null },
+        WR: { activeMin: 0, activeMax: 4, rosterTotal: null },
+        TE: { activeMin: 0, activeMax: 3, rosterTotal: null },
+        'RB-WR-TE': { activeMin: 0, activeMax: 2, rosterTotal: null },
+        K: { activeMin: 0, activeMax: 1, rosterTotal: null },
+        'D/ST': { activeMin: 0, activeMax: 1, rosterTotal: null }
       }
     }
   }
@@ -81,13 +86,19 @@ assert.strictEqual(typeof windowObj.applyWeeklyRosterIdentity, 'function');
 assert.strictEqual(typeof windowObj.applyConnectedLineupConstruction, 'function');
 assert.strictEqual(typeof windowObj.deriveCbsLineupConstruction, 'function');
 
-const derived = windowObj.deriveCbsLineupConstruction(cbsConnection);
+const baseline = JSON.parse(JSON.stringify(windowObj.state.lineupConstruction));
+const derived = windowObj.deriveCbsLineupConstruction(cbsConnection, baseline);
 assert.ok(derived, 'CBS settings should derive a normalized lineup construction');
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(derived)),
   { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0, K: 1, DEF: 1, BENCH: 4 },
-  'CBS composite RB-WR-TE rule should normalize to two FLEX starters'
+  'Zero CBS Active Min values must preserve fixed starters and derive two FLEX from Active max capacity'
 );
+
+const derivedStarterTotal =
+  derived.QB + derived.RB + derived.WR + derived.TE +
+  derived.FLEX + derived.SUPERFLEX + derived.K + derived.DEF;
+assert.strictEqual(derivedStarterTotal, 10, 'Live CBS shape must yield exactly 10 starters, never zero');
 
 const applied = windowObj.applyWeeklyRosterIdentity();
 assert.strictEqual(applied, true);
@@ -102,20 +113,33 @@ assert.strictEqual(windowObj.state.lineupConstruction.BENCH, 4);
 assert.strictEqual(lineupFieldsRendered, 1, 'Lineup setup UI should refresh after connected construction is applied');
 assert.ok(rendered >= 1, 'Weekly table should rerender after identity/lineup context is applied');
 
-// CBS without an explicit composite row can still derive FLEX from the Active total.
-const inferredFlex = windowObj.deriveCbsLineupConstruction({
+const appliedStarterTotal =
+  windowObj.state.lineupConstruction.QB +
+  windowObj.state.lineupConstruction.RB +
+  windowObj.state.lineupConstruction.WR +
+  windowObj.state.lineupConstruction.TE +
+  windowObj.state.lineupConstruction.FLEX +
+  windowObj.state.lineupConstruction.SUPERFLEX +
+  windowObj.state.lineupConstruction.K +
+  windowObj.state.lineupConstruction.DEF;
+assert.strictEqual(appliedStarterTotal, 10, 'Applied Weekly lineup must retain 10 starters');
+
+// Positive CBS Active Min values remain valid evidence and can refine the baseline.
+const positiveMin = windowObj.deriveCbsLineupConstruction({
   provider: 'cbs',
   settings: {
     roster: {
-      statusLimits: { Active: { min: 10, max: 10 } },
+      statusLimits: { Active: { min: 0, max: 10 } },
       positions: {
         QB: { activeMin: 1 }, RB: { activeMin: 2 }, WR: { activeMin: 2 }, TE: { activeMin: 1 },
         K: { activeMin: 1 }, DEF: { activeMin: 1 }
       }
     }
   }
-});
-assert.strictEqual(inferredFlex.FLEX, 2);
+}, baseline);
+assert.strictEqual(positiveMin.FLEX, 2);
+assert.strictEqual(positiveMin.QB, 1);
+assert.strictEqual(positiveMin.RB, 2);
 
 // A normalized provider shape still works and SFLEX aliases into SUPERFLEX.
 windowObj.applyConnectedLineupConstruction({
@@ -127,19 +151,19 @@ windowObj.applyConnectedLineupConstruction({
 });
 assert.strictEqual(windowObj.state.lineupConstruction.SUPERFLEX, 1);
 
-// CBS composite rows identify SUPERFLEX when QB is included.
+// Positive CBS composite rows still identify SUPERFLEX when QB is included.
 const superflex = windowObj.deriveCbsLineupConstruction({
   provider: 'cbs',
   settings: {
     roster: {
-      statusLimits: { Active: { min: 10, max: 10 } },
+      statusLimits: { Active: { min: 0, max: 10 } },
       positions: {
         QB: { activeMin: 1 }, RB: { activeMin: 2 }, WR: { activeMin: 2 }, TE: { activeMin: 1 },
         K: { activeMin: 1 }, DEF: { activeMin: 1 }, 'QB-RB-WR-TE': { activeMin: 2 }
       }
     }
   }
-});
+}, baseline);
 assert.strictEqual(superflex.SUPERFLEX, 2);
 assert.strictEqual(superflex.FLEX, 0);
 
