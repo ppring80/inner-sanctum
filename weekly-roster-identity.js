@@ -10,7 +10,7 @@
 
   var retryTimer = null;
   var retryCount = 0;
-  var MAX_RETRIES = 240;
+  var MAX_RETRIES = 240;   // up to ~60 seconds for the rankings fetch
   var RETRY_MS = 250;
 
   function isWeeklyPage() {
@@ -42,12 +42,25 @@
       .replace(/[^A-Z]/g, '');
   }
 
+  /*
+    CBS position rows are roster-limit rows, not guaranteed starter counts.
+    A zero Active Min means "no minimum roster constraint" and must never
+    overwrite Weekly's already-known lineup baseline with zero starters.
+    Only a positive Active Min is strong enough evidence to replace a fixed
+    starter count. Active Max is intentionally NOT used for fixed positions
+    because it can include FLEX-driven roster capacity (for example RB max 4).
+  */
   function cbsRequiredStarterCount(entry) {
     if (!entry || typeof entry !== 'object') return null;
     var min = lineupNumber(entry.activeMin);
     return min !== null && min > 0 ? min : null;
   }
 
+  /*
+    CBS status rows represent slot capacity. In live captures Active/Reserve
+    can legitimately have min=0 while max carries the actual usable slot
+    count. Prefer max here, falling back to min only when max is absent.
+  */
   function cbsStatusCapacity(statusLimits, pattern) {
     if (!statusLimits || typeof statusLimits !== 'object') return null;
     var keys = Object.keys(statusLimits);
@@ -62,8 +75,20 @@
     return null;
   }
 
+  /*
+    CBS stores lineup-related roster rules under settings.roster.positions.
+    These rows can contain zero Active Min values even when the league has
+    normal starters, so CBS-derived construction must be merged onto Weekly's
+    existing lineup baseline rather than replacing it with zeroes.
+
+    Positive position minima can safely refine fixed starter counts. The CBS
+    Active status capacity gives total starters; after fixed starters are
+    accounted for, remaining active slots become FLEX/SUPERFLEX. Composite
+    position rows still identify whether the flexible slot includes QB.
+  */
   function deriveCbsLineupConstruction(connection, fallbackLineup) {
     if (!connection || String(connection.provider || '').toLowerCase() !== 'cbs') return null;
+
     var rosterSettings = connection.settings && connection.settings.roster;
     var positions = rosterSettings && rosterSettings.positions;
     if (!positions || typeof positions !== 'object') return null;
@@ -101,6 +126,7 @@
         else compositeFlex = Math.max(compositeFlex, count);
         return;
       }
+
       for (var i = 0; i < fixedKeys.length; i++) {
         if (normalized === fixedKeys[i]) {
           sawPositionRule = true;
@@ -111,6 +137,7 @@
     });
 
     if (!sawPositionRule) return null;
+
     next.FLEX = compositeFlex;
     next.SUPERFLEX = compositeSuperflex;
 
@@ -134,6 +161,7 @@
 
     var reserveTotal = cbsStatusCapacity(statusLimits, /^(reserve|bench)$/i);
     if (reserveTotal !== null) next.BENCH = reserveTotal;
+
     return next;
   }
 
@@ -145,9 +173,11 @@
 
   function applyConnectedLineupConstruction(connection) {
     if (typeof window.state === 'undefined' || !window.state) return false;
+
     var current = window.state.lineupConstruction || {};
     var source = getConnectedLineupConstruction(connection, current);
     if (!source) return false;
+
     var next = {};
     var keys = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DEF', 'BENCH'];
     var changed = false;
@@ -159,7 +189,9 @@
       next[key] = parsed === null ? (lineupNumber(current[key]) === null ? 0 : Number(current[key])) : parsed;
       if (Number(current[key]) !== next[key]) changed = true;
     });
+
     if (!changed) return false;
+
     window.state.lineupConstruction = next;
     if (typeof window.renderLineupFields === 'function') window.renderLineupFields();
     return true;
@@ -171,29 +203,39 @@
     if (typeof window.LeagueConnection === 'undefined') return false;
     if (typeof window.getAllRows !== 'function') return false;
     if (typeof window.state === 'undefined' || !window.state) return false;
+
     var connection = window.LeagueConnection.getActiveConnection();
     var roster = connection && Array.isArray(connection.roster) ? connection.roster : [];
     var rows = window.getAllRows();
     if (!roster.length || !Array.isArray(rows) || !rows.length) return false;
+
     var resolvedNames = window.PlayerIdentity.resolveRosterNames(roster, rows);
     if (!resolvedNames.length) return false;
+
     window.state.myRosterNames = resolvedNames.slice();
-    if (Array.isArray(window.state.connectedRosterNames)) window.state.connectedRosterNames = resolvedNames.slice();
+    if (Array.isArray(window.state.connectedRosterNames)) {
+      window.state.connectedRosterNames = resolvedNames.slice();
+    }
+
     applyConnectedLineupConstruction(connection);
+
     if (typeof window.renderTable === 'function') window.renderTable();
     return true;
   }
 
   function retryUntilRankingsReady() {
     clearRetry();
+
     if (applyWeeklyRosterIdentity()) {
       retryCount = 0;
       return;
     }
+
     if (retryCount >= MAX_RETRIES) {
       retryCount = 0;
       return;
     }
+
     retryCount += 1;
     retryTimer = window.setTimeout(retryUntilRankingsReady, RETRY_MS);
   }
@@ -204,9 +246,16 @@
     retryTimer = window.setTimeout(retryUntilRankingsReady, 0);
   }
 
+  /*
+    loadWeeklyRankings() is async and the identity scripts can finish loading
+    before ranking rows exist. Wrap future ranking reloads so every week or
+    scoring-format change starts a fresh identity pass. The immediate runSoon()
+    below also covers the initial load when it began before this script loaded.
+  */
   function wrapWeeklyRankingsLoader() {
     if (typeof window.loadWeeklyRankings !== 'function') return;
     if (window.loadWeeklyRankings.__innerSanctumIdentityWrapped) return;
+
     var original = window.loadWeeklyRankings;
     function wrappedLoadWeeklyRankings() {
       var result = original.apply(this, arguments);
@@ -217,38 +266,36 @@
     window.loadWeeklyRankings = wrappedLoadWeeklyRankings;
   }
 
-  function loadWeeklyScript(src, marker) {
+  /*
+    Weekly presentation polish is intentionally loaded from this already
+    Weekly-only helper instead of competing with league-connection.js loader
+    changes. That keeps the proven player-identity/DEF connection path intact.
+  */
+  function loadWeeklyLineupPolish() {
     if (!isWeeklyPage()) return;
     if (typeof document === 'undefined' || !document.head || typeof document.createElement !== 'function') return;
-    if (typeof document.querySelector === 'function' && document.querySelector('script[' + marker + ']')) return;
+    if (typeof document.querySelector === 'function' && document.querySelector('script[data-inner-sanctum-weekly-lineup-polish]')) return;
+
     var script = document.createElement('script');
-    script.src = src;
-    script.setAttribute(marker, '1');
+    script.src = '/weekly-lineup-polish.js';
+    script.setAttribute('data-inner-sanctum-weekly-lineup-polish', '1');
     document.head.appendChild(script);
   }
 
-  function loadWeeklyLineupPolish() {
-    loadWeeklyScript('/weekly-lineup-polish.js', 'data-inner-sanctum-weekly-lineup-polish');
-  }
-
-  function loadWeeklySageTakeReconciliation() {
-    loadWeeklyScript('/weekly-sage-take-reconciliation.js', 'data-inner-sanctum-weekly-sage-take-reconciliation');
-  }
-
-  function initializeWeeklyHelpers() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      wrapWeeklyRankingsLoader();
+      loadWeeklyLineupPolish();
+      runSoon();
+    }, { once: true });
+  } else {
     wrapWeeklyRankingsLoader();
     loadWeeklyLineupPolish();
-    loadWeeklySageTakeReconciliation();
     runSoon();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeWeeklyHelpers, { once: true });
-  } else {
-    initializeWeeklyHelpers();
-  }
-
   window.addEventListener('innerSanctum:leagueContextChanged', runSoon);
+
   window.applyWeeklyRosterIdentity = applyWeeklyRosterIdentity;
   window.applyConnectedLineupConstruction = applyConnectedLineupConstruction;
   window.deriveCbsLineupConstruction = deriveCbsLineupConstruction;
