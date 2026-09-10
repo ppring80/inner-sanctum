@@ -3,7 +3,7 @@
 const assert = require('assert');
 const path = require('path');
 
-const modulePath = path.join(__dirname, '..', 'weekly-sage-take-reconciliation.js');
+const modulePath = path.join(__dirname, '..', 'weekly-lineup-polish.js');
 delete require.cache[require.resolve(modulePath)];
 const reconcile = require(modulePath);
 
@@ -25,6 +25,12 @@ const bench = reconcile.reconcileSageTake(benchRaw, { call: 'sit', slot: 'BENCH'
 assert(bench.includes('Elite Week 1 profile'), 'preserves strong player/week evaluation');
 assert(!bench.includes('Keep him locked in'), 'removes contradictory raw START action');
 assert(bench.includes('stronger roster option keeps him on your bench'), 'reconciles personalized BENCH decision');
+
+const defensePolishedRaw = 'Elite Week 1 profile with a favorable matchup on top. Keep NE locked in.';
+const defenseBench = reconcile.reconcileSageTake(defensePolishedRaw, { call: 'sit', slot: 'BENCH' });
+assert(defenseBench.includes('Elite Week 1 profile'), 'preserves DEF outlook after defense-copy polish');
+assert(!defenseBench.includes('Keep NE locked in'), 'removes team-specific DEF action before roster action is appended');
+assert(defenseBench.includes('keeps him on your bench'), 'reconciles DEF bench decision deterministically');
 
 const negativeBenchRaw = 'Bench-caliber Week 1 outlook. Best as a depth option this week.';
 const negativeBench = reconcile.reconcileSageTake(negativeBenchRaw, { call: 'sit', slot: 'BENCH' });
