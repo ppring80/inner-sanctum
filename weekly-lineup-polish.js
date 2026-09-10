@@ -7,12 +7,59 @@
     - Make My Roster Only read like a lineup decision screen.
     - Keep Week Snapshot scoped to the customer's roster when that mode is on.
     - Preserve the existing Weekly SAGE ranking/lineup logic as the source of truth.
+    - Reconcile the displayed SAGE action sentence with the personalized lineup
+      decision without changing the underlying player/week outlook.
     - Avoid changing ranking scores or recommendation calculations.
 */
-(function () {
+(function (root) {
   "use strict";
 
-  if (!/^\/weekly(?:\.html)?\/?$/i.test(window.location.pathname)) return;
+  const ACTION_SENTENCES = [
+    /Keep him locked in\.?/gi,
+    /Keep [A-Z]{2,4} locked in\.?/gi,
+    /Confident start\.?/gi,
+    /Still a Week 1 start\.?/gi,
+    /Solid start(?:, with slightly lower confidence)?\.?/gi,
+    /Worth flex consideration(?:, with slightly lower confidence)?\.?/gi,
+    /Best as a depth option this week(?:, with slightly lower confidence)?\.?/gi
+  ];
+
+  function stripRawAction(text) {
+    let result = String(text || "").trim();
+    ACTION_SENTENCES.forEach(function (pattern) {
+      result = result.replace(pattern, "").trim();
+    });
+    return result.replace(/\s{2,}/g, " ").trim();
+  }
+
+  function rosterActionSentence(assignment) {
+    if (!assignment || assignment.call !== "start") {
+      return "A stronger roster option keeps him on your bench this week.";
+    }
+    if (assignment.slot === "FLEX" || assignment.slot === "SUPERFLEX") {
+      return "He still earns a " + assignment.slot + " spot in your lineup this week.";
+    }
+    return "He still belongs in your starting lineup this week.";
+  }
+
+  function reconcileSageTake(text, assignment) {
+    if (!assignment) return String(text || "");
+    const outlook = stripRawAction(text);
+    const action = rosterActionSentence(assignment);
+    return [outlook, action].filter(Boolean).join(" ").trim();
+  }
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+      stripRawAction: stripRawAction,
+      rosterActionSentence: rosterActionSentence,
+      reconcileSageTake: reconcileSageTake
+    };
+  }
+
+  if (!root || !root.location || !/^\/weekly(?:\.html)?\/?$/i.test(root.location.pathname)) return;
+
+  const window = root;
   if (typeof window.renderTable !== "function" || typeof window.renderWeekSnapshot !== "function") return;
 
   const SLOT_ORDER = {
@@ -172,6 +219,34 @@
     });
   }
 
+  function reconcileRosterSageTake() {
+    if (!window.state || !window.state.myRosterOnly) return;
+    if (typeof window.getRosterLineupAssignments !== "function") return;
+
+    const tbody = document.getElementById("rankTableBody");
+    if (!tbody) return;
+    const assignments = window.getRosterLineupAssignments();
+
+    Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+      if (row.classList.contains("lineup-section-row")) return;
+      const nameEl = row.querySelector(".cell-name");
+      const verdict = row.querySelector(".cell-verdict");
+      if (!nameEl || !verdict) return;
+      const assignment = assignments[nameEl.textContent.trim()];
+      if (!assignment) return;
+
+      const textNodes = Array.from(verdict.childNodes).filter(function (node) {
+        return node.nodeType === Node.TEXT_NODE;
+      });
+      if (!textNodes.length) return;
+
+      const rawText = textNodes.map(function (node) { return node.textContent; }).join(" ").trim();
+      const reconciled = reconcileSageTake(rawText, assignment);
+      textNodes[0].textContent = reconciled ? " " + reconciled : "";
+      for (let i = 1; i < textNodes.length; i++) textNodes[i].textContent = "";
+    });
+  }
+
   function personalizedSnapshot() {
     if (!window.state || !window.state.myRosterOnly) return false;
     if (typeof window.getAllRows !== "function" || typeof window.getRosterLineupAssignments !== "function") return false;
@@ -248,8 +323,10 @@
     restoreRankHeader();
     reorderRosterRows();
     polishDefenseCopy();
+    reconcileRosterSageTake();
     return result;
   };
 
+  window.reconcileWeeklySageTake = reconcileSageTake;
   window.renderTable();
-})();
+})(typeof window !== "undefined" ? window : null);
