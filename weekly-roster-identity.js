@@ -42,12 +42,25 @@
       .replace(/[^A-Z]/g, '');
   }
 
+  /*
+    CBS position rows are roster-limit rows, not guaranteed starter counts.
+    A zero Active Min means "no minimum roster constraint" and must never
+    overwrite Weekly's already-known lineup baseline with zero starters.
+    Only a positive Active Min is strong enough evidence to replace a fixed
+    starter count. Active Max is intentionally NOT used for fixed positions
+    because it can include FLEX-driven roster capacity (for example RB max 4).
+  */
   function cbsRequiredStarterCount(entry) {
     if (!entry || typeof entry !== 'object') return null;
     var min = lineupNumber(entry.activeMin);
     return min !== null && min > 0 ? min : null;
   }
 
+  /*
+    CBS status rows represent slot capacity. In live captures Active/Reserve
+    can legitimately have min=0 while max carries the actual usable slot
+    count. Prefer max here, falling back to min only when max is absent.
+  */
   function cbsStatusCapacity(statusLimits, pattern) {
     if (!statusLimits || typeof statusLimits !== 'object') return null;
     var keys = Object.keys(statusLimits);
@@ -62,6 +75,17 @@
     return null;
   }
 
+  /*
+    CBS stores lineup-related roster rules under settings.roster.positions.
+    These rows can contain zero Active Min values even when the league has
+    normal starters, so CBS-derived construction must be merged onto Weekly's
+    existing lineup baseline rather than replacing it with zeroes.
+
+    Positive position minima can safely refine fixed starter counts. The CBS
+    Active status capacity gives total starters; after fixed starters are
+    accounted for, remaining active slots become FLEX/SUPERFLEX. Composite
+    position rows still identify whether the flexible slot includes QB.
+  */
   function deriveCbsLineupConstruction(connection, fallbackLineup) {
     if (!connection || String(connection.provider || '').toLowerCase() !== 'cbs') return null;
 
@@ -267,6 +291,12 @@
     retryTimer = window.setTimeout(retryUntilRankingsReady, 0);
   }
 
+  /*
+    loadWeeklyRankings() is async and the identity scripts can finish loading
+    before ranking rows exist. Wrap future ranking reloads so every week or
+    scoring-format change starts a fresh identity pass. The immediate runSoon()
+    below also covers the initial load when it began before this script loaded.
+  */
   function wrapWeeklyRankingsLoader() {
     if (typeof window.loadWeeklyRankings !== 'function') return;
     if (window.loadWeeklyRankings.__innerSanctumIdentityWrapped) return;
@@ -281,6 +311,11 @@
     window.loadWeeklyRankings = wrappedLoadWeeklyRankings;
   }
 
+  /*
+    Weekly presentation polish is intentionally loaded from this already
+    Weekly-only helper instead of competing with league-connection.js loader
+    changes. That keeps the proven player-identity/DEF connection path intact.
+  */
   function loadWeeklyLineupPolish() {
     if (!isWeeklyPage()) return;
     if (typeof document === 'undefined' || !document.head || typeof document.createElement !== 'function') return;
