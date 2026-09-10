@@ -450,25 +450,38 @@
   window.LeagueConnection = LeagueConnection;
 
   /*
-    Load the shared team-context layer on every browser page that already
-    includes LeagueConnection. The document guard keeps this state module
-    safe to execute in Node-based regression tests and other non-browser
-    consumers without changing browser behavior.
+    Load shared browser context helpers on pages that include LeagueConnection.
+    Weekly gets one additional identity pass so provider display-name variants
+    resolve to Weekly's canonical row names before My Roster filtering.
   */
   if (typeof document !== "undefined") {
-    function loadTeamContext() {
-      if (document.querySelector('script[data-inner-sanctum-team-context]')) return;
+    function appendScriptOnce(src, dataAttribute, onload) {
+      if (document.querySelector('script[' + dataAttribute + ']')) {
+        if (onload) onload();
+        return;
+      }
       const script = document.createElement("script");
-      script.src = "/team-context.js";
+      script.src = src;
       script.defer = true;
-      script.setAttribute("data-inner-sanctum-team-context", "1");
+      script.setAttribute(dataAttribute, "1");
+      if (onload) script.addEventListener("load", onload, { once: true });
       document.head.appendChild(script);
     }
 
+    function loadBrowserContext() {
+      appendScriptOnce("/team-context.js", "data-inner-sanctum-team-context");
+
+      if (/^\/weekly(?:\.html)?\/?$/i.test(window.location.pathname)) {
+        appendScriptOnce("/player-identity.js", "data-inner-sanctum-player-identity", function () {
+          appendScriptOnce("/weekly-roster-identity.js", "data-inner-sanctum-weekly-roster-identity");
+        });
+      }
+    }
+
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", loadTeamContext, { once: true });
+      document.addEventListener("DOMContentLoaded", loadBrowserContext, { once: true });
     } else {
-      loadTeamContext();
+      loadBrowserContext();
     }
   }
 })();
