@@ -614,3 +614,56 @@
       );
     };
 })();
+
+/*
+  ESPN CONNECT SAFETY GUARD
+  -------------------------
+  The browser extension owns the seamless ESPN flow. If the extension is not
+  active, the website must never expose the retired League ID / Public-Private
+  / SWID / espn_s2 workflow. Replace it with extension-compatible hooks and a
+  clear message instead.
+*/
+(function () {
+  "use strict";
+
+  function guardLegacyEspnConnectForm() {
+    var platform = document.getElementById("platform-espn");
+    if (!platform || !platform.classList.contains("selected")) return;
+
+    var legacy = document.querySelector(
+      "#espnLeagueType, #espnPrivateFields, #espnS2, #espnSwid"
+    );
+
+    if (!legacy) return;
+
+    var container = document.getElementById("providerForms");
+    if (!container) return;
+
+    container.innerHTML =
+      '<div class="provider-form show">' +
+        '<div class="beta-pill">ESPN Connect · Beta</div>' +
+        '<div class="pf-info">' +
+          '<strong>Connect ESPN securely.</strong><br>' +
+          'Inner Sanctum uses the Connect extension so you sign into ESPN normally and open the league you want to connect. ' +
+          'No League ID, Public/Private selection, Developer Tools, SWID or espn_s2 copy/paste is required.' +
+        '</div>' +
+        '<button class="connect-btn" type="button">Connect ESPN League</button>' +
+        '<div class="connect-note">' +
+          'Inner Sanctum Connect is not active in this browser yet. Enable or install the supported extension, refresh this page, and try again. ' +
+          'Never paste ESPN cookies or session values here.' +
+        '</div>' +
+        '<div class="result-box" id="espnResult"></div>' +
+      '</div>';
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    guardLegacyEspnConnectForm();
+
+    var platformRow = document.getElementById("platformRow");
+    if (!platformRow) return;
+
+    platformRow.addEventListener("click", function () {
+      setTimeout(guardLegacyEspnConnectForm, 0);
+    });
+  });
+})();
