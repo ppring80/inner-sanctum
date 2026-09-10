@@ -15,7 +15,11 @@
   const MANUAL_WEEKLY_KEY = "sanctum_weekly_manual_roster_v1";
   const ESPN_TEAM_PREF_KEY = "innerSanctum_espnTeamPreference_v1";
   const CHATGPT_LINK_STORAGE_KEY = "innerSanctum_chatgptLeagueLinks";
-  const ESPN_POSITION_BY_ID = { 0:"QB", 2:"RB", 4:"WR", 6:"TE", 16:"D/ST", 17:"K" };
+
+  // ESPN uses one ID system for a player's primary/default position and a
+  // different ID system for lineup slots. Do not reuse lineup-slot IDs here.
+  // defaultPositionId: QB=1, RB=2, WR=3, TE=4, K=5, D/ST=16.
+  const ESPN_POSITION_BY_ID = { 1:"QB", 2:"RB", 3:"WR", 4:"TE", 5:"K", 16:"D/ST" };
   const ESPN_TEAM_BY_ID = {
     0:null,1:"ATL",2:"BUF",3:"CHI",4:"CIN",5:"CLE",6:"DAL",7:"DEN",8:"DET",9:"GB",
     10:"TEN",11:"IND",12:"KC",13:"LV",14:"LAR",15:"MIA",16:"MIN",17:"NE",18:"NO",
