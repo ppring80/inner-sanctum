@@ -105,7 +105,7 @@ function connectedDefense(provider, defense) {
 // do not have to disconnect/reconnect a league just to recover their D/ST.
 LeagueConnection.disconnectAll();
 const persistedKey = LeagueConnection.STORAGE_KEY;
-localStorage.setItem(persistedKey, JSON.stringify({
+context.localStorage.setItem(persistedKey, JSON.stringify({
   schemaVersion: LeagueConnection.SCHEMA_VERSION,
   activeConnectionId: 'espn:legacy:3',
   connections: {
