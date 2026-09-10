@@ -11,37 +11,41 @@
 importScripts("service-worker.js");
 
 const extensionApi = globalThis.browser || globalThis.chrome;
-const ESPN_URL_PATTERN = /^https:\/\/fantasy\.espn\.com\/football\//i;
-const SANCTUM_URL_PATTERN = /^https:\/\/(?:www\.)?theinnersanctum\.xyz\/connect-league/i;
-const ESPN_ENTRY_URL = "https://fantasy.espn.com/football/welcome";
-const ESPN_PENDING_KEY = "pendingEspnConnect";
-const CONNECT_TIMEOUT_MS = 10 * 60 * 1000;
+const ESPN_V050_URL_PATTERN = /^https:\/\/fantasy\.espn\.com\/football\//i;
+const ESPN_V050_SANCTUM_URL_PATTERN = /^https:\/\/(?:www\.)?theinnersanctum\.xyz\/connect-league/i;
+const ESPN_V050_ENTRY_URL = "https://fantasy.espn.com/football/welcome";
+const ESPN_V050_PENDING_KEY = "pendingEspnConnect";
+const ESPN_V050_CONNECT_TIMEOUT_MS = 10 * 60 * 1000;
 const espnCaptureInFlight = new Set();
 
 async function getPendingEspn() {
-  const result = await extensionApi.storage.session.get(ESPN_PENDING_KEY);
-  return result?.[ESPN_PENDING_KEY] || null;
+  const result = await extensionApi.storage.session.get(ESPN_V050_PENDING_KEY);
+  return result?.[ESPN_V050_PENDING_KEY] || null;
 }
 
 async function setPendingEspn(value) {
-  await extensionApi.storage.session.set({ [ESPN_PENDING_KEY]: value });
+  await extensionApi.storage.session.set({ [ESPN_V050_PENDING_KEY]: value });
 }
 
 async function clearPendingEspn() {
-  await extensionApi.storage.session.remove(ESPN_PENDING_KEY);
+  await extensionApi.storage.session.remove(ESPN_V050_PENDING_KEY);
 }
 
-async function isSanctumTabStillValid(tabId) {
+async function isEspnSanctumTabStillValid(tabId) {
   try {
     const tab = await extensionApi.tabs.get(tabId);
-    return Boolean(tab && typeof tab.url === "string" && SANCTUM_URL_PATTERN.test(tab.url));
+    return Boolean(
+      tab &&
+      typeof tab.url === "string" &&
+      ESPN_V050_SANCTUM_URL_PATTERN.test(tab.url)
+    );
   } catch (err) {
     return false;
   }
 }
 
 async function showEspnStatus(sanctumTabId, type, message) {
-  if (!(await isSanctumTabStillValid(sanctumTabId))) return;
+  if (!(await isEspnSanctumTabStillValid(sanctumTabId))) return;
 
   try {
     await extensionApi.scripting.executeScript({
@@ -61,7 +65,7 @@ async function showEspnStatus(sanctumTabId, type, message) {
 }
 
 async function deliverEspnToSanctum(sanctumTabId, captured) {
-  if (!(await isSanctumTabStillValid(sanctumTabId))) {
+  if (!(await isEspnSanctumTabStillValid(sanctumTabId))) {
     throw new Error("The Inner Sanctum connection page is no longer open. Return to Link Your League and try again.");
   }
 
@@ -147,7 +151,7 @@ async function sendEspnCapture(tabId, attempt) {
 }
 
 async function captureEspnFromLeagueTab(espnTab, sanctumTabId) {
-  if (!espnTab?.id || !ESPN_URL_PATTERN.test(espnTab.url || "")) {
+  if (!espnTab?.id || !ESPN_V050_URL_PATTERN.test(espnTab.url || "")) {
     throw new Error("ESPN has not reached a fantasy-football page yet.");
   }
 
@@ -191,7 +195,7 @@ async function captureEspnFromLeagueTab(espnTab, sanctumTabId) {
 async function findOpenEspnLeagueTab() {
   const tabs = await extensionApi.tabs.query({});
   const espnTabs = tabs.filter(function (tab) {
-    return typeof tab.url === "string" && ESPN_URL_PATTERN.test(tab.url);
+    return typeof tab.url === "string" && ESPN_V050_URL_PATTERN.test(tab.url);
   });
 
   const withLeague = espnTabs.find(function (tab) {
@@ -207,7 +211,7 @@ async function findOpenEspnLeagueTab() {
 
 async function beginEspnConnect(sender) {
   const sanctumTab = sender.tab;
-  if (!sanctumTab || !SANCTUM_URL_PATTERN.test(sanctumTab.url || "")) {
+  if (!sanctumTab || !ESPN_V050_SANCTUM_URL_PATTERN.test(sanctumTab.url || "")) {
     throw new Error("ESPN connection request did not originate from The Inner Sanctum.");
   }
 
@@ -231,7 +235,7 @@ async function beginEspnConnect(sender) {
     }
   }
 
-  const tab = await extensionApi.tabs.create({ url: ESPN_ENTRY_URL, active: true });
+  const tab = await extensionApi.tabs.create({ url: ESPN_V050_ENTRY_URL, active: true });
   if (!tab?.id) throw new Error("ESPN could not be opened.");
 
   await setPendingEspn({
@@ -268,7 +272,7 @@ extensionApi.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) 
   const pending = await getPendingEspn();
   if (!pending) return;
 
-  if (Date.now() - Number(pending.startedAt || 0) > CONNECT_TIMEOUT_MS) {
+  if (Date.now() - Number(pending.startedAt || 0) > ESPN_V050_CONNECT_TIMEOUT_MS) {
     await clearPendingEspn();
     await showEspnStatus(
       pending.sanctumTabId,
@@ -279,7 +283,7 @@ extensionApi.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) 
   }
 
   const currentUrl = tab?.url || changeInfo.url || "";
-  if (!ESPN_URL_PATTERN.test(currentUrl)) return;
+  if (!ESPN_V050_URL_PATTERN.test(currentUrl)) return;
 
   let hasLeagueId = false;
   try {
