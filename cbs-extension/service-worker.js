@@ -1,8 +1,8 @@
 /*
   THE INNER SANCTUM — CBS CONNECT
-  Chrome Extension Service Worker
+  Browser Extension Service Worker
 
-  VERSION 0.1.0
+  VERSION 0.2.0
 
   RESPONSIBILITY
   ------------------------------------------------
@@ -37,6 +37,8 @@
 
 "use strict";
 
+const extensionApi = globalThis.browser || globalThis.chrome;
+
 const CBS_URL_PATTERN =
   /^https:\/\/[^.]+\.football\.cbssports\.com\//i;
 
@@ -47,13 +49,12 @@ const SANCTUM_URL_PATTERN =
 /*
   Find an open CBS Fantasy league tab.
 
-  For Phase 1:
-  if multiple CBS tabs exist, prefer the active one.
+  If multiple CBS tabs exist, prefer the active one.
 */
 
 async function findCbsTab() {
   const tabs =
-    await chrome.tabs.query({});
+    await extensionApi.tabs.query({});
 
   const cbsTabs =
     tabs.filter(function (tab) {
@@ -77,6 +78,26 @@ async function findCbsTab() {
 
 
 /*
+  Safari does not support the manifest content-script `world` key used
+  by Chromium to preload MAIN-world scripts. Inject the proven CBS
+  connector explicitly immediately before capture instead.
+*/
+
+async function injectCbsMainWorld(tabId) {
+  await extensionApi.scripting.executeScript({
+    target: {
+      tabId: tabId
+    },
+    world: "MAIN",
+    files: [
+      "cbs-browser-connector.js",
+      "cbs-main-bridge.js"
+    ]
+  });
+}
+
+
+/*
   Send sanitized captured data directly into the
   MAIN world of the Inner Sanctum connection page.
 
@@ -90,7 +111,7 @@ async function deliverToSanctum(
   captured
 ) {
   const results =
-    await chrome.scripting.executeScript({
+    await extensionApi.scripting.executeScript({
       target: {
         tabId: sanctumTabId
       },
@@ -131,7 +152,7 @@ async function showSanctumError(
   message
 ) {
   try {
-    await chrome.scripting.executeScript({
+    await extensionApi.scripting.executeScript({
       target: {
         tabId: sanctumTabId
       },
@@ -206,12 +227,21 @@ async function handleCbsConnect(
   }
 
   /*
+    Load the MAIN-world CBS connector on demand. This keeps Chrome working
+    while avoiding Safari's unsupported manifest `world` declaration.
+  */
+
+  await injectCbsMainWorld(
+    cbsTab.id
+  );
+
+  /*
     Tell the CBS isolated bridge to request a capture
     from the MAIN-world CBS connector.
   */
 
   const response =
-    await chrome.tabs.sendMessage(
+    await extensionApi.tabs.sendMessage(
       cbsTab.id,
       {
         type:
@@ -250,13 +280,6 @@ async function handleCbsConnect(
     );
   }
 
-  /*
-    Additional quality guard.
-
-    The consumer should not be connected to malformed
-    CBS data even if a page layout changes.
-  */
-
   if (
     captured.meta?.dataQuality &&
     captured.meta.dataQuality.complete === false
@@ -289,7 +312,7 @@ async function handleCbsConnect(
   Message router.
 */
 
-chrome.runtime.onMessage.addListener(
+extensionApi.runtime.onMessage.addListener(
   function (
     message,
     sender,
