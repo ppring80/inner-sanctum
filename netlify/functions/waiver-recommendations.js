@@ -13,6 +13,98 @@ const {
   summarizeDecisions
 } = require('./waiver-decision.js');
 
+function validWeek(value) {
+  const week = Number(value);
+  return Number.isInteger(week) && week >= 1 && week <= 18 ? week : null;
+}
+
+function firstPresent() {
+  for (let i = 0; i < arguments.length; i += 1) {
+    const value = arguments[i];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
+
+function derive2026RegularSeasonWeek(now) {
+  const current = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(current.getTime())) return null;
+
+  // 2026 Week 1 opens Thursday, September 10. Keep this fallback scoped
+  // strictly to the 2026 regular season so provider week fields always win.
+  const weekOneStart = Date.UTC(2026, 8, 10);
+  const weekNineteenStart = weekOneStart + (18 * 7 * 24 * 60 * 60 * 1000);
+  const currentUtcDate = Date.UTC(
+    current.getUTCFullYear(),
+    current.getUTCMonth(),
+    current.getUTCDate()
+  );
+
+  if (currentUtcDate < weekOneStart || currentUtcDate >= weekNineteenStart) {
+    return null;
+  }
+
+  return Math.floor((currentUtcDate - weekOneStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+function resolveWaiverWeek(body, now = new Date()) {
+  const connection = body?.connection && typeof body.connection === 'object'
+    ? body.connection
+    : {};
+  const league = connection?.league && typeof connection.league === 'object'
+    ? connection.league
+    : {};
+
+  const providerWeek = firstPresent(
+    body?.currentWeek,
+    body?.scoringPeriodId,
+    connection?.week,
+    connection?.currentWeek,
+    connection?.scoringPeriodId,
+    connection?.scoringPeriod,
+    league?.scoringPeriodId,
+    league?.currentWeek,
+    league?.week,
+    league?.weekNumber,
+    league?.scoringPeriod
+  );
+
+  const resolvedProviderWeek = validWeek(providerWeek);
+  if (resolvedProviderWeek) return resolvedProviderWeek;
+
+  const season = Number(firstPresent(
+    body?.season,
+    connection?.season,
+    league?.season,
+    now.getUTCFullYear()
+  ));
+
+  return season === 2026 ? derive2026RegularSeasonWeek(now) : null;
+}
+
+function withResolvedWeek(event) {
+  let body;
+  try {
+    body = JSON.parse(event?.body || '{}');
+  } catch (error) {
+    return event;
+  }
+
+  // Do not override an explicitly supplied week, even if it is invalid.
+  // The lower-level validator should continue to reject bad caller input.
+  if (body.week !== undefined && body.week !== null && body.week !== '') {
+    return event;
+  }
+
+  const week = resolveWaiverWeek(body);
+  if (!week) return event;
+
+  return {
+    ...event,
+    body: JSON.stringify({ ...body, week })
+  };
+}
+
 function customerVerdict(item) {
   const action = item?.decision?.action || 'REVIEW';
   const trend = item?.evidence?.trend?.direction || null;
@@ -117,7 +209,7 @@ function summarizeCustomerRecommendations(recommendations) {
 }
 
 exports.handler = async function handler(event) {
-  const candidateResponse = await waiverCandidates.handler(event);
+  const candidateResponse = await waiverCandidates.handler(withResolvedWeek(event));
 
   if (!candidateResponse || candidateResponse.statusCode !== 200) {
     return candidateResponse;
@@ -165,6 +257,10 @@ exports.handler = async function handler(event) {
 };
 
 exports._test = {
+  validWeek,
+  derive2026RegularSeasonWeek,
+  resolveWaiverWeek,
+  withResolvedWeek,
   customerVerdict,
   verdictPriority,
   decorateDecision,
