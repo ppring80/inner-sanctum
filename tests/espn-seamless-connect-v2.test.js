@@ -26,19 +26,23 @@ const worker = fs.readFileSync(
 assert.strictEqual(manifest.manifest_version, 3);
 assert.strictEqual(manifest.background.service_worker, "service-worker-v050.js");
 assert.ok(manifest.permissions.includes("storage"));
+assert.ok(manifest.permissions.includes("scripting"));
 assert.ok(manifest.host_permissions.includes("https://fantasy.espn.com/*"));
 assert.ok(manifest.host_permissions.includes("https://lm-api-reads.fantasy.espn.com/*"));
 
 const espnScripts = manifest.content_scripts.filter(function (entry) {
   return entry.matches && entry.matches.includes("https://fantasy.espn.com/football/*");
 });
-assert.strictEqual(espnScripts.length, 2);
-assert.ok(espnScripts.some(function (entry) {
-  return entry.js.includes("espn-main-bridge.js");
-}));
-assert.ok(espnScripts.some(function (entry) {
-  return entry.js.includes("espn-content-bridge.js");
-}));
+assert.strictEqual(espnScripts.length, 1);
+assert.ok(espnScripts[0].js.includes("espn-content-bridge.js"));
+assert.ok(!espnScripts[0].js.includes("espn-main-bridge.js"));
+assert.ok(!Object.prototype.hasOwnProperty.call(espnScripts[0], "world"));
+
+// Safari-compatible MAIN-world injection happens on demand in the worker.
+assert.match(worker, /function\s+injectEspnMainWorld\s*\(/);
+assert.match(worker, /world:\s*"MAIN"/);
+assert.match(worker, /files:\s*\["espn-main-bridge\.js"\]/);
+assert.match(worker, /await\s+injectEspnMainWorld\(espnTab\.id\)/);
 
 // Protect the ESPN default-position namespace from lineup-slot IDs.
 assert.match(mainBridge, /1:\s*"QB"/);
