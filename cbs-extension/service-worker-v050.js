@@ -2,8 +2,8 @@
   THE INNER SANCTUM — CONNECT v0.5.0
 
   Keeps the proven CBS service worker intact and layers ESPN browser-assisted
-  connection on top. This is intentionally isolated so CBS behavior does not
-  change while ESPN seamless connect is brought forward.
+  connection on top. MAIN-world provider scripts are injected on demand so the
+  same connector path works in Chromium and Safari.
 */
 
 "use strict";
@@ -34,11 +34,7 @@ async function clearPendingEspn() {
 async function isEspnSanctumTabStillValid(tabId) {
   try {
     const tab = await extensionApi.tabs.get(tabId);
-    return Boolean(
-      tab &&
-      typeof tab.url === "string" &&
-      ESPN_V050_SANCTUM_URL_PATTERN.test(tab.url)
-    );
+    return Boolean(tab && typeof tab.url === "string" && ESPN_V050_SANCTUM_URL_PATTERN.test(tab.url));
   } catch (err) {
     return false;
   }
@@ -62,6 +58,14 @@ async function showEspnStatus(sanctumTabId, type, message) {
   } catch (err) {
     console.warn("Could not display ESPN connection status.", err);
   }
+}
+
+async function injectEspnMainWorld(tabId) {
+  await extensionApi.scripting.executeScript({
+    target: { tabId: tabId },
+    world: "MAIN",
+    files: ["espn-main-bridge.js"]
+  });
 }
 
 async function deliverEspnToSanctum(sanctumTabId, captured) {
@@ -169,6 +173,10 @@ async function captureEspnFromLeagueTab(espnTab, sanctumTabId) {
     "loading",
     "🔴 ESPN league detected. Syncing your league, team and roster..."
   );
+
+  // Safari cannot preload this script through manifest `world: MAIN`.
+  // Inject it explicitly immediately before the isolated bridge requests capture.
+  await injectEspnMainWorld(espnTab.id);
 
   const response = await sendEspnCapture(espnTab.id, 1);
   if (!response || response.success !== true) {
