@@ -28,31 +28,9 @@
         "https://*.football.cbssports.com/*"
       ],
       "js": [
-        "cbs-browser-connector.js",
-        "cbs-main-bridge.js"
-      ],
-      "run_at": "document_idle",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "https://*.football.cbssports.com/*"
-      ],
-      "js": [
         "cbs-content-bridge.js"
       ],
-      "run_at": "document_idle",
-      "world": "ISOLATED"
-    },
-    {
-      "matches": [
-        "https://fantasy.espn.com/football/*"
-      ],
-      "js": [
-        "espn-main-bridge.js"
-      ],
-      "run_at": "document_idle",
-      "world": "MAIN"
+      "run_at": "document_idle"
     },
     {
       "matches": [
@@ -61,8 +39,7 @@
       "js": [
         "espn-content-bridge.js"
       ],
-      "run_at": "document_idle",
-      "world": "ISOLATED"
+      "run_at": "document_idle"
     },
     {
       "matches": [
@@ -72,8 +49,7 @@
       "js": [
         "sanctum-content-bridge.js"
       ],
-      "run_at": "document_idle",
-      "world": "ISOLATED"
+      "run_at": "document_idle"
     }
   ],
 
