@@ -29,6 +29,7 @@
       ],
       "js": [
         "cbs-browser-connector.js",
+        "cbs-free-agent-capture.js",
         "cbs-main-bridge.js"
       ],
       "run_at": "document_idle",
