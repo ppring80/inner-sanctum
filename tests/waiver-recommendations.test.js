@@ -3,6 +3,9 @@
 const assert = require('assert');
 const {
   _test: {
+    derive2026RegularSeasonWeek,
+    resolveWaiverWeek,
+    withResolvedWeek,
     customerVerdict,
     buildCustomerRecommendations,
     summarizeCustomerRecommendations
@@ -54,6 +57,61 @@ function decision(overrides) {
     ...overrides
   };
 }
+
+test('2026 fallback resolves Week 1 from September 10', () => {
+  assert.strictEqual(
+    derive2026RegularSeasonWeek(new Date('2026-09-10T20:00:00Z')),
+    1
+  );
+});
+
+test('2026 fallback advances exactly one week at September 17', () => {
+  assert.strictEqual(
+    derive2026RegularSeasonWeek(new Date('2026-09-17T00:00:00Z')),
+    2
+  );
+});
+
+test('provider week wins over date fallback', () => {
+  assert.strictEqual(
+    resolveWaiverWeek(
+      { connection: { provider: 'cbs', currentWeek: 4, season: 2026 } },
+      new Date('2026-09-10T20:00:00Z')
+    ),
+    4
+  );
+});
+
+test('CBS connection without week gets safe 2026 current-week fallback', () => {
+  assert.strictEqual(
+    resolveWaiverWeek(
+      { connection: { provider: 'cbs', season: 2026 } },
+      new Date('2026-09-10T20:00:00Z')
+    ),
+    1
+  );
+});
+
+test('resolved week is injected without changing connection payload', () => {
+  const connection = { provider: 'cbs', season: 2026, leagueId: '55' };
+  const event = {
+    body: JSON.stringify({ connection })
+  };
+  const resolved = withResolvedWeek(event);
+  const body = JSON.parse(resolved.body);
+
+  assert.strictEqual(body.connection.leagueId, '55');
+  assert.ok(Number.isInteger(body.week));
+  assert.ok(body.week >= 1 && body.week <= 18);
+});
+
+test('explicit caller week is never overridden', () => {
+  const event = {
+    body: JSON.stringify({ week: 99, connection: { provider: 'cbs', season: 2026 } })
+  };
+  const resolved = withResolvedWeek(event);
+  assert.strictEqual(JSON.parse(resolved.body).week, 99);
+});
 
 test('ADD becomes customer-facing ADD_NOW', () => {
   assert.strictEqual(customerVerdict(decision()), 'ADD_NOW');
