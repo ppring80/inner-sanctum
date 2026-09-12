@@ -11,7 +11,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.js
 (function run() {
   assert.strictEqual(manifest.manifest_version, 3, 'Chrome Web Store build must use Manifest V3');
   assert.strictEqual(manifest.name, 'The Inner Sanctum — Connect');
-  assert.strictEqual(manifest.version, '0.5.0');
+  assert.strictEqual(manifest.version, '0.5.1');
   assert.strictEqual(manifest.background?.service_worker, 'service-worker-v050.js');
 
   const expectedPermissions = ['scripting', 'storage', 'tabs'];
