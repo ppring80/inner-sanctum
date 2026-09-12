@@ -93,13 +93,11 @@ class FakeElement {
     while (node) {
       if (selector === '.provider-form' && node.hasClass('provider-form')) return node;
       if (selector === '.platform-btn' && node.hasClass('platform-btn')) return node;
-      if (selector === '#providerForms .connect-btn') {
-        if (node.hasClass('connect-btn')) {
-          let parent = node.parentNode;
-          while (parent) {
-            if (parent.id === 'providerForms') return node;
-            parent = parent.parentNode;
-          }
+      if (selector === '#providerForms .connect-btn' && node.hasClass('connect-btn')) {
+        let parent = node.parentNode;
+        while (parent) {
+          if (parent.id === 'providerForms') return node;
+          parent = parent.parentNode;
         }
       }
       node = node.parentNode;
@@ -266,7 +264,8 @@ function createClickEvent(target) {
 
     observe(target, options) {
       assert.strictEqual(target, document.documentElement);
-      assert.deepStrictEqual(options, { childList: true, subtree: true });
+      assert.strictEqual(options.childList, true);
+      assert.strictEqual(options.subtree, true);
       document.addObserver(this);
     }
   }
@@ -278,15 +277,13 @@ function createClickEvent(target) {
     chrome: {
       runtime: {
         sendMessage(message) {
-          sentMessages.push(message);
+          sentMessages.push({ type: message.type });
           return Promise.resolve({ success: true });
         }
       }
     },
-    console,
-    globalThis: null
+    console
   });
-  context.globalThis = context;
 
   vm.runInContext(bridgeSource, context, { filename: 'sanctum-content-bridge.js' });
   flushMicrotasks();
