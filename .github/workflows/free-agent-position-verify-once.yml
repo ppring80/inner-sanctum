@@ -1,0 +1,37 @@
+name: Free Agent position one-time verification
+
+on:
+  push:
+    branches:
+      - fix-free-agent-position-identity
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-free-agent-position-identity
+          fetch-depth: 0
+
+      - name: Run focused regression test
+        run: |
+          node tests/cbs-free-agent-capture.test.js
+          git diff origin/free-agents-extraction...HEAD --check
+
+      - name: Verify locked paths unchanged
+        run: |
+          test -z "$(git diff --name-only origin/free-agents-extraction...HEAD -- netlify/functions/waiver-recommendations.js netlify/functions/waiver-candidates.js netlify/functions/waiver-decision.js league-connection.js weekly.html cbs-extension/service-worker.js cbs-extension/service-worker-v050.js cbs-extension/espn-main-bridge.js cbs-extension/espn-content-bridge.js)"
+
+      - name: Remove one-time workflow
+        if: success()
+        run: |
+          rm -f .github/workflows/free-agent-position-verify-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/free-agent-position-verify-once.yml
+          git commit -m "Remove one-time Free Agent position verification workflow"
+          git push origin HEAD:fix-free-agent-position-identity
