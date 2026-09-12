@@ -45,13 +45,90 @@ This is competition with a research purpose. Neither Pat's experience nor Grassh
 
 Year 1 consists of **15 weekly head-to-head challenges** between Pat and Grasshopper.
 
-Each week uses one shared eligible player pool and a snake-draft structure. The two competitors construct opposing fantasy lineups from that same pool under the same scoring and roster rules.
+The inaugural challenge begins with **NFL Week 2 = Challenge Week 1**.
 
-The weekly 1.01 alternates between Pat and Grasshopper so neither competitor owns the structural advantage across the full season.
+Each week uses one **shared NFL player pool** and a snake-draft structure. The two competitors construct opposing fantasy lineups from that same pool under the same scoring and roster rules. Once a player is drafted by either competitor, that player is unavailable to the other competitor for that week's challenge. **Duplicate players are not permitted.**
 
-The exact league scoring configuration, starting-lineup requirements, player eligibility rules, tie-breaking rules, and any weekly pool restrictions must be recorded before Week 1 selections are locked.
+### Year 1 Starting Lineup
 
-Once established for Year 1, those rules should remain stable unless both competitors explicitly agree that a correction is required. Any rule change must be recorded in this document with the effective week and reason.
+Each competitor drafts exactly:
+
+- **1 QB**
+- **2 RB**
+- **2 WR**
+- **1 TE**
+- **2 FLEX** — each FLEX may be filled by an **RB, WR, or TE**
+- **1 PK** (placekicker)
+- **1 DEF** (team defense/special teams)
+
+That is **10 starters per competitor and 20 total selections each challenge week**.
+
+The weekly 1.01 alternates between Pat and Grasshopper so neither competitor owns the structural advantage across the full season. **Grasshopper owns the inaugural 1.01 in Challenge Week 1.** Pat owns the 1.01 in Challenge Week 2, and the right continues to alternate through Challenge Week 15.
+
+### Year 1 Scoring Constitution
+
+Year 1 uses **Half-PPR** scoring. Fractional yardage scoring should be used where supported so production is credited continuously rather than only at arbitrary whole-point thresholds.
+
+| Category | Year 1 Points |
+|---|---:|
+| **Passing** | |
+| Passing yards | **1 point per 20 yards** |
+| Passing touchdown | **4** |
+| Interception thrown | **-1** |
+| 2-point passing conversion | **2** |
+| **Rushing / Receiving** | |
+| Rushing yards | **1 point per 10 yards** |
+| Receiving yards | **1 point per 10 yards** |
+| Reception | **0.5** |
+| Rushing touchdown | **6** |
+| Receiving touchdown | **6** |
+| 2-point rushing conversion | **2** |
+| 2-point receiving conversion | **2** |
+| Fumble lost | **-2** |
+| **Kicking** | |
+| PAT made | **1** |
+| Field goal, 0–39 yards | **3** |
+| Field goal, 40–49 yards | **4** |
+| Field goal, 50+ yards | **5** |
+| Missed field goal | **0** |
+| Missed PAT | **0** |
+| **Defense / Special Teams** | |
+| Sack | **1** |
+| Interception | **2** |
+| Fumble recovery | **2** |
+| Safety | **2** |
+| Blocked kick or punt | **2** |
+| Defensive touchdown | **6** |
+| Kick/punt return touchdown | **6** |
+| Defensive 2-point return | **2** |
+| 0 points allowed | **10** |
+| 1–6 points allowed | **7** |
+| 7–13 points allowed | **4** |
+| 14–20 points allowed | **1** |
+| 21–27 points allowed | **0** |
+| 28–34 points allowed | **-1** |
+| 35+ points allowed | **-4** |
+
+There are **no 100-yard rushing/receiving bonuses and no 300-yard passing bonuses** in Year 1. The scoring system rewards the underlying production directly rather than adding threshold bonuses.
+
+The **1 point per 20 passing yards** rule is intentional. It gives passing yardage somewhat greater weight than common 1-per-25 formats while retaining the conventional 4-point passing touchdown. This is part of the Year 1 experiment and should not be silently normalized to another platform's default scoring.
+
+The **35+ points allowed = -4** DEF tier is also intentional. A severely outscored defense must be capable of materially hurting a lineup, preserving meaningful defensive matchup and selection decisions.
+
+### Year 1 Constitution Freeze
+
+The competition format, lineup configuration, player-pool rules, FLEX eligibility, scoring table, draft-order method, and founding research methodology above are the **frozen Year 1 constitution**.
+
+Once Challenge Week 1 begins, the founding methodology is not casually rewritten. Weekly records, decision evidence, outcomes, learning cases, and scoreboard results are appended as the season progresses.
+
+A correction or amendment may be made only when Pat and Grasshopper explicitly agree that one is required. Every amendment must be documented in this file with:
+
+- the exact rule or methodology changed;
+- the effective challenge week;
+- the reason for the change; and
+- confirmation that historical records remain preserved rather than rewritten.
+
+An amendment must never be applied retroactively merely because later outcomes make a different rule or methodology look preferable.
 
 ---
 
@@ -59,11 +136,11 @@ Once established for Year 1, those rules should remain stable unless both compet
 
 For every week:
 
-- A common eligible player pool is established before drafting begins.
+- A common eligible NFL player pool is established before drafting begins.
 - The competitor holding the 1.01 makes the first selection.
-- Selections then proceed in snake order until both starting lineups are complete.
+- Selections then proceed in snake order until both 10-player starting lineups are complete.
 - A drafted player is removed from the shared pool and cannot be selected by the opponent.
-- The 1.01 alternates each week.
+- Grasshopper owns the Challenge Week 1 1.01; the 1.01 alternates every challenge week thereafter.
 - Every selection is recorded in sequence.
 - Reasoning is captured at decision time, before game outcomes are known.
 
@@ -231,27 +308,27 @@ Learning cases are research inputs, not automatic rule changes.
 
 ## 12. Season Scoreboard
 
-The competitive winner of Year 1 is determined by the agreed weekly scoring format across the 15-week challenge.
+The competitive winner of Year 1 is determined by the frozen Year 1 scoring constitution across the 15-week challenge.
 
 The scoreboard should remain simple and visible:
 
-| Week | 1.01 | Pat Score | Grasshopper Score | Winner | Season Record |
-|---|---|---:|---:|---|---|
-| 1 | TBD | — | — | — | 0-0 |
-| 2 | TBD | — | — | — | — |
-| 3 | TBD | — | — | — | — |
-| 4 | TBD | — | — | — | — |
-| 5 | TBD | — | — | — | — |
-| 6 | TBD | — | — | — | — |
-| 7 | TBD | — | — | — | — |
-| 8 | TBD | — | — | — | — |
-| 9 | TBD | — | — | — | — |
-| 10 | TBD | — | — | — | — |
-| 11 | TBD | — | — | — | — |
-| 12 | TBD | — | — | — | — |
-| 13 | TBD | — | — | — | — |
-| 14 | TBD | — | — | — | — |
-| 15 | TBD | — | — | — | — |
+| Challenge Week | NFL Week | 1.01 | Pat Score | Grasshopper Score | Winner | Season Record |
+|---|---:|---|---:|---:|---|---|
+| 1 | 2 | Grasshopper | — | — | — | 0-0 |
+| 2 | 3 | Pat | — | — | — | — |
+| 3 | 4 | Grasshopper | — | — | — | — |
+| 4 | 5 | Pat | — | — | — | — |
+| 5 | 6 | Grasshopper | — | — | — | — |
+| 6 | 7 | Pat | — | — | — | — |
+| 7 | 8 | Grasshopper | — | — | — | — |
+| 8 | 9 | Pat | — | — | — | — |
+| 9 | 10 | Grasshopper | — | — | — | — |
+| 10 | 11 | Pat | — | — | — | — |
+| 11 | 12 | Grasshopper | — | — | — | — |
+| 12 | 13 | Pat | — | — | — | — |
+| 13 | 14 | Grasshopper | — | — | — | — |
+| 14 | 15 | Pat | — | — | — | — |
+| 15 | 16 | Grasshopper | — | — | — | — |
 
 The scoreboard determines the winner of the challenge. It does not, by itself, determine whose decision philosophy was superior.
 
@@ -261,11 +338,11 @@ The scoreboard determines the winner of the challenge. It does not, by itself, d
 
 The following ledger is the permanent historical record of the inaugural season. It should be populated as the challenge progresses rather than reconstructed from memory after the season.
 
-| Week | Pick | Competitor | Player | Pos | Primary Reason | Secondary Reason | Best Alternative | Pregame Rationale | FPts | Decision Quality | SAGE Case |
-|---|---:|---|---|---|---|---|---|---|---:|---|---|
-| 1 | — | — | — | — | — | — | — | — | — | — | — |
+| Challenge Week | NFL Week | Pick | Competitor | Player | Pos | Primary Reason | Secondary Reason | Best Alternative | Pregame Rationale | FPts | Decision Quality | SAGE Case |
+|---|---:|---:|---|---|---|---|---|---|---|---:|---|---|
+| 1 | 2 | — | — | — | — | — | — | — | — | — | — | — |
 
-Additional rows should be added for every selection through Week 15.
+Additional rows should be added for every selection through Challenge Week 15.
 
 ---
 
@@ -306,7 +383,15 @@ The challenge should never be used to claim that a fantasy-football pattern auto
 
 ---
 
-## 16. Memorial Kickoff
+## 16. Amendments
+
+The frozen Year 1 constitution may be amended only under the process defined in Section 2. Amendments are appended here; they do not erase the founding specification or rewrite prior weekly evidence.
+
+**Founding freeze:** Before Challenge Week 1 — Year 1 competition format, lineup configuration, scoring system, shared-player-pool rules, draft-order method, and research methodology established and frozen. No amendments pending.
+
+---
+
+## 17. Memorial Kickoff
 
 This document is both the **constitution** and the **historical record** of the inaugural Pat vs. Grasshopper SAGE Challenge.
 
@@ -320,4 +405,4 @@ And to the rule that protects everything that follows:
 
 ---
 
-**Year 1 Status:** Memorial Kickoff Season — Challenge established; Week 1 pending.
+**Year 1 Status: Memorial Kickoff Season — Challenge established; Week 1 pending.**
