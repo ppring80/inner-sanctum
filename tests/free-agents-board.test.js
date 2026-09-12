@@ -167,14 +167,21 @@ function player({ name, position, team, verdict, sagePositionRank, projectedPoin
   };
 }
 
+// Ordered exactly as the real backend (waiver-recommendations.js
+// buildCustomerRecommendations/bestForMeCompare) now delivers "Best For
+// Me": ADD_NOW, STASH, WATCH, PASS. free-agents.html's own 'best' sort
+// is a stable pass-through of whatever order the server computed (see
+// tests/free-agents-ranking.test.js for the ranking logic itself), so
+// this fixture reflects a realistic already-ranked payload rather than
+// an arbitrary input order.
 const samplePlayers = [
-  player({ name: 'Watch WR', position: 'WR', team: 'NE', verdict: 'WATCH', sagePositionRank: 30, projectedPoints: 8.1, trendDirection: 'RISER' }),
   player({
     name: 'Add Now RB', position: 'RB', team: 'KC', verdict: 'ADD_NOW', sagePositionRank: 18, projectedPoints: 12.4, trendDirection: 'RISER',
     reasons: ['Lead back after starter injury', 'Volume trending up three straight weeks'],
     swapFor: { name: 'Bench RB', position: 'RB', sage: { position: 'RB', positionRank: 34 } },
   }),
   player({ name: 'Stash QB', position: 'QB', team: 'BUF', verdict: 'STASH', sagePositionRank: 22, projectedPoints: 15.2, trendDirection: null }),
+  player({ name: 'Watch WR', position: 'WR', team: 'NE', verdict: 'WATCH', sagePositionRank: 30, projectedPoints: 8.1, trendDirection: 'RISER' }),
   player({ name: 'Pass TE', position: 'TE', team: 'SF', verdict: 'PASS', sagePositionRank: 40, projectedPoints: 4.0, trendDirection: 'FALLER' }),
 ];
 
@@ -198,7 +205,7 @@ const samplePayload = {
     assert.strictEqual(rowCount, samplePlayers.length, 'exactly one clickable player row per recommendation, no duplicates/drops');
   });
 
-  await asyncTest('Best For Me (verdict priority) is the default board order', async () => {
+  await asyncTest('Best For Me preserves the server-computed roster-impact order (ADD_NOW, STASH, WATCH, PASS)', async () => {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     await flush();
