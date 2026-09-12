@@ -18,11 +18,19 @@ assert.match(cbsWorker, /VERSION 0\.1\.1/);
 assert.match(cbsWorker, /const CBS_ENTRY_URL/);
 assert.match(cbsWorker, /const CBS_PENDING_KEY/);
 assert.match(cbsWorker, /const CBS_CONNECT_TIMEOUT_MS/);
+assert.match(cbsWorker, /CBS_CAPTURE_RETRY_MS\s*=\s*1000/);
+assert.match(cbsWorker, /CBS_CAPTURE_RETRY_LIMIT\s*=\s*12/);
 assert.match(cbsWorker, /const cbsCaptureInFlight/);
 assert.match(cbsWorker, /async function openCbsAndWait/);
 assert.match(cbsWorker, /async function sendCbsCaptureRequest/);
+assert.match(cbsWorker, /async function retryPendingCbsCapture/);
+assert.match(cbsWorker, /cbsCaptureInFlight\.has\(\s*flightKey/);
+assert.match(cbsWorker, /cbsCaptureInFlight\.add\(\s*flightKey/);
+assert.match(cbsWorker, /finally\s*{\s*cbsCaptureInFlight\.delete\(\s*flightKey/);
 assert.match(cbsWorker, /chrome\.tabs\.onUpdated\.addListener/);
 assert.match(cbsWorker, /pending\.providerTabId !== tabId/);
+assert.match(cbsWorker, /await retryPendingCbsCapture\(\s*tabId,\s*pending\.sanctumTabId/);
+assert.match(cbsWorker, /void retryPendingCbsCapture\(\s*cbsTab\.id,\s*sanctumTab\.id/);
 assert.match(cbsWorker, /chrome\.tabs\.update\(\s*pending\.sanctumTabId/);
 
 // ESPN pending-capture invariants proven in live acceptance.
