@@ -100,25 +100,33 @@ async function captureEspnFromLeagueTab(espnTab, sanctumTabId) {
 }
 
 async function retryPendingEspnCapture(tabId, sanctumTabId) {
-  for (let attempt = 1; attempt <= ESPN_V050_CAPTURE_RETRY_LIMIT; attempt += 1) {
-    const pending = await getPendingEspn();
-    if (!pending || pending.providerTabId !== tabId || pending.sanctumTabId !== sanctumTabId) return false;
-    if (Date.now() - Number(pending.startedAt || 0) > ESPN_V050_CONNECT_TIMEOUT_MS) return false;
-    try {
-      const liveTab = await extensionApi.tabs.get(tabId);
-      await captureEspnFromLeagueTab(liveTab, sanctumTabId);
-      await clearPendingEspn();
-      try { await extensionApi.tabs.update(sanctumTabId, { active: true }); } catch (err) {}
-      return true;
-    } catch (err) {
-      if (attempt >= ESPN_V050_CAPTURE_RETRY_LIMIT) {
-        console.warn("ESPN capture remained unavailable after bounded retries:", err?.message || err);
-        return false;
+  const flightKey = String(tabId);
+  if (espnCaptureInFlight.has(flightKey)) return false;
+  espnCaptureInFlight.add(flightKey);
+
+  try {
+    for (let attempt = 1; attempt <= ESPN_V050_CAPTURE_RETRY_LIMIT; attempt += 1) {
+      const pending = await getPendingEspn();
+      if (!pending || pending.providerTabId !== tabId || pending.sanctumTabId !== sanctumTabId) return false;
+      if (Date.now() - Number(pending.startedAt || 0) > ESPN_V050_CONNECT_TIMEOUT_MS) return false;
+      try {
+        const liveTab = await extensionApi.tabs.get(tabId);
+        await captureEspnFromLeagueTab(liveTab, sanctumTabId);
+        await clearPendingEspn();
+        try { await extensionApi.tabs.update(sanctumTabId, { active: true }); } catch (err) {}
+        return true;
+      } catch (err) {
+        if (attempt >= ESPN_V050_CAPTURE_RETRY_LIMIT) {
+          console.warn("ESPN capture remained unavailable after bounded retries:", err?.message || err);
+          return false;
+        }
+        await new Promise(function (resolve) { setTimeout(resolve, ESPN_V050_CAPTURE_RETRY_MS); });
       }
-      await new Promise(function (resolve) { setTimeout(resolve, ESPN_V050_CAPTURE_RETRY_MS); });
     }
+    return false;
+  } finally {
+    espnCaptureInFlight.delete(flightKey);
   }
-  return false;
 }
 
 async function findOpenEspnLeagueTab() {
@@ -172,12 +180,5 @@ extensionApi.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) 
   try { hasLeagueId = Boolean(new URL(currentUrl).searchParams.get("leagueId")); } catch (err) {}
   if (!hasLeagueId) return;
   if (pending.providerTabId !== tabId) await setPendingEspn({ ...pending, providerTabId: tabId });
-  const flightKey = String(tabId);
-  if (espnCaptureInFlight.has(flightKey)) return;
-  espnCaptureInFlight.add(flightKey);
-  try {
-    await retryPendingEspnCapture(tabId, pending.sanctumTabId);
-  } finally {
-    espnCaptureInFlight.delete(flightKey);
-  }
+  await retryPendingEspnCapture(tabId, pending.sanctumTabId);
 });
