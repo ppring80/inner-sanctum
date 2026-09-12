@@ -12,6 +12,7 @@
   const REQUEST = "INNER_SANCTUM_ESPN_MAIN_CAPTURE_REQUEST";
   const RESPONSE = "INNER_SANCTUM_ESPN_MAIN_CAPTURE_RESPONSE";
   const ESPN_BASE_URL = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons";
+  const AVAILABLE_PLAYER_LIMIT = 1000;
 
   // ESPN player.defaultPositionId values. These are NOT lineup-slot IDs.
   const ESPN_DEFAULT_POSITION_BY_ID = {
@@ -215,6 +216,130 @@
     };
   }
 
+  function numberOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeAvailabilityStatus(value) {
+    const status = String(value || "").trim().toUpperCase();
+    if (status === "WAIVERS") return "WAIVERS";
+    if (status === "FREEAGENT" || status === "FREE_AGENT") return "FREE_AGENT";
+    return status || null;
+  }
+
+  function currentScoringPeriod(leagueData) {
+    const candidates = [
+      leagueData?.scoringPeriodId,
+      leagueData?.status?.currentScoringPeriod,
+      leagueData?.status?.currentMatchupPeriod,
+      leagueData?.status?.latestScoringPeriod
+    ];
+    for (const candidate of candidates) {
+      const value = Number(candidate);
+      if (Number.isInteger(value) && value >= 1 && value <= 18) return value;
+    }
+    return 1;
+  }
+
+  function projectedPoints(player, scoringPeriodId) {
+    const direct = [player?.projectedPoints, player?.projected, player?.projectedScore];
+    for (const value of direct) {
+      const n = numberOrNull(value);
+      if (n !== null) return n;
+    }
+
+    const stats = Array.isArray(player?.stats) ? player.stats : [];
+    const projection = stats.find(function (stat) {
+      return Number(stat?.scoringPeriodId) === Number(scoringPeriodId) &&
+        Number(stat?.statSourceId) === 1 &&
+        numberOrNull(stat?.appliedTotal) !== null;
+    });
+    return projection ? numberOrNull(projection.appliedTotal) : null;
+  }
+
+  function normalizeAvailablePlayers(rawData, scoringPeriodId) {
+    const rows = Array.isArray(rawData?.players) ? rawData.players : [];
+    const normalized = [];
+    const seen = new Set();
+
+    rows.forEach(function (entry) {
+      const player = entry?.player && typeof entry.player === "object" ? entry.player : entry;
+      const playerId = player?.id ?? entry?.id ?? null;
+      const name = String(player?.fullName || player?.name || "").trim();
+      if (!name) return;
+
+      const key = playerId !== null && playerId !== undefined ? String(playerId) : name.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const defaultPositionId = numberOrNull(player?.defaultPositionId);
+      const proTeamId = numberOrNull(player?.proTeamId);
+      const rawStatus = entry?.status ?? player?.status ?? null;
+
+      normalized.push({
+        providerPlayerId: playerId !== null && playerId !== undefined ? String(playerId) : null,
+        name,
+        position: defaultPositionId !== null ? ESPN_DEFAULT_POSITION_BY_ID[defaultPositionId] || null : null,
+        nflTeam: proTeamId !== null ? NFL_TEAM_BY_ID[proTeamId] || null : null,
+        availabilityStatus: normalizeAvailabilityStatus(rawStatus),
+        percentOwned: numberOrNull(entry?.percentOwned ?? player?.percentOwned ?? player?.ownership?.percentOwned),
+        percentStarted: numberOrNull(entry?.percentStarted ?? player?.percentStarted ?? player?.ownership?.percentStarted),
+        projectedPoints: projectedPoints(player, scoringPeriodId),
+        scoringPeriodId
+      });
+    });
+
+    return normalized;
+  }
+
+  async function fetchAvailablePlayers(leagueId, season, scoringPeriodId) {
+    const url = ESPN_BASE_URL + "/" + encodeURIComponent(season) +
+      "/segments/0/leagues/" + encodeURIComponent(leagueId) +
+      "?view=kona_player_info&scoringPeriodId=" + encodeURIComponent(scoringPeriodId);
+
+    const fantasyFilter = {
+      players: {
+        filterStatus: { value: ["FREEAGENT", "WAIVERS"] },
+        filterSlotIds: { value: [] },
+        limit: AVAILABLE_PLAYER_LIMIT,
+        sortPercOwned: { sortPriority: 1, sortAsc: false },
+        sortDraftRanks: { sortPriority: 100, sortAsc: true, value: "STANDARD" }
+      }
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "x-fantasy-filter": JSON.stringify(fantasyFilter)
+        }
+      });
+
+      if (!response.ok) {
+        return {
+          players: [],
+          meta: { complete: false, status: response.status, reason: "espn_availability_http_error" }
+        };
+      }
+
+      const data = await response.json();
+      const players = normalizeAvailablePlayers(data, scoringPeriodId);
+      return {
+        players,
+        meta: { complete: true, count: players.length, scoringPeriodId }
+      };
+    } catch (err) {
+      return {
+        players: [],
+        meta: { complete: false, reason: "espn_availability_capture_failed", error: safeError(err) }
+      };
+    }
+  }
+
   async function fetchLeague() {
     const leagueId = getLeagueId();
     if (!leagueId) {
@@ -257,6 +382,8 @@
       throw new Error("Your ESPN team was found, but the roster is not ready yet.");
     }
 
+    const scoringPeriodId = currentScoringPeriod(leagueData);
+    const availability = await fetchAvailablePlayers(leagueId, season, scoringPeriodId);
     const overall = myTeam?.record?.overall || {};
 
     return {
@@ -264,7 +391,8 @@
         id: String(leagueData?.id || leagueId),
         name: String(leagueData?.settings?.name || leagueData?.name || "ESPN League"),
         season: season,
-        teamCount: Number(leagueData?.settings?.size || leagueData?.teams?.length || 0) || null
+        teamCount: Number(leagueData?.settings?.size || leagueData?.teams?.length || 0) || null,
+        availablePlayers: availability.players
       },
       team: {
         id: String(myTeam.id),
@@ -275,6 +403,8 @@
         rank: myTeam?.rank ?? myTeam?.playoffSeed ?? null
       },
       roster: roster,
+      availablePlayers: availability.players,
+      availabilityMeta: availability.meta,
       standings: normalizeStandings(leagueData),
       schedule: normalizeSchedule(leagueData),
       matchup: normalizeMatchup(leagueData, myTeam),
@@ -290,7 +420,8 @@
         readOnly: true,
         capturedAt: new Date().toISOString(),
         dataQuality: {
-          complete: Boolean(leagueId && myTeam?.id && roster.length)
+          complete: Boolean(leagueId && myTeam?.id && roster.length),
+          availablePlayerCount: availability.players.length
         }
       }
     };
