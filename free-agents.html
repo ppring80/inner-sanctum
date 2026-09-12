@@ -89,7 +89,16 @@ function trend(item){return item?.decision?.evidence?.trend||item?.evidence?.tre
 function numberText(v,d){var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?1:d):'—'}
 function positionMatch(item){var p=String(item.position||'').toUpperCase();if(boardPosition==='ALL')return true;if(boardPosition==='FLEX')return ['RB','WR','TE'].includes(p);if(boardPosition==='DEF')return p==='DEF'||p==='DST';return p===boardPosition}
 function bestPriority(v){return {ADD_NOW:0,STASH:1,WATCH:2,REVIEW:3,PASS:4}[v]??9}
-function sortRows(rows){return rows.slice().sort(function(a,b){if(boardSort==='sage'){var ar=Number(sage(a)?.positionRank)||9999,br=Number(sage(b)?.positionRank)||9999;return ar-br||bestPriority(a.verdict)-bestPriority(b.verdict)}if(boardSort==='projection'){return (Number(b.providerProjectedPoints)||-999)-(Number(a.providerProjectedPoints)||-999)}if(boardSort==='trend'){var tp={RISER:0,FALLER:2};return (tp[trend(a)?.direction]??1)-(tp[trend(b)?.direction]??1)||bestPriority(a.verdict)-bestPriority(b.verdict)}if(boardSort==='rostered'){return (Number(b.percentOwned)||-1)-(Number(a.percentOwned)||-1)}return bestPriority(a.verdict)-bestPriority(b.verdict)||(Number(sage(a)?.positionRank)||9999)-(Number(sage(b)?.positionRank)||9999)||String(a.name||'').localeCompare(String(b.name||''))})}
+function sortRows(rows){return rows.slice().sort(function(a,b){if(boardSort==='sage'){var ar=Number(sage(a)?.positionRank)||9999,br=Number(sage(b)?.positionRank)||9999;return ar-br||bestPriority(a.verdict)-bestPriority(b.verdict)}if(boardSort==='projection'){return (Number(b.providerProjectedPoints)||-999)-(Number(a.providerProjectedPoints)||-999)}if(boardSort==='trend'){var tp={RISER:0,FALLER:2};return (tp[trend(a)?.direction]??1)-(tp[trend(b)?.direction]??1)||bestPriority(a.verdict)-bestPriority(b.verdict)}if(boardSort==='rostered'){return (Number(b.percentOwned)||-1)-(Number(a.percentOwned)||-1)}
+/* 'best' (default): preserve the order Inner Sanctum's own Free Agents
+   ranking already computed server-side (netlify/functions/waiver-
+   recommendations.js buildCustomerRecommendations/bestForMeCompare).
+   Array#sort is stable (ECMAScript 2019+), so a comparator that always
+   returns 0 keeps the incoming order exactly -- including after
+   positionMatch() filtering, since Array#filter also preserves relative
+   order. This avoids a second, independently-drifting "best" ranking
+   living in the client. */
+return 0})}
 function setPositionFilter(p){boardPosition=p;document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.toggle('active',b.dataset.position===p)});renderDecisionBoard()}
 function setBoardSort(v){boardSort=v;renderDecisionBoard()}
 function toggleDetail(id){var el=document.getElementById('detail-'+id);if(el)el.classList.toggle('open')}
