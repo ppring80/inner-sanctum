@@ -1,0 +1,38 @@
+name: Free Agents one-time verification
+
+on:
+  push:
+    branches:
+      - free-agents-extraction
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: free-agents-extraction
+          fetch-depth: 0
+
+      - name: Run focused regression tests
+        run: |
+          node tests/free-agents-board.test.js
+          node tests/dispatches-no-available-for-you.test.js
+          git diff main...HEAD --check
+
+      - name: Verify locked paths unchanged
+        run: |
+          test -z "$(git diff --name-only main...HEAD -- netlify/functions/waiver-recommendations.js netlify/functions/waiver-candidates.js netlify/functions/waiver-decision.js cbs-extension league-connection.js player-identity.js team-context.js)"
+          test "$(git diff --numstat main...HEAD -- weekly.html | awk '{print $1+$2}')" = "1"
+
+      - name: Remove one-time workflow
+        run: |
+          rm -f .github/workflows/free-agents-verify-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/free-agents-verify-once.yml
+          git commit -m "Remove one-time Free Agents verification workflow"
+          git push origin HEAD:free-agents-extraction
