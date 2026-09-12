@@ -11,7 +11,10 @@
   }
 
   function positionTeam(text) {
-    const m = clean(text).toUpperCase().match(/\b(QB|RB|WR|TE|PK|K|DST|DEF)\s*[-•·]?\s*([A-Z]{2,3})\b/);
+    // Require an actual separator between position and NFL team. The former
+    // optional separator allowed names beginning with position letters (for
+    // example KIRK -> K + IR) to be misread as player identity.
+    const m = clean(text).toUpperCase().match(/\b(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)([A-Z]{2,3})\b/);
     if (!m) return null;
     const position = m[1] === "DEF" ? "DST" : (m[1] === "PK" ? "K" : m[1]);
     return { position, nflTeam: m[2] };
@@ -40,7 +43,7 @@
       const playerCell = typeof link.closest === "function" ? link.closest("td") : null;
       const identityText = playerCell?.textContent || link.textContent;
       const pt = positionTeam(identityText);
-      let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|PK|K|DST|DEF)\s*[-•·]?\s*[A-Z]{2,3}\s*$/i, "");
+      let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)[A-Z]{2,3}\s*$/i, "");
       if (!id || !name || !pt || seen.has(id)) return;
       seen.add(id);
 
