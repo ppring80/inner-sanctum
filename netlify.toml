@@ -307,3 +307,11 @@
   for = "/dispatches"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
+# Free Agents (extracted from Dispatches' former Available For You tab)
+# fetches live waiver-recommendations data on every load, same reasoning
+# as /dispatches and /compare above.
+[[headers]]
+  for = "/free-agents"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"

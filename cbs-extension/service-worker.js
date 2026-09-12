@@ -2,7 +2,7 @@
   THE INNER SANCTUM — CBS CONNECT
   Chrome Extension Service Worker
 
-  VERSION 0.1.0
+  VERSION 0.1.1
 
   RESPONSIBILITY
   ------------------------------------------------
@@ -40,15 +40,58 @@
 const CBS_URL_PATTERN =
   /^https:\/\/[^.]+\.football\.cbssports\.com\//i;
 
+const CBS_ENTRY_URL =
+  "https://www.cbssports.com/fantasy/football/";
+
 const SANCTUM_URL_PATTERN =
   /^https:\/\/(?:www\.)?theinnersanctum\.xyz\/connect-league/i;
 
+const CBS_PENDING_KEY =
+  "pendingCbsConnect";
+
+const CBS_CONNECT_TIMEOUT_MS =
+  10 * 60 * 1000;
+
+const CBS_CAPTURE_RETRY_MS =
+  1000;
+
+const CBS_CAPTURE_RETRY_LIMIT =
+  12;
+
+const cbsCaptureInFlight =
+  new Set();
+
+function sleep(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function getPendingCbs() {
+  const result =
+    await chrome.storage.session.get(
+      CBS_PENDING_KEY
+    );
+
+  return result?.[CBS_PENDING_KEY] || null;
+}
+
+async function setPendingCbs(value) {
+  await chrome.storage.session.set({
+    [CBS_PENDING_KEY]: value
+  });
+}
+
+async function clearPendingCbs() {
+  await chrome.storage.session.remove(
+    CBS_PENDING_KEY
+  );
+}
 
 /*
   Find an open CBS Fantasy league tab.
 
-  For Phase 1:
-  if multiple CBS tabs exist, prefer the active one.
+  If multiple CBS tabs exist, prefer the active one.
 */
 
 async function findCbsTab() {
@@ -75,14 +118,9 @@ async function findCbsTab() {
   return active || cbsTabs[0];
 }
 
-
 /*
   Send sanitized captured data directly into the
   MAIN world of the Inner Sanctum connection page.
-
-  This calls the receiver we already built:
-
-      window.receiveCbsConnection(captured)
 */
 
 async function deliverToSanctum(
@@ -120,14 +158,9 @@ async function deliverToSanctum(
   return results;
 }
 
-
-/*
-  Update the consumer connection page with a visible
-  error without requiring any manual debugging.
-*/
-
-async function showSanctumError(
+async function showSanctumStatus(
   sanctumTabId,
+  type,
   message
 ) {
   try {
@@ -138,7 +171,10 @@ async function showSanctumError(
 
       world: "MAIN",
 
-      func: function (errorMessage) {
+      func: function (
+        statusType,
+        statusMessage
+      ) {
         const box =
           document.getElementById(
             "cbsResult"
@@ -149,74 +185,97 @@ async function showSanctumError(
         }
 
         box.className =
-          "result-box error show";
+          "result-box " +
+          statusType +
+          " show";
 
         box.textContent =
-          "⚠️ " +
-          errorMessage;
+          statusMessage;
       },
 
       args: [
-        String(
-          message ||
-          "CBS connection failed."
-        )
+        String(type || "loading"),
+        String(message || "")
       ]
     });
   } catch (err) {
     console.error(
-      "Could not display CBS connection error.",
+      "Could not display CBS connection status.",
       err
     );
   }
 }
 
-
-/*
-  CBS capture request.
-
-  Triggered by the Inner Sanctum content bridge.
-*/
-
-async function handleCbsConnect(
-  message,
-  sender
+async function showSanctumError(
+  sanctumTabId,
+  message
 ) {
-  const sanctumTab =
-    sender.tab;
+  return showSanctumStatus(
+    sanctumTabId,
+    "error",
+    "⚠️ " +
+      String(
+        message ||
+        "CBS connection failed."
+      )
+  );
+}
 
-  if (
-    !sanctumTab ||
-    !SANCTUM_URL_PATTERN.test(
-      sanctumTab.url || ""
-    )
-  ) {
-    throw new Error(
-      "CBS connection request did not originate from The Inner Sanctum."
-    );
-  }
+async function sendCbsCaptureRequest(
+  tabId,
+  attempt
+) {
+  const n = attempt || 1;
 
-  const cbsTab =
-    await findCbsTab();
-
-  if (!cbsTab) {
-    throw new Error(
-      "No open CBS Fantasy league was found. Open your CBS fantasy league and make sure you are signed in, then try again."
-    );
-  }
-
-  /*
-    Tell the CBS isolated bridge to request a capture
-    from the MAIN-world CBS connector.
-  */
-
-  const response =
-    await chrome.tabs.sendMessage(
-      cbsTab.id,
+  try {
+    return await chrome.tabs.sendMessage(
+      tabId,
       {
         type:
           "INNER_SANCTUM_CBS_CAPTURE"
       }
+    );
+  } catch (err) {
+    if (n >= 3) {
+      throw new Error(
+        "The CBS page connector is not ready yet."
+      );
+    }
+
+    await sleep(750);
+
+    return sendCbsCaptureRequest(
+      tabId,
+      n + 1
+    );
+  }
+}
+
+async function captureCbsFromLeagueTab(
+  cbsTab,
+  sanctumTabId
+) {
+  if (
+    !cbsTab?.id ||
+    !CBS_URL_PATTERN.test(
+      cbsTab.url || ""
+    )
+  ) {
+    throw new Error(
+      "CBS has not reached a fantasy league page yet."
+    );
+  }
+
+  await showSanctumStatus(
+    sanctumTabId,
+    "loading",
+    "🔵 CBS league detected. Syncing league, roster, standings, schedule and scoring..."
+  );
+
+  const response =
+    await sendCbsCaptureRequest(
+      cbsTab.id,
+      1
     );
 
   if (
@@ -250,13 +309,6 @@ async function handleCbsConnect(
     );
   }
 
-  /*
-    Additional quality guard.
-
-    The consumer should not be connected to malformed
-    CBS data even if a page layout changes.
-  */
-
   if (
     captured.meta?.dataQuality &&
     captured.meta.dataQuality.complete === false
@@ -267,7 +319,7 @@ async function handleCbsConnect(
   }
 
   await deliverToSanctum(
-    sanctumTab.id,
+    sanctumTabId,
     captured
   );
 
@@ -284,6 +336,225 @@ async function handleCbsConnect(
   };
 }
 
+/*
+  Bounded, in-process retry for a tracked CBS tab that has already
+  reached a league URL but whose first capture attempt failed because
+  CBSBrowserConnector.captureAll() was not yet ready (the CBS page's own
+  league/roster data can still be loading even after the browser
+  considers navigation "complete"). Mirrors the proven ESPN
+  retryPendingEspnCapture pattern in service-worker-v050.js so a stuck
+  pending connection can resolve without depending on a second
+  chrome.tabs.onUpdated event that may never fire once the tab is idle.
+*/
+
+async function retryPendingCbsCapture(
+  tabId,
+  sanctumTabId,
+  initialTab
+) {
+  const flightKey =
+    String(tabId);
+
+  if (
+    cbsCaptureInFlight.has(
+      flightKey
+    )
+  ) {
+    return false;
+  }
+
+  cbsCaptureInFlight.add(
+    flightKey
+  );
+
+  try {
+    for (
+      let attempt = 1;
+      attempt <= CBS_CAPTURE_RETRY_LIMIT;
+      attempt += 1
+    ) {
+      const pending =
+        await getPendingCbs();
+
+      if (
+        !pending ||
+        pending.providerTabId !== tabId ||
+        pending.sanctumTabId !== sanctumTabId
+      ) {
+        return false;
+      }
+
+      if (
+        Date.now() -
+          Number(
+            pending.startedAt || 0
+          ) >
+        CBS_CONNECT_TIMEOUT_MS
+      ) {
+        return false;
+      }
+
+      try {
+        const liveTab =
+          attempt === 1 &&
+          initialTab?.id
+            ? initialTab
+            : await chrome.tabs.get(
+                tabId
+              );
+
+        await captureCbsFromLeagueTab(
+          liveTab,
+          sanctumTabId
+        );
+
+        await clearPendingCbs();
+
+        try {
+          await chrome.tabs.update(
+            pending.sanctumTabId,
+            { active: true }
+          );
+        } catch (focusErr) {
+        }
+
+        return true;
+      } catch (err) {
+        if (
+          attempt >= CBS_CAPTURE_RETRY_LIMIT
+        ) {
+          console.warn(
+            "CBS capture remained unavailable after bounded retries:",
+            err?.message || err
+          );
+
+          return false;
+        }
+
+        await sleep(
+          CBS_CAPTURE_RETRY_MS
+        );
+      }
+    }
+
+    return false;
+  } finally {
+    cbsCaptureInFlight.delete(
+      flightKey
+    );
+  }
+}
+
+async function openCbsAndWait(
+  sanctumTabId
+) {
+  const tab =
+    await chrome.tabs.create({
+      url: CBS_ENTRY_URL,
+      active: true
+    });
+
+  if (!tab?.id) {
+    throw new Error(
+      "CBS could not be opened."
+    );
+  }
+
+  await setPendingCbs({
+    sanctumTabId,
+    providerTabId: tab.id,
+    startedAt: Date.now()
+  });
+
+  await showSanctumStatus(
+    sanctumTabId,
+    "loading",
+    "🔵 CBS opened. Sign in normally and open the league you want to connect — Inner Sanctum will detect it automatically."
+  );
+
+  return {
+    success: true,
+    pending: true
+  };
+}
+
+/*
+  CBS capture request.
+
+  Triggered by the Inner Sanctum content bridge.
+*/
+
+async function handleCbsConnect(
+  message,
+  sender
+) {
+  const sanctumTab =
+    sender.tab;
+
+  if (
+    !sanctumTab ||
+    !SANCTUM_URL_PATTERN.test(
+      sanctumTab.url || ""
+    )
+  ) {
+    throw new Error(
+      "CBS connection request did not originate from The Inner Sanctum."
+    );
+  }
+
+  const cbsTab =
+    await findCbsTab();
+
+  if (!cbsTab) {
+    return openCbsAndWait(
+      sanctumTab.id
+    );
+  }
+
+  try {
+    return await captureCbsFromLeagueTab(
+      cbsTab,
+      sanctumTab.id
+    );
+  } catch (err) {
+    await setPendingCbs({
+      sanctumTabId: sanctumTab.id,
+      providerTabId: cbsTab.id,
+      startedAt: Date.now()
+    });
+
+    try {
+      await chrome.tabs.update(
+        cbsTab.id,
+        { active: true }
+      );
+    } catch (focusErr) {
+    }
+
+    await showSanctumStatus(
+      sanctumTab.id,
+      "loading",
+      "🔵 CBS is open. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
+    );
+
+    if (
+      CBS_URL_PATTERN.test(
+        cbsTab.url || ""
+      )
+    ) {
+      void retryPendingCbsCapture(
+        cbsTab.id,
+        sanctumTab.id,
+        cbsTab
+      );
+    }
+
+    return {
+      success: true,
+      pending: true
+    };
+  }
+}
 
 /*
   Message router.
@@ -333,5 +604,60 @@ chrome.runtime.onMessage.addListener(
       });
 
     return true;
+  }
+);
+
+chrome.tabs.onUpdated.addListener(
+  async function (
+    tabId,
+    changeInfo,
+    tab
+  ) {
+    const pending =
+      await getPendingCbs();
+
+    if (!pending) {
+      return;
+    }
+
+    if (
+      Date.now() -
+        Number(
+          pending.startedAt || 0
+        ) >
+      CBS_CONNECT_TIMEOUT_MS
+    ) {
+      await clearPendingCbs();
+      await showSanctumError(
+        pending.sanctumTabId,
+        "CBS sign-in timed out. Click Connect CBS League and try again."
+      );
+      return;
+    }
+
+    if (
+      pending.providerTabId !== tabId
+    ) {
+      return;
+    }
+
+    const currentUrl =
+      tab?.url ||
+      changeInfo.url ||
+      "";
+
+    if (
+      !CBS_URL_PATTERN.test(
+        currentUrl
+      )
+    ) {
+      return;
+    }
+
+    await retryPendingCbsCapture(
+      tabId,
+      pending.sanctumTabId,
+      tab
+    );
   }
 );

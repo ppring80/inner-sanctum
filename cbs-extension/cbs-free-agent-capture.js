@@ -11,8 +11,13 @@
   }
 
   function positionTeam(text) {
-    const m = clean(text).toUpperCase().match(/\b(QB|RB|WR|TE|K|DST|DEF)\s*[-•·]?\s*([A-Z]{2,3})\b/);
-    return m ? { position: m[1] === "DEF" ? "DST" : m[1], nflTeam: m[2] } : null;
+    // Require an actual separator between position and NFL team. The former
+    // optional separator allowed names beginning with position letters (for
+    // example KIRK -> K + IR) to be misread as player identity.
+    const m = clean(text).toUpperCase().match(/\b(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)([A-Z]{2,3})\b/);
+    if (!m) return null;
+    const position = m[1] === "DEF" ? "DST" : (m[1] === "PK" ? "K" : m[1]);
+    return { position, nflTeam: m[2] };
   }
 
   function percent(text) {
@@ -30,8 +35,15 @@
       const link = row.querySelector(PLAYER_LINK);
       if (!link) return;
       const id = playerId(link.href || link.getAttribute?.("href"));
-      const pt = positionTeam(row.textContent);
-      let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|K|DST|DEF)\s*[-•·]?\s*[A-Z]{2,3}\s*$/i, "");
+
+      // Position/team identity must come from the player's own table cell, not
+      // the entire row. CBS rows contain unrelated stat/trend text that can
+      // resemble a position/team token and previously misclassified players
+      // such as Kirk Cousins as a kicker.
+      const playerCell = typeof link.closest === "function" ? link.closest("td") : null;
+      const identityText = playerCell?.textContent || link.textContent;
+      const pt = positionTeam(identityText);
+      let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)[A-Z]{2,3}\s*$/i, "");
       if (!id || !name || !pt || seen.has(id)) return;
       seen.add(id);
 
