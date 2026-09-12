@@ -10,6 +10,13 @@
   "use strict";
 
   const extensionApi = globalThis.browser || globalThis.chrome;
+  const ESPN_INFO_HTML =
+    "<strong>Connect ESPN securely.</strong><br>" +
+    "Inner Sanctum opens ESPN in a separate tab. Sign into ESPN normally and open the league you want to connect. " +
+    "Inner Sanctum detects it automatically — no League ID, Public/Private selection, Developer Tools, SWID or espn_s2 copy/paste required.";
+  const ESPN_BUTTON_TEXT = "Connect ESPN League";
+  const ESPN_NOTE_TEXT =
+    "ESPN Connect is read-only. Your ESPN sign-in stays in ESPN; only sanitized fantasy-league data is returned to Inner Sanctum.";
 
   function isSelected(provider) {
     return Boolean(document.querySelector("#platform-" + provider + ".selected"));
@@ -61,7 +68,9 @@
     if (!form) return;
 
     form.querySelectorAll(".pf-group, #espnPrivateFields").forEach(function (element) {
-      element.style.display = "none";
+      if (element.style.display !== "none") {
+        element.style.display = "none";
+      }
     });
 
     let info = form.querySelector(".inner-sanctum-espn-connect-info");
@@ -72,20 +81,18 @@
       if (button) form.insertBefore(info, button);
     }
 
-    if (info) {
-      info.innerHTML =
-        "<strong>Connect ESPN securely.</strong><br>" +
-        "Inner Sanctum opens ESPN in a separate tab. Sign into ESPN normally and open the league you want to connect. " +
-        "Inner Sanctum detects it automatically — no League ID, Public/Private selection, Developer Tools, SWID or espn_s2 copy/paste required.";
+    if (info && info.innerHTML !== ESPN_INFO_HTML) {
+      info.innerHTML = ESPN_INFO_HTML;
     }
 
     const button = getConnectButton("espn");
-    if (button) button.textContent = "Connect ESPN League";
+    if (button && button.textContent !== ESPN_BUTTON_TEXT) {
+      button.textContent = ESPN_BUTTON_TEXT;
+    }
 
     const note = form.querySelector(".connect-note");
-    if (note) {
-      note.textContent =
-        "ESPN Connect is read-only. Your ESPN sign-in stays in ESPN; only sanitized fantasy-league data is returned to Inner Sanctum.";
+    if (note && note.textContent !== ESPN_NOTE_TEXT) {
+      note.textContent = ESPN_NOTE_TEXT;
     }
   }
 
@@ -138,6 +145,12 @@
   document.addEventListener(
     "click",
     function (event) {
+      const platformButton = event.target.closest(".platform-btn");
+      if (platformButton) {
+        queueEspnRefresh();
+        return;
+      }
+
       const button = event.target.closest("#providerForms .connect-btn");
       if (!button) return;
 
