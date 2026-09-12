@@ -53,8 +53,8 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.js
     assert.doesNotMatch(source, /<script[^>]+src=["']https?:\/\//i, `${name} must not load remote script code`);
   });
 
-  const privacyPath = path.join(root, 'privacy.html');
-  assert.ok(fs.existsSync(privacyPath), 'Public privacy policy must exist');
+  const privacyPath = path.join(root, 'chrome-web-store-privacy.html');
+  assert.ok(fs.existsSync(privacyPath), 'Chrome Web Store privacy notice must exist');
   const privacy = fs.readFileSync(privacyPath, 'utf8');
   assert.match(privacy, /Chrome Web Store User Data Policy/i);
   assert.match(privacy, /Limited Use/i);
