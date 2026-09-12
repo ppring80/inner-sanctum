@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "The Inner Sanctum — Connect",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Read-only fantasy league connection helper for The Inner Sanctum.",
 
   "permissions": [
@@ -17,6 +17,13 @@
     "https://theinnersanctum.xyz/*",
     "https://www.theinnersanctum.xyz/*"
   ],
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
 
   "background": {
     "service_worker": "service-worker-v050.js"
@@ -79,6 +86,10 @@
   ],
 
   "action": {
-    "default_title": "The Inner Sanctum — Connect"
+    "default_title": "The Inner Sanctum — Connect",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   }
 }
