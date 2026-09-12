@@ -3,6 +3,7 @@
   "use strict";
   const PATH = "/stats/stats-main";
   const PLAYER_LINK = 'a[href*="/players/playerpage/"]';
+  const SPECIALIST_POSITIONS = new Set(["K", "PK", "DST", "DEF"]);
   const clean = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
 
   function playerId(href) {
@@ -66,13 +67,87 @@
     return out;
   }
 
-  async function fetchPlayers() {
-    const url = new URL(PATH, location.origin);
-    if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
-    const res = await fetch(url.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
+  function specialistPageUrls(doc) {
+    const urls = [];
+    const seen = new Set();
+
+    function consider(label, value) {
+      const normalizedLabel = clean(label).toUpperCase().replace(/\s+/g, "");
+      if (!SPECIALIST_POSITIONS.has(normalizedLabel)) return;
+      if (!value) return;
+
+      let url;
+      try {
+        url = new URL(String(value), location.origin);
+      } catch (err) {
+        return;
+      }
+
+      if (url.origin !== location.origin) return;
+      if (!url.pathname.startsWith(PATH)) return;
+      if (url.href === new URL(PATH, location.origin).href) return;
+      if (seen.has(url.href)) return;
+
+      seen.add(url.href);
+      urls.push(url.href);
+    }
+
+    if (doc && typeof doc.querySelectorAll === "function") {
+      Array.from(doc.querySelectorAll("a[href]")).forEach((link) => {
+        consider(link.textContent, link.href || link.getAttribute?.("href"));
+      });
+
+      Array.from(doc.querySelectorAll("option[value]")).forEach((option) => {
+        consider(option.textContent, option.value || option.getAttribute?.("value"));
+      });
+    }
+
+    return urls;
+  }
+
+  function mergePlayers(groups) {
+    const out = [];
+    const seen = new Set();
+
+    (Array.isArray(groups) ? groups : []).forEach((group) => {
+      (Array.isArray(group) ? group : []).forEach((player) => {
+        const key = String(player?.id || player?.cbsPlayerId || "");
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        out.push(player);
+      });
+    });
+
+    return out;
+  }
+
+  async function fetchDocument(url) {
+    const target = new URL(url, location.origin);
+    if (target.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
+    const res = await fetch(target.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
     if (!res.ok) throw new Error("CBS returned " + res.status + " for free agents.");
-    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-    return parse(doc);
+    return new DOMParser().parseFromString(await res.text(), "text/html");
+  }
+
+  async function fetchPlayers() {
+    const baseDoc = await fetchDocument(PATH);
+    const groups = [parse(baseDoc)];
+
+    // CBS's default Free Agents table can omit specialist positions even when
+    // the league exposes K/PK and DST/DEF as position filters. Discover those
+    // same-origin filter URLs from the returned CBS document and merge their
+    // provider-authoritative rows into the complete free-agent pool.
+    for (const url of specialistPageUrls(baseDoc)) {
+      try {
+        groups.push(parse(await fetchDocument(url)));
+      } catch (err) {
+        // Keep the base provider pool if one specialist filter temporarily
+        // fails. The parent capture adds a sanitized warning only when the
+        // entire free-agent collection fails.
+      }
+    }
+
+    return mergePlayers(groups);
   }
 
   function install() {
@@ -105,6 +180,6 @@
     return true;
   }
 
-  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, fetchPlayers, install };
+  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, specialistPageUrls, mergePlayers, fetchPlayers, install };
   install();
 })();
