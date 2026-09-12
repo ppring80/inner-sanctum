@@ -7,6 +7,7 @@ on:
       - 'tests/cbs-seamless-connect.test.js'
       - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
+      - 'tests/espn-free-agent-capture.test.js'
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
       - 'tests/connected-stack-lock.test.js'
@@ -19,6 +20,7 @@ on:
       - 'tests/cbs-seamless-connect.test.js'
       - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
+      - 'tests/espn-free-agent-capture.test.js'
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
       - 'tests/connected-stack-lock.test.js'
@@ -37,6 +39,7 @@ jobs:
           node tests/connected-stack-lock.test.js
           node tests/cbs-seamless-connect.test.js
           node tests/cbs-pending-capture-retry.test.js
+          node tests/espn-free-agent-capture.test.js
           node tests/espn-pending-capture-retry.test.js
           node tests/espn-selection-freeze.test.js
           node tests/cbs-free-agent-capture.test.js

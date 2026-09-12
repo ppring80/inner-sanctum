@@ -10,6 +10,7 @@ function read(rel) {
 
 const cbsWorker = read('cbs-extension/service-worker.js');
 const espnWorker = read('cbs-extension/service-worker-v050.js');
+const espnMainBridge = read('cbs-extension/espn-main-bridge.js');
 const sanctumBridge = read('cbs-extension/sanctum-content-bridge.js');
 const manifest = JSON.parse(read('cbs-extension/manifest.json'));
 
@@ -41,6 +42,14 @@ assert.match(espnWorker, /espnCaptureInFlight\.has\(flightKey\)/);
 assert.match(espnWorker, /espnCaptureInFlight\.add\(flightKey\)/);
 assert.match(espnWorker, /finally\s*{\s*espnCaptureInFlight\.delete\(flightKey\)/);
 assert.match(espnWorker, /await retryPendingEspnCapture\(tabId, pending\.sanctumTabId\)/);
+
+// ESPN Free Agents must remain part of the sanitized browser-assisted capture.
+assert.match(espnMainBridge, /view=kona_player_info/);
+assert.match(espnMainBridge, /FREEAGENT/);
+assert.match(espnMainBridge, /WAIVERS/);
+assert.match(espnMainBridge, /async function fetchAvailablePlayers/);
+assert.match(espnMainBridge, /availablePlayers:\s*availability\.players/);
+assert.match(espnMainBridge, /credentials:\s*"include"/);
 
 // Provider-selection freeze protection remains installed and idempotent.
 assert.match(sanctumBridge, /let refreshQueued = false/);
