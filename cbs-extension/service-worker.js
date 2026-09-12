@@ -52,6 +52,12 @@ const CBS_PENDING_KEY =
 const CBS_CONNECT_TIMEOUT_MS =
   10 * 60 * 1000;
 
+const CBS_CAPTURE_RETRY_MS =
+  1000;
+
+const CBS_CAPTURE_RETRY_LIMIT =
+  12;
+
 const cbsCaptureInFlight =
   new Set();
 
@@ -330,6 +336,115 @@ async function captureCbsFromLeagueTab(
   };
 }
 
+/*
+  Bounded, in-process retry for a tracked CBS tab that has already
+  reached a league URL but whose first capture attempt failed because
+  CBSBrowserConnector.captureAll() was not yet ready (the CBS page's own
+  league/roster data can still be loading even after the browser
+  considers navigation "complete"). Mirrors the proven ESPN
+  retryPendingEspnCapture pattern in service-worker-v050.js so a stuck
+  pending connection can resolve without depending on a second
+  chrome.tabs.onUpdated event that may never fire once the tab is idle.
+*/
+
+async function retryPendingCbsCapture(
+  tabId,
+  sanctumTabId,
+  initialTab
+) {
+  const flightKey =
+    String(tabId);
+
+  if (
+    cbsCaptureInFlight.has(
+      flightKey
+    )
+  ) {
+    return false;
+  }
+
+  cbsCaptureInFlight.add(
+    flightKey
+  );
+
+  try {
+    for (
+      let attempt = 1;
+      attempt <= CBS_CAPTURE_RETRY_LIMIT;
+      attempt += 1
+    ) {
+      const pending =
+        await getPendingCbs();
+
+      if (
+        !pending ||
+        pending.providerTabId !== tabId ||
+        pending.sanctumTabId !== sanctumTabId
+      ) {
+        return false;
+      }
+
+      if (
+        Date.now() -
+          Number(
+            pending.startedAt || 0
+          ) >
+        CBS_CONNECT_TIMEOUT_MS
+      ) {
+        return false;
+      }
+
+      try {
+        const liveTab =
+          attempt === 1 &&
+          initialTab?.id
+            ? initialTab
+            : await chrome.tabs.get(
+                tabId
+              );
+
+        await captureCbsFromLeagueTab(
+          liveTab,
+          sanctumTabId
+        );
+
+        await clearPendingCbs();
+
+        try {
+          await chrome.tabs.update(
+            pending.sanctumTabId,
+            { active: true }
+          );
+        } catch (focusErr) {
+        }
+
+        return true;
+      } catch (err) {
+        if (
+          attempt >= CBS_CAPTURE_RETRY_LIMIT
+        ) {
+          console.warn(
+            "CBS capture remained unavailable after bounded retries:",
+            err?.message || err
+          );
+
+          return false;
+        }
+
+        await sleep(
+          CBS_CAPTURE_RETRY_MS
+        );
+      }
+    }
+
+    return false;
+  } finally {
+    cbsCaptureInFlight.delete(
+      flightKey
+    );
+  }
+}
+
 async function openCbsAndWait(
   sanctumTabId
 ) {
@@ -421,6 +536,18 @@ async function handleCbsConnect(
       "loading",
       "🔵 CBS is open. Sign in if needed and open the league you want — Inner Sanctum will connect automatically."
     );
+
+    if (
+      CBS_URL_PATTERN.test(
+        cbsTab.url || ""
+      )
+    ) {
+      void retryPendingCbsCapture(
+        cbsTab.id,
+        sanctumTab.id,
+        cbsTab
+      );
+    }
 
     return {
       success: true,
@@ -527,52 +654,10 @@ chrome.tabs.onUpdated.addListener(
       return;
     }
 
-    const flightKey =
-      String(tabId);
-
-    if (
-      cbsCaptureInFlight.has(
-        flightKey
-      )
-    ) {
-      return;
-    }
-
-    cbsCaptureInFlight.add(
-      flightKey
+    await retryPendingCbsCapture(
+      tabId,
+      pending.sanctumTabId,
+      tab
     );
-
-    try {
-      const liveTab =
-        tab?.id
-          ? tab
-          : await chrome.tabs.get(
-              tabId
-            );
-
-      await captureCbsFromLeagueTab(
-        liveTab,
-        pending.sanctumTabId
-      );
-
-      await clearPendingCbs();
-
-      try {
-        await chrome.tabs.update(
-          pending.sanctumTabId,
-          { active: true }
-        );
-      } catch (focusErr) {
-      }
-    } catch (err) {
-      console.warn(
-        "CBS capture not ready yet:",
-        err?.message || err
-      );
-    } finally {
-      cbsCaptureInFlight.delete(
-        flightKey
-      );
-    }
   }
 );
