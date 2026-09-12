@@ -40,8 +40,9 @@ assert.match(sanctumBridge, /function queueEspnRefresh/);
 assert.match(sanctumBridge, /if \(refreshQueued\) return/);
 assert.match(sanctumBridge, /if \(info && info\.innerHTML !== ESPN_INFO_HTML\)/);
 
-// Manifest must continue to route both providers through the combined worker.
+// Manifest must continue to route both providers through the combined accepted worker.
 assert.equal(manifest.manifest_version, 3);
+assert.equal(manifest.version, '0.5.1');
 assert.equal(manifest.background && manifest.background.service_worker, 'service-worker-v050.js');
 assert.ok((manifest.permissions || []).includes('storage'), 'session pending state requires storage permission');
 
