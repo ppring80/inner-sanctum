@@ -129,6 +129,46 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   assert.strictEqual(players[4].position, 'DST');
   assert.strictEqual(players[4].team, 'SEA');
 
+  const filterDoc = {
+    querySelectorAll: (selector) => {
+      if (selector === 'a[href]') {
+        return [
+          { textContent: 'QB', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=QB' },
+          { textContent: 'K', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=K' },
+          { textContent: 'DST', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=DST' },
+          { textContent: 'K', href: 'https://www.cbssports.com/fantasy/football/stats/K/' },
+        ];
+      }
+      if (selector === 'option[value]') {
+        return [
+          { textContent: 'PK', value: '/stats/stats-main?position=PK' },
+          { textContent: 'DEF', value: '/stats/stats-main?position=DEF' },
+        ];
+      }
+      return [];
+    },
+  };
+
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(collector.specialistPageUrls(filterDoc))),
+    [
+      'https://widebodies.football.cbssports.com/stats/stats-main?pos=K',
+      'https://widebodies.football.cbssports.com/stats/stats-main?pos=DST',
+      'https://widebodies.football.cbssports.com/stats/stats-main?position=PK',
+      'https://widebodies.football.cbssports.com/stats/stats-main?position=DEF',
+    ]
+  );
+
+  const merged = collector.mergePlayers([
+    players.slice(0, 3),
+    [players[3]],
+    [players[4], players[0]],
+  ]);
+  assert.strictEqual(merged.length, 5);
+  assert.strictEqual(merged[0].position, 'QB');
+  assert.strictEqual(merged[3].position, 'K');
+  assert.strictEqual(merged[4].position, 'DST');
+
   const nonFreeAgentDoc = {
     body: { textContent: 'MY TEAM ROSTER' },
     querySelectorAll: () => rows,
@@ -137,6 +177,8 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
 
   assert.match(source, /method:\s*"GET"/);
   assert.match(source, /credentials:\s*"same-origin"/);
+  assert.match(source, /specialistPageUrls/);
+  assert.match(source, /mergePlayers/);
   assert.doesNotMatch(source, /document\.cookie|chrome\.cookies|Authorization\s*:/);
 
   console.log('CBS free-agent capture regression tests passed.');
