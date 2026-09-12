@@ -1,0 +1,39 @@
+name: Connected Stack Lock
+
+on:
+  pull_request:
+    paths:
+      - 'cbs-extension/**'
+      - 'tests/cbs-seamless-connect.test.js'
+      - 'tests/cbs-free-agent-capture.test.js'
+      - 'tests/espn-pending-capture-retry.test.js'
+      - 'tests/espn-selection-freeze.test.js'
+      - 'tests/connected-stack-lock.test.js'
+      - '.github/workflows/connected-stack-lock.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'cbs-extension/**'
+      - 'tests/cbs-seamless-connect.test.js'
+      - 'tests/cbs-free-agent-capture.test.js'
+      - 'tests/espn-pending-capture-retry.test.js'
+      - 'tests/espn-selection-freeze.test.js'
+      - 'tests/connected-stack-lock.test.js'
+      - '.github/workflows/connected-stack-lock.yml'
+
+jobs:
+  connected-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run locked connector regression gate
+        run: |
+          node tests/connected-stack-lock.test.js
+          node tests/cbs-seamless-connect.test.js
+          node tests/espn-pending-capture-retry.test.js
+          node tests/espn-selection-freeze.test.js
+          node tests/cbs-free-agent-capture.test.js
