@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "The Inner Sanctum — Connect",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Read-only fantasy league connection helper for The Inner Sanctum.",
 
   "permissions": [
