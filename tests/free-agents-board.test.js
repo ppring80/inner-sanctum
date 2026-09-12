@@ -59,6 +59,7 @@ test('free-agents.html source defines the real, moved board functions', () => {
     assert.ok(mainScript.includes('function ' + fn), fn + ' must be defined in the real file');
   });
   assert.ok(!mainScript.includes('Available For You'), 'the old product name must not appear on the extracted page');
+  assert.ok(mainScript.includes("p==='K'?'PK':p"), 'kicker filter should display PK while retaining internal K identity');
 });
 
 function makeFakeElement() {
