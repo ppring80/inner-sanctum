@@ -14,6 +14,7 @@
 // calculate FAAB, or submit transactions.
 
 const { connectLambda, getStore } = require('@netlify/blobs');
+const PlayerIdentity = require('../../player-identity.js');
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((value) => value.trim()).filter(Boolean)
@@ -90,10 +91,18 @@ function normalizePosition(value) {
   if (['DST', 'D/ST', 'D-ST', 'DEFENSE'].includes(position)) {
     return 'DEF';
   }
+  if (position === 'PK') {
+    return 'K';
+  }
   return position;
 }
 
 function getPlayerName(player) {
+  if (getPlayerPosition(player) === 'DEF') {
+    const teamCode = getPlayerTeam(player);
+    if (teamCode) return teamCode;
+  }
+
   return firstDefined(
     player?.name,
     player?.longName,
@@ -146,49 +155,69 @@ function compatibleIdentity(candidate, evidence) {
 }
 
 function findIdentityMatch(candidate, evidenceRows) {
-  const normalizedCandidateName = normalizeName(getPlayerName(candidate));
+  const candidateName = getPlayerName(candidate);
 
-  if (!normalizedCandidateName) {
+  if (!normalizeName(candidateName)) {
     return { match: null, reason: 'missing_name' };
   }
 
-  const nameMatches = (Array.isArray(evidenceRows) ? evidenceRows : []).filter(
-    (row) => normalizeName(getPlayerName(row)) === normalizedCandidateName
+  const rows = Array.isArray(evidenceRows) ? evidenceRows : [];
+  const identityCandidate = {
+    name: candidateName,
+    position: getPlayerPosition(candidate)
+  };
+  const identityRows = rows.map((row) => ({
+    name: getPlayerName(row),
+    position: getPlayerPosition(row),
+    __sourceRow: row
+  }));
+
+  const resolvedIdentityRow = PlayerIdentity.resolveRosterPlayer(
+    identityCandidate,
+    identityRows
   );
 
-  if (!nameMatches.length) {
-    return { match: null, reason: 'name_not_found' };
-  }
+  if (!resolvedIdentityRow) {
+    const exactNameMatches = identityRows.filter(
+      (row) => normalizeName(row.name) === normalizeName(candidateName)
+    );
 
-  const compatible = [];
-  const conflicts = new Set();
-
-  nameMatches.forEach((row) => {
-    const result = compatibleIdentity(candidate, row);
-    if (result.ok) {
-      compatible.push(row);
-    } else if (result.reason) {
-      conflicts.add(result.reason);
+    if (!exactNameMatches.length) {
+      return { match: null, reason: 'name_not_found' };
     }
-  });
 
-  if (compatible.length === 1) {
-    return { match: compatible[0], reason: null };
+    if (exactNameMatches.length > 1) {
+      const anyCompatible = exactNameMatches.some(
+        (row) => compatibleIdentity(candidate, row.__sourceRow).ok
+      );
+      if (anyCompatible) {
+        return { match: null, reason: 'ambiguous_name' };
+      }
+    }
+
+    const conflicts = new Set();
+    exactNameMatches.forEach((row) => {
+      const result = compatibleIdentity(candidate, row.__sourceRow);
+      if (!result.ok && result.reason) conflicts.add(result.reason);
+    });
+
+    if (conflicts.has('team_mismatch')) {
+      return { match: null, reason: 'team_mismatch' };
+    }
+    if (conflicts.has('position_mismatch')) {
+      return { match: null, reason: 'position_mismatch' };
+    }
+
+    return { match: null, reason: 'identity_conflict' };
   }
 
-  if (compatible.length > 1) {
-    return { match: null, reason: 'ambiguous_name' };
+  const match = resolvedIdentityRow.__sourceRow;
+  const compatibility = compatibleIdentity(candidate, match);
+  if (!compatibility.ok) {
+    return { match: null, reason: compatibility.reason };
   }
 
-  if (conflicts.has('team_mismatch')) {
-    return { match: null, reason: 'team_mismatch' };
-  }
-
-  if (conflicts.has('position_mismatch')) {
-    return { match: null, reason: 'position_mismatch' };
-  }
-
-  return { match: null, reason: 'identity_conflict' };
+  return { match, reason: null };
 }
 
 function flattenWeeklyRankings(weeklyData) {
@@ -624,6 +653,9 @@ exports._test = {
   normalizeName,
   normalizeTeam,
   normalizePosition,
+  getPlayerName,
+  getPlayerTeam,
+  getPlayerPosition,
   findIdentityMatch,
   flattenWeeklyRankings,
   buildTrendRows,
