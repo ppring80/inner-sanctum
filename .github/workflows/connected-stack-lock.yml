@@ -5,6 +5,7 @@ on:
     paths:
       - 'cbs-extension/**'
       - 'tests/cbs-seamless-connect.test.js'
+      - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'cbs-extension/**'
       - 'tests/cbs-seamless-connect.test.js'
+      - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
@@ -34,6 +36,7 @@ jobs:
         run: |
           node tests/connected-stack-lock.test.js
           node tests/cbs-seamless-connect.test.js
+          node tests/cbs-pending-capture-retry.test.js
           node tests/espn-pending-capture-retry.test.js
           node tests/espn-selection-freeze.test.js
           node tests/cbs-free-agent-capture.test.js
