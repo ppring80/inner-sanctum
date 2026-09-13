@@ -3,7 +3,9 @@
   "use strict";
   const PATH = "/stats/stats-main";
   const PLAYER_LINK = 'a[href*="/players/playerpage/"]';
+  const SPECIALIST_POSITIONS = new Set(["K", "PK", "DST", "DEF"]);
   const clean = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
+  let lastDiagnostics = null;
 
   function playerId(href) {
     const m = String(href || "").match(/\/players\/playerpage\/(\d+)(?:[/?#]|$)/i);
@@ -36,13 +38,15 @@
       if (!link) return;
       const id = playerId(link.href || link.getAttribute?.("href"));
 
-      // Position/team identity must come from the player's own table cell, not
-      // the entire row. CBS rows contain unrelated stat/trend text that can
-      // resemble a position/team token and previously misclassified players
-      // such as Kirk Cousins as a kicker.
+      // Prefer identity from the player's own table cell. This is the safety
+      // fix that keeps names such as Kirk Cousins from being misread by
+      // unrelated row text. Some CBS specialist rows, however, place the
+      // position/team token outside that link cell. If the player cell has no
+      // usable identity at all, fall back to the row text while retaining the
+      // strict separator requirement in positionTeam().
       const playerCell = typeof link.closest === "function" ? link.closest("td") : null;
       const identityText = playerCell?.textContent || link.textContent;
-      const pt = positionTeam(identityText);
+      const pt = positionTeam(identityText) || positionTeam(row.textContent);
       let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)[A-Z]{2,3}\s*$/i, "");
       if (!id || !name || !pt || seen.has(id)) return;
       seen.add(id);
@@ -66,13 +70,94 @@
     return out;
   }
 
+  function specialistDiagnostics(doc, players) {
+    const counts = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+    (Array.isArray(players) ? players : []).forEach((player) => {
+      const pos = player?.position === "DEF" ? "DST" : (player?.position === "PK" ? "K" : player?.position);
+      if (Object.prototype.hasOwnProperty.call(counts, pos)) counts[pos] += 1;
+    });
+
+    const discovered = [];
+    const seen = new Set();
+    function consider(label, value) {
+      const normalized = clean(label).toUpperCase().replace(/\s+/g, "");
+      if (!SPECIALIST_POSITIONS.has(normalized) || !value) return;
+      let url;
+      try { url = new URL(String(value), location.origin); } catch (err) { return; }
+      if (url.origin !== location.origin || !url.pathname.startsWith(PATH)) return;
+      const safeKey = normalized + "|" + url.pathname + url.search;
+      if (seen.has(safeKey)) return;
+      seen.add(safeKey);
+      discovered.push({ label: normalized, path: url.pathname + url.search });
+    }
+
+    if (doc && typeof doc.querySelectorAll === "function") {
+      Array.from(doc.querySelectorAll("a[href]")).forEach((link) => {
+        consider(link.textContent, link.href || link.getAttribute?.("href"));
+      });
+      Array.from(doc.querySelectorAll("option[value]")).forEach((option) => {
+        consider(option.textContent, option.value || option.getAttribute?.("value"));
+      });
+    }
+
+    return {
+      baseTotal: Array.isArray(players) ? players.length : 0,
+      byPosition: counts,
+      specialistLinks: discovered
+    };
+  }
+
+  function diagnosticMessage(diagnostic) {
+    if (!diagnostic) return "CBS FA DIAGNOSTIC — unavailable";
+    const counts = diagnostic.byPosition || {};
+    const labels = Array.from(new Set((diagnostic.specialistLinks || []).map((item) => clean(item?.label)).filter(Boolean)));
+    return "CBS FA DIAGNOSTIC — base " + Number(diagnostic.baseTotal || 0) +
+      " | QB " + Number(counts.QB || 0) +
+      " | RB " + Number(counts.RB || 0) +
+      " | WR " + Number(counts.WR || 0) +
+      " | TE " + Number(counts.TE || 0) +
+      " | K " + Number(counts.K || 0) +
+      " | DST " + Number(counts.DST || 0) +
+      " | specialist links: " + (labels.length ? labels.join(", ") : "NONE");
+  }
+
+  function showDiagnosticBanner(diagnostic) {
+    try {
+      const id = "inner-sanctum-cbs-fa-diagnostic";
+      let banner = document.getElementById(id);
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = id;
+        banner.style.position = "fixed";
+        banner.style.left = "12px";
+        banner.style.right = "12px";
+        banner.style.bottom = "12px";
+        banner.style.zIndex = "2147483647";
+        banner.style.padding = "12px 16px";
+        banner.style.background = "#111";
+        banner.style.color = "#fff";
+        banner.style.border = "2px solid #d4af37";
+        banner.style.borderRadius = "8px";
+        banner.style.font = "600 14px/1.4 monospace";
+        banner.style.boxShadow = "0 4px 18px rgba(0,0,0,.35)";
+        document.documentElement.appendChild(banner);
+      }
+      banner.textContent = diagnosticMessage(diagnostic);
+    } catch (err) {
+      // Diagnostic display must never affect capture.
+    }
+  }
+
   async function fetchPlayers() {
     const url = new URL(PATH, location.origin);
     if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
     const res = await fetch(url.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
     if (!res.ok) throw new Error("CBS returned " + res.status + " for free agents.");
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-    return parse(doc);
+    const players = parse(doc);
+    lastDiagnostics = specialistDiagnostics(doc, players);
+    showDiagnosticBanner(lastDiagnostics);
+    return players;
   }
 
   function install() {
@@ -91,6 +176,7 @@
         captured.meta.pagesRequested.freeAgents = PATH;
         captured.meta.dataQuality = captured.meta.dataQuality || {};
         captured.meta.dataQuality.availablePlayerCount = players.length;
+        captured.meta.dataQuality.cbsFreeAgentDiagnostics = lastDiagnostics;
       } catch (err) {
         captured.availablePlayers = [];
         captured.league = captured.league || {};
@@ -105,6 +191,6 @@
     return true;
   }
 
-  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, fetchPlayers, install };
+  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, specialistDiagnostics, diagnosticMessage, fetchPlayers, install };
   install();
 })();

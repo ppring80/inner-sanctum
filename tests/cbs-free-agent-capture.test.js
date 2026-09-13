@@ -106,15 +106,49 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
       rowText: 'Seattle DST-SEA 41%',
       cells: ['Add', 'Seattle DST-SEA', '41%'],
     }),
+    // CBS can render specialist identity outside the link's own cell. The
+    // parser must recover the provider's K/DST token from the row only when
+    // the preferred player-cell identity is absent.
+    fakeRow({
+      id: '67890',
+      linkText: 'Fallback Kicker',
+      playerCellText: 'Fallback Kicker',
+      rowText: 'Fallback Kicker K-SEA 9%',
+      cells: ['Add', 'Fallback Kicker', 'K-SEA', '9%'],
+    }),
+    fakeRow({
+      id: '78901',
+      linkText: 'Fallback Defense',
+      playerCellText: 'Fallback Defense',
+      rowText: 'Fallback Defense DEF-SEA 18%',
+      cells: ['Add', 'Fallback Defense', 'DEF-SEA', '18%'],
+    }),
+  ];
+
+  const specialistLinks = [
+    { textContent: 'QB', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=QB' },
+    { textContent: 'K', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=K' },
+    { textContent: 'DST', href: 'https://widebodies.football.cbssports.com/stats/stats-main?pos=DST' },
+    { textContent: 'K', href: 'https://example.com/stats/stats-main?pos=K' },
+  ];
+
+  const specialistOptions = [
+    { textContent: 'PK', value: '/stats/stats-main?position=PK' },
+    { textContent: 'DEF', value: '/stats/stats-main?position=DEF' },
   ];
 
   const doc = {
     body: { textContent: 'PLAYER STATUS FREE AGENTS FREE AGENTS CBS AVERAGE PROJECTIONS' },
-    querySelectorAll: (selector) => selector === 'tr' ? rows : [],
+    querySelectorAll: (selector) => {
+      if (selector === 'tr') return rows;
+      if (selector === 'a[href]') return specialistLinks;
+      if (selector === 'option[value]') return specialistOptions;
+      return [];
+    },
   };
 
   const players = collector.parse(doc);
-  assert.strictEqual(players.length, 5);
+  assert.strictEqual(players.length, 7);
   assert.strictEqual(players[0].name, 'Jared Goff');
   assert.strictEqual(players[0].availabilityStatus, 'FREE_AGENT');
   assert.strictEqual(players[0].position, 'QB');
@@ -128,6 +162,25 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   assert.strictEqual(players[3].team, 'SEA');
   assert.strictEqual(players[4].position, 'DST');
   assert.strictEqual(players[4].team, 'SEA');
+  assert.strictEqual(players[5].position, 'K');
+  assert.strictEqual(players[5].team, 'SEA');
+  assert.strictEqual(players[6].position, 'DST');
+  assert.strictEqual(players[6].team, 'SEA');
+
+  const diagnostics = JSON.parse(JSON.stringify(collector.specialistDiagnostics(doc, players)));
+  assert.strictEqual(diagnostics.baseTotal, 7);
+  assert.strictEqual(diagnostics.byPosition.QB, 3);
+  assert.strictEqual(diagnostics.byPosition.K, 2);
+  assert.strictEqual(diagnostics.byPosition.DST, 2);
+  assert.deepStrictEqual(
+    diagnostics.specialistLinks,
+    [
+      { label: 'K', path: '/stats/stats-main?pos=K' },
+      { label: 'DST', path: '/stats/stats-main?pos=DST' },
+      { label: 'PK', path: '/stats/stats-main?position=PK' },
+      { label: 'DEF', path: '/stats/stats-main?position=DEF' },
+    ]
+  );
 
   const nonFreeAgentDoc = {
     body: { textContent: 'MY TEAM ROSTER' },
@@ -137,6 +190,7 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
 
   assert.match(source, /method:\s*"GET"/);
   assert.match(source, /credentials:\s*"same-origin"/);
+  assert.match(source, /cbsFreeAgentDiagnostics/);
   assert.doesNotMatch(source, /document\.cookie|chrome\.cookies|Authorization\s*:/);
 
   console.log('CBS free-agent capture regression tests passed.');
