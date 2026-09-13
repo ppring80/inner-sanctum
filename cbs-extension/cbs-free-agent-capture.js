@@ -107,6 +107,47 @@
     };
   }
 
+  function diagnosticMessage(diagnostic) {
+    if (!diagnostic) return "CBS FA DIAGNOSTIC — unavailable";
+    const counts = diagnostic.byPosition || {};
+    const labels = Array.from(new Set((diagnostic.specialistLinks || []).map((item) => clean(item?.label)).filter(Boolean)));
+    return "CBS FA DIAGNOSTIC — base " + Number(diagnostic.baseTotal || 0) +
+      " | QB " + Number(counts.QB || 0) +
+      " | RB " + Number(counts.RB || 0) +
+      " | WR " + Number(counts.WR || 0) +
+      " | TE " + Number(counts.TE || 0) +
+      " | K " + Number(counts.K || 0) +
+      " | DST " + Number(counts.DST || 0) +
+      " | specialist links: " + (labels.length ? labels.join(", ") : "NONE");
+  }
+
+  function showDiagnosticBanner(diagnostic) {
+    try {
+      const id = "inner-sanctum-cbs-fa-diagnostic";
+      let banner = document.getElementById(id);
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = id;
+        banner.style.position = "fixed";
+        banner.style.left = "12px";
+        banner.style.right = "12px";
+        banner.style.bottom = "12px";
+        banner.style.zIndex = "2147483647";
+        banner.style.padding = "12px 16px";
+        banner.style.background = "#111";
+        banner.style.color = "#fff";
+        banner.style.border = "2px solid #d4af37";
+        banner.style.borderRadius = "8px";
+        banner.style.font = "600 14px/1.4 monospace";
+        banner.style.boxShadow = "0 4px 18px rgba(0,0,0,.35)";
+        document.documentElement.appendChild(banner);
+      }
+      banner.textContent = diagnosticMessage(diagnostic);
+    } catch (err) {
+      // Diagnostic display must never affect capture.
+    }
+  }
+
   async function fetchPlayers() {
     const url = new URL(PATH, location.origin);
     if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
@@ -115,6 +156,7 @@
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
     const players = parse(doc);
     lastDiagnostics = specialistDiagnostics(doc, players);
+    showDiagnosticBanner(lastDiagnostics);
     return players;
   }
 
@@ -149,6 +191,6 @@
     return true;
   }
 
-  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, specialistDiagnostics, fetchPlayers, install };
+  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, specialistDiagnostics, diagnosticMessage, fetchPlayers, install };
   install();
 })();
