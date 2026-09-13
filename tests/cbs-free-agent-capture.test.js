@@ -106,6 +106,23 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
       rowText: 'Seattle DST-SEA 41%',
       cells: ['Add', 'Seattle DST-SEA', '41%'],
     }),
+    // CBS can render specialist identity outside the link's own cell. The
+    // parser must recover the provider's K/DST token from the row only when
+    // the preferred player-cell identity is absent.
+    fakeRow({
+      id: '67890',
+      linkText: 'Fallback Kicker',
+      playerCellText: 'Fallback Kicker',
+      rowText: 'Fallback Kicker K-SEA 9%',
+      cells: ['Add', 'Fallback Kicker', 'K-SEA', '9%'],
+    }),
+    fakeRow({
+      id: '78901',
+      linkText: 'Fallback Defense',
+      playerCellText: 'Fallback Defense',
+      rowText: 'Fallback Defense DEF-SEA 18%',
+      cells: ['Add', 'Fallback Defense', 'DEF-SEA', '18%'],
+    }),
   ];
 
   const doc = {
@@ -114,7 +131,7 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   };
 
   const players = collector.parse(doc);
-  assert.strictEqual(players.length, 5);
+  assert.strictEqual(players.length, 7);
   assert.strictEqual(players[0].name, 'Jared Goff');
   assert.strictEqual(players[0].availabilityStatus, 'FREE_AGENT');
   assert.strictEqual(players[0].position, 'QB');
@@ -128,6 +145,10 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   assert.strictEqual(players[3].team, 'SEA');
   assert.strictEqual(players[4].position, 'DST');
   assert.strictEqual(players[4].team, 'SEA');
+  assert.strictEqual(players[5].position, 'K');
+  assert.strictEqual(players[5].team, 'SEA');
+  assert.strictEqual(players[6].position, 'DST');
+  assert.strictEqual(players[6].team, 'SEA');
 
   const nonFreeAgentDoc = {
     body: { textContent: 'MY TEAM ROSTER' },
