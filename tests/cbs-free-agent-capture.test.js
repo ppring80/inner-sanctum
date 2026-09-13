@@ -192,7 +192,10 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
     assert.strictEqual(options.credentials, 'same-origin');
   });
 
-  assert.deepStrictEqual(fetched.map((p) => p.position), ['QB', 'RB', 'WR', 'TE', 'K', 'DST']);
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(fetched.map((p) => p.position))),
+    ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+  );
   assert.strictEqual(fetched.find((p) => p.name === 'Kirk Cousins').position, 'QB');
   assert.strictEqual(fetched.filter((p) => p.id === '100').length, 1);
 
@@ -207,7 +210,10 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
     },
   });
   const degraded = await degradedCollector.fetchPlayers();
-  assert.deepStrictEqual(degraded.map((p) => p.position), ['QB', 'RB', 'WR', 'TE', 'DST']);
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(degraded.map((p) => p.position))),
+    ['QB', 'RB', 'WR', 'TE', 'DST']
+  );
   assert.strictEqual(degradedRequests.length, 3);
 
   assert.match(source, /method:\s*"GET"/);
