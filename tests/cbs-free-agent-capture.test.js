@@ -163,8 +163,8 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
   const requested = [];
   const docsByMarker = {
     BASE: fakeDoc(baseRows),
-    K: fakeDoc(kickerRows, 'FREE AGENT KICKERS CBS AVERAGE PROJECTIONS'),
-    DST: fakeDoc(defenseRows, 'FREE AGENT DEFENSE/STS CBS AVERAGE PROJECTIONS'),
+    K: fakeDoc(kickerRows, 'PLAYER STATUS FREE AGENTS FREE AGENT KICKERS CBS AVERAGE PROJECTIONS'),
+    DST: fakeDoc(defenseRows, 'PLAYER STATUS FREE AGENTS FREE AGENT DEFENSE/STS CBS AVERAGE PROJECTIONS'),
   };
   function TestDOMParser() {}
   TestDOMParser.prototype.parseFromString = function (text) {
