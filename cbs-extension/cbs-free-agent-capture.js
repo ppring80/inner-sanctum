@@ -3,7 +3,9 @@
   "use strict";
   const PATH = "/stats/stats-main";
   const PLAYER_LINK = 'a[href*="/players/playerpage/"]';
+  const SPECIALIST_POSITIONS = new Set(["K", "PK", "DST", "DEF"]);
   const clean = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
+  let lastDiagnostics = null;
 
   function playerId(href) {
     const m = String(href || "").match(/\/players\/playerpage\/(\d+)(?:[/?#]|$)/i);
@@ -68,13 +70,52 @@
     return out;
   }
 
+  function specialistDiagnostics(doc, players) {
+    const counts = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+    (Array.isArray(players) ? players : []).forEach((player) => {
+      const pos = player?.position === "DEF" ? "DST" : (player?.position === "PK" ? "K" : player?.position);
+      if (Object.prototype.hasOwnProperty.call(counts, pos)) counts[pos] += 1;
+    });
+
+    const discovered = [];
+    const seen = new Set();
+    function consider(label, value) {
+      const normalized = clean(label).toUpperCase().replace(/\s+/g, "");
+      if (!SPECIALIST_POSITIONS.has(normalized) || !value) return;
+      let url;
+      try { url = new URL(String(value), location.origin); } catch (err) { return; }
+      if (url.origin !== location.origin || !url.pathname.startsWith(PATH)) return;
+      const safeKey = normalized + "|" + url.pathname + url.search;
+      if (seen.has(safeKey)) return;
+      seen.add(safeKey);
+      discovered.push({ label: normalized, path: url.pathname + url.search });
+    }
+
+    if (doc && typeof doc.querySelectorAll === "function") {
+      Array.from(doc.querySelectorAll("a[href]")).forEach((link) => {
+        consider(link.textContent, link.href || link.getAttribute?.("href"));
+      });
+      Array.from(doc.querySelectorAll("option[value]")).forEach((option) => {
+        consider(option.textContent, option.value || option.getAttribute?.("value"));
+      });
+    }
+
+    return {
+      baseTotal: Array.isArray(players) ? players.length : 0,
+      byPosition: counts,
+      specialistLinks: discovered
+    };
+  }
+
   async function fetchPlayers() {
     const url = new URL(PATH, location.origin);
     if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
     const res = await fetch(url.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
     if (!res.ok) throw new Error("CBS returned " + res.status + " for free agents.");
     const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-    return parse(doc);
+    const players = parse(doc);
+    lastDiagnostics = specialistDiagnostics(doc, players);
+    return players;
   }
 
   function install() {
@@ -93,6 +134,7 @@
         captured.meta.pagesRequested.freeAgents = PATH;
         captured.meta.dataQuality = captured.meta.dataQuality || {};
         captured.meta.dataQuality.availablePlayerCount = players.length;
+        captured.meta.dataQuality.cbsFreeAgentDiagnostics = lastDiagnostics;
       } catch (err) {
         captured.availablePlayers = [];
         captured.league = captured.league || {};
@@ -107,6 +149,6 @@
     return true;
   }
 
-  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, fetchPlayers, install };
+  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, specialistDiagnostics, fetchPlayers, install };
   install();
 })();
