@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'cbs-extension/**'
+      - 'league-connection.js'
       - 'tests/cbs-seamless-connect.test.js'
       - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
@@ -11,12 +12,14 @@ on:
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
       - 'tests/connected-stack-lock.test.js'
+      - 'tests/league-connection-multi-provider.test.js'
       - '.github/workflows/connected-stack-lock.yml'
   push:
     branches:
       - main
     paths:
       - 'cbs-extension/**'
+      - 'league-connection.js'
       - 'tests/cbs-seamless-connect.test.js'
       - 'tests/cbs-pending-capture-retry.test.js'
       - 'tests/cbs-free-agent-capture.test.js'
@@ -24,6 +27,7 @@ on:
       - 'tests/espn-pending-capture-retry.test.js'
       - 'tests/espn-selection-freeze.test.js'
       - 'tests/connected-stack-lock.test.js'
+      - 'tests/league-connection-multi-provider.test.js'
       - '.github/workflows/connected-stack-lock.yml'
 
 jobs:
@@ -43,3 +47,4 @@ jobs:
           node tests/espn-pending-capture-retry.test.js
           node tests/espn-selection-freeze.test.js
           node tests/cbs-free-agent-capture.test.js
+          node tests/league-connection-multi-provider.test.js
