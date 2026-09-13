@@ -2,6 +2,10 @@
 (function () {
   "use strict";
   const PATH = "/stats/stats-main";
+  const SPECIALIST_PATHS = [
+    "/stats/stats-main/fa:K/week1:p/standard/projections",
+    "/stats/stats-main/fa:DST/week1:p/standard/projections"
+  ];
   const PLAYER_LINK = 'a[href*="/players/playerpage/"]';
   const clean = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
 
@@ -66,13 +70,45 @@
     return out;
   }
 
-  async function fetchPlayers() {
-    const url = new URL(PATH, location.origin);
+  function mergePlayers(groups) {
+    const merged = [];
+    const seen = new Set();
+    for (const group of groups) {
+      for (const player of group || []) {
+        const id = clean(player?.cbsPlayerId || player?.id);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        merged.push(player);
+      }
+    }
+    return merged;
+  }
+
+  async function fetchDocument(path) {
+    const url = new URL(path, location.origin);
     if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
     const res = await fetch(url.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
-    if (!res.ok) throw new Error("CBS returned " + res.status + " for free agents.");
-    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-    return parse(doc);
+    if (!res.ok) throw new Error("CBS returned " + res.status + " for " + path + ".");
+    return new DOMParser().parseFromString(await res.text(), "text/html");
+  }
+
+  async function fetchPlayers() {
+    const basePlayers = parse(await fetchDocument(PATH));
+    const groups = [basePlayers];
+
+    // CBS's live Player Stats markup exposes free-agent K and DST pools through
+    // these path-based routes. Keep specialist acquisition additive: if CBS
+    // temporarily rejects one specialist request, preserve the known-good base
+    // offensive pool rather than failing the entire capture.
+    for (const path of SPECIALIST_PATHS) {
+      try {
+        groups.push(parse(await fetchDocument(path)));
+      } catch (_) {
+        groups.push([]);
+      }
+    }
+
+    return mergePlayers(groups);
   }
 
   function install() {
@@ -89,6 +125,7 @@
         captured.meta = captured.meta || {};
         captured.meta.pagesRequested = captured.meta.pagesRequested || {};
         captured.meta.pagesRequested.freeAgents = PATH;
+        captured.meta.pagesRequested.freeAgentSpecialists = SPECIALIST_PATHS.slice();
         captured.meta.dataQuality = captured.meta.dataQuality || {};
         captured.meta.dataQuality.availablePlayerCount = players.length;
       } catch (err) {
@@ -105,6 +142,14 @@
     return true;
   }
 
-  window.CBSFreeAgentCapture = { path: PATH, parse, positionTeam, fetchPlayers, install };
+  window.CBSFreeAgentCapture = {
+    path: PATH,
+    specialistPaths: SPECIALIST_PATHS.slice(),
+    parse,
+    positionTeam,
+    mergePlayers,
+    fetchPlayers,
+    install
+  };
   install();
 })();
