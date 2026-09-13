@@ -10,7 +10,7 @@ const source = fs.readFileSync(
   'utf8'
 );
 
-function loadCollector() {
+function loadCollector(overrides = {}) {
   const window = {
     CBSBrowserConnector: {
       captureAll: async () => ({
@@ -26,8 +26,8 @@ function loadCollector() {
     location: { origin: 'https://widebodies.football.cbssports.com' },
     URL,
     console,
-    fetch: async () => { throw new Error('not used in parser test'); },
-    DOMParser: function () {},
+    fetch: overrides.fetch || (async () => { throw new Error('not used in parser test'); }),
+    DOMParser: overrides.DOMParser || function () {},
   };
 
   vm.runInNewContext(source, context, { filename: 'cbs-free-agent-capture.js' });
@@ -52,7 +52,14 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   };
 }
 
-(function run() {
+function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
+  return {
+    body: { textContent: label },
+    querySelectorAll: (selector) => selector === 'tr' ? rows : [],
+  };
+}
+
+(async function run() {
   const collector = loadCollector();
 
   assert.deepStrictEqual(
@@ -108,12 +115,7 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
     }),
   ];
 
-  const doc = {
-    body: { textContent: 'PLAYER STATUS FREE AGENTS FREE AGENTS CBS AVERAGE PROJECTIONS' },
-    querySelectorAll: (selector) => selector === 'tr' ? rows : [],
-  };
-
-  const players = collector.parse(doc);
+  const players = collector.parse(fakeDoc(rows, 'PLAYER STATUS FREE AGENTS FREE AGENTS CBS AVERAGE PROJECTIONS'));
   assert.strictEqual(players.length, 5);
   assert.strictEqual(players[0].name, 'Jared Goff');
   assert.strictEqual(players[0].availabilityStatus, 'FREE_AGENT');
@@ -135,9 +137,91 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
   };
   assert.strictEqual(collector.parse(nonFreeAgentDoc).length, 0);
 
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(collector.specialistPaths)),
+    [
+      '/stats/stats-main/fa:K/week1:p/standard/projections',
+      '/stats/stats-main/fa:DST/week1:p/standard/projections',
+    ]
+  );
+
+  const baseRows = [
+    fakeRow({ id: '100', linkText: 'Kirk Cousins', playerCellText: 'Kirk Cousins QB-ATL', cells: ['Kirk Cousins QB-ATL'] }),
+    fakeRow({ id: '101', linkText: 'Bijan Robinson', playerCellText: 'Bijan Robinson RB-ATL', cells: ['Bijan Robinson RB-ATL'] }),
+    fakeRow({ id: '102', linkText: 'Drake London', playerCellText: 'Drake London WR-ATL', cells: ['Drake London WR-ATL'] }),
+    fakeRow({ id: '103', linkText: 'Kyle Pitts', playerCellText: 'Kyle Pitts TE-ATL', cells: ['Kyle Pitts TE-ATL'] }),
+  ];
+  const kickerRows = [
+    fakeRow({ id: '200', linkText: 'Joey Slye', playerCellText: 'Joey Slye K-TEN', cells: ['Joey Slye K-TEN'] }),
+    // Duplicate ID proves provider-id dedupe across pools.
+    fakeRow({ id: '100', linkText: 'Kirk Cousins', playerCellText: 'Kirk Cousins QB-ATL', cells: ['Kirk Cousins QB-ATL'] }),
+  ];
+  const defenseRows = [
+    fakeRow({ id: '300', linkText: 'Green Bay', playerCellText: 'Green Bay DST-GB', cells: ['Green Bay DST-GB'] }),
+  ];
+
+  const requested = [];
+  const docsByMarker = {
+    BASE: fakeDoc(baseRows),
+    K: fakeDoc(kickerRows, 'PLAYER STATUS FREE AGENTS FREE AGENT KICKERS CBS AVERAGE PROJECTIONS'),
+    DST: fakeDoc(defenseRows, 'PLAYER STATUS FREE AGENTS FREE AGENT DEFENSE/STS CBS AVERAGE PROJECTIONS'),
+  };
+  function TestDOMParser() {}
+  TestDOMParser.prototype.parseFromString = function (text) {
+    return docsByMarker[text];
+  };
+
+  const fetchingCollector = loadCollector({
+    DOMParser: TestDOMParser,
+    fetch: async (url, options) => {
+      requested.push({ url, options });
+      let marker = 'BASE';
+      if (url.includes('/fa:K/')) marker = 'K';
+      if (url.includes('/fa:DST/')) marker = 'DST';
+      return { ok: true, status: 200, text: async () => marker };
+    },
+  });
+
+  const fetched = await fetchingCollector.fetchPlayers();
+  assert.strictEqual(requested.length, 3);
+  assert.strictEqual(requested[0].url, 'https://widebodies.football.cbssports.com/stats/stats-main');
+  assert.strictEqual(requested[1].url, 'https://widebodies.football.cbssports.com/stats/stats-main/fa:K/week1:p/standard/projections');
+  assert.strictEqual(requested[2].url, 'https://widebodies.football.cbssports.com/stats/stats-main/fa:DST/week1:p/standard/projections');
+  requested.forEach(({ options }) => {
+    assert.strictEqual(options.method, 'GET');
+    assert.strictEqual(options.credentials, 'same-origin');
+  });
+
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(fetched.map((p) => p.position))),
+    ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+  );
+  assert.strictEqual(fetched.find((p) => p.name === 'Kirk Cousins').position, 'QB');
+  assert.strictEqual(fetched.filter((p) => p.id === '100').length, 1);
+
+  const degradedRequests = [];
+  const degradedCollector = loadCollector({
+    DOMParser: TestDOMParser,
+    fetch: async (url) => {
+      degradedRequests.push(url);
+      if (url.includes('/fa:K/')) return { ok: false, status: 503, text: async () => '' };
+      if (url.includes('/fa:DST/')) return { ok: true, status: 200, text: async () => 'DST' };
+      return { ok: true, status: 200, text: async () => 'BASE' };
+    },
+  });
+  const degraded = await degradedCollector.fetchPlayers();
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(degraded.map((p) => p.position))),
+    ['QB', 'RB', 'WR', 'TE', 'DST']
+  );
+  assert.strictEqual(degradedRequests.length, 3);
+
   assert.match(source, /method:\s*"GET"/);
   assert.match(source, /credentials:\s*"same-origin"/);
   assert.doesNotMatch(source, /document\.cookie|chrome\.cookies|Authorization\s*:/);
 
   console.log('CBS free-agent capture regression tests passed.');
-})();
+})().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
