@@ -36,13 +36,15 @@
       if (!link) return;
       const id = playerId(link.href || link.getAttribute?.("href"));
 
-      // Position/team identity must come from the player's own table cell, not
-      // the entire row. CBS rows contain unrelated stat/trend text that can
-      // resemble a position/team token and previously misclassified players
-      // such as Kirk Cousins as a kicker.
+      // Prefer identity from the player's own table cell. This is the safety
+      // fix that keeps names such as Kirk Cousins from being misread by
+      // unrelated row text. Some CBS specialist rows, however, place the
+      // position/team token outside that link cell. If the player cell has no
+      // usable identity at all, fall back to the row text while retaining the
+      // strict separator requirement in positionTeam().
       const playerCell = typeof link.closest === "function" ? link.closest("td") : null;
       const identityText = playerCell?.textContent || link.textContent;
-      const pt = positionTeam(identityText);
+      const pt = positionTeam(identityText) || positionTeam(row.textContent);
       let name = clean(link.textContent).replace(/\s+(QB|RB|WR|TE|PK|K|DST|DEF)(?:\s*[-•·]\s*|\s+)[A-Z]{2,3}\s*$/i, "");
       if (!id || !name || !pt || seen.has(id)) return;
       seen.add(id);
