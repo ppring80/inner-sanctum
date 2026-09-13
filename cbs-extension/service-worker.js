@@ -221,6 +221,45 @@ async function showSanctumError(
   );
 }
 
+function cbsFreeAgentDiagnosticMessage(captured) {
+  const diagnostic =
+    captured?.meta?.dataQuality?.cbsFreeAgentDiagnostics;
+
+  if (!diagnostic) {
+    return null;
+  }
+
+  const counts =
+    diagnostic.byPosition || {};
+
+  const specialistLabels =
+    Array.isArray(diagnostic.specialistLinks)
+      ? diagnostic.specialistLinks
+          .map(function (item) {
+            return String(item?.label || "");
+          })
+          .filter(Boolean)
+      : [];
+
+  const uniqueSpecialists =
+    Array.from(new Set(specialistLabels));
+
+  return (
+    "CBS FA DIAGNOSTIC — base " +
+    Number(diagnostic.baseTotal || 0) +
+    " | QB " + Number(counts.QB || 0) +
+    " | RB " + Number(counts.RB || 0) +
+    " | WR " + Number(counts.WR || 0) +
+    " | TE " + Number(counts.TE || 0) +
+    " | K " + Number(counts.K || 0) +
+    " | DST " + Number(counts.DST || 0) +
+    " | specialist links: " +
+    (uniqueSpecialists.length
+      ? uniqueSpecialists.join(", ")
+      : "NONE")
+  );
+}
+
 async function sendCbsCaptureRequest(
   tabId,
   attempt
@@ -322,6 +361,19 @@ async function captureCbsFromLeagueTab(
     sanctumTabId,
     captured
   );
+
+  const diagnosticMessage =
+    cbsFreeAgentDiagnosticMessage(
+      captured
+    );
+
+  if (diagnosticMessage) {
+    await showSanctumStatus(
+      sanctumTabId,
+      "success",
+      diagnosticMessage
+    );
+  }
 
   return {
     success: true,
