@@ -5,8 +5,9 @@
 
   Goals:
   - normalize punctuation, accents, and common generational suffixes
-  - never guess when an abbreviated provider name is ambiguous
-  - use position as a safety guard for initial+last-name fallback
+  - reconcile a small set of common first-name variants without guessing
+  - never guess when an abbreviated or nickname provider name is ambiguous
+  - use position as a safety guard for fallback matching
 */
 (function (root, factory) {
   var api = factory();
@@ -24,6 +25,22 @@
     iii: true,
     iv: true,
     v: true
+  };
+
+  // Deliberately small and explicit. This is identity normalization, not a
+  // player list: provider/player rows remain fully dynamic. Add an alias only
+  // when it is a common, unambiguous first-name form observed across sources.
+  var FIRST_NAME_ALIASES = {
+    cam: 'cameron',
+    cameron: 'cameron',
+    chris: 'christopher',
+    christopher: 'christopher',
+    josh: 'joshua',
+    joshua: 'joshua',
+    matt: 'matthew',
+    matthew: 'matthew',
+    mike: 'michael',
+    michael: 'michael'
   };
 
   function cleanTokens(value) {
@@ -66,6 +83,11 @@
     };
   }
 
+  function normalizedFirstName(value) {
+    var key = String(value || '').toLowerCase();
+    return FIRST_NAME_ALIASES[key] || key;
+  }
+
   function sameCanonicalName(a, b) {
     var ak = canonicalNameKey(a);
     var bk = canonicalNameKey(b);
@@ -93,6 +115,23 @@
 
     var sourceParts = nameParts(sourceName);
     if (!sourceParts.firstInitial || !sourceParts.last) return null;
+
+    // Match common nickname/formal-name variants only when last name and
+    // position agree and exactly one ranking row qualifies. This preserves the
+    // resolver's existing no-guess behavior while allowing dynamic provider
+    // rows such as Cam Little / Cameron Little to join correctly.
+    var sourceFirst = normalizedFirstName(sourceParts.first);
+    var nicknameMatches = rankingRows.filter(function (row) {
+      if (!row) return false;
+      var rowPos = normalizedPosition(row.pos || row.position);
+      if (sourcePos && rowPos && sourcePos !== rowPos) return false;
+      var rowParts = nameParts(row.name);
+      if (!rowParts.first || rowParts.last !== sourceParts.last) return false;
+      return normalizedFirstName(rowParts.first) === sourceFirst && rowParts.first !== sourceParts.first;
+    });
+
+    if (nicknameMatches.length === 1) return nicknameMatches[0];
+    if (nicknameMatches.length > 1) return null;
 
     var abbreviated = sourceParts.first.length === 1 || /^\w\.?\s+/i.test(String(sourceName).trim());
     if (!abbreviated) return null;
