@@ -19,7 +19,7 @@ body {
 
 .wrap {
   width: 100%;
-  max-width: 720px;
+  max-width: 920px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -61,6 +61,10 @@ body {
 .top-sub { font-size: clamp(11px, 2.6vw, 16px); letter-spacing: clamp(2px, 0.8vw, 4px); color: #c9a84c; opacity: 0.85; text-transform: uppercase; display: block; margin-bottom: 20px; }
 
 .sleeper-bar { padding: 10px 20px; background: rgba(0,0,0,0.25); border-bottom: 1px solid rgba(255,255,255,0.05); }
+.sleeper-bar.connected-provider-hidden { display: none; }
+/* team-context.js normally inserts a full-width bar beside this flex-centered page.
+   Sanctum presents the same active context inside the advisor instead. */
+.is-team-context-bar { display: none !important; }
 .sleeper-inner { display: flex; align-items: center; gap: 8px; max-width: 680px; margin: 0 auto; }
 .sleeper-label { font-size: 13px; letter-spacing: 2px; color: #c9a84c; text-transform: uppercase; white-space: nowrap; }
 .sleeper-input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: #f0e0c0; font-size: 14px; font-family: Georgia, serif; padding: 10px 14px; border-radius: 8px; }
@@ -140,11 +144,40 @@ body {
 .howto-item strong { color: #e8d8a8; }
 
 .lineup-advisor {
-  margin: 10px 20px 0;
+  width: calc(100% - 40px);
+  max-width: 880px;
+  margin: 10px auto 0;
   background: rgba(0,0,0,0.45);
   border: 1px solid rgba(201,168,76,0.3);
   border-radius: 14px;
   overflow: hidden;
+}
+
+.lineup-team-context {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  padding: 11px 18px;
+  text-align: center;
+  background: rgba(100,181,246,0.06);
+  border-bottom: 1px solid rgba(100,181,246,0.18);
+}
+.lineup-team-context.show { display: flex; }
+.lineup-team-context-label {
+  color: #8a7a55;
+  font: 10px 'Courier New', monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.lineup-team-context-name { color: #f0e0b0; font-size: 14px; font-weight: bold; }
+.lineup-team-context-meta { color: #a08a70; font-size: 12px; }
+.lineup-team-context-roster { color: #4caf50; font: 11px 'Courier New', monospace; }
+.lineup-team-context a { color: #c9a84c; font-size: 11px; white-space: nowrap; }
+@media(max-width: 560px) {
+  .lineup-advisor { width: calc(100% - 24px); }
+  .lineup-team-context { flex-direction: column; gap: 4px; }
 }
 
 .lineup-header {
@@ -843,7 +876,7 @@ function handleAuthResultParams() {
 
   <div class="auth-banner" id="authBanner"></div>
 
-  <div class="sleeper-bar">
+  <div class="sleeper-bar" id="sleeperBar">
     <div class="sleeper-inner">
       <span class="sleeper-label">🏈 Sleeper</span>
       <input class="sleeper-input" id="sleeperUser" type="text" placeholder="Enter your Sleeper username for personalized advice..." />
@@ -894,6 +927,14 @@ function handleAuthResultParams() {
   </div>
 
   <div class="lineup-advisor">
+
+    <div class="lineup-team-context" id="lineupTeamContext">
+      <span class="lineup-team-context-label">Active Team</span>
+      <span class="lineup-team-context-name" id="lineupTeamContextName"></span>
+      <span class="lineup-team-context-meta" id="lineupTeamContextMeta"></span>
+      <span class="lineup-team-context-roster" id="lineupTeamContextRoster"></span>
+      <a href="/connect-league">Manage connections →</a>
+    </div>
 
     <div class="lineup-header" onclick="toggleLineup()">
       <div class="lineup-header-left">
@@ -1344,6 +1385,24 @@ function connectedRosterCounts(connection) {
     counts.RECFLEX + counts.SFLEX + counts.K + counts.DEF > 0 ? counts : null;
 }
 
+function updateConnectedLeaguePresentation(connection, provider, playerCount) {
+  var context = document.getElementById('lineupTeamContext');
+  if (!context) return;
+  var team = String(connection.teamName || connection.team && connection.team.name || 'Connected team');
+  var league = String(connection.leagueName || connection.league && connection.league.name || 'Connected league');
+  var details = [league];
+  if (connection.scoringFormat) details.push(String(connection.scoringFormat).replace(/-/g, ' ').toUpperCase());
+  if (connection.teamCount) details.push(connection.teamCount + ' teams');
+
+  document.getElementById('lineupTeamContextName').textContent = team + ' · ' + provider;
+  document.getElementById('lineupTeamContextMeta').textContent = details.join(' · ');
+  document.getElementById('lineupTeamContextRoster').textContent = '✓ Roster loaded · ' + playerCount + ' players';
+  context.classList.add('show');
+
+  var sleeperBar = document.getElementById('sleeperBar');
+  if (sleeperBar) sleeperBar.classList.toggle('connected-provider-hidden', provider !== 'SLEEPER');
+}
+
 function applyConnectedLeagueLineup() {
   if (typeof LeagueConnection === 'undefined') return false;
   var connection = LeagueConnection.getActiveConnection();
@@ -1360,6 +1419,7 @@ function applyConnectedLeagueLineup() {
   allSleeperPlayers = Object.keys(mergedPlayers).map(function(key) { return mergedPlayers[key]; });
 
   var provider = String(connection.provider || 'connected').toUpperCase();
+  updateConnectedLeaguePresentation(connection, provider, players.length);
   var playerNames = players.map(function(player) {
     return player.name + ' (' + player.pos + ' - ' + player.team + ')';
   });
@@ -1381,13 +1441,7 @@ function applyConnectedLeagueLineup() {
   }
 
   var banner = document.getElementById('rosterBanner');
-  var pills = document.getElementById('rosterPills');
-  if (banner) banner.classList.add('show');
-  if (pills) {
-    pills.innerHTML = playerNames.slice(0, 10).map(function(name) {
-      return '<span class="roster-pill">' + name + '</span>';
-    }).join('');
-  }
+  if (banner) banner.classList.remove('show');
   return true;
 }
 
