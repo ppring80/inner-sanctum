@@ -1310,6 +1310,87 @@ function rosterConfigFromSleeper(rosterPositions) {
   return { counts: counts, unsupported: unsupported };
 }
 
+function normalizeConnectedRoster(connection) {
+  if (!connection || !Array.isArray(connection.roster)) return [];
+  return connection.roster.map(function(player) {
+    var name = String(player && (player.name || player.displayName) || '').trim();
+    var rawPos = String(player && (player.position || player.pos) || '').toUpperCase().replace(/[^A-Z]/g, '');
+    var pos = rawPos === 'PK' ? 'K' : (rawPos === 'DST' || rawPos === 'DEFENSE' ? 'DEF' : rawPos);
+    if (!name || !['QB','RB','WR','TE','K','DEF'].includes(pos)) return null;
+    return {
+      name: name,
+      pos: pos,
+      team: String(player.nflTeam || player.team || 'FA').trim() || 'FA'
+    };
+  }).filter(Boolean);
+}
+
+function connectedRosterCounts(connection) {
+  var source = connection && connection.lineupConstruction;
+  if (!source || typeof source !== 'object') return null;
+  var number = function(value) {
+    var parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+  };
+  var counts = {
+    QB:number(source.QB), RB:number(source.RB), WR:number(source.WR), TE:number(source.TE),
+    FLEX:number(source.FLEX), RECFLEX:number(source.RECFLEX),
+    SFLEX:number(source.SFLEX != null ? source.SFLEX : source.SUPERFLEX),
+    K:number(source.K != null ? source.K : source.PK),
+    DEF:number(source.DEF != null ? source.DEF : source.DST),
+    BENCH:number(source.BENCH)
+  };
+  return counts.QB + counts.RB + counts.WR + counts.TE + counts.FLEX +
+    counts.RECFLEX + counts.SFLEX + counts.K + counts.DEF > 0 ? counts : null;
+}
+
+function applyConnectedLeagueLineup() {
+  if (typeof LeagueConnection === 'undefined') return false;
+  var connection = LeagueConnection.getActiveConnection();
+  var players = normalizeConnectedRoster(connection);
+  if (!players.length) return false;
+
+  // Reuse the advisor's proven roster/slot engine; these legacy variable names
+  // predate CBS/ESPN support but now hold the active connected roster.
+  sleeperRosterPlayers = players;
+  var mergedPlayers = {};
+  allSleeperPlayers.concat(players).forEach(function(player) {
+    mergedPlayers[player.name + '|' + player.pos] = player;
+  });
+  allSleeperPlayers = Object.keys(mergedPlayers).map(function(key) { return mergedPlayers[key]; });
+
+  var provider = String(connection.provider || 'connected').toUpperCase();
+  var playerNames = players.map(function(player) {
+    return player.name + ' (' + player.pos + ' - ' + player.team + ')';
+  });
+  rosterContext = 'The user\'s active ' + provider + ' league is "' +
+    String(connection.leagueName || connection.league && connection.league.name || 'their league') +
+    '". Their current roster: ' + playerNames.join(', ') +
+    '. Use this roster context to give highly personalized advice when relevant.';
+  sleeperConnected = true;
+  updateSystemPrompts();
+
+  var counts = connectedRosterCounts(connection);
+  if (counts) applyRosterCounts(counts, 'manual');
+  autoFillFromSleeper();
+
+  var note = document.getElementById('lineupAutoNote');
+  if (note) {
+    note.textContent = '✓ Auto-filled from ' + provider;
+    note.classList.add('show');
+  }
+
+  var banner = document.getElementById('rosterBanner');
+  var pills = document.getElementById('rosterPills');
+  if (banner) banner.classList.add('show');
+  if (pills) {
+    pills.innerHTML = playerNames.slice(0, 10).map(function(name) {
+      return '<span class="roster-pill">' + name + '</span>';
+    }).join('');
+  }
+  return true;
+}
+
 function formatCountsLabel(counts) {
   var parts = [];
   POS_ORDER.concat(['BENCH']).forEach(function(pos) {
@@ -1878,6 +1959,10 @@ document.addEventListener('click', function(e) {
 buildLineupSlots();
 updateFilledCount();
 loadPlayerList();
+applyConnectedLeagueLineup();
+window.addEventListener('innerSanctum:leagueContextChanged', function() {
+  setTimeout(applyConnectedLeagueLineup, 0);
+});
 loadQuestionWindow();
 loadAcolyteWindow();
 </script>
