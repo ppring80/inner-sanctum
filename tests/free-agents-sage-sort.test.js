@@ -86,3 +86,55 @@ assert.ok(
 );
 
 console.log('free-agents-sage-sort.test.js passed');
+
+// REVIEW must not visually overstate an unproven weekly rank edge as an upgrade.
+const impactSandbox = {};
+vm.createContext(impactSandbox);
+['escapeHtml', 'impact', 'sage', 'rosterImpactCell'].forEach((name) => {
+  vm.runInContext(extractFunction(name), impactSandbox);
+});
+const reviewImpact = impactSandbox.rosterImpactCell({
+  name: 'Brock Purdy',
+  position: 'QB',
+  verdict: 'REVIEW',
+  decision: {
+    reasonCode: 'UPGRADE_EVIDENCE_INSUFFICIENT',
+    evidence: {
+      sage: { position: 'QB', positionRank: 11 },
+      rosterImpact: {
+        classification: 'UPGRADE',
+        weakestComparable: {
+          name: 'Patrick Mahomes',
+          sage: { position: 'QB', positionRank: 14 }
+        }
+      }
+    }
+  }
+});
+assert.ok(reviewImpact.includes('Weekly Rank Edge'), 'insufficient-evidence REVIEW must use a neutral weekly-rank label');
+assert.ok(reviewImpact.includes('QB11 · Patrick Mahomes QB14'), 'neutral label must show both weekly ranks');
+assert.ok(!reviewImpact.includes('↑ Upgrade'), 'insufficient-evidence REVIEW must not claim a proven upgrade');
+assert.ok(!reviewImpact.includes('over Patrick Mahomes'), 'insufficient-evidence REVIEW must not imply a replacement');
+
+const provenImpact = impactSandbox.rosterImpactCell({
+  name: 'Proven Upgrade',
+  position: 'RB',
+  verdict: 'ADD_NOW',
+  decision: {
+    reasonCode: 'PROVEN_UPGRADE',
+    evidence: {
+      sage: { position: 'RB', positionRank: 8 },
+      rosterImpact: {
+        classification: 'UPGRADE',
+        weakestComparable: {
+          name: 'Current Starter',
+          sage: { position: 'RB', positionRank: 24 }
+        }
+      }
+    }
+  }
+});
+assert.ok(provenImpact.includes('↑ Upgrade'), 'proven ADD NOW upgrade must retain the green upgrade label');
+assert.ok(provenImpact.includes('over Current Starter RB24'), 'proven upgrade must retain replacement context');
+
+console.log('free-agents roster-impact presentation assertions passed');
