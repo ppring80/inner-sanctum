@@ -1439,7 +1439,7 @@ function renderOwnershipBadge(entry,isMine){
   if(entry.isKeeper){
     return '<span class="own-badge keeper-badge">\uD83D\uDD12 Keeper R'+entry.round+'</span>';
   }
-  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" title="Correct historical pick" aria-label="Correct historical pick" onclick="openReassignModal('+entry.id+')">\u270E '+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
+  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" title="Correct historical pick" aria-label="Correct historical pick" onclick="openReassignModal('+entry.id+')">Edit Pick &middot; '+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
 }
 function teamNameById(id){
   var t=draftState.teams.find(function(x){return x.id===id;});
