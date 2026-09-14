@@ -72,4 +72,17 @@ assert.deepStrictEqual(
   'Best For Me ordering must remain unchanged'
 );
 
+assert.ok(
+  source.includes("boardSort='sage'"),
+  'Free Agents must initialize with SAGE Advice selected'
+);
+assert.ok(
+  source.includes('<option value="sage">SAGE Advice</option><option value="best">Best For My Team</option>'),
+  'SAGE Advice must be the first customer-facing sort option'
+);
+assert.ok(
+  source.includes("boardPosition='ALL';boardSort='sage';renderDecisionBoard()"),
+  'rendering new league data must restore the SAGE Advice default'
+);
+
 console.log('free-agents-sage-sort.test.js passed');
