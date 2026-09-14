@@ -157,6 +157,8 @@ test('source exposes Undo Last Pick and Correct Historical Pick controls', () =>
   assert.ok(html.includes('<div class="modal-ttl">Correct Historical Pick</div>'));
   assert.ok(html.includes('title="Correct historical pick"'));
   assert.ok(html.includes('Edit Pick &middot;'));
+  assert.ok(html.includes('.prow.drafted td:not(:nth-last-child(-n+2)){opacity:0.3'));
+  assert.ok(html.includes('.pcard.drafted > :not(.cactions){opacity:0.3'));
   assert.ok(html.includes('Right player, wrong fantasy team?'));
   assert.ok(html.includes('onclick="applyReassign()"'));
 });
