@@ -1619,13 +1619,16 @@ function getLineupAdvice() {
   }
 
   var week = document.getElementById('lineupWeek').value;
-  var prompt = 'It is NFL Week ' + week + '. Here is my current lineup:\n\n' +
+  var lineupSummary = 'It is NFL Week ' + week + '. Here is my current lineup:\n\n' +
     'STARTERS:\n' + starters.join('\n') +
-    (bench.length ? '\n\nBENCH:\n' + bench.join(', ') : '') +
+    (bench.length ? '\n\nBENCH:\n' + bench.join(', ') : '');
+  var request = '\n\nPlease analyze my lineup, confirm my starts look good, flag any concerns, and if I have bench players listed, let me know if any should replace a starter. Give me your full lineup verdict.';
+  var visiblePrompt = lineupSummary + request;
+  var modelPrompt = lineupSummary +
     '\n\nIMPORTANT GROUNDING: STARTERS and BENCH describe only my fantasy lineup choices. They do not establish any player\'s real NFL depth-chart role. Do not call a benched fantasy player an NFL backup, buried, demoted, or losing work unless verified role evidence is explicitly provided. If current role, injury, matchup, or usage data is unavailable, say that plainly and limit the advice to the lineup information shown.' +
-    '\n\nPlease analyze my lineup, confirm my starts look good, flag any concerns, and if I have bench players listed, let me know if any should replace a starter. Give me your full lineup verdict.';
+    request;
 
-  ask(prompt);
+  ask(modelPrompt, visiblePrompt);
 }
 
 function toggleLineup() {
@@ -1812,7 +1815,7 @@ function draw() {
     if (h[j].role === "assistant") {
       d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="' + bubClass + '">' + h[j].content + '</div>';
     } else {
-      d.innerHTML = '<div class="bub u-' + ap + '">' + h[j].content + '</div>';
+      d.innerHTML = '<div class="bub u-' + ap + '">' + (h[j].displayContent || h[j].content) + '</div>';
     }
     m.appendChild(d);
   }
@@ -1908,7 +1911,7 @@ function toggleVoice() {
   btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)";
 }
 
-function ask(txt) {
+function ask(txt, displayTxt) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
@@ -1938,7 +1941,7 @@ function ask(txt) {
     questionCount++;
     saveQuestionWindow();
   }
-  hist[ap].push({ role: "user", content: q });
+  hist[ap].push({ role: "user", content: q, displayContent: displayTxt || q });
   draw();
 
   document.getElementById('msgs').scrollIntoView({ behavior: 'smooth', block: 'end' });
