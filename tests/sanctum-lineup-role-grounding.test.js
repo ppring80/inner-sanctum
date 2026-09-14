@@ -23,4 +23,17 @@ assert.ok(
   'role claims must require explicit verified evidence'
 );
 
+assert.ok(
+  source.includes('ask(modelPrompt, visiblePrompt);'),
+  'model-only grounding and the customer-visible lineup must be passed separately'
+);
+assert.ok(
+  source.includes('displayContent: displayTxt || q'),
+  'chat history must retain a clean customer-visible message'
+);
+assert.ok(
+  source.includes('(h[j].displayContent || h[j].content)'),
+  'the chat bubble must render clean display content while the API retains grounding'
+);
+
 console.log('sanctum-lineup-role-grounding.test.js passed');
