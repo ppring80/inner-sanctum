@@ -76,6 +76,25 @@ function buildReasons(candidate) {
   return reasons;
 }
 
+function meaningfulUpgradeEvidence(candidate) {
+  const sage = candidate?.sage || null;
+  const weakestSage = candidate?.rosterImpact?.weakestComparable?.sage || null;
+  const candidateRank = Number(sage?.positionRank);
+  const rosterRank = Number(weakestSage?.positionRank);
+  const candidateScore = Number(sage?.sageScore);
+  const rosterScore = Number(weakestSage?.sageScore);
+
+  // Week 1 is an ADP baseline, not a current-week SAGE evaluation. A baseline
+  // rank edge may support review, but can never justify telling a customer to
+  // drop an established roster player.
+  if (sage?.baselineEvidenceType === 'week1-adp-baseline') return false;
+
+  if (!Number.isFinite(candidateRank) || !Number.isFinite(rosterRank)) return false;
+  if (!Number.isFinite(candidateScore) || !Number.isFinite(rosterScore)) return false;
+
+  return rosterRank - candidateRank >= 8 && candidateScore - rosterScore >= 5;
+}
+
 function classifyCandidate(candidate) {
   if (!candidate || !isAvailable(candidate)) {
     return {
@@ -98,6 +117,16 @@ function classifyCandidate(candidate) {
   const impact = candidate?.rosterImpact?.classification || 'UNKNOWN';
 
   if (impact === 'UPGRADE') {
+    if (!meaningfulUpgradeEvidence(candidate)) {
+      return {
+        action: 'REVIEW',
+        actionable: false,
+        reasonCode: 'UPGRADE_EVIDENCE_INSUFFICIENT',
+        reasons: buildReasons(candidate).concat([
+          'A weekly rank edge alone is not enough evidence to recommend dropping a rostered player.'
+        ])
+      };
+    }
     return {
       action: 'ADD',
       actionable: true,
@@ -211,6 +240,7 @@ module.exports = {
     normalizeAvailabilityStatus,
     isAvailable,
     buildReasons,
+    meaningfulUpgradeEvidence,
     classifyCandidate,
     actionPriority,
     buildWaiverDecisions,
