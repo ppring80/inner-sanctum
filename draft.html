@@ -928,8 +928,9 @@ function closePreviewBlockedModal() {
 <div class="modal-bg" id="reassignModalBg">
   <div class="modal" style="max-width:380px">
     <button class="modal-x" onclick="closeReassignModal()">✕</button>
-    <div class="modal-ttl">Reassign Pick</div>
+    <div class="modal-ttl">Correct Historical Pick</div>
     <div id="reassignPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px">Right player, wrong fantasy team? Choose the correct team below. You can also remove the pick entirely.</p>
     <div class="setup-field" style="margin-bottom:16px">
       <label>Drafted by</label>
       <select id="reassignTeamSel"></select>
@@ -1438,7 +1439,7 @@ function renderOwnershipBadge(entry,isMine){
   if(entry.isKeeper){
     return '<span class="own-badge keeper-badge">\uD83D\uDD12 Keeper R'+entry.round+'</span>';
   }
-  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
+  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" title="Correct historical pick" aria-label="Correct historical pick" onclick="openReassignModal('+entry.id+')">\u270E '+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
 }
 function teamNameById(id){
   var t=draftState.teams.find(function(x){return x.id===id;});
