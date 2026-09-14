@@ -36,4 +36,13 @@ assert.ok(
   'the chat bubble must render clean display content while the API retains grounding'
 );
 
+assert.ok(
+  source.includes("return { role: message.role, content: message.content };"),
+  'API payload must strip UI-only displayContent before transmission'
+);
+assert.ok(
+  !source.includes("messages: hist[ap]\n"),
+  'raw UI history objects must never be sent to the model API'
+);
+
 console.log('sanctum-lineup-role-grounding.test.js passed');
