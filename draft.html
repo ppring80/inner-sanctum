@@ -191,6 +191,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .act-btn.draft-btn:hover{background:rgba(201,168,76,0.2);border-color:var(--gold-lt);color:var(--gold-lt)}
 .prow.drafted .draft-btn{color:var(--red);border-color:#ef9a9a;background:#fce4ec}
 .act-btn.cmp-row-btn:disabled{color:var(--green);border-color:#9fd39f;background:#eaf5ea;cursor:default;opacity:1}
+.ptable .compare-cell{width:88px;min-width:88px;text-align:center;padding-left:6px;padding-right:6px}
+.ptable .compare-cell .cmp-row-btn{display:block;width:76px;margin:0 auto;padding-left:4px;padding-right:4px}
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;padding:12px}
 .pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
 .pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
@@ -4089,7 +4091,7 @@ function render(){
     if(curView==='list'){
       var wrap=document.createElement('div');wrap.style.overflowX='auto';
       var tbl=document.createElement('table');tbl.className='ptable';
-      tbl.innerHTML='<thead><tr><th>OVR</th><th>'+pos+'#</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th></th></tr></thead>';
+      tbl.innerHTML='<thead><tr><th>OVR</th><th>'+pos+'#</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th class="compare-cell">Compare</th></tr></thead>';
       var tbody=document.createElement('tbody');var ct=0;
 
       players.forEach(function(p,i){
@@ -4128,7 +4130,7 @@ function render(){
           '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
           '<td class="inj-td">'+injHtml+'</td>'+
           '<td>'+actionCell+'</td>'+
-          '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
+          '<td class="compare-cell"><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
@@ -4195,7 +4197,7 @@ function renderAll(){
   if(curView==='list'){
     var wrap=document.createElement('div');wrap.style.overflowX='auto';
     var tbl=document.createElement('table');tbl.className='ptable';
-    tbl.innerHTML='<thead><tr><th>OVR</th><th>Pos</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th></th></tr></thead>';
+    tbl.innerHTML='<thead><tr><th>OVR</th><th>Pos</th><th>Player</th><th>Team</th><th>Bye</th><th>ADP</th><th>Stream</th><th>Status</th><th></th><th class="compare-cell">Compare</th></tr></thead>';
     var tbody=document.createElement('tbody');
 
     players.forEach(function(p,i){
@@ -4229,7 +4231,7 @@ function renderAll(){
         '<td class="str-td"><span class="sbadge '+sCls(sc)+'">'+sLbl(sc)+'</span></td>'+
         '<td class="inj-td">'+injHtml+'</td>'+
         '<td>'+actionCell+'</td>'+
-        '<td><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
+        '<td class="compare-cell"><button class="act-btn cmp-row-btn" data-key="'+p.key+'" onclick="addCmp(\''+p.key+'\',\''+p.pos+'\',\''+safeName+'\','+p.adp+',\''+p.team+'\')"'+(inCmp?' disabled':'')+'>'+(inCmp?'✓ Selected':'Compare')+'</button></td>';
       tbody.appendChild(tr);
     });
     tbl.appendChild(tbody);wrap.appendChild(tbl);sec.appendChild(wrap);
