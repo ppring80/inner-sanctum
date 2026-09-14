@@ -66,4 +66,12 @@ assert.ok(source.includes("window.addEventListener('innerSanctum:leagueContextCh
 assert.ok(source.includes('autoFillFromSleeper();'), 'existing slot assignment engine must be reused');
 assert.ok(!extractFunction('applyConnectedLeagueLineup').includes('fetch('), 'adapter must use stored connection data only');
 
+assert.ok(source.includes('max-width: 920px;'), 'Sanctum workspace must use the wider centered layout');
+assert.ok(source.includes('margin: 10px auto 0;'), 'lineup advisor must be horizontally centered');
+assert.ok(source.includes('.is-team-context-bar { display: none !important; }'), 'misplaced shared context bar must be suppressed on Sanctum');
+assert.ok(source.includes('id="lineupTeamContext"'), 'active team context must live inside the advisor');
+assert.ok(source.includes("updateConnectedLeaguePresentation(connection, provider, players.length);"), 'connected team presentation must update with roster data');
+assert.ok(source.includes("banner.classList.remove('show')"), 'duplicate roster-pill banner must be collapsed for connected leagues');
+assert.ok(extractFunction('applyConnectedLeagueLineup').includes('autoFillFromSleeper();'), 'presentation cleanup must preserve auto-fill');
+
 console.log('sanctum-connected-lineup.test.js passed');
