@@ -83,6 +83,53 @@ test('safe SAGE match plus roster upgrade produces ADD', () => {
   assert.ok(result.reasons.some((reason) => reason.includes('Roster Receiver')));
 });
 
+test('Week 1 baseline rank edge cannot produce ADD NOW or a drop instruction', () => {
+  const result = classifyCandidate(candidate({
+    name: 'Brock Purdy',
+    position: 'QB',
+    sage: {
+      position: 'QB',
+      positionRank: 11,
+      sageScore: null,
+      recommendation: 'START',
+      baselineEvidenceType: 'week1-adp-baseline'
+    },
+    rosterImpact: {
+      classification: 'UPGRADE',
+      weakestComparable: {
+        name: 'Patrick Mahomes',
+        position: 'QB',
+        sage: {
+          position: 'QB',
+          positionRank: 14,
+          sageScore: null,
+          baselineEvidenceType: 'week1-adp-baseline'
+        }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'REVIEW');
+  assert.strictEqual(result.actionable, false);
+  assert.strictEqual(result.reasonCode, 'UPGRADE_EVIDENCE_INSUFFICIENT');
+});
+
+test('small weekly rank and score edges remain REVIEW', () => {
+  const result = classifyCandidate(candidate({
+    sage: { position: 'WR', positionRank: 20, sageScore: 75 },
+    rosterImpact: {
+      classification: 'UPGRADE',
+      weakestComparable: {
+        name: 'Roster Receiver',
+        sage: { position: 'WR', positionRank: 23, sageScore: 72 }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'REVIEW');
+  assert.strictEqual(result.actionable, false);
+});
+
 test('rising trend cannot turn a downgrade into ADD', () => {
   const result = classifyCandidate(
     candidate({
