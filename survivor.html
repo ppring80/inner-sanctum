@@ -303,6 +303,12 @@ function setStatus(s,t){document.getElementById('sdot').className='dot '+s;docum
 function showNotice(t){var n=document.getElementById('notice');n.textContent=t;n.classList.add('on')}
 function hideNotice(){document.getElementById('notice').classList.remove('on')}
 
+function hasUsableOdds(games){
+  return games.some(function(g){
+    return g.awayWinPct!=null||g.homeWinPct!=null||g.spread!=null;
+  });
+}
+
 function renderWeekTabs(){
   var wrap=document.getElementById('weekTabs');
   wrap.innerHTML='';
@@ -356,9 +362,10 @@ function renderWeek(w){
   var main=document.getElementById('main');
   var used=usedTeams(w);
 
-  var hasOdds=games.some(function(g){return g.homeWinPct!=null});
+  var hasWinProbabilities=games.some(function(g){return g.homeWinPct!=null||g.awayWinPct!=null});
+  var hasOdds=hasUsableOdds(games);
   var sorted=games.slice().sort(function(a,b){
-    if(hasOdds){
+    if(hasWinProbabilities){
       var am=Math.max(a.awayWinPct||0,a.homeWinPct||0);
       var bm=Math.max(b.awayWinPct||0,b.homeWinPct||0);
       return bm-am;
@@ -372,7 +379,7 @@ function renderWeek(w){
     hideNotice();
   }
 
-  if(hasOdds&&sorted.length){
+  if(hasWinProbabilities&&sorted.length){
     var top=sorted[0];
     var topTeam=top.awayWinPct>top.homeWinPct?top.away:top.home;
     var topPct=Math.max(top.awayWinPct,top.homeWinPct);
