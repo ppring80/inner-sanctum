@@ -43,7 +43,8 @@ const sorted = sandbox.sortRows([
   player('Receiver Twenty', 'WR', 20),
   player('Quarterback Twelve', 'QB', 12),
   player('Runner Fifteen', 'RB', 15),
-  player('Tight End Eighteen', 'TE', 18)
+  player('Tight End Eighteen', 'TE', 18),
+  player('Flex Twenty Five', 'FLEX', 25)
 ]);
 
 assert.deepStrictEqual(
@@ -53,10 +54,11 @@ assert.deepStrictEqual(
     'Runner Fifteen',
     'Tight End Eighteen',
     'Receiver Twenty',
+    'Flex Twenty Five',
     'Defense Six',
     'Kicker Seven'
   ],
-  'QB/RB/WR/TE must appear before K/DEF when Weekly SAGE is selected'
+  'QB/RB/WR/TE/FLEX must appear before K/DEF when Weekly SAGE is selected'
 );
 
 sandbox.boardSort = 'best';
