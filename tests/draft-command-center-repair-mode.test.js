@@ -161,7 +161,10 @@ test('source exposes Undo Last Pick and Correct Historical Pick controls', () =>
   assert.ok(html.includes('.prow.drafted .pname{text-decoration:line-through}'));
   assert.ok(html.includes('.pcard.drafted{opacity:1;background:#f8f7f4}'));
   assert.ok(html.includes('.pcard.drafted .cname{text-decoration:line-through}'));
-  assert.ok(html.includes('Right player, wrong fantasy team?'));
+  assert.ok(html.includes('The player and pick number will stay the same.'));
+  assert.ok(html.includes('Fantasy team that drafted this player'));
+  assert.ok(html.includes('Remove Pick Completely'));
+  assert.ok(html.includes('Save Team Change'));
   assert.ok(html.includes('onclick="applyReassign()"'));
 });
 
