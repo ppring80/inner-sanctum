@@ -932,15 +932,16 @@ function closePreviewBlockedModal() {
     <button class="modal-x" onclick="closeReassignModal()">✕</button>
     <div class="modal-ttl">Correct Historical Pick</div>
     <div id="reassignPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
-    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px">Right player, wrong fantasy team? Choose the correct team below. You can also remove the pick entirely.</p>
+    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px"><strong>Wrong fantasy team?</strong> Select the team that actually drafted this player, then choose <strong>Save Team Change</strong>. The player and pick number will stay the same.</p>
+    <p style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:14px">If the player was recorded by mistake, choose <strong>Remove Pick Completely</strong> instead.</p>
     <div class="setup-field" style="margin-bottom:16px">
-      <label>Drafted by</label>
+      <label>Fantasy team that drafted this player</label>
       <select id="reassignTeamSel"></select>
     </div>
     <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
+      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove Pick Completely</button>
       <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
-      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save Team Change</button>
     </div>
   </div>
 </div>
