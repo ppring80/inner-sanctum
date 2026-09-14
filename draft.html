@@ -158,7 +158,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .ptable th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);background:var(--bg);white-space:nowrap}
 .prow{border-bottom:1px solid var(--border);transition:background 0.1s}
 .prow:hover{background:#f8f6f0}
-.prow.drafted{opacity:0.3;text-decoration:line-through}
+.prow.drafted{opacity:1;text-decoration:none;background:#f8f7f4}
+.prow.drafted .pname{text-decoration:line-through}
 .prow.mypick{background:#fffbe0;box-shadow:inset 0 0 0 2px var(--gold-lt)}
 .prow td{padding:6px 8px;vertical-align:middle;line-height:1.35}
 .r-ovr{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);width:28px}
@@ -193,7 +194,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;padding:12px}
 .pcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;position:relative;transition:all 0.15s}
 .pcard:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-.pcard.drafted{opacity:0.3}
+.pcard.drafted{opacity:1;background:#f8f7f4}
+.pcard.drafted .cname{text-decoration:line-through}
 .pcard.mypick{opacity:1;border:2px solid var(--gold-lt);background:#fffbe0}
 .crank{position:absolute;top:8px;right:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);font-weight:600}
 .cname{font-size:13px;font-weight:600;color:var(--text);padding-right:26px;line-height:1.3;margin-bottom:4px}
@@ -928,16 +930,18 @@ function closePreviewBlockedModal() {
 <div class="modal-bg" id="reassignModalBg">
   <div class="modal" style="max-width:380px">
     <button class="modal-x" onclick="closeReassignModal()">✕</button>
-    <div class="modal-ttl">Reassign Pick</div>
+    <div class="modal-ttl">Correct Historical Pick</div>
     <div id="reassignPlayerLabel" style="margin-bottom:12px;font-weight:600"></div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px"><strong>Wrong fantasy team?</strong> Select the team that actually drafted this player, then choose <strong>Save Team Change</strong>. The player and pick number will stay the same.</p>
+    <p style="font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:14px">If the player was recorded by mistake, choose <strong>Remove Pick Completely</strong> instead.</p>
     <div class="setup-field" style="margin-bottom:16px">
-      <label>Drafted by</label>
+      <label>Fantasy team that drafted this player</label>
       <select id="reassignTeamSel"></select>
     </div>
     <div class="btn-row" style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove this pick</button>
+      <button class="hdr-btn" style="color:#c0392b;border-color:#ef9a9a" onclick="removeCurrentReassignPick()">Remove Pick Completely</button>
       <button class="hdr-btn" onclick="closeReassignModal()">Cancel</button>
-      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save</button>
+      <button class="hdr-btn" style="border-color:var(--gold-lt);color:var(--gold-lt)" onclick="applyReassign()">Save Team Change</button>
     </div>
   </div>
 </div>
@@ -1438,7 +1442,7 @@ function renderOwnershipBadge(entry,isMine){
   if(entry.isKeeper){
     return '<span class="own-badge keeper-badge">\uD83D\uDD12 Keeper R'+entry.round+'</span>';
   }
-  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" onclick="openReassignModal('+entry.id+')">'+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
+  return '<button type="button" class="own-badge'+(isMine?' mine':'')+'" title="Correct historical pick" aria-label="Correct historical pick" onclick="openReassignModal('+entry.id+')">Edit Pick &middot; '+(isMine?'\u2605 Mine':teamNameById(entry.teamId))+'</button>';
 }
 function teamNameById(id){
   var t=draftState.teams.find(function(x){return x.id===id;});
