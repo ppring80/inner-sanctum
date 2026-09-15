@@ -4,8 +4,9 @@
 //
 // Customer-facing orchestration for Available For You.
 // Reuses the existing provider-authoritative waiver candidate service and
-// conservative decision layer. No transaction is submitted and no FAAB value
-// is invented here.
+// conservative decision layer. No transaction is submitted. FAAB guidance is
+// a bounded percentage derived only from recommendation evidence and league
+// context supplied to this endpoint.
 
 const waiverCandidates = require('./waiver-candidates.js');
 const {
@@ -30,21 +31,20 @@ function derive2026RegularSeasonWeek(now) {
   const current = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(current.getTime())) return null;
 
-  // 2026 Week 1 opens Thursday, September 10. Keep this fallback scoped
-  // strictly to the 2026 regular season so provider week fields always win.
+  // Waiver decisions roll forward after Monday's slate, not when Thursday's
+  // next game begins. Week 1 therefore runs Sep 10-14 for this endpoint;
+  // Tuesday Sep 15 is the start of the Week 2 waiver-decision window.
   const weekOneStart = Date.UTC(2026, 8, 10);
-  const weekNineteenStart = weekOneStart + (18 * 7 * 24 * 60 * 60 * 1000);
-  const currentUtcDate = Date.UTC(
-    current.getUTCFullYear(),
-    current.getUTCMonth(),
-    current.getUTCDate()
-  );
+  const weekTwoWaiverStart = Date.UTC(2026, 8, 15, 6);
+  const weekNineteenStart = weekTwoWaiverStart + (17 * 7 * 24 * 60 * 60 * 1000);
+  const currentTime = current.getTime();
 
-  if (currentUtcDate < weekOneStart || currentUtcDate >= weekNineteenStart) {
+  if (currentTime < weekOneStart || currentTime >= weekNineteenStart) {
     return null;
   }
 
-  return Math.floor((currentUtcDate - weekOneStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  if (currentTime < weekTwoWaiverStart) return 1;
+  return Math.floor((currentTime - weekTwoWaiverStart) / (7 * 24 * 60 * 60 * 1000)) + 2;
 }
 
 function resolveWaiverWeek(body, now = new Date()) {
@@ -69,17 +69,22 @@ function resolveWaiverWeek(body, now = new Date()) {
     league?.scoringPeriod
   );
 
-  const resolvedProviderWeek = validWeek(providerWeek);
-  if (resolvedProviderWeek) return resolvedProviderWeek;
-
   const season = Number(firstPresent(
     body?.season,
     connection?.season,
     league?.season,
     now.getUTCFullYear()
   ));
+  const resolvedProviderWeek = validWeek(providerWeek);
+  const waiverWeek = season === 2026 ? derive2026RegularSeasonWeek(now) : null;
 
-  return season === 2026 ? derive2026RegularSeasonWeek(now) : null;
+  // A stored connection can retain the just-completed scoring period until
+  // the provider refreshes it. Never move backward from provider context, but
+  // allow the live waiver calendar to advance that stale week.
+  if (resolvedProviderWeek && waiverWeek) {
+    return Math.max(resolvedProviderWeek, waiverWeek);
+  }
+  return resolvedProviderWeek || waiverWeek;
 }
 
 function withResolvedWeek(event) {
@@ -107,13 +112,94 @@ function withResolvedWeek(event) {
 
 function customerVerdict(item) {
   const action = item?.decision?.action || 'REVIEW';
-  const trend = item?.evidence?.trend?.direction || null;
+  const impact = item?.evidence?.rosterImpact || null;
+  const depth = impact?.depthComparison || null;
+  const candidateRank = Number(item?.evidence?.sage?.positionRank);
+  const weakestDepthRank = Number(depth?.weakestComparable?.sage?.positionRank);
+  const meaningfulDepthUpgrade =
+    impact?.comparisonType === 'starting-lineup' &&
+    impact?.candidateStarts === false &&
+    depth?.classification === 'UPGRADE' &&
+    Number.isFinite(candidateRank) &&
+    Number.isFinite(weakestDepthRank) &&
+    weakestDepthRank - candidateRank >= 8;
 
   if (action === 'ADD') return 'ADD_NOW';
-  if (action === 'WATCH' && trend === 'RISER') return 'STASH';
+  if (action === 'WATCH' && meaningfulDepthUpgrade) return 'STASH';
   if (action === 'WATCH') return 'WATCH';
   if (action === 'PASS') return 'PASS';
   return 'REVIEW';
+}
+
+function normalizeScoring(value) {
+  return String(value || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
+}
+
+function buildFaabGuidance(item, verdict, context = {}) {
+  if (!['ADD_NOW', 'STASH'].includes(verdict)) return null;
+
+  const basis = [];
+  const teams = Number(context?.teams);
+  const scoring = normalizeScoring(context?.scoring);
+  const position = String(item?.position || '').toUpperCase();
+  const trend = item?.evidence?.trend?.direction || null;
+  const impact = item?.evidence?.rosterImpact || null;
+  const depth = impact?.depthComparison || null;
+  const candidateRank = Number(item?.evidence?.sage?.positionRank);
+  const weakestRank = Number(depth?.weakestComparable?.sage?.positionRank);
+  const percentOwned = Number(item?.evidence?.percentOwned);
+  let recommended = verdict === 'ADD_NOW' ? 14 : 10;
+
+  if (Number.isFinite(teams) && teams >= 12) {
+    recommended += 3;
+    basis.push(`${teams}-team depth`);
+  }
+  if (position === 'RB' && ['half-ppr', 'halfppr', '0.5-ppr'].includes(scoring)) {
+    recommended += 2;
+    basis.push('half-PPR RB value');
+  }
+  if (trend === 'RISER') {
+    recommended += 3;
+    basis.push('rising opportunity');
+  }
+  if (Number.isFinite(candidateRank) && Number.isFinite(weakestRank)) {
+    const rankEdge = weakestRank - candidateRank;
+    if (rankEdge >= 20) {
+      recommended += 4;
+      basis.push('strong bench upgrade');
+    } else if (rankEdge >= 12) {
+      recommended += 2;
+      basis.push('meaningful bench upgrade');
+    }
+  }
+  if (
+    verdict === 'ADD_NOW' &&
+    Number.isFinite(Number(impact?.projectionDelta)) &&
+    Number(impact.projectionDelta) >= 5
+  ) {
+    recommended += 3;
+    basis.push('clear lineup gain');
+  }
+  if (Number.isFinite(percentOwned)) {
+    if (percentOwned >= 50) {
+      recommended += 3;
+      basis.push('strong market demand');
+    } else if (percentOwned >= 25) {
+      recommended += 1;
+      basis.push('market demand');
+    }
+  }
+
+  const ceiling = verdict === 'ADD_NOW' ? 30 : 24;
+  recommended = Math.max(verdict === 'ADD_NOW' ? 8 : 5, Math.min(ceiling, recommended));
+  return {
+    budgetBasis: 'original-budget-percent',
+    recommendedPct: recommended,
+    rangeMinPct: Math.max(1, recommended - 3),
+    rangeMaxPct: Math.min(ceiling, recommended + 3),
+    confidence: trend ? 'MEDIUM' : 'LOW',
+    basis
+  };
 }
 
 function verdictPriority(verdict) {
@@ -233,17 +319,20 @@ function bestForMeCompare(a, b) {
   return String(a.name || '').localeCompare(String(b.name || ''));
 }
 
-function decorateDecision(item) {
+function decorateDecision(item, context = {}) {
   const verdict = customerVerdict(item);
   const rosterImpact = item?.evidence?.rosterImpact || null;
   const weakest = rosterImpact?.weakestComparable || null;
   const sage = item?.evidence?.sage || null;
   const trend = item?.evidence?.trend || null;
+  const opportunity = item?.evidence?.opportunity || null;
 
   return {
     ...item,
     verdict,
+    opportunity,
     customerActionable: verdict === 'ADD_NOW',
+    faab: buildFaabGuidance(item, verdict, context),
     swapFor:
       verdict === 'ADD_NOW' &&
       rosterImpact?.comparisonType !== 'starting-lineup' &&
@@ -265,6 +354,17 @@ function decorateDecision(item) {
             slot: rosterImpact.targetSlot || null
           }
         : null,
+    benchFor:
+      rosterImpact?.comparisonType === 'starting-lineup' &&
+      rosterImpact?.candidateStarts === false &&
+      rosterImpact?.depthComparison?.classification === 'UPGRADE' &&
+      rosterImpact.depthComparison?.weakestComparable?.name
+        ? {
+            name: rosterImpact.depthComparison.weakestComparable.name,
+            position: rosterImpact.depthComparison.weakestComparable.position || null,
+            team: rosterImpact.depthComparison.weakestComparable.team || null
+          }
+        : null,
     quickRead: {
       weeklyRank:
         sage?.position && sage?.positionRank
@@ -281,7 +381,7 @@ function decorateDecision(item) {
   };
 }
 
-function buildCustomerRecommendations(decisions) {
+function buildCustomerRecommendations(decisions, context = {}) {
   // Preserve the complete provider-reported pool: the only filter here
   // removes candidates the provider itself did not report as available
   // (INELIGIBLE), exactly as before. No position, count, or "staleness"
@@ -297,7 +397,7 @@ function buildCustomerRecommendations(decisions) {
   // touches.
   return (Array.isArray(decisions) ? decisions : [])
     .filter((item) => item?.decision?.action !== 'INELIGIBLE')
-    .map(decorateDecision)
+    .map((item) => decorateDecision(item, context))
     .sort(bestForMeCompare);
 }
 
@@ -350,7 +450,10 @@ exports.handler = async function handler(event) {
   }
 
   const rawDecisions = buildWaiverDecisions(candidateBody.candidates || []);
-  const recommendations = buildCustomerRecommendations(rawDecisions);
+  const recommendations = buildCustomerRecommendations(rawDecisions, {
+    teams: candidateBody.teams || candidateBody.metadata?.teams || null,
+    scoring: candidateBody.scoring || candidateBody.metadata?.scoring || null
+  });
 
   return {
     statusCode: 200,
@@ -368,11 +471,11 @@ exports.handler = async function handler(event) {
       metadata: {
         ...(candidateBody.metadata || {}),
         methodology:
-          'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated roster upgrade. STASH is reserved for similar roster value with a rising opportunity trend. WATCH and PASS remain conservative when evidence does not justify an add.',
+          'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated lineup upgrade. STASH identifies a meaningful bench upgrade; available trend evidence strengthens the recommendation and FAAB guidance. WATCH and PASS remain conservative when evidence does not justify an add.',
         limitations: [
-          'No FAAB amount is calculated.',
+          'FAAB guidance is a percentage of the original budget because remaining budget is not supplied by the provider connection.',
           'No transaction is submitted.',
-          'Current upgrade proof uses the existing same-position Weekly SAGE roster comparison; FLEX-aware incremental lineup optimization remains a separate SAGE enhancement.'
+          'FAAB confidence remains conservative when no current opportunity trend is available.'
         ]
       }
     })
@@ -385,6 +488,7 @@ exports._test = {
   resolveWaiverWeek,
   withResolvedWeek,
   customerVerdict,
+  buildFaabGuidance,
   verdictPriority,
   decorateDecision,
   buildCustomerRecommendations,

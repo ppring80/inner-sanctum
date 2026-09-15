@@ -158,6 +158,21 @@ function classifyCandidate(candidate) {
   }
 
   if (impact === 'SIMILAR') {
+    const depthComparison = candidate?.rosterImpact?.depthComparison || null;
+    if (
+      candidate?.rosterImpact?.comparisonType === 'starting-lineup' &&
+      candidate?.rosterImpact?.candidateStarts === false &&
+      depthComparison?.classification === 'DOWNGRADE'
+    ) {
+      return {
+        action: 'PASS',
+        actionable: false,
+        reasonCode: 'ROSTER_DEPTH_DOWNGRADE',
+        reasons: buildReasons(candidate).concat([
+          'Does not enter the starting lineup and ranks behind the weakest comparable roster player.'
+        ])
+      };
+    }
     return {
       action: 'WATCH',
       actionable: false,
@@ -210,6 +225,7 @@ function buildWaiverDecisions(candidates) {
       evidence: {
         sage: candidate?.sage || null,
         trend: candidate?.trend || null,
+        opportunity: candidate?.opportunity || null,
         rosterImpact: candidate?.rosterImpact || null,
         percentOwned:
           candidate?.percentOwned === undefined ? null : candidate.percentOwned,

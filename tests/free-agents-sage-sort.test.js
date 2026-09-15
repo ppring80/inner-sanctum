@@ -73,16 +73,16 @@ assert.deepStrictEqual(
 );
 
 assert.ok(
-  source.includes("boardSort='sage'"),
-  'Free Agents must initialize with SAGE Advice selected'
+  source.includes("boardSort='best'"),
+  'Free Agents must initialize with Best For My Team selected'
 );
 assert.ok(
-  source.includes('<option value="sage">SAGE Advice</option><option value="best">Best For My Team</option>'),
-  'SAGE Advice must be the first customer-facing sort option'
+  source.includes('<option value="best" selected>Best For My Team</option><option value="sage">SAGE Advice</option>'),
+  'Best For My Team must be the first customer-facing sort option'
 );
 assert.ok(
-  source.includes("boardPosition='ALL';boardSort='sage';renderDecisionBoard()"),
-  'rendering new league data must restore the SAGE Advice default'
+  source.includes("boardPosition='ALL';boardSort='best';renderDecisionBoard()"),
+  'rendering new league data must restore the Best For My Team default'
 );
 
 console.log('free-agents-sage-sort.test.js passed');

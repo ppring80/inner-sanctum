@@ -7,6 +7,7 @@ const {
     resolveWaiverWeek,
     withResolvedWeek,
     customerVerdict,
+    buildFaabGuidance,
     buildCustomerRecommendations,
     summarizeCustomerRecommendations
   }
@@ -58,6 +59,23 @@ function decision(overrides) {
   };
 }
 
+function stashEvidence() {
+  return {
+    ...decision().evidence,
+    sage: { position: 'WR', positionRank: 30 },
+    rosterImpact: {
+      classification: 'SIMILAR',
+      comparisonType: 'starting-lineup',
+      candidateStarts: false,
+      depthComparison: {
+        classification: 'UPGRADE',
+        weakestComparable: { sage: { positionRank: 42 } }
+      }
+    },
+    trend: { direction: 'RISER' }
+  };
+}
+
 test('2026 fallback resolves Week 1 from September 10', () => {
   assert.strictEqual(
     derive2026RegularSeasonWeek(new Date('2026-09-10T20:00:00Z')),
@@ -68,6 +86,30 @@ test('2026 fallback resolves Week 1 from September 10', () => {
 test('2026 fallback advances exactly one week at September 17', () => {
   assert.strictEqual(
     derive2026RegularSeasonWeek(new Date('2026-09-17T00:00:00Z')),
+    2
+  );
+});
+
+test('2026 waiver window advances to Week 2 on Tuesday after Week 1', () => {
+  assert.strictEqual(
+    derive2026RegularSeasonWeek(new Date('2026-09-15T06:00:00Z')),
+    2
+  );
+});
+
+test('Week 1 does not advance before the Monday slate is safely complete', () => {
+  assert.strictEqual(
+    derive2026RegularSeasonWeek(new Date('2026-09-15T05:59:59Z')),
+    1
+  );
+});
+
+test('stale provider Week 1 advances to the live Week 2 waiver window', () => {
+  assert.strictEqual(
+    resolveWaiverWeek(
+      { connection: { provider: 'espn', currentWeek: 1, season: 2026 } },
+      new Date('2026-09-15T06:00:00Z')
+    ),
     2
   );
 });
@@ -117,17 +159,62 @@ test('ADD becomes customer-facing ADD_NOW', () => {
   assert.strictEqual(customerVerdict(decision()), 'ADD_NOW');
 });
 
-test('similar value plus rising opportunity becomes STASH', () => {
+test('rising depth player with a meaningful bench upgrade becomes STASH', () => {
   assert.strictEqual(
     customerVerdict(decision({
       decision: { action: 'WATCH', actionable: false },
       evidence: {
         ...decision().evidence,
-        rosterImpact: { classification: 'SIMILAR' },
+        sage: { position: 'WR', positionRank: 30 },
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'UPGRADE',
+            weakestComparable: { sage: { positionRank: 42 } }
+          }
+        },
         trend: { direction: 'RISER' }
       }
     })),
     'STASH'
+  );
+});
+
+test('meaningful bench upgrade becomes STASH even before a trend signal exists', () => {
+  assert.strictEqual(
+    customerVerdict(decision({
+      decision: { action: 'WATCH', actionable: false },
+      evidence: {
+        ...stashEvidence(),
+        trend: null
+      }
+    })),
+    'STASH'
+  );
+});
+
+test('rising depth player without a meaningful bench upgrade stays WATCH', () => {
+  assert.strictEqual(
+    customerVerdict(decision({
+      decision: { action: 'WATCH', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: { position: 'TE', positionRank: 48 },
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'DOWNGRADE',
+            weakestComparable: { sage: { positionRank: 20 } }
+          }
+        },
+        trend: { direction: 'RISER' }
+      }
+    })),
+    'WATCH'
   );
 });
 
@@ -202,7 +289,7 @@ test('recommendations sort ADD NOW then STASH then WATCH then REVIEW then PASS',
     decision({
       name: 'Stash',
       decision: { action: 'WATCH' },
-      evidence: { ...decision().evidence, trend: { direction: 'RISER' } }
+      evidence: stashEvidence()
     }),
     decision({ name: 'Add' })
   ]);
@@ -219,7 +306,7 @@ test('summary counts customer-facing verdicts', () => {
     decision({
       name: 'Stash',
       decision: { action: 'WATCH' },
-      evidence: { ...decision().evidence, trend: { direction: 'RISER' } }
+      evidence: stashEvidence()
     }),
     decision({ name: 'Pass', decision: { action: 'PASS' } })
   ]);
@@ -228,6 +315,52 @@ test('summary counts customer-facing verdicts', () => {
     { addNow: summary.addNow, stash: summary.stash, pass: summary.pass, total: summary.total },
     { addNow: 1, stash: 1, pass: 1, total: 3 }
   );
+});
+
+test('12-team half-PPR rising RB stash receives bounded FAAB guidance', () => {
+  const item = decision({
+    name: 'Breakout Runner',
+    position: 'RB',
+    decision: { action: 'WATCH', actionable: false },
+    evidence: {
+      sage: { position: 'RB', positionRank: 34 },
+      trend: { direction: 'RISER' },
+      rosterImpact: {
+        classification: 'SIMILAR',
+        comparisonType: 'starting-lineup',
+        candidateStarts: false,
+        depthComparison: {
+          classification: 'UPGRADE',
+          weakestComparable: {
+            name: 'Bench Runner',
+            position: 'RB',
+            sage: { position: 'RB', positionRank: 50 }
+          }
+        }
+      },
+      percentOwned: 31
+    }
+  });
+  const guidance = buildFaabGuidance(item, 'STASH', {
+    teams: 12,
+    scoring: 'half-ppr'
+  });
+
+  assert.deepStrictEqual(
+    {
+      recommendedPct: guidance.recommendedPct,
+      rangeMinPct: guidance.rangeMinPct,
+      rangeMaxPct: guidance.rangeMaxPct
+    },
+    { recommendedPct: 21, rangeMinPct: 18, rangeMaxPct: 24 }
+  );
+  assert.ok(guidance.basis.includes('12-team depth'));
+  assert.ok(guidance.basis.includes('rising opportunity'));
+});
+
+test('review and pass players do not receive an invented FAAB recommendation', () => {
+  assert.strictEqual(buildFaabGuidance(decision(), 'REVIEW', { teams: 12 }), null);
+  assert.strictEqual(buildFaabGuidance(decision(), 'PASS', { teams: 12 }), null);
 });
 
 console.log(`\n${passed} waiver-recommendations tests passed.`);

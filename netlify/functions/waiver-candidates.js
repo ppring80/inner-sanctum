@@ -319,6 +319,44 @@ function extractTrendEvidence(row) {
   };
 }
 
+function buildOpportunityRows(opportunityData) {
+  const records = opportunityData?.records && typeof opportunityData.records === 'object'
+    ? opportunityData.records
+    : {};
+  return Object.values(records);
+}
+
+function signalValue(row, type) {
+  const signal = Array.isArray(row?.signals)
+    ? row.signals.find((entry) => entry?.type === type)
+    : null;
+  return signal || null;
+}
+
+function extractOpportunityEvidence(row) {
+  if (!row) return null;
+
+  const volume = signalValue(row, 'volumeTier');
+  const trend = signalValue(row, 'trendClassification');
+  const lastGame = numberOrNull(row?.opportunities?.lastGame);
+  const carries = numberOrNull(row?.rushing?.lastGame);
+  const targets = numberOrNull(row?.receiving?.lastGame);
+
+  if (!volume && !trend && lastGame === null && carries === null && targets === null) {
+    return null;
+  }
+
+  return {
+    volumeTier: volume?.value || null,
+    volumeBasis: numberOrNull(volume?.detail?.basisValue),
+    direction: trend?.value || null,
+    lastGameOpportunities: lastGame,
+    lastGameCarries: carries,
+    lastGameTargets: targets,
+    gamesSampled: numberOrNull(row?.opportunities?.gamesSampled)
+  };
+}
+
 function rankRosterAtPosition(roster, sageRows, position) {
   return (Array.isArray(roster) ? roster : [])
     .filter((player) => getPlayerPosition(player) === position)
@@ -406,6 +444,18 @@ function deriveEspnLineupConstruction(settings) {
     BENCH: get(20), IR: get(21)
   };
   return hasStartingLineupSlots(lineup) ? lineup : null;
+}
+
+function deriveEspnScoringFormat(settings) {
+  const items = Array.isArray(settings?.scoringSettings?.scoringItems)
+    ? settings.scoringSettings.scoringItems
+    : [];
+  const reception = items.find((item) => Number(item?.statId) === 53);
+  const points = numberOrNull(reception?.points);
+  if (points === 1) return 'ppr';
+  if (points === 0.5) return 'half-ppr';
+  if (points === 0) return 'standard';
+  return null;
 }
 
 function deriveEspnLineupFromRoster(roster) {
@@ -620,10 +670,17 @@ function resolveConnectionInput(body) {
         body?.scoring,
         body?.scoringFormat,
         connection?.scoringFormat,
-        connection?.settings?.scoringProfile?.format
+        provider === 'espn' ? deriveEspnScoringFormat(connection?.settings) : null
       ) || 'ppr',
     teams: Number(
-      firstDefined(body?.teams, body?.teamCount, connection?.teamCount, league?.size) || 12
+      firstDefined(
+        body?.teams,
+        body?.teamCount,
+        connection?.teamCount,
+        league?.teamCount,
+        connection?.settings?.size,
+        league?.size
+      ) || 12
     ),
     availabilityMeta: firstDefined(
       body?.availabilityMeta,
@@ -633,17 +690,20 @@ function resolveConnectionInput(body) {
   };
 }
 
-function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData }) {
+function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData }) {
   const sageRows = flattenWeeklyRankings(weeklyData);
   const trendRows = buildTrendRows(risersFallersData);
+  const opportunityRows = buildOpportunityRows(opportunityData);
 
   return (Array.isArray(availablePlayers) ? availablePlayers : [])
     .filter(isProviderAvailableStatus)
     .map((candidate) => {
       const sageMatch = findIdentityMatch(candidate, sageRows);
       const trendMatch = findIdentityMatch(candidate, trendRows);
+      const opportunityMatch = findIdentityMatch(candidate, opportunityRows);
       const sage = extractSageEvidence(sageMatch.match);
       const trend = extractTrendEvidence(trendMatch.match);
+      const opportunity = extractOpportunityEvidence(opportunityMatch.match);
       const position = getPlayerPosition(candidate) || sage?.position || null;
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
@@ -656,6 +716,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         sageRows,
         lineupConstruction
       );
+      const depthComparison = compareCandidateToRoster(sage, rosterEvidence);
 
       return {
         providerPlayerId:
@@ -672,12 +733,18 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
           sageMatched: Boolean(sageMatch.match),
           sageMatchReason: sageMatch.reason,
           trendMatched: Boolean(trendMatch.match),
-          trendMatchReason: trendMatch.reason
+          trendMatchReason: trendMatch.reason,
+          opportunityMatched: Boolean(opportunityMatch.match),
+          opportunityMatchReason: opportunityMatch.reason
         },
         sage,
         trend,
-        rosterImpact: lineupImpact || {
-          ...compareCandidateToRoster(sage, rosterEvidence),
+        opportunity,
+        rosterImpact: lineupImpact ? {
+          ...lineupImpact,
+          depthComparison
+        } : {
+          ...depthComparison,
           comparisonType: 'same-position-fallback'
         }
       };
@@ -741,6 +808,16 @@ async function readRisersFallers(event) {
   }
 }
 
+async function readOpportunityIntel(event) {
+  try {
+    connectLambda(event);
+    const store = getStore({ name: 'opportunity-intel' });
+    return (await store.get('latest', { type: 'json' })) || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 exports.handler = async function (event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
 
@@ -787,6 +864,8 @@ exports.handler = async function (event) {
         provider: input.provider,
         season: input.season,
         week: input.week,
+        scoring: input.scoring,
+        teams: input.teams,
         candidates: [],
         metadata: {
           availablePlayersReceived: 0,
@@ -802,7 +881,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const [weeklyData, risersFallersData] = await Promise.all([
+    const [weeklyData, risersFallersData, opportunityData] = await Promise.all([
       fetchWeeklyData(
         event,
         input.season,
@@ -810,7 +889,8 @@ exports.handler = async function (event) {
         input.scoring,
         input.teams
       ),
-      readRisersFallers(event)
+      readRisersFallers(event),
+      readOpportunityIntel(event)
     ]);
 
     const candidates = enrichCandidates({
@@ -818,7 +898,8 @@ exports.handler = async function (event) {
       roster: input.roster,
       lineupConstruction: input.lineupConstruction,
       weeklyData,
-      risersFallersData
+      risersFallersData,
+      opportunityData
     });
 
     return jsonResponse(
@@ -830,6 +911,8 @@ exports.handler = async function (event) {
         provider: input.provider,
         season: input.season,
         week: input.week,
+        scoring: input.scoring,
+        teams: input.teams,
         candidates,
         metadata: {
           availablePlayersReceived: input.availablePlayers.length,
@@ -839,6 +922,9 @@ exports.handler = async function (event) {
           trendMatched:
             candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
+          opportunityDataAvailable: Boolean(opportunityData),
+          opportunityMatched:
+            candidates.filter((candidate) => candidate.identity.opportunityMatched).length,
           availabilityMeta: input.availabilityMeta,
           lineupDiagnostics: input.lineupDiagnostics,
           methodology:
@@ -869,9 +955,12 @@ exports._test = {
   findIdentityMatch,
   flattenWeeklyRankings,
   buildTrendRows,
+  buildOpportunityRows,
   extractSageEvidence,
+  extractOpportunityEvidence,
   compareCandidateToRoster,
   deriveEspnLineupConstruction,
+  deriveEspnScoringFormat,
   deriveEspnLineupFromRoster,
   assignOptimalLineup,
   compareCandidateToLineup,
