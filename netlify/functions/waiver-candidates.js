@@ -840,6 +840,7 @@ exports.handler = async function (event) {
             candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
           availabilityMeta: input.availabilityMeta,
+          lineupDiagnostics: input.lineupDiagnostics,
           methodology:
             'Provider availability is authoritative. Weekly SAGE and Risers & Fallers are joined as existing evidence; no new waiver score is calculated.'
         }
