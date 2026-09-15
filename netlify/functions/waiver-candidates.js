@@ -656,6 +656,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         sageRows,
         lineupConstruction
       );
+      const depthComparison = compareCandidateToRoster(sage, rosterEvidence);
 
       return {
         providerPlayerId:
@@ -676,8 +677,11 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         },
         sage,
         trend,
-        rosterImpact: lineupImpact || {
-          ...compareCandidateToRoster(sage, rosterEvidence),
+        rosterImpact: lineupImpact ? {
+          ...lineupImpact,
+          depthComparison
+        } : {
+          ...depthComparison,
           comparisonType: 'same-position-fallback'
         }
       };

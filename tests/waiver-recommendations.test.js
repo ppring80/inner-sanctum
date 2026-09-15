@@ -58,6 +58,23 @@ function decision(overrides) {
   };
 }
 
+function stashEvidence() {
+  return {
+    ...decision().evidence,
+    sage: { position: 'WR', positionRank: 30 },
+    rosterImpact: {
+      classification: 'SIMILAR',
+      comparisonType: 'starting-lineup',
+      candidateStarts: false,
+      depthComparison: {
+        classification: 'UPGRADE',
+        weakestComparable: { sage: { positionRank: 42 } }
+      }
+    },
+    trend: { direction: 'RISER' }
+  };
+}
+
 test('2026 fallback resolves Week 1 from September 10', () => {
   assert.strictEqual(
     derive2026RegularSeasonWeek(new Date('2026-09-10T20:00:00Z')),
@@ -117,17 +134,49 @@ test('ADD becomes customer-facing ADD_NOW', () => {
   assert.strictEqual(customerVerdict(decision()), 'ADD_NOW');
 });
 
-test('similar value plus rising opportunity becomes STASH', () => {
+test('rising depth player with a meaningful bench upgrade becomes STASH', () => {
   assert.strictEqual(
     customerVerdict(decision({
       decision: { action: 'WATCH', actionable: false },
       evidence: {
         ...decision().evidence,
-        rosterImpact: { classification: 'SIMILAR' },
+        sage: { position: 'WR', positionRank: 30 },
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'UPGRADE',
+            weakestComparable: { sage: { positionRank: 42 } }
+          }
+        },
         trend: { direction: 'RISER' }
       }
     })),
     'STASH'
+  );
+});
+
+test('rising depth player without a meaningful bench upgrade stays WATCH', () => {
+  assert.strictEqual(
+    customerVerdict(decision({
+      decision: { action: 'WATCH', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: { position: 'TE', positionRank: 48 },
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'DOWNGRADE',
+            weakestComparable: { sage: { positionRank: 20 } }
+          }
+        },
+        trend: { direction: 'RISER' }
+      }
+    })),
+    'WATCH'
   );
 });
 
@@ -202,7 +251,7 @@ test('recommendations sort ADD NOW then STASH then WATCH then REVIEW then PASS',
     decision({
       name: 'Stash',
       decision: { action: 'WATCH' },
-      evidence: { ...decision().evidence, trend: { direction: 'RISER' } }
+      evidence: stashEvidence()
     }),
     decision({ name: 'Add' })
   ]);
@@ -219,7 +268,7 @@ test('summary counts customer-facing verdicts', () => {
     decision({
       name: 'Stash',
       decision: { action: 'WATCH' },
-      evidence: { ...decision().evidence, trend: { direction: 'RISER' } }
+      evidence: stashEvidence()
     }),
     decision({ name: 'Pass', decision: { action: 'PASS' } })
   ]);
