@@ -14,6 +14,7 @@ const {
     extractSageEvidence,
     compareCandidateToRoster,
     deriveEspnLineupConstruction,
+    deriveEspnScoringFormat,
     deriveEspnLineupFromRoster,
     isProviderAvailableStatus,
     resolveConnectionInput,
@@ -377,6 +378,27 @@ test('ESPN lineup construction is recovered from the top-level captured settings
     deriveEspnLineupConstruction({ rosterSettings: { lineupSlotCounts: {} } }),
     null
   );
+});
+
+test('real ESPN settings shape supplies scoring format and league size', () => {
+  const resolved = resolveConnectionInput({
+    connection: {
+      provider: 'espn',
+      league: { season: 2026, teamCount: 12, availablePlayers: [] },
+      settings: {
+        size: 12,
+        scoringSettings: {
+          scoringItems: [{ statId: 53, points: 0.5 }]
+        }
+      }
+    }
+  });
+
+  assert.strictEqual(deriveEspnScoringFormat({
+    scoringSettings: { scoringItems: [{ statId: 53, points: 0.5 }] }
+  }), 'half-ppr');
+  assert.strictEqual(resolved.scoring, 'half-ppr');
+  assert.strictEqual(resolved.teams, 12);
 });
 
 test('older ESPN connections recover lineup construction from roster slot assignments', () => {

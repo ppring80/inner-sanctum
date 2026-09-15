@@ -61,11 +61,38 @@ test('free-agents.html source defines the real, moved board functions', () => {
   [
     'renderWaivers', 'renderDecisionBoard', 'rowHtml', 'sortRows', 'positionMatch',
     'setPositionFilter', 'setBoardSort', 'toggleDetail', 'rosterImpactCell', 'trendCell',
+    'faabCell', 'ensureFaabHeader',
   ].forEach((fn) => {
     assert.ok(mainScript.includes('function ' + fn), fn + ' must be defined in the real file');
   });
   assert.ok(!mainScript.includes('Available For You'), 'the old product name must not appear on the extracted page');
   assert.ok(mainScript.includes("p==='K'?'PK':p"), 'kicker filter should display PK while retaining internal K identity');
+});
+
+test('bench upgrades and FAAB guidance are visible customer evidence', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  const item = {
+    faab: { recommendedPct: 21, rangeMinPct: 18, rangeMaxPct: 24 },
+    decision: {
+      evidence: {
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'UPGRADE',
+            weakestComparable: { name: 'Weak Bench RB' }
+          }
+        }
+      }
+    }
+  };
+
+  assert.ok(sandbox.rosterImpactCell(item).includes('Bench Upgrade'));
+  assert.ok(sandbox.rosterImpactCell(item).includes('Weak Bench RB'));
+  assert.ok(sandbox.faabCell(item).includes('21%'));
+  assert.ok(sandbox.faabCell(item).includes('18–24%'));
 });
 
 test('primary board labels implement the agreed visible data contract', () => {

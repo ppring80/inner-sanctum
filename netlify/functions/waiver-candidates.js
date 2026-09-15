@@ -408,6 +408,18 @@ function deriveEspnLineupConstruction(settings) {
   return hasStartingLineupSlots(lineup) ? lineup : null;
 }
 
+function deriveEspnScoringFormat(settings) {
+  const items = Array.isArray(settings?.scoringSettings?.scoringItems)
+    ? settings.scoringSettings.scoringItems
+    : [];
+  const reception = items.find((item) => Number(item?.statId) === 53);
+  const points = numberOrNull(reception?.points);
+  if (points === 1) return 'ppr';
+  if (points === 0.5) return 'half-ppr';
+  if (points === 0) return 'standard';
+  return null;
+}
+
 function deriveEspnLineupFromRoster(roster) {
   const slotMap = {
     0: 'QB', 2: 'RB', 4: 'WR', 6: 'TE', 7: 'SUPERFLEX',
@@ -620,10 +632,17 @@ function resolveConnectionInput(body) {
         body?.scoring,
         body?.scoringFormat,
         connection?.scoringFormat,
-        connection?.settings?.scoringProfile?.format
+        provider === 'espn' ? deriveEspnScoringFormat(connection?.settings) : null
       ) || 'ppr',
     teams: Number(
-      firstDefined(body?.teams, body?.teamCount, connection?.teamCount, league?.size) || 12
+      firstDefined(
+        body?.teams,
+        body?.teamCount,
+        connection?.teamCount,
+        league?.teamCount,
+        connection?.settings?.size,
+        league?.size
+      ) || 12
     ),
     availabilityMeta: firstDefined(
       body?.availabilityMeta,
@@ -656,6 +675,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         sageRows,
         lineupConstruction
       );
+      const depthComparison = compareCandidateToRoster(sage, rosterEvidence);
 
       return {
         providerPlayerId:
@@ -676,8 +696,11 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         },
         sage,
         trend,
-        rosterImpact: lineupImpact || {
-          ...compareCandidateToRoster(sage, rosterEvidence),
+        rosterImpact: lineupImpact ? {
+          ...lineupImpact,
+          depthComparison
+        } : {
+          ...depthComparison,
           comparisonType: 'same-position-fallback'
         }
       };
@@ -787,6 +810,8 @@ exports.handler = async function (event) {
         provider: input.provider,
         season: input.season,
         week: input.week,
+        scoring: input.scoring,
+        teams: input.teams,
         candidates: [],
         metadata: {
           availablePlayersReceived: 0,
@@ -830,6 +855,8 @@ exports.handler = async function (event) {
         provider: input.provider,
         season: input.season,
         week: input.week,
+        scoring: input.scoring,
+        teams: input.teams,
         candidates,
         metadata: {
           availablePlayersReceived: input.availablePlayers.length,
@@ -872,6 +899,7 @@ exports._test = {
   extractSageEvidence,
   compareCandidateToRoster,
   deriveEspnLineupConstruction,
+  deriveEspnScoringFormat,
   deriveEspnLineupFromRoster,
   assignOptimalLineup,
   compareCandidateToLineup,
