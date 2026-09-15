@@ -9,8 +9,8 @@
 //
 // This feature is presentation-only: every test here proves the moved
 // rendering/filtering/sorting functions behave exactly as they did inside
-// Dispatches, reusing the same reference data shape produced by
-// netlify/functions/waiver-recommendations.js (untouched by this PR).
+// Dispatches, reusing the reference data shape produced by
+// netlify/functions/waiver-recommendations.js while accepting the expanded data contract.
 //
 // Run: node tests/free-agents-board.test.js
 
@@ -60,6 +60,14 @@ test('free-agents.html source defines the real, moved board functions', () => {
   });
   assert.ok(!mainScript.includes('Available For You'), 'the old product name must not appear on the extracted page');
   assert.ok(mainScript.includes("p==='K'?'PK':p"), 'kicker filter should display PK while retaining internal K identity');
+});
+
+test('primary board labels implement the agreed visible data contract', () => {
+  ['<th>Player</th>', '<th>Matchup</th>', '<th>Available</th>', '<th>Weekly SAGE</th>',
+   '<th>Proj</th>', '<th>Opportunity</th>', '<th>Roster Impact</th>', '<th>Decision</th>']
+    .forEach((label) => assert.ok(html.includes(label), label + ' must be present'));
+  assert.ok(mainScript.includes("total available"), 'filtered counts must distinguish shown players from the full pool');
+  assert.ok(mainScript.includes("Not available"), 'missing optional evidence must be explicit');
 });
 
 function makeFakeElement() {
@@ -228,6 +236,11 @@ const samplePayload = {
     assert.ok(!filtered.includes('Watch WR'), 'RB filter should exclude the WR');
     assert.ok(!filtered.includes('Stash QB'), 'RB filter should exclude the QB');
     assert.ok(!filtered.includes('Pass TE'), 'RB filter should exclude the TE');
+    assert.strictEqual(
+      sandbox.document._elements.boardCount.textContent,
+      '1 RB shown · 4 total available',
+      'filtered count should distinguish shown rows from the complete provider pool'
+    );
 
     sandbox.setPositionFilter('ALL');
     const restored = sandbox.document._elements.boardBody.innerHTML;
