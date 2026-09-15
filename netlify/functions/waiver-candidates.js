@@ -751,6 +751,11 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
 
   return (Array.isArray(availablePlayers) ? availablePlayers : [])
     .filter(isProviderAvailableStatus)
+    // ESPN's player catalog contains historical players that can still carry
+    // an available status. Only exclude an explicit provider inactive flag;
+    // missing activity data remains eligible so legitimate deep-league and
+    // fringe players are preserved.
+    .filter((candidate) => candidate?.active !== false)
     .map((candidate) => {
       const sageMatch = findIdentityMatch(candidate, sageRows);
       const trendMatch = findIdentityMatch(candidate, trendRows);
@@ -782,6 +787,8 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
       return {
         providerPlayerId:
           firstDefined(candidate?.providerPlayerId, candidate?.playerId, candidate?.id) || null,
+        active: typeof candidate?.active === 'boolean' ? candidate.active : null,
+        proTeamId: numberOrNull(candidate?.proTeamId),
         name: getPlayerName(candidate),
         position,
         team,

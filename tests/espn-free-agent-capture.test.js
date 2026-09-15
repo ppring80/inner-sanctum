@@ -47,6 +47,7 @@ function availabilityPayload() {
         player: {
           id: 100,
           fullName: 'Kirk Cousins',
+          active: true,
           defaultPositionId: 1,
           proTeamId: 1,
           stats: [{ scoringPeriodId: 2, statSourceId: 1, appliedTotal: 17.4 }]
@@ -58,6 +59,7 @@ function availabilityPayload() {
         player: {
           id: 200,
           fullName: 'Jason Myers',
+          active: false,
           defaultPositionId: 5,
           proTeamId: 26
         }
@@ -182,6 +184,8 @@ async function runCapture({ availabilityOk = true } = {}) {
     ]
   );
   assert.strictEqual(data.availablePlayers[0].projectedPoints, 17.4);
+  assert.strictEqual(data.availablePlayers[0].active, true);
+  assert.strictEqual(data.availablePlayers[1].active, false);
   assert.deepStrictEqual(
     JSON.parse(JSON.stringify(data.availablePlayers.map((p) => [p.name, p.proTeamId, p.opponent, p.homeAway]))),
     [

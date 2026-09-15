@@ -211,6 +211,55 @@ test('meaningful bench upgrade becomes STASH even before a trend signal exists',
   );
 });
 
+test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
+  const result = buildCustomerRecommendations([decision({
+    position: 'WR',
+    decision: { action: 'WATCH', actionable: false, reasonCode: 'WEEK1_DEPTH_UPGRADE' },
+    evidence: {
+      ...decision().evidence,
+      sage: { position: 'WR', positionRank: 24, baselineEvidenceType: 'week1-adp-baseline' },
+      trend: null,
+      rosterImpact: {
+        classification: 'UPGRADE', comparisonType: 'same-position-fallback',
+        weakestComparable: {
+          name: 'Bench Receiver', position: 'WR', sage: { positionRank: 40 }
+        }
+      }
+    }
+  })], { teams: 12, scoring: 'half-ppr' })[0];
+
+  assert.strictEqual(result.verdict, 'STASH');
+  assert.ok(result.faab);
+  assert.ok(result.faab.recommendedPct >= 5 && result.faab.recommendedPct <= 24);
+});
+
+test('all fantasy positions preserve matchup, Weekly SAGE, roster impact, decision, and FAAB', () => {
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+  const recs = buildCustomerRecommendations(positions.map((position, index) => decision({
+    name: `${position} Candidate`,
+    position,
+    opponent: 'BUF',
+    matchup: { opponent: 'BUF', homeAway: 'HOME' },
+    evidence: {
+      ...decision().evidence,
+      sage: { position, positionRank: index + 1, recommendation: 'START' },
+      rosterImpact: {
+        classification: 'UPGRADE',
+        weakestComparable: { name: `${position} Roster Player`, position }
+      }
+    }
+  })), { teams: 12, scoring: 'half-ppr' });
+
+  positions.forEach((position) => {
+    const item = recs.find((candidate) => candidate.position === position);
+    assert.strictEqual(item.opponent, 'BUF');
+    assert.strictEqual(item.quickRead.weeklyRank, `${position}${positions.indexOf(position) + 1}`);
+    assert.strictEqual(item.evidence.rosterImpact.classification, 'UPGRADE');
+    assert.strictEqual(item.verdict, 'ADD_NOW');
+    assert.ok(item.faab);
+  });
+});
+
 test('rising depth player without a meaningful bench upgrade stays WATCH', () => {
   assert.strictEqual(
     customerVerdict(decision({

@@ -69,6 +69,13 @@ test('free-agents.html source defines the real, moved board functions', () => {
   assert.ok(mainScript.includes("p==='K'?'PK':p"), 'kicker filter should display PK while retaining internal K identity');
 });
 
+test('table typography remains readable', () => {
+  assert.match(html, /\.decision-board th\{[^}]*font-size:10px/);
+  assert.match(html, /\.decision-board td\{[^}]*font-size:13px/);
+  assert.match(html, /\.player-name\{[^}]*font-size:14px/);
+  assert.match(html, /\.decision-sub\{[^}]*font-size:9px/);
+});
+
 test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);

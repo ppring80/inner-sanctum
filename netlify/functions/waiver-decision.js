@@ -98,10 +98,18 @@ function meaningfulUpgradeEvidence(candidate) {
   const candidateScore = Number(sage?.sageScore);
   const rosterScore = Number(weakestSage?.sageScore);
 
-  // Week 1 is an ADP baseline, not a current-week SAGE evaluation. A baseline
-  // rank edge may support review, but can never justify telling a customer to
-  // drop an established roster player.
-  if (sage?.baselineEvidenceType === 'week1-adp-baseline') return false;
+  // Week 1 ranks are an ADP baseline, so rank alone cannot justify an
+  // immediate lineup move. A provider-projected gain can corroborate a real
+  // starting-lineup improvement, while depth upgrades remain WATCH/STASH.
+  if (sage?.baselineEvidenceType === 'week1-adp-baseline') {
+    if (impact?.comparisonType !== 'starting-lineup' || impact?.candidateStarts !== true) {
+      return false;
+    }
+    if (impact?.reason === 'candidate_fills_open_starting_slot') return true;
+    return Number.isFinite(Number(impact?.projectionDelta)) &&
+      Number(impact.projectionDelta) >= 3 &&
+      Number(impact.lineupValueDelta) > 0;
+  }
 
   if (!Number.isFinite(candidateRank) || !Number.isFinite(rosterRank)) return false;
   if (!Number.isFinite(candidateScore) || !Number.isFinite(rosterScore)) return false;
@@ -140,6 +148,23 @@ function classifyCandidate(candidate) {
 
   if (impact === 'UPGRADE') {
     if (!meaningfulUpgradeEvidence(candidate)) {
+      const sage = candidate?.sage || null;
+      const weakest = candidate?.rosterImpact?.weakestComparable || null;
+      const rankEdge = Number(weakest?.sage?.positionRank) - Number(sage?.positionRank);
+      if (
+        sage?.baselineEvidenceType === 'week1-adp-baseline' &&
+        Number.isFinite(rankEdge) &&
+        rankEdge >= 8
+      ) {
+        return {
+          action: 'WATCH',
+          actionable: false,
+          reasonCode: 'WEEK1_DEPTH_UPGRADE',
+          reasons: buildReasons(candidate).concat([
+            'Week 1 rank evidence supports a bench stash, not an automatic lineup change.'
+          ])
+        };
+      }
       return {
         action: 'REVIEW',
         actionable: false,
@@ -217,9 +242,15 @@ function buildWaiverDecisions(candidates) {
   return (Array.isArray(candidates) ? candidates : [])
     .map((candidate) => ({
       providerPlayerId: candidate?.providerPlayerId || null,
+      active: typeof candidate?.active === 'boolean' ? candidate.active : null,
+      proTeamId: candidate?.proTeamId ?? null,
       name: candidate?.name || '',
       position: candidate?.position || candidate?.sage?.position || null,
       team: candidate?.team || null,
+      opponent: candidate?.opponent || null,
+      homeAway: candidate?.homeAway || null,
+      gameTime: candidate?.gameTime || null,
+      matchup: candidate?.matchup || null,
       availabilityStatus: normalizeAvailabilityStatus(candidate?.availabilityStatus),
       decision: classifyCandidate(candidate),
       evidence: {
