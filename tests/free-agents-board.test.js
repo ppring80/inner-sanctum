@@ -61,6 +61,7 @@ test('free-agents.html source defines the real, moved board functions', () => {
   [
     'renderWaivers', 'renderDecisionBoard', 'rowHtml', 'sortRows', 'positionMatch',
     'setPositionFilter', 'setBoardSort', 'toggleDetail', 'rosterImpactCell', 'trendCell',
+    'faabCell', 'ensureFaabHeader',
   ].forEach((fn) => {
     assert.ok(mainScript.includes('function ' + fn), fn + ' must be defined in the real file');
   });
@@ -68,12 +69,58 @@ test('free-agents.html source defines the real, moved board functions', () => {
   assert.ok(mainScript.includes("p==='K'?'PK':p"), 'kicker filter should display PK while retaining internal K identity');
 });
 
+test('bench upgrades and FAAB guidance are visible customer evidence', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  const item = {
+    faab: { recommendedPct: 21, rangeMinPct: 18, rangeMaxPct: 24 },
+    decision: {
+      evidence: {
+        rosterImpact: {
+          classification: 'SIMILAR',
+          comparisonType: 'starting-lineup',
+          candidateStarts: false,
+          depthComparison: {
+            classification: 'UPGRADE',
+            weakestComparable: { name: 'Weak Bench RB' }
+          }
+        }
+      }
+    }
+  };
+
+  assert.ok(sandbox.rosterImpactCell(item).includes('Bench Upgrade'));
+  assert.ok(sandbox.rosterImpactCell(item).includes('Weak Bench RB'));
+  assert.ok(sandbox.faabCell(item).includes('21%'));
+  assert.ok(sandbox.faabCell(item).includes('18–24%'));
+});
+
 test('primary board labels implement the agreed visible data contract', () => {
   ['<th>Player</th>', '<th>Matchup</th>', '<th>Available</th>', '<th>Weekly SAGE</th>',
    '<th>Proj</th>', '<th>Opportunity</th>', '<th>Roster Impact</th>', '<th>Decision</th>']
     .forEach((label) => assert.ok(html.includes(label), label + ' must be present'));
   assert.ok(mainScript.includes("total available"), 'filtered counts must distinguish shown players from the full pool');
-  assert.ok(mainScript.includes("Not available"), 'missing optional evidence must be explicit');
+  assert.ok(mainScript.includes("No current signal"), 'missing optional evidence must be explicit');
+});
+
+test('Week 1 workload is shown without fabricating a directional trend', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  sandbox.waiverData = { week: 2 };
+  const html = sandbox.trendCell({
+    opportunity: {
+      volumeTier: 'high-volume',
+      lastGameOpportunities: 22,
+      lastGameCarries: 18,
+      lastGameTargets: 4,
+      gamesSampled: 1
+    }
+  });
+  assert.ok(html.includes('High volume'));
+  assert.ok(html.includes('22 opportunities'));
+  assert.ok(html.includes('18 carries'));
+  assert.ok(html.includes('4 targets'));
+  assert.ok(!html.includes('Rising'), 'one completed game must not be labeled a trend');
 });
 
 test('projection and ownership read the real nested decision evidence contract', () => {

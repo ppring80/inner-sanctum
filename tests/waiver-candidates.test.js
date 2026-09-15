@@ -11,9 +11,12 @@ const {
     findIdentityMatch,
     flattenWeeklyRankings,
     buildTrendRows,
+    buildOpportunityRows,
     extractSageEvidence,
+    extractOpportunityEvidence,
     compareCandidateToRoster,
     deriveEspnLineupConstruction,
+    deriveEspnScoringFormat,
     deriveEspnLineupFromRoster,
     isProviderAvailableStatus,
     resolveConnectionInput,
@@ -180,6 +183,24 @@ const trendData = {
   ]
 };
 
+const opportunityData = {
+  records: {
+    'available receiver|WR': {
+      playerID: 'tank-wr-2',
+      longName: 'Available Receiver',
+      team: 'GB',
+      pos: 'WR',
+      opportunities: { lastGame: 10, gamesSampled: 1 },
+      rushing: { lastGame: 1 },
+      receiving: { lastGame: 9 },
+      signals: [
+        { type: 'sampleSize', value: 'limited' },
+        { type: 'volumeTier', value: 'high-volume', detail: { basisValue: 10 } }
+      ]
+    }
+  }
+};
+
 test('normalizes punctuation, suffixes, and accents in player names', () => {
   assert.strictEqual(normalizeName('Amon-Ra St. Brown Jr.'), 'amonrastbrown');
   assert.strictEqual(normalizeName('José Núñez III'), 'josenunez');
@@ -291,6 +312,17 @@ test('Risers & Fallers rows retain direction and metrics', () => {
   assert.strictEqual(riser.targetShareDelta, 0.12);
 });
 
+test('Opportunity Intelligence supplies an honest one-game workload baseline', () => {
+  const rows = buildOpportunityRows(opportunityData);
+  const evidence = extractOpportunityEvidence(rows[0]);
+  assert.strictEqual(evidence.volumeTier, 'high-volume');
+  assert.strictEqual(evidence.lastGameOpportunities, 10);
+  assert.strictEqual(evidence.lastGameCarries, 1);
+  assert.strictEqual(evidence.lastGameTargets, 9);
+  assert.strictEqual(evidence.gamesSampled, 1);
+  assert.strictEqual(evidence.direction, null, 'one game must not fabricate a trend');
+});
+
 test('only explicit provider availability statuses are accepted', () => {
   assert.strictEqual(isProviderAvailableStatus({ availabilityStatus: 'FREE_AGENT' }), true);
   assert.strictEqual(isProviderAvailableStatus({ availabilityStatus: 'FREEAGENT' }), true);
@@ -377,6 +409,27 @@ test('ESPN lineup construction is recovered from the top-level captured settings
     deriveEspnLineupConstruction({ rosterSettings: { lineupSlotCounts: {} } }),
     null
   );
+});
+
+test('real ESPN settings shape supplies scoring format and league size', () => {
+  const resolved = resolveConnectionInput({
+    connection: {
+      provider: 'espn',
+      league: { season: 2026, teamCount: 12, availablePlayers: [] },
+      settings: {
+        size: 12,
+        scoringSettings: {
+          scoringItems: [{ statId: 53, points: 0.5 }]
+        }
+      }
+    }
+  });
+
+  assert.strictEqual(deriveEspnScoringFormat({
+    scoringSettings: { scoringItems: [{ statId: 53, points: 0.5 }] }
+  }), 'half-ppr');
+  assert.strictEqual(resolved.scoring, 'half-ppr');
+  assert.strictEqual(resolved.teams, 12);
 });
 
 test('older ESPN connections recover lineup construction from roster slot assignments', () => {
@@ -537,6 +590,24 @@ test('missing trend data does not block SAGE enrichment', () => {
   assert.ok(candidates[0].sage);
   assert.strictEqual(candidates[0].trend, null);
   assert.strictEqual(candidates[0].rosterImpact.classification, 'UPGRADE');
+});
+
+test('one-game opportunity baseline enriches a candidate without fabricating a riser', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Available Receiver', nflTeam: 'GB', position: 'WR',
+      availabilityStatus: 'WAIVERS'
+    }],
+    roster: [],
+    weeklyData,
+    risersFallersData: null,
+    opportunityData
+  });
+
+  assert.strictEqual(candidates[0].trend, null);
+  assert.strictEqual(candidates[0].identity.opportunityMatched, true);
+  assert.strictEqual(candidates[0].opportunity.volumeTier, 'high-volume');
+  assert.strictEqual(candidates[0].opportunity.lastGameTargets, 9);
 });
 
 test('candidate comparison reports downgrade when rank is worse', () => {

@@ -276,6 +276,35 @@ test('verdict tier still takes precedence over roster-impact scoring (verdict me
   assert.strictEqual(recs[0].name, 'Zeke Zulu', 'ADD_NOW still outranks REVIEW regardless of projection');
 });
 
+test('customer recommendation preserves bench-upgrade evidence for the UI', () => {
+  const recs = buildCustomerRecommendations([
+    decision({
+      name: 'Bench Upgrade',
+      position: 'RB',
+      action: 'WATCH',
+      sageMatched: true,
+      sage: { position: 'RB', positionRank: 34 },
+      rosterImpact: {
+        classification: 'SIMILAR',
+        comparisonType: 'starting-lineup',
+        candidateStarts: false,
+        depthComparison: {
+          classification: 'UPGRADE',
+          weakestComparable: {
+            name: 'Weak Bench RB',
+            position: 'RB',
+            sage: { position: 'RB', positionRank: 50 }
+          }
+        }
+      }
+    })
+  ], { teams: 12, scoring: 'half-ppr' });
+
+  assert.strictEqual(recs[0].verdict, 'STASH');
+  assert.strictEqual(recs[0].benchFor.name, 'Weak Bench RB');
+  assert.ok(recs[0].faab);
+});
+
 test('bestForMeCompare is directly usable and symmetric (a,b) === -(b,a) sign for a real pair', () => {
   const a = decision({ name: 'A', position: 'WR', action: 'REVIEW', providerProjectedPoints: 10 });
   const b = decision({ name: 'B', position: 'WR', action: 'REVIEW', providerProjectedPoints: 2 });

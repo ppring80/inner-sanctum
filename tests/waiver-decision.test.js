@@ -165,6 +165,28 @@ test('similar roster value produces WATCH rather than ADD', () => {
   assert.strictEqual(result.actionable, false);
 });
 
+test('depth-only candidate behind the weakest roster comparable becomes PASS', () => {
+  const result = classifyCandidate(
+    candidate({
+      rosterImpact: {
+        classification: 'SIMILAR',
+        comparisonType: 'starting-lineup',
+        candidateStarts: false,
+        depthComparison: {
+          classification: 'DOWNGRADE',
+          weakestComparable: {
+            name: 'Better Bench Receiver',
+            sage: { position: 'WR', positionRank: 18 }
+          }
+        }
+      }
+    })
+  );
+
+  assert.strictEqual(result.action, 'PASS');
+  assert.strictEqual(result.reasonCode, 'ROSTER_DEPTH_DOWNGRADE');
+});
+
 test('missing roster comparison produces REVIEW rather than guessing', () => {
   const result = classifyCandidate(
     candidate({
