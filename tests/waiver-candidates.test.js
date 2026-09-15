@@ -11,6 +11,7 @@ const {
     buildTrendRows,
     extractSageEvidence,
     compareCandidateToRoster,
+    deriveEspnLineupConstruction,
     isProviderAvailableStatus,
     resolveConnectionInput,
     enrichCandidates
@@ -340,6 +341,33 @@ test('connection lineup construction is preserved for roster impact', () => {
   assert.deepStrictEqual(resolved.lineupConstruction, {
     QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2
   });
+});
+
+test('ESPN lineup construction is recovered directly from league settings', () => {
+  const resolved = resolveConnectionInput({
+    provider: 'espn',
+    week: 2,
+    connection: {
+      lineupConstruction: {},
+      league: {
+        settings: {
+          rosterSettings: {
+            lineupSlotCounts: { 0: 1, 2: 2, 4: 2, 6: 1, 23: 2, 17: 1, 16: 1, 20: 4 }
+          }
+        },
+        availablePlayers: []
+      }
+    }
+  });
+
+  assert.deepStrictEqual(resolved.lineupConstruction, {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0,
+    K: 1, DEF: 1, BENCH: 4, IR: 0
+  });
+  assert.deepStrictEqual(
+    deriveEspnLineupConstruction({ settings: { rosterSettings: { lineupSlotCounts: {} } } }),
+    null
+  );
 });
 
 test('top-level availablePlayers still works for future providers', () => {

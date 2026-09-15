@@ -381,13 +381,31 @@ const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE'];
 const FIXED_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
 function lineupRankingValue(sage) {
-  if (Number.isFinite(Number(sage?.sageScore))) {
+  if (sage?.sageScore !== null && sage?.sageScore !== undefined && Number.isFinite(Number(sage.sageScore))) {
     return Number(sage.sageScore);
   }
   if (Number.isFinite(Number(sage?.adp)) && Number(sage.adp) > 0) {
     return -Number(sage.adp);
   }
   return null;
+}
+
+function hasStartingLineupSlots(lineup) {
+  return lineup && typeof lineup === 'object' &&
+    [...FIXED_LINEUP_SLOTS, 'FLEX', 'SUPERFLEX']
+      .some((slot) => Number(lineup[slot]) > 0);
+}
+
+function deriveEspnLineupConstruction(league) {
+  const counts = league?.settings?.rosterSettings?.lineupSlotCounts;
+  if (!counts || typeof counts !== 'object') return null;
+  const get = (id) => Number(counts[id] ?? counts[String(id)] ?? 0) || 0;
+  const lineup = {
+    QB: get(0), RB: get(2), WR: get(4), TE: get(6),
+    FLEX: get(23), SUPERFLEX: get(7), K: get(17), DEF: get(16),
+    BENCH: get(20), IR: get(21)
+  };
+  return hasStartingLineupSlots(lineup) ? lineup : null;
 }
 
 function buildLineupPlayer(player, sageRows, id) {
@@ -535,7 +553,7 @@ function resolveConnectionInput(body) {
   );
 
   const roster = firstDefined(body?.roster, connection?.roster);
-  const lineupConstruction = firstDefined(
+  const savedLineupConstruction = firstDefined(
     body?.lineupConstruction,
     connection?.lineupConstruction
   );
@@ -544,15 +562,18 @@ function resolveConnectionInput(body) {
     connection?.league && typeof connection.league === 'object'
       ? connection.league
       : {};
+  const lineupConstruction = hasStartingLineupSlots(savedLineupConstruction)
+    ? savedLineupConstruction
+    : provider === 'espn'
+      ? deriveEspnLineupConstruction(league)
+      : null;
 
   return {
     provider,
     availablePlayers: Array.isArray(availablePlayers) ? availablePlayers : [],
     roster: Array.isArray(roster) ? roster : [],
     lineupConstruction:
-      lineupConstruction && typeof lineupConstruction === 'object'
-        ? lineupConstruction
-        : null,
+      lineupConstruction,
     season: Number(
       firstDefined(body?.season, connection?.season, league?.season) ||
       new Date().getFullYear()
@@ -812,6 +833,7 @@ exports._test = {
   buildTrendRows,
   extractSageEvidence,
   compareCandidateToRoster,
+  deriveEspnLineupConstruction,
   assignOptimalLineup,
   compareCandidateToLineup,
   isProviderAvailableStatus,
