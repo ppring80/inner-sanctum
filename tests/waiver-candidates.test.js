@@ -342,6 +342,7 @@ test('connection lineup construction is preserved for roster impact', () => {
   assert.deepStrictEqual(resolved.lineupConstruction, {
     QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2
   });
+  assert.strictEqual(resolved.lineupDiagnostics.source, 'saved-lineup-construction');
 });
 
 test('ESPN lineup construction is recovered from the top-level captured settings', () => {
@@ -363,6 +364,8 @@ test('ESPN lineup construction is recovered from the top-level captured settings
     QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0,
     K: 1, DEF: 1, BENCH: 4, IR: 0
   });
+  assert.strictEqual(resolved.lineupDiagnostics.source, 'espn-settings');
+  assert.strictEqual(resolved.lineupDiagnostics.settingsPresent, true);
   assert.deepStrictEqual(
     deriveEspnLineupConstruction({ rosterSettings: { lineupSlotCounts: {} } }),
     null
