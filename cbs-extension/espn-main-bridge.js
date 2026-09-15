@@ -447,6 +447,7 @@
         id: String(leagueData?.id || leagueId),
         name: String(leagueData?.settings?.name || leagueData?.name || "ESPN League"),
         season: season,
+        scoringPeriodId: scoringPeriodId,
         teamCount: Number(leagueData?.settings?.size || leagueData?.teams?.length || 0) || null,
         availablePlayers: availability.players
       },

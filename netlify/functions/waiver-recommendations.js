@@ -54,6 +54,9 @@ function resolveWaiverWeek(body, now = new Date()) {
   const league = connection?.league && typeof connection.league === 'object'
     ? connection.league
     : {};
+  const availablePlayers = Array.isArray(connection?.availablePlayers)
+    ? connection.availablePlayers
+    : Array.isArray(league?.availablePlayers) ? league.availablePlayers : [];
 
   const providerWeek = firstPresent(
     body?.currentWeek,
@@ -66,7 +69,8 @@ function resolveWaiverWeek(body, now = new Date()) {
     league?.currentWeek,
     league?.week,
     league?.weekNumber,
-    league?.scoringPeriod
+    league?.scoringPeriod,
+    availablePlayers[0]?.scoringPeriodId
   );
 
   const season = Number(firstPresent(
@@ -78,12 +82,8 @@ function resolveWaiverWeek(body, now = new Date()) {
   const resolvedProviderWeek = validWeek(providerWeek);
   const waiverWeek = season === 2026 ? derive2026RegularSeasonWeek(now) : null;
 
-  // A stored connection can retain the just-completed scoring period until
-  // the provider refreshes it. Never move backward from provider context, but
-  // allow the live waiver calendar to advance that stale week.
-  if (resolvedProviderWeek && waiverWeek) {
-    return Math.max(resolvedProviderWeek, waiverWeek);
-  }
+  // The connected provider is authoritative for its league's active scoring
+  // period. The calendar is only a fallback when the provider supplies none.
   return resolvedProviderWeek || waiverWeek;
 }
 

@@ -104,13 +104,29 @@ test('Week 1 does not advance before the Monday slate is safely complete', () =>
   );
 });
 
-test('stale provider Week 1 advances to the live Week 2 waiver window', () => {
+test('provider Week 1 remains authoritative after the calendar enters the Week 2 waiver window', () => {
   assert.strictEqual(
     resolveWaiverWeek(
       { connection: { provider: 'espn', currentWeek: 1, season: 2026 } },
       new Date('2026-09-15T06:00:00Z')
     ),
-    2
+    1
+  );
+});
+
+test('ESPN available-player scoring period recovers provider week for an existing connection', () => {
+  assert.strictEqual(
+    resolveWaiverWeek(
+      {
+        connection: {
+          provider: 'espn',
+          league: { season: 2026 },
+          availablePlayers: [{ name: 'Jared Goff', scoringPeriodId: 1 }]
+        }
+      },
+      new Date('2026-09-15T07:00:00Z')
+    ),
+    1
   );
 });
 

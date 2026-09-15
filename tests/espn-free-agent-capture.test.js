@@ -169,6 +169,7 @@ async function runCapture({ availabilityOk = true } = {}) {
   assert.strictEqual(data.roster[0].name, 'Joe Burrow');
   assert.strictEqual(data.availablePlayers.length, 3);
   assert.strictEqual(data.league.availablePlayers.length, 3);
+  assert.strictEqual(data.league.scoringPeriodId, 2);
   assert.strictEqual(data.availabilityMeta.complete, true);
   assert.strictEqual(data.meta.dataQuality.availablePlayerCount, 3);
 
