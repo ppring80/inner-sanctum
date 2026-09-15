@@ -166,6 +166,30 @@ test('ADD NOW exposes conservative same-position swap candidate', () => {
   assert.strictEqual(result.quickRead.weeklyRank, 'WR24');
 });
 
+test('lineup displacement is not mislabeled as a drop recommendation', () => {
+  const input = decision({
+    evidence: {
+      ...decision().evidence,
+      rosterImpact: {
+        classification: 'UPGRADE',
+        comparisonType: 'starting-lineup',
+        candidateStarts: true,
+        targetSlot: 'FLEX',
+        weakestComparable: {
+          name: 'Roster Runner',
+          position: 'RB',
+          team: 'CAR'
+        }
+      }
+    }
+  });
+  const result = buildCustomerRecommendations([input])[0];
+
+  assert.strictEqual(result.swapFor, null);
+  assert.strictEqual(result.lineupFor.name, 'Roster Runner');
+  assert.strictEqual(result.lineupFor.slot, 'FLEX');
+});
+
 test('recommendations sort ADD NOW then STASH then WATCH then REVIEW then PASS', () => {
   const items = buildCustomerRecommendations([
     decision({ name: 'Pass', decision: { action: 'PASS' } }),

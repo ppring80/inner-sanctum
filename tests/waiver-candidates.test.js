@@ -327,6 +327,21 @@ test('ESPN connection shape feeds nested league.availablePlayers directly', () =
   assert.strictEqual(resolved.availabilityMeta.source, 'espn-kona_player_info');
 });
 
+test('connection lineup construction is preserved for roster impact', () => {
+  const resolved = resolveConnectionInput({
+    provider: 'espn',
+    week: 2,
+    connection: {
+      lineupConstruction: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2 },
+      league: { availablePlayers: [] }
+    }
+  });
+
+  assert.deepStrictEqual(resolved.lineupConstruction, {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2
+  });
+});
+
 test('top-level availablePlayers still works for future providers', () => {
   const resolved = resolveConnectionInput({
     provider: 'cbs',
@@ -461,6 +476,51 @@ test('candidate comparison reports downgrade when rank is worse', () => {
   );
 
   assert.strictEqual(result.classification, 'DOWNGRADE');
+});
+
+test('lineup impact recognizes a receiver upgrading the FLEX slot', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Available Receiver', nflTeam: 'GB', position: 'WR',
+      availabilityStatus: 'FREE_AGENT', projectedPoints: 14.5
+    }],
+    roster: [
+      { name: 'Amon-Ra St. Brown', nflTeam: 'DET', position: 'WR', projectedPoints: 18 },
+      { name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR', projectedPoints: 9 },
+      { name: 'Example Runner', nflTeam: 'CAR', position: 'RB', projectedPoints: 10 }
+    ],
+    lineupConstruction: { WR: 1, FLEX: 1 },
+    weeklyData,
+    risersFallersData: trendData
+  });
+
+  const impact = candidates[0].rosterImpact;
+  assert.strictEqual(impact.comparisonType, 'starting-lineup');
+  assert.strictEqual(impact.classification, 'UPGRADE');
+  assert.strictEqual(impact.candidateStarts, true);
+  assert.strictEqual(impact.targetSlot, 'FLEX');
+  assert.strictEqual(impact.displacedStarter.name, 'Roster Receiver');
+  assert.strictEqual(impact.projectionDelta, 5.5);
+});
+
+test('lineup impact labels a candidate who remains on the bench as depth only', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR',
+      availabilityStatus: 'WAIVERS'
+    }],
+    roster: [
+      { name: 'Amon-Ra St. Brown', nflTeam: 'DET', position: 'WR' },
+      { name: 'Available Receiver', nflTeam: 'GB', position: 'WR' }
+    ],
+    lineupConstruction: { WR: 1, FLEX: 1 },
+    weeklyData,
+    risersFallersData: null
+  });
+
+  assert.strictEqual(candidates[0].rosterImpact.comparisonType, 'starting-lineup');
+  assert.strictEqual(candidates[0].rosterImpact.candidateStarts, false);
+  assert.strictEqual(candidates[0].rosterImpact.reason, 'candidate_does_not_enter_starting_lineup');
 });
 
 console.log(`\n${passed} waiver-candidate tests passed.`);

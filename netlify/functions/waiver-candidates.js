@@ -376,6 +376,137 @@ function compareCandidateToRoster(candidateSage, rosterEvidence) {
   };
 }
 
+const FLEX_ELIGIBLE = ['RB', 'WR', 'TE'];
+const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE'];
+const FIXED_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+
+function lineupRankingValue(sage) {
+  if (Number.isFinite(Number(sage?.sageScore))) {
+    return Number(sage.sageScore);
+  }
+  if (Number.isFinite(Number(sage?.adp)) && Number(sage.adp) > 0) {
+    return -Number(sage.adp);
+  }
+  return null;
+}
+
+function buildLineupPlayer(player, sageRows, id) {
+  const sageMatch = findIdentityMatch(player, sageRows);
+  const sage = extractSageEvidence(sageMatch.match);
+  return {
+    id,
+    player,
+    name: getPlayerName(player),
+    position: getPlayerPosition(player) || sage?.position || null,
+    sage,
+    rankingValue: lineupRankingValue(sage),
+    projectedPoints: numberOrNull(player?.projectedPoints)
+  };
+}
+
+function assignOptimalLineup(players, lineupConstruction) {
+  const available = (Array.isArray(players) ? players : [])
+    .filter((entry) => entry.position && entry.rankingValue !== null)
+    .slice()
+    .sort((a, b) => b.rankingValue - a.rankingValue);
+  const assignments = [];
+
+  function fillSlots(slot, count, eligiblePositions) {
+    for (let index = 0; index < count; index += 1) {
+      const bestIndex = available.findIndex((entry) =>
+        eligiblePositions.includes(entry.position)
+      );
+      if (bestIndex === -1) break;
+      assignments.push({ ...available.splice(bestIndex, 1)[0], slot });
+    }
+  }
+
+  FIXED_LINEUP_SLOTS.forEach((position) => {
+    fillSlots(position, Number(lineupConstruction?.[position]) || 0, [position]);
+  });
+  fillSlots('FLEX', Number(lineupConstruction?.FLEX) || 0, FLEX_ELIGIBLE);
+  fillSlots(
+    'SUPERFLEX',
+    Number(lineupConstruction?.SUPERFLEX) || 0,
+    SUPERFLEX_ELIGIBLE
+  );
+
+  return assignments;
+}
+
+function compareCandidateToLineup(candidate, candidateSage, roster, sageRows, lineupConstruction) {
+  const hasStartingSlots = [...FIXED_LINEUP_SLOTS, 'FLEX', 'SUPERFLEX']
+    .some((slot) => Number(lineupConstruction?.[slot]) > 0);
+  const candidatePosition = getPlayerPosition(candidate) || candidateSage?.position || null;
+  const candidateValue = lineupRankingValue(candidateSage);
+
+  if (!hasStartingSlots || !candidatePosition || candidateValue === null) {
+    return null;
+  }
+
+  const rosterPlayers = (Array.isArray(roster) ? roster : []).map((player, index) =>
+    buildLineupPlayer(player, sageRows, `roster-${index}`)
+  );
+  const candidatePlayer = {
+    id: 'candidate',
+    player: candidate,
+    name: getPlayerName(candidate),
+    position: candidatePosition,
+    sage: candidateSage,
+    rankingValue: candidateValue,
+    projectedPoints: numberOrNull(candidate?.projectedPoints)
+  };
+  const before = assignOptimalLineup(rosterPlayers, lineupConstruction);
+  const after = assignOptimalLineup([...rosterPlayers, candidatePlayer], lineupConstruction);
+  const candidateAssignment = after.find((entry) => entry.id === 'candidate');
+
+  if (!candidateAssignment) {
+    return {
+      classification: 'SIMILAR',
+      comparisonType: 'starting-lineup',
+      candidateStarts: false,
+      targetSlot: null,
+      displacedStarter: null,
+      lineupValueDelta: 0,
+      projectionDelta: null,
+      weakestComparable: null,
+      reason: 'candidate_does_not_enter_starting_lineup'
+    };
+  }
+
+  const afterRosterIds = new Set(after.filter((entry) => entry.id !== 'candidate').map((entry) => entry.id));
+  const displaced = before.find((entry) => !afterRosterIds.has(entry.id)) || null;
+  const beforeValue = before.reduce((sum, entry) => sum + entry.rankingValue, 0);
+  const afterValue = after.reduce((sum, entry) => sum + entry.rankingValue, 0);
+  const lineupValueDelta = afterValue - beforeValue;
+  const projectionDelta = displaced && candidatePlayer.projectedPoints !== null && displaced.projectedPoints !== null
+    ? candidatePlayer.projectedPoints - displaced.projectedPoints
+    : null;
+
+  return {
+    classification: !displaced || lineupValueDelta > 0 ? 'UPGRADE' : 'SIMILAR',
+    comparisonType: 'starting-lineup',
+    candidateStarts: true,
+    targetSlot: candidateAssignment.slot,
+    displacedStarter: displaced ? {
+      name: displaced.name,
+      position: displaced.position,
+      team: getPlayerTeam(displaced.player) || null,
+      slot: displaced.slot,
+      sage: displaced.sage
+    } : null,
+    lineupValueDelta,
+    projectionDelta,
+    weakestComparable: displaced ? {
+      name: displaced.name,
+      position: displaced.position,
+      team: getPlayerTeam(displaced.player) || null,
+      sage: displaced.sage
+    } : null,
+    reason: displaced ? null : 'candidate_fills_open_starting_slot'
+  };
+}
+
 function isProviderAvailableStatus(player) {
   const status = String(
     firstDefined(player?.availabilityStatus, player?.status) || ''
@@ -404,6 +535,10 @@ function resolveConnectionInput(body) {
   );
 
   const roster = firstDefined(body?.roster, connection?.roster);
+  const lineupConstruction = firstDefined(
+    body?.lineupConstruction,
+    connection?.lineupConstruction
+  );
 
   const league =
     connection?.league && typeof connection.league === 'object'
@@ -414,6 +549,10 @@ function resolveConnectionInput(body) {
     provider,
     availablePlayers: Array.isArray(availablePlayers) ? availablePlayers : [],
     roster: Array.isArray(roster) ? roster : [],
+    lineupConstruction:
+      lineupConstruction && typeof lineupConstruction === 'object'
+        ? lineupConstruction
+        : null,
     season: Number(
       firstDefined(body?.season, connection?.season, league?.season) ||
       new Date().getFullYear()
@@ -437,7 +576,7 @@ function resolveConnectionInput(body) {
   };
 }
 
-function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersData }) {
+function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData }) {
   const sageRows = flattenWeeklyRankings(weeklyData);
   const trendRows = buildTrendRows(risersFallersData);
 
@@ -452,6 +591,14 @@ function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersD
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
         : [];
+
+      const lineupImpact = compareCandidateToLineup(
+        candidate,
+        sage,
+        roster,
+        sageRows,
+        lineupConstruction
+      );
 
       return {
         providerPlayerId:
@@ -472,7 +619,10 @@ function enrichCandidates({ availablePlayers, roster, weeklyData, risersFallersD
         },
         sage,
         trend,
-        rosterImpact: compareCandidateToRoster(sage, rosterEvidence)
+        rosterImpact: lineupImpact || {
+          ...compareCandidateToRoster(sage, rosterEvidence),
+          comparisonType: 'same-position-fallback'
+        }
       };
     });
 }
@@ -608,6 +758,7 @@ exports.handler = async function (event) {
     const candidates = enrichCandidates({
       availablePlayers: input.availablePlayers,
       roster: input.roster,
+      lineupConstruction: input.lineupConstruction,
       weeklyData,
       risersFallersData
     });
@@ -661,6 +812,8 @@ exports._test = {
   buildTrendRows,
   extractSageEvidence,
   compareCandidateToRoster,
+  assignOptimalLineup,
+  compareCandidateToLineup,
   isProviderAvailableStatus,
   resolveConnectionInput,
   enrichCandidates

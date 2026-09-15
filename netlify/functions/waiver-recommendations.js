@@ -235,7 +235,8 @@ function bestForMeCompare(a, b) {
 
 function decorateDecision(item) {
   const verdict = customerVerdict(item);
-  const weakest = item?.evidence?.rosterImpact?.weakestComparable || null;
+  const rosterImpact = item?.evidence?.rosterImpact || null;
+  const weakest = rosterImpact?.weakestComparable || null;
   const sage = item?.evidence?.sage || null;
   const trend = item?.evidence?.trend || null;
 
@@ -244,11 +245,24 @@ function decorateDecision(item) {
     verdict,
     customerActionable: verdict === 'ADD_NOW',
     swapFor:
-      verdict === 'ADD_NOW' && weakest?.name
+      verdict === 'ADD_NOW' &&
+      rosterImpact?.comparisonType !== 'starting-lineup' &&
+      weakest?.name
         ? {
             name: weakest.name,
             position: weakest.position || null,
             team: weakest.team || null
+          }
+        : null,
+    lineupFor:
+      rosterImpact?.comparisonType === 'starting-lineup' &&
+      rosterImpact?.candidateStarts &&
+      weakest?.name
+        ? {
+            name: weakest.name,
+            position: weakest.position || null,
+            team: weakest.team || null,
+            slot: rosterImpact.targetSlot || null
           }
         : null,
     quickRead: {
