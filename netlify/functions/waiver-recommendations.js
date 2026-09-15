@@ -108,9 +108,20 @@ function withResolvedWeek(event) {
 function customerVerdict(item) {
   const action = item?.decision?.action || 'REVIEW';
   const trend = item?.evidence?.trend?.direction || null;
+  const impact = item?.evidence?.rosterImpact || null;
+  const depth = impact?.depthComparison || null;
+  const candidateRank = Number(item?.evidence?.sage?.positionRank);
+  const weakestDepthRank = Number(depth?.weakestComparable?.sage?.positionRank);
+  const meaningfulDepthUpgrade =
+    impact?.comparisonType === 'starting-lineup' &&
+    impact?.candidateStarts === false &&
+    depth?.classification === 'UPGRADE' &&
+    Number.isFinite(candidateRank) &&
+    Number.isFinite(weakestDepthRank) &&
+    weakestDepthRank - candidateRank >= 8;
 
   if (action === 'ADD') return 'ADD_NOW';
-  if (action === 'WATCH' && trend === 'RISER') return 'STASH';
+  if (action === 'WATCH' && trend === 'RISER' && meaningfulDepthUpgrade) return 'STASH';
   if (action === 'WATCH') return 'WATCH';
   if (action === 'PASS') return 'PASS';
   return 'REVIEW';
