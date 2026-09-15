@@ -100,7 +100,27 @@ test('primary board labels implement the agreed visible data contract', () => {
    '<th>Proj</th>', '<th>Opportunity</th>', '<th>Roster Impact</th>', '<th>Decision</th>']
     .forEach((label) => assert.ok(html.includes(label), label + ' must be present'));
   assert.ok(mainScript.includes("total available"), 'filtered counts must distinguish shown players from the full pool');
-  assert.ok(mainScript.includes("Not available"), 'missing optional evidence must be explicit');
+  assert.ok(mainScript.includes("No current signal"), 'missing optional evidence must be explicit');
+});
+
+test('Week 1 workload is shown without fabricating a directional trend', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  sandbox.waiverData = { week: 2 };
+  const html = sandbox.trendCell({
+    opportunity: {
+      volumeTier: 'high-volume',
+      lastGameOpportunities: 22,
+      lastGameCarries: 18,
+      lastGameTargets: 4,
+      gamesSampled: 1
+    }
+  });
+  assert.ok(html.includes('High volume'));
+  assert.ok(html.includes('22 opportunities'));
+  assert.ok(html.includes('18 carries'));
+  assert.ok(html.includes('4 targets'));
+  assert.ok(!html.includes('Rising'), 'one completed game must not be labeled a trend');
 });
 
 test('projection and ownership read the real nested decision evidence contract', () => {

@@ -325,10 +325,12 @@ function decorateDecision(item, context = {}) {
   const weakest = rosterImpact?.weakestComparable || null;
   const sage = item?.evidence?.sage || null;
   const trend = item?.evidence?.trend || null;
+  const opportunity = item?.evidence?.opportunity || null;
 
   return {
     ...item,
     verdict,
+    opportunity,
     customerActionable: verdict === 'ADD_NOW',
     faab: buildFaabGuidance(item, verdict, context),
     swapFor:
