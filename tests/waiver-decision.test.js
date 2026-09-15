@@ -200,6 +200,51 @@ test('missing trend evidence does not block a genuine roster upgrade', () => {
   assert.strictEqual(result.actionable, true);
 });
 
+test('FLEX upgrade uses cross-position SAGE score instead of positional rank', () => {
+  const result = classifyCandidate(candidate({
+    sage: { position: 'WR', positionRank: 24, sageScore: 82, recommendation: 'START' },
+    rosterImpact: {
+      classification: 'UPGRADE',
+      comparisonType: 'starting-lineup',
+      candidateStarts: true,
+      targetSlot: 'FLEX',
+      lineupValueDelta: 9,
+      projectionDelta: 3.2,
+      weakestComparable: {
+        name: 'Roster Runner',
+        position: 'RB',
+        sage: { position: 'RB', positionRank: 18, sageScore: 73 }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'ADD');
+  assert.ok(result.reasons.includes('Projects into FLEX over Roster Runner'));
+  assert.ok(result.reasons.includes('Provider projection improves the lineup by 3.2 points'));
+  assert.ok(!result.reasons.some((reason) => reason.startsWith('Ranks ahead')));
+});
+
+test('small FLEX score edge remains REVIEW even with a positive lineup delta', () => {
+  const result = classifyCandidate(candidate({
+    sage: { position: 'WR', positionRank: 24, sageScore: 76 },
+    rosterImpact: {
+      classification: 'UPGRADE',
+      comparisonType: 'starting-lineup',
+      candidateStarts: true,
+      targetSlot: 'FLEX',
+      lineupValueDelta: 3,
+      weakestComparable: {
+        name: 'Roster Runner',
+        position: 'RB',
+        sage: { position: 'RB', positionRank: 18, sageScore: 73 }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'REVIEW');
+  assert.strictEqual(result.actionable, false);
+});
+
 test('decision list orders ADD before WATCH, REVIEW, PASS, and INELIGIBLE', () => {
   const decisions = buildWaiverDecisions([
     candidate({ name: 'Pass Player', rosterImpact: { classification: 'DOWNGRADE' } }),

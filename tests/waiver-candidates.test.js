@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const {
   _test: {
     normalizeName,
@@ -11,11 +13,18 @@ const {
     buildTrendRows,
     extractSageEvidence,
     compareCandidateToRoster,
+    deriveEspnLineupConstruction,
+    deriveEspnLineupFromRoster,
     isProviderAvailableStatus,
     resolveConnectionInput,
     enrichCandidates
   }
 } = require('../netlify/functions/waiver-candidates.js');
+
+const waiverCandidatesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'netlify', 'functions', 'waiver-candidates.js'),
+  'utf8'
+);
 
 let passed = 0;
 
@@ -327,6 +336,87 @@ test('ESPN connection shape feeds nested league.availablePlayers directly', () =
   assert.strictEqual(resolved.availabilityMeta.source, 'espn-kona_player_info');
 });
 
+test('connection lineup construction is preserved for roster impact', () => {
+  const resolved = resolveConnectionInput({
+    provider: 'espn',
+    week: 2,
+    connection: {
+      lineupConstruction: { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2 },
+      league: { availablePlayers: [] }
+    }
+  });
+
+  assert.deepStrictEqual(resolved.lineupConstruction, {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2
+  });
+  assert.strictEqual(resolved.lineupDiagnostics.source, 'saved-lineup-construction');
+});
+
+test('ESPN lineup construction is recovered from the top-level captured settings', () => {
+  const resolved = resolveConnectionInput({
+    provider: 'espn',
+    week: 2,
+    connection: {
+      lineupConstruction: {},
+      league: { availablePlayers: [] },
+      settings: {
+        rosterSettings: {
+          lineupSlotCounts: { 0: 1, 2: 2, 4: 2, 6: 1, 23: 2, 17: 1, 16: 1, 20: 4 }
+        }
+      }
+    }
+  });
+
+  assert.deepStrictEqual(resolved.lineupConstruction, {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0,
+    K: 1, DEF: 1, BENCH: 4, IR: 0
+  });
+  assert.strictEqual(resolved.lineupDiagnostics.source, 'espn-settings');
+  assert.strictEqual(resolved.lineupDiagnostics.settingsPresent, true);
+  assert.deepStrictEqual(
+    deriveEspnLineupConstruction({ rosterSettings: { lineupSlotCounts: {} } }),
+    null
+  );
+});
+
+test('older ESPN connections recover lineup construction from roster slot assignments', () => {
+  const roster = [
+    { name: 'QB One', position: 'QB', lineupSlotId: 0 },
+    { name: 'RB One', position: 'RB', lineupSlotId: 2 },
+    { name: 'RB Two', position: 'RB', lineupSlotId: 2 },
+    { name: 'WR One', position: 'WR', lineupSlotId: 4 },
+    { name: 'WR Two', position: 'WR', lineupSlotId: 4 },
+    { name: 'TE One', position: 'TE', lineupSlotId: 6 },
+    { name: 'Flex One', position: 'WR', lineupSlotId: 23 },
+    { name: 'Flex Two', position: 'RB', lineupSlotId: 23 },
+    { name: 'K One', position: 'K', lineupSlotId: 17 },
+    { name: 'Defense One', position: 'DEF', lineupSlotId: 16 },
+    { name: 'Bench One', position: 'WR', lineupSlotId: 20 }
+  ];
+
+  assert.deepStrictEqual(deriveEspnLineupFromRoster(roster), {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0,
+    K: 1, DEF: 1, BENCH: 1, IR: 0
+  });
+
+  const resolved = resolveConnectionInput({
+    provider: 'espn', week: 2,
+    connection: { roster, lineupConstruction: null, league: { availablePlayers: [] } }
+  });
+  assert.strictEqual(resolved.lineupConstruction.FLEX, 2);
+});
+
+test('populated candidate responses expose lineup diagnostics in metadata', () => {
+  const mainResponse = waiverCandidatesSource.match(
+    /candidatesReturned: candidates\.length,[\s\S]*?methodology:/
+  );
+  assert.ok(mainResponse, 'main populated-candidates response metadata must exist');
+  assert.ok(
+    mainResponse[0].includes('lineupDiagnostics: input.lineupDiagnostics'),
+    'main populated-candidates response must expose resolved lineup diagnostics'
+  );
+});
+
 test('top-level availablePlayers still works for future providers', () => {
   const resolved = resolveConnectionInput({
     provider: 'cbs',
@@ -461,6 +551,51 @@ test('candidate comparison reports downgrade when rank is worse', () => {
   );
 
   assert.strictEqual(result.classification, 'DOWNGRADE');
+});
+
+test('lineup impact recognizes a receiver upgrading the FLEX slot', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Available Receiver', nflTeam: 'GB', position: 'WR',
+      availabilityStatus: 'FREE_AGENT', projectedPoints: 14.5
+    }],
+    roster: [
+      { name: 'Amon-Ra St. Brown', nflTeam: 'DET', position: 'WR', projectedPoints: 18 },
+      { name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR', projectedPoints: 9 },
+      { name: 'Example Runner', nflTeam: 'CAR', position: 'RB', projectedPoints: 10 }
+    ],
+    lineupConstruction: { WR: 1, FLEX: 1 },
+    weeklyData,
+    risersFallersData: trendData
+  });
+
+  const impact = candidates[0].rosterImpact;
+  assert.strictEqual(impact.comparisonType, 'starting-lineup');
+  assert.strictEqual(impact.classification, 'UPGRADE');
+  assert.strictEqual(impact.candidateStarts, true);
+  assert.strictEqual(impact.targetSlot, 'FLEX');
+  assert.strictEqual(impact.displacedStarter.name, 'Roster Receiver');
+  assert.strictEqual(impact.projectionDelta, 5.5);
+});
+
+test('lineup impact labels a candidate who remains on the bench as depth only', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR',
+      availabilityStatus: 'WAIVERS'
+    }],
+    roster: [
+      { name: 'Amon-Ra St. Brown', nflTeam: 'DET', position: 'WR' },
+      { name: 'Available Receiver', nflTeam: 'GB', position: 'WR' }
+    ],
+    lineupConstruction: { WR: 1, FLEX: 1 },
+    weeklyData,
+    risersFallersData: null
+  });
+
+  assert.strictEqual(candidates[0].rosterImpact.comparisonType, 'starting-lineup');
+  assert.strictEqual(candidates[0].rosterImpact.candidateStarts, false);
+  assert.strictEqual(candidates[0].rosterImpact.reason, 'candidate_does_not_enter_starting_lineup');
 });
 
 console.log(`\n${passed} waiver-candidate tests passed.`);

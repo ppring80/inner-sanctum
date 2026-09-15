@@ -129,9 +129,9 @@
     }).filter(function (player) { return Boolean(player.name); });
   }
 
-  function detectEspnScoringFormat(league) {
-    const items = Array.isArray(league?.settings?.scoringSettings?.scoringItems)
-      ? league.settings.scoringSettings.scoringItems : [];
+  function detectEspnScoringFormat(settings) {
+    const items = Array.isArray(settings?.scoringSettings?.scoringItems)
+      ? settings.scoringSettings.scoringItems : [];
     const reception = items.find(function (item) { return Number(item?.statId) === 53; });
     const points = numberOrNull(reception?.points);
     if (points === 1) return "ppr";
@@ -140,8 +140,8 @@
     return null;
   }
 
-  function normalizeEspnLineup(league) {
-    const counts = league?.settings?.rosterSettings?.lineupSlotCounts || {};
+  function normalizeEspnLineup(settings) {
+    const counts = settings?.rosterSettings?.lineupSlotCounts || {};
     const get = function (id) { return Number(counts[id] ?? counts[String(id)] ?? 0) || 0; };
     return { QB:get(0), RB:get(2), WR:get(4), TE:get(6), FLEX:get(23), SUPERFLEX:get(7), K:get(17), DEF:get(16), BENCH:get(20), IR:get(21) };
   }
@@ -163,8 +163,8 @@
       teamName: name,
       team: normalizedTeam,
       roster: normalizeEspnRoster(team, league),
-      scoringFormat: detectEspnScoringFormat(league) || connection?.scoringFormat || null,
-      lineupConstruction: normalizeEspnLineup(league),
+      scoringFormat: detectEspnScoringFormat(connection?.settings) || connection?.scoringFormat || null,
+      lineupConstruction: normalizeEspnLineup(connection?.settings),
       teamCount: Array.isArray(league?.teams) ? league.teams.length : connection?.teamCount,
       syncedAt: connection?.syncedAt || new Date().toISOString()
     };

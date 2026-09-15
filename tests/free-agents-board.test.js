@@ -45,6 +45,12 @@ async function asyncTest(name, fn) {
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'free-agents.html'), 'utf8');
 
+test('Free Agents repairs connected team context before loading waivers', () => {
+  assert.ok(html.includes('<script src="/team-context.js"></script>'));
+  assert.ok(html.includes("document.addEventListener('DOMContentLoaded',loadWaivers,{once:true})"));
+  assert.ok(html.indexOf('<script src="/team-context.js"></script>') < html.indexOf('loadWaivers,{once:true}'));
+});
+
 function extractMainScript(source) {
   const scripts = [...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   return scripts.reduce((a, b) => (b.length > a.length ? b : a), '');

@@ -53,8 +53,21 @@ function buildReasons(candidate) {
     reasons.push(`Weekly SAGE: ${sage.position}${sage.positionRank}`);
   }
 
+  if (impact?.comparisonType === 'starting-lineup' && impact?.candidateStarts) {
+    const slot = impact.targetSlot || 'starting lineup';
+    reasons.push(
+      weakest?.name
+        ? `Projects into ${slot} over ${weakest.name}`
+        : `Projects into an open ${slot} spot`
+    );
+    if (Number.isFinite(impact.projectionDelta)) {
+      reasons.push(`Provider projection improves the lineup by ${impact.projectionDelta.toFixed(1)} points`);
+    }
+  }
+
   if (
     impact?.classification === 'UPGRADE' &&
+    impact?.comparisonType !== 'starting-lineup' &&
     weakest?.name &&
     weakest?.sage?.positionRank
   ) {
@@ -78,7 +91,8 @@ function buildReasons(candidate) {
 
 function meaningfulUpgradeEvidence(candidate) {
   const sage = candidate?.sage || null;
-  const weakestSage = candidate?.rosterImpact?.weakestComparable?.sage || null;
+  const impact = candidate?.rosterImpact || null;
+  const weakestSage = impact?.weakestComparable?.sage || null;
   const candidateRank = Number(sage?.positionRank);
   const rosterRank = Number(weakestSage?.positionRank);
   const candidateScore = Number(sage?.sageScore);
@@ -91,6 +105,14 @@ function meaningfulUpgradeEvidence(candidate) {
 
   if (!Number.isFinite(candidateRank) || !Number.isFinite(rosterRank)) return false;
   if (!Number.isFinite(candidateScore) || !Number.isFinite(rosterScore)) return false;
+
+  // Cross-position FLEX/SUPERFLEX comparisons use SAGE score, not positional
+  // rank. A WR rank and RB rank are not directly comparable.
+  if (impact?.comparisonType === 'starting-lineup') {
+    return impact.candidateStarts === true &&
+      Number(impact.lineupValueDelta) > 0 &&
+      candidateScore - rosterScore >= 5;
+  }
 
   return rosterRank - candidateRank >= 8 && candidateScore - rosterScore >= 5;
 }
