@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const {
   _test: {
     normalizeName,
@@ -18,6 +20,11 @@ const {
     enrichCandidates
   }
 } = require('../netlify/functions/waiver-candidates.js');
+
+const waiverCandidatesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'netlify', 'functions', 'waiver-candidates.js'),
+  'utf8'
+);
 
 let passed = 0;
 
@@ -397,6 +404,17 @@ test('older ESPN connections recover lineup construction from roster slot assign
     connection: { roster, lineupConstruction: null, league: { availablePlayers: [] } }
   });
   assert.strictEqual(resolved.lineupConstruction.FLEX, 2);
+});
+
+test('populated candidate responses expose lineup diagnostics in metadata', () => {
+  const mainResponse = waiverCandidatesSource.match(
+    /candidatesReturned: candidates\.length,[\s\S]*?methodology:/
+  );
+  assert.ok(mainResponse, 'main populated-candidates response metadata must exist');
+  assert.ok(
+    mainResponse[0].includes('lineupDiagnostics: input.lineupDiagnostics'),
+    'main populated-candidates response must expose resolved lineup diagnostics'
+  );
 });
 
 test('top-level availablePlayers still works for future providers', () => {
