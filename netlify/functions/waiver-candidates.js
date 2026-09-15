@@ -408,6 +408,22 @@ function deriveEspnLineupConstruction(league) {
   return hasStartingLineupSlots(lineup) ? lineup : null;
 }
 
+function deriveEspnLineupFromRoster(roster) {
+  const slotMap = {
+    0: 'QB', 2: 'RB', 4: 'WR', 6: 'TE', 7: 'SUPERFLEX',
+    16: 'DEF', 17: 'K', 20: 'BENCH', 21: 'IR', 23: 'FLEX'
+  };
+  const lineup = {
+    QB: 0, RB: 0, WR: 0, TE: 0, FLEX: 0, SUPERFLEX: 0,
+    K: 0, DEF: 0, BENCH: 0, IR: 0
+  };
+  (Array.isArray(roster) ? roster : []).forEach((player) => {
+    const slot = slotMap[Number(player?.lineupSlotId)];
+    if (slot) lineup[slot] += 1;
+  });
+  return hasStartingLineupSlots(lineup) ? lineup : null;
+}
+
 function buildLineupPlayer(player, sageRows, id) {
   const sageMatch = findIdentityMatch(player, sageRows);
   const sage = extractSageEvidence(sageMatch.match);
@@ -565,7 +581,7 @@ function resolveConnectionInput(body) {
   const lineupConstruction = hasStartingLineupSlots(savedLineupConstruction)
     ? savedLineupConstruction
     : provider === 'espn'
-      ? deriveEspnLineupConstruction(league)
+      ? deriveEspnLineupConstruction(league) || deriveEspnLineupFromRoster(roster)
       : null;
 
   return {
@@ -834,6 +850,7 @@ exports._test = {
   extractSageEvidence,
   compareCandidateToRoster,
   deriveEspnLineupConstruction,
+  deriveEspnLineupFromRoster,
   assignOptimalLineup,
   compareCandidateToLineup,
   isProviderAvailableStatus,
