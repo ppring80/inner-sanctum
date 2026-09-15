@@ -10,6 +10,7 @@ const {
     normalizePosition,
     findIdentityMatch,
     flattenWeeklyRankings,
+    buildTeamOpponentMap,
     buildTrendRows,
     buildOpportunityRows,
     extractSageEvidence,
@@ -563,6 +564,27 @@ test('missing SAGE data remains unmatched rather than fabricated', () => {
   assert.strictEqual(candidates[0].identity.sageMatched, false);
   assert.strictEqual(candidates[0].sage, null);
   assert.strictEqual(candidates[0].rosterImpact.classification, 'UNKNOWN');
+});
+
+test('unmatched player still receives matchup from team schedule evidence', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [
+      {
+        name: 'Unknown Baltimore Quarterback',
+        nflTeam: 'BAL',
+        position: 'QB',
+        availabilityStatus: 'WAIVERS'
+      }
+    ],
+    roster: [],
+    weeklyData,
+    risersFallersData: null
+  });
+
+  assert.strictEqual(buildTeamOpponentMap(flattenWeeklyRankings(weeklyData)).get('BAL'), 'BUF');
+  assert.strictEqual(candidates[0].identity.sageMatched, false);
+  assert.strictEqual(candidates[0].sage, null);
+  assert.strictEqual(candidates[0].opponent, 'BUF');
 });
 
 test('missing trend data does not block SAGE enrichment', () => {

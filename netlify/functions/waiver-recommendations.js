@@ -371,7 +371,7 @@ function decorateDecision(item, context = {}) {
           ? `${sage.position}${sage.positionRank}`
           : null,
       weeklyRecommendation: sage?.recommendation || null,
-      opponent: sage?.opponent || null,
+      opponent: item?.opponent || sage?.opponent || null,
       trend: trend?.direction || null,
       percentOwned:
         item?.evidence?.percentOwned === undefined

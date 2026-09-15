@@ -245,6 +245,35 @@ function flattenWeeklyRankings(weeklyData) {
   return rows;
 }
 
+function buildTeamOpponentMap(sageRows) {
+  const opponentsByTeam = new Map();
+
+  (Array.isArray(sageRows) ? sageRows : []).forEach((row) => {
+    const team = getPlayerTeam(row);
+    const rawOpponent = firstDefined(row?.opponent, row?.opp);
+    const opponent = String(rawOpponent || '').trim().toUpperCase() === 'BYE'
+      ? 'BYE'
+      : normalizeTeam(rawOpponent);
+
+    if (!team || !opponent) return;
+
+    if (!opponentsByTeam.has(team)) {
+      opponentsByTeam.set(team, opponent);
+      return;
+    }
+
+    // Conflicting schedule evidence is less trustworthy than an explicit
+    // blank. This keeps matchup resolution conservative across leaderboard
+    // sources while allowing any player on a known NFL team to use the same
+    // weekly opponent, independent of a player-level SAGE identity match.
+    if (opponentsByTeam.get(team) !== opponent) {
+      opponentsByTeam.set(team, null);
+    }
+  });
+
+  return opponentsByTeam;
+}
+
 function buildTrendRows(risersFallersData) {
   const rows = [];
 
@@ -692,6 +721,7 @@ function resolveConnectionInput(body) {
 
 function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData }) {
   const sageRows = flattenWeeklyRankings(weeklyData);
+  const opponentsByTeam = buildTeamOpponentMap(sageRows);
   const trendRows = buildTrendRows(risersFallersData);
   const opportunityRows = buildOpportunityRows(opportunityData);
 
@@ -705,6 +735,13 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
       const trend = extractTrendEvidence(trendMatch.match);
       const opportunity = extractOpportunityEvidence(opportunityMatch.match);
       const position = getPlayerPosition(candidate) || sage?.position || null;
+      const team = getPlayerTeam(candidate) || null;
+      const directOpponent = firstDefined(candidate?.opponent, candidate?.opp);
+      const opponent = directOpponent
+        ? (String(directOpponent).trim().toUpperCase() === 'BYE'
+            ? 'BYE'
+            : normalizeTeam(directOpponent))
+        : sage?.opponent || opponentsByTeam.get(team) || null;
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
         : [];
@@ -723,7 +760,8 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
           firstDefined(candidate?.providerPlayerId, candidate?.playerId, candidate?.id) || null,
         name: getPlayerName(candidate),
         position,
-        team: getPlayerTeam(candidate) || null,
+        team,
+        opponent,
         availabilityStatus:
           firstDefined(candidate?.availabilityStatus, candidate?.status) || null,
         percentOwned: numberOrNull(candidate?.percentOwned),
@@ -954,6 +992,7 @@ exports._test = {
   getPlayerPosition,
   findIdentityMatch,
   flattenWeeklyRankings,
+  buildTeamOpponentMap,
   buildTrendRows,
   buildOpportunityRows,
   extractSageEvidence,

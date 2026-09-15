@@ -363,4 +363,21 @@ test('review and pass players do not receive an invented FAAB recommendation', (
   assert.strictEqual(buildFaabGuidance(decision(), 'PASS', { teams: 12 }), null);
 });
 
+test('customer recommendation preserves team-resolved matchup without SAGE', () => {
+  const recs = buildCustomerRecommendations([
+    decision({
+      opponent: 'BUF',
+      decision: { action: 'REVIEW', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: null,
+        rosterImpact: { classification: 'UNKNOWN' }
+      }
+    })
+  ]);
+
+  assert.strictEqual(recs[0].opponent, 'BUF');
+  assert.strictEqual(recs[0].quickRead.opponent, 'BUF');
+});
+
 console.log(`\n${passed} waiver-recommendations tests passed.`);
