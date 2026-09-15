@@ -12,6 +12,7 @@ const {
     extractSageEvidence,
     compareCandidateToRoster,
     deriveEspnLineupConstruction,
+    deriveEspnLineupFromRoster,
     isProviderAvailableStatus,
     resolveConnectionInput,
     enrichCandidates
@@ -368,6 +369,33 @@ test('ESPN lineup construction is recovered directly from league settings', () =
     deriveEspnLineupConstruction({ settings: { rosterSettings: { lineupSlotCounts: {} } } }),
     null
   );
+});
+
+test('older ESPN connections recover lineup construction from roster slot assignments', () => {
+  const roster = [
+    { name: 'QB One', position: 'QB', lineupSlotId: 0 },
+    { name: 'RB One', position: 'RB', lineupSlotId: 2 },
+    { name: 'RB Two', position: 'RB', lineupSlotId: 2 },
+    { name: 'WR One', position: 'WR', lineupSlotId: 4 },
+    { name: 'WR Two', position: 'WR', lineupSlotId: 4 },
+    { name: 'TE One', position: 'TE', lineupSlotId: 6 },
+    { name: 'Flex One', position: 'WR', lineupSlotId: 23 },
+    { name: 'Flex Two', position: 'RB', lineupSlotId: 23 },
+    { name: 'K One', position: 'K', lineupSlotId: 17 },
+    { name: 'Defense One', position: 'DEF', lineupSlotId: 16 },
+    { name: 'Bench One', position: 'WR', lineupSlotId: 20 }
+  ];
+
+  assert.deepStrictEqual(deriveEspnLineupFromRoster(roster), {
+    QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 2, SUPERFLEX: 0,
+    K: 1, DEF: 1, BENCH: 1, IR: 0
+  });
+
+  const resolved = resolveConnectionInput({
+    provider: 'espn', week: 2,
+    connection: { roster, lineupConstruction: null, league: { availablePlayers: [] } }
+  });
+  assert.strictEqual(resolved.lineupConstruction.FLEX, 2);
 });
 
 test('top-level availablePlayers still works for future providers', () => {
