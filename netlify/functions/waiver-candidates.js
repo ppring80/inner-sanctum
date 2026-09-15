@@ -578,11 +578,22 @@ function resolveConnectionInput(body) {
     connection?.league && typeof connection.league === 'object'
       ? connection.league
       : {};
-  const lineupConstruction = hasStartingLineupSlots(savedLineupConstruction)
+  const settingsLineup = provider === 'espn'
+    ? deriveEspnLineupConstruction(connection?.settings)
+    : null;
+  const rosterLineup = provider === 'espn'
+    ? deriveEspnLineupFromRoster(roster)
+    : null;
+  const lineupSource = hasStartingLineupSlots(savedLineupConstruction)
+    ? 'saved-lineup-construction'
+    : settingsLineup
+      ? 'espn-settings'
+      : rosterLineup
+        ? 'espn-roster-slots'
+        : 'none';
+  const lineupConstruction = lineupSource === 'saved-lineup-construction'
     ? savedLineupConstruction
-    : provider === 'espn'
-      ? deriveEspnLineupConstruction(connection?.settings) || deriveEspnLineupFromRoster(roster)
-      : null;
+    : settingsLineup || rosterLineup;
 
   return {
     provider,
@@ -590,6 +601,15 @@ function resolveConnectionInput(body) {
     roster: Array.isArray(roster) ? roster : [],
     lineupConstruction:
       lineupConstruction,
+    lineupDiagnostics: {
+      source: lineupSource,
+      resolved: lineupConstruction || null,
+      settingsPresent: Boolean(connection?.settings?.rosterSettings?.lineupSlotCounts),
+      rosterPlayersReceived: Array.isArray(roster) ? roster.length : 0,
+      rosterPlayersWithSlotIds: Array.isArray(roster)
+        ? roster.filter((player) => player?.lineupSlotId !== null && player?.lineupSlotId !== undefined).length
+        : 0
+    },
     season: Number(
       firstDefined(body?.season, connection?.season, league?.season) ||
       new Date().getFullYear()
@@ -772,6 +792,7 @@ exports.handler = async function (event) {
           availablePlayersReceived: 0,
           candidatesReturned: 0,
           availabilityMeta: input.availabilityMeta,
+          lineupDiagnostics: input.lineupDiagnostics,
           note:
             'No provider-reported available players were supplied. This service never invents league availability.'
         }
