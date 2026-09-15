@@ -274,6 +274,29 @@ function buildTeamOpponentMap(sageRows) {
   return opponentsByTeam;
 }
 
+function buildScheduleOpponentMap(scheduleData) {
+  const opponentsByTeam = new Map();
+  const games = Array.isArray(scheduleData?.games) ? scheduleData.games : [];
+
+  games.forEach((game) => {
+    const away = normalizeTeam(game?.away);
+    const home = normalizeTeam(game?.home);
+    if (!away || !home) return;
+    opponentsByTeam.set(away, home);
+    opponentsByTeam.set(home, away);
+  });
+
+  const byeTeams = Array.isArray(scheduleData?.byeTeams)
+    ? scheduleData.byeTeams
+    : [];
+  byeTeams.forEach((team) => {
+    const normalized = normalizeTeam(team);
+    if (normalized) opponentsByTeam.set(normalized, 'BYE');
+  });
+
+  return opponentsByTeam;
+}
+
 function buildTrendRows(risersFallersData) {
   const rows = [];
 
@@ -719,9 +742,10 @@ function resolveConnectionInput(body) {
   };
 }
 
-function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData }) {
+function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData, scheduleData }) {
   const sageRows = flattenWeeklyRankings(weeklyData);
-  const opponentsByTeam = buildTeamOpponentMap(sageRows);
+  const scheduleOpponents = buildScheduleOpponentMap(scheduleData);
+  const sageOpponents = buildTeamOpponentMap(sageRows);
   const trendRows = buildTrendRows(risersFallersData);
   const opportunityRows = buildOpportunityRows(opportunityData);
 
@@ -741,7 +765,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         ? (String(directOpponent).trim().toUpperCase() === 'BYE'
             ? 'BYE'
             : normalizeTeam(directOpponent))
-        : sage?.opponent || opponentsByTeam.get(team) || null;
+        : scheduleOpponents.get(team) || sage?.opponent || sageOpponents.get(team) || null;
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
         : [];
@@ -836,6 +860,26 @@ async function fetchWeeklyData(event, season, week, scoring, teams) {
   return data;
 }
 
+async function fetchWeeklySchedule(event, season, week) {
+  try {
+    const baseUrl = getBaseUrl(event);
+    const query = new URLSearchParams({
+      season: String(season),
+      week: String(week),
+      seasonType: 'reg'
+    });
+    const response = await fetch(
+      `${baseUrl}/.netlify/functions/weekly-sage-schedule?${query.toString()}`,
+      { method: 'GET', headers: { Accept: 'application/json' } }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data && Array.isArray(data.games) ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function readRisersFallers(event) {
   try {
     connectLambda(event);
@@ -919,7 +963,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const [weeklyData, risersFallersData, opportunityData] = await Promise.all([
+    const [weeklyData, risersFallersData, opportunityData, scheduleData] = await Promise.all([
       fetchWeeklyData(
         event,
         input.season,
@@ -928,7 +972,8 @@ exports.handler = async function (event) {
         input.teams
       ),
       readRisersFallers(event),
-      readOpportunityIntel(event)
+      readOpportunityIntel(event),
+      fetchWeeklySchedule(event, input.season, input.week)
     ]);
 
     const candidates = enrichCandidates({
@@ -937,7 +982,8 @@ exports.handler = async function (event) {
       lineupConstruction: input.lineupConstruction,
       weeklyData,
       risersFallersData,
-      opportunityData
+      opportunityData,
+      scheduleData
     });
 
     return jsonResponse(
@@ -961,6 +1007,7 @@ exports.handler = async function (event) {
             candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
           opportunityDataAvailable: Boolean(opportunityData),
+          scheduleDataAvailable: Boolean(scheduleData),
           opportunityMatched:
             candidates.filter((candidate) => candidate.identity.opportunityMatched).length,
           availabilityMeta: input.availabilityMeta,
@@ -993,6 +1040,7 @@ exports._test = {
   findIdentityMatch,
   flattenWeeklyRankings,
   buildTeamOpponentMap,
+  buildScheduleOpponentMap,
   buildTrendRows,
   buildOpportunityRows,
   extractSageEvidence,
