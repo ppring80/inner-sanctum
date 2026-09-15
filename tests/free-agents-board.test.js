@@ -70,6 +70,14 @@ test('primary board labels implement the agreed visible data contract', () => {
   assert.ok(mainScript.includes("Not available"), 'missing optional evidence must be explicit');
 });
 
+test('projection and ownership read the real nested decision evidence contract', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  const nested = { decision: { evidence: { providerProjectedPoints: 17.25, percentOwned: 41 } } };
+  assert.strictEqual(sandbox.projectionPoints(nested), '17.3');
+  assert.strictEqual(sandbox.rosteredPercent(nested), 41);
+});
+
 function makeFakeElement() {
   const classes = new Set();
   const el = {
