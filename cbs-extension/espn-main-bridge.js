@@ -259,7 +259,41 @@
     return projection ? numberOrNull(projection.appliedTotal) : null;
   }
 
-  function normalizeAvailablePlayers(rawData, scoringPeriodId) {
+  function normalizeProTeamSchedule(rawData, scoringPeriodId) {
+    const teams = Array.isArray(rawData?.settings?.proTeams) ? rawData.settings.proTeams : [];
+    const abbreviations = new Map();
+    teams.forEach(function (team) {
+      const id = numberOrNull(team?.id);
+      if (id === null) return;
+      abbreviations.set(id, String(team?.abbrev || NFL_TEAM_BY_ID[id] || "").trim().toUpperCase() || null);
+    });
+
+    const matchups = new Map();
+    teams.forEach(function (team) {
+      const teamId = numberOrNull(team?.id);
+      if (teamId === null) return;
+      const games = team?.proGamesByScoringPeriod?.[String(scoringPeriodId)] ||
+        team?.proGamesByScoringPeriod?.[scoringPeriodId];
+      const game = Array.isArray(games) ? games[0] : null;
+      if (!game) return;
+
+      const awayId = numberOrNull(game?.awayProTeamId);
+      const homeId = numberOrNull(game?.homeProTeamId);
+      const opponentId = teamId === awayId ? homeId : teamId === homeId ? awayId : null;
+      if (opponentId === null) return;
+
+      const timestamp = numberOrNull(game?.date);
+      matchups.set(teamId, {
+        opponent: abbreviations.get(opponentId) || NFL_TEAM_BY_ID[opponentId] || null,
+        homeAway: teamId === awayId ? "AWAY" : "HOME",
+        gameTime: timestamp !== null ? new Date(timestamp).toISOString() : null,
+        providerGameId: game?.id !== null && game?.id !== undefined ? String(game.id) : null
+      });
+    });
+    return matchups;
+  }
+
+  function normalizeAvailablePlayers(rawData, scoringPeriodId, proTeamSchedule) {
     const rows = Array.isArray(rawData?.players) ? rawData.players : [];
     const normalized = [];
     const seen = new Set();
@@ -276,6 +310,7 @@
 
       const defaultPositionId = numberOrNull(player?.defaultPositionId);
       const proTeamId = numberOrNull(player?.proTeamId);
+      const matchup = proTeamId !== null ? proTeamSchedule?.get(proTeamId) || null : null;
       const rawStatus = entry?.status ?? player?.status ?? null;
 
       normalized.push({
@@ -283,6 +318,11 @@
         name,
         position: defaultPositionId !== null ? ESPN_DEFAULT_POSITION_BY_ID[defaultPositionId] || null : null,
         nflTeam: proTeamId !== null ? NFL_TEAM_BY_ID[proTeamId] || null : null,
+        proTeamId,
+        matchup,
+        opponent: matchup?.opponent || null,
+        homeAway: matchup?.homeAway || null,
+        gameTime: matchup?.gameTime || null,
         availabilityStatus: normalizeAvailabilityStatus(rawStatus),
         percentOwned: numberOrNull(entry?.percentOwned ?? player?.percentOwned ?? player?.ownership?.percentOwned),
         percentStarted: numberOrNull(entry?.percentStarted ?? player?.percentStarted ?? player?.ownership?.percentStarted),
@@ -294,7 +334,22 @@
     return normalized;
   }
 
-  async function fetchAvailablePlayers(leagueId, season, scoringPeriodId) {
+  async function fetchProTeamSchedule(season, scoringPeriodId) {
+    const url = ESPN_BASE_URL + "/" + encodeURIComponent(season) + "?view=proTeamSchedules_wl";
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store"
+      });
+      if (!response.ok) return new Map();
+      return normalizeProTeamSchedule(await response.json(), scoringPeriodId);
+    } catch (err) {
+      return new Map();
+    }
+  }
+
+  async function fetchAvailablePlayers(leagueId, season, scoringPeriodId, proTeamSchedule) {
     const url = ESPN_BASE_URL + "/" + encodeURIComponent(season) +
       "/segments/0/leagues/" + encodeURIComponent(leagueId) +
       "?view=kona_player_info&scoringPeriodId=" + encodeURIComponent(scoringPeriodId);
@@ -327,7 +382,7 @@
       }
 
       const data = await response.json();
-      const players = normalizeAvailablePlayers(data, scoringPeriodId);
+      const players = normalizeAvailablePlayers(data, scoringPeriodId, proTeamSchedule);
       return {
         players,
         meta: { complete: true, count: players.length, scoringPeriodId }
@@ -383,7 +438,8 @@
     }
 
     const scoringPeriodId = currentScoringPeriod(leagueData);
-    const availability = await fetchAvailablePlayers(leagueId, season, scoringPeriodId);
+    const proTeamSchedule = await fetchProTeamSchedule(season, scoringPeriodId);
+    const availability = await fetchAvailablePlayers(leagueId, season, scoringPeriodId, proTeamSchedule);
     const overall = myTeam?.record?.overall || {};
 
     return {

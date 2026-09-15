@@ -76,6 +76,17 @@ function availabilityPayload() {
   };
 }
 
+function proTeamSchedulePayload() {
+  return {
+    settings: {
+      proTeams: [
+        { id: 1, abbrev: 'ATL', proGamesByScoringPeriod: { 2: [{ id: 9001, awayProTeamId: 1, homeProTeamId: 26, date: 1790000000000 }] } },
+        { id: 26, abbrev: 'SEA', proGamesByScoringPeriod: { 2: [{ id: 9001, awayProTeamId: 1, homeProTeamId: 26, date: 1790000000000 }] } }
+      ]
+    }
+  };
+}
+
 async function runCapture({ availabilityOk = true } = {}) {
   let listener = null;
   let posted = null;
@@ -109,6 +120,9 @@ async function runCapture({ availabilityOk = true } = {}) {
           json: async () => leaguePayload()
         };
       }
+      if (calls.length === 2) {
+        return { ok: true, status: 200, json: async () => proTeamSchedulePayload() };
+      }
       return availabilityOk
         ? { ok: true, status: 200, json: async () => availabilityPayload() }
         : { ok: false, status: 503, json: async () => ({}) };
@@ -130,9 +144,13 @@ async function runCapture({ availabilityOk = true } = {}) {
   const success = await runCapture();
   assert(success.posted, 'bridge should post a response');
   assert.strictEqual(success.posted.success, true);
-  assert.strictEqual(success.calls.length, 2, 'league capture should make league + availability requests');
+  assert.strictEqual(success.calls.length, 3, 'league capture should make league + schedule + availability requests');
 
-  const availabilityCall = success.calls[1];
+  const scheduleCall = success.calls[1];
+  assert.match(scheduleCall.url, /view=proTeamSchedules_wl/);
+  assert.strictEqual(scheduleCall.options.credentials, 'include');
+
+  const availabilityCall = success.calls[2];
   assert.match(availabilityCall.url, /view=kona_player_info/);
   assert.match(availabilityCall.url, /scoringPeriodId=2/);
   assert.strictEqual(availabilityCall.options.credentials, 'include');
@@ -163,6 +181,16 @@ async function runCapture({ availabilityOk = true } = {}) {
     ]
   );
   assert.strictEqual(data.availablePlayers[0].projectedPoints, 17.4);
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(data.availablePlayers.map((p) => [p.name, p.proTeamId, p.opponent, p.homeAway]))),
+    [
+      ['Kirk Cousins', 1, 'SEA', 'AWAY'],
+      ['Jason Myers', 26, 'ATL', 'HOME'],
+      ['Seattle Seahawks', 26, 'ATL', 'HOME']
+    ]
+  );
+  assert.strictEqual(data.availablePlayers[0].matchup.providerGameId, '9001');
+  assert.strictEqual(data.availablePlayers[0].gameTime, new Date(1790000000000).toISOString());
 
   const degraded = await runCapture({ availabilityOk: false });
   assert.strictEqual(degraded.posted.success, true, 'availability failure must not break ESPN league connection');

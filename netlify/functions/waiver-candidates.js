@@ -786,6 +786,11 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         position,
         team,
         opponent,
+        homeAway: firstDefined(candidate?.homeAway, candidate?.matchup?.homeAway) || null,
+        gameTime: firstDefined(candidate?.gameTime, candidate?.matchup?.gameTime) || null,
+        matchup: candidate?.matchup && typeof candidate.matchup === 'object'
+          ? { ...candidate.matchup, opponent }
+          : opponent ? { opponent } : null,
         availabilityStatus:
           firstDefined(candidate?.availabilityStatus, candidate?.status) || null,
         percentOwned: numberOrNull(candidate?.percentOwned),
