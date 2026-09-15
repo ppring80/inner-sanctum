@@ -319,6 +319,7 @@
         position: defaultPositionId !== null ? ESPN_DEFAULT_POSITION_BY_ID[defaultPositionId] || null : null,
         nflTeam: proTeamId !== null ? NFL_TEAM_BY_ID[proTeamId] || null : null,
         proTeamId,
+        active: typeof player?.active === "boolean" ? player.active : null,
         matchup,
         opponent: matchup?.opponent || null,
         homeAway: matchup?.homeAway || null,

@@ -83,7 +83,7 @@ test('safe SAGE match plus roster upgrade produces ADD', () => {
   assert.ok(result.reasons.some((reason) => reason.includes('Roster Receiver')));
 });
 
-test('Week 1 baseline rank edge cannot produce ADD NOW or a drop instruction', () => {
+test('Week 1 baseline rank edge alone cannot produce ADD NOW or a drop instruction', () => {
   const result = classifyCandidate(candidate({
     name: 'Brock Purdy',
     position: 'QB',
@@ -112,6 +112,57 @@ test('Week 1 baseline rank edge cannot produce ADD NOW or a drop instruction', (
   assert.strictEqual(result.action, 'REVIEW');
   assert.strictEqual(result.actionable, false);
   assert.strictEqual(result.reasonCode, 'UPGRADE_EVIDENCE_INSUFFICIENT');
+});
+
+test('Week 1 projected starting-lineup gain can produce ADD', () => {
+  const result = classifyCandidate(candidate({
+    sage: {
+      position: 'WR', positionRank: 24, sageScore: null,
+      recommendation: 'START', baselineEvidenceType: 'week1-adp-baseline'
+    },
+    rosterImpact: {
+      classification: 'UPGRADE', comparisonType: 'starting-lineup',
+      candidateStarts: true, targetSlot: 'FLEX', lineupValueDelta: 12,
+      projectionDelta: 4.2,
+      weakestComparable: {
+        name: 'Roster Runner', position: 'RB',
+        sage: { position: 'RB', positionRank: 32, sageScore: null }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'ADD');
+  assert.strictEqual(result.reasonCode, 'ROSTER_UPGRADE');
+});
+
+test('Week 1 strong depth rank edge becomes WATCH for downstream STASH guidance', () => {
+  const result = classifyCandidate(candidate({
+    sage: {
+      position: 'WR', positionRank: 24, sageScore: null,
+      recommendation: 'SIT', baselineEvidenceType: 'week1-adp-baseline'
+    },
+    rosterImpact: {
+      classification: 'UPGRADE', comparisonType: 'same-position-fallback',
+      weakestComparable: {
+        name: 'Bench Receiver', position: 'WR',
+        sage: { position: 'WR', positionRank: 40, sageScore: null }
+      }
+    }
+  }));
+
+  assert.strictEqual(result.action, 'WATCH');
+  assert.strictEqual(result.reasonCode, 'WEEK1_DEPTH_UPGRADE');
+});
+
+test('decision output preserves matchup fields through the customer layer', () => {
+  const item = buildWaiverDecisions([candidate({
+    opponent: 'CHI', homeAway: 'AWAY', gameTime: '2026-09-20T17:00:00.000Z',
+    matchup: { opponent: 'CHI', homeAway: 'AWAY', providerGameId: 'game-1' }
+  })])[0];
+
+  assert.strictEqual(item.opponent, 'CHI');
+  assert.strictEqual(item.homeAway, 'AWAY');
+  assert.strictEqual(item.matchup.providerGameId, 'game-1');
 });
 
 test('small weekly rank and score edges remain REVIEW', () => {

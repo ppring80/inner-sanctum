@@ -113,12 +113,13 @@ function withResolvedWeek(event) {
 function customerVerdict(item) {
   const action = item?.decision?.action || 'REVIEW';
   const impact = item?.evidence?.rosterImpact || null;
-  const depth = impact?.depthComparison || null;
+  const depth = impact?.depthComparison ||
+    (impact?.comparisonType === 'same-position-fallback' ? impact : null);
   const candidateRank = Number(item?.evidence?.sage?.positionRank);
   const weakestDepthRank = Number(depth?.weakestComparable?.sage?.positionRank);
   const meaningfulDepthUpgrade =
-    impact?.comparisonType === 'starting-lineup' &&
-    impact?.candidateStarts === false &&
+    (impact?.comparisonType === 'same-position-fallback' ||
+      (impact?.comparisonType === 'starting-lineup' && impact?.candidateStarts === false)) &&
     depth?.classification === 'UPGRADE' &&
     Number.isFinite(candidateRank) &&
     Number.isFinite(weakestDepthRank) &&

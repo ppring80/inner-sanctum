@@ -567,6 +567,27 @@ test('missing SAGE data remains unmatched rather than fabricated', () => {
   assert.strictEqual(candidates[0].rosterImpact.classification, 'UNKNOWN');
 });
 
+test('explicitly inactive provider players are removed while unknown activity is preserved', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [
+      {
+        name: 'Historical Quarterback', nflTeam: 'IND', position: 'QB',
+        availabilityStatus: 'WAIVERS', active: false
+      },
+      {
+        name: 'Unknown Receiver', nflTeam: 'SEA', position: 'WR',
+        availabilityStatus: 'WAIVERS'
+      }
+    ],
+    roster: [],
+    weeklyData,
+    risersFallersData: null
+  });
+
+  assert.deepStrictEqual(candidates.map((player) => player.name), ['Unknown Receiver']);
+  assert.strictEqual(candidates[0].active, null);
+});
+
 test('unmatched player still receives matchup from team schedule evidence', () => {
   const candidates = enrichCandidates({
     availablePlayers: [
