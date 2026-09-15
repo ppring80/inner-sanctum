@@ -60,16 +60,27 @@ function injectIntoLargestInlineScript(html, prefix) {
 
 fs.readFileSync = function patchedReadFileSync(filePath, options) {
   const result = originalReadFileSync(filePath, options);
+  const basename = path.basename(String(filePath));
+
+  // Only the HTML fixtures below need text normalization. Returning binary
+  // reads untouched is essential: decoding a PNG as UTF-8 replaces its
+  // signature bytes and made the Chrome Web Store package test fail only
+  // when this bootstrap was preloaded by the production regression gate.
+  const shouldPatchDraft = draftVmSuites.has(activeSuite) && basename === 'draft.html';
+  const shouldPatchOauth = activeSuite === 'weekly-oauth-session.test.js' &&
+    (basename === 'weekly.html' || basename === 'draft.html');
+
+  if (!shouldPatchDraft && !shouldPatchOauth) return result;
+
   const asText = typeof result === 'string'
     ? result
     : (Buffer.isBuffer(result) ? result.toString('utf8') : null);
 
   if (asText === null) return result;
 
-  const basename = path.basename(String(filePath));
   let patched = asText;
 
-  if (draftVmSuites.has(activeSuite) && basename === 'draft.html') {
+  if (shouldPatchDraft) {
     const previewHarness = [
       '// TEST HARNESS ONLY: production defines these in an earlier inline script.',
       'function isPreviewBlocked(){ return false; }',
@@ -91,10 +102,7 @@ fs.readFileSync = function patchedReadFileSync(filePath, options) {
     );
   }
 
-  if (
-    activeSuite === 'weekly-oauth-session.test.js' &&
-    (basename === 'weekly.html' || basename === 'draft.html')
-  ) {
+  if (shouldPatchOauth) {
     // Ignore formatting-only blank-line drift while preserving every token and
     // statement for the OAuth implementation comparison itself.
     patched = patched.replace(/\n[\t ]*\n+/g, '\n');
@@ -105,6 +113,18 @@ fs.readFileSync = function patchedReadFileSync(filePath, options) {
 };
 
 Module._load = function patchedModuleLoad(request, parent, isMain) {
+  if (
+    activeSuite === 'sage-recommend-p0.test.js' &&
+    request === '@netlify/blobs'
+  ) {
+    return {
+      connectLambda: () => {},
+      getStore: () => ({
+        get: async () => null
+      })
+    };
+  }
+
   if (
     activeSuite === 'sage-recommend.test.js' &&
     request === './verify-session' &&
