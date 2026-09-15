@@ -396,8 +396,8 @@ function hasStartingLineupSlots(lineup) {
       .some((slot) => Number(lineup[slot]) > 0);
 }
 
-function deriveEspnLineupConstruction(league) {
-  const counts = league?.settings?.rosterSettings?.lineupSlotCounts;
+function deriveEspnLineupConstruction(settings) {
+  const counts = settings?.rosterSettings?.lineupSlotCounts;
   if (!counts || typeof counts !== 'object') return null;
   const get = (id) => Number(counts[id] ?? counts[String(id)] ?? 0) || 0;
   const lineup = {
@@ -581,7 +581,7 @@ function resolveConnectionInput(body) {
   const lineupConstruction = hasStartingLineupSlots(savedLineupConstruction)
     ? savedLineupConstruction
     : provider === 'espn'
-      ? deriveEspnLineupConstruction(league) || deriveEspnLineupFromRoster(roster)
+      ? deriveEspnLineupConstruction(connection?.settings) || deriveEspnLineupFromRoster(roster)
       : null;
 
   return {
