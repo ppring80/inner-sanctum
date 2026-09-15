@@ -344,19 +344,17 @@ test('connection lineup construction is preserved for roster impact', () => {
   });
 });
 
-test('ESPN lineup construction is recovered directly from league settings', () => {
+test('ESPN lineup construction is recovered from the top-level captured settings', () => {
   const resolved = resolveConnectionInput({
     provider: 'espn',
     week: 2,
     connection: {
       lineupConstruction: {},
-      league: {
-        settings: {
-          rosterSettings: {
-            lineupSlotCounts: { 0: 1, 2: 2, 4: 2, 6: 1, 23: 2, 17: 1, 16: 1, 20: 4 }
-          }
-        },
-        availablePlayers: []
+      league: { availablePlayers: [] },
+      settings: {
+        rosterSettings: {
+          lineupSlotCounts: { 0: 1, 2: 2, 4: 2, 6: 1, 23: 2, 17: 1, 16: 1, 20: 4 }
+        }
       }
     }
   });
@@ -366,7 +364,7 @@ test('ESPN lineup construction is recovered directly from league settings', () =
     K: 1, DEF: 1, BENCH: 4, IR: 0
   });
   assert.deepStrictEqual(
-    deriveEspnLineupConstruction({ settings: { rosterSettings: { lineupSlotCounts: {} } } }),
+    deriveEspnLineupConstruction({ rosterSettings: { lineupSlotCounts: {} } }),
     null
   );
 });
