@@ -840,7 +840,7 @@ function getBaseUrl(event) {
   return `${proto}://${host}`;
 }
 
-async function fetchWeeklyData(event, season, week, scoring, teams) {
+async function requestWeeklyData(event, season, week, scoring, teams) {
   const baseUrl = getBaseUrl(event);
   const query = new URLSearchParams({
     season: String(season),
@@ -863,13 +863,54 @@ async function fetchWeeklyData(event, season, week, scoring, teams) {
   }
 
   if (!response.ok || !data) {
-    throw new Error(
-      (data && (data.error || data.detail)) ||
-      `Weekly SAGE unavailable (HTTP ${response.status}).`
-    );
+    return {
+      ok: false,
+      error:
+        (data && (data.error || data.detail)) ||
+        `Weekly SAGE unavailable (HTTP ${response.status}).`
+    };
   }
 
-  return data;
+  return { ok: true, data };
+}
+
+function weeklyFallbackWeeks(week) {
+  const requested = Number(week);
+  const weeks = [requested];
+  if (requested > 2) weeks.push(requested - 1);
+  if (requested > 1) weeks.push(1);
+  return [...new Set(weeks)];
+}
+
+async function fetchWeeklyData(event, season, week, scoring, teams) {
+  const attempts = [];
+
+  for (const sourceWeek of weeklyFallbackWeeks(week)) {
+    const result = await requestWeeklyData(
+      event,
+      season,
+      sourceWeek,
+      scoring,
+      teams
+    );
+    if (result.ok) {
+      return {
+        ...result.data,
+        metadata: {
+          ...(result.data.metadata || {}),
+          requestedWeek: Number(week),
+          sourceWeek,
+          fallbackUsed: sourceWeek !== Number(week),
+          fallbackAttempts: attempts
+        }
+      };
+    }
+    attempts.push({ week: sourceWeek, error: result.error });
+  }
+
+  throw new Error(
+    attempts[0]?.error || 'Weekly SAGE is unavailable for the requested and fallback weeks.'
+  );
 }
 
 async function fetchWeeklySchedule(event, season, week) {
@@ -1020,6 +1061,13 @@ exports.handler = async function (event) {
           trendDataAvailable: Boolean(risersFallersData),
           opportunityDataAvailable: Boolean(opportunityData),
           scheduleDataAvailable: Boolean(scheduleData),
+          sageRequestedWeek: input.week,
+          sageSourceWeek:
+            Number(weeklyData?.metadata?.sourceWeek) ||
+            Number(weeklyData?.targetWeek) ||
+            input.week,
+          sageFallbackUsed: weeklyData?.metadata?.fallbackUsed === true,
+          sageFallbackAttempts: weeklyData?.metadata?.fallbackAttempts || [],
           opportunityMatched:
             candidates.filter((candidate) => candidate.identity.opportunityMatched).length,
           availabilityMeta: input.availabilityMeta,
@@ -1065,5 +1113,8 @@ exports._test = {
   compareCandidateToLineup,
   isProviderAvailableStatus,
   resolveConnectionInput,
-  enrichCandidates
+  enrichCandidates,
+  weeklyFallbackWeeks,
+  requestWeeklyData,
+  fetchWeeklyData
 };
