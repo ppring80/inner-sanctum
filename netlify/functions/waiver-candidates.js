@@ -422,7 +422,11 @@ function rankRosterAtPosition(roster, sageRows, position) {
     });
 }
 
-function compareCandidateToRoster(candidateSage, rosterEvidence) {
+function isWeekOneBaseline(sage) {
+  return sage?.baselineEvidenceType === 'week1-adp-baseline';
+}
+
+function compareCandidateToRoster(candidateSage, rosterEvidence, candidate = null) {
   if (!candidateSage || !candidateSage.positionRank) {
     return {
       classification: 'UNKNOWN',
@@ -447,6 +451,42 @@ function compareCandidateToRoster(candidateSage, rosterEvidence) {
   const candidateRank = Number(candidateSage.positionRank);
   const rosterRank = Number(weakest.sage.positionRank);
 
+  if (isWeekOneBaseline(candidateSage)) {
+    const candidateProjection = numberOrNull(candidate?.projectedPoints);
+    const projectedComparable = comparable
+      .filter((entry) => numberOrNull(entry.player?.projectedPoints) !== null)
+      .sort((a, b) =>
+        numberOrNull(a.player?.projectedPoints) - numberOrNull(b.player?.projectedPoints)
+      );
+
+    // Week 1 ADP is supporting context, not current-week evidence. It may not
+    // veto a candidate by itself; compare current provider projections when
+    // both sides have them, otherwise leave the depth result unresolved.
+    if (candidateProjection === null || !projectedComparable.length) {
+      return {
+        classification: 'UNKNOWN',
+        weakestComparable: null,
+        reason: 'week1_baseline_requires_current_projection'
+      };
+    }
+
+    const projectedWeakest = projectedComparable[0];
+    const rosterProjection = numberOrNull(projectedWeakest.player?.projectedPoints);
+    return {
+      classification: candidateProjection > rosterProjection
+        ? 'UPGRADE'
+        : candidateProjection < rosterProjection ? 'DOWNGRADE' : 'SIMILAR',
+      weakestComparable: {
+        name: getPlayerName(projectedWeakest.player),
+        position: getPlayerPosition(projectedWeakest.player) || null,
+        team: getPlayerTeam(projectedWeakest.player) || null,
+        projectedPoints: rosterProjection,
+        sage: projectedWeakest.sage
+      },
+      reason: null
+    };
+  }
+
   let classification = 'SIMILAR';
   if (candidateRank < rosterRank) {
     classification = 'UPGRADE';
@@ -470,7 +510,10 @@ const FLEX_ELIGIBLE = ['RB', 'WR', 'TE'];
 const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE'];
 const FIXED_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
-function lineupRankingValue(sage) {
+function lineupRankingValue(sage, projectedPoints = null, preferProjection = false) {
+  if (preferProjection && numberOrNull(projectedPoints) !== null) {
+    return numberOrNull(projectedPoints);
+  }
   if (sage?.sageScore !== null && sage?.sageScore !== undefined && Number.isFinite(Number(sage.sageScore))) {
     return Number(sage.sageScore);
   }
@@ -526,7 +569,7 @@ function deriveEspnLineupFromRoster(roster) {
   return hasStartingLineupSlots(lineup) ? lineup : null;
 }
 
-function buildLineupPlayer(player, sageRows, id) {
+function buildLineupPlayer(player, sageRows, id, preferProjection = false) {
   const sageMatch = findIdentityMatch(player, sageRows);
   const sage = extractSageEvidence(sageMatch.match);
   return {
@@ -535,7 +578,7 @@ function buildLineupPlayer(player, sageRows, id) {
     name: getPlayerName(player),
     position: getPlayerPosition(player) || sage?.position || null,
     sage,
-    rankingValue: lineupRankingValue(sage),
+    rankingValue: lineupRankingValue(sage, player?.projectedPoints, preferProjection),
     projectedPoints: numberOrNull(player?.projectedPoints)
   };
 }
@@ -574,14 +617,23 @@ function compareCandidateToLineup(candidate, candidateSage, roster, sageRows, li
   const hasStartingSlots = [...FIXED_LINEUP_SLOTS, 'FLEX', 'SUPERFLEX']
     .some((slot) => Number(lineupConstruction?.[slot]) > 0);
   const candidatePosition = getPlayerPosition(candidate) || candidateSage?.position || null;
-  const candidateValue = lineupRankingValue(candidateSage);
+  const rosterList = Array.isArray(roster) ? roster : [];
+  const candidateProjection = numberOrNull(candidate?.projectedPoints);
+  const preferProjection = isWeekOneBaseline(candidateSage) &&
+    candidateProjection !== null &&
+    rosterList.every((player) => numberOrNull(player?.projectedPoints) !== null);
+  const candidateValue = lineupRankingValue(
+    candidateSage,
+    candidateProjection,
+    preferProjection
+  );
 
   if (!hasStartingSlots || !candidatePosition || candidateValue === null) {
     return null;
   }
 
-  const rosterPlayers = (Array.isArray(roster) ? roster : []).map((player, index) =>
-    buildLineupPlayer(player, sageRows, `roster-${index}`)
+  const rosterPlayers = rosterList.map((player, index) =>
+    buildLineupPlayer(player, sageRows, `roster-${index}`, preferProjection)
   );
   const candidatePlayer = {
     id: 'candidate',
@@ -782,7 +834,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         sageRows,
         lineupConstruction
       );
-      const depthComparison = compareCandidateToRoster(sage, rosterEvidence);
+      const depthComparison = compareCandidateToRoster(sage, rosterEvidence, candidate);
 
       return {
         providerPlayerId:

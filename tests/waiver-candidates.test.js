@@ -25,6 +25,10 @@ const {
     enrichCandidates
   }
 } = require('../netlify/functions/waiver-candidates.js');
+const { buildWaiverDecisions } = require('../netlify/functions/waiver-decision.js');
+const {
+  _test: { buildCustomerRecommendations }
+} = require('../netlify/functions/waiver-recommendations.js');
 
 const waiverCandidatesSource = fs.readFileSync(
   path.join(__dirname, '..', 'netlify', 'functions', 'waiver-candidates.js'),
@@ -139,6 +143,24 @@ const weeklyData = {
     TE: [],
     K: [],
     DEF: []
+  }
+};
+
+const weekOneFallbackData = {
+  positions: {
+    QB: [], RB: [], TE: [], K: [], DEF: [],
+    WR: [
+      {
+        name: 'Roster Receiver', team: 'NYJ', position: 'WR', adp: 35,
+        sageScore: null, baselineEvidenceType: 'week1-adp-baseline',
+        recommendation: 'START'
+      },
+      {
+        name: 'Fallback Candidate', team: 'SF', position: 'WR', adp: 80,
+        sageScore: null, baselineEvidenceType: 'week1-adp-baseline',
+        recommendation: 'SIT'
+      }
+    ]
   }
 };
 
@@ -693,6 +715,104 @@ test('candidate comparison reports downgrade when rank is worse', () => {
   );
 
   assert.strictEqual(result.classification, 'DOWNGRADE');
+});
+
+test('Week 1 fallback rank cannot veto a stronger current provider projection', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Fallback Candidate', nflTeam: 'SF', position: 'WR',
+      availabilityStatus: 'WAIVERS', projectedPoints: 14
+    }],
+    roster: [{
+      name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR',
+      projectedPoints: 9
+    }],
+    lineupConstruction: { WR: 1 },
+    weeklyData: weekOneFallbackData,
+    risersFallersData: null
+  });
+
+  const impact = candidates[0].rosterImpact;
+  assert.strictEqual(candidates[0].sage.positionRank, 2, 'fallback rank is intentionally worse');
+  assert.strictEqual(impact.classification, 'UPGRADE');
+  assert.strictEqual(impact.candidateStarts, true);
+  assert.strictEqual(impact.displacedStarter.name, 'Roster Receiver');
+  assert.strictEqual(impact.projectionDelta, 5);
+  assert.strictEqual(impact.depthComparison.classification, 'UPGRADE');
+
+  const decisions = buildWaiverDecisions(candidates);
+  const recommendations = buildCustomerRecommendations(decisions, { teams: 10 });
+  assert.strictEqual(decisions[0].decision.action, 'ADD');
+  assert.strictEqual(recommendations[0].verdict, 'ADD_NOW');
+  assert.ok(recommendations[0].faab, 'actionable fallback candidate receives FAAB guidance');
+});
+
+test('Week 1 fallback candidate remains behind when current projection is weaker', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Fallback Candidate', nflTeam: 'SF', position: 'WR',
+      availabilityStatus: 'WAIVERS', projectedPoints: 8
+    }],
+    roster: [{
+      name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR',
+      projectedPoints: 9
+    }],
+    lineupConstruction: { WR: 1 },
+    weeklyData: weekOneFallbackData,
+    risersFallersData: null
+  });
+
+  const impact = candidates[0].rosterImpact;
+  assert.strictEqual(impact.classification, 'SIMILAR');
+  assert.strictEqual(impact.candidateStarts, false);
+  assert.strictEqual(impact.depthComparison.classification, 'DOWNGRADE');
+
+  const decisions = buildWaiverDecisions(candidates);
+  const recommendations = buildCustomerRecommendations(decisions, { teams: 10 });
+  assert.strictEqual(decisions[0].decision.action, 'PASS');
+  assert.strictEqual(recommendations[0].verdict, 'PASS');
+  assert.strictEqual(recommendations[0].faab, null);
+});
+
+test('Week 1 projection-backed bench upgrade becomes STASH with FAAB', () => {
+  const candidates = enrichCandidates({
+    availablePlayers: [{
+      name: 'Fallback Candidate', nflTeam: 'SF', position: 'WR',
+      availabilityStatus: 'WAIVERS', projectedPoints: 14
+    }],
+    roster: [
+      { name: 'Elite Starter', nflTeam: 'DET', position: 'WR', projectedPoints: 18 },
+      { name: 'Roster Receiver', nflTeam: 'NYJ', position: 'WR', projectedPoints: 9 }
+    ],
+    lineupConstruction: { WR: 1 },
+    weeklyData: {
+      positions: {
+        ...weekOneFallbackData.positions,
+        WR: [
+          {
+            name: 'Elite Starter', team: 'DET', position: 'WR', adp: 8,
+            sageScore: null, baselineEvidenceType: 'week1-adp-baseline',
+            recommendation: 'START'
+          },
+          ...weekOneFallbackData.positions.WR
+        ]
+      }
+    },
+    risersFallersData: null
+  });
+
+  assert.strictEqual(candidates[0].rosterImpact.candidateStarts, false);
+  assert.strictEqual(candidates[0].rosterImpact.depthComparison.classification, 'UPGRADE');
+  assert.strictEqual(
+    candidates[0].rosterImpact.depthComparison.weakestComparable.projectedPoints,
+    9
+  );
+
+  const decisions = buildWaiverDecisions(candidates);
+  const recommendations = buildCustomerRecommendations(decisions, { teams: 10 });
+  assert.strictEqual(decisions[0].decision.action, 'WATCH');
+  assert.strictEqual(recommendations[0].verdict, 'STASH');
+  assert.ok(recommendations[0].faab, 'projection-backed stash receives FAAB guidance');
 });
 
 test('lineup impact recognizes a receiver upgrading the FLEX slot', () => {
