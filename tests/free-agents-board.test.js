@@ -114,6 +114,17 @@ test('primary board labels implement the agreed visible data contract', () => {
     .forEach((label) => assert.ok(html.includes(label), label + ' must be present'));
   assert.ok(mainScript.includes("total available"), 'filtered counts must distinguish shown players from the full pool');
   assert.ok(mainScript.includes("No current signal"), 'missing optional evidence must be explicit');
+  assert.ok(mainScript.includes('RB/WR/TE workload only'), 'QB/K/DEF must disclose that workload opportunity is not applicable');
+});
+
+test('QB, kicker, and defense opportunity cells are explicitly not applicable', () => {
+  const sandbox = makeSandbox();
+  runScript(sandbox);
+  ['QB', 'K', 'DEF'].forEach((position) => {
+    const cell = sandbox.trendCell({ position });
+    assert.ok(cell.includes('Not applicable'));
+    assert.ok(cell.includes('RB/WR/TE workload only'));
+  });
 });
 
 test('Week 1 workload is shown without fabricating a directional trend', () => {
@@ -121,6 +132,7 @@ test('Week 1 workload is shown without fabricating a directional trend', () => {
   runScript(sandbox);
   sandbox.waiverData = { week: 2 };
   const html = sandbox.trendCell({
+    position: 'RB',
     opportunity: {
       volumeTier: 'high-volume',
       lastGameOpportunities: 22,
@@ -278,6 +290,7 @@ const samplePayload = {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     await flush();
+    sandbox.setBoardScope('all');
     const boardBody = sandbox.document._elements.boardBody;
     assert.ok(boardBody, 'boardBody element should exist after rendering');
     samplePlayers.forEach((p) => {
@@ -291,6 +304,7 @@ const samplePayload = {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     await flush();
+    sandbox.setBoardScope('all');
     assert.strictEqual(sandbox.boardSort, 'best', 'boardSort must default to best');
     const html2 = sandbox.document._elements.boardBody.innerHTML;
     const order = ['Add Now RB', 'Stash QB', 'Watch WR', 'Pass TE'].map((n) => html2.indexOf(n));
@@ -317,6 +331,7 @@ const samplePayload = {
     );
 
     sandbox.setPositionFilter('ALL');
+    sandbox.setBoardScope('all');
     const restored = sandbox.document._elements.boardBody.innerHTML;
     samplePlayers.forEach((p) => assert.ok(restored.includes(p.name), 'ALL filter should restore ' + p.name));
   });
@@ -348,6 +363,7 @@ const samplePayload = {
     assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 6.1 })), true);
     assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Depth QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 8.5 })), false);
     assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 14.2 })), true);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Passing QB', position: 'QB', team: 'DET', verdict: 'PASS', projectedPoints: 24.2 })), false);
   });
 
   await asyncTest('meaningful workload preserves legitimate fringe players despite a low projection', async () => {
@@ -376,6 +392,7 @@ const samplePayload = {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     await flush();
+    sandbox.setBoardScope('all');
 
     sandbox.setBoardSort('sage');
     const sageHtml = sandbox.document._elements.boardBody.innerHTML;
