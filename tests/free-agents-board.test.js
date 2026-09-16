@@ -61,7 +61,7 @@ test('free-agents.html source defines the real, moved board functions', () => {
   [
     'renderWaivers', 'renderDecisionBoard', 'rowHtml', 'sortRows', 'positionMatch',
     'setPositionFilter', 'setBoardSort', 'toggleDetail', 'rosterImpactCell', 'trendCell',
-    'faabCell', 'ensureFaabHeader',
+    'faabCell', 'ensureFaabHeader', 'usableProjection', 'recommendedMatch',
   ].forEach((fn) => {
     assert.ok(mainScript.includes('function ' + fn), fn + ' must be defined in the real file');
   });
@@ -339,6 +339,23 @@ const samplePayload = {
     assert.ok(!sandbox.document._elements.boardBody.innerHTML.includes('Retired Placeholder'));
     sandbox.setBoardScope('all');
     assert.ok(sandbox.document._elements.boardBody.innerHTML.includes('Retired Placeholder'));
+  });
+
+  await asyncTest('tiny projections alone do not inflate the Recommended pool', async () => {
+    const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
+    runScript(sandbox);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Depth RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 0.5 })), false);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 6.1 })), true);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Depth QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 8.5 })), false);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 14.2 })), true);
+  });
+
+  await asyncTest('meaningful workload preserves legitimate fringe players despite a low projection', async () => {
+    const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
+    runScript(sandbox);
+    const fringe = player({ name: 'Fringe WR', position: 'WR', team: 'HOU', verdict: 'REVIEW', projectedPoints: 0 });
+    fringe.opportunity = { lastGameOpportunities: 5, lastGameTargets: 5 };
+    assert.strictEqual(sandbox.recommendedMatch(fringe), true);
   });
 
   await asyncTest('no-action state explains why FAAB remains blank', async () => {
