@@ -421,6 +421,44 @@ const samplePayload = {
     }
   });
 
+  await asyncTest('every sort produces its exact advertised order for same-position players', async () => {
+    const rows = [
+      player({ name: 'Zulu WR', position: 'WR', team: 'SF', verdict: 'REVIEW', sagePositionRank: 30, projectedPoints: 6, trendDirection: 'FALLER', percentOwned: 20 }),
+      player({ name: 'Alpha WR', position: 'WR', team: 'NYJ', verdict: 'STASH', sagePositionRank: 8, projectedPoints: 10, trendDirection: null, percentOwned: 40 }),
+      player({ name: 'Mike WR', position: 'WR', team: 'GB', verdict: 'REVIEW', sagePositionRank: 16, projectedPoints: 14, trendDirection: 'RISER', percentOwned: 80 })
+    ];
+    rows[0].opportunity = { lastGameOpportunities: 12 };
+    rows[1].opportunity = { lastGameOpportunities: 8 };
+    rows[2].opportunity = { lastGameOpportunities: 5 };
+    const payload = {
+      week: 2,
+      recommendations: rows,
+      summary: { addNow: 0, stash: 1, watch: 0, review: 2, pass: 0 },
+      metadata: { providerProjectionFallbackUsed: true }
+    };
+    const sandbox = makeSandbox({ connection: connection(), recommendationPayload: payload });
+    runScript(sandbox);
+    await flush();
+    sandbox.setBoardScope('all');
+
+    const assertOrder = (sort, names) => {
+      sandbox.setBoardSort(sort);
+      const rendered = sandbox.document._elements.boardBody.innerHTML;
+      const indexes = names.map((name) => rendered.indexOf(name));
+      indexes.forEach((index) => assert.ok(index >= 0, sort + ' must retain every row'));
+      for (let i = 1; i < indexes.length; i += 1) {
+        assert.ok(indexes[i - 1] < indexes[i], sort + ' rendered the wrong order: ' + names.join(', '));
+      }
+    };
+
+    assertOrder('best', ['Zulu WR', 'Alpha WR', 'Mike WR']);
+    assertOrder('sage', ['Alpha WR', 'Mike WR', 'Zulu WR']);
+    assertOrder('projection', ['Mike WR', 'Alpha WR', 'Zulu WR']);
+    assertOrder('trend', ['Mike WR', 'Alpha WR', 'Zulu WR']);
+    assertOrder('rostered', ['Mike WR', 'Alpha WR', 'Zulu WR']);
+    assertOrder('alpha', ['Alpha WR', 'Mike WR', 'Zulu WR']);
+  });
+
   await asyncTest('expandable evidence row toggles open and closed', async () => {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
