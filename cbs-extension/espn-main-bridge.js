@@ -127,7 +127,7 @@
     }) || null;
   }
 
-  function normalizeRoster(team) {
+  function normalizeRoster(team, scoringPeriodId) {
     const entries = Array.isArray(team?.roster?.entries) ? team.roster.entries : [];
 
     return entries.map(function (entry) {
@@ -145,7 +145,8 @@
         // Preserve ESPN lineup-slot identity separately from player position.
         lineupSlotId: entry?.lineupSlotId ?? null,
         acquisitionType: entry?.acquisitionType || null,
-        injuryStatus: player?.injuryStatus || null
+        injuryStatus: player?.injuryStatus || null,
+        projectedPoints: projectedPoints(player, scoringPeriodId)
       };
     }).filter(function (player) {
       return Boolean(player?.name);
@@ -433,12 +434,12 @@
       throw new Error("Your ESPN league was found, but Inner Sanctum could not identify your team yet. Open your team page inside this league and try again.");
     }
 
-    const roster = normalizeRoster(myTeam);
+    const scoringPeriodId = currentScoringPeriod(leagueData);
+    const roster = normalizeRoster(myTeam, scoringPeriodId);
     if (!roster.length) {
       throw new Error("Your ESPN team was found, but the roster is not ready yet.");
     }
 
-    const scoringPeriodId = currentScoringPeriod(leagueData);
     const proTeamSchedule = await fetchProTeamSchedule(season, scoringPeriodId);
     const availability = await fetchAvailablePlayers(leagueId, season, scoringPeriodId, proTeamSchedule);
     const overall = myTeam?.record?.overall || {};
