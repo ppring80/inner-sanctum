@@ -81,8 +81,8 @@ assert.ok(
   'Best For My Team must be the first customer-facing sort option'
 );
 assert.ok(
-  source.includes("boardPosition='ALL';boardSort='best';renderDecisionBoard()"),
-  'rendering new league data must restore the Best For My Team default'
+  source.includes("boardPosition='ALL';boardSort='best';boardScope='recommended';boardSearch='';renderDecisionBoard()"),
+  'rendering new league data must restore the Best For My Team and Recommended defaults'
 );
 
 console.log('free-agents-sage-sort.test.js passed');
