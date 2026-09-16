@@ -101,24 +101,22 @@ const STORE_NAME =
 
   Before the regular season begins it returns Week 1.
 
-  During the regular season it advances one week for every
-  seven days from the 2026 season-start anchor and caps the
-  result at Week 18.
+  The Weekly SAGE production cycle advances on Tuesday. Week 2 begins
+  at the first Tuesday refresh after Week 1; each later Tuesday advances
+  one week. This must stay aligned with every positional snapshot writer
+  so the shared schedule and leaderboards never write different weeks.
 
-  UPDATE seasonStart for future NFL seasons.
+  UPDATE firstWeek2PipelineTuesday for future NFL seasons.
 */
-function getCurrentNFLWeek() {
-  const seasonStart =
+function getCurrentNFLWeek(now = new Date()) {
+  const firstWeek2PipelineTuesday =
     new Date(
-      "2026-09-09"
+      "2026-09-15T00:00:00Z"
     );
-
-  const now =
-    new Date();
 
   if (
     now <
-    seasonStart
+    firstWeek2PipelineTuesday
   ) {
     return 1;
   }
@@ -127,7 +125,7 @@ function getCurrentNFLWeek() {
     Math.floor(
       (
         now -
-        seasonStart
+        firstWeek2PipelineTuesday
       ) /
       (
         1000 *
@@ -144,7 +142,7 @@ function getCurrentNFLWeek() {
       Math.floor(
         diffDays /
         7
-      ) + 1
+      ) + 2
     )
   );
 }
@@ -564,3 +562,7 @@ exports.handler =
       );
     }
   };
+
+exports._test = {
+  getCurrentNFLWeek
+};
