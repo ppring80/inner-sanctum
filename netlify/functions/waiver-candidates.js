@@ -671,9 +671,16 @@ function compareCandidateToLineup(candidate, candidateSage, roster, sageRows, li
   const projectionDelta = displaced && candidatePlayer.projectedPoints !== null && displaced.projectedPoints !== null
     ? candidatePlayer.projectedPoints - displaced.projectedPoints
     : null;
+  const meaningfulProjectionUpgrade =
+    !displaced ||
+    !isProjectionBaseline(candidateSage) ||
+    (projectionDelta !== null && projectionDelta >= 3);
 
   return {
-    classification: !displaced || lineupValueDelta > 0 ? 'UPGRADE' : 'SIMILAR',
+    classification:
+      (!displaced || lineupValueDelta > 0) && meaningfulProjectionUpgrade
+        ? 'UPGRADE'
+        : 'SIMILAR',
     comparisonType: 'starting-lineup',
     candidateStarts: true,
     targetSlot: candidateAssignment.slot,
