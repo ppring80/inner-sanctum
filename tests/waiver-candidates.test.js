@@ -855,6 +855,37 @@ test('provider projection fallback restores actionable decisions when SAGE is of
   assert.ok(recommendations[0].faab);
 });
 
+test('provider fallback does not favor a marginal QB projection over the roster starter', () => {
+  const availablePlayers = [{
+    name: 'Available Quarterback', nflTeam: 'DET', position: 'QB',
+    availabilityStatus: 'WAIVERS', projectedPoints: 17
+  }];
+  const roster = [{
+    name: 'Joe Burrow', nflTeam: 'CIN', position: 'QB', projectedPoints: 16.5
+  }];
+  const weeklyFallback = buildProviderProjectionFallback(availablePlayers, roster);
+  const candidates = enrichCandidates({
+    availablePlayers,
+    roster,
+    lineupConstruction: { QB: 1 },
+    weeklyData: weeklyFallback,
+    risersFallersData: null
+  });
+
+  const impact = candidates[0].rosterImpact;
+  assert.strictEqual(impact.candidateStarts, true, 'optimizer may record the mathematical lineup');
+  assert.strictEqual(impact.projectionDelta, 0.5);
+  assert.strictEqual(impact.classification, 'SIMILAR', 'a sub-3-point edge is not an upgrade');
+
+  const decisions = buildWaiverDecisions(candidates);
+  const recommendations = buildCustomerRecommendations(decisions, { teams: 10 });
+  assert.strictEqual(decisions[0].decision.action, 'REVIEW');
+  assert.ok(decisions[0].decision.reasons.includes('Provider projection rank: QB1'));
+  assert.ok(decisions[0].decision.reasons.some((reason) => reason.includes('no meaningful lineup edge')));
+  assert.ok(!decisions[0].decision.reasons.some((reason) => reason.includes('Projects into QB over Joe Burrow')));
+  assert.strictEqual(recommendations[0].lineupFor, null);
+});
+
 test('lineup impact recognizes a receiver upgrading the FLEX slot', () => {
   const candidates = enrichCandidates({
     availablePlayers: [{
