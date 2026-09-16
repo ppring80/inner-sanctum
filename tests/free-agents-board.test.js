@@ -89,6 +89,11 @@ test('upstream Weekly SAGE outage keeps the provider board visible in degraded m
   assert.ok(mainScript.includes('Players remain visible using provider and opportunity evidence'));
 });
 
+test('provider projection fallback is labeled honestly in the table', () => {
+  assert.ok(mainScript.includes('providerProjectionFallbackUsed===true'));
+  assert.ok(mainScript.includes("?'Projection Rank':'Weekly SAGE'"));
+});
+
 test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
