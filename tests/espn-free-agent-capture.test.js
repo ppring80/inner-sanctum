@@ -28,7 +28,8 @@ function leaguePayload() {
               id: 1,
               fullName: 'Joe Burrow',
               defaultPositionId: 1,
-              proTeamId: 4
+              proTeamId: 4,
+              stats: [{ scoringPeriodId: 2, statSourceId: 1, appliedTotal: 21.3 }]
             }
           }
         }]
@@ -169,6 +170,7 @@ async function runCapture({ availabilityOk = true } = {}) {
   const data = success.posted.data;
   assert.strictEqual(data.team.name, 'Old School');
   assert.strictEqual(data.roster[0].name, 'Joe Burrow');
+  assert.strictEqual(data.roster[0].projectedPoints, 21.3);
   assert.strictEqual(data.availablePlayers.length, 3);
   assert.strictEqual(data.league.availablePlayers.length, 3);
   assert.strictEqual(data.league.scoringPeriodId, 2);
