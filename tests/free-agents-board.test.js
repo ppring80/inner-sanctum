@@ -76,6 +76,12 @@ test('table typography remains readable', () => {
   assert.match(html, /\.decision-sub\{[^}]*font-size:9px/);
 });
 
+test('week rollover fallback is disclosed instead of presenting stale SAGE as current', () => {
+  assert.ok(mainScript.includes('sageFallbackUsed===true'));
+  assert.ok(mainScript.includes("SAGE Week '+escapeHtml(sageSource)+' is shown temporarily"));
+  assert.ok(mainScript.includes("' · SAGE W'+escapeHtml(sageSource)+' FALLBACK'"));
+});
+
 test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
