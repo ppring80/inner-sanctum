@@ -50,10 +50,18 @@ function buildReasons(candidate) {
   const weakest = impact?.weakestComparable || null;
 
   if (sage?.position && sage?.positionRank) {
-    reasons.push(`Weekly SAGE: ${sage.position}${sage.positionRank}`);
+    reasons.push(
+      sage?.baselineEvidenceType === 'provider-projection-fallback'
+        ? `Provider projection rank: ${sage.position}${sage.positionRank}`
+        : `Weekly SAGE: ${sage.position}${sage.positionRank}`
+    );
   }
 
-  if (impact?.comparisonType === 'starting-lineup' && impact?.candidateStarts) {
+  if (
+    impact?.comparisonType === 'starting-lineup' &&
+    impact?.candidateStarts &&
+    impact?.classification === 'UPGRADE'
+  ) {
     const slot = impact.targetSlot || 'starting lineup';
     reasons.push(
       weakest?.name
@@ -63,6 +71,14 @@ function buildReasons(candidate) {
     if (Number.isFinite(impact.projectionDelta)) {
       reasons.push(`Provider projection improves the lineup by ${impact.projectionDelta.toFixed(1)} points`);
     }
+  } else if (
+    impact?.comparisonType === 'starting-lineup' &&
+    impact?.candidateStarts &&
+    Number.isFinite(impact?.projectionDelta)
+  ) {
+    reasons.push(
+      `Provider projection difference is only ${Math.abs(impact.projectionDelta).toFixed(1)} points; no meaningful lineup edge is proven`
+    );
   }
 
   if (
@@ -186,6 +202,18 @@ function classifyCandidate(candidate) {
 
   if (impact === 'SIMILAR') {
     const depthComparison = candidate?.rosterImpact?.depthComparison || null;
+    if (
+      candidate?.sage?.baselineEvidenceType === 'provider-projection-fallback' &&
+      candidate?.rosterImpact?.comparisonType === 'starting-lineup' &&
+      candidate?.rosterImpact?.candidateStarts === true
+    ) {
+      return {
+        action: 'REVIEW',
+        actionable: false,
+        reasonCode: 'PROJECTION_EDGE_NOT_MEANINGFUL',
+        reasons: buildReasons(candidate)
+      };
+    }
     if (
       candidate?.rosterImpact?.comparisonType === 'starting-lineup' &&
       candidate?.rosterImpact?.candidateStarts === false &&
