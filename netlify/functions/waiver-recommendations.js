@@ -357,6 +357,7 @@ function decorateDecision(item, context = {}) {
     lineupFor:
       rosterImpact?.comparisonType === 'starting-lineup' &&
       rosterImpact?.candidateStarts &&
+      rosterImpact?.classification === 'UPGRADE' &&
       weakest?.name
         ? {
             name: weakest.name,
