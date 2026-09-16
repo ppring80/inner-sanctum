@@ -71,9 +71,9 @@ test('free-agents.html source defines the real, moved board functions', () => {
 
 test('table typography remains readable', () => {
   assert.match(html, /\.decision-board th\{[^}]*font-size:10px/);
-  assert.match(html, /\.decision-board td\{[^}]*font-size:13px/);
-  assert.match(html, /\.player-name\{[^}]*font-size:14px/);
-  assert.match(html, /\.decision-sub\{[^}]*font-size:9px/);
+  assert.match(html, /\.decision-board td\{[^}]*font-size:14px/);
+  assert.match(html, /\.player-name\{[^}]*font-size:15px/);
+  assert.match(html, /\.decision-sub\{[^}]*font-size:10px/);
 });
 
 test('week rollover fallback is disclosed instead of presenting stale SAGE as current', () => {
@@ -312,13 +312,47 @@ const samplePayload = {
     assert.ok(!filtered.includes('Pass TE'), 'RB filter should exclude the TE');
     assert.strictEqual(
       sandbox.document._elements.boardCount.textContent,
-      '1 RB shown · 4 total available',
+      '1 recommended shown · 4 total available',
       'filtered count should distinguish shown rows from the complete provider pool'
     );
 
     sandbox.setPositionFilter('ALL');
     const restored = sandbox.document._elements.boardBody.innerHTML;
     samplePlayers.forEach((p) => assert.ok(restored.includes(p.name), 'ALL filter should restore ' + p.name));
+  });
+
+  await asyncTest('recommended scope suppresses stale zero-evidence names while All Available preserves them', async () => {
+    const stale = player({ name: 'Retired Placeholder', position: 'QB', team: 'FA', verdict: 'REVIEW', projectedPoints: 0 });
+    stale.decision.evidence.sage = null;
+    stale.decision.evidence.trend = null;
+    stale.identity = { sageMatched: false };
+    const payload = {
+      week: 3,
+      recommendations: [samplePlayers[0], stale],
+      summary: { addNow: 1, stash: 0, watch: 0, review: 1, pass: 0 }
+    };
+    const sandbox = makeSandbox({ connection: connection(), recommendationPayload: payload });
+    runScript(sandbox);
+    await flush();
+
+    assert.ok(sandbox.document._elements.boardBody.innerHTML.includes('Add Now RB'));
+    assert.ok(!sandbox.document._elements.boardBody.innerHTML.includes('Retired Placeholder'));
+    sandbox.setBoardScope('all');
+    assert.ok(sandbox.document._elements.boardBody.innerHTML.includes('Retired Placeholder'));
+  });
+
+  await asyncTest('no-action state explains why FAAB remains blank', async () => {
+    const payload = {
+      week: 3,
+      recommendations: [samplePlayers[3]],
+      summary: { addNow: 0, stash: 0, watch: 0, review: 0, pass: 1 }
+    };
+    const sandbox = makeSandbox({ connection: connection(), recommendationPayload: payload });
+    runScript(sandbox);
+    await flush();
+    const shell = sandbox.document._elements.waiverRoot.innerHTML;
+    assert.ok(shell.includes('No forced move'));
+    assert.ok(shell.includes('FAAB stays blank until a player earns an actionable grade'));
   });
 
   await asyncTest('changing sort to Weekly SAGE reorders the board by position rank', async () => {
