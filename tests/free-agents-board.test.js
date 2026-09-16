@@ -82,6 +82,13 @@ test('week rollover fallback is disclosed instead of presenting stale SAGE as cu
   assert.ok(mainScript.includes("' · SAGE W'+escapeHtml(sageSource)+' FALLBACK'"));
 });
 
+test('upstream Weekly SAGE outage keeps the provider board visible in degraded mode', () => {
+  assert.ok(mainScript.includes('sageUnavailable===true'));
+  assert.ok(mainScript.includes('WEEKLY SAGE UPDATING'));
+  assert.ok(mainScript.includes('Provider board available'));
+  assert.ok(mainScript.includes('Players remain visible using provider and opportunity evidence'));
+});
+
 test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);

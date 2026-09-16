@@ -908,9 +908,23 @@ async function fetchWeeklyData(event, season, week, scoring, teams) {
     attempts.push({ week: sourceWeek, error: result.error });
   }
 
-  throw new Error(
-    attempts[0]?.error || 'Weekly SAGE is unavailable for the requested and fallback weeks.'
-  );
+  // Availability is the hard product rail. Provider-reported free agents,
+  // projections, matchups, and opportunity evidence remain useful even when
+  // every Weekly SAGE source is temporarily unavailable. Return an explicit
+  // degraded evidence envelope instead of taking the entire board down.
+  return {
+    positions: {},
+    metadata: {
+      requestedWeek: Number(week),
+      sourceWeek: null,
+      fallbackUsed: false,
+      fallbackAttempts: attempts,
+      degradedMode: true,
+      degradedReason:
+        attempts[0]?.error ||
+        'Weekly SAGE is unavailable for the requested and fallback weeks.'
+    }
+  };
 }
 
 async function fetchWeeklySchedule(event, season, week) {
@@ -1068,6 +1082,8 @@ exports.handler = async function (event) {
             input.week,
           sageFallbackUsed: weeklyData?.metadata?.fallbackUsed === true,
           sageFallbackAttempts: weeklyData?.metadata?.fallbackAttempts || [],
+          sageUnavailable: weeklyData?.metadata?.degradedMode === true,
+          sageUnavailableReason: weeklyData?.metadata?.degradedReason || null,
           opportunityMatched:
             candidates.filter((candidate) => candidate.identity.opportunityMatched).length,
           availabilityMeta: input.availabilityMeta,

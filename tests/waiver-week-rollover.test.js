@@ -53,6 +53,37 @@ const {
       week: 2,
       error: 'No positional leaderboard could be produced for this week.'
     }]);
+
+    requested.length = 0;
+    global.fetch = async function (url) {
+      requested.push(String(url));
+      const week = Number(new URL(String(url)).searchParams.get('week'));
+      return {
+        ok: false,
+        status: 502,
+        json: async () => ({
+          error: week === 2
+            ? 'No positional leaderboard could be produced for this week.'
+            : 'Week 1 rankings could not be produced.',
+          detail: week === 1 ? 'ADP endpoint returned 500: Tank01 API error: 403' : undefined
+        })
+      };
+    };
+
+    const degraded = await fetchWeeklyData(
+      { headers: { host: 'example.test', 'x-forwarded-proto': 'https' } },
+      2026,
+      2,
+      'ppr',
+      10
+    );
+
+    assert.strictEqual(requested.length, 2, 'requested week and Week 1 fallback are both attempted');
+    assert.deepStrictEqual(degraded.positions, {});
+    assert.strictEqual(degraded.metadata.degradedMode, true);
+    assert.strictEqual(degraded.metadata.sourceWeek, null);
+    assert.strictEqual(degraded.metadata.fallbackAttempts.length, 2);
+    assert.match(degraded.metadata.fallbackAttempts[1].error, /Week 1 rankings/);
   } finally {
     global.fetch = originalFetch;
   }
