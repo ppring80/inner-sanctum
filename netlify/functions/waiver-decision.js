@@ -101,7 +101,8 @@ function meaningfulUpgradeEvidence(candidate) {
   // Week 1 ranks are an ADP baseline, so rank alone cannot justify an
   // immediate lineup move. A provider-projected gain can corroborate a real
   // starting-lineup improvement, while depth upgrades remain WATCH/STASH.
-  if (sage?.baselineEvidenceType === 'week1-adp-baseline') {
+  if (['week1-adp-baseline', 'provider-projection-fallback']
+    .includes(sage?.baselineEvidenceType)) {
     if (impact?.comparisonType !== 'starting-lineup' || impact?.candidateStarts !== true) {
       return false;
     }
@@ -152,7 +153,8 @@ function classifyCandidate(candidate) {
       const weakest = candidate?.rosterImpact?.weakestComparable || null;
       const rankEdge = Number(weakest?.sage?.positionRank) - Number(sage?.positionRank);
       if (
-        sage?.baselineEvidenceType === 'week1-adp-baseline' &&
+        ['week1-adp-baseline', 'provider-projection-fallback']
+          .includes(sage?.baselineEvidenceType) &&
         Number.isFinite(rankEdge) &&
         rankEdge >= 8
       ) {

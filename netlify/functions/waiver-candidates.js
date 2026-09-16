@@ -422,7 +422,12 @@ function rankRosterAtPosition(roster, sageRows, position) {
     });
 }
 
-function compareCandidateToRoster(candidateSage, rosterEvidence) {
+function isProjectionBaseline(sage) {
+  return ['week1-adp-baseline', 'provider-projection-fallback']
+    .includes(sage?.baselineEvidenceType);
+}
+
+function compareCandidateToRoster(candidateSage, rosterEvidence, candidate = null) {
   if (!candidateSage || !candidateSage.positionRank) {
     return {
       classification: 'UNKNOWN',
@@ -447,6 +452,42 @@ function compareCandidateToRoster(candidateSage, rosterEvidence) {
   const candidateRank = Number(candidateSage.positionRank);
   const rosterRank = Number(weakest.sage.positionRank);
 
+  if (isProjectionBaseline(candidateSage)) {
+    const candidateProjection = numberOrNull(candidate?.projectedPoints);
+    const projectedComparable = comparable
+      .filter((entry) => numberOrNull(entry.player?.projectedPoints) !== null)
+      .sort((a, b) =>
+        numberOrNull(a.player?.projectedPoints) - numberOrNull(b.player?.projectedPoints)
+      );
+
+    // Week 1 ADP is supporting context, not current-week evidence. It may not
+    // veto a candidate by itself; compare current provider projections when
+    // both sides have them, otherwise leave the depth result unresolved.
+    if (candidateProjection === null || !projectedComparable.length) {
+      return {
+        classification: 'UNKNOWN',
+        weakestComparable: null,
+        reason: 'week1_baseline_requires_current_projection'
+      };
+    }
+
+    const projectedWeakest = projectedComparable[0];
+    const rosterProjection = numberOrNull(projectedWeakest.player?.projectedPoints);
+    return {
+      classification: candidateProjection > rosterProjection
+        ? 'UPGRADE'
+        : candidateProjection < rosterProjection ? 'DOWNGRADE' : 'SIMILAR',
+      weakestComparable: {
+        name: getPlayerName(projectedWeakest.player),
+        position: getPlayerPosition(projectedWeakest.player) || null,
+        team: getPlayerTeam(projectedWeakest.player) || null,
+        projectedPoints: rosterProjection,
+        sage: projectedWeakest.sage
+      },
+      reason: null
+    };
+  }
+
   let classification = 'SIMILAR';
   if (candidateRank < rosterRank) {
     classification = 'UPGRADE';
@@ -470,7 +511,10 @@ const FLEX_ELIGIBLE = ['RB', 'WR', 'TE'];
 const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE'];
 const FIXED_LINEUP_SLOTS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
-function lineupRankingValue(sage) {
+function lineupRankingValue(sage, projectedPoints = null, preferProjection = false) {
+  if (preferProjection && numberOrNull(projectedPoints) !== null) {
+    return numberOrNull(projectedPoints);
+  }
   if (sage?.sageScore !== null && sage?.sageScore !== undefined && Number.isFinite(Number(sage.sageScore))) {
     return Number(sage.sageScore);
   }
@@ -526,7 +570,7 @@ function deriveEspnLineupFromRoster(roster) {
   return hasStartingLineupSlots(lineup) ? lineup : null;
 }
 
-function buildLineupPlayer(player, sageRows, id) {
+function buildLineupPlayer(player, sageRows, id, preferProjection = false) {
   const sageMatch = findIdentityMatch(player, sageRows);
   const sage = extractSageEvidence(sageMatch.match);
   return {
@@ -535,7 +579,7 @@ function buildLineupPlayer(player, sageRows, id) {
     name: getPlayerName(player),
     position: getPlayerPosition(player) || sage?.position || null,
     sage,
-    rankingValue: lineupRankingValue(sage),
+    rankingValue: lineupRankingValue(sage, player?.projectedPoints, preferProjection),
     projectedPoints: numberOrNull(player?.projectedPoints)
   };
 }
@@ -574,14 +618,23 @@ function compareCandidateToLineup(candidate, candidateSage, roster, sageRows, li
   const hasStartingSlots = [...FIXED_LINEUP_SLOTS, 'FLEX', 'SUPERFLEX']
     .some((slot) => Number(lineupConstruction?.[slot]) > 0);
   const candidatePosition = getPlayerPosition(candidate) || candidateSage?.position || null;
-  const candidateValue = lineupRankingValue(candidateSage);
+  const rosterList = Array.isArray(roster) ? roster : [];
+  const candidateProjection = numberOrNull(candidate?.projectedPoints);
+  const preferProjection = isProjectionBaseline(candidateSage) &&
+    candidateProjection !== null &&
+    rosterList.every((player) => numberOrNull(player?.projectedPoints) !== null);
+  const candidateValue = lineupRankingValue(
+    candidateSage,
+    candidateProjection,
+    preferProjection
+  );
 
   if (!hasStartingSlots || !candidatePosition || candidateValue === null) {
     return null;
   }
 
-  const rosterPlayers = (Array.isArray(roster) ? roster : []).map((player, index) =>
-    buildLineupPlayer(player, sageRows, `roster-${index}`)
+  const rosterPlayers = rosterList.map((player, index) =>
+    buildLineupPlayer(player, sageRows, `roster-${index}`, preferProjection)
   );
   const candidatePlayer = {
     id: 'candidate',
@@ -782,7 +835,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         sageRows,
         lineupConstruction
       );
-      const depthComparison = compareCandidateToRoster(sage, rosterEvidence);
+      const depthComparison = compareCandidateToRoster(sage, rosterEvidence, candidate);
 
       return {
         providerPlayerId:
@@ -927,6 +980,49 @@ async function fetchWeeklyData(event, season, week, scoring, teams) {
   };
 }
 
+function buildProviderProjectionFallback(availablePlayers, roster, metadata = {}) {
+  const positions = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
+  const seen = new Set();
+
+  [...(Array.isArray(availablePlayers) ? availablePlayers : []),
+    ...(Array.isArray(roster) ? roster : [])]
+    .filter((player) => player?.active !== false)
+    .forEach((player) => {
+      const name = getPlayerName(player);
+      const position = getPlayerPosition(player);
+      const projectedPoints = numberOrNull(player?.projectedPoints);
+      if (!name || !positions[position] || projectedPoints === null) return;
+      const key = [normalizeName(name), normalizeTeam(getPlayerTeam(player)), position].join('|');
+      if (seen.has(key)) return;
+      seen.add(key);
+      positions[position].push({
+        name,
+        team: getPlayerTeam(player) || null,
+        position,
+        projectedPoints,
+        sageScore: null,
+        baselineEvidenceType: 'provider-projection-fallback',
+        recommendation: null
+      });
+    });
+
+  Object.keys(positions).forEach((position) => {
+    positions[position] = positions[position]
+      .sort((a, b) => b.projectedPoints - a.projectedPoints)
+      .map((row, index) => ({ ...row, positionRank: index + 1 }));
+  });
+
+  return {
+    positions,
+    metadata: {
+      ...metadata,
+      degradedMode: true,
+      projectionFallbackUsed: true,
+      route: 'provider-projection-fallback'
+    }
+  };
+}
+
 async function fetchWeeklySchedule(event, season, week) {
   try {
     const baseUrl = getBaseUrl(event);
@@ -1030,7 +1126,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const [weeklyData, risersFallersData, opportunityData, scheduleData] = await Promise.all([
+    let [weeklyData, risersFallersData, opportunityData, scheduleData] = await Promise.all([
       fetchWeeklyData(
         event,
         input.season,
@@ -1042,6 +1138,14 @@ exports.handler = async function (event) {
       readOpportunityIntel(event),
       fetchWeeklySchedule(event, input.season, input.week)
     ]);
+
+    if (weeklyData?.metadata?.degradedMode === true) {
+      weeklyData = buildProviderProjectionFallback(
+        input.availablePlayers,
+        input.roster,
+        weeklyData.metadata
+      );
+    }
 
     const candidates = enrichCandidates({
       availablePlayers: input.availablePlayers,
@@ -1084,6 +1188,8 @@ exports.handler = async function (event) {
           sageFallbackAttempts: weeklyData?.metadata?.fallbackAttempts || [],
           sageUnavailable: weeklyData?.metadata?.degradedMode === true,
           sageUnavailableReason: weeklyData?.metadata?.degradedReason || null,
+          providerProjectionFallbackUsed:
+            weeklyData?.metadata?.projectionFallbackUsed === true,
           opportunityMatched:
             candidates.filter((candidate) => candidate.identity.opportunityMatched).length,
           availabilityMeta: input.availabilityMeta,
@@ -1132,5 +1238,6 @@ exports._test = {
   enrichCandidates,
   weeklyFallbackWeeks,
   requestWeeklyData,
-  fetchWeeklyData
+  fetchWeeklyData,
+  buildProviderProjectionFallback
 };
