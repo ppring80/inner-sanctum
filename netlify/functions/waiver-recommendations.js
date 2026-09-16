@@ -117,13 +117,22 @@ function customerVerdict(item) {
     (impact?.comparisonType === 'same-position-fallback' ? impact : null);
   const candidateRank = Number(item?.evidence?.sage?.positionRank);
   const weakestDepthRank = Number(depth?.weakestComparable?.sage?.positionRank);
+  const candidateProjection = Number(item?.evidence?.providerProjectedPoints);
+  const weakestDepthProjection = Number(depth?.weakestComparable?.projectedPoints);
+  const weekOneProjectionUpgrade =
+    item?.evidence?.sage?.baselineEvidenceType === 'week1-adp-baseline' &&
+    Number.isFinite(candidateProjection) &&
+    Number.isFinite(weakestDepthProjection) &&
+    candidateProjection > weakestDepthProjection;
   const meaningfulDepthUpgrade =
     (impact?.comparisonType === 'same-position-fallback' ||
       (impact?.comparisonType === 'starting-lineup' && impact?.candidateStarts === false)) &&
     depth?.classification === 'UPGRADE' &&
-    Number.isFinite(candidateRank) &&
-    Number.isFinite(weakestDepthRank) &&
-    weakestDepthRank - candidateRank >= 8;
+    (weekOneProjectionUpgrade || (
+      Number.isFinite(candidateRank) &&
+      Number.isFinite(weakestDepthRank) &&
+      weakestDepthRank - candidateRank >= 8
+    ));
 
   if (action === 'ADD') return 'ADD_NOW';
   if (action === 'WATCH' && meaningfulDepthUpgrade) return 'STASH';
