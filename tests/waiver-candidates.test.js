@@ -887,6 +887,46 @@ test('provider fallback does not favor a marginal QB projection over the roster 
   assert.strictEqual(recommendations[0].lineupFor, null);
 });
 
+test('provider fallback keeps credible PK and DEF streamers visible without FAAB', () => {
+  const availablePlayers = [
+    {
+      name: 'Available Kicker', nflTeam: 'GB', position: 'PK',
+      availabilityStatus: 'WAIVERS', projectedPoints: 7
+    },
+    {
+      name: 'Available Defense', nflTeam: 'BUF', position: 'DST',
+      availabilityStatus: 'WAIVERS', projectedPoints: 7
+    }
+  ];
+  const roster = [
+    { name: 'Roster Kicker', nflTeam: 'NYJ', position: 'PK', projectedPoints: 8 },
+    { name: 'Roster Defense', nflTeam: 'DEN', position: 'DST', projectedPoints: 8 }
+  ];
+  const weeklyFallback = buildProviderProjectionFallback(availablePlayers, roster);
+  const candidates = enrichCandidates({
+    availablePlayers,
+    roster,
+    lineupConstruction: { K: 1, DEF: 1 },
+    weeklyData: weeklyFallback,
+    risersFallersData: null
+  });
+  const decisions = buildWaiverDecisions(candidates);
+  const recommendations = buildCustomerRecommendations(decisions, { teams: 12 });
+
+  ['K', 'DEF'].forEach((position) => {
+    const decision = decisions.find((item) => item.position === position);
+    const recommendation = recommendations.find((item) => item.position === position);
+    assert.strictEqual(decision.decision.action, 'PASS', `${position} should retain honest roster comparison`);
+    assert.strictEqual(recommendation.verdict, 'REVIEW', `${position} streamer should remain reviewable`);
+    assert.strictEqual(recommendation.recommended, true, `${position} streamer should remain in Recommended`);
+    assert.strictEqual(recommendation.faab, null, `${position} streamer must not receive invented FAAB`);
+    assert.ok(
+      recommendation.decision.reasons.some((reason) => reason.includes('behind the weakest comparable')),
+      `${position} must disclose that the rostered option is stronger`
+    );
+  });
+});
+
 test('lineup impact recognizes a receiver upgrading the FLEX slot', () => {
   const candidates = enrichCandidates({
     availablePlayers: [{
