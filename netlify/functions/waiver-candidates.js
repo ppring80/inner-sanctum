@@ -1050,21 +1050,88 @@ async function fetchWeeklySchedule(event, season, week) {
   }
 }
 
-async function readRisersFallers(event) {
+// The "latest" Risers & Fallers / Opportunity Intelligence cache entries are
+// whatever the most recent refresh run wrote -- manual or scheduled, for
+// whichever season/week that run happened to target. Nothing about the key
+// name "latest" guarantees it matches the season/week a given candidate
+// request is actually asking about (confirmed production case: a season
+// 2025 manual refresh left "latest" pointing at 2025 Week 1->2 trend data,
+// which then displayed as if it were current 2026 evidence). Both readers
+// below reject the cached blob outright when it does not match the request
+// -- they never substitute a different season or week.
+
+function isValidRisersFallersForRequest(data, season, week) {
+  if (!data || typeof data !== 'object') return false;
+  const requestedSeason = Number(season);
+  const requestedWeek = Number(week);
+
+  // Risers & Fallers describes a completed historical week-over-week
+  // delta (previousWeek -> currentWeek, both already-played weeks). The
+  // requested "week" here is the UPCOMING fantasy waiver week, which has
+  // not been played yet -- so the most recent trend evidence that can
+  // possibly be relevant to it is the delta ending at requestedWeek - 1,
+  // compared against requestedWeek - 2. A Week 2 waiver decision has no
+  // valid two-completed-week trend to draw on at all (that would require
+  // a completed Week 0), so requestedWeek must be at least 3.
+  if (!Number.isFinite(requestedWeek) || requestedWeek < 3) return false;
+
+  const cacheSeason = Number(data.season);
+  const cacheCurrentWeek = Number(data.currentWeek);
+  const cachePreviousWeek = Number(data.previousWeek);
+
+  return (
+    Number.isFinite(cacheSeason) &&
+    Number.isFinite(cacheCurrentWeek) &&
+    Number.isFinite(cachePreviousWeek) &&
+    cacheSeason === requestedSeason &&
+    cacheCurrentWeek === requestedWeek - 1 &&
+    cachePreviousWeek === requestedWeek - 2
+  );
+}
+
+function isValidOpportunityIntelForRequest(data, season, week) {
+  if (!data || typeof data !== 'object') return false;
+  const cacheSeason = Number(data.season);
+  const requestedSeason = Number(season);
+  const requestedWeek = Number(week);
+  if (!Number.isFinite(cacheSeason) || cacheSeason !== requestedSeason) return false;
+
+  const weeksRequested = Array.isArray(data.weeksRequested)
+    ? data.weeksRequested.map(Number)
+    : [];
+  if (!weeksRequested.length || weeksRequested.some((value) => !Number.isFinite(value))) {
+    return false;
+  }
+
+  // Opportunity Intelligence is built from completed games only. Evidence is
+  // appropriate for a waiver week when its most recent completed week is
+  // exactly the week immediately before the one being decided -- never the
+  // requested week itself or later (those games have not been played yet),
+  // and never further behind (that is stale evidence, not this week's role).
+  // Week 1 waiver decisions therefore never receive opportunity trend
+  // evidence -- there is no completed week 0 -- which is the honest
+  // Week 1 workload baseline this fix is required to preserve.
+  const mostRecentCompletedWeek = Math.max(...weeksRequested);
+  return mostRecentCompletedWeek === requestedWeek - 1;
+}
+
+async function readRisersFallers(event, season, week) {
   try {
     connectLambda(event);
     const store = getStore({ name: 'risers-fallers' });
-    return (await store.get('latest', { type: 'json' })) || null;
+    const data = (await store.get('latest', { type: 'json' })) || null;
+    return isValidRisersFallersForRequest(data, season, week) ? data : null;
   } catch (error) {
     return null;
   }
 }
 
-async function readOpportunityIntel(event) {
+async function readOpportunityIntel(event, season, week) {
   try {
     connectLambda(event);
     const store = getStore({ name: 'opportunity-intel' });
-    return (await store.get('latest', { type: 'json' })) || null;
+    const data = (await store.get('latest', { type: 'json' })) || null;
+    return isValidOpportunityIntelForRequest(data, season, week) ? data : null;
   } catch (error) {
     return null;
   }
@@ -1141,8 +1208,8 @@ exports.handler = async function (event) {
         input.scoring,
         input.teams
       ),
-      readRisersFallers(event),
-      readOpportunityIntel(event),
+      readRisersFallers(event, input.season, input.week),
+      readOpportunityIntel(event, input.season, input.week),
       fetchWeeklySchedule(event, input.season, input.week)
     ]);
 
@@ -1246,5 +1313,9 @@ exports._test = {
   weeklyFallbackWeeks,
   requestWeeklyData,
   fetchWeeklyData,
-  buildProviderProjectionFallback
+  buildProviderProjectionFallback,
+  isValidRisersFallersForRequest,
+  isValidOpportunityIntelForRequest,
+  readRisersFallers,
+  readOpportunityIntel
 };
