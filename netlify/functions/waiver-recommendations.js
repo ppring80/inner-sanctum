@@ -146,69 +146,157 @@ function normalizeScoring(value) {
   return String(value || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
 }
 
+const FAAB_MARKET_BANDS = Object.freeze({
+  // Calibrated to public redraft-waiver guidance: low-confidence depth adds
+  // are low-single-digit bids; only verified breakout usage plus a material
+  // starting-lineup gain reaches the teens. These are market anchors, not
+  // additive bonuses, so weak evidence cannot accumulate into a premium bid.
+  SPECULATIVE: { valuePct: 1, recommendedPct: 1, aggressivePct: 2 },
+  DEPTH_STASH: { valuePct: 2, recommendedPct: 3, aggressivePct: 5 },
+  PRIORITY_STASH: { valuePct: 4, recommendedPct: 6, aggressivePct: 9 },
+  LINEUP_ADD: { valuePct: 5, recommendedPct: 8, aggressivePct: 12 },
+  BREAKOUT: { valuePct: 9, recommendedPct: 14, aggressivePct: 20 }
+});
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return value !== null && value !== '' && Number.isFinite(number) ? number : null;
+}
+
+function projectionGain(item) {
+  const impact = item?.evidence?.rosterImpact || null;
+  const direct = finiteNumber(impact?.projectionDelta);
+  if (direct !== null) return direct;
+
+  const candidate = finiteNumber(item?.evidence?.providerProjectedPoints);
+  const weakest = finiteNumber(
+    impact?.depthComparison?.weakestComparable?.projectedPoints ??
+    impact?.weakestComparable?.projectedPoints
+  );
+  return candidate !== null && weakest !== null ? candidate - weakest : null;
+}
+
+function workloadStrength(item) {
+  const position = String(item?.position || '').toUpperCase();
+  if (!['RB', 'WR', 'TE'].includes(position)) return 0;
+
+  const opportunity = item?.evidence?.opportunity || {};
+  const trend = item?.evidence?.trend || {};
+  const opportunities = finiteNumber(opportunity.lastGameOpportunities);
+  const carries = finiteNumber(opportunity.lastGameCarries);
+  const targets = finiteNumber(opportunity.lastGameTargets ?? trend.currentTargets);
+  const snaps = finiteNumber(trend.currentSnapShare);
+  let strength = 0;
+
+  if (position === 'RB') {
+    const touches = opportunities !== null
+      ? opportunities
+      : (carries !== null || targets !== null ? (carries || 0) + (targets || 0) : null);
+    if (touches !== null && touches >= 15) strength = 3;
+    else if (touches !== null && touches >= 9) strength = 2;
+    else if (touches !== null && touches >= 4) strength = 1;
+  } else {
+    if (targets !== null && targets >= 8) strength = 3;
+    else if (targets !== null && targets >= 5) strength = 2;
+    else if (targets !== null && targets >= 3) strength = 1;
+  }
+
+  if (snaps !== null && snaps >= 65) strength = Math.max(strength, 2);
+  else if (snaps !== null && snaps >= 35) strength = Math.max(strength, 1);
+  return strength;
+}
+
+function projectionStrength(item) {
+  const impact = item?.evidence?.rosterImpact || null;
+  const gain = projectionGain(item);
+  if (gain === null || gain < 2) return 0;
+
+  const starts = impact?.comparisonType === 'starting-lineup' && impact?.candidateStarts === true;
+  if (starts) {
+    if (gain >= 6) return 3;
+    if (gain >= 3) return 2;
+    return 1;
+  }
+  if (gain >= 6) return 2;
+  return 1;
+}
+
+function faabMarketBand(item, verdict) {
+  const workload = workloadStrength(item);
+  const projection = projectionStrength(item);
+  const trend = item?.evidence?.trend?.direction || item?.evidence?.opportunity?.direction || null;
+  const starts = item?.evidence?.rosterImpact?.candidateStarts === true;
+
+  // A label, position, league size, or ownership percentage can refine real
+  // evidence, but can never manufacture a bid by itself.
+  if (Math.max(workload, projection) === 0) return null;
+
+  if (verdict === 'ADD_NOW') {
+    if (starts && projection >= 3 && workload >= 2 && trend === 'RISER') return 'BREAKOUT';
+    if (starts && projection >= 2) return 'LINEUP_ADD';
+    return 'PRIORITY_STASH';
+  }
+
+  if (workload >= 3 && projection >= 1) return 'PRIORITY_STASH';
+  if ((workload >= 2 && projection >= 1) || projection >= 2) return 'DEPTH_STASH';
+  return 'SPECULATIVE';
+}
+
+function faabMarketMultiplier(position, teams, scoring) {
+  let multiplier = 1;
+  if (Number.isFinite(teams)) {
+    if (teams <= 8) multiplier *= 0.75;
+    else if (teams <= 10) multiplier *= 0.85;
+    else if (teams >= 14) multiplier *= 1.15;
+  }
+  if (['ppr', 'full-ppr', '1-ppr'].includes(scoring) && ['WR', 'TE'].includes(position)) {
+    multiplier *= 1.1;
+  }
+  return multiplier;
+}
+
+function marketAdjustedPct(value, multiplier) {
+  return Math.max(1, Math.round(value * multiplier));
+}
+
 function buildFaabGuidance(item, verdict, context = {}) {
   if (!['ADD_NOW', 'STASH'].includes(verdict)) return null;
 
+  const marketBand = faabMarketBand(item, verdict);
+  if (!marketBand) return null;
+
+  const band = FAAB_MARKET_BANDS[marketBand];
   const basis = [];
   const teams = Number(context?.teams);
   const scoring = normalizeScoring(context?.scoring);
   const position = String(item?.position || '').toUpperCase();
-  const trend = item?.evidence?.trend?.direction || null;
-  const impact = item?.evidence?.rosterImpact || null;
-  const depth = impact?.depthComparison || null;
-  const candidateRank = Number(item?.evidence?.sage?.positionRank);
-  const weakestRank = Number(depth?.weakestComparable?.sage?.positionRank);
-  const percentOwned = Number(item?.evidence?.percentOwned);
-  let recommended = verdict === 'ADD_NOW' ? 14 : 10;
+  const workload = workloadStrength(item);
+  const gain = projectionGain(item);
+  const percentOwned = finiteNumber(item?.evidence?.percentOwned);
+  const marketMultiplier = faabMarketMultiplier(position, teams, scoring);
 
-  if (Number.isFinite(teams) && teams >= 12) {
-    recommended += 3;
-    basis.push(`${teams}-team depth`);
+  if (workload > 0) basis.push(`verified workload level ${workload}/3`);
+  if (gain !== null && gain >= 2) basis.push(`${gain.toFixed(1)} projected-point roster gain`);
+  if (Number.isFinite(teams)) basis.push(`${teams}-team market adjustment`);
+  if (marketMultiplier !== faabMarketMultiplier(position, teams, '')) {
+    basis.push(`${scoring} positional adjustment`);
   }
-  if (position === 'RB' && ['half-ppr', 'halfppr', '0.5-ppr'].includes(scoring)) {
-    recommended += 2;
-    basis.push('half-PPR RB value');
-  }
-  if (trend === 'RISER') {
-    recommended += 3;
-    basis.push('rising opportunity');
-  }
-  if (Number.isFinite(candidateRank) && Number.isFinite(weakestRank)) {
-    const rankEdge = weakestRank - candidateRank;
-    if (rankEdge >= 20) {
-      recommended += 4;
-      basis.push('strong bench upgrade');
-    } else if (rankEdge >= 12) {
-      recommended += 2;
-      basis.push('meaningful bench upgrade');
-    }
-  }
-  if (
-    verdict === 'ADD_NOW' &&
-    Number.isFinite(Number(impact?.projectionDelta)) &&
-    Number(impact.projectionDelta) >= 5
-  ) {
-    recommended += 3;
-    basis.push('clear lineup gain');
-  }
-  if (Number.isFinite(percentOwned)) {
-    if (percentOwned >= 50) {
-      recommended += 3;
-      basis.push('strong market demand');
-    } else if (percentOwned >= 25) {
-      recommended += 1;
-      basis.push('market demand');
-    }
-  }
+  if (percentOwned !== null) basis.push(`${Math.round(percentOwned)}% provider rostered (context only)`);
 
-  const ceiling = verdict === 'ADD_NOW' ? 30 : 24;
-  recommended = Math.max(verdict === 'ADD_NOW' ? 8 : 5, Math.min(ceiling, recommended));
   return {
     budgetBasis: 'original-budget-percent',
-    recommendedPct: recommended,
-    rangeMinPct: Math.max(1, recommended - 3),
-    rangeMaxPct: Math.min(ceiling, recommended + 3),
-    confidence: trend ? 'MEDIUM' : 'LOW',
+    archetype: marketBand,
+    valuePct: marketAdjustedPct(band.valuePct, marketMultiplier),
+    recommendedPct: marketAdjustedPct(band.recommendedPct, marketMultiplier),
+    aggressivePct: marketAdjustedPct(band.aggressivePct, marketMultiplier),
+    confidence: workload > 0 && projectionStrength(item) > 0 ? 'HIGH' : 'MEDIUM',
+    evidence: {
+      workloadStrength: workload,
+      projectionStrength: projectionStrength(item),
+      projectionGain: gain,
+      position,
+      marketMultiplier
+    },
     basis
   };
 }
@@ -483,7 +571,7 @@ exports.handler = async function handler(event) {
       metadata: {
         ...(candidateBody.metadata || {}),
         methodology:
-          'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated lineup upgrade. STASH identifies a meaningful bench upgrade; available trend evidence strengthens the recommendation and FAAB guidance. WATCH and PASS remain conservative when evidence does not justify an add.',
+          'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated lineup upgrade. FAAB uses verified workload and roster-relative projection gain to select a calibrated market band, then adjusts for league depth and relevant scoring; trend labels and roster percentage cannot create a bid.',
         limitations: [
           'FAAB guidance is a percentage of the original budget because remaining budget is not supplied by the provider connection.',
           'No transaction is submitted.',

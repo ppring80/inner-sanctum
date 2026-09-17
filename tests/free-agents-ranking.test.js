@@ -293,10 +293,12 @@ test('customer recommendation preserves bench-upgrade evidence for the UI', () =
           weakestComparable: {
             name: 'Weak Bench RB',
             position: 'RB',
+            projectedPoints: 5,
             sage: { position: 'RB', positionRank: 50 }
           }
         }
-      }
+      },
+      providerProjectedPoints: 9
     })
   ], { teams: 12, scoring: 'half-ppr' });
 

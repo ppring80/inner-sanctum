@@ -98,7 +98,7 @@ test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   const item = {
-    faab: { recommendedPct: 21, rangeMinPct: 18, rangeMaxPct: 24 },
+    faab: { valuePct: 2, recommendedPct: 3, aggressivePct: 5 },
     decision: {
       evidence: {
         rosterImpact: {
@@ -116,8 +116,8 @@ test('bench upgrades and FAAB guidance are visible customer evidence', () => {
 
   assert.ok(sandbox.rosterImpactCell(item).includes('Bench Upgrade'));
   assert.ok(sandbox.rosterImpactCell(item).includes('Weak Bench RB'));
-  assert.ok(sandbox.faabCell(item).includes('21%'));
-  assert.ok(sandbox.faabCell(item).includes('18–24%'));
+  assert.ok(sandbox.faabCell(item).includes('3%'));
+  assert.ok(sandbox.faabCell(item).includes('Value 2% · Aggressive 5%'));
 });
 
 test('primary board labels implement the agreed visible data contract', () => {

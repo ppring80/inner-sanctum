@@ -217,12 +217,14 @@ test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
     decision: { action: 'WATCH', actionable: false, reasonCode: 'WEEK1_DEPTH_UPGRADE' },
     evidence: {
       ...decision().evidence,
+      providerProjectedPoints: 12,
       sage: { position: 'WR', positionRank: 24, baselineEvidenceType: 'week1-adp-baseline' },
       trend: null,
       rosterImpact: {
         classification: 'UPGRADE', comparisonType: 'same-position-fallback',
         weakestComparable: {
-          name: 'Bench Receiver', position: 'WR', sage: { positionRank: 40 }
+          name: 'Bench Receiver', position: 'WR', projectedPoints: 8,
+          sage: { positionRank: 40 }
         }
       }
     }
@@ -230,7 +232,7 @@ test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
 
   assert.strictEqual(result.verdict, 'STASH');
   assert.ok(result.faab);
-  assert.ok(result.faab.recommendedPct >= 5 && result.faab.recommendedPct <= 24);
+  assert.strictEqual(result.faab.recommendedPct, 1);
 });
 
 test('all fantasy positions preserve matchup, Weekly SAGE, roster impact, decision, and FAAB', () => {
@@ -245,6 +247,9 @@ test('all fantasy positions preserve matchup, Weekly SAGE, roster impact, decisi
       sage: { position, positionRank: index + 1, recommendation: 'START' },
       rosterImpact: {
         classification: 'UPGRADE',
+        comparisonType: 'starting-lineup',
+        candidateStarts: true,
+        projectionDelta: 4,
         weakestComparable: { name: `${position} Roster Player`, position }
       }
     }
@@ -382,7 +387,7 @@ test('summary counts customer-facing verdicts', () => {
   );
 });
 
-test('12-team half-PPR rising RB stash receives bounded FAAB guidance', () => {
+test('trend, rank, ownership, and league context alone cannot invent FAAB', () => {
   const item = decision({
     name: 'Breakout Runner',
     position: 'RB',
@@ -411,16 +416,7 @@ test('12-team half-PPR rising RB stash receives bounded FAAB guidance', () => {
     scoring: 'half-ppr'
   });
 
-  assert.deepStrictEqual(
-    {
-      recommendedPct: guidance.recommendedPct,
-      rangeMinPct: guidance.rangeMinPct,
-      rangeMaxPct: guidance.rangeMaxPct
-    },
-    { recommendedPct: 21, rangeMinPct: 18, rangeMaxPct: 24 }
-  );
-  assert.ok(guidance.basis.includes('12-team depth'));
-  assert.ok(guidance.basis.includes('rising opportunity'));
+  assert.strictEqual(guidance, null);
 });
 
 test('review and pass players do not receive an invented FAAB recommendation', () => {
