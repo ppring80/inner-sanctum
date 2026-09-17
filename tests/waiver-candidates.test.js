@@ -816,7 +816,7 @@ test('Week 1 projection-backed bench upgrade becomes STASH with FAAB', () => {
   assert.ok(recommendations[0].faab, 'projection-backed stash receives FAAB guidance');
 });
 
-test('provider projection fallback restores actionable decisions when SAGE is offline', () => {
+test('provider projection fallback stays a reviewable WATCH without verified workload', () => {
   const availablePlayers = [{
     name: 'Projection Candidate', nflTeam: 'SF', position: 'WR',
     availabilityStatus: 'WAIVERS', projectedPoints: 14
@@ -851,8 +851,9 @@ test('provider projection fallback restores actionable decisions when SAGE is of
   assert.strictEqual(candidates[0].identity.sageMatched, true);
   assert.strictEqual(candidates[0].rosterImpact.depthComparison.classification, 'UPGRADE');
   assert.strictEqual(decisions[0].decision.action, 'WATCH');
-  assert.strictEqual(recommendations[0].verdict, 'STASH');
-  assert.ok(recommendations[0].faab);
+  assert.strictEqual(recommendations[0].verdict, 'WATCH');
+  assert.strictEqual(recommendations[0].recommended, true, 'clear projection edge remains visible for review');
+  assert.strictEqual(recommendations[0].faab, null, 'projection-only skill player does not receive a bid');
 });
 
 test('provider fallback does not favor a marginal QB projection over the roster starter', () => {

@@ -72,7 +72,12 @@ function stashEvidence() {
         weakestComparable: { sage: { positionRank: 42 } }
       }
     },
-    trend: { direction: 'RISER' }
+    trend: { direction: 'RISER' },
+    opportunity: {
+      lastGameOpportunities: 9,
+      lastGameCarries: 2,
+      lastGameTargets: 7
+    }
   };
 }
 
@@ -175,7 +180,7 @@ test('ADD becomes customer-facing ADD_NOW', () => {
   assert.strictEqual(customerVerdict(decision()), 'ADD_NOW');
 });
 
-test('rising depth player with a meaningful bench upgrade becomes STASH', () => {
+test('rank edge and rising label alone do not manufacture a STASH verdict', () => {
   assert.strictEqual(
     customerVerdict(decision({
       decision: { action: 'WATCH', actionable: false },
@@ -194,7 +199,7 @@ test('rising depth player with a meaningful bench upgrade becomes STASH', () => 
         trend: { direction: 'RISER' }
       }
     })),
-    'STASH'
+    'WATCH'
   );
 });
 
@@ -211,13 +216,69 @@ test('meaningful bench upgrade becomes STASH even before a trend signal exists',
   );
 });
 
+test('verified workload plus a meaningful bench upgrade becomes STASH', () => {
+  const result = buildCustomerRecommendations([decision({
+    decision: { action: 'WATCH', actionable: false },
+    evidence: {
+      ...stashEvidence(),
+      trend: null
+    }
+  })], { teams: 12 })[0];
+
+  assert.strictEqual(result.verdict, 'STASH');
+  assert.strictEqual(result.recommended, true);
+  assert.ok(result.faab);
+});
+
+test('projection-only skill player stays WATCH and is excluded when the edge is weak', () => {
+  const result = buildCustomerRecommendations([decision({
+    decision: { action: 'WATCH', actionable: false },
+    evidence: {
+      ...stashEvidence(),
+      sage: { position: 'WR', positionRank: 30, baselineEvidenceType: 'provider-projection-fallback' },
+      opportunity: null,
+      trend: null,
+      providerProjectedPoints: 11,
+      rosterImpact: {
+        classification: 'SIMILAR',
+        comparisonType: 'starting-lineup',
+        candidateStarts: false,
+        depthComparison: {
+          classification: 'UPGRADE',
+          weakestComparable: { projectedPoints: 8, sage: { positionRank: 42 } }
+        }
+      }
+    }
+  })])[0];
+
+  assert.strictEqual(result.verdict, 'WATCH');
+  assert.strictEqual(result.recommended, false);
+  assert.strictEqual(result.faab, null);
+});
+
+test('equivalent ESPN and CBS evidence produces the same customer decision', () => {
+  const providerDecision = (provider) => decision({
+    provider,
+    decision: { action: 'WATCH', actionable: false },
+    evidence: { ...stashEvidence(), provider }
+  });
+  const [espn, cbs] = buildCustomerRecommendations([
+    providerDecision('espn'),
+    providerDecision('cbs')
+  ], { teams: 12 });
+
+  assert.strictEqual(espn.verdict, cbs.verdict);
+  assert.strictEqual(espn.recommended, cbs.recommended);
+  assert.strictEqual(espn.faab.recommendedPct, cbs.faab.recommendedPct);
+});
+
 test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
   const result = buildCustomerRecommendations([decision({
     position: 'WR',
     decision: { action: 'WATCH', actionable: false, reasonCode: 'WEEK1_DEPTH_UPGRADE' },
     evidence: {
       ...decision().evidence,
-      providerProjectedPoints: 12,
+      providerProjectedPoints: 13,
       sage: { position: 'WR', positionRank: 24, baselineEvidenceType: 'week1-adp-baseline' },
       trend: null,
       rosterImpact: {
@@ -232,7 +293,7 @@ test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
 
   assert.strictEqual(result.verdict, 'STASH');
   assert.ok(result.faab);
-  assert.strictEqual(result.faab.recommendedPct, 1);
+  assert.strictEqual(result.faab.recommendedPct, 3);
 });
 
 test('all fantasy positions preserve matchup, Weekly SAGE, roster impact, decision, and FAAB', () => {

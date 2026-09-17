@@ -98,6 +98,7 @@ test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   const item = {
+    verdict: 'STASH',
     faab: { valuePct: 2, recommendedPct: 3, aggressivePct: 5 },
     decision: {
       evidence: {
@@ -118,6 +119,10 @@ test('bench upgrades and FAAB guidance are visible customer evidence', () => {
   assert.ok(sandbox.rosterImpactCell(item).includes('Weak Bench RB'));
   assert.ok(sandbox.faabCell(item).includes('3%'));
   assert.ok(sandbox.faabCell(item).includes('Value 2% · Aggressive 5%'));
+
+  const watch = { ...item, verdict: 'WATCH' };
+  assert.ok(sandbox.rosterImpactCell(watch).includes('Depth Option'));
+  assert.ok(sandbox.rosterImpactCell(watch).includes('role not proven'));
 });
 
 test('primary board labels implement the agreed visible data contract', () => {
@@ -258,6 +263,7 @@ function player({ name, position, team, verdict, sagePositionRank, projectedPoin
     position,
     team,
     verdict,
+    recommended: ['ADD_NOW', 'STASH', 'WATCH'].includes(verdict),
     availabilityStatus: 'AVAILABLE',
     providerProjectedPoints: projectedPoints,
     percentOwned: percentOwned == null ? 12 : percentOwned,
@@ -368,21 +374,24 @@ const samplePayload = {
     assert.ok(sandbox.document._elements.boardBody.innerHTML.includes('Retired Placeholder'));
   });
 
-  await asyncTest('tiny projections alone do not inflate the Recommended pool', async () => {
+  await asyncTest('Recommended scope follows the server evidence decision only', async () => {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Depth RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 0.5 })), false);
-    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 6.1 })), true);
-    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Depth QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 8.5 })), false);
-    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable QB', position: 'QB', team: 'LV', verdict: 'REVIEW', projectedPoints: 14.2 })), true);
+    assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Usable RB', position: 'RB', team: 'LV', verdict: 'REVIEW', projectedPoints: 6.1 })), false);
+    const qualified = player({ name: 'Qualified RB', position: 'RB', team: 'LV', verdict: 'WATCH', projectedPoints: 6.1 });
+    qualified.recommended = true;
+    assert.strictEqual(sandbox.recommendedMatch(qualified), true);
     assert.strictEqual(sandbox.recommendedMatch(player({ name: 'Passing QB', position: 'QB', team: 'DET', verdict: 'PASS', projectedPoints: 24.2 })), false);
   });
 
-  await asyncTest('meaningful workload preserves legitimate fringe players despite a low projection', async () => {
+  await asyncTest('client does not recreate evidence rules from raw workload', async () => {
     const sandbox = makeSandbox({ connection: connection(), recommendationPayload: samplePayload });
     runScript(sandbox);
     const fringe = player({ name: 'Fringe WR', position: 'WR', team: 'HOU', verdict: 'REVIEW', projectedPoints: 0 });
     fringe.opportunity = { lastGameOpportunities: 5, lastGameTargets: 5 };
+    assert.strictEqual(sandbox.recommendedMatch(fringe), false);
+    fringe.recommended = true;
     assert.strictEqual(sandbox.recommendedMatch(fringe), true);
   });
 
