@@ -272,6 +272,79 @@ test('equivalent ESPN and CBS evidence produces the same customer decision', () 
   assert.strictEqual(espn.faab.recommendedPct, cbs.faab.recommendedPct);
 });
 
+test('Recommended preserves credible QB TE K and DEF coverage during SAGE fallback', () => {
+  const positions = [
+    ['QB', 12, 10],
+    ['TE', 12, 4],
+    ['K', 10, 5],
+    ['DEF', 10, 5]
+  ];
+  const recs = buildCustomerRecommendations(positions.map(([position, rank, projected]) => decision({
+    name: `${position} Coverage`,
+    position,
+    decision: { action: 'REVIEW', actionable: false },
+    evidence: {
+      ...decision().evidence,
+      sage: {
+        position,
+        positionRank: rank,
+        baselineEvidenceType: 'provider-projection-fallback'
+      },
+      providerProjectedPoints: projected,
+      rosterImpact: { classification: 'SIMILAR' },
+      opportunity: null,
+      trend: null
+    }
+  })));
+
+  positions.forEach(([position]) => {
+    const result = recs.find((item) => item.position === position);
+    assert.strictEqual(result.verdict, 'REVIEW');
+    assert.strictEqual(result.recommended, true, `${position} should retain credible coverage`);
+    assert.strictEqual(result.faab, null, `${position} review coverage must not invent FAAB`);
+  });
+});
+
+test('positional coverage rejects unusable projections and deep ranks', () => {
+  const recs = buildCustomerRecommendations([
+    decision({
+      name: 'Deep Quarterback',
+      position: 'QB',
+      decision: { action: 'REVIEW', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: { position: 'QB', positionRank: 20, baselineEvidenceType: 'provider-projection-fallback' },
+        providerProjectedPoints: 18,
+        rosterImpact: { classification: 'SIMILAR' }
+      }
+    }),
+    decision({
+      name: 'Low Projection Defense',
+      position: 'DEF',
+      decision: { action: 'REVIEW', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: { position: 'DEF', positionRank: 5, baselineEvidenceType: 'provider-projection-fallback' },
+        providerProjectedPoints: 3,
+        rosterImpact: { classification: 'SIMILAR' }
+      }
+    }),
+    decision({
+      name: 'Ranked Review Running Back',
+      position: 'RB',
+      decision: { action: 'REVIEW', actionable: false },
+      evidence: {
+        ...decision().evidence,
+        sage: { position: 'RB', positionRank: 12, baselineEvidenceType: 'provider-projection-fallback' },
+        providerProjectedPoints: 10,
+        rosterImpact: { classification: 'SIMILAR' }
+      }
+    })
+  ]);
+
+  recs.forEach((result) => assert.strictEqual(result.recommended, false));
+});
+
 test('Week 1 same-position fallback upgrade becomes STASH with FAAB', () => {
   const result = buildCustomerRecommendations([decision({
     position: 'WR',

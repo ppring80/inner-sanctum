@@ -239,17 +239,44 @@ function stashEvidenceQualified(item) {
   return projection >= 2;
 }
 
+function normalizedCoveragePosition(position) {
+  const value = String(position || '').toUpperCase();
+  if (value === 'PK') return 'K';
+  if (value === 'DST') return 'DEF';
+  return value;
+}
+
+function positionCoverageQualified(item) {
+  const position = normalizedCoveragePosition(item?.position);
+  const rank = finiteNumber(item?.evidence?.sage?.positionRank);
+  const projected = finiteNumber(item?.evidence?.providerProjectedPoints);
+  const rankCeiling = { QB: 12, TE: 12, K: 10, DEF: 10 }[position];
+  const projectionFloor = { QB: 10, TE: 4, K: 5, DEF: 5 }[position];
+
+  // These positions do not produce the RB/WR workload evidence used by the
+  // main gate (and TE usage can be sparse). Preserve only credible weekly
+  // options: a startable positional rank plus a usable provider projection.
+  return Number.isFinite(rankCeiling) && rank !== null && rank <= rankCeiling &&
+    projected !== null && projected >= projectionFloor;
+}
+
 function recommendedCandidate(item, verdict) {
   if (['ADD_NOW', 'STASH'].includes(verdict)) return true;
-  if (verdict !== 'WATCH') return false;
+  if (item?.active === false || verdict === 'PASS') return false;
+  if (!['WATCH', 'REVIEW'].includes(verdict)) return false;
 
-  const position = String(item?.position || '').toUpperCase();
+  const position = normalizedCoveragePosition(item?.position);
   const workload = workloadStrength(item);
   const projection = projectionStrength(item);
-  if (['RB', 'WR', 'TE'].includes(position)) {
+  if (['RB', 'WR'].includes(position)) {
+    return verdict === 'WATCH' && (workload >= 2 || projection >= 2);
+  }
+  if (position === 'TE') {
+    if (positionCoverageQualified(item)) return true;
+    if (verdict !== 'WATCH') return false;
     return workload >= 2 || projection >= 2;
   }
-  return projection >= 2;
+  return positionCoverageQualified(item) || (verdict === 'WATCH' && projection >= 2);
 }
 
 function faabMarketBand(item, verdict) {
