@@ -136,7 +136,9 @@ function customerVerdict(item) {
     ));
 
   if (action === 'ADD') return 'ADD_NOW';
-  if (action === 'WATCH' && meaningfulDepthUpgrade) return 'STASH';
+  if (action === 'WATCH' && meaningfulDepthUpgrade && stashEvidenceQualified(item)) {
+    return 'STASH';
+  }
   if (action === 'WATCH') return 'WATCH';
   if (action === 'PASS') return 'PASS';
   return 'REVIEW';
@@ -217,8 +219,37 @@ function projectionStrength(item) {
     if (gain >= 3) return 2;
     return 1;
   }
-  if (gain >= 6) return 2;
+  if (gain >= 5) return 2;
   return 1;
+}
+
+function stashEvidenceQualified(item) {
+  const position = String(item?.position || '').toUpperCase();
+  const workload = workloadStrength(item);
+  const projection = projectionStrength(item);
+  const weekOneBaseline = item?.evidence?.sage?.baselineEvidenceType === 'week1-adp-baseline';
+
+  if (['RB', 'WR', 'TE'].includes(position)) {
+    // Skill-position depth adds need an observed role. A projection comparison
+    // alone can qualify only before real workload exists in the Week 1 baseline.
+    return workload >= 2 ||
+      (weekOneBaseline && projection >= 2);
+  }
+  // QB/K/DEF have no RB/WR/TE workload signal, so require a clear projection gain.
+  return projection >= 2;
+}
+
+function recommendedCandidate(item, verdict) {
+  if (['ADD_NOW', 'STASH'].includes(verdict)) return true;
+  if (verdict !== 'WATCH') return false;
+
+  const position = String(item?.position || '').toUpperCase();
+  const workload = workloadStrength(item);
+  const projection = projectionStrength(item);
+  if (['RB', 'WR', 'TE'].includes(position)) {
+    return workload >= 2 || projection >= 2;
+  }
+  return projection >= 2;
 }
 
 function faabMarketBand(item, verdict) {
@@ -429,6 +460,7 @@ function decorateDecision(item, context = {}) {
   return {
     ...item,
     verdict,
+    recommended: recommendedCandidate(item, verdict),
     opportunity,
     customerActionable: verdict === 'ADD_NOW',
     faab: buildFaabGuidance(item, verdict, context),

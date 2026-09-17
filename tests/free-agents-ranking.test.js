@@ -50,6 +50,7 @@ function decision({
   sage = null,
   rosterImpact = null,
   trend = null,
+  opportunity = null,
   percentOwned = null,
   providerProjectedPoints = null,
   active
@@ -64,6 +65,7 @@ function decision({
     evidence: {
       sage,
       trend,
+      opportunity,
       rosterImpact,
       percentOwned,
       providerProjectedPoints
@@ -298,6 +300,7 @@ test('customer recommendation preserves bench-upgrade evidence for the UI', () =
           }
         }
       },
+      opportunity: { lastGameOpportunities: 9, lastGameCarries: 9, lastGameTargets: 0 },
       providerProjectedPoints: 9
     })
   ], { teams: 12, scoring: 'half-ppr' });
