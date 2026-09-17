@@ -115,8 +115,20 @@ async function fetchTank01(endpoint, params = {}) {
 // getCurrentNFLWeek(), duplicated here rather than shared across the
 // runtime boundary (this project's established pattern). UPDATE
 // seasonStart each year.
+//
+// seasonStart is anchored to the season's real Thursday-night opener
+// (2026-09-10), NOT the Wednesday before it. The previous anchor
+// (2026-09-09, a Wednesday) made every 7-day block boundary land back
+// on a Wednesday -- exactly the day this function's own cron fires --
+// so the calculator always advanced to the next week's number one full
+// day before that week's games actually began, and the Wednesday
+// refresh cron could never find completed games for the week it had
+// just named. Anchoring to the real Thursday opener instead makes the
+// week boundary turn over on Thursday, matching the real NFL calendar,
+// so this Wednesday cron always asks about a week that ended two days
+// earlier (see tests/refresh-risers-fallers-scheduled.test.js).
 function getCurrentNFLWeek() {
-  const seasonStart = new Date("2026-09-09");
+  const seasonStart = new Date("2026-09-10");
   const now = new Date();
   if (now < seasonStart) return 1;
   const diffDays = Math.floor((now - seasonStart) / (1000 * 60 * 60 * 24));
@@ -203,6 +215,8 @@ function buildWeekSummary(players) {
 
   return summary;
 }
+
+module.exports.getCurrentNFLWeek = getCurrentNFLWeek;
 
 exports.handler = async (event) => {
   connectLambda(event);

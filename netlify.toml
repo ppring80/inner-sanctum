@@ -49,6 +49,36 @@
 [functions."refresh-risers-fallers"]
   schedule = "0 12 * * 3"
 
+# OPPORTUNITY INTELLIGENCE SCHEDULE (added -- stale-season-cache fix)
+# Runs refresh-opportunity-intel.js's scheduled mode weekly at 12:30 UTC
+# every Wednesday -- 30 minutes AFTER refresh-risers-fallers above, so
+# the two jobs never contend for Tank01 rate limits/CPU at the same
+# instant (same staggering rationale already used for refresh-player-data
+# vs. qa-fact-check elsewhere in this file).
+#
+# Unlike refresh-risers-fallers, this function's scheduled mode does NOT
+# guess "the current NFL week" from a fixed date offset -- it derives the
+# season from the real calendar (deriveCurrentSeason) and always targets
+# exactly one week past whatever it has already cached
+# (targetWeek = deriveMaxCachedWeek(existingLatest.records) + 1), no-oping
+# safely via scheduledNoOp() if that week's games are not complete yet.
+# refresh-risers-fallers's OWN date-based week calculator now correctly
+# anchors to the season's real Thursday opener (2026-09-10), so its
+# Wednesday runs already align with completed weeks (see
+# tests/refresh-risers-fallers-scheduled.test.js). Opportunity
+# Intelligence simply doesn't need that date anchor at all -- it advances
+# independently via its own self-correcting cached-week progression (see
+# refresh-opportunity-intel.js and its existing
+# tests/refresh-opportunity-intel-scheduled.test.js coverage), which is
+# why 12:30 UTC Wednesday is safe for it regardless.
+#
+# 12:30 UTC Wednesday is comfortably ~32+ hours after the latest possible
+# Monday Night Football final whistle (~03:00-04:00 UTC Tuesday), the
+# same safety margin already relied on for refresh-risers-fallers's own
+# 12:00 UTC slot.
+[functions."refresh-opportunity-intel"]
+  schedule = "30 12 * * 3"
+
 # CAMP WATCH AUTO-GENERATOR SCHEDULE (added 2026-08-05)
 # Runs generate-camp-watch.js TWICE a day, at 13:00 and 23:00 UTC —
 # roughly 9am and 7pm US Eastern (8am/6pm Central) during EDT. That

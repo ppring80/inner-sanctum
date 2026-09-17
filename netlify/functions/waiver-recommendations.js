@@ -666,5 +666,7 @@ exports._test = {
   projectionComponent,
   trendComponent,
   activePenalty,
-  ownershipComponent
+  ownershipComponent,
+  workloadStrength,
+  stashEvidenceQualified
 };
