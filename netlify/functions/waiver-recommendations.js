@@ -140,6 +140,13 @@ function customerVerdict(item) {
     return 'STASH';
   }
   if (action === 'WATCH') return 'WATCH';
+  if (action === 'PASS' && ['K', 'DEF'].includes(normalizedCoveragePosition(item?.position)) &&
+    positionCoverageQualified(item)) {
+    // Kicker and defense are weekly streaming positions. Keep credible top-10
+    // options reviewable even when the user's current starter projects higher;
+    // the roster-impact explanation still discloses that there is no upgrade.
+    return 'REVIEW';
+  }
   if (action === 'PASS') return 'PASS';
   return 'REVIEW';
 }
