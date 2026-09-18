@@ -24,6 +24,9 @@
 
 const DEFAULT_SEASON_TYPE = "reg";
 
+const { connectLambda } = require("@netlify/blobs");
+const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -156,18 +159,15 @@ async function fetchJson(url) {
 }
 
 async function fetchSchedule({
-  baseUrl,
   season,
   week,
   seasonType
 }) {
-  const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-schedule` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
-
-  return fetchJson(url);
+  return readCachedWeeklySchedule({
+    season,
+    week,
+    seasonType
+  });
 }
 
 async function fetchMatchupDefense({
@@ -673,6 +673,8 @@ exports.buildPlayerMatchup =
 
 exports.handler =
   async function (event) {
+    connectLambda(event);
+
     if (
       event.httpMethod &&
       event.httpMethod !== "GET"
