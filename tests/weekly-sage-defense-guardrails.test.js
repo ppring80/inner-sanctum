@@ -6,7 +6,8 @@ require('./test-runtime-bootstrap.js');
 const {
   _test: {
     MAX_REGULAR_SEASON_GAMES_PER_WEEK,
-    enforceWeeklyGameCeiling
+    enforceWeeklyGameCeiling,
+    isCompletedGame
   }
 } = require('../netlify/functions/weekly-sage-defense-week.js');
 
@@ -26,6 +27,12 @@ assert.throws(
   }),
   /Defense safety stop: 17 completed regular-season games exceeds the weekly limit of 16/
 );
+
+assert.strictEqual(isCompletedGame({ gameStatus: 'Final' }), true);
+assert.strictEqual(isCompletedGame({ gameStatus: 'Final/OT' }), true);
+assert.strictEqual(isCompletedGame({ gameStatus: 'Completed' }), true);
+assert.strictEqual(isCompletedGame({ gameStatus: 'Completed/OT' }), true);
+assert.strictEqual(isCompletedGame({ gameStatus: 'In Progress' }), false);
 
 const identity = {
   season: '2026',
@@ -63,6 +70,26 @@ assert.ok(
   validateCompleteDefense(
     evidence({
       schedule: {
+        gamesReturned: 16,
+        completedGames: 15,
+        processedGames: 15
+      },
+      defenses: Object.fromEntries(
+        Array.from({ length: 30 }, (_, index) => [
+          `T${index}`,
+          { team: `T${index}` }
+        ])
+      ),
+      gameResults: new Array(15).fill({ status: 'processed' })
+    }),
+    identity
+  ).includes('Not all returned games are complete: 15 of 16.')
+);
+
+assert.ok(
+  validateCompleteDefense(
+    evidence({
+      schedule: {
         gamesReturned: 0,
         completedGames: 0,
         processedGames: 0
@@ -88,4 +115,4 @@ assert.ok(
   ).includes('kickerEvidence is not an array.')
 );
 
-console.log('7 Weekly SAGE defense guardrail tests passed, 0 failed.');
+console.log('13 Weekly SAGE defense guardrail tests passed, 0 failed.');
