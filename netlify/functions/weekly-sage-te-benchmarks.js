@@ -1297,7 +1297,22 @@ async function buildTeBenchmarks({
         Array.isArray(
           snapshot.population
         )
-          ? snapshot.population
+          ? snapshot.population.filter(
+              function (
+                candidate
+              ) {
+                /*
+                  New snapshots explicitly tag limited-evidence TEs.
+                  Older cached snapshots predate that field, so only
+                  an explicit false is excluded from benchmark math.
+                */
+                return (
+                  candidate &&
+                  candidate.evidenceQualified !==
+                    false
+                );
+              }
+            )
           : [];
 
       if (

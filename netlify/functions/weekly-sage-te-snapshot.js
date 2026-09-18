@@ -42,9 +42,21 @@
 // - scrimmage yards per game
 // - total TD per game
 //
+// CANDIDATE DISCOVERY -- DEPTH CHART BASED
+// ----------------------------------------
+// Candidates are the first three current Tank01 depth-chart TE entries
+// (TE1, TE2, TE3) per NFL team, deduplicated by playerID -- NOT every
+// rostered TE. This bounds the population to players an NFL team's own
+// current depth chart lists as its top three at the position, which is
+// both cheaper (bounded to <= 32 teams x 3 slots = 96 candidates, see
+// MAX_PLAYER_REQUESTS_PER_RUN below) and more accurate than the old
+// "every player Tank01's full player list tags as TE" discovery, which
+// could include long-inactive or practice-squad-only players a team's
+// own depth chart no longer lists at all.
+//
 // POPULATION RULES — FIRST TE PASS
 // --------------------------------
-// - at least 2 prior games
+// - minimum prior games: season-aware (see MINIMUM_GAMES policy below)
 // - at least 2 targets per game
 //
 // The targets-per-game floor is lower than WR's (3) deliberately: even a
@@ -57,16 +69,40 @@
 // historical backtest to justify, unlike the Role/Production/Matchup
 // WEIGHTS below, which explicitly do.
 //
+// MINIMUM-GAMES POLICY -- SEASON-AWARE
+// -------------------------------------
+// Week 2 has only one prior week (Week 1) of evidence available at all;
+// requiring 2 prior games at Week 2 would make it structurally
+// impossible for ANY TE to ever qualify that week, regardless of how
+// real their workload is. So the prior-game floor is:
+//   - Week 2:          minimum 1 prior game
+//   - Week 3 onward:   minimum 2 prior games (unchanged from before)
+//
 // These are population-eligibility rules only. They are NOT SAGE weights,
 // recommendations, or final model assumptions. We will validate the resulting
 // TE peer universe before building TE benchmarks.
 //
+// EVERY SELECTED TE IS RETAINED
+// ------------------------------
+// Every depth-chart-selected TE (TE1-TE3, deduplicated) is kept in the
+// weekly coverage `population`, whether or not it meets the evidence
+// floor above -- low-evidence players are never silently dropped.
+// Instead each record carries:
+//   - evidenceQualified: true/false
+//   - evidenceLimitReason: null, "insufficient_games", or
+//     "insufficient_targets"
+// This preserves full TE1-3 coverage visibility (e.g. a rookie TE2 with
+// only one game played is still visible in the weekly population, just
+// flagged as not yet evidence-qualified) rather than making him
+// disappear from the snapshot entirely.
+//
 // COST DISCIPLINE
 // ---------------
-// This function makes one getNFLPlayerList call, one prior-week schedule pass,
-// and one getNFLGamesForPlayer call per discovered TE candidate. It does NOT
-// invoke weekly-sage-player-season once per TE, avoiding large Netlify
-// function fan-out during population construction.
+// This function makes one getNFLDepthCharts call, one prior-week schedule
+// pass, and one getNFLGamesForPlayer call per selected TE candidate (capped
+// at MAX_PLAYER_REQUESTS_PER_RUN). It does NOT invoke
+// weekly-sage-player-season once per TE, avoiding large Netlify function
+// fan-out during population construction.
 //
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -81,7 +117,27 @@ const CACHE_CONTROL =
 
 const POSITION = "TE";
 
-const MINIMUM_GAMES = 2;
+// TE1, TE2, TE3 -- the first three current depth-chart entries per team.
+const DEPTH_CHART_SLOTS_PER_TEAM = 3;
+
+// 32 NFL teams x 3 depth-chart slots per team = 96. This is a
+// deterministic safety ceiling, not an expected everyday truncation --
+// under normal conditions depth-chart-based discovery should never
+// exceed it. It guards against a malformed/oversized Tank01 response
+// (e.g. duplicate or extra team entries) still bounding the number of
+// getNFLGamesForPlayer calls this function will ever make in one run.
+const MAX_PLAYER_REQUESTS_PER_RUN = 96;
+
+// Season-aware minimum prior-game evidence floor -- see the
+// MINIMUM-GAMES POLICY comment above.
+const MINIMUM_GAMES_WEEK_2 = 1;
+const MINIMUM_GAMES_DEFAULT = 2;
+
+function minimumGamesForWeek(targetWeek) {
+  return targetWeek <= 2
+    ? MINIMUM_GAMES_WEEK_2
+    : MINIMUM_GAMES_DEFAULT;
+}
 
 // Lowered from WR's 3 -- see the POPULATION RULES comment above for the
 // structural (not data-fit) rationale.
@@ -90,7 +146,6 @@ const MINIMUM_TARGETS_PER_GAME = 2;
 // Keep conservative concurrency so the population build is reliable and
 // doesn't hammer Tank01. We can raise this later if runtime proves safe.
 const PLAYER_CONCURRENCY = 3;
-const MAX_PLAYER_REQUESTS_PER_RUN = 140;
 
 const SCHEDULE_CONCURRENCY = 4;
 
@@ -526,7 +581,7 @@ async function buildPriorWeekScheduleMap({
   };
 }
 
-function extractPlayerList(
+function extractDepthChartTeams(
   data
 ) {
   if (
@@ -539,6 +594,132 @@ function extractPlayerList(
   }
 
   return data.body;
+}
+
+/*
+  Confirmed real Tank01 getNFLDepthCharts response shape (same
+  endpoint/shape already proven live in chat.js and
+  refresh-current-nfl-facts.js -- not a new/assumed shape): data.body
+  is an ARRAY of team objects, each shaped
+  { depthChart: { QB: [...], RB: [...], TE: [...], ... }, teamAbv,
+  teamID }. Position arrays are nested INSIDE depthChart. Array order
+  is Tank01's own depth-chart order (index 0 = that team's TE1).
+
+  Selects only the first DEPTH_CHART_SLOTS_PER_TEAM (TE1-TE3) entries
+  per team, across every team in the response, then deduplicates by
+  playerID (first occurrence in Tank01's own team order wins). This
+  replaces the old "every TE in Tank01's full player list" discovery.
+*/
+function selectTeDepthChartCandidates(
+  depthChartTeams
+) {
+  const rawSlots =
+    [];
+
+  depthChartTeams.forEach(
+    function (
+      team
+    ) {
+      const depthChart =
+        team &&
+        team.depthChart;
+
+      const teSlots =
+        depthChart &&
+        Array.isArray(
+          depthChart[
+            POSITION
+          ]
+        )
+          ? depthChart[
+              POSITION
+            ]
+          : [];
+
+      teSlots
+        .slice(
+          0,
+          DEPTH_CHART_SLOTS_PER_TEAM
+        )
+        .forEach(
+          function (
+            player,
+            index
+          ) {
+            if (
+              !player ||
+              !player.playerID
+            ) {
+              return;
+            }
+
+            rawSlots.push(
+              {
+                ...player,
+
+                playerID:
+                  String(
+                    player.playerID
+                  ),
+
+                teamAbv:
+                  normalizeTeam(
+                    team.teamAbv ||
+                    team.teamID
+                  ),
+
+                depthChartRank:
+                  index +
+                  1
+              }
+            );
+          }
+        );
+    }
+  );
+
+  const seenPlayerIDs =
+    new Set();
+
+  const candidates =
+    [];
+
+  let duplicatesRemoved =
+    0;
+
+  rawSlots.forEach(
+    function (
+      player
+    ) {
+      if (
+        seenPlayerIDs.has(
+          player.playerID
+        )
+      ) {
+        duplicatesRemoved +=
+          1;
+
+        return;
+      }
+
+      seenPlayerIDs.add(
+        player.playerID
+      );
+
+      candidates.push(
+        player
+      );
+    }
+  );
+
+  return {
+    candidates,
+
+    rawSlotCount:
+      rawSlots.length,
+
+    duplicatesRemoved
+  };
 }
 
 function extractPlayerGames(
@@ -1227,11 +1408,12 @@ function buildTERecord({
 }
 
 function eligibilityReason(
-  record
+  record,
+  minimumGames
 ) {
   if (
     record.gamesUsed <
-    MINIMUM_GAMES
+    minimumGames
   ) {
     return (
       "insufficient_games"
@@ -1429,16 +1611,16 @@ async function buildTeSnapshot({
   seasonType
 }) {
       /*
-        Fetch the complete player list and prior-week schedule map
+        Fetch the current depth chart and prior-week schedule map
         once. Both are reused for every TE candidate.
       */
       const [
-        playerListResult,
+        depthChartResult,
         scheduleContext
       ] =
         await Promise.all([
           tank01Fetch(
-            "getNFLPlayerList",
+            "getNFLDepthCharts",
             {}
           ),
 
@@ -1450,41 +1632,42 @@ async function buildTeSnapshot({
           })
         ]);
 
-      const nflPlayers =
-        extractPlayerList(
-          playerListResult
+      const depthChartTeams =
+        extractDepthChartTeams(
+          depthChartResult
+        );
+
+      const {
+        candidates:
+          allTeCandidates,
+
+        rawSlotCount:
+          teDepthChartSlotsDiscovered,
+
+        duplicatesRemoved:
+          teCandidateDuplicatesRemoved
+      } =
+        selectTeDepthChartCandidates(
+          depthChartTeams
+        );
+
+      const teCandidatesOverCeiling =
+        Math.max(
+          0,
+          allTeCandidates.length -
+          MAX_PLAYER_REQUESTS_PER_RUN
         );
 
       const teCandidates =
-        nflPlayers
-          .filter(
-            function (
-              player
-            ) {
-              return (
-                normalizePosition(
-                  player.pos ||
-                  player.position
-                ) ===
-                  POSITION &&
-                player.playerID
-              );
-            }
-          )
-          .map(
-            function (
-              player
-            ) {
-              return {
-                ...player,
+        allTeCandidates.slice(
+          0,
+          MAX_PLAYER_REQUESTS_PER_RUN
+        );
 
-                playerID:
-                  String(
-                    player.playerID
-                  )
-              };
-            }
-          );
+      const minimumGames =
+        minimumGamesForWeek(
+          targetWeek
+        );
 
       if (teCandidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
         throw new Error(
@@ -1613,7 +1796,8 @@ async function buildTeSnapshot({
       ) {
         const reason =
           eligibilityReason(
-            record
+            record,
+            minimumGames
           );
 
         if (
@@ -1624,11 +1808,31 @@ async function buildTeSnapshot({
           ] +=
             1;
 
+          population.push(
+            {
+              ...record,
+
+              evidenceQualified:
+                false,
+
+              evidenceLimitReason:
+                reason
+            }
+          );
+
           continue;
         }
 
         population.push(
-          record
+          {
+            ...record,
+
+            evidenceQualified:
+              true,
+
+            evidenceLimitReason:
+              null
+          }
         );
       }
 
@@ -1670,6 +1874,18 @@ async function buildTeSnapshot({
         }
       );
 
+      const evidenceQualifiedCount =
+        population.filter(
+          function (
+            player
+          ) {
+            return (
+              player.evidenceQualified ===
+              true
+            );
+          }
+        ).length;
+
       return {
           evidenceType:
             "weekly-sage-te-snapshot",
@@ -1706,14 +1922,25 @@ async function buildTeSnapshot({
             position:
               POSITION,
 
-            minimumGames:
-              MINIMUM_GAMES,
+            minimumGames,
+
+            minimumGamesPolicy: {
+              week2: MINIMUM_GAMES_WEEK_2,
+
+              week3Plus: MINIMUM_GAMES_DEFAULT
+            },
 
             minimumTargetsPerGame:
               MINIMUM_TARGETS_PER_GAME,
 
             tank01PlayerConcurrency:
               PLAYER_CONCURRENCY,
+
+            candidateDiscovery:
+              "Tank01 current depth chart, first three TE entries (TE1-TE3) per NFL team, deduplicated by playerID.",
+
+            maxPlayerRequestsPerRun:
+              MAX_PLAYER_REQUESTS_PER_RUN,
 
             historicalIdentity:
               "Latest matched pre-target player-game team is authoritative. Current roster team is preserved separately.",
@@ -1742,14 +1969,24 @@ async function buildTeSnapshot({
             ],
 
             important:
-              "This snapshot contains raw TE peer evidence only. It does not calculate a final SAGE score, weight components, or create recommendations."
+              "This snapshot contains raw TE peer evidence only. It does not calculate a final SAGE score, weight components, or create recommendations. Every depth-chart-selected TE is retained in `population` regardless of evidenceQualified -- consumers that require an evidence-qualified peer set must filter on evidenceQualified themselves."
           },
 
           populationSummary: {
-            nflPlayersReturned:
-              nflPlayers.length,
+            depthChartTeamsReturned:
+              depthChartTeams.length,
+
+            teDepthChartSlotsDiscovered,
+
+            teCandidatesDuplicatesRemoved:
+              teCandidateDuplicatesRemoved,
 
             teCandidatesDiscovered:
+              allTeCandidates.length,
+
+            teCandidatesOverCeiling,
+
+            teCandidatesProcessed:
               teCandidates.length,
 
             successfulPlayerGameResponses:
@@ -1761,10 +1998,13 @@ async function buildTeSnapshot({
             recordsBuilt:
               records.length,
 
-            eligibleTEPopulation:
+            totalTEPopulation:
               population.length,
 
-            ineligible:
+            evidenceQualified:
+              evidenceQualifiedCount,
+
+            evidenceLimited:
               ineligibleCounts
           },
 
@@ -1776,19 +2016,24 @@ async function buildTeSnapshot({
             ready:
               population.length >
                 0 &&
+              evidenceQualifiedCount >
+                0 &&
               failures.length ===
                 0,
 
             reason:
-              failures.length ===
+              failures.length >
               0
-                ? "TE peer snapshot built successfully. Inspect population size and evidence distributions before defining TE benchmark/component scoring."
-                : "TE snapshot built with one or more player-game failures. Resolve failures before using the population as the TE benchmark universe."
+                ? "TE snapshot built with one or more player-game failures. Resolve failures before using the population as the TE benchmark universe."
+                : evidenceQualifiedCount ===
+                  0
+                  ? "TE weekly coverage was built, but no players met the evidence requirements for benchmark use."
+                  : "TE peer snapshot built successfully. Inspect population size and evidence distributions before defining TE benchmark/component scoring."
           },
 
           provenance: {
             playerIdentity:
-              "Tank01 getNFLPlayerList",
+              "Tank01 getNFLDepthCharts (TE1-TE3 per team)",
 
             playerGames:
               "Tank01 getNFLGamesForPlayer",
@@ -1805,3 +2050,18 @@ async function buildTeSnapshot({
 
 exports.buildTeSnapshot =
   buildTeSnapshot;
+
+// Exported for local logic testing only -- Netlify only ever invokes
+// exports.handler / exports.buildTeSnapshot; nothing in the production
+// request path reads this.
+exports._test = {
+  extractDepthChartTeams,
+  selectTeDepthChartCandidates,
+  minimumGamesForWeek,
+  eligibilityReason,
+  DEPTH_CHART_SLOTS_PER_TEAM,
+  MAX_PLAYER_REQUESTS_PER_RUN,
+  MINIMUM_GAMES_WEEK_2,
+  MINIMUM_GAMES_DEFAULT,
+  MINIMUM_TARGETS_PER_GAME
+};
