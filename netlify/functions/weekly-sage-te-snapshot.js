@@ -288,7 +288,10 @@ async function fetchJson(
 
         headers: {
           Accept:
-            "application/json"
+            "application/json",
+
+          "X-Tank01-Refresh-Token":
+            process.env.TANK01_REFRESH_TOKEN || ""
         }
       }
     );
