@@ -40,9 +40,9 @@
 // A snapshot is written only when:
 //   - evidenceType === "weekly-sage-def-snapshot"
 //   - season/week/seasonType match the request
-//   - population is an array (may legitimately be empty very early
-//     in a season with little evidence yet -- an empty array is
-//     still a valid, complete result, not an error)
+//   - every prior week in the evidence window is cached
+//   - the regular-season population contains exactly 32 unique,
+//     valid DEF team records
 //
 // BLOBS
 // -----
@@ -59,7 +59,8 @@ const {
 );
 
 const {
-  isNetlifyScheduledInvocation
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
 
 const {
@@ -73,6 +74,9 @@ const DEFAULT_SEASON_TYPE =
 
 const STORE_NAME =
   "def-snapshot";
+
+const EXPECTED_NFL_TEAM_COUNT =
+  32;
 
 /*
   Current NFL week calculator.
@@ -224,6 +228,114 @@ function validateCompleteSnapshot(
     problems.push(
       "population is not an array."
     );
+  } else {
+    if (
+      snapshot.population.length ===
+      0
+    ) {
+      problems.push(
+        "population is empty."
+      );
+    }
+
+    const invalidRecords =
+      snapshot.population.filter(
+        (record) =>
+          !record ||
+          typeof record.team !==
+            "string" ||
+          !record.team.trim() ||
+          record.position !==
+            "DEF"
+      );
+
+    if (
+      invalidRecords.length >
+      0
+    ) {
+      problems.push(
+        `${invalidRecords.length} population record(s) lack a valid team identity or DEF position.`
+      );
+    }
+
+    const uniqueTeams =
+      new Set(
+        snapshot.population
+          .filter(
+            (record) =>
+              record &&
+              typeof record.team ===
+                "string"
+          )
+          .map(
+            (record) =>
+              record.team
+                .trim()
+                .toUpperCase()
+          )
+          .filter(Boolean)
+      );
+
+    if (
+      uniqueTeams.size !==
+      snapshot.population.length
+    ) {
+      problems.push(
+        "population contains duplicate team identities."
+      );
+    }
+
+    if (
+      seasonType ===
+        "reg" &&
+      snapshot.population.length !==
+        EXPECTED_NFL_TEAM_COUNT
+    ) {
+      problems.push(
+        `Regular-season DEF population must contain exactly ${EXPECTED_NFL_TEAM_COUNT} teams; got ${snapshot.population.length}.`
+      );
+    }
+  }
+
+  const summary =
+    snapshot.populationSummary;
+
+  if (
+    !summary ||
+    !Number.isInteger(
+      summary.weeksScanned
+    ) ||
+    summary.weeksScanned <
+      1
+  ) {
+    problems.push(
+      "weeksScanned is missing or invalid."
+    );
+  }
+
+  if (
+    !summary ||
+    !Number.isInteger(
+      summary.weeksWithEvidence
+    ) ||
+    summary.weeksWithEvidence !==
+      summary.weeksScanned
+  ) {
+    problems.push(
+      "Not every scanned week has cached defense evidence."
+    );
+  }
+
+  if (
+    !summary ||
+    summary.teamsDiscovered !==
+      (Array.isArray(snapshot.population)
+        ? snapshot.population.length
+        : 0)
+  ) {
+    problems.push(
+      "teamsDiscovered does not match the population size."
+    );
   }
 
   return problems;
@@ -250,6 +362,17 @@ exports.handler =
             "Method not allowed."
         }
       );
+    }
+
+    const authorizationError =
+      requireTank01RefreshAuthorization(
+        event
+      );
+
+    if (
+      authorizationError
+    ) {
+      return authorizationError;
     }
 
     const query =
@@ -464,3 +587,9 @@ exports.handler =
       );
     }
   };
+
+exports.validateCompleteSnapshot =
+  validateCompleteSnapshot;
+
+exports.EXPECTED_NFL_TEAM_COUNT =
+  EXPECTED_NFL_TEAM_COUNT;
