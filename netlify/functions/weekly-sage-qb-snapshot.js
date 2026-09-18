@@ -535,7 +535,7 @@ function extractDepthChartQbCandidates(data) {
       teamEntry &&
       teamEntry.depthChart &&
       Array.isArray(teamEntry.depthChart.QB)
-        ? teamEntry.depthChart.QB.slice(0, 3)
+        ? teamEntry.depthChart.QB.slice(0, 2)
         : [];
 
     quarterbacks.forEach(function (player) {
@@ -1564,11 +1564,20 @@ async function buildQbSnapshot({
         ] += 1;
       }
 
+      population.push({
+        ...record,
+        evidenceQualified: false,
+        evidenceLimitReason: reason
+      });
       continue;
     }
 
     population.push(
-      record
+      {
+        ...record,
+        evidenceQualified: true,
+        evidenceLimitReason: null
+      }
     );
   }
 
@@ -1683,7 +1692,7 @@ async function buildQbSnapshot({
         qbCandidates.length,
 
       candidateSource:
-        "current-depth-chart-top-three",
+        "current-depth-chart-top-two",
 
       qbCandidatesDiscovered:
         qbCandidates.length,
@@ -1698,6 +1707,9 @@ async function buildQbSnapshot({
         records.length,
 
       eligibleQBPopulation:
+        population.filter(player => player.evidenceQualified).length,
+
+      weeklyQBCoveragePopulation:
         population.length,
 
       ineligible:
@@ -1715,13 +1727,13 @@ async function buildQbSnapshot({
 
       reason:
         failures.length === 0
-          ? "QB peer snapshot built successfully. Inspect population size and evidence distributions before defining QB benchmark/component scoring."
+          ? "QB1/QB2 weekly coverage built successfully. Players below the evidence threshold are retained with explicit low-evidence flags."
           : "QB snapshot built with one or more player-game failures. Resolve failures before using the population as the QB benchmark universe."
     },
 
     provenance: {
       playerIdentity:
-        "Tank01 getNFLDepthCharts (first three QBs per team, deduplicated by playerID)",
+        "Tank01 getNFLDepthCharts (first two QBs per team, deduplicated by playerID)",
 
       playerGames:
         "Tank01 getNFLGamesForPlayer",

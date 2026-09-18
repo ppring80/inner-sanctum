@@ -34,12 +34,12 @@ const candidates = extractDepthChartQbCandidates({
 
 assert.deepStrictEqual(
   candidates.map(player => player.playerID),
-  ["1", "2", "3", "5"]
+  ["1", "2", "5"]
 );
 assert.strictEqual(candidates[0].teamAbv, "GB");
-assert.strictEqual(candidates[3].teamAbv, "KC");
+assert.strictEqual(candidates[2].teamAbv, "KC");
 assert.strictEqual(
-  candidates.some(player => player.playerID === "4"),
+  candidates.some(player => ["3", "4"].includes(player.playerID)),
   false
 );
 
