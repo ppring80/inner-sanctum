@@ -28,7 +28,7 @@
 // - call getNFLPlayerInfo for every RB
 //
 // Tank01 calls:
-//   1 x getNFLPlayerList?all=true
+//   1 x getNFLDepthCharts
 //   1 x getNFLGamesForPlayer per discovered RB
 //
 // Schedule:
@@ -51,7 +51,7 @@ const CACHE_CONTROL =
 
 // Keep Tank01 pressure intentionally low.
 const PLAYER_CONCURRENCY = 2;
-const MAX_PLAYER_REQUESTS_PER_RUN = 180;
+const MAX_PLAYER_REQUESTS_PER_RUN = 128;
 
 const MIN_GAMES = 2;
 const MIN_OPPORTUNITIES_PER_GAME = 5;
@@ -956,6 +956,33 @@ function eligibilityReason(
   return null;
 }
 
+function extractDepthChartRbCandidates(data) {
+  const teams = data && Array.isArray(data.body) ? data.body : [];
+  const candidates = new Map();
+
+  teams.forEach(teamEntry => {
+    const team = normalizeTeam(
+      teamEntry && (teamEntry.teamAbv || teamEntry.teamID)
+    );
+    const runningBacks =
+      teamEntry && teamEntry.depthChart && Array.isArray(teamEntry.depthChart.RB)
+        ? teamEntry.depthChart.RB.slice(0, 4)
+        : [];
+
+    runningBacks.forEach(player => {
+      const playerID = playerIDOf(player);
+      if (!playerID || candidates.has(playerID)) return;
+      candidates.set(playerID, {
+        playerID,
+        name: playerNameOf(player),
+        team: playerTeamOf(player) || team
+      });
+    });
+  });
+
+  return [...candidates.values()];
+}
+
 async function mapWithConcurrency(
   items,
   limit,
@@ -1167,84 +1194,22 @@ async function buildRbSnapshot({
         ------
         Retrieve the full player list ONCE.
       */
-      const playerListResult =
+      const depthChartResult =
         await tank01Fetch(
-          "getNFLPlayerList",
-          {
-            all:
-              "true"
-          }
+          "getNFLDepthCharts",
+          {}
         );
-
-      const allPlayers =
-        extractPlayers(
-          playerListResult
-        );
-
-      if (!allPlayers.length) {
-        throw new Error(
-          "Tank01 getNFLPlayerList returned no players."
-        );
-      }
-
-      /*
-        STEP 2
-        ------
-        Discover RB candidates.
-      */
-      const candidateMap =
-        new Map();
-
-      for (
-        const player
-        of allPlayers
-      ) {
-        if (
-          playerPositionOf(
-            player
-          ) !== "RB"
-        ) {
-          continue;
-        }
-
-        const playerID =
-          playerIDOf(
-            player
-          );
-
-        if (!playerID) {
-          continue;
-        }
-
-        if (
-          !candidateMap.has(
-            playerID
-          )
-        ) {
-          candidateMap.set(
-            playerID,
-            {
-              playerID,
-
-              name:
-                playerNameOf(
-                  player
-                ),
-
-              team:
-                playerTeamOf(
-                  player
-                )
-            }
-          );
-        }
-      }
 
       const candidates =
-        [
-          ...candidateMap
-            .values()
-        ];
+        extractDepthChartRbCandidates(
+          depthChartResult
+        );
+
+      if (!candidates.length) {
+        throw new Error(
+          "Tank01 getNFLDepthCharts returned no RB candidates."
+        );
+      }
 
       if (candidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
         throw new Error(
@@ -1328,17 +1293,18 @@ async function buildRbSnapshot({
             result.record
         );
 
-      const eligible =
-        records.filter(
-          record =>
-            eligibilityReason(
-              record
-            ) === null
-        );
+      const coveragePopulation = records.map(record => {
+        const reason = eligibilityReason(record);
+        return {
+          ...record,
+          evidenceQualified: reason === null,
+          evidenceLimitReason: reason
+        };
+      });
 
       const sortedPopulation =
         sortPopulation(
-          eligible
+          coveragePopulation
         );
 
       const ineligibleSummary =
@@ -1400,7 +1366,10 @@ async function buildRbSnapshot({
 
           populationSummary: {
             nflPlayersReturned:
-              allPlayers.length,
+              candidates.length,
+
+            candidateSource:
+              "current-depth-chart-top-four",
 
             rbCandidatesDiscovered:
               candidates.length,
@@ -1415,6 +1384,9 @@ async function buildRbSnapshot({
               records.length,
 
             eligibleRBPopulation:
+              sortedPopulation.filter(player => player.evidenceQualified).length,
+
+            weeklyRBCoveragePopulation:
               sortedPopulation.length,
 
             ineligible:
@@ -1506,6 +1478,9 @@ async function buildRbSnapshot({
 
 exports.buildRbSnapshot =
   buildRbSnapshot;
+
+exports.extractDepthChartRbCandidates =
+  extractDepthChartRbCandidates;
 
 exports.handler =
   async function (event) {
