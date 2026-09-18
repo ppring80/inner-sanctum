@@ -114,6 +114,17 @@ function validateCompleteDefense(
     problems.push("gameResults is not an array.");
   }
 
+  if (!Array.isArray(evidence.kickerEvidence)) {
+    problems.push("kickerEvidence is not an array.");
+  }
+
+  if (
+    evidence.schedule &&
+    Number(evidence.schedule.completedGames) < 1
+  ) {
+    problems.push("No completed games were returned.");
+  }
+
   if (
     evidence.schedule &&
     Number(evidence.schedule.completedGames) !==
@@ -132,6 +143,26 @@ function validateCompleteDefense(
     if (failedGames.length > 0) {
       problems.push(
         `${failedGames.length} game result(s) were not processed successfully.`
+      );
+    }
+  }
+
+  if (
+    evidence.schedule &&
+    evidence.defenses &&
+    typeof evidence.defenses === "object" &&
+    !Array.isArray(evidence.defenses)
+  ) {
+    const expectedDefenseCount =
+      Number(evidence.schedule.processedGames) * 2;
+    const actualDefenseCount =
+      Object.keys(evidence.defenses).length;
+
+    if (
+      actualDefenseCount !== expectedDefenseCount
+    ) {
+      problems.push(
+        `Defense count mismatch: expected ${expectedDefenseCount}, got ${actualDefenseCount}.`
       );
     }
   }
@@ -269,3 +300,6 @@ exports.handler = async function (event) {
     });
   }
 };
+
+exports.validateCompleteDefense =
+  validateCompleteDefense;

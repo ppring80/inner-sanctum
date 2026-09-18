@@ -17,6 +17,7 @@ const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 
 const DEFAULT_SEASON_TYPE = "reg";
+const MAX_REGULAR_SEASON_GAMES_PER_WEEK = 16;
 const BOX_SCORE_CONCURRENCY = 4;
 
 function tank01Headers() {
@@ -307,6 +308,17 @@ async function getBoxScore(gameID) {
   return result.body || null;
 }
 
+function enforceWeeklyGameCeiling({ seasonType, completedGames }) {
+  if (
+    seasonType === "reg" &&
+    completedGames.length > MAX_REGULAR_SEASON_GAMES_PER_WEEK
+  ) {
+    throw new Error(
+      `Defense safety stop: ${completedGames.length} completed regular-season games exceeds the weekly limit of ${MAX_REGULAR_SEASON_GAMES_PER_WEEK}.`
+    );
+  }
+}
+
 function isPlaceKickerStatLine(kicking) {
   if (!kicking || typeof kicking !== "object") {
     return false;
@@ -463,6 +475,10 @@ async function buildWeeklyDefense({
   });
 
   const completedGames = games.filter(isCompletedGame);
+  enforceWeeklyGameCeiling({
+    seasonType: normalizedSeasonType,
+    completedGames
+  });
   const defenseMap = {};
   const kickerEvidenceByGame = [];
 
@@ -561,6 +577,11 @@ async function buildWeeklyDefense({
 }
 
 exports.buildWeeklyDefense = buildWeeklyDefense;
+
+exports._test = {
+  MAX_REGULAR_SEASON_GAMES_PER_WEEK,
+  enforceWeeklyGameCeiling
+};
 
 function jsonResponse(statusCode, body) {
   return {
