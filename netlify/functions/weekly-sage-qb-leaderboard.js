@@ -13,6 +13,7 @@
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { buildQbFinalScore } = require("./weekly-sage-qb-final-score.js");
+const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
 
 const DEFAULT_SEASON_TYPE = "reg";
 const POSITION = "QB";
@@ -392,28 +393,15 @@ async function readCachedSnapshot({
 }
 
 async function fetchSchedule({
-  baseUrl,
   season,
   week,
   seasonType
 }) {
-  const params =
-    new URLSearchParams({
-      season,
-      week:
-        String(
-          week
-        ),
-      seasonType
-    });
-
-  const url =
-    `${baseUrl}/.netlify/functions/${SCHEDULE_FUNCTION}?${params.toString()}`;
-
-  const data =
-    await fetchJson(
-      url
-    );
+  const data = await readCachedWeeklySchedule({
+    season,
+    week,
+    seasonType
+  });
 
   if (
     !data ||
