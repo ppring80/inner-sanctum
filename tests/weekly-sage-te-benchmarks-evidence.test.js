@@ -97,8 +97,8 @@ async function run() {
     2
   );
 
-  await assert.rejects(
-    () => buildTeBenchmarks({
+  const limitedResult =
+    await buildTeBenchmarks({
       baseUrl: 'https://example.test',
       season: '2026',
       targetWeek: 3,
@@ -109,11 +109,19 @@ async function run() {
         legacy,
         limited
       ])
-    }),
-    (error) => error && error.status === 404
+    });
+
+  assert.strictEqual(
+    limitedResult.populationSummary.eligibleTEPopulation,
+    2,
+    'limited TE is scored against the qualified peer set without entering that peer set'
+  );
+  assert.strictEqual(
+    limitedResult.player.playerID,
+    'limited'
   );
 
-  console.log('2 weekly-sage-te benchmark evidence tests passed, 0 failed.');
+  console.log('3 weekly-sage-te benchmark evidence tests passed, 0 failed.');
 }
 
 run().catch((error) => {

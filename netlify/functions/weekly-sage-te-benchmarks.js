@@ -1293,11 +1293,18 @@ async function buildTeBenchmarks({
         );
       }
 
-      const population =
+      const snapshotPopulation =
         Array.isArray(
           snapshot.population
         )
-          ? snapshot.population.filter(
+          ? snapshot.population
+          : [];
+
+      const population =
+        Array.isArray(
+          snapshotPopulation
+        )
+          ? snapshotPopulation.filter(
               function (
                 candidate
               ) {
@@ -1341,7 +1348,7 @@ async function buildTeBenchmarks({
         by benchmark-time injection.
       */
       const player =
-        population.find(
+        snapshotPopulation.find(
           function (
             candidate
           ) {
@@ -1362,7 +1369,7 @@ async function buildTeBenchmarks({
           404,
           {
             error:
-              "Requested TE is not present in the eligible TE snapshot population.",
+              "Requested TE is not present in the TE snapshot population.",
 
             playerID,
 
