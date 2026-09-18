@@ -1,4 +1,5 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 // ═══════════════════════════════════════════════════════════════════════
 // PLAYER SNAPSHOT V1 — NON-PRODUCTION PROTOTYPE (Aug 2026)
@@ -920,6 +921,9 @@ function buildCurrentSituation(snapshots) {
 // ═══════════════════════════════════════════════════════════════════
 exports.handler = async (event) => {
   connectLambda(event);
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   const params = event.queryStringParameters || {};
   const season = params.season || "2026";

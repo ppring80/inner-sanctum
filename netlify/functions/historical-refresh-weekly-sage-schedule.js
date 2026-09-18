@@ -48,6 +48,7 @@ const {
 } = require(
   "@netlify/blobs"
 );
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 const {
   buildWeeklySchedule
@@ -233,6 +234,9 @@ exports.handler =
         }
       );
     }
+
+    const authorizationError = requireTank01RefreshAuthorization(event);
+    if (authorizationError) return authorizationError;
 
     if (
       !process.env

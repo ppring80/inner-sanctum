@@ -15,6 +15,7 @@
 // incomplete build leaves any known-good existing cache untouched.
 
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 const {
   buildWeeklyDefense
 } = require("./weekly-sage-defense-week.js");
@@ -143,6 +144,9 @@ exports.handler = async function (event) {
       error: "Method not allowed."
     });
   }
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   const query = event.queryStringParameters || {};
   const season = String(

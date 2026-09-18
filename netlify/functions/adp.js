@@ -14,7 +14,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Content-Type": "application/json"
+  "Content-Type": "application/json",
+  "Cache-Control": "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400",
+  "Netlify-CDN-Cache-Control": "public, durable, s-maxage=21600, stale-while-revalidate=86400"
 };
 
 // ═══════════════════════════════════════

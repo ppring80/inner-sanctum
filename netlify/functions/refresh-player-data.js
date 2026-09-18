@@ -1,4 +1,5 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 // ═══════════════════════════════════════
 // PLAYER DATA REFRESH — checklist #215 follow-up
@@ -84,6 +85,9 @@ exports.handler = async (event) => {
   // Same requirement as chat.js — must be called before any
   // getStore()/Blobs call in this runtime mode.
   connectLambda(event);
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   // Get the REAL team abbreviation list live, rather than trusting a
   // hardcoded guess (see note above re: the WAS/WSH failure).

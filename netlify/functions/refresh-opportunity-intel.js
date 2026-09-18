@@ -105,6 +105,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const TARGET_POSITIONS = ["RB", "WR", "TE"];
@@ -925,6 +926,9 @@ function mergeGamesForPlayer(
 exports.handler =
   async (event) => {
     connectLambda(event);
+
+    const authorizationError = requireTank01RefreshAuthorization(event);
+    if (authorizationError) return authorizationError;
 
     const params =
       event.queryStringParameters ||

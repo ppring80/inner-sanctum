@@ -1,5 +1,6 @@
 
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 // ═══════════════════════════════════════════════════════════════════════
 // RISERS & FALLERS — Feature #131
@@ -220,6 +221,9 @@ module.exports.getCurrentNFLWeek = getCurrentNFLWeek;
 
 exports.handler = async (event) => {
   connectLambda(event);
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   const params = event.queryStringParameters || {};
   const season = params.season || "2026";

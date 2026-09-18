@@ -62,6 +62,7 @@
 
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 const DEFAULT_SEASON_TYPE = "reg";
 
@@ -77,6 +78,7 @@ const MINIMUM_TARGETS_PER_GAME = 3;
 // Keep conservative concurrency so the population build is reliable and
 // doesn't hammer Tank01. We can raise this later if runtime proves safe.
 const PLAYER_CONCURRENCY = 3;
+const MAX_PLAYER_REQUESTS_PER_RUN = 240;
 
 const SCHEDULE_CONCURRENCY = 4;
 
@@ -1279,6 +1281,9 @@ exports.handler =
       );
     }
 
+    const authorizationError = requireTank01RefreshAuthorization(event);
+    if (authorizationError) return authorizationError;
+
     if (
       !process.env
         .TANK01_API_KEY
@@ -1465,6 +1470,12 @@ async function buildWrSnapshot({
               };
             }
           );
+
+      if (wrCandidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
+        throw new Error(
+          `Tank01 safety stop: ${wrCandidates.length} WR candidates exceeds the per-run limit of ${MAX_PLAYER_REQUESTS_PER_RUN}.`
+        );
+      }
 
       const playerResults =
         await mapWithConcurrency(

@@ -78,6 +78,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 const { buildTeSnapshot } = require("./weekly-sage-te-snapshot.js");
 
@@ -220,6 +221,9 @@ exports.handler = async function (event) {
   if (event.httpMethod && event.httpMethod !== "GET") {
     return jsonResponse(405, { error: "Method not allowed." });
   }
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   if (!process.env.TANK01_API_KEY) {
     return jsonResponse(500, { error: "TANK01_API_KEY is not configured." });

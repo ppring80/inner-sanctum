@@ -10,6 +10,7 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 // ═══════════════════════════════════════
 
 const MAX_STORIES = 4;
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 async function fetchTank01News() {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
@@ -98,6 +99,9 @@ Return ONLY valid JSON, no markdown fences, no preamble, in exactly this shape:
 }
 exports.handler = async (event) => {
   connectLambda(event);
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   let newsItems;
   try {

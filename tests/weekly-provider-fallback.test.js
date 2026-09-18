@@ -1,0 +1,86 @@
+'use strict';
+
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const fallback = require('../weekly-provider-fallback.js');
+
+function test(name, fn) {
+  try {
+    fn();
+    console.log('✓ ' + name);
+  } catch (error) {
+    console.error('✗ ' + name);
+    throw error;
+  }
+}
+
+test('builds position rankings from provider available players and roster', function () {
+  const result = fallback.build({
+    provider: 'espn',
+    availablePlayers: [
+      { id: '1', name: 'Quarterback Two', position: 'QB', team: 'BBB', projectedPoints: 17.2 },
+      { id: '2', name: 'Quarterback One', position: 'QB', team: 'AAA', projectedPoints: 21.4 },
+      { id: '3', name: 'Defense One', position: 'DST', team: 'CCC', projectedPoints: 7.1 }
+    ],
+    roster: [
+      { id: '4', name: 'Roster Runner', position: 'RB', nflTeam: 'DDD', projectedPoints: 13.6 }
+    ]
+  }, { season: 2026, week: 2, scoring: 'half' });
+
+  assert.ok(result);
+  assert.strictEqual(result.metadata.providerProjectionFallbackUsed, true);
+  assert.strictEqual(result.metadata.playerCount, 4);
+  assert.deepStrictEqual(result.positions.QB.map((row) => row.name), [
+    'Quarterback One',
+    'Quarterback Two'
+  ]);
+  assert.strictEqual(result.positions.QB[0].positionRank, 1);
+  assert.strictEqual(result.positions.DEF[0].position, 'DEF');
+  assert.strictEqual(result.positions.RB[0].projectedPoints, 13.6);
+  assert.strictEqual(result.positions.QB[0].sageScore, null);
+});
+
+test('reads CBS projection collections and de-duplicates the same player', function () {
+  const result = fallback.build({
+    provider: 'cbs',
+    roster: [
+      { cbsPlayerId: '10', name: 'Tight End One', position: 'TE', nflTeam: 'MIN', projectedPoints: 6.2 }
+    ],
+    projections: {
+      playerProjectionsById: [
+        { cbsPlayerId: '10', name: 'Tight End One', position: 'TE', nflTeam: 'MIN', projectedPoints: 7.8 }
+      ],
+      playerProjectionsByName: [
+        { name: 'Wide Receiver One', position: 'WR', nflTeam: 'SF', projectedPoints: 12.3 }
+      ]
+    }
+  }, { season: 2026, week: 2, scoring: 'half' });
+
+  assert.ok(result);
+  assert.strictEqual(result.positions.TE.length, 1);
+  assert.strictEqual(result.positions.TE[0].projectedPoints, 7.8);
+  assert.strictEqual(result.positions.WR[0].name, 'Wide Receiver One');
+});
+
+test('returns null instead of inventing rankings without provider projections', function () {
+  const result = fallback.build({
+    provider: 'cbs',
+    availablePlayers: [
+      { name: 'No Projection', position: 'RB', nflTeam: 'GB' }
+    ]
+  }, { season: 2026, week: 2, scoring: 'half' });
+
+  assert.strictEqual(result, null);
+});
+
+test('weekly page installs provider fallback for both HTTP and network failures', function () {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
+  assert.ok(html.includes('/weekly-provider-fallback.js'));
+  assert.ok(html.includes('buildConnectedProviderFallback(season, week, scoring)'));
+  assert.ok(html.includes('providerProjectionFallbackUsed === true'));
+  assert.ok(html.includes('Current connected-provider projections are shown without inventing SAGE scores.'));
+});
+
+console.log('weekly provider fallback tests passed');

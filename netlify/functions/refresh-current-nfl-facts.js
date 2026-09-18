@@ -1,4 +1,5 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 // ═══════════════════════════════════════════════════════════════════════
 // CURRENT NFL FACTS — V2.1 (Depth Chart only)
@@ -85,6 +86,9 @@ function normalizeTeamDepthChart(rawDepthChart) {
 
 exports.handler = async (event) => {
   connectLambda(event);
+
+  const authorizationError = requireTank01RefreshAuthorization(event);
+  if (authorizationError) return authorizationError;
 
   let depthResponse;
   try {

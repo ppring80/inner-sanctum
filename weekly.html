@@ -582,7 +582,7 @@ function showAcolytePreviewBanner() {
 
       <div class="empty-state" id="emptyState" style="display:none">
         <div class="empty-state-icon">🔍</div>
-        <div>No players match your search or filters.</div>
+        <div id="emptyStateText">No players match your search or filters.</div>
       </div>
     </div>
 
@@ -600,6 +600,8 @@ function showAcolytePreviewBanner() {
      PlayerProfile.open() is available to openPlayerProfile(). Contains
      no Weekly-Rankings-specific logic. -->
 <script src="/player-profile.js"></script>
+<script src="/weekly-provider-fallback.js"></script>
+<script src="/league-connection.js"></script>
 
 <script>
 var POS_ORDER = ['QB','RB','WR','TE','K','DEF'];
@@ -1041,6 +1043,26 @@ function getSelectedWeek() {
   return Number.isInteger(n) ? n : 1;
 }
 
+function deriveCurrentWeeklyWeek(now) {
+  var current = now instanceof Date ? now : new Date(now || Date.now());
+  if (Number.isNaN(current.getTime()) || current.getUTCFullYear() !== 2026) return 1;
+  var weekOneStart = Date.UTC(2026, 8, 10);
+  var weekTwoWaiverStart = Date.UTC(2026, 8, 15, 6);
+  if (current.getTime() < weekOneStart) return 1;
+  if (current.getTime() < weekTwoWaiverStart) return 1;
+  return Math.min(18, Math.floor((current.getTime() - weekTwoWaiverStart) / 604800000) + 2);
+}
+
+function initializeSelectedWeek() {
+  var select = document.getElementById('weekSelect');
+  if (!select) return;
+  var requested = Number(new URLSearchParams(window.location.search).get('week'));
+  var week = Number.isInteger(requested) && requested >= 1 && requested <= 18
+    ? requested
+    : deriveCurrentWeeklyWeek(new Date());
+  select.value = String(week);
+}
+
 // Flattens the unified weekly-sage-rankings response's four separate
 // position arrays into ONE array, matching the shape the existing
 // filter/sort/render pipeline below already expects (it was built to
@@ -1084,6 +1106,8 @@ function flattenRankings(rankings) {
           entry.sage && typeof entry.sage.score === 'number'
             ? entry.sage.score
             : (typeof entry.sageScore === 'number' ? entry.sageScore : null),
+        providerProjectedPoints:
+          typeof entry.projectedPoints === 'number' ? entry.projectedPoints : null,
         sageLabel:
           entry.sage && entry.sage.label != null
             ? entry.sage.label
@@ -1150,11 +1174,23 @@ function loadWeeklyRankings() {
     })
     .then(function (result) {
       state.loading = false;
-      if (!result.ok || !result.data || !result.data.positions) {
-        state.rankings = null;
-        state.loadError =
-          (result.data && (result.data.error || result.data.detail)) ||
-          'Weekly Rankings is not available for this week yet.';
+      var rowsReturned = result.data && result.data.positions
+        ? flattenRankings(result.data).length
+        : 0;
+      if (!result.ok || !result.data || !result.data.positions || !rowsReturned) {
+        var fallback = buildConnectedProviderFallback(season, week, scoring);
+
+        if (fallback) {
+          state.rankings = fallback;
+          state.loadError = null;
+          state.sortKey = 'proj';
+          state.sortDir = 'desc';
+        } else {
+          state.rankings = null;
+          state.loadError =
+            (result.data && (result.data.error || result.data.detail)) ||
+            'Weekly Rankings is not available for this week yet.';
+        }
       } else {
         state.rankings = result.data;
         state.loadError = null;
@@ -1166,10 +1202,31 @@ function loadWeeklyRankings() {
     })
     .catch(function (err) {
       state.loading = false;
-      state.rankings = null;
-      state.loadError = 'Weekly Rankings is not available for this week yet.';
+      var fallback = buildConnectedProviderFallback(season, week, scoring);
+      state.rankings = fallback;
+      state.loadError = fallback
+        ? null
+        : 'Weekly Rankings is not available for this week yet.';
+      if (fallback) {
+        state.sortKey = 'proj';
+        state.sortDir = 'desc';
+        updateWeeklyContextUI();
+      }
       renderTable();
     });
+}
+
+function buildConnectedProviderFallback(season, week, scoring) {
+  var connection = typeof LeagueConnection !== 'undefined'
+    ? LeagueConnection.getActiveConnection()
+    : null;
+  return window.WeeklyProviderFallback && connection
+    ? window.WeeklyProviderFallback.build(connection, {
+        season: season,
+        week: week,
+        scoring: scoring
+      })
+    : null;
 }
 
 function updateWeeklyContextUI() {
@@ -1178,9 +1235,13 @@ function updateWeeklyContextUI() {
   var bannerText = banner ? banner.querySelector('.preview-banner-text') : null;
 
   if (bannerText) {
-    bannerText.innerHTML = week1
-      ? '📊 <strong>Week 1 Rankings</strong> — built from preseason expectations and current player context. Weekly SAGE incorporates regular-season evidence beginning Week 2.'
-      : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.';
+    var providerFallback = state.rankings && state.rankings.metadata &&
+      state.rankings.metadata.providerProjectionFallbackUsed === true;
+    bannerText.innerHTML = providerFallback
+      ? '📊 <strong>Provider Projection Rankings</strong> — Weekly SAGE evidence is updating. Current connected-provider projections are shown without inventing SAGE scores.'
+      : (week1
+          ? '📊 <strong>Week 1 Rankings</strong> — built from preseason expectations and current player context. Weekly SAGE incorporates regular-season evidence beginning Week 2.'
+          : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.');
   }
 }
 
@@ -1690,8 +1751,12 @@ function getFilteredSorted() {
 
         case 'proj':
         default:
-          av = getSelectedWeek() === 1 ? a.adp : a.sageScore;
-          bv = getSelectedWeek() === 1 ? b.adp : b.sageScore;
+          av = a.providerProjectedPoints != null
+            ? a.providerProjectedPoints
+            : (getSelectedWeek() === 1 ? a.adp : a.sageScore);
+          bv = b.providerProjectedPoints != null
+            ? b.providerProjectedPoints
+            : (getSelectedWeek() === 1 ? b.adp : b.sageScore);
           break;
       }
 
@@ -1739,6 +1804,10 @@ function renderTable() {
 
   if (!rows.length) {
     tbody.innerHTML = '';
+    var emptyText = document.getElementById('emptyStateText');
+    if (emptyText) {
+      emptyText.textContent = state.loadError || 'No players match your search or filters.';
+    }
     empty.style.display = 'block';
     renderWeekSnapshot();
     return;
@@ -2168,6 +2237,7 @@ function renderWeekSnapshot() {
     html;
 }
 
+initializeSelectedWeek();
 renderTable();
 renderLineupFields();
 loadWeeklyRankings();
@@ -2249,8 +2319,6 @@ document.addEventListener(
   }
 );
 </script>
-
-<script src="/league-connection.js"></script>
 
 <script>
 (function applyConnectedLeagueContext() {

@@ -41,6 +41,7 @@
 
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
 
 const DEFAULT_SEASON_TYPE =
   "reg";
@@ -50,6 +51,7 @@ const CACHE_CONTROL =
 
 // Keep Tank01 pressure intentionally low.
 const PLAYER_CONCURRENCY = 2;
+const MAX_PLAYER_REQUESTS_PER_RUN = 180;
 
 const MIN_GAMES = 2;
 const MIN_OPPORTUNITIES_PER_GAME = 5;
@@ -1241,6 +1243,12 @@ async function buildRbSnapshot({
             .values()
         ];
 
+      if (candidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
+        throw new Error(
+          `Tank01 safety stop: ${candidates.length} RB candidates exceeds the per-run limit of ${MAX_PLAYER_REQUESTS_PER_RUN}.`
+        );
+      }
+
       /*
         STEP 3
         ------
@@ -1511,6 +1519,9 @@ exports.handler =
         }
       );
     }
+
+    const authorizationError = requireTank01RefreshAuthorization(event);
+    if (authorizationError) return authorizationError;
 
     if (
       !process.env
