@@ -47,7 +47,7 @@
 //
 // COST DISCIPLINE
 // ---------------
-// This function makes one getNFLPlayerList call, one prior-week schedule pass,
+// This function makes one getNFLDepthCharts call, one prior-week schedule pass,
 // and one getNFLGamesForPlayer call per discovered QB candidate. It does NOT
 // invoke weekly-sage-player-season once per QB, avoiding large Netlify
 // function fan-out during population construction.
@@ -517,6 +517,41 @@ function extractPlayerList(data) {
   }
 
   return data.body;
+}
+
+function extractDepthChartQbCandidates(data) {
+  const teams =
+    data && Array.isArray(data.body)
+      ? data.body
+      : [];
+
+  const candidates = new Map();
+
+  teams.forEach(function (teamEntry) {
+    const team = normalizeTeam(
+      teamEntry && (teamEntry.teamAbv || teamEntry.teamID)
+    );
+    const quarterbacks =
+      teamEntry &&
+      teamEntry.depthChart &&
+      Array.isArray(teamEntry.depthChart.QB)
+        ? teamEntry.depthChart.QB.slice(0, 3)
+        : [];
+
+    quarterbacks.forEach(function (player) {
+      if (!player || !player.playerID) return;
+      const playerID = String(player.playerID);
+      if (candidates.has(playerID)) return;
+
+      candidates.set(playerID, {
+        ...player,
+        playerID,
+        teamAbv: normalizeTeam(player.teamAbv || player.team || team)
+      });
+    });
+  });
+
+  return [...candidates.values()];
 }
 
 function extractPlayerGames(data) {
@@ -1366,12 +1401,12 @@ async function buildQbSnapshot({
     Both are reused for every QB candidate.
   */
   const [
-    playerListResult,
+    depthChartResult,
     scheduleContext
   ] =
     await Promise.all([
       tank01Fetch(
-        "getNFLPlayerList",
+        "getNFLDepthCharts",
         {}
       ),
 
@@ -1383,43 +1418,16 @@ async function buildQbSnapshot({
       })
     ]);
 
-  const nflPlayers =
-    extractPlayerList(
-      playerListResult
+  const qbCandidates =
+    extractDepthChartQbCandidates(
+      depthChartResult
     );
 
-  if (!nflPlayers.length) {
+  if (!qbCandidates.length) {
     throw new Error(
-      "Tank01 getNFLPlayerList returned no players."
+      "Tank01 getNFLDepthCharts returned no QB candidates."
     );
   }
-
-  const qbCandidates =
-    nflPlayers
-      .filter(
-        function (player) {
-          return (
-            normalizePosition(
-              player.pos ||
-              player.position
-            ) ===
-              POSITION &&
-            player.playerID
-          );
-        }
-      )
-      .map(
-        function (player) {
-          return {
-            ...player,
-
-            playerID:
-              String(
-                player.playerID
-              )
-          };
-        }
-      );
 
   if (qbCandidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
     throw new Error(
@@ -1659,7 +1667,10 @@ async function buildQbSnapshot({
 
     populationSummary: {
       nflPlayersReturned:
-        nflPlayers.length,
+        qbCandidates.length,
+
+      candidateSource:
+        "current-depth-chart-top-three",
 
       qbCandidatesDiscovered:
         qbCandidates.length,
@@ -1697,7 +1708,7 @@ async function buildQbSnapshot({
 
     provenance: {
       playerIdentity:
-        "Tank01 getNFLPlayerList",
+        "Tank01 getNFLDepthCharts (first three QBs per team, deduplicated by playerID)",
 
       playerGames:
         "Tank01 getNFLGamesForPlayer",
@@ -1714,3 +1725,6 @@ async function buildQbSnapshot({
 
 exports.buildQbSnapshot =
   buildQbSnapshot;
+
+exports.extractDepthChartQbCandidates =
+  extractDepthChartQbCandidates;
