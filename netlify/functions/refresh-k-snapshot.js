@@ -61,7 +61,8 @@ const {
 );
 
 const {
-  isNetlifyScheduledInvocation
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
 
 const {
@@ -226,6 +227,42 @@ function validateCompleteSnapshot(
     problems.push(
       "population is not an array."
     );
+  } else if (
+    snapshot.population.length ===
+    0
+  ) {
+    problems.push(
+      "population is empty."
+    );
+  }
+
+  const summary =
+    snapshot.populationSummary;
+
+  if (
+    !summary ||
+    !Number.isInteger(
+      summary.weeksScanned
+    ) ||
+    summary.weeksScanned <
+      1
+  ) {
+    problems.push(
+      "weeksScanned is missing or invalid."
+    );
+  }
+
+  if (
+    !summary ||
+    !Number.isInteger(
+      summary.weeksWithEvidence
+    ) ||
+    summary.weeksWithEvidence !==
+      summary.weeksScanned
+  ) {
+    problems.push(
+      "Not every scanned week has cached kicker evidence."
+    );
   }
 
   return problems;
@@ -252,6 +289,17 @@ exports.handler =
             "Method not allowed."
         }
       );
+    }
+
+    const authorizationError =
+      requireTank01RefreshAuthorization(
+        event
+      );
+
+    if (
+      authorizationError
+    ) {
+      return authorizationError;
     }
 
     const query =
@@ -466,3 +514,6 @@ exports.handler =
       );
     }
   };
+
+exports.validateCompleteSnapshot =
+  validateCompleteSnapshot;
