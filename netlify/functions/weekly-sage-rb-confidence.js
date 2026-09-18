@@ -44,12 +44,6 @@ const {
   "./weekly-sage-rb-component-scores"
 );
 
-const {
-  buildPlayerSeason
-} = require(
-  "./weekly-sage-player-season"
-);
-
 const COMPONENT_FUNCTION =
   "weekly-sage-rb-component-scores";
 
@@ -733,40 +727,26 @@ async function buildRbConfidence({
       no prebuiltSnapshot
         -> preserve the existing buildPlayerSeason() behavior exactly.
   */
-  const sampleEvidencePromise =
-    prebuiltSnapshot
-      ? Promise.resolve(
-          buildSnapshotSampleEvidence({
-            snapshot:
-              prebuiltSnapshot,
+  if (!prebuiltSnapshot) {
+    throw new Error(
+      "RB confidence requires a prebuilt cached snapshot; live player-season rebuilding is disabled."
+    );
+  }
 
-            playerID:
-              normalizedPlayerID,
+  const sampleEvidencePromise = Promise.resolve(
+    buildSnapshotSampleEvidence({
+      snapshot:
+        prebuiltSnapshot,
 
-            week:
-              normalizedWeek,
+      playerID:
+        normalizedPlayerID,
 
-            prebuiltScheduleContext
-          })
-        )
-      : buildPlayerSeason({
-          baseUrl,
+      week:
+        normalizedWeek,
 
-          season:
-            normalizedSeason,
-
-          targetWeek:
-            normalizedWeek,
-
-          seasonType:
-            normalizedSeasonType,
-
-          playerID:
-            normalizedPlayerID,
-
-          scheduleContext:
-            prebuiltScheduleContext
-        });
+      prebuiltScheduleContext
+    })
+  );
 
   const [
     components,

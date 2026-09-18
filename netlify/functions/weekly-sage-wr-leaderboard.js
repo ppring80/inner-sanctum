@@ -83,6 +83,8 @@ const {
 const WR_SNAPSHOT_STORE =
   "wr-snapshot";
 
+const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
+
 const SCHEDULE_FUNCTION =
   "weekly-sage-schedule";
 
@@ -566,34 +568,15 @@ async function readCachedSnapshot({
 }
 
 async function fetchSchedule({
-  baseUrl,
   season,
   week,
   seasonType
 }) {
-  const url =
-    buildUrl({
-      baseUrl,
-
-      functionName:
-        SCHEDULE_FUNCTION,
-
-      params: {
-        season,
-
-        week:
-          String(
-            week
-          ),
-
-        seasonType
-      }
-    });
-
-  const data =
-    await fetchJson(
-      url
-    );
+  const data = await readCachedWeeklySchedule({
+    season,
+    week,
+    seasonType
+  });
 
   if (
     !data ||
