@@ -24,4 +24,12 @@ const rbConfidence = fs.readFileSync(
 assert.ok(!rbConfidence.includes('require(\n  "./weekly-sage-player-season"'));
 assert.ok(rbConfidence.includes('live player-season rebuilding is disabled'));
 
-console.log('8 Weekly SAGE cache-only leaderboard assertions passed, 0 failed.');
+const playerMatchup = fs.readFileSync(
+  path.join(functionsDir, 'weekly-sage-player-matchup.js'),
+  'utf8'
+);
+
+assert.ok(playerMatchup.includes('readCachedWeeklySchedule'));
+assert.ok(!playerMatchup.includes('/.netlify/functions/weekly-sage-schedule'));
+
+console.log('10 Weekly SAGE cache-only leaderboard assertions passed, 0 failed.');
