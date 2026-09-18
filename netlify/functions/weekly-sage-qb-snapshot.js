@@ -1205,10 +1205,17 @@ function buildQBRecord({
   };
 }
 
-function eligibilityReason(record) {
+function effectiveMinimumGames(targetWeek) {
+  return Math.min(
+    MINIMUM_GAMES,
+    Math.max(1, Number(targetWeek) - 1)
+  );
+}
+
+function eligibilityReason(record, minimumGames = MINIMUM_GAMES) {
   if (
     record.gamesUsed <
-    MINIMUM_GAMES
+    minimumGames
   ) {
     return (
       "insufficient_games"
@@ -1530,6 +1537,8 @@ async function buildQbSnapshot({
   };
 
   const population = [];
+  const minimumGamesForTargetWeek =
+    effectiveMinimumGames(targetWeek);
 
   for (
     const record of
@@ -1537,7 +1546,8 @@ async function buildQbSnapshot({
   ) {
     const reason =
       eligibilityReason(
-        record
+        record,
+        minimumGamesForTargetWeek
       );
 
     if (reason) {
@@ -1632,6 +1642,9 @@ async function buildQbSnapshot({
         POSITION,
 
       minimumGames:
+        minimumGamesForTargetWeek,
+
+      standardMinimumGames:
         MINIMUM_GAMES,
 
       minimumPassAttemptsPerGame:
@@ -1728,3 +1741,9 @@ exports.buildQbSnapshot =
 
 exports.extractDepthChartQbCandidates =
   extractDepthChartQbCandidates;
+
+exports.effectiveMinimumGames =
+  effectiveMinimumGames;
+
+exports.eligibilityReason =
+  eligibilityReason;

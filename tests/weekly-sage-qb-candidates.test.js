@@ -2,6 +2,8 @@
 
 const assert = require("assert");
 const {
+  effectiveMinimumGames,
+  eligibilityReason,
   extractDepthChartQbCandidates
 } = require("../netlify/functions/weekly-sage-qb-snapshot.js");
 
@@ -39,6 +41,20 @@ assert.strictEqual(candidates[3].teamAbv, "KC");
 assert.strictEqual(
   candidates.some(player => player.playerID === "4"),
   false
+);
+
+assert.strictEqual(effectiveMinimumGames(2), 1);
+assert.strictEqual(effectiveMinimumGames(3), 2);
+assert.strictEqual(effectiveMinimumGames(10), 2);
+
+const oneGameStarter = {
+  gamesUsed: 1,
+  role: { passAttemptsPerGame: 30 }
+};
+assert.strictEqual(eligibilityReason(oneGameStarter, effectiveMinimumGames(2)), null);
+assert.strictEqual(
+  eligibilityReason(oneGameStarter, effectiveMinimumGames(3)),
+  "insufficient_games"
 );
 
 console.log("Weekly SAGE QB candidate tests passed.");
