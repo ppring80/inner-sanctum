@@ -127,6 +127,16 @@ function validateCompleteDefense(
 
   if (
     evidence.schedule &&
+    Number(evidence.schedule.gamesReturned) !==
+      Number(evidence.schedule.completedGames)
+  ) {
+    problems.push(
+      `Not all returned games are complete: ${evidence.schedule.completedGames} of ${evidence.schedule.gamesReturned}.`
+    );
+  }
+
+  if (
+    evidence.schedule &&
     Number(evidence.schedule.completedGames) !==
       Number(evidence.schedule.processedGames)
   ) {

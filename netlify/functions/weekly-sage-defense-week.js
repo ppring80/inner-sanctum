@@ -115,7 +115,12 @@ function isCompletedGame(game) {
     .trim()
     .toLowerCase();
 
-  return status === "completed" || status === "final";
+  return (
+    status === "completed" ||
+    status.startsWith("completed/") ||
+    status === "final" ||
+    status.startsWith("final/")
+  );
 }
 
 function emptyDefenseProfile(team) {
@@ -580,7 +585,8 @@ exports.buildWeeklyDefense = buildWeeklyDefense;
 
 exports._test = {
   MAX_REGULAR_SEASON_GAMES_PER_WEEK,
-  enforceWeeklyGameCeiling
+  enforceWeeklyGameCeiling,
+  isCompletedGame
 };
 
 function jsonResponse(statusCode, body) {
