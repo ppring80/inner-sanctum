@@ -61,6 +61,7 @@ const PLAYER_DATA_STORE = "player-data";
 const PLAYER_DATA_KEY = "playerData";
 
 const TEAM_SCORING_WINDOW = 3;
+const MAX_K_CANDIDATES = 48;
 
 const WEIGHTS = {
   opportunity: 0.40,
@@ -239,6 +240,14 @@ function confidenceLabel(gamesPlayed, totalAttempts) {
   return "Insufficient";
 }
 
+function enforceKCandidateCeiling(candidateCount) {
+  if (candidateCount > MAX_K_CANDIDATES) {
+    throw new Error(
+      `K safety stop: ${candidateCount} candidates exceeds the per-run limit of ${MAX_K_CANDIDATES}.`
+    );
+  }
+}
+
 async function buildKSnapshot({ season, targetWeek, seasonType }) {
   const normalizedSeason = String(season || new Date().getFullYear());
   const normalizedWeek = Number(targetWeek);
@@ -287,6 +296,8 @@ async function buildKSnapshot({ season, targetWeek, seasonType }) {
       };
     })
     .filter(Boolean);
+
+  enforceKCandidateCeiling(candidates.length);
 
   // Population arrays for percentile ranking, computed once.
   const opportunityValues = candidates.map((c) => {
@@ -380,3 +391,8 @@ async function buildKSnapshot({ season, targetWeek, seasonType }) {
 }
 
 exports.buildKSnapshot = buildKSnapshot;
+
+exports._test = {
+  MAX_K_CANDIDATES,
+  enforceKCandidateCeiling
+};
