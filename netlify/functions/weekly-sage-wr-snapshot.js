@@ -78,7 +78,7 @@ const MINIMUM_TARGETS_PER_GAME = 3;
 // Keep conservative concurrency so the population build is reliable and
 // doesn't hammer Tank01. We can raise this later if runtime proves safe.
 const PLAYER_CONCURRENCY = 3;
-const MAX_PLAYER_REQUESTS_PER_RUN = 240;
+const MAX_PLAYER_REQUESTS_PER_RUN = 128;
 
 const SCHEDULE_CONCURRENCY = 4;
 
@@ -527,6 +527,34 @@ function extractPlayerList(
   }
 
   return data.body;
+}
+
+function extractDepthChartWrCandidates(data) {
+  const teams = data && Array.isArray(data.body) ? data.body : [];
+  const candidates = new Map();
+
+  teams.forEach(function (teamEntry) {
+    const team = normalizeTeam(
+      teamEntry && (teamEntry.teamAbv || teamEntry.teamID)
+    );
+    const receivers =
+      teamEntry && teamEntry.depthChart && Array.isArray(teamEntry.depthChart.WR)
+        ? teamEntry.depthChart.WR.slice(0, 4)
+        : [];
+
+    receivers.forEach(function (player) {
+      if (!player || !player.playerID) return;
+      const playerID = String(player.playerID);
+      if (candidates.has(playerID)) return;
+      candidates.set(playerID, {
+        ...player,
+        playerID,
+        teamAbv: normalizeTeam(player.teamAbv || player.team || team)
+      });
+    });
+  });
+
+  return [...candidates.values()];
 }
 
 function extractPlayerGames(
@@ -1421,12 +1449,12 @@ async function buildWrSnapshot({
         once. Both are reused for every WR candidate.
       */
       const [
-        playerListResult,
+        depthChartResult,
         scheduleContext
       ] =
         await Promise.all([
           tank01Fetch(
-            "getNFLPlayerList",
+            "getNFLDepthCharts",
             {}
           ),
 
@@ -1438,41 +1466,12 @@ async function buildWrSnapshot({
           })
         ]);
 
-      const nflPlayers =
-        extractPlayerList(
-          playerListResult
-        );
-
       const wrCandidates =
-        nflPlayers
-          .filter(
-            function (
-              player
-            ) {
-              return (
-                normalizePosition(
-                  player.pos ||
-                  player.position
-                ) ===
-                  POSITION &&
-                player.playerID
-              );
-            }
-          )
-          .map(
-            function (
-              player
-            ) {
-              return {
-                ...player,
+        extractDepthChartWrCandidates(depthChartResult);
 
-                playerID:
-                  String(
-                    player.playerID
-                  )
-              };
-            }
-          );
+      if (!wrCandidates.length) {
+        throw new Error("Tank01 getNFLDepthCharts returned no WR candidates.");
+      }
 
       if (wrCandidates.length > MAX_PLAYER_REQUESTS_PER_RUN) {
         throw new Error(
@@ -1612,11 +1611,20 @@ async function buildWrSnapshot({
           ] +=
             1;
 
+          population.push({
+            ...record,
+            evidenceQualified: false,
+            evidenceLimitReason: reason
+          });
           continue;
         }
 
         population.push(
-          record
+          {
+            ...record,
+            evidenceQualified: true,
+            evidenceLimitReason: null
+          }
         );
       }
 
@@ -1735,7 +1743,10 @@ async function buildWrSnapshot({
 
           populationSummary: {
             nflPlayersReturned:
-              nflPlayers.length,
+              wrCandidates.length,
+
+            candidateSource:
+              "current-depth-chart-top-four",
 
             wrCandidatesDiscovered:
               wrCandidates.length,
@@ -1750,6 +1761,9 @@ async function buildWrSnapshot({
               records.length,
 
             eligibleWRPopulation:
+              population.filter(player => player.evidenceQualified).length,
+
+            weeklyWRCoveragePopulation:
               population.length,
 
             ineligible:
@@ -1776,7 +1790,7 @@ async function buildWrSnapshot({
 
           provenance: {
             playerIdentity:
-              "Tank01 getNFLPlayerList",
+              "Tank01 getNFLDepthCharts (first four WRs per team, deduplicated by playerID)",
 
             playerGames:
               "Tank01 getNFLGamesForPlayer",
@@ -1793,3 +1807,6 @@ async function buildWrSnapshot({
 
 exports.buildWrSnapshot =
   buildWrSnapshot;
+
+exports.extractDepthChartWrCandidates =
+  extractDepthChartWrCandidates;
