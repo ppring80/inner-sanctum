@@ -78,7 +78,10 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 const { connectLambda, getStore } = require("@netlify/blobs");
-const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const {
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
+} = require("./_tank01-refresh-guard.js");
 
 const { buildTeSnapshot } = require("./weekly-sage-te-snapshot.js");
 
@@ -218,7 +221,11 @@ exports.handler = async function (event) {
   // pattern as refresh-player-data.js / refresh-risers-fallers.js.
   connectLambda(event);
 
-  if (event.httpMethod && event.httpMethod !== "GET") {
+  if (
+    !isNetlifyScheduledInvocation(event) &&
+    event.httpMethod &&
+    event.httpMethod !== "GET"
+  ) {
     return jsonResponse(405, { error: "Method not allowed." });
   }
 

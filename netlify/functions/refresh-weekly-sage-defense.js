@@ -15,7 +15,10 @@
 // incomplete build leaves any known-good existing cache untouched.
 
 const { connectLambda, getStore } = require("@netlify/blobs");
-const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const {
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
+} = require("./_tank01-refresh-guard.js");
 const {
   buildWeeklyDefense
 } = require("./weekly-sage-defense-week.js");
@@ -139,7 +142,11 @@ function validateCompleteDefense(
 exports.handler = async function (event) {
   connectLambda(event);
 
-  if (event.httpMethod && event.httpMethod !== "GET") {
+  if (
+    !isNetlifyScheduledInvocation(event) &&
+    event.httpMethod &&
+    event.httpMethod !== "GET"
+  ) {
     return jsonResponse(405, {
       error: "Method not allowed."
     });

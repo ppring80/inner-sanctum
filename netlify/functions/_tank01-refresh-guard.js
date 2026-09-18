@@ -32,10 +32,34 @@ function requestToken(event) {
     : getHeader(event && event.headers, "x-tank01-refresh-token").trim();
 }
 
-// Scheduled/background invocations have no httpMethod. Every manual HTTP
-// refresh requires a separate secret; the Tank01 API key is never accepted.
+// Lambda-compatible scheduled invocations historically omitted httpMethod.
+// Current Netlify cron / "Run now" invocations may instead arrive as a POST
+// with the platform's documented next_run timestamp in the JSON body.
+function isNetlifyScheduledInvocation(event = {}) {
+  if (!event.httpMethod) return true;
+  if (String(event.httpMethod).toUpperCase() !== "POST") return false;
+
+  let body = event.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      typeof body.next_run === "string" &&
+      Number.isFinite(Date.parse(body.next_run))
+  );
+}
+
+// Every manual HTTP refresh requires a separate secret; the Tank01 API key is
+// never accepted. Netlify scheduler invocations remain tokenless by design.
 function requireTank01RefreshAuthorization(event = {}) {
-  if (!event.httpMethod) return null;
+  if (isNetlifyScheduledInvocation(event)) return null;
 
   const expected = process.env.TANK01_REFRESH_TOKEN;
   if (!expected) return response(503, "Tank01 manual refreshes are disabled.");
@@ -45,4 +69,7 @@ function requireTank01RefreshAuthorization(event = {}) {
   return null;
 }
 
-module.exports = { requireTank01RefreshAuthorization };
+module.exports = {
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
+};

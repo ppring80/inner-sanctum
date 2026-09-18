@@ -61,6 +61,10 @@ const {
 );
 
 const {
+  isNetlifyScheduledInvocation
+} = require("./_tank01-refresh-guard.js");
+
+const {
   buildKSnapshot
 } = require(
   "./weekly-sage-k-snapshot.js"
@@ -236,6 +240,7 @@ exports.handler =
     );
 
     if (
+      !isNetlifyScheduledInvocation(event) &&
       event.httpMethod &&
       event.httpMethod !==
         "GET"

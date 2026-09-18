@@ -80,7 +80,10 @@ const {
 } = require(
   "@netlify/blobs"
 );
-const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const {
+  isNetlifyScheduledInvocation,
+  requireTank01RefreshAuthorization
+} = require("./_tank01-refresh-guard.js");
 
 const {
   buildRbSnapshot
@@ -341,6 +344,7 @@ exports.handler =
     );
 
     if (
+      !isNetlifyScheduledInvocation(event) &&
       event.httpMethod &&
       event.httpMethod !==
         "GET"
