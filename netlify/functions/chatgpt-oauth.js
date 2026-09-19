@@ -855,10 +855,11 @@ function renderAuthorizationPage(
     <h1>Authorize Inner Sanctum</h1>
 
     <p class="muted">
-      Choose the linked fantasy league ChatGPT may read.
-      Inner Sanctum will share the sanitized league snapshot only;
-      provider passwords, cookies, and provider credentials are not
-      sent to ChatGPT.
+      Use SAGE immediately for weekly rankings, player comparisons,
+      profiles, and draft outlooks. If you already linked a fantasy
+      league, you may also select it for personalized lineup advice.
+      Provider passwords, cookies, and credentials are never sent to
+      ChatGPT.
     </p>
 
     <div id="status" class="ok">
@@ -1059,11 +1060,15 @@ function renderAuthorizationPage(
 
     if (!entries.length) {
       status.textContent =
-        "No ChatGPT-ready league is linked in this browser.";
+        "SAGE is ready. No league is required for rankings, comparisons, profiles, or draft outlooks. You can connect a league later for personalized lineup advice.";
 
-      showError(
-        "Return to Inner Sanctum, connect a league, and click “Use with ChatGPT” first."
-      );
+      selected = {
+        provider: null,
+        link: null
+      };
+
+      approveButton.disabled =
+        false;
 
       return;
     }
@@ -1192,11 +1197,15 @@ function renderAuthorizationPage(
       !leagues.children.length
     ) {
       status.textContent =
-        "Your saved ChatGPT league link is no longer valid.";
+        "SAGE is ready for general fantasy advice. Your saved league link could not be loaded, but you can reconnect it later for personalized lineup advice.";
 
-      showError(
-        "Return to Inner Sanctum and create the ChatGPT link again."
-      );
+      selected = {
+        provider: null,
+        link: null
+      };
+
+      approveButton.disabled =
+        false;
     }
   }
 
@@ -1236,9 +1245,10 @@ function renderAuthorizationPage(
                       transactionId,
 
                     linkToken:
-                      selected
-                        .link
-                        .linkToken,
+                      selected &&
+                      selected.link
+                        ? selected.link.linkToken
+                        : null,
 
                     decision:
                       "approve"
@@ -1846,46 +1856,51 @@ async function handleApproval(
       body.linkToken
     );
 
-  if (
-    !/^[A-Za-z0-9_-]{40,128}$/
-      .test(
+  let linkedSnapshotKey =
+    null;
+
+  if (linkToken) {
+    if (
+      !/^[A-Za-z0-9_-]{40,128}$/
+        .test(
+          linkToken
+        )
+    ) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "invalid_request",
+
+          error_description:
+            "The selected Inner Sanctum league link is invalid."
+        }
+      );
+    }
+
+    linkedSnapshotKey =
+      snapshotBlobKey(
         linkToken
-      )
-  ) {
-    return jsonResponse(
-      400,
-      {
-        error:
-          "invalid_request",
+      );
 
-        error_description:
-          "A valid Inner Sanctum league link is required."
-      }
-    );
-  }
+    const snapshot =
+      await getJson(
+        snapshotStore,
+        linkedSnapshotKey
+      );
 
-  const linkedSnapshotKey =
-    snapshotBlobKey(
-      linkToken
-    );
+    if (!snapshot) {
+      return jsonResponse(
+        400,
+        {
+          error:
+            "invalid_request",
 
-  const snapshot =
-    await getJson(
-      snapshotStore,
-      linkedSnapshotKey
-    );
-
-  if (!snapshot) {
-    return jsonResponse(
-      400,
-      {
-        error:
-          "invalid_request",
-
-        error_description:
-          "The selected Inner Sanctum league link no longer exists."
-      }
-    );
+          error_description:
+            "The selected Inner Sanctum league link no longer exists."
+        }
+      );
+    }
   }
 
   const code =
@@ -1982,14 +1997,16 @@ async function issueTokenPair(
   snapshotStore,
   values
 ) {
-  const snapshot =
-    await getJson(
-      snapshotStore,
-      values.snapshotKey
-    );
+  if (values.snapshotKey) {
+    const snapshot =
+      await getJson(
+        snapshotStore,
+        values.snapshotKey
+      );
 
-  if (!snapshot) {
-    return null;
+    if (!snapshot) {
+      return null;
+    }
   }
 
   const accessToken =
@@ -2015,7 +2032,8 @@ async function issueTokenPair(
       values.scopes,
 
     snapshotKey:
-      values.snapshotKey,
+      values.snapshotKey ||
+      null,
 
     issuedAt,
 
@@ -2038,7 +2056,8 @@ async function issueTokenPair(
       values.scopes,
 
     snapshotKey:
-      values.snapshotKey,
+      values.snapshotKey ||
+      null,
 
     issuedAt,
 
