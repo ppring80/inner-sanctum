@@ -99,15 +99,28 @@ const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi
 // future selector option needs them.
 const SCORING_TO_ADPTYPE = {
   "ppr": "PPR",
+  "half": "halfPPR",
   "half-ppr": "halfPPR",
   "standard": "standard"
 };
+
+function normalizeScoring(value) {
+  const raw = String(value || "ppr").trim().toLowerCase();
+  if (["half", "half-ppr", "halfppr", "0.5ppr"].includes(raw)) {
+    return "half";
+  }
+  if (raw === "standard" || raw === "std") {
+    return "standard";
+  }
+  return "ppr";
+}
 
 async function fetchTank01Adp({ scoring }) {
   const apiKey = process.env.TANK01_API_KEY;
   if (!apiKey) throw new Error("TANK01_API_KEY is not configured");
 
-  const adpType = SCORING_TO_ADPTYPE[scoring] || "PPR";
+  const normalizedScoring = normalizeScoring(scoring);
+  const adpType = SCORING_TO_ADPTYPE[normalizedScoring] || "PPR";
   const url = `https://${TANK01_HOST}/getNFLADP?adpType=${adpType}`;
 
   const response = await fetch(url, {
@@ -137,6 +150,10 @@ async function fetchTank01Adp({ scoring }) {
 const TEAM_ABV_NORMALIZE = {
   WSH: "WAS"
 };
+
+exports.fetchTank01Adp = fetchTank01Adp;
+exports.normalizeScoring = normalizeScoring;
+exports.translateTank01Response = translateTank01Response;
 
 function normalizeTeamAbv(abv) {
   if (!abv) return abv;
