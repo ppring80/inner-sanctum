@@ -14,17 +14,20 @@ const WEEKLY_FACTS = Object.freeze({
     joshjacobs: Object.freeze({
       status: "COMMISSIONER_EXEMPT_NO_PLAY", eligible: false,
       name: "Josh Jacobs", team: "GB",
+      backfieldRole: "lead", vacatedOpportunity: 0.75,
       source: "NFL Commissioner Exempt List",
       reason: "Not permitted to participate until removed from the list."
     }),
     dylansampson: Object.freeze({
       status: "IR", eligible: false, source: "NFL roster transaction",
       name: "Dylan Sampson", team: "CLE",
+      backfieldRole: "reserve", vacatedOpportunity: 0.10,
       reason: "Placed on injured reserve."
     }),
     jordanmason: Object.freeze({
       status: "OUT", eligible: false, source: "Week 2 injury status",
       name: "Jordan Mason", team: "MIN",
+      backfieldRole: "committee", vacatedOpportunity: 0.45,
       reason: "Unavailable for Week 2; backfield opportunity must be reassigned."
     })
   })
@@ -82,19 +85,38 @@ function applyBackfieldOpportunityAdjustments({ leaderboard, unavailablePlayers 
 
   const adjustments = [];
   unavailableTeams.forEach((missing, team) => {
+    // Only redistribute documented workload. An unavailable reserve should not
+    // create the same ranking swing as a missing lead or committee back.
+    const vacatedOpportunity = Math.min(1, missing.reduce((total, player) => {
+      const value = Number(player.availability && player.availability.vacatedOpportunity);
+      return total + (Number.isFinite(value) ? Math.max(0, value) : 0);
+    }, 0));
+    if (vacatedOpportunity <= 0) return;
+
     const active = leaderboard
       .filter(player => String(player.team || "").toUpperCase() === team)
       .sort((a, b) => Number(b.sage.rankingScore) - Number(a.sage.rankingScore));
-    active.forEach((player, index) => {
-      const boost = index === 0 ? 10 : 4;
+
+    // The primary successor receives most of the vacated work. A second back
+    // receives a smaller share only when a lead-sized role is missing. This
+    // prevents deep reserves from all receiving artificial ranking boosts.
+    const boosts = [
+      Math.round(vacatedOpportunity * 8),
+      vacatedOpportunity >= 0.5 ? Math.round(vacatedOpportunity * 3) : 0
+    ];
+    active.slice(0, 2).forEach((player, index) => {
+      const boost = boosts[index];
+      if (boost <= 0) return;
       player.sage.rankingScore = Math.min(100, Number(player.sage.rankingScore || 0) + boost);
       player.sage.backfieldOpportunity = {
-        applied: true, boost,
+        applied: true, boost, vacatedOpportunity,
         unavailableTeammates: missing.map(item => ({
-          name: item.name, status: item.availability && item.availability.status
+          name: item.name,
+          status: item.availability && item.availability.status,
+          backfieldRole: item.availability && item.availability.backfieldRole
         }))
       };
-      adjustments.push({ player: player.name, team, boost });
+      adjustments.push({ player: player.name, team, boost, vacatedOpportunity });
     });
   });
   return adjustments;
