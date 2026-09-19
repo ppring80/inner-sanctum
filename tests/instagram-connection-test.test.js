@@ -62,6 +62,7 @@ function jsonResponse(ok, status, payload) {
     assert.strictEqual(successBody.connection, "verified");
     assert.strictEqual(successBody.account.id, accountId);
     assert.strictEqual(successBody.account.username, "theinnersanctum.ff");
+    assert.strictEqual(successBody.configuredAccountIdMatches, true);
     assert.strictEqual(successBody.publishingAttempted, false);
     assert.deepStrictEqual(successBody.capabilitiesTested, ["profile_read"]);
     assert.strictEqual(result.body.includes(secret), false);
@@ -102,11 +103,13 @@ function jsonResponse(ok, status, payload) {
       { httpMethod: "GET" },
       { fetch: mismatchFetch }
     );
-    assert.strictEqual(result.statusCode, 502);
-    assert.strictEqual(
-      JSON.parse(result.body).error,
-      "instagram_account_id_mismatch"
-    );
+    assert.strictEqual(result.statusCode, 200);
+    const mismatchBody = JSON.parse(result.body);
+    assert.strictEqual(mismatchBody.ok, true);
+    assert.strictEqual(mismatchBody.connection, "verified");
+    assert.strictEqual(mismatchBody.configuredAccountIdMatches, false);
+    assert.strictEqual(mismatchBody.account.id, "different-account-id");
+    assert.strictEqual(mismatchBody.account.username, "theinnersanctum.ff");
 
     const direct = await lookupInstagramAccount(
       successfulFetch,
