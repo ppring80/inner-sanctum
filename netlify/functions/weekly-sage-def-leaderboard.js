@@ -54,6 +54,15 @@ const DEF_SNAPSHOT_STORE =
 const SCHEDULE_STORE =
   "weekly-sage-schedule";
 
+const ADP_SNAPSHOT_STORE =
+  "adp-snapshot";
+
+const EARLY_SEASON_BASELINE_WEIGHT = Object.freeze({
+  2: 0.90,
+  3: 0.65,
+  4: 0.40
+});
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -114,6 +123,60 @@ function normalizeTeam(value) {
   };
 
   return aliases[raw] || raw;
+}
+
+async function readAdpBaseline(scoring) {
+  const raw = String(scoring || "ppr").trim().toLowerCase();
+  const normalized = ["half-ppr", "half_ppr", "0.5-ppr", "0.5_ppr", "hppr"]
+    .includes(raw) ? "half" : (raw === "standard" || raw === "non-ppr" ? "standard" : "ppr");
+  try {
+    const cached = await getStore({ name: ADP_SNAPSHOT_STORE })
+      .get(`scoring:${normalized}`, { type: "json" });
+    return cached && cached.evidenceType === "tank01-adp-snapshot" &&
+      Array.isArray(cached.players) ? cached : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function applyEarlySeasonBaseline({ population, adpSnapshot, week }) {
+  const weight = EARLY_SEASON_BASELINE_WEIGHT[Number(week)] || 0;
+  if (!weight || !adpSnapshot || !Array.isArray(adpSnapshot.players)) {
+    return { applied: false, matched: 0, baselineWeight: 0 };
+  }
+  const eligibleTeams = new Set(population.map(row => normalizeTeam(row.team)).filter(Boolean));
+  const baselinePlayers = adpSnapshot.players
+    .filter(player => ["DEF", "DST"].includes(String(player && player.position || "").toUpperCase()) &&
+      Number.isFinite(Number(player && player.adp)) && eligibleTeams.has(normalizeTeam(player.team)))
+    .sort((a, b) => Number(a.adp) - Number(b.adp));
+  const byTeam = new Map();
+  baselinePlayers.forEach((player, index) => byTeam.set(normalizeTeam(player.team), {
+    positionRank: index + 1,
+    adp: Number(player.adp)
+  }));
+  const current = population.slice().sort((a, b) => Number(b.sageScore || 0) - Number(a.sageScore || 0));
+  let matched = 0;
+  current.forEach((row, index) => {
+    const evidenceRank = index + 1;
+    const baseline = byTeam.get(normalizeTeam(row.team));
+    if (!baseline) {
+      row.rankingScore = 100 - evidenceRank;
+      row.baseline = { applied: false, reason: "No matching DEF baseline." };
+      return;
+    }
+    matched += 1;
+    const expectedRank = baseline.positionRank * weight + evidenceRank * (1 - weight);
+    row.rankingScore = 100 - expectedRank;
+    row.baseline = {
+      applied: true,
+      weight,
+      adp: baseline.adp,
+      positionRank: baseline.positionRank,
+      currentEvidenceRank: evidenceRank,
+      expectedRank: Math.round(expectedRank * 1000) / 1000
+    };
+  });
+  return { applied: matched > 0, matched, baselineWeight: weight };
 }
 
 async function readDefSnapshot({
@@ -429,7 +492,8 @@ exports.handler =
     try {
       const [
         snapshot,
-        schedule
+        schedule,
+        adpSnapshot
       ] =
         await Promise.all([
           readDefSnapshot({
@@ -442,7 +506,9 @@ exports.handler =
             season,
             targetWeek,
             seasonType
-          })
+          }),
+
+          readAdpBaseline(query.scoring)
         ]);
 
       const opponentMap =
@@ -576,10 +642,16 @@ exports.handler =
           };
         });
 
+      const baselineApplication = applyEarlySeasonBaseline({
+        population: scored,
+        adpSnapshot,
+        week: targetWeek
+      });
+
       scored.sort(function (a, b) {
         return (
-          (b.sageScore || 0) -
-          (a.sageScore || 0)
+          (b.rankingScore ?? b.sageScore ?? 0) -
+          (a.rankingScore ?? a.sageScore ?? 0)
         );
       });
 
@@ -624,6 +696,9 @@ exports.handler =
               confidenceLabel:
                 record.sageConfidenceLabel
             },
+
+            baseline:
+              record.baseline || null,
 
             recommendation:
               recommendation,
@@ -677,7 +752,10 @@ exports.handler =
               "Scoring prevention 45% / Defensive disruption 30% / Opponent environment 25%. DEF-specific -- does not use QB/RB/WR/TE or K methodology, and does not use fumbles, defensive/special-teams touchdowns, safeties, blocked kicks, or return touchdowns.",
 
             ranking:
-              "Descending Weekly SAGE DEF score.",
+              "Descending Weekly SAGE DEF ranking score; Weeks 2-4 blend a fading DEF baseline while preserving the current-week opponent component.",
+
+            earlySeasonBaseline:
+              baselineApplication,
 
             recommendationThresholds: {
               starterCount:
@@ -767,3 +845,5 @@ exports.handler =
       );
     }
   };
+
+exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;

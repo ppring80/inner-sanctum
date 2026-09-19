@@ -42,6 +42,18 @@ const K_SNAPSHOT_STORE =
 const SCHEDULE_STORE =
   "weekly-sage-schedule";
 
+const ADP_SNAPSHOT_STORE =
+  "adp-snapshot";
+
+// A single kicking line is far too volatile to erase the established
+// expectation. The baseline deliberately fades as current-season games
+// accumulate, matching the early-season treatment used at QB/RB/WR/TE.
+const EARLY_SEASON_BASELINE_WEIGHT = Object.freeze({
+  2: 0.90,
+  3: 0.65,
+  4: 0.40
+});
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -93,6 +105,73 @@ function normalizeTeam(value) {
   };
 
   return aliases[raw] || raw;
+}
+
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+async function readAdpBaseline(scoring) {
+  const raw = String(scoring || "ppr").trim().toLowerCase();
+  const normalized = ["half-ppr", "half_ppr", "0.5-ppr", "0.5_ppr", "hppr"]
+    .includes(raw) ? "half" : (raw === "standard" || raw === "non-ppr" ? "standard" : "ppr");
+  try {
+    const cached = await getStore({ name: ADP_SNAPSHOT_STORE })
+      .get(`scoring:${normalized}`, { type: "json" });
+    return cached && cached.evidenceType === "tank01-adp-snapshot" &&
+      Array.isArray(cached.players) ? cached : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function applyEarlySeasonBaseline({ population, adpSnapshot, week }) {
+  const weight = EARLY_SEASON_BASELINE_WEIGHT[Number(week)] || 0;
+  if (!weight || !adpSnapshot || !Array.isArray(adpSnapshot.players)) {
+    return { applied: false, matched: 0, baselineWeight: 0 };
+  }
+
+  const eligible = new Set(population.map(row => normalizeName(row.name)).filter(Boolean));
+  const baselinePlayers = adpSnapshot.players
+    .filter(player => String(player && player.position || "").toUpperCase() === "K" &&
+      Number.isFinite(Number(player && player.adp)) &&
+      eligible.has(normalizeName(player.name || player.longName || player.playerName)))
+    .sort((a, b) => Number(a.adp) - Number(b.adp));
+  const byId = new Map();
+  const byName = new Map();
+  baselinePlayers.forEach((player, index) => {
+    const baseline = { positionRank: index + 1, adp: Number(player.adp) };
+    const id = String(player.playerID ?? player.playerId ?? player.id ?? "").trim();
+    if (id) byId.set(id, baseline);
+    const name = normalizeName(player.name || player.longName || player.playerName);
+    if (name) byName.set(name, baseline);
+  });
+
+  const current = population.slice().sort((a, b) => Number(b.sageScore || 0) - Number(a.sageScore || 0));
+  let matched = 0;
+  current.forEach((row, index) => {
+    const evidenceRank = index + 1;
+    const baseline = byId.get(String(row.playerID || "")) || byName.get(normalizeName(row.name));
+    if (!baseline) {
+      row.rankingScore = 100 - evidenceRank;
+      row.baseline = { applied: false, reason: "No matching K baseline." };
+      return;
+    }
+    matched += 1;
+    const expectedRank = baseline.positionRank * weight + evidenceRank * (1 - weight);
+    row.rankingScore = 100 - expectedRank;
+    row.baseline = {
+      applied: true,
+      weight,
+      adp: baseline.adp,
+      positionRank: baseline.positionRank,
+      currentEvidenceRank: evidenceRank,
+      expectedRank: Math.round(expectedRank * 1000) / 1000
+    };
+  });
+  return { applied: matched > 0, matched, baselineWeight: weight };
 }
 
 async function readKSnapshot({
@@ -405,7 +484,8 @@ exports.handler =
     try {
       const [
         snapshot,
-        schedule
+        schedule,
+        adpSnapshot
       ] =
         await Promise.all([
           readKSnapshot({
@@ -418,7 +498,9 @@ exports.handler =
             season,
             targetWeek,
             seasonType
-          })
+          }),
+
+          readAdpBaseline(query.scoring)
         ]);
 
       const opponentMap =
@@ -426,13 +508,19 @@ exports.handler =
           schedule
         );
 
+      const population = snapshot.population.slice();
+      const baselineApplication = applyEarlySeasonBaseline({
+        population,
+        adpSnapshot,
+        week: targetWeek
+      });
+
       const sorted =
-        snapshot.population
-          .slice()
+        population
           .sort(function (a, b) {
             return (
-              (b.sageScore || 0) -
-              (a.sageScore || 0)
+              (b.rankingScore ?? b.sageScore ?? 0) -
+              (a.rankingScore ?? a.sageScore ?? 0)
             );
           });
 
@@ -484,6 +572,9 @@ exports.handler =
               confidenceLabel:
                 record.sageConfidenceLabel
             },
+
+            baseline:
+              record.baseline || null,
 
             recommendation:
               recommendation,
@@ -543,7 +634,10 @@ exports.handler =
               "Opportunity 40% / Team scoring environment 25% / Reliability 20% / Range 15%. K-specific -- does not use QB/RB/WR/TE role/production/matchup methodology.",
 
             ranking:
-              "Descending Weekly SAGE K score.",
+              "Descending Weekly SAGE K ranking score; Weeks 2-4 blend a fading scoring-specific ADP baseline so one early game cannot erase established expectation.",
+
+            earlySeasonBaseline:
+              baselineApplication,
 
             recommendationThresholds: {
               starterCount:
@@ -633,3 +727,5 @@ exports.handler =
       );
     }
   };
+
+exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
