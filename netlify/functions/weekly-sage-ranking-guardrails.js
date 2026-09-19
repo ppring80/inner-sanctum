@@ -11,7 +11,15 @@ const HARD_UNAVAILABLE = new Set([
   "IR",
   "INACTIVE",
   "INJURED RESERVE",
-  "RESERVE/INJURED"
+  "RESERVE/INJURED",
+  "SUSPENDED",
+  "COMMISSIONER EXEMPT",
+  "COMMISSIONER'S EXEMPT LIST",
+  "COMMISSIONER_EXEMPT_NO_PLAY",
+  "PUP",
+  "RESERVE/PUP",
+  "NFI",
+  "RESERVE/NFI"
 ]);
 
 const POLICY = Object.freeze({
@@ -83,6 +91,7 @@ function benchmarkMaps(benchmarks, position) {
       return {
         source: String(item.source || "unknown"),
         scoring: item.scoring || null,
+        completeThroughRank: numericRank(item.completeThroughRank),
         ranks
       };
     });
@@ -115,6 +124,13 @@ function evaluatePosition({
     const sourceRanks = sources
       .map(source => ({ source: source.source, rank: source.ranks.get(key) }))
       .filter(item => item.rank !== undefined);
+    const omittedByCompleteSources = sources
+      .filter(source =>
+        source.completeThroughRank !== null &&
+        source.completeThroughRank >= sageRank &&
+        !source.ranks.has(key)
+      )
+      .map(source => source.source);
     const consensusRank = median(sourceRanks.map(item => item.rank));
     const tolerance = toleranceForRank(sageRank);
     const difference = consensusRank === null ? null : sageRank - consensusRank;
@@ -149,6 +165,16 @@ function evaluatePosition({
       );
     }
 
+    if (
+      sourceRanks.length < POLICY.minimumBenchmarkSources &&
+      omittedByCompleteSources.length >= POLICY.minimumBenchmarkSources
+    ) {
+      severity = "critical";
+      reasons.push(
+        `Player is omitted by ${omittedByCompleteSources.length} complete benchmark lists; availability or identity review is required.`
+      );
+    }
+
     if (severity !== "pass") {
       reviews.push({
         position: normalizedPosition,
@@ -159,6 +185,7 @@ function evaluatePosition({
         tolerance,
         availability: availability || null,
         sourceRanks,
+        omittedByCompleteSources,
         severity,
         reasons
       });
