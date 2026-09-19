@@ -253,6 +253,10 @@ const LineupContextSchema = z.object({
 
 const LineupRecommendationOutputSchema = z.object({
   source: z.string(),
+  inputSource: z.enum([
+    "linked_league",
+    "pasted_roster"
+  ]),
   liveFantasyDataConnected: z.boolean(),
   lineupRequirementsAvailable: z.boolean(),
   readOnly: z.boolean(),
@@ -2959,6 +2963,39 @@ function extractLineupSlots(snapshot) {
   );
 }
 
+// Builds lineup requirements from the slot labels that accompany a pasted
+// roster (the common Yahoo/ESPN/CBS copy format: QB, RB, W/R/T, BN, etc.).
+// Bench/reserve labels are intentionally ignored by the same helper used for
+// provider snapshots. A repeated starter label becomes a repeated slot count.
+function buildLineupSlotsFromPastedRoster(roster) {
+  const counts = new Map();
+
+  roster.forEach((player) => {
+    const label = cleanString(
+      player && player.lineupSlot
+    );
+
+    if (
+      !label ||
+      isNonStartingSlotLabel(label)
+    ) {
+      return;
+    }
+
+    counts.set(
+      label,
+      (counts.get(label) || 0) + 1
+    );
+  });
+
+  return Array.from(
+    counts.entries()
+  ).map(([position, count]) => ({
+    position,
+    count
+  }));
+}
+
 // Expands {slotLabel, eligiblePositions, count} entries into one row
 // per individual starting spot (a "RB" slot with count 2 becomes two
 // separate assignable spots), and orders spots by eligibility-set
@@ -3559,6 +3596,7 @@ function assignLineupSlotsOptimally(
 
 function lineupRecommendationToText({
   context,
+  inputSource,
   lineupRequirementsAvailable,
   starters,
   bench,
@@ -3670,9 +3708,9 @@ function lineupRecommendationToText({
   }
 
   lines.push(
-    "Source: Inner Sanctum Weekly SAGE, applied to your linked league's " +
-    "actual roster and captured lineup requirements. This is a read-only " +
-    "recommendation; no lineup or roster change was made with your provider."
+    inputSource === "pasted_roster"
+      ? "Source: Inner Sanctum Weekly SAGE, applied to the roster and lineup slots supplied in this conversation. The pasted roster was used instead of any linked league. This is a read-only recommendation."
+      : "Source: Inner Sanctum Weekly SAGE, applied to your linked league's actual roster and captured lineup requirements. This is a read-only recommendation; no lineup or roster change was made with your provider."
   );
 
   return lines.join("\n\n");
@@ -5123,12 +5161,13 @@ function buildServer(
   );
 
   // =========================================================
-  // TOOL #5 — GET LINEUP RECOMMENDATION (OAUTH PROTECTED)
+  // TOOL #5 — GET LINEUP RECOMMENDATION
   // =========================================================
   //
-  // Uses only the OAuth-authorized authContext.snapshot -- the
-  // actual linked roster (snapshot.roster) and the actual captured
-  // lineup requirements (snapshot.settings). Fetches Weekly SAGE
+  // Uses an explicitly supplied pasted roster when present; otherwise uses
+  // the OAuth-authorized authContext.snapshot. A pasted roster always wins so
+  // the tool can never silently substitute a different linked league. Fetches
+  // Weekly SAGE
   // exactly once and applies its existing ordering/signals to fill
   // the linked league's own captured starting slots; it never
   // recalculates a SAGE score or invents a generic/standard lineup
@@ -5143,10 +5182,13 @@ function buildServer(
 
       description:
         "Returns a read-only start/sit lineup recommendation -- who should " +
-        "start, who to bench, and the single best legal lineup -- for the " +
-        "user's OAuth-authorized linked Inner Sanctum league, using the actual " +
-        "linked roster and the league's own actual captured lineup requirements " +
-        "-- never a generic or assumed standard lineup. Use this for phrasings " +
+        "start, who to bench, and the single best legal lineup. If the user " +
+        "pastes a roster from Yahoo, ESPN, CBS, Sleeper, or another service, " +
+        "pass it in roster and SAGE will analyze that pasted roster even when " +
+        "a different league is linked. Otherwise, it uses the user's OAuth-" +
+        "authorized linked Inner Sanctum league and its captured lineup " +
+        "requirements. Never silently substitute the linked roster for a " +
+        "roster supplied in the conversation. Use this for phrasings " +
         "like 'who should I start', 'start or sit my [position]', 'set my " +
         "lineup', 'what's my best lineup this week', 'who should replace my " +
         "injured/bye-week [player]', or 'who's my best replacement from my " +
@@ -5158,9 +5200,10 @@ function buildServer(
         "league, so it cannot answer 'who should I pick up' with a suggested " +
         "name -- for a question about a specific named free agent, use " +
         "get_player_profile instead. Applies the existing production Weekly " +
-        "SAGE ordering/signals to the linked roster; it does not calculate a " +
-        "new SAGE score or use outside fantasy analysis. Requires OAuth scope " +
-        "inner_sanctum.league.read. This tool never modifies a lineup, roster, " +
+        "SAGE ordering/signals to the supplied or linked roster; it does not calculate a " +
+        "new SAGE score or use outside fantasy analysis. Linked-league access " +
+        "requires OAuth scope inner_sanctum.league.read; pasted-roster analysis " +
+        "does not require a provider API connection. This tool never modifies a lineup, roster, " +
         "league, or provider account -- it is read-only and only returns a " +
         "recommendation.",
 
@@ -5184,6 +5227,51 @@ function buildServer(
               .optional()
               .describe(
                 "NFL regular-season week. Defaults to the current Inner Sanctum week."
+              ),
+
+          roster:
+            z.array(
+              z.object({
+                name: z.string().min(1),
+                position: z.string().min(1),
+                team: z.string().optional(),
+                lineupSlot: z.string().optional().describe(
+                  "Copied roster slot such as QB, RB, WR, TE, W/R/T, FLEX, K, DEF, or BN. Include this for every pasted player so SAGE can reconstruct the lineup requirements."
+                ),
+                rosterStatus: z.string().optional().describe(
+                  "Current roster designation if shown, such as Q, D, O, IR, or active."
+                )
+              })
+            )
+              .min(1)
+              .max(40)
+              .optional()
+              .describe(
+                "A roster pasted or typed by the user. When present, this roster always takes precedence over any linked league."
+              ),
+
+          scoringFormat:
+            z.string()
+              .optional()
+              .describe(
+                "Required with a pasted roster: ppr, half-ppr, or standard."
+              ),
+
+          teamCount:
+            z.number()
+              .int()
+              .min(2)
+              .max(32)
+              .optional()
+              .describe(
+                "Required with a pasted roster: number of teams in that league. Ask the user if it is not known."
+              ),
+
+          provider:
+            z.string()
+              .optional()
+              .describe(
+                "Optional source label for a pasted roster, such as Yahoo, ESPN, CBS, or Sleeper."
               )
         }),
 
@@ -5200,17 +5288,62 @@ function buildServer(
 
     async ({
       season,
-      week
+      week,
+      roster,
+      scoringFormat,
+      teamCount,
+      provider
     }) => {
       const resolvedWeek =
         week ||
         getCurrentNFLWeek();
 
-      const snapshot =
+      const linkedSnapshot =
         authContext &&
         authContext.snapshot
           ? authContext.snapshot
           : null;
+
+      const usingPastedRoster =
+        Array.isArray(roster) &&
+        roster.length > 0;
+
+      const snapshot = usingPastedRoster
+        ? {
+            provider:
+              cleanString(provider) ||
+              "Pasted roster",
+            league: {
+              id: null,
+              name: "Pasted lineup",
+              season:
+                season || DEFAULT_SEASON,
+              teamCount:
+                Number.isFinite(Number(teamCount))
+                  ? Number(teamCount)
+                  : null
+            },
+            team: {
+              id: null,
+              name: "Submitted roster"
+            },
+            scoringFormat:
+              scoringFormat || null,
+            roster: roster.map((player) => ({
+              name: player.name,
+              position: player.position,
+              team: player.team,
+              status: player.rosterStatus
+            })),
+            settings: {
+              lineupSlots:
+                buildLineupSlotsFromPastedRoster(
+                  roster
+                )
+            },
+            syncedAt: null
+          }
+        : linkedSnapshot;
 
       if (!snapshot) {
         return {
@@ -5224,6 +5357,7 @@ function buildServer(
           ],
           structuredContent: {
             source: "Inner Sanctum",
+            inputSource: "linked_league",
             liveFantasyDataConnected: false,
             lineupRequirementsAvailable: false,
             readOnly: true,
@@ -5343,17 +5477,24 @@ function buildServer(
       const warnings = [];
 
       if (!resolvedTeamCount) {
+        const teamCountMessage = usingPastedRoster
+          ? "Inner Sanctum needs the league's team count before it can analyze this pasted roster. Tell SAGE how many teams are in the league and try again."
+          : "Inner Sanctum could not determine your linked league's team count from its captured settings, so a lineup recommendation is not available. This was not defaulted to a 12-team league.";
+
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text:
-                "Inner Sanctum could not determine your linked league's team count from its captured settings, so a lineup recommendation is not available. This was not defaulted to a 12-team league."
+              text: teamCountMessage
             }
           ],
           structuredContent: {
             source: "Inner Sanctum",
+            inputSource:
+              usingPastedRoster
+                ? "pasted_roster"
+                : "linked_league",
             liveFantasyDataConnected: false,
             lineupRequirementsAvailable: false,
             readOnly: true,
@@ -5363,7 +5504,9 @@ function buildServer(
             unmatchedRosterPlayers: [],
             unfilledSlots: [],
             warnings: [
-              "The linked league's captured team count is missing, non-numeric, or invalid, so Inner Sanctum did not assume a 12-team league."
+              usingPastedRoster
+                ? "The pasted roster did not include a valid league team count, so Inner Sanctum did not assume a 12-team league."
+                : "The linked league's captured team count is missing, non-numeric, or invalid, so Inner Sanctum did not assume a 12-team league."
             ],
             error: "league_team_count_unavailable"
           }
@@ -5371,17 +5514,24 @@ function buildServer(
       }
 
       if (!resolvedScoring) {
+        const scoringMessage = usingPastedRoster
+          ? "Inner Sanctum needs the league's scoring format before it can analyze this pasted roster. Tell SAGE whether the league is PPR, half-PPR, or standard and try again."
+          : "Inner Sanctum could not determine your linked league's scoring format from its captured settings, so a lineup recommendation is not available. This was not defaulted to PPR scoring.";
+
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text:
-                "Inner Sanctum could not determine your linked league's scoring format from its captured settings, so a lineup recommendation is not available. This was not defaulted to PPR scoring."
+              text: scoringMessage
             }
           ],
           structuredContent: {
             source: "Inner Sanctum",
+            inputSource:
+              usingPastedRoster
+                ? "pasted_roster"
+                : "linked_league",
             liveFantasyDataConnected: false,
             lineupRequirementsAvailable: false,
             readOnly: true,
@@ -5391,7 +5541,9 @@ function buildServer(
             unmatchedRosterPlayers: [],
             unfilledSlots: [],
             warnings: [
-              "The linked league's captured scoring format is missing or not recognized, so Inner Sanctum did not assume PPR scoring."
+              usingPastedRoster
+                ? "The pasted roster did not include a recognized scoring format, so Inner Sanctum did not assume PPR scoring."
+                : "The linked league's captured scoring format is missing or not recognized, so Inner Sanctum did not assume PPR scoring."
             ],
             error: "unsupported_scoring_format"
           }
@@ -5405,7 +5557,9 @@ function buildServer(
 
       if (!rosterEntries.length) {
         warnings.push(
-          "The linked league's captured roster is empty or could not be read."
+          usingPastedRoster
+            ? "The pasted roster is empty or could not be read."
+            : "The linked league's captured roster is empty or could not be read."
         );
       }
 
@@ -5420,8 +5574,9 @@ function buildServer(
 
       if (!lineupRequirementsAvailable) {
         warnings.push(
-          "Lineup requirements could not be determined from the linked " +
-          "league's captured settings, so no starters were assigned."
+          usingPastedRoster
+            ? "Lineup requirements could not be reconstructed from the pasted roster-slot labels, so no starters were assigned."
+            : "Lineup requirements could not be determined from the linked league's captured settings, so no starters were assigned."
         );
       }
 
@@ -5593,8 +5748,14 @@ function buildServer(
         }
 
         const structuredContent = {
-          source: "Inner Sanctum",
-          liveFantasyDataConnected: true,
+          source: usingPastedRoster
+            ? "Inner Sanctum Weekly SAGE (pasted roster)"
+            : "Inner Sanctum",
+          inputSource: usingPastedRoster
+            ? "pasted_roster"
+            : "linked_league",
+          liveFantasyDataConnected:
+            !usingPastedRoster,
           lineupRequirementsAvailable,
           readOnly: true,
           context,
@@ -5612,6 +5773,10 @@ function buildServer(
               text:
                 lineupRecommendationToText({
                   context,
+                  inputSource:
+                    usingPastedRoster
+                      ? "pasted_roster"
+                      : "linked_league",
                   lineupRequirementsAvailable,
                   starters,
                   bench,
@@ -5631,6 +5796,9 @@ function buildServer(
 
         const structuredContent = {
           source: "Inner Sanctum",
+          inputSource: usingPastedRoster
+            ? "pasted_roster"
+            : "linked_league",
           liveFantasyDataConnected: false,
           lineupRequirementsAvailable,
           readOnly: true,
