@@ -17,6 +17,27 @@ assert.strictEqual(toleranceForRank(60), 12);
 assert.strictEqual(toleranceForRank(61), null);
 assert.strictEqual(POLICY.scoringImpact, "none");
 
+const commissionerExempt = evaluatePosition({
+  position: "RB",
+  sageRankings: [{ name: "Unavailable Back", rank: 20 }],
+  availabilityByName: { unavailableback: "COMMISSIONER_EXEMPT_NO_PLAY" },
+  benchmarks: [
+    { source: "A", rankings: [{ name: "Unavailable Back", position: "RB", rank: 20 }] },
+    { source: "B", rankings: [{ name: "Unavailable Back", position: "RB", rank: 21 }] }
+  ]
+});
+assert.strictEqual(commissionerExempt.critical, 1);
+
+const omittedUnavailable = evaluatePosition({
+  position: "RB",
+  sageRankings: [{ name: "Missing Everywhere", rank: 46 }],
+  benchmarks: [
+    { source: "A", completeThroughRank: 60, rankings: [] },
+    { source: "B", completeThroughRank: 60, rankings: [] }
+  ]
+});
+assert.strictEqual(omittedUnavailable.critical, 1);
+
 const benchmarks = [
   {
     source: "FantasyPros",
