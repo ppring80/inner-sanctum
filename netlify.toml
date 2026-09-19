@@ -194,6 +194,13 @@
 [functions."refresh-def-snapshot"]
   schedule = "25 9 * * 2"
 
+# DRAFT OUTLOOK ADP SNAPSHOT
+# Refreshes PPR, half-PPR, and standard ADP once weekly after the
+# positional Weekly SAGE refresh chain completes. The function enforces
+# a hard ceiling of three Tank01 requests per run.
+[functions."refresh-adp-snapshot"]
+  schedule = "30 9 * * 2"
+
 # OPENAI PLUGIN DOMAIN VERIFICATION
 # OpenAI's plugin submission portal verifies ownership of
 # theinnersanctum.xyz by requesting the public well-known URL below.
