@@ -1,10 +1,16 @@
 const assert = require("assert");
 const {
   applyEarlySeasonBaseline,
-  normalizeScoring
+  normalizeScoring,
+  teRecommendation
 } = require("../netlify/functions/weekly-sage-te-leaderboard.js");
 
 assert.strictEqual(normalizeScoring("half-ppr"), "half");
+assert.strictEqual(teRecommendation(1), "START");
+assert.strictEqual(teRecommendation(12), "START");
+assert.strictEqual(teRecommendation(13), "FLEX");
+assert.strictEqual(teRecommendation(24), "FLEX");
+assert.strictEqual(teRecommendation(25), "SIT");
 
 const names = [
   "Trey McBride", "Colston Loveland", "Dalton Kincaid", "Tyler Warren",
