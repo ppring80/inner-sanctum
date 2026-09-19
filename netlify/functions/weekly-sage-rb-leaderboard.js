@@ -442,6 +442,50 @@ function percentileFromRank(rank, populationSize) {
   );
 }
 
+function eliteBaselineExpectationRestraint(player, baseline) {
+  const baselineRank = Number(baseline && baseline.rank);
+  const confidence = Number(player && player.sage && player.sage.confidence);
+  const matchupScore = Number(player && player.matchup && player.matchup.rawScore);
+  const roleScore = Number(player && player.role && player.role.rawScore);
+
+  if (
+    !Number.isFinite(baselineRank) ||
+    baselineRank > 8 ||
+    !Number.isFinite(confidence) ||
+    confidence >= 0.5 ||
+    !Number.isFinite(matchupScore) ||
+    matchupScore >= 55
+  ) {
+    return {
+      applied: false,
+      penalty: 0,
+      reason: null
+    };
+  }
+
+  const matchupPenalty =
+    Math.max(0, 55 - matchupScore) * 0.35;
+  const roleMatchupDisagreement =
+    Number.isFinite(roleScore) && roleScore >= 85 && matchupScore < 50
+      ? 1
+      : 0;
+  const penalty = round(
+    Math.min(4, matchupPenalty + roleMatchupDisagreement),
+    3
+  );
+
+  return {
+    applied: penalty > 0,
+    penalty,
+    reason:
+      "Elite early-season baseline restrained by limited confidence and a below-neutral weekly matchup.",
+    baselineRank,
+    confidence,
+    matchupScore,
+    roleScore: Number.isFinite(roleScore) ? roleScore : null
+  };
+}
+
 function applyEarlySeasonBaseline({
   leaderboard,
   adpSnapshot,
@@ -572,12 +616,17 @@ function applyEarlySeasonBaseline({
 
     matched += 1;
 
+    const unrestrainedRankingScore =
+      currentPercentile *
+        (1 - baselineWeight) +
+      baseline.percentile *
+        baselineWeight;
+    const expectationRestraint =
+      eliteBaselineExpectationRestraint(player, baseline);
+
     player.sage.rankingScore =
       round(
-        currentPercentile *
-          (1 - baselineWeight) +
-        baseline.percentile *
-          baselineWeight,
+        unrestrainedRankingScore - expectationRestraint.penalty,
         3
       );
 
@@ -594,7 +643,10 @@ function applyEarlySeasonBaseline({
       percentile:
         baseline.percentile,
       currentEvidencePercentile:
-        currentPercentile
+        currentPercentile,
+      unrestrainedRankingScore:
+        round(unrestrainedRankingScore, 3),
+      expectationRestraint
     };
   });
 
@@ -1832,6 +1884,9 @@ exports.handler =
 
 exports.applyEarlySeasonBaseline =
   applyEarlySeasonBaseline;
+
+exports.eliteBaselineExpectationRestraint =
+  eliteBaselineExpectationRestraint;
 
 exports.percentileFromRank =
   percentileFromRank;
