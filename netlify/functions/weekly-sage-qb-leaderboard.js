@@ -18,11 +18,25 @@ const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js")
 const DEFAULT_SEASON_TYPE = "reg";
 const POSITION = "QB";
 const QB_SNAPSHOT_STORE = "qb-snapshot";
+const ADP_SNAPSHOT_STORE = "adp-snapshot";
 const SCHEDULE_FUNCTION = "weekly-sage-schedule";
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 const DEFAULT_CONCURRENCY = 5;
 const MAX_CONCURRENCY = 10;
+
+const SUPPORTED_SCORING = new Set(["ppr", "half", "standard"]);
+const SCORING_ALIASES = Object.freeze({
+  "half-ppr": "half", "half_ppr": "half", "0.5-ppr": "half",
+  "0.5_ppr": "half", hppr: "half", nonppr: "standard", "non-ppr": "standard"
+});
+const EARLY_SEASON_BASELINE_WEIGHT = Object.freeze({
+  2: 0.90,
+  3: 0.65,
+  4: 0.40
+});
+
+const { availabilityForPlayer } = require("./weekly-sage-qb-availability.js");
 
 const QB_RECOMMENDATION_THRESHOLDS = {
   start: 72,
@@ -82,6 +96,124 @@ function normalizeTeam(value) {
   };
 
   return aliases[raw] || raw;
+}
+
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "").replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeScoring(value) {
+  const raw = String(value || "ppr").trim().toLowerCase();
+  const scoring = SCORING_ALIASES[raw] || raw;
+  return SUPPORTED_SCORING.has(scoring) ? scoring : "ppr";
+}
+
+async function fetchAdpBaseline(scoring) {
+  try {
+    const cached = await getStore({ name: ADP_SNAPSHOT_STORE }).get(
+      `scoring:${normalizeScoring(scoring)}`,
+      { type: "json" }
+    );
+    return cached && cached.evidenceType === "tank01-adp-snapshot" &&
+      Array.isArray(cached.players) ? cached : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function percentileFromRank(rank, populationSize) {
+  const numericRank = Number(rank);
+  const size = Number(populationSize);
+  if (!Number.isFinite(numericRank) || !Number.isFinite(size) ||
+      numericRank < 1 || size < 1) return null;
+  if (size === 1) return 100;
+  return round(((size - numericRank) / (size - 1)) * 100, 3);
+}
+
+function eliteBaselineExpectationRestraint(player, baseline) {
+  const baselineRank = Number(baseline && baseline.rank);
+  const confidence = Number(player && player.sageConfidence);
+  const matchupScore = Number(player && player.matchup && player.matchup.rawScore);
+  const roleScore = Number(player && player.role && player.role.rawScore);
+  if (!Number.isFinite(baselineRank) || baselineRank > 8 ||
+      !Number.isFinite(confidence) || confidence >= 0.6 ||
+      !Number.isFinite(matchupScore) || matchupScore >= 55) {
+    return { applied: false, penalty: 0, reason: null };
+  }
+  const matchupPenalty = Math.max(0, 55 - matchupScore) * 0.35;
+  const roleMatchupDisagreement =
+    Number.isFinite(roleScore) && roleScore >= 85 && matchupScore < 50 ? 1 : 0;
+  const penalty = round(Math.min(4, matchupPenalty + roleMatchupDisagreement), 3);
+  return {
+    applied: penalty > 0,
+    penalty,
+    reason: "Elite early-season baseline restrained by limited confidence and a below-neutral weekly matchup.",
+    baselineRank, confidence, matchupScore,
+    roleScore: Number.isFinite(roleScore) ? roleScore : null
+  };
+}
+
+function applyEarlySeasonBaseline({ leaderboard, adpSnapshot, week, scoring }) {
+  const baselineWeight = EARLY_SEASON_BASELINE_WEIGHT[Number(week)] || 0;
+  if (baselineWeight <= 0 || !adpSnapshot || !Array.isArray(adpSnapshot.players)) {
+    return { applied: false, matched: 0, baselineWeight: 0, scoring: normalizeScoring(scoring) };
+  }
+  const eligibleNames = new Set(
+    leaderboard.map(player => normalizeName(player && player.name)).filter(Boolean)
+  );
+  const qbBaseline = adpSnapshot.players
+    .filter(player => String(player && player.position || "").toUpperCase() === "QB" &&
+      Number.isFinite(Number(player && player.adp)) &&
+      eligibleNames.has(normalizeName(player.name || player.longName || player.playerName)))
+    .sort((a, b) => Number(a.adp) - Number(b.adp));
+  if (!qbBaseline.length) {
+    return { applied: false, matched: 0, baselineWeight, scoring: normalizeScoring(scoring) };
+  }
+  const byID = new Map();
+  const byName = new Map();
+  qbBaseline.forEach((player, index) => {
+    const record = {
+      rank: index + 1,
+      percentile: percentileFromRank(index + 1, qbBaseline.length),
+      adp: Number(player.adp)
+    };
+    const id = String(player.playerID ?? player.playerId ?? player.id ?? "").trim();
+    if (id) byID.set(id, record);
+    const name = normalizeName(player.name || player.longName || player.playerName);
+    if (name) byName.set(name, record);
+  });
+  const ordered = leaderboard.slice().sort((a, b) =>
+    Number(b.sageScore || 0) - Number(a.sageScore || 0));
+  let matched = 0;
+  ordered.forEach((player, index) => {
+    const currentPercentile = percentileFromRank(index + 1, ordered.length);
+    const baseline = byID.get(String(player.playerID || "")) ||
+      byName.get(normalizeName(player.name));
+    if (!baseline) {
+      player.rankingScore = currentPercentile;
+      player.baseline = { applied: false, reason: "No matching scoring-specific ADP baseline player." };
+      return;
+    }
+    matched += 1;
+    const currentRank = index + 1;
+    const expectationRestraint = eliteBaselineExpectationRestraint(player, baseline);
+    const unrestrainedExpectedRank =
+      baseline.rank * baselineWeight + currentRank * (1 - baselineWeight);
+    const expectedRank = round(
+      unrestrainedExpectedRank + expectationRestraint.penalty, 3);
+    player.rankingScore = round(100 - expectedRank, 3);
+    player.baseline = {
+      applied: true, scoring: normalizeScoring(scoring), weight: baselineWeight,
+      adp: baseline.adp, positionRank: baseline.rank,
+      percentile: baseline.percentile, currentEvidencePercentile: currentPercentile,
+      currentEvidenceRank: currentRank,
+      unrestrainedExpectedRank: round(unrestrainedExpectedRank, 3),
+      expectedRank,
+      expectationRestraint
+    };
+  });
+  return { applied: matched > 0, matched, baselineWeight, scoring: normalizeScoring(scoring) };
 }
 
 function getBaseUrl(event) {
@@ -1016,11 +1148,13 @@ function sortAndRank(
     ) => {
       const scoreDiff =
         (
-          b.sageScore ||
+          b.rankingScore ??
+          b.sageScore ??
           0
         ) -
         (
-          a.sageScore ||
+          a.rankingScore ??
+          a.sageScore ??
           0
         );
 
@@ -1094,7 +1228,7 @@ function sortAndRank(
       if (
         index ===
           0 ||
-        row.sageScore !==
+        (row.rankingScore ?? row.sageScore) !==
           previousScore
       ) {
         previousRank =
@@ -1106,7 +1240,7 @@ function sortAndRank(
         previousRank;
 
       previousScore =
-        row.sageScore;
+        row.rankingScore ?? row.sageScore;
     }
   );
 
@@ -1272,6 +1406,11 @@ exports.handler =
         DEFAULT_SEASON_TYPE
       );
 
+    const scoring =
+      normalizeScoring(
+        query.scoring || "ppr"
+      );
+
     const requestedLimit =
       integerOrNull(
         query.limit
@@ -1348,6 +1487,9 @@ exports.handler =
           event
         );
 
+      const adpBaselinePromise =
+        fetchAdpBaseline(scoring);
+
       const [
         snapshot,
         schedule
@@ -1417,6 +1559,24 @@ exports.handler =
         const player of
         players
       ) {
+        const availability = availabilityForPlayer(player, season, targetWeek);
+        if (availability && availability.eligible === false) {
+          inactive.push({
+            playerID: player.playerID,
+            name: player.name,
+            team: player.team,
+            currentTeam: player.currentTeam,
+            position: POSITION,
+            status: availability.status,
+            eligibleForWeeklyRanking: false,
+            recommendation: "INELIGIBLE",
+            reason: availability.reason,
+            source: availability.source,
+            confirmedStarter: availability.confirmedStarter || null
+          });
+          continue;
+        }
+
         const classification =
           classifyPlayerSchedule(
             player,
@@ -1608,10 +1768,14 @@ exports.handler =
         }
       }
 
-      const leaderboard =
-        sortAndRank(
-          scored
-        );
+      const baselineApplication = applyEarlySeasonBaseline({
+        leaderboard: scored,
+        adpSnapshot: await adpBaselinePromise,
+        week: targetWeek,
+        scoring
+      });
+
+      const leaderboard = sortAndRank(scored);
 
       const ready =
         leaderboard.length >
@@ -1651,7 +1815,10 @@ exports.handler =
               "QB SAGE v2 uses historically validated scoring weights from 2025 regular-season held-out robustness testing. Recommendation thresholds remain separately calibrated.",
 
             ranking:
-              "Descending Weekly SAGE QB Score.",
+              "Descending early-season ranking score blending current Weekly SAGE evidence with the scoring-specific cached ADP baseline.",
+
+            earlySeasonBaseline:
+              baselineApplication,
 
             recommendationThresholds: {
               start:
@@ -1729,6 +1896,9 @@ exports.handler =
 
             inactiveByePlayers:
               inactive.length,
+
+            ineligiblePlayers:
+              inactive.filter(player => player.recommendation === "INELIGIBLE").length,
 
             unresolvedPlayers:
               unresolved.length,
@@ -1871,3 +2041,8 @@ exports.handler =
       );
     }
   };
+
+exports.normalizeScoring = normalizeScoring;
+exports.percentileFromRank = percentileFromRank;
+exports.eliteBaselineExpectationRestraint = eliteBaselineExpectationRestraint;
+exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
