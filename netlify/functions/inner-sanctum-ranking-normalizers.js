@@ -5,7 +5,9 @@ const UNAVAILABLE_ROSTER_STATUSES = new Set([
   "RESERVE",
   "IR",
   "INJURED RESERVE",
-  "INACTIVE"
+  "INACTIVE",
+  "O",
+  "OUT"
 ]);
 
 function cleanRankingText(value) {
