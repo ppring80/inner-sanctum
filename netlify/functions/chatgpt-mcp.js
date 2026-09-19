@@ -2329,33 +2329,29 @@ async function validateLeagueAccess(
       ? accessRecord.snapshotKey
       : "";
 
-  if (!snapshotKey) {
-    return {
-      ok: false,
-      error: "invalid_token",
-      description:
-        "The access token is not bound to a linked league."
-    };
-  }
+  let snapshot =
+    null;
 
-  const snapshotStore =
-    getStore({
-      name: SNAPSHOT_STORE
-    });
+  if (snapshotKey) {
+    const snapshotStore =
+      getStore({
+        name: SNAPSHOT_STORE
+      });
 
-  const snapshot =
-    await getStrongJson(
-      snapshotStore,
-      snapshotKey
-    );
+    snapshot =
+      await getStrongJson(
+        snapshotStore,
+        snapshotKey
+      );
 
-  if (!snapshot) {
-    return {
-      ok: false,
-      error: "invalid_token",
-      description:
-        "The linked Inner Sanctum league was revoked or no longer exists."
-    };
+    if (!snapshot) {
+      return {
+        ok: false,
+        error: "invalid_token",
+        description:
+          "The linked Inner Sanctum league was revoked or no longer exists."
+      };
+    }
   }
 
   return {
@@ -4999,7 +4995,7 @@ function buildServer(
             }
           },
           error:
-            "authorization_required"
+            "league_not_connected"
         };
 
         return {
@@ -5009,7 +5005,7 @@ function buildServer(
             {
               type: "text",
               text:
-                "Inner Sanctum league authorization is required."
+                "SAGE is ready for rankings, comparisons, profiles, and draft outlooks. Connect a fantasy league at https://theinnersanctum.xyz/connect-league for personalized league and lineup advice."
             }
           ],
 
@@ -5218,7 +5214,7 @@ function buildServer(
             {
               type: "text",
               text:
-                "Inner Sanctum league authorization is required for a lineup recommendation."
+                "SAGE is ready for general fantasy advice. Connect a fantasy league at https://theinnersanctum.xyz/connect-league for a personalized lineup recommendation."
             }
           ],
           structuredContent: {
@@ -5239,7 +5235,7 @@ function buildServer(
             unmatchedRosterPlayers: [],
             unfilledSlots: [],
             warnings: [],
-            error: "authorization_required"
+            error: "league_not_connected"
           }
         };
       }
