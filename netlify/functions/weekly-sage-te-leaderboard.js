@@ -132,17 +132,14 @@ const MAX_CONCURRENCY =
   10;
 
 const TE_RECOMMENDATION_THRESHOLDS = {
-  start: 72,
-  flex: 52
+  startRank: 12,
+  flexRank: 24
 };
 
 function teRecommendation(
-  score
+  rank
 ) {
-  const value =
-    nullableNum(
-      score
-    );
+  const value = integerOrNull(rank);
 
   if (
     value ===
@@ -152,15 +149,15 @@ function teRecommendation(
   }
 
   if (
-    value >=
-    TE_RECOMMENDATION_THRESHOLDS.start
+    value <=
+    TE_RECOMMENDATION_THRESHOLDS.startRank
   ) {
     return "START";
   }
 
   if (
-    value >=
-    TE_RECOMMENDATION_THRESHOLDS.flex
+    value <=
+    TE_RECOMMENDATION_THRESHOLDS.flexRank
   ) {
     return "FLEX";
   }
@@ -1264,9 +1261,7 @@ function leaderboardRow(
       score,
 
     recommendation:
-      teRecommendation(
-        score
-      ),
+      null,
 
     sageLabel:
       sage.label ||
@@ -1578,6 +1573,8 @@ function applyRanks(
 
     row.rank =
       previousRank;
+
+    row.recommendation = teRecommendation(previousRank);
 
     previousScore =
       score;
@@ -2219,25 +2216,25 @@ exports.handler =
               baselineApplication,
 
             recommendationThresholds: {
-              start:
-                TE_RECOMMENDATION_THRESHOLDS.start,
+              startRank:
+                TE_RECOMMENDATION_THRESHOLDS.startRank,
 
-              flex:
-                TE_RECOMMENDATION_THRESHOLDS.flex,
+              flexRank:
+                TE_RECOMMENDATION_THRESHOLDS.flexRank,
 
               definitions: {
                 START:
-                  "Weekly SAGE Score >= 72",
+                  "TE rank 1-12",
 
                 FLEX:
-                  "Weekly SAGE Score >= 52 and < 72",
+                  "TE rank 13-24",
 
                 SIT:
-                  "Weekly SAGE Score < 52"
+                  "TE rank 25 or lower"
               },
 
               status:
-                "PROVISIONAL: these are the WR-calibrated numeric thresholds (72/52) reused as a placeholder only. This is a threshold-calibration gap, not a weight-validation gap -- TE weights themselves are backtest-validated (see methodology.status above), but these thresholds have not been checked against real TE score distributions. Do not represent these as TE-calibrated until a TE-specific threshold analysis has been run and reviewed."
+                "TE-specific positional bands for a conventional 12-team, one-TE league; league-aware lineup advice may narrow or expand these bands."
             },
 
             tieBreakers: [
@@ -2355,13 +2352,13 @@ exports.handler =
               true,
 
             startThreshold:
-              TE_RECOMMENDATION_THRESHOLDS.start,
+              TE_RECOMMENDATION_THRESHOLDS.startRank,
 
             flexThreshold:
-              TE_RECOMMENDATION_THRESHOLDS.flex,
+              TE_RECOMMENDATION_THRESHOLDS.flexRank,
 
             logic:
-              "START >= 72; FLEX >= 52 and < 72; SIT < 52"
+              "START ranks 1-12; FLEX ranks 13-24; SIT rank 25+"
           },
 
           nextStep: {
@@ -2445,3 +2442,4 @@ exports.handler =
 exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
 exports.normalizeScoring = normalizeScoring;
 exports.applyAvailabilityRiskAdjustments = applyAvailabilityRiskAdjustments;
+exports.teRecommendation = teRecommendation;
