@@ -3178,9 +3178,7 @@ function buildStarterRecord(
     position: row.position,
     team: row.team || null,
     recommendation:
-      row.recommendation
-        ? row.recommendation.toUpperCase()
-        : null,
+      "START",
     sageLabel:
       row.sageLabel ||
       null,

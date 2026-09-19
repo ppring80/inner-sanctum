@@ -251,7 +251,15 @@ exports.handler = async function (event) {
       const usesOwnSageTake = position === "K" || position === "DEF";
       positions[position] = leaderboard.map((row) => ({
         ...row,
-        sageTake: usesOwnSageTake ? row.sageTake : buildWeek2PlusSageTake(row)
+        sageTake:
+          position === "RB" &&
+          row.sage &&
+          row.sage.baseline &&
+          row.sage.baseline.applied
+            ? `${buildWeek2PlusSageTake(row)} Early-season ${row.sage.baseline.scoring.toUpperCase()} baseline weight: ${Math.round(row.sage.baseline.weight * 100)}%; current-season evidence weight: ${Math.round((1 - row.sage.baseline.weight) * 100)}%.`
+            : usesOwnSageTake
+              ? row.sageTake
+              : buildWeek2PlusSageTake(row)
       }));
 
       failures[position] = [];
