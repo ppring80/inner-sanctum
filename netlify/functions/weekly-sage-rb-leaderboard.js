@@ -70,6 +70,17 @@ const ADP_SNAPSHOT_STORE =
 const SUPPORTED_SCORING =
   new Set(["ppr", "half", "standard"]);
 
+const SCORING_ALIASES = Object.freeze({
+  "half-ppr": "half", "half_ppr": "half", "0.5-ppr": "half",
+  "0.5_ppr": "half", hppr: "half", nonppr: "standard", "non-ppr": "standard"
+});
+
+const {
+  availabilityForPlayer,
+  weeklyUnavailableFacts,
+  applyBackfieldOpportunityAdjustments
+} = require("./weekly-sage-rb-availability.js");
+
 const EARLY_SEASON_BASELINE_WEIGHT = {
   // Entering Week 2, only one current-season game exists. Preserve the
   // established scoring-specific baseline, then decay it quickly as real
@@ -366,10 +377,12 @@ function normalizeName(value) {
 }
 
 function normalizeScoring(value) {
-  const scoring =
+  const raw =
     String(value || "ppr")
       .trim()
       .toLowerCase();
+
+  const scoring = SCORING_ALIASES[raw] || raw;
 
   return SUPPORTED_SCORING.has(scoring)
     ? scoring
@@ -1445,16 +1458,34 @@ exports.handler =
               team:
                 playerTeamFromRecord(
                   player
-                )
+                ),
+
+              availability:
+                availabilityForPlayer(player, season, week)
             }
           );
         }
       }
 
-      const players =
+      const allPlayers =
         Array.from(
           playerMap.values()
         );
+
+      const unavailableFromPopulation = allPlayers.filter(
+        player => player.availability && player.availability.eligible === false
+      );
+
+      const unavailableByName = new Map();
+      unavailableFromPopulation
+        .concat(weeklyUnavailableFacts(season, week))
+        .forEach(player => unavailableByName.set(normalizeName(player.name), player));
+
+      const unavailablePlayers = Array.from(unavailableByName.values());
+
+      const players = allPlayers.filter(
+        player => !player.availability || player.availability.eligible !== false
+      );
 
       if (
         players.length === 0
@@ -1521,7 +1552,14 @@ exports.handler =
         [];
 
       const inactive =
-        [];
+        unavailablePlayers.map(player => ({
+          playerID: player.playerID, name: player.name, team: player.team,
+          position: "RB", status: player.availability.status,
+          eligibleForWeeklyRanking: false, reason: player.availability.reason,
+          source: player.availability.source, opponent: null, location: null,
+          sage: { score: null, label: null, confidence: null, confidenceLabel: null },
+          recommendation: "INELIGIBLE"
+        }));
 
       const failures =
         [];
@@ -1606,6 +1644,9 @@ exports.handler =
           week,
           scoring
         });
+
+      const backfieldOpportunityAdjustments =
+        applyBackfieldOpportunityAdjustments({ leaderboard, unavailablePlayers });
 
       leaderboard.sort(
         compareLeaderboard
@@ -1706,7 +1747,7 @@ exports.handler =
               population.length,
 
             uniquePlayerIDs:
-              players.length,
+              allPlayers.length,
 
             activePlayersScored:
               leaderboard.length,
@@ -1714,12 +1755,17 @@ exports.handler =
             inactivePlayers:
               inactive.length,
 
+            hardUnavailablePlayers:
+              unavailablePlayers.length,
+
             failures:
               failures.length
           },
 
           scoreDistribution:
             sageDistribution,
+
+          backfieldOpportunityAdjustments,
 
           leaderboard,
 
@@ -1789,3 +1835,6 @@ exports.applyEarlySeasonBaseline =
 
 exports.percentileFromRank =
   percentileFromRank;
+
+exports.normalizeScoring =
+  normalizeScoring;
