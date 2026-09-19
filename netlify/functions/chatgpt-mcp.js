@@ -54,6 +54,11 @@ const {
   getStore
 } = require("@netlify/blobs");
 
+const {
+  cleanRankingText,
+  isUnavailableRosterStatus
+} = require("./inner-sanctum-ranking-normalizers");
+
 // Unmodified reuse of the existing, already-validated Draft SAGE
 // Opportunity pillar (see draft-opportunity-profile.js's own header:
 // "THIS FILE DOES NOT REDEFINE ANYTHING... No score, no weighting, no
@@ -632,14 +637,16 @@ function flattenRankings(rankings) {
               ),
 
             recommendation:
-              cleanString(
+              cleanRankingText(
                 entry.recommendation
               ),
 
             sageScore:
               num(
-                sage.score !== undefined
-                  ? sage.score
+                sage.rankingScore !== undefined
+                  ? sage.rankingScore
+                  : sage.score !== undefined
+                    ? sage.score
                   : entry.sageScore
               ),
 
@@ -682,7 +689,7 @@ function flattenRankings(rankings) {
               ),
 
             matchup:
-              cleanString(
+              cleanRankingText(
                 entry.matchupStrength !== undefined
                   ? entry.matchupStrength
                   : entry.matchup
@@ -5495,17 +5502,38 @@ function buildServer(
               lineupSlots
             );
 
+          const availableMatchedEntries =
+            matchedEntries.filter(
+              item =>
+                !isUnavailableRosterStatus(
+                  item.entry &&
+                  item.entry.rosterStatus
+                )
+            );
+
+          const unavailableMatchedEntries =
+            matchedEntries.filter(
+              item =>
+                isUnavailableRosterStatus(
+                  item.entry &&
+                  item.entry.rosterStatus
+                )
+            );
+
           const assignment =
             assignLineupSlotsOptimally(
               expandedSlots,
-              matchedEntries
+              availableMatchedEntries
             );
 
           starters =
             assignment.starters;
 
           bench =
-            assignment.bench.map(
+            [
+              ...assignment.bench,
+              ...unavailableMatchedEntries
+            ].map(
               (item) => ({
                 playerID:
                   item.row.playerID ||
@@ -5525,9 +5553,14 @@ function buildServer(
                   item.entry.rosterStatus ||
                   null,
                 reason:
-                  buildLineupSageReason(
-                    item.row
+                  isUnavailableRosterStatus(
+                    item.entry &&
+                    item.entry.rosterStatus
                   )
+                    ? `Roster status ${item.entry.rosterStatus} is unavailable for an active lineup slot.`
+                    : buildLineupSageReason(
+                        item.row
+                      )
               })
             );
 

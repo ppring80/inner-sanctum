@@ -98,11 +98,16 @@ function normalizeWeek1DefenseIdentity(positions) {
   return normalized;
 }
 
-async function fetchPositionLeaderboard({ baseUrl, position, season, week, seasonType }) {
+async function fetchPositionLeaderboard({ baseUrl, position, season, week, seasonType, scoring }) {
   const functionName = LEADERBOARD_FUNCTION_BY_POSITION[position];
   const url =
     `${baseUrl}/.netlify/functions/${functionName}` +
-    `?${new URLSearchParams({ season, week: String(week), seasonType }).toString()}`;
+    `?${new URLSearchParams({
+      season,
+      week: String(week),
+      seasonType,
+      scoring
+    }).toString()}`;
 
   let response;
   try {
@@ -145,6 +150,7 @@ exports.handler = async function (event) {
   const season = String(query.season || new Date().getFullYear());
   const targetWeek = Number(query.week);
   const seasonType = String(query.seasonType || DEFAULT_SEASON_TYPE);
+  const scoring = String(query.scoring || "ppr").toLowerCase();
 
   if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 18) {
     return jsonResponse(400, {
@@ -220,7 +226,14 @@ exports.handler = async function (event) {
 
   const results = await Promise.all(
     POSITIONS.map(position =>
-      fetchPositionLeaderboard({ baseUrl, position, season, week: targetWeek, seasonType })
+      fetchPositionLeaderboard({
+        baseUrl,
+        position,
+        season,
+        week: targetWeek,
+        seasonType,
+        scoring
+      })
     )
   );
 
@@ -270,6 +283,7 @@ exports.handler = async function (event) {
     season,
     targetWeek,
     seasonType,
+    scoring,
 
     positions,
 
