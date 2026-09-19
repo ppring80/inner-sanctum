@@ -1,3 +1,5 @@
+const { connectLambda, getStore } = require("@netlify/blobs");
+
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
 // Mirrors chat.js's convention — set ALLOWED_ORIGINS in Netlify
@@ -20,14 +22,12 @@ const CORS_HEADERS = {
 };
 
 // ═══════════════════════════════════════
-// TANK01 ADP PROXY  (replaces the old FantasyFootballCalculator proxy)
+// CACHE-ONLY ADP READER + REFRESH TRANSLATOR
 //
-// Why this function exists at all: same reason as before — browser
-// fetches straight to a third-party API either get CORS-blocked, or
-// (in Tank01's case) would require exposing our paid RapidAPI key in
-// client-side JS, where anyone could lift it from devtools and burn
-// our daily quota. This function holds the key server-side and hands
-// back clean JSON with our own CORS headers attached.
+// Customer requests read a prebuilt Netlify Blob snapshot only. The paid
+// Tank01 request helper remains in this module solely for the authorized,
+// scheduled refresh-adp-snapshot writer. A missing or malformed snapshot
+// fails closed with 503; the customer handler never falls back to Tank01.
 //
 // SHAPE TRANSLATION — this is the part that matters most. draft.html's
 // loadAll() was written against FFC's response shape:
@@ -92,6 +92,8 @@ const MISSING_DEF_FALLBACK = [
 ];
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
+const ADP_STORE_NAME = "adp-snapshot";
+const ADP_EVIDENCE_TYPE = "tank01-adp-snapshot";
 
 // Map our existing UI scoring values (used in draft.html's <select>)
 // to Tank01's adpType values. Tank01 also offers bestBall/IDP/superFlex,
@@ -207,10 +209,25 @@ function translateTank01Response(body) {
   };
 }
 
+function validateCachedAdpRecord(record, expectedScoring) {
+  if (!record || typeof record !== "object") return "ADP snapshot is missing.";
+  if (record.evidenceType !== ADP_EVIDENCE_TYPE) return "ADP snapshot evidence type is invalid.";
+  if (record.schemaVersion !== 1) return "ADP snapshot schema version is unsupported.";
+  if (record.scoring !== expectedScoring) return "ADP snapshot scoring format does not match.";
+  if (!Array.isArray(record.players) || record.players.length === 0) return "ADP snapshot population is empty.";
+  if (!record.meta || typeof record.meta !== "object") return "ADP snapshot metadata is missing.";
+  return null;
+}
+
+exports.validateCachedAdpRecord = validateCachedAdpRecord;
+exports.ADP_STORE_NAME = ADP_STORE_NAME;
+
 // ═══════════════════════════════════════
 // MAIN HANDLER
 // ═══════════════════════════════════════
 exports.handler = async (event) => {
+  connectLambda(event);
+
   // Handle CORS preflight
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
@@ -240,13 +257,37 @@ exports.handler = async (event) => {
 
   try {
     const params = event.queryStringParameters || {};
-    const scoring = params.scoring || "ppr";
+    const scoring = normalizeScoring(params.scoring || "ppr");
     // NOTE: teams/year/count were meaningful to FFC's API (different ADP
     // pools by league size / season / sample count). Tank01's ADP
     // endpoint has no equivalent — it's one global current snapshot —
     // so these params are accepted for backward compatibility with
     // draft.html's existing query string but are otherwise unused here.
-    const data = await fetchTank01Adp({ scoring });
+    const store = getStore({ name: ADP_STORE_NAME });
+    const cached = await store.get(`scoring:${scoring}`, { type: "json" });
+    const cacheProblem = validateCachedAdpRecord(cached, scoring);
+
+    if (cacheProblem) {
+      console.error(`adp: cache-only read failed for ${scoring}: ${cacheProblem}`);
+      return {
+        statusCode: 503,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: "ADP data is temporarily unavailable.",
+          cacheOnly: true,
+          scoring
+        })
+      };
+    }
+
+    const data = {
+      players: cached.players,
+      meta: {
+        ...cached.meta,
+        scoring: cached.scoring,
+        cacheOnly: true
+      }
+    };
 
     return {
       statusCode: 200,
@@ -256,9 +297,12 @@ exports.handler = async (event) => {
   } catch (err) {
     console.log("Handler error:", err.message);
     return {
-      statusCode: 500,
+      statusCode: 503,
       headers: CORS_HEADERS,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({
+        error: "ADP data is temporarily unavailable.",
+        cacheOnly: true
+      })
     };
   }
 };
