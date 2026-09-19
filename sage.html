@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAGE Weekly Fantasy Football Rankings | The Inner Sanctum</title>
+<meta name="description" content="Free weekly SAGE fantasy football rankings, start/sit help and player comparisons for PPR, half-PPR and standard leagues.">
+<link rel="canonical" href="https://theinnersanctum.xyz/sage">
+<meta property="og:title" content="SAGE Weekly Fantasy Football Rankings">
+<meta property="og:description" content="Rankings built for this week, not last week. Preview SAGE rankings free and take your questions into ChatGPT.">
+<meta property="og:url" content="https://theinnersanctum.xyz/sage">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#17110a;--ink2:#261a10;--paper:#f5f3f0;--card:#fff;--gold:#c9a84c;--gold2:#a98019;--text:#1a1a18;--muted:#68645d;--line:#ddd7cc;--green:#2f763a;--radius:12px}
+html{scroll-behavior:smooth}body{background:var(--paper);color:var(--text);font-family:'Lora',Georgia,serif;line-height:1.65}.wrap{width:min(1100px,calc(100% - 40px));margin:auto}
+nav{background:rgba(23,17,10,.98);border-bottom:1px solid #4a3517;padding:13px 0;position:sticky;top:0;z-index:10}.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{color:#f0e6cc;text-decoration:none;font-family:'Cinzel',serif;font-size:15px;letter-spacing:1px}.brand span{color:var(--gold)}.nav-link{color:var(--gold);font:600 11px 'JetBrains Mono',monospace;text-decoration:none;text-transform:uppercase;letter-spacing:1px}
+.hero{background:radial-gradient(circle at 50% 0,rgba(201,168,76,.2),transparent 48%),linear-gradient(155deg,var(--ink),var(--ink2));color:#f3ead6;padding:76px 0 68px;text-align:center}.eyebrow{display:block;color:var(--gold);font:600 10px 'JetBrains Mono',monospace;letter-spacing:4px;text-transform:uppercase;margin-bottom:14px}.hero h1{font:700 clamp(35px,7vw,65px)/1.08 'Cinzel',serif;max-width:850px;margin:0 auto 18px}.hero h1 em{color:var(--gold);font-style:normal}.hero-copy{max-width:670px;margin:0 auto 28px;color:#d4c8b2;font-size:clamp(16px,2vw,19px)}.actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 23px;border-radius:8px;text-decoration:none;border:1px solid var(--gold);font:600 12px 'Cinzel',serif;letter-spacing:1px;text-transform:uppercase;cursor:pointer}.btn-primary{background:var(--gold);color:#111}.btn-secondary{background:transparent;color:#f3ead6}.fine{margin-top:15px;color:#9e917b;font-size:12px}
+section{padding:66px 0}.section-head{text-align:center;margin-bottom:30px}.section-head h2{font:600 clamp(25px,4vw,38px)/1.25 'Cinzel',serif;margin-bottom:10px}.section-head p{color:var(--muted);max-width:680px;margin:auto}.rank-shell{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 45px rgba(31,24,14,.08);overflow:hidden}.rank-top{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:18px 20px;background:#eee9df;border-bottom:1px solid var(--line);flex-wrap:wrap}.rank-title{font:600 15px 'Cinzel',serif}.controls{display:flex;gap:8px;flex-wrap:wrap}.controls button{border:1px solid #c9c0b1;background:#fff;padding:7px 12px;border-radius:20px;color:#514a40;font:600 11px 'JetBrains Mono',monospace;cursor:pointer}.controls button.active{background:var(--ink);border-color:var(--ink);color:var(--gold)}.ranking{list-style:none}.ranking li{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:15px 20px;border-bottom:1px solid #eeeae3}.ranking li:last-child{border-bottom:0}.rank{font:600 15px 'JetBrains Mono',monospace;color:var(--gold2)}.player strong{display:block;font-size:15px}.player small{color:var(--muted);font-size:12px}.projected{font:600 13px 'JetBrains Mono',monospace;text-align:right}.projected small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}.status{padding:28px 20px;text-align:center;color:var(--muted)}.full-cta{padding:20px;text-align:center;background:#faf8f4;border-top:1px solid var(--line)}.full-cta a{color:var(--gold2);font-weight:600}
+.dark{background:var(--ink);color:#f3ead6}.dark .section-head p{color:#aa9f8d}.prompt-grid,.access-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.prompt{background:#251c12;border:1px solid #4a3517;color:#eadfc9;border-radius:var(--radius);padding:20px;text-align:left;font:15px/1.55 'Lora',serif;cursor:pointer;position:relative}.prompt:hover{border-color:var(--gold)}.prompt small{display:block;color:var(--gold);font:10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:11px}.access{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:28px}.access h3{font:600 20px 'Cinzel',serif;margin-bottom:7px}.access p{color:var(--muted);margin-bottom:15px}.access ul{list-style:none;margin-bottom:22px}.access li{padding:6px 0;font-size:14px}.access li:before{content:'✓';color:var(--green);font-weight:bold;margin-right:9px}.access.featured{border:2px solid var(--gold);background:#fffaf0}.access .btn-secondary{color:var(--text);border-color:#bda65e}.method{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:25px}.method div{border-top:2px solid var(--gold);padding-top:14px}.method strong{display:block;font-family:'Cinzel',serif;margin-bottom:5px}.method p{font-size:13px;color:var(--muted)}
+footer{background:#0f0b07;color:#8e826e;text-align:center;padding:34px 20px;font-size:12px}footer a{color:var(--gold);margin:0 8px}
+@media(max-width:680px){.wrap{width:min(100% - 28px,1100px)}.hero{padding:55px 0 48px}.btn{width:100%}section{padding:50px 0}.prompt-grid,.access-grid,.method{grid-template-columns:1fr}.rank-top{align-items:flex-start}.ranking li{padding:13px 14px;grid-template-columns:32px 1fr auto}.projected{font-size:12px}}
+</style>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','1748852649483750');fbq('track','PageView');
+</script>
+</head>
+<body>
+<nav><div class="wrap nav-inner"><a class="brand" href="/">The Inner <span>Sanctum</span></a><a class="nav-link" href="/weekly">Member Rankings →</a></div></nav>
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Inner Sanctum SAGE</span>
+    <h1>Rankings built for <em>this week.</em><br>Not last week.</h1>
+    <p class="hero-copy">Current roles, injuries, matchups and scoring format all matter. SAGE puts them together before it gives you a rank—or a start/sit answer.</p>
+    <div class="actions"><a class="btn btn-primary" href="#rankings">See This Week's Free Preview</a><a class="btn btn-secondary chatgpt-link" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT</a></div>
+    <p class="fine">No subscription or connected league required for the free preview.</p>
+  </div>
+</header>
+
+<main>
+<section id="rankings">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Live SAGE Preview</span><h2><span id="week-label">This Week's</span> Top Five</h2><p>Half-PPR by default. Switch positions or scoring formats without leaving the page.</p></div>
+    <div class="rank-shell">
+      <div class="rank-top"><div class="rank-title" id="rank-title">Running Backs · Half-PPR</div><div class="controls" id="position-controls"><button class="active" data-position="RB">RB</button><button data-position="WR">WR</button><button data-position="QB">QB</button><button data-position="TE">TE</button></div><div class="controls" id="scoring-controls"><button data-scoring="standard">STD</button><button class="active" data-scoring="half">Half</button><button data-scoring="ppr">PPR</button></div></div>
+      <ol class="ranking" id="ranking-list"><li class="status">Loading current SAGE rankings…</li></ol>
+      <div class="full-cta"><a href="/weekly">Founding Acolytes: open the full sortable rankings →</a></div>
+    </div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Ask It Like You Mean It</span><h2>Four good ways to start</h2><p>Tap any prompt to copy it, then take it to ChatGPT.</p></div>
+    <div class="prompt-grid">
+      <button class="prompt">Show me SAGE's Week <span class="prompt-week">2</span> top 20 running backs in half-PPR.<small>Tap to copy</small></button>
+      <button class="prompt">Who should I start this week in half-PPR, and why?<small>Tap to copy</small></button>
+      <button class="prompt">Compare my two flex options using SAGE's weekly rankings.<small>Tap to copy</small></button>
+      <button class="prompt">Which running back moved up after a teammate was ruled out?<small>Tap to copy</small></button>
+    </div>
+    <div class="actions" style="margin-top:24px"><a class="btn btn-primary chatgpt-link" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT</a></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">What You Get</span><h2>Free answers. Deeper tools when you want them.</h2></div>
+    <div class="access-grid">
+      <article class="access"><h3>SAGE Free</h3><p>For the decision in front of you right now.</p><ul><li>Live top-five ranking preview</li><li>Weekly ranking questions</li><li>Player comparisons</li><li>Start/sit explanations</li></ul><a class="btn btn-secondary" href="#rankings">View Free Preview</a></article>
+      <article class="access featured"><h3>Founding Acolyte</h3><p>For managers who want the whole board.</p><ul><li>Full sortable weekly rankings</li><li>PPR, half-PPR and standard filters</li><li>League and roster tools</li><li>All three Inner Sanctum voices</li></ul><a class="btn btn-primary" href="/join">Become a Founding Member</a></article>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">The SAGE Standard</span><h2>What moves a player</h2></div>
+    <div class="method"><div><strong>Availability first</strong><p>Inactive, suspended and commissioner-exempt players cannot hide inside a projection.</p></div><div><strong>Opportunity matters</strong><p>Depth-chart changes and vacated touches or targets can move the next player up.</p></div><div><strong>One game stays one game</strong><p>Recent performance informs the rank. It does not get to hijack the model by itself.</p></div></div>
+  </div>
+</section>
+</main>
+
+<footer><div>The Inner Sanctum · Fantasy football intelligence with a point of view.</div><div style="margin-top:10px"><a href="/">Home</a><a href="/weekly">Full Rankings</a><a href="/support">Support</a><a href="/privacy">Privacy</a></div></footer>
+
+<script>
+(function(){
+  var CHATGPT_APP_URL='https://chatgpt.com/';
+  var state={position:'RB',scoring:'half',data:null};
+  var names={RB:'Running Backs',WR:'Wide Receivers',QB:'Quarterbacks',TE:'Tight Ends'};
+  function nflContext(){
+    var now=new Date(),season=now.getUTCFullYear(),week=1;
+    if(season===2026){
+      var weekTwoWaiverStart=Date.UTC(2026,8,15,6);
+      if(now.getTime()>=weekTwoWaiverStart) week=Math.min(18,Math.floor((now.getTime()-weekTwoWaiverStart)/604800000)+2);
+    }
+    return {season:season,week:week};
+  }
+  var context=nflContext();
+  document.getElementById('week-label').textContent='Week '+context.week;
+  document.querySelectorAll('.prompt-week').forEach(function(el){el.textContent=context.week});
+  document.querySelectorAll('.chatgpt-link').forEach(function(el){el.href=CHATGPT_APP_URL;el.addEventListener('click',function(){if(window.fbq)fbq('trackCustom','SageChatGPTClick')})});
+  function scoreValue(row){return row.sage&&row.sage.score!=null?row.sage.score:(row.sageScore!=null?row.sageScore:null)}
+  function render(){
+    var list=document.getElementById('ranking-list'),rows=state.data&&state.data.positions&&state.data.positions[state.position];
+    document.getElementById('rank-title').textContent=names[state.position]+' · '+(state.scoring==='half'?'Half-PPR':state.scoring.toUpperCase());
+    if(!Array.isArray(rows)||!rows.length){list.innerHTML='<li class="status">These rankings are not available yet. Check back after the weekly refresh.</li>';return}
+    list.innerHTML=rows.slice(0,5).map(function(row,i){var score=scoreValue(row),team=row.team||'',matchup=row.opponent?(' vs '+row.opponent):'';return '<li><span class="rank">'+(i+1)+'</span><span class="player"><strong>'+escapeHtml(row.name||row.playerName||'Player')+'</strong><small>'+escapeHtml(team+matchup)+'</small></span><span class="projected">'+(score!=null?Number(score).toFixed(1):'—')+'<small>SAGE</small></span></li>'}).join('');
+  }
+  function escapeHtml(value){var d=document.createElement('div');d.textContent=String(value);return d.innerHTML}
+  function load(){
+    document.getElementById('ranking-list').innerHTML='<li class="status">Loading current SAGE rankings…</li>';
+    fetch('/.netlify/functions/weekly-sage-rankings?season='+context.season+'&week='+context.week+'&seasonType=reg&scoring='+state.scoring+'&teams=12')
+      .then(function(res){if(!res.ok)throw new Error('unavailable');return res.json()})
+      .then(function(data){state.data=data;render()}).catch(function(){state.data=null;render()});
+  }
+  document.getElementById('position-controls').addEventListener('click',function(e){if(!e.target.dataset.position)return;state.position=e.target.dataset.position;this.querySelectorAll('button').forEach(function(b){b.classList.toggle('active',b===e.target)});render()});
+  document.getElementById('scoring-controls').addEventListener('click',function(e){if(!e.target.dataset.scoring)return;state.scoring=e.target.dataset.scoring;this.querySelectorAll('button').forEach(function(b){b.classList.toggle('active',b===e.target)});load()});
+  document.querySelectorAll('.prompt').forEach(function(button){button.addEventListener('click',function(){var text=button.childNodes[0].textContent+(button.querySelector('.prompt-week')?button.querySelector('.prompt-week').textContent:'')+(button.querySelector('.prompt-week')?button.childNodes[2].textContent:'');navigator.clipboard&&navigator.clipboard.writeText(text.trim());var label=button.querySelector('small');label.textContent='Copied';setTimeout(function(){label.textContent='Tap to copy'},1400);if(window.fbq)fbq('trackCustom','SagePromptCopy')})});
+  load();
+})();
+</script>
+</body>
+</html>

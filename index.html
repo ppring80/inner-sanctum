@@ -48,6 +48,8 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .btn-hero-secondary{background:transparent;color:#f0e6cc;font-family:'Cinzel',serif;font-size:14px;padding:14px 32px;border-radius:var(--r);text-decoration:none;letter-spacing:2px;text-transform:uppercase;transition:all 0.2s;border:1px solid rgba(201,168,76,0.4)}
 .btn-hero-secondary:hover{border-color:var(--gold-lt);color:var(--gold-lt)}
 .hero-sage-note{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;color:rgba(240,230,204,0.55);margin-top:22px}
+.hero-sage-note a{color:var(--gold-lt);text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.35)}
+.hero-sage-note a:hover{border-bottom-color:var(--gold-lt)}
 .hero-stats{display:flex;gap:40px;justify-content:center;margin-top:60px;flex-wrap:wrap}
 .hero-stat{text-align:center}
 .hero-stat-num{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:600;color:var(--gold-lt);display:block}
@@ -246,9 +248,9 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <p class="hero-sub">AI-powered fantasy football intelligence built around your league — draft strategy, rankings, lineup decisions, player analysis and more, on The Inner Sanctum and inside ChatGPT.</p>
   <div class="hero-btns">
     <a href="/sanctum" class="btn-hero-primary">Try It Free</a>
-    <a href="#tools" class="btn-hero-secondary">See the Draft Tools</a>
+    <a href="/sage" class="btn-hero-secondary">See SAGE Weekly Rankings</a>
   </div>
-  <div class="hero-sage-note">🔮 Also arriving as Inner Sanctum SAGE inside ChatGPT — coming soon</div>
+  <div class="hero-sage-note">🔮 <a href="/sage">SAGE weekly rankings are live</a> — free previews, start/sit help and ChatGPT-ready prompts</div>
   <div class="hero-stats">
     <div class="hero-stat">
       <span class="hero-stat-num">3</span>
@@ -526,6 +528,10 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
       </div>
     </div>
     <p class="section-sub" style="text-align:center;margin:32px auto 0">No new interface to learn. No digging through spreadsheets. Just ask ChatGPT.</p>
+    <div class="hero-btns" style="margin-top:22px">
+      <a href="/sage" class="btn-hero-primary">Use SAGE Free →</a>
+      <a href="/weekly" class="btn-hero-secondary" style="color:var(--text);border-color:var(--border2)">Full Rankings for Members</a>
+    </div>
   </div>
 </section>
 
@@ -700,6 +706,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
     <a href="/tiers" class="footer-link">Tier List</a>
     <a href="/survivor" class="footer-link">Survivor Pool</a>
     <a href="/weekly" class="footer-link">Weekly Rankings</a>
+    <a href="/sage" class="footer-link">SAGE Free Preview</a>
     <a href="/risers-fallers" class="footer-link">Risers & Fallers</a>
     <a href="/power-rankings" class="footer-link">Power Rankings (Preview)</a>
     <a href="#story" class="footer-link">Our Story</a>
