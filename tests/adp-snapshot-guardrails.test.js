@@ -3,7 +3,13 @@
 const assert = require('assert');
 require('./test-runtime-bootstrap.js');
 
-const { normalizeScoring } = require('../netlify/functions/adp.js');
+const fs = require('fs');
+const path = require('path');
+const {
+  normalizeScoring,
+  validateCachedAdpRecord,
+  ADP_STORE_NAME
+} = require('../netlify/functions/adp.js');
 const {
   validateAdpResult,
   snapshotRecord,
@@ -42,4 +48,28 @@ assert.strictEqual(record.scoring, 'half');
 assert.strictEqual(record.directTank01Calls, 1);
 assert.strictEqual(record.players.length, 2);
 
-console.log('14 ADP snapshot guardrail assertions passed, 0 failed.');
+assert.strictEqual(ADP_STORE_NAME, 'adp-snapshot');
+assert.strictEqual(validateCachedAdpRecord(record, 'half'), null);
+assert.strictEqual(validateCachedAdpRecord(null, 'half'), 'ADP snapshot is missing.');
+assert.strictEqual(
+  validateCachedAdpRecord({ ...record, evidenceType: 'wrong' }, 'half'),
+  'ADP snapshot evidence type is invalid.'
+);
+assert.strictEqual(
+  validateCachedAdpRecord({ ...record, scoring: 'ppr' }, 'half'),
+  'ADP snapshot scoring format does not match.'
+);
+assert.strictEqual(
+  validateCachedAdpRecord({ ...record, players: [] }, 'half'),
+  'ADP snapshot population is empty.'
+);
+
+const adpSource = fs.readFileSync(
+  path.join(__dirname, '../netlify/functions/adp.js'),
+  'utf8'
+);
+const handlerSource = adpSource.slice(adpSource.indexOf('exports.handler ='));
+assert.ok(handlerSource.includes('store.get(`scoring:${scoring}`, { type: "json" })'));
+assert.ok(!handlerSource.includes('fetchTank01Adp('));
+
+console.log('22 ADP snapshot guardrail assertions passed, 0 failed.');
