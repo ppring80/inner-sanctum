@@ -4,7 +4,8 @@
   "description": "The Inner Sanctum — Fantasy Football AI Companion. Netlify Functions dependency manifest.",
   "private": true,
   "scripts": {
-    "test": "node scripts/run-tests.js"
+    "test": "node scripts/run-tests.js",
+    "qa:weekly-rankings": "node scripts/run-weekly-ranking-qa.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
