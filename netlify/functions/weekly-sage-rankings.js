@@ -14,6 +14,12 @@ const {
   "./sage-take.js"
 );
 
+const {
+  POLICY: RANKING_GUARDRAIL_POLICY
+} = require(
+  "./weekly-sage-ranking-guardrails.js"
+);
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -307,6 +313,13 @@ exports.handler = async function (event) {
       positionsRequested: POSITIONS,
       positionsSucceeded: POSITIONS.filter((_, i) => results[i].ok),
       positionsFailed: POSITIONS.filter((_, i) => !results[i].ok),
+      rankingGuardrails: {
+        ...RANKING_GUARDRAIL_POLICY,
+        purpose:
+          "Weekly QA benchmark across every position. Competitor rankings do not enter SAGE scores or silently rewrite rankings.",
+        enforcement:
+          "Outliers require an explicit injury, role, usage, matchup, or freshness explanation before approval."
+      },
       note:
         "Each position's leaderboard array is unmodified from its own weekly-sage-<pos>-leaderboard output -- scores, order, and recommendations are not recalculated here. Positions are not merged into one cross-position rank."
     }
