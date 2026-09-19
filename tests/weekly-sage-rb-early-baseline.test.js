@@ -12,7 +12,11 @@ function player(index) {
     name:
       index === 21
         ? "Saquon Barkley"
+        : index === 5
+          ? "Chase Brown"
         : `RB ${index}`,
+    role: index === 5 ? { rawScore: 92 } : { rawScore: 80 },
+    matchup: index === 5 ? { rawScore: 46.5 } : { rawScore: 60 },
     sage: {
       score: 100 - index,
       confidence: 0.385
@@ -42,6 +46,8 @@ const adpSnapshot = {
       name:
         id === 21
           ? "Saquon Barkley"
+          : id === 5
+            ? "Chase Brown"
           : `RB ${id}`,
       position: "RB",
       adp: index + 1
@@ -76,6 +82,28 @@ assert.ok(
   barkleyRank <= 10,
   `Expected elite baseline player inside top 10, received RB${barkleyRank}`
 );
+
+const chaseBrown = leaderboard.find(
+  item => item.name === "Chase Brown"
+);
+assert.strictEqual(
+  chaseBrown.sage.baseline.expectationRestraint.applied,
+  true
+);
+assert.strictEqual(
+  chaseBrown.sage.baseline.expectationRestraint.penalty,
+  3.975
+);
+assert.strictEqual(
+  chaseBrown.sage.rankingScore,
+  roundForTest(
+    chaseBrown.sage.baseline.unrestrainedRankingScore - 3.975
+  )
+);
+
+function roundForTest(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 1000) / 1000;
+}
 
 const weekFive = applyEarlySeasonBaseline({
   leaderboard: leaderboard.map(item => ({
