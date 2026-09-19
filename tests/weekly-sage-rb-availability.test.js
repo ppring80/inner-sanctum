@@ -43,11 +43,39 @@ const leaderboard = [
 const adjustments = applyBackfieldOpportunityAdjustments({
   leaderboard,
   unavailablePlayers: [{
-    name: "Jordan Mason", team: "MIN", availability: { status: "OUT" }
+    name: "Jordan Mason", team: "MIN", availability: {
+      status: "OUT", backfieldRole: "committee", vacatedOpportunity: 0.45
+    }
   }]
 });
-assert.strictEqual(leaderboard[0].sage.rankingScore, 65);
-assert.strictEqual(leaderboard[1].sage.rankingScore, 44);
-assert.strictEqual(adjustments.length, 2);
+assert.strictEqual(leaderboard[0].sage.rankingScore, 59);
+assert.strictEqual(leaderboard[1].sage.rankingScore, 40);
+assert.strictEqual(adjustments.length, 1);
+
+const reserveOnly = [
+  { name: "Lead Back", team: "CLE", sage: { rankingScore: 60 } },
+  { name: "Reserve Back", team: "CLE", sage: { rankingScore: 35 } }
+];
+const reserveAdjustments = applyBackfieldOpportunityAdjustments({
+  leaderboard: reserveOnly,
+  unavailablePlayers: [{
+    name: "Reserve Teammate", team: "CLE", availability: {
+      status: "IR", backfieldRole: "reserve", vacatedOpportunity: 0.10
+    }
+  }]
+});
+assert.strictEqual(reserveOnly[0].sage.rankingScore, 61);
+assert.strictEqual(reserveOnly[1].sage.rankingScore, 35);
+assert.strictEqual(reserveAdjustments.length, 1);
+
+const unknownRole = [
+  { name: "Lead Back", team: "FA", sage: { rankingScore: 60 } }
+];
+assert.deepStrictEqual(applyBackfieldOpportunityAdjustments({
+  leaderboard: unknownRole,
+  unavailablePlayers: [{
+    name: "Unknown Back", team: "FA", availability: { status: "OUT" }
+  }]
+}), [], "Unknown workload must not create an automatic boost.");
 
 console.log("weekly-sage-rb-availability.test.js passed");
