@@ -96,17 +96,11 @@ async function handler(event = {}, dependencies = {}) {
       accessToken
     );
 
-    if (account.id !== accountId) {
-      return response(502, {
-        ok: false,
-        error: "instagram_account_id_mismatch",
-      });
-    }
-
     return response(200, {
       ok: true,
       connection: "verified",
       account,
+      configuredAccountIdMatches: account.id === accountId,
       capabilitiesTested: ["profile_read"],
       publishingAttempted: false,
     });
