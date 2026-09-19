@@ -83,6 +83,21 @@ const {
 const WR_SNAPSHOT_STORE =
   "wr-snapshot";
 
+const ADP_SNAPSHOT_STORE =
+  "adp-snapshot";
+
+const SUPPORTED_SCORING =
+  new Set(["ppr", "half", "standard"]);
+
+const EARLY_SEASON_BASELINE_WEIGHT = {
+  // One game should inform a Week 2 WR forecast, not replace the
+  // established scoring-specific expectation. Decay the prior quickly
+  // as route, target and production evidence accumulates.
+  2: 0.90,
+  3: 0.65,
+  4: 0.40
+};
+
 const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
 
 const SCHEDULE_FUNCTION =
@@ -254,6 +269,67 @@ function normalizePosition(
   )
     .trim()
     .toUpperCase();
+}
+
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeScoring(value) {
+  const scoring = String(value || "ppr")
+    .trim()
+    .toLowerCase();
+
+  return SUPPORTED_SCORING.has(scoring)
+    ? scoring
+    : "ppr";
+}
+
+async function fetchAdpBaseline(scoring) {
+  try {
+    const store = getStore({ name: ADP_SNAPSHOT_STORE });
+    const cached = await store.get(
+      `scoring:${normalizeScoring(scoring)}`,
+      { type: "json" }
+    );
+
+    if (
+      !cached ||
+      cached.evidenceType !== "tank01-adp-snapshot" ||
+      !Array.isArray(cached.players)
+    ) {
+      return null;
+    }
+
+    return cached;
+  } catch (error) {
+    return null;
+  }
+}
+
+function percentileFromRank(rank, populationSize) {
+  const numericRank = Number(rank);
+  const size = Number(populationSize);
+
+  if (
+    !Number.isFinite(numericRank) ||
+    !Number.isFinite(size) ||
+    numericRank < 1 ||
+    size < 1
+  ) {
+    return null;
+  }
+
+  if (size === 1) return 100;
+
+  return round(
+    ((size - numericRank) / (size - 1)) * 100,
+    3
+  );
 }
 
 function getBaseUrl(
@@ -1368,12 +1444,14 @@ function sortLeaderboard(
       const scoreDiff =
         (
           nullableNum(
+            b.rankingScore ??
             b.sageScore
           ) ||
           0
         ) -
         (
           nullableNum(
+            a.rankingScore ??
             a.sageScore
           ) ||
           0
@@ -1443,6 +1521,115 @@ function sortLeaderboard(
   );
 }
 
+function applyEarlySeasonBaseline({
+  leaderboard,
+  adpSnapshot,
+  week,
+  scoring
+}) {
+  const baselineWeight =
+    EARLY_SEASON_BASELINE_WEIGHT[Number(week)] || 0;
+
+  if (
+    baselineWeight <= 0 ||
+    !adpSnapshot ||
+    !Array.isArray(adpSnapshot.players)
+  ) {
+    return {
+      applied: false,
+      matched: 0,
+      baselineWeight: 0,
+      scoring: normalizeScoring(scoring)
+    };
+  }
+
+  const wrBaseline = adpSnapshot.players
+    .filter(player =>
+      String(player && player.position || "").toUpperCase() === "WR" &&
+      Number.isFinite(Number(player && player.adp))
+    )
+    .sort((a, b) => Number(a.adp) - Number(b.adp));
+
+  if (!wrBaseline.length) {
+    return {
+      applied: false,
+      matched: 0,
+      baselineWeight,
+      scoring: normalizeScoring(scoring)
+    };
+  }
+
+  const byID = new Map();
+  const byName = new Map();
+
+  wrBaseline.forEach((player, index) => {
+    const record = {
+      rank: index + 1,
+      percentile: percentileFromRank(index + 1, wrBaseline.length),
+      adp: Number(player.adp)
+    };
+    const playerID = String(
+      player.playerID ?? player.playerId ?? player.id ?? ""
+    ).trim();
+    const name = normalizeName(
+      player.name || player.longName || player.playerName
+    );
+
+    if (playerID) byID.set(playerID, record);
+    if (name) byName.set(name, record);
+  });
+
+  const orderedByCurrentScore =
+    sortLeaderboard(
+      leaderboard.slice()
+    );
+  let matched = 0;
+
+  orderedByCurrentScore.forEach((player, index) => {
+    const currentPercentile = percentileFromRank(
+      index + 1,
+      orderedByCurrentScore.length
+    );
+    const playerID = String(player.playerID || "").trim();
+    const baseline =
+      (playerID && byID.get(playerID)) ||
+      byName.get(normalizeName(player.name)) ||
+      null;
+
+    if (!baseline) {
+      player.rankingScore = currentPercentile;
+      player.baseline = {
+        applied: false,
+        reason: "No matching scoring-specific ADP baseline player."
+      };
+      return;
+    }
+
+    matched += 1;
+    player.rankingScore = round(
+      currentPercentile * (1 - baselineWeight) +
+      baseline.percentile * baselineWeight,
+      3
+    );
+    player.baseline = {
+      applied: true,
+      scoring: normalizeScoring(scoring),
+      weight: baselineWeight,
+      adp: baseline.adp,
+      positionRank: baseline.rank,
+      percentile: baseline.percentile,
+      currentEvidencePercentile: currentPercentile
+    };
+  });
+
+  return {
+    applied: matched > 0,
+    matched,
+    baselineWeight,
+    scoring: normalizeScoring(scoring)
+  };
+}
+
 function applyRanks(
   rows
 ) {
@@ -1465,6 +1652,7 @@ function applyRanks(
 
     const score =
       nullableNum(
+        row.rankingScore ??
         row.sageScore
       );
 
@@ -1696,6 +1884,11 @@ exports.handler =
         DEFAULT_SEASON_TYPE
       );
 
+    const scoring =
+      normalizeScoring(
+        query.scoring
+      );
+
     const requestedLimit =
       integerOrNull(
         query.limit
@@ -1783,7 +1976,8 @@ exports.handler =
       */
       const [
         snapshot,
-        schedule
+        schedule,
+        adpSnapshot
       ] =
         await Promise.all([
           readCachedSnapshot({
@@ -1798,7 +1992,11 @@ exports.handler =
             week:
               targetWeek,
             seasonType
-          })
+          }),
+
+          fetchAdpBaseline(
+            scoring
+          )
         ]);
 
       const rawPlayers =
@@ -2047,11 +2245,19 @@ exports.handler =
         ------
         Rank active scored WRs.
       */
+      sortLeaderboard(rows);
+
+      const baselineApplication =
+        applyEarlySeasonBaseline({
+          leaderboard: rows,
+          adpSnapshot,
+          week: targetWeek,
+          scoring
+        });
+
       const leaderboard =
         applyRanks(
-          sortLeaderboard(
-            rows
-          )
+          sortLeaderboard(rows)
         );
 
       const scoreSummary =
@@ -2097,7 +2303,12 @@ exports.handler =
               "WR SAGE v1 weights are validated as predictive via a completed 2025 Weeks 3-8 historical backtest. No held-out robustness testing or formal weight optimization has been performed.",
 
             ranking:
-              "Descending Weekly SAGE WR Score.",
+              baselineApplication.applied
+                ? "Descending early-season ranking score blending current Weekly SAGE evidence with the scoring-specific cached ADP baseline."
+                : "Descending Weekly SAGE WR Score.",
+
+            earlySeasonBaseline:
+              baselineApplication,
 
             recommendationThresholds: {
               start:
@@ -2313,3 +2524,9 @@ exports.handler =
       );
     }
   };
+
+exports.applyEarlySeasonBaseline =
+  applyEarlySeasonBaseline;
+
+exports.percentileFromRank =
+  percentileFromRank;

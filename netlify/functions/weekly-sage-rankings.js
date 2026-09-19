@@ -249,18 +249,24 @@ exports.handler = async function (event) {
         : [];
 
       const usesOwnSageTake = position === "K" || position === "DEF";
-      positions[position] = leaderboard.map((row) => ({
-        ...row,
-        sageTake:
-          position === "RB" &&
-          row.sage &&
-          row.sage.baseline &&
-          row.sage.baseline.applied
-            ? `${buildWeek2PlusSageTake(row)} Early-season ${row.sage.baseline.scoring.toUpperCase()} baseline weight: ${Math.round(row.sage.baseline.weight * 100)}%; current-season evidence weight: ${Math.round((1 - row.sage.baseline.weight) * 100)}%.`
-            : usesOwnSageTake
-              ? row.sageTake
-              : buildWeek2PlusSageTake(row)
-      }));
+      positions[position] = leaderboard.map((row) => {
+        const earlySeasonBaseline =
+          (row.sage && row.sage.baseline) ||
+          row.baseline ||
+          null;
+
+        return {
+          ...row,
+          sageTake:
+            (position === "RB" || position === "WR") &&
+            earlySeasonBaseline &&
+            earlySeasonBaseline.applied
+              ? `${buildWeek2PlusSageTake(row)} Early-season ${earlySeasonBaseline.scoring.toUpperCase()} baseline weight: ${Math.round(earlySeasonBaseline.weight * 100)}%; current-season evidence weight: ${Math.round((1 - earlySeasonBaseline.weight) * 100)}%.`
+              : usesOwnSageTake
+                ? row.sageTake
+                : buildWeek2PlusSageTake(row)
+        };
+      });
 
       failures[position] = [];
       successCount++;
