@@ -20,13 +20,13 @@ const leaderboard = names.map((name, index) => ({
   matchup: { rawScore: name === "Josh Allen" ? 45 : 60 }
 }));
 
-// Put Caleb first in one-game vidence while the baseline remains stable,
+// Put Caleb first in one-game evidence while the baseline remains stable.
 leaderboard.find(player => player.name === "Caleb Williams").sageScore = 99;
 
 const adpSnapshot = {
   evidenceType: "tank01-adp-snapshot",
   players: names.map((name, index) => ({
-    playerId: String(index + 1), name, position: "QB", adp: index + 1
+    playerID: String(index + 1), name, position: "QB", adp: index + 1
   }))
 };
 
