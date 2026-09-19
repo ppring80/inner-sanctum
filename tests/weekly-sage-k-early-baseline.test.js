@@ -35,6 +35,12 @@ assert.strictEqual(aubrey.baseline.positionRank, 1);
 assert.ok(aubrey.rankingScore > loop.rankingScore,
   'one quiet game must not push the established K1 below a mid-tier baseline kicker');
 
+const unmatched = { playerID: 'new', name: 'New Kicker', position: 'K', sageScore: 99 };
+const withUnmatched = [unmatched, ...population.map(row => ({ ...row }))];
+applyEarlySeasonBaseline({ population: withUnmatched, adpSnapshot, week: 2 });
+assert.ok(unmatched.baseline.expectedRank > 10,
+  'an unmatched kicker must not bypass the guardrail on one-game evidence');
+
 const weekFive = population.map(row => ({ ...row, baseline: undefined, rankingScore: undefined }));
 assert.strictEqual(applyEarlySeasonBaseline({
   population: weekFive, adpSnapshot, week: 5

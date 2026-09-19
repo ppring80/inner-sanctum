@@ -155,8 +155,20 @@ function applyEarlySeasonBaseline({ population, adpSnapshot, week }) {
     const evidenceRank = index + 1;
     const baseline = byId.get(String(row.playerID || "")) || byName.get(normalizeName(row.name));
     if (!baseline) {
-      row.rankingScore = 100 - evidenceRank;
-      row.baseline = { applied: false, reason: "No matching K baseline." };
+      // Missing identity/baseline evidence must fail conservatively. Otherwise
+      // an unmatched kicker can bypass the guardrail and retain an inflated
+      // one-game rank while every matched kicker is stabilized.
+      const fallbackRank = baselinePlayers.length + 1;
+      const expectedRank = fallbackRank * weight + evidenceRank * (1 - weight);
+      row.rankingScore = 100 - expectedRank;
+      row.baseline = {
+        applied: false,
+        reason: "No matching K baseline; conservative fallback applied.",
+        weight,
+        currentEvidenceRank: evidenceRank,
+        fallbackRank,
+        expectedRank: Math.round(expectedRank * 1000) / 1000
+      };
       return;
     }
     matched += 1;

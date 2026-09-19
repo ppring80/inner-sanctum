@@ -160,8 +160,17 @@ function applyEarlySeasonBaseline({ population, adpSnapshot, week }) {
     const evidenceRank = index + 1;
     const baseline = byTeam.get(normalizeTeam(row.team));
     if (!baseline) {
-      row.rankingScore = 100 - evidenceRank;
-      row.baseline = { applied: false, reason: "No matching DEF baseline." };
+      const fallbackRank = baselinePlayers.length + 1;
+      const expectedRank = fallbackRank * weight + evidenceRank * (1 - weight);
+      row.rankingScore = 100 - expectedRank;
+      row.baseline = {
+        applied: false,
+        reason: "No matching DEF baseline; conservative fallback applied.",
+        weight,
+        currentEvidenceRank: evidenceRank,
+        fallbackRank,
+        expectedRank: Math.round(expectedRank * 1000) / 1000
+      };
       return;
     }
     matched += 1;
