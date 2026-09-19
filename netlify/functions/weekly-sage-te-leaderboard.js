@@ -86,6 +86,16 @@ const {
 const TE_SNAPSHOT_STORE =
   "te-snapshot";
 
+const ADP_SNAPSHOT_STORE = "adp-snapshot";
+const SUPPORTED_SCORING = new Set(["ppr", "half", "standard"]);
+const SCORING_ALIASES = Object.freeze({
+  "half-ppr": "half", "half_ppr": "half", "0.5-ppr": "half",
+  "0.5_ppr": "half", hppr: "half", nonppr: "standard", "non-ppr": "standard"
+});
+const EARLY_SEASON_BASELINE_WEIGHT = Object.freeze({ 2: 0.90, 3: 0.65, 4: 0.40 });
+
+const { availabilityForPlayer } = require("./weekly-sage-te-availability.js");
+
 const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
 
 const SCHEDULE_FUNCTION =
@@ -235,6 +245,93 @@ function clamp(
       value
     )
   );
+}
+
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "").replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeScoring(value) {
+  const raw = String(value || "ppr").trim().toLowerCase();
+  const scoring = SCORING_ALIASES[raw] || raw;
+  return SUPPORTED_SCORING.has(scoring) ? scoring : "ppr";
+}
+
+async function fetchAdpBaseline(scoring) {
+  try {
+    const cached = await getStore({ name: ADP_SNAPSHOT_STORE }).get(
+      `scoring:${normalizeScoring(scoring)}`, { type: "json" });
+    return cached && cached.evidenceType === "tank01-adp-snapshot" &&
+      Array.isArray(cached.players) ? cached : null;
+  } catch (error) { return null; }
+}
+
+function percentileFromRank(rank, populationSize) {
+  const numericRank = Number(rank);
+  const size = Number(populationSize);
+  if (!Number.isFinite(numericRank) || !Number.isFinite(size) || numericRank < 1 || size < 1) return null;
+  if (size === 1) return 100;
+  return round(((size - numericRank) / (size - 1)) * 100, 3);
+}
+
+function applyEarlySeasonBaseline({ leaderboard, adpSnapshot, week, scoring }) {
+  const baselineWeight = EARLY_SEASON_BASELINE_WEIGHT[Number(week)] || 0;
+  const normalizedScoring = normalizeScoring(scoring);
+  if (!baselineWeight || !adpSnapshot || !Array.isArray(adpSnapshot.players)) {
+    return { applied: false, matched: 0, baselineWeight: 0, scoring: normalizedScoring };
+  }
+  const eligibleNames = new Set(leaderboard.map(row => normalizeName(row.name)).filter(Boolean));
+  const baselinePlayers = adpSnapshot.players.filter(player =>
+    String(player && player.position || "").toUpperCase() === POSITION &&
+    Number.isFinite(Number(player && player.adp)) &&
+    eligibleNames.has(normalizeName(player.name || player.longName || player.playerName)))
+    .sort((a, b) => Number(a.adp) - Number(b.adp));
+  const byId = new Map();
+  const byName = new Map();
+  baselinePlayers.forEach((player, index) => {
+    const record = { positionRank: index + 1, adp: Number(player.adp),
+      percentile: percentileFromRank(index + 1, baselinePlayers.length) };
+    const id = String(player.playerID ?? player.playerId ?? player.id ?? "").trim();
+    if (id) byId.set(id, record);
+    const name = normalizeName(player.name || player.longName || player.playerName);
+    if (name) byName.set(name, record);
+  });
+  const current = leaderboard.slice().sort((a, b) => Number(b.sageScore) - Number(a.sageScore));
+  let matched = 0;
+  current.forEach((player, index) => {
+    const baseline = byId.get(String(player.playerID || "")) || byName.get(normalizeName(player.name));
+    const currentRank = index + 1;
+    if (!baseline) {
+      player.rankingScore = percentileFromRank(currentRank, current.length);
+      player.baseline = { applied: false, reason: "No matching scoring-specific TE baseline." };
+      return;
+    }
+    matched += 1;
+    const expectedRank = round(baseline.positionRank * baselineWeight + currentRank * (1 - baselineWeight), 3);
+    player.rankingScore = round(100 - expectedRank, 3);
+    player.baseline = { applied: true, scoring: normalizedScoring, weight: baselineWeight,
+      adp: baseline.adp, positionRank: baseline.positionRank, percentile: baseline.percentile,
+      currentEvidenceRank: currentRank, expectedRank };
+  });
+  return { applied: matched > 0, matched, baselineWeight, scoring: normalizedScoring };
+}
+
+function applyAvailabilityRiskAdjustments(leaderboard) {
+  let adjusted = 0;
+  leaderboard.forEach(player => {
+    const status = String(player && player.availability && player.availability.status || "").toUpperCase();
+    if (status !== "DOUBTFUL") return;
+    player.rankingScore = round((nullableNum(player.rankingScore) ?? nullableNum(player.sageScore) ?? 0) - 30, 3);
+    player.recommendation = "SIT";
+    player.availabilityAdjustment = {
+      applied: true,
+      penalty: 30,
+      reason: "Doubtful players are retained for visibility but pushed below healthy starting options."
+    };
+    adjusted += 1;
+  });
+  return { adjusted };
 }
 
 function normalizeTeam(
@@ -1273,7 +1370,8 @@ function leaderboardRow(
 
 function inactiveRow(
   player,
-  reason
+  reason,
+  status = "bye"
 ) {
   return {
     playerID:
@@ -1294,8 +1392,7 @@ function inactiveRow(
     position:
       POSITION,
 
-    status:
-      "bye",
+    status,
 
     eligibleForWeeklyRanking:
       false,
@@ -1371,15 +1468,15 @@ function sortLeaderboard(
       const scoreDiff =
         (
           nullableNum(
-            b.sageScore
+            b.rankingScore
           ) ||
-          0
+          nullableNum(b.sageScore) || 0
         ) -
         (
           nullableNum(
-            a.sageScore
+            a.rankingScore
           ) ||
-          0
+          nullableNum(a.sageScore) || 0
         );
 
       if (
@@ -1466,10 +1563,7 @@ function applyRanks(
         i
       ];
 
-    const score =
-      nullableNum(
-        row.sageScore
-      );
+    const score = nullableNum(row.rankingScore) ?? nullableNum(row.sageScore);
 
     if (
       i ===
@@ -1699,6 +1793,8 @@ exports.handler =
         DEFAULT_SEASON_TYPE
       );
 
+    const scoring = normalizeScoring(query.scoring);
+
     const requestedLimit =
       integerOrNull(
         query.limit
@@ -1784,10 +1880,7 @@ exports.handler =
         (Netlify Blobs), not a live rebuild -- see readCachedSnapshot()
         above. fetchSchedule() is unchanged.
       */
-      const [
-        snapshot,
-        schedule
-      ] =
+      const [snapshot, schedule, adpSnapshot] =
         await Promise.all([
           readCachedSnapshot({
             season,
@@ -1801,7 +1894,9 @@ exports.handler =
             week:
               targetWeek,
             seasonType
-          })
+          }),
+
+          fetchAdpBaseline(scoring)
         ]);
 
       const rawPlayers =
@@ -1874,6 +1969,13 @@ exports.handler =
         const player of
         players
       ) {
+        const availability = availabilityForPlayer(player, season, targetWeek);
+        player.availability = availability;
+        if (!availability.eligible) {
+          inactive.push(inactiveRow(player, availability.reason, availability.status));
+          continue;
+        }
+
         const classification =
           classifyPlayerSchedule(
             player,
@@ -2050,12 +2152,23 @@ exports.handler =
         ------
         Rank active scored WRs.
       */
-      const leaderboard =
-        applyRanks(
-          sortLeaderboard(
-            rows
-          )
-        );
+      const baselineApplication = applyEarlySeasonBaseline({
+        leaderboard: rows,
+        adpSnapshot,
+        week: targetWeek,
+        scoring
+      });
+
+      rows.forEach(row => {
+        const source = activePlayers.find(player => String(player.playerID) === String(row.playerID));
+        if (source && source.availability && source.availability.status !== "ACTIVE") {
+          row.availability = source.availability;
+        }
+      });
+
+      const availabilityRiskApplication = applyAvailabilityRiskAdjustments(rows);
+
+      const leaderboard = applyRanks(sortLeaderboard(rows));
 
       const scoreSummary =
         summarizeScores(
@@ -2100,7 +2213,10 @@ exports.handler =
               "TE SAGE v1 weights are validated as predictive via a completed 2025 regular-season historical backtest (Weeks 8-17, 381 clean observations). No held-out robustness testing or weight optimization has been performed. Recommendation thresholds below are a separate, still-unvalidated item.",
 
             ranking:
-              "Descending Weekly SAGE TE Score.",
+              "Descending early-season ranking score blending current Weekly SAGE evidence with the scoring-specific cached TE baseline.",
+
+            earlySeasonBaseline:
+              baselineApplication,
 
             recommendationThresholds: {
               start:
@@ -2132,6 +2248,12 @@ exports.handler =
 
             byeHandling:
               "Players whose historical target-week team is on bye are excluded before final-score execution and reported separately as inactive.",
+
+            availabilityHandling:
+              "Confirmed OUT, IR, PUP, suspended, and exempt tight ends are excluded before scoring; doubtful players remain visible with an explicit risk flag.",
+
+            availabilityRiskAdjustment:
+              availabilityRiskApplication,
 
             historicalIdentity:
               "The TE snapshot's historical team entering the target week is authoritative for schedule classification.",
@@ -2177,7 +2299,10 @@ exports.handler =
               leaderboard.length,
 
             inactiveByePlayers:
-              inactive.length,
+              inactive.filter(player => player.status === "bye").length,
+
+            inactiveUnavailablePlayers:
+              inactive.filter(player => player.status !== "bye").length,
 
             unresolvedPlayers:
               unresolved.length,
@@ -2316,3 +2441,7 @@ exports.handler =
       );
     }
   };
+
+exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
+exports.normalizeScoring = normalizeScoring;
+exports.applyAvailabilityRiskAdjustments = applyAvailabilityRiskAdjustments;
