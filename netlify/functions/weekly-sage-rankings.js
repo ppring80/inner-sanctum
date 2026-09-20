@@ -104,6 +104,20 @@ function normalizeWeek1DefenseIdentity(positions) {
   return normalized;
 }
 
+function normalizeInactiveRows(data, position) {
+  return Array.isArray(data && data.inactive)
+    ? data.inactive.map(function (row) {
+        return {
+          ...row,
+          position: row.position || position,
+          eligibleForWeeklyRanking: false,
+          recommendation: "INELIGIBLE",
+          sageTake: row.reason || "Unavailable for this week's lineup."
+        };
+      })
+    : [];
+}
+
 async function fetchPositionLeaderboard({ baseUrl, position, season, week, seasonType, scoring }) {
   const functionName = LEADERBOARD_FUNCTION_BY_POSITION[position];
   const url =
@@ -244,6 +258,7 @@ exports.handler = async function (event) {
   );
 
   const positions = {};
+  const inactive = {};
   const failures = {};
   let successCount = 0;
 
@@ -274,10 +289,13 @@ exports.handler = async function (event) {
         };
       });
 
+      inactive[position] = normalizeInactiveRows(result.data, position);
+
       failures[position] = [];
       successCount++;
     } else {
       positions[position] = [];
+      inactive[position] = [];
       failures[position] = [result.error];
     }
   });
@@ -307,6 +325,8 @@ exports.handler = async function (event) {
 
     positions,
 
+    inactive,
+
     failures,
 
     metadata: {
@@ -325,3 +345,5 @@ exports.handler = async function (event) {
     }
   });
 };
+
+exports.normalizeInactiveRows = normalizeInactiveRows;

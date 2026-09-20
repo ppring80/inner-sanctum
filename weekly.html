@@ -708,13 +708,17 @@ function getRosterLineupAssignments() {
   var rosterNameSet = {};
   state.myRosterNames.forEach(function(name) { rosterNameSet[name] = true; });
 
-  var available = getAllRows()
+  var rosterPlayers = getAllRows()
     .filter(function(player) { return rosterNameSet[player.name] === true; })
     .slice()
     .sort(function(a, b) { return lineupRankingValue(b) - lineupRankingValue(a); });
 
-  available.forEach(function(player) {
+  rosterPlayers.forEach(function(player) {
     assignments[player.name] = { call: 'sit', slot: 'BENCH' };
+  });
+
+  var available = rosterPlayers.filter(function(player) {
+    return player.eligibleForWeeklyRanking !== false;
   });
 
   function fillSlots(slot, count, eligiblePositions) {
@@ -1154,6 +1158,37 @@ function flattenRankings(rankings) {
           entry.sageTake != null && String(entry.sageTake).trim() !== ''
             ? entry.sageTake
             : null
+      });
+    });
+
+    var inactiveList = rankings.inactive && rankings.inactive[pos];
+    if (!Array.isArray(inactiveList)) return;
+    inactiveList.forEach(function(entry) {
+      if (!entry || !entry.name || out.some(function(row) { return row.name === entry.name && row.pos === pos; })) return;
+      var rawStatus = String(entry.status || 'UNAVAILABLE').toUpperCase();
+      out.push({
+        playerID: entry.playerID || null,
+        name: entry.name,
+        pos: entry.position || pos,
+        team: entry.team || entry.currentTeam || '—',
+        opp: entry.opponent || '—',
+        injury: rawStatus === 'DOUBTFUL' ? 'doubtful' : 'out',
+        call: 'sit',
+        sageScore: null,
+        providerProjectedPoints: null,
+        sageLabel: rawStatus,
+        sageConfidence: null,
+        sageConfidenceLabel: null,
+        adp: null,
+        overallRank: null,
+        positionRank: null,
+        matchup: null,
+        matchupEvidence: null,
+        components: null,
+        sageTake: entry.reason || 'Unavailable for this week’s lineup.',
+        eligibleForWeeklyRanking: false,
+        availabilityStatus: rawStatus,
+        availabilitySource: entry.source || null
       });
     });
   });
@@ -1676,6 +1711,10 @@ function getFilteredSorted() {
           return false;
         }
 
+        if (p.eligibleForWeeklyRanking === false && !state.myRosterOnly && !q) {
+          return false;
+        }
+
         if (
           q &&
           !p.name
@@ -1906,13 +1945,15 @@ function renderTable() {
             ? lineupAssignment.call
             : p.call;
 
+          var unavailable = p.eligibleForWeeklyRanking === false;
+          var unavailableTag = unavailable
+            ? '<span class="verdict-tag sit">' + (p.availabilityStatus || 'UNAVAILABLE') + '</span>'
+            : '';
+
           return (
             '<tr class="' +
-              (
-                isMine
-                  ? 'is-mine'
-                  : ''
-              ) +
+              (isMine ? 'is-mine ' : '') +
+              (unavailable ? 'is-unavailable' : '') +
             '">' +
 
               '<td class="cell-proj">' +
@@ -1958,9 +1999,11 @@ function renderTable() {
 
               '<td>' +
                 '<div class="cell-verdict">' +
-                  (lineupAssignment
-                    ? rosterLineupTag(lineupAssignment)
-                    : callTag(call)) +
+                  (unavailable
+                    ? unavailableTag
+                    : (lineupAssignment
+                        ? rosterLineupTag(lineupAssignment)
+                        : callTag(call))) +
                   verdictText +
                 '</div>' +
               '</td>' +
