@@ -57,18 +57,23 @@ assert.strictEqual(hasGameStarted({ gameDate: '20260921', gameTime: '8:15 PM' },
 
 const weeklyPositions = {
   QB: [
-    { name: 'Thursday QB', rank: 1, gameDate: '20260917', gameTime: '8:15p' },
+    { name: 'Thursday QB', team: 'BUF', opponent: 'DET', rank: 1, gameDate: '20260917', gameTime: '8:15p' },
     { name: 'Sunday QB', rank: 2, gameDate: '20260920', gameTime: '1:00p' }
   ],
-  RB: [{ name: 'Thursday RB', rank: 1, gameDate: '2026-09-17', gameTime: '8:15 PM' }],
-  WR: [], TE: [], K: [],
-  DEF: [{ name: 'Future DEF', rank: 3, gameDate: '20260921', gameTime: '8:15p' }]
+  RB: [{ name: 'Thursday RB', team: 'DET', rank: 1 }],
+  WR: [], TE: [],
+  K: [{ name: 'Thursday K', team: 'BUF', rank: 1 }],
+  DEF: [
+    { name: 'BUF', team: 'BUF', rank: 1 },
+    { name: 'Future DEF', team: 'SEA', rank: 3, gameDate: '20260921', gameTime: '8:15p' }
+  ]
 };
 const started = removeStartedGames(weeklyPositions, sundayNoonEastern);
-assert.deepStrictEqual(started.map(row => row.name), ['Thursday QB', 'Thursday RB']);
+assert.deepStrictEqual(started.map(row => row.name), ['Thursday QB', 'Thursday RB', 'Thursday K', 'BUF']);
 assert.deepStrictEqual(weeklyPositions.QB.map(row => row.name), ['Sunday QB']);
 assert.strictEqual(weeklyPositions.QB[0].rank, 1, 'remaining position board is renumbered');
 assert.strictEqual(weeklyPositions.RB.length, 0);
+assert.strictEqual(weeklyPositions.K.length, 0);
 assert.strictEqual(weeklyPositions.DEF[0].rank, 1);
 
 console.log('Weekly inactive visibility tests passed.');
