@@ -34,7 +34,7 @@ function loadCollector(overrides = {}) {
   return window.CBSFreeAgentCapture;
 }
 
-function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
+function fakeRow({ id, linkText, playerCellText, rowText, cells = [], labels = [] }) {
   const playerCell = { textContent: playerCellText || linkText };
   const link = {
     href: `https://widebodies.football.cbssports.com/players/playerpage/${id}`,
@@ -47,7 +47,10 @@ function fakeRow({ id, linkText, playerCellText, rowText, cells = [] }) {
     textContent: rowText,
     querySelector: () => link,
     querySelectorAll: (selector) => selector === 'td'
-      ? cells.map((textContent) => ({ textContent }))
+      ? cells.map((textContent, index) => ({
+        textContent,
+        getAttribute: (name) => name === 'data-label' ? labels[index] || null : null,
+      }))
       : [],
   };
 }
@@ -81,7 +84,8 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
       linkText: 'Jared Goff',
       playerCellText: 'Jared Goff QB-DET',
       rowText: 'Jared Goff QB-DET @ CHI 82%',
-      cells: ['Add', 'Jared Goff QB-DET', '@ CHI', '82%'],
+      cells: ['Add', 'Jared Goff QB-DET', '@ CHI', '18.7', '82%'],
+      labels: ['', 'Player', 'Matchup', 'Proj Pts', 'Owned'],
     }),
     fakeRow({
       id: '23456',
@@ -122,6 +126,8 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
   assert.strictEqual(players[0].position, 'QB');
   assert.strictEqual(players[0].team, 'DET');
   assert.strictEqual(players[0].percentOwned, 82);
+  assert.strictEqual(players[0].projectedPoints, 18.7);
+  assert.strictEqual(players[1].projectedPoints, null);
   assert.strictEqual(players[1].name, 'Malik Willis');
   assert.strictEqual(players[2].name, 'Kirk Cousins');
   assert.strictEqual(players[2].position, 'QB');
@@ -198,6 +204,14 @@ function fakeDoc(rows, label = 'FREE AGENTS CBS AVERAGE PROJECTIONS') {
   );
   assert.strictEqual(fetched.find((p) => p.name === 'Kirk Cousins').position, 'QB');
   assert.strictEqual(fetched.filter((p) => p.id === '100').length, 1);
+
+  const joined = collector.addCapturedProjections(players, {
+    playerProjectionsById: [{ cbsPlayerId: '23456', projectedPoints: 16.4 }],
+    playerProjectionsByName: [{ name: 'Kirk Cousins', projectedPoints: 15.2 }],
+  });
+  assert.strictEqual(joined[0].projectedPoints, 18.7, 'table projection wins');
+  assert.strictEqual(joined[1].projectedPoints, 16.4, 'CBS ID projection joins');
+  assert.strictEqual(joined[2].projectedPoints, 15.2, 'normalized name projection joins');
 
   const degradedRequests = [];
   const degradedCollector = loadCollector({
