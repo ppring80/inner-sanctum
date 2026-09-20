@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════
 // GET RISERS & FALLERS — entitlement-aware frontend data endpoint
 //
 // Full Top 15 data is a Founding Acolyte benefit.
@@ -22,6 +22,75 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Content-Type": "application/json"
 };
+
+const MAX_SNAPSHOT_AGE_MS = 10 * 24 * 60 * 60 * 1000;
+
+function expectedSeasonForDate(now = new Date()) {
+  return String(now.getUTCFullYear());
+}
+
+function validateSnapshot(data, now = new Date()) {
+  const expectedSeason = expectedSeasonForDate(now);
+
+  if (!data || typeof data !== "object") {
+    return {
+      valid: false,
+      status: "NoData",
+      reason: "Risers & Fallers does not have a validated snapshot yet."
+    };
+  }
+
+  if (String(data.season || "") !== expectedSeason) {
+    return {
+      valid: false,
+      status: "StaleData",
+      reason: `The cached Risers & Fallers snapshot is for the ${data.season || "unknown"} season, not ${expectedSeason}.`,
+      expectedSeason,
+      snapshotSeason: data.season || null
+    };
+  }
+
+  const computedAtMs = Date.parse(data.computedAt || "");
+  if (!Number.isFinite(computedAtMs)) {
+    return {
+      valid: false,
+      status: "StaleData",
+      reason: "The cached Risers & Fallers snapshot has no valid computation time.",
+      expectedSeason
+    };
+  }
+
+  const ageMs = now.getTime() - computedAtMs;
+  if (ageMs < 0 || ageMs > MAX_SNAPSHOT_AGE_MS) {
+    return {
+      valid: false,
+      status: "StaleData",
+      reason: "The cached Risers & Fallers snapshot is too old to present as current weekly intelligence.",
+      expectedSeason,
+      computedAt: data.computedAt
+    };
+  }
+
+  if (
+    !Number.isInteger(Number(data.currentWeek)) ||
+    !Number.isInteger(Number(data.previousWeek)) ||
+    Number(data.currentWeek) <= Number(data.previousWeek) ||
+    !Array.isArray(data.risers) ||
+    !Array.isArray(data.fallers)
+  ) {
+    return {
+      valid: false,
+      status: "InvalidData",
+      reason: "The cached Risers & Fallers snapshot failed its week or player-list integrity checks.",
+      expectedSeason
+    };
+  }
+
+  return { valid: true, expectedSeason };
+}
+
+module.exports.expectedSeasonForDate = expectedSeasonForDate;
+module.exports.validateSnapshot = validateSnapshot;
 
 async function hasFullAcolyteAccess(event) {
   try {
@@ -83,13 +152,22 @@ exports.handler = async (event) => {
     const store = getStore({ name: "risers-fallers" });
     const data = await store.get("latest", { type: "json" });
 
-    if (!data) {
+    const validation = validateSnapshot(data);
+
+    if (!validation.valid) {
       return {
         statusCode: 200,
-        headers: CORS_HEADERS,
+        headers: {
+          ...CORS_HEADERS,
+          "Cache-Control": "no-store"
+        },
         body: JSON.stringify({
-          status: "NoData",
+          status: validation.status,
           fullAccess: false,
+          reason: validation.reason,
+          expectedSeason: validation.expectedSeason,
+          snapshotSeason: validation.snapshotSeason,
+          computedAt: validation.computedAt,
           risers: [],
           fallers: []
         })
@@ -102,7 +180,7 @@ exports.handler = async (event) => {
       ? (Array.isArray(data.risers) ? data.risers : [])
       : (Array.isArray(data.risers) ? data.risers.slice(0, 1) : []);
 
-    const fallers = fullAccess
+    const fallers = fulAccess
       ? (Array.isArray(data.fallers) ? data.fallers : [])
       : (Array.isArray(data.fallers) ? data.fallers.slice(0, 1) : []);
 
