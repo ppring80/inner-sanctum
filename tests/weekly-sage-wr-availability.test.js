@@ -16,4 +16,11 @@ for (const status of ["QUESTIONABLE", "DOUBTFUL", "LIMITED"]) {
 assert.strictEqual(availabilityForPlayer({ status: "Exempt/Commissioner Permission", eligible: true }).eligible, true);
 assert.strictEqual(availabilityForPlayer({ eligible: false }).eligible, false);
 
+const flowers = availabilityForPlayer({ name: "Zay Flowers", team: "BAL" }, 2026, 2);
+assert.strictEqual(flowers.eligible, false);
+assert.strictEqual(flowers.status, "OUT");
+
+const futureFlowers = availabilityForPlayer({ name: "Zay Flowers", team: "BAL" }, 2026, 3);
+assert.strictEqual(futureFlowers.eligible, true, "Dated weekly facts must expire.");
+
 console.log("weekly-sage-wr-availability.test.js passed");
