@@ -90,7 +90,7 @@ function impact(item){return item?.decision?.evidence?.rosterImpact||item?.evide
 function sage(item){return item?.decision?.evidence?.sage||item?.evidence?.sage||null}
 function trend(item){return item?.decision?.evidence?.trend||item?.evidence?.trend||null}
 function opportunity(item){return item?.opportunity||item?.decision?.evidence?.opportunity||item?.evidence?.opportunity||null}
-function numberText(v,d){var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?1:d):'—'}
+function numberText(v,d){if(v==null||v==='')return '—';var n=Number(v);return Number.isFinite(n)?n.toFixed(d==null?1:d):'—'}
 function projectionPoints(item){var v=item?.providerProjectedPoints??item?.projection?.points??item?.decision?.evidence?.providerProjectedPoints??item?.evidence?.providerProjectedPoints;return numberText(v,1)}
 function rosteredPercent(item){var v=item?.percentOwned??item?.market?.rosteredPct??item?.quickRead?.percentOwned??item?.decision?.evidence?.percentOwned??item?.evidence?.percentOwned,n=Number(v);return Number.isFinite(n)?n:null}
 function dateTimeText(v){if(!v)return null;var d=new Date(v);if(Number.isNaN(d.getTime()))return null;return d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}

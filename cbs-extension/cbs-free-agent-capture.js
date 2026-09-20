@@ -30,6 +30,38 @@
     return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
   }
 
+  function numberOrNull(value) {
+    const text = clean(value).replace(/,/g, "");
+    if (!text || text.includes("%") || !/^-?\d+(?:\.\d+)?$/.test(text)) return null;
+    const number = Number(text);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function projectionHeader(value) {
+    const label = clean(value).toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    return label === "PTS" || label === "FPTS" || label === "PROJ" ||
+      label === "PROJ PTS" || label === "PROJECTED" || label === "PROJECTED PTS";
+  }
+
+  function projectedPoints(row, cells) {
+    // CBS commonly supplies responsive data-label attributes even when the
+    // visible header is outside the row. Prefer those exact labels.
+    for (const cell of cells) {
+      const label = cell.getAttribute?.("data-label") || cell.getAttribute?.("aria-label");
+      if (!projectionHeader(label)) continue;
+      const points = numberOrNull(cell.textContent);
+      if (points !== null) return points;
+    }
+
+    // Desktop CBS tables expose a conventional header row. Only read a value
+    // from a specifically named projection column; never guess from arbitrary
+    // numeric stats, ownership, or ranking columns.
+    const table = row.closest?.("table");
+    const headers = Array.from(table?.querySelectorAll?.("thead th") || []);
+    const index = headers.findIndex((header) => projectionHeader(header.textContent));
+    return index >= 0 ? numberOrNull(cells[index]?.textContent) : null;
+  }
+
   function parse(doc) {
     if (!/\bFREE AGENTS\b/i.test(clean(doc?.body?.textContent))) return [];
     const out = [];
@@ -51,11 +83,14 @@
       if (!id || !name || !pt || seen.has(id)) return;
       seen.add(id);
 
+      const cells = Array.from(row.querySelectorAll("td"));
       let percentOwned = null;
-      for (const cell of Array.from(row.querySelectorAll("td"))) {
+      for (const cell of cells) {
         const n = percent(cell.textContent);
         if (n !== null) { percentOwned = n; break; }
       }
+
+      const projection = projectedPoints(row, cells);
 
       out.push({
         id, cbsPlayerId: id, name,
@@ -64,10 +99,32 @@
         nflTeam: pt.nflTeam,
         availabilityStatus: "FREE_AGENT",
         percentOwned,
+        projectedPoints: projection,
         source: "cbs-free-agents"
       });
     });
     return out;
+  }
+
+  function addCapturedProjections(players, projections) {
+    const byId = new Map();
+    const byName = new Map();
+    for (const projection of projections?.playerProjectionsById || []) {
+      const id = clean(projection?.cbsPlayerId);
+      if (id) byId.set(id, projection);
+    }
+    for (const projection of projections?.playerProjectionsByName || []) {
+      const name = clean(projection?.name).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (name) byName.set(name, projection);
+    }
+    return (players || []).map((player) => {
+      if (numberOrNull(player?.projectedPoints) !== null) return player;
+      const id = clean(player?.cbsPlayerId || player?.id);
+      const name = clean(player?.name).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const projection = byId.get(id) || byName.get(name);
+      const points = numberOrNull(projection?.projectedPoints);
+      return points === null ? player : { ...player, projectedPoints: points };
+    });
   }
 
   function mergePlayers(groups) {
@@ -118,7 +175,7 @@
     c.captureAll = async function () {
       const captured = await original();
       try {
-        const players = await fetchPlayers();
+        const players = addCapturedProjections(await fetchPlayers(), captured.projections);
         captured.availablePlayers = players;
         captured.league = captured.league || {};
         captured.league.availablePlayers = players;
@@ -148,6 +205,7 @@
     parse,
     positionTeam,
     mergePlayers,
+    addCapturedProjections,
     fetchPlayers,
     install
   };
