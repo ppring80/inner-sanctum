@@ -358,6 +358,25 @@ function percentileRank(value, population) {
   return Math.round((countAtOrBelow / population.length) * 100);
 }
 
+function matchupSignal(score) {
+  if (score >= 80) return { signal: "strong_positive", label: "Strong Positive" };
+  if (score >= 60) return { signal: "positive", label: "Positive" };
+  if (score > 40) return { signal: "neutral", label: "Neutral" };
+  if (score > 20) return { signal: "negative", label: "Negative" };
+  return { signal: "strong_negative", label: "Strong Negative" };
+}
+
+function buildDefMatchupEvidence(record) {
+  if (!record || !record.opponent || record.opponent === "BYE") return null;
+  const score = Number(record.components && record.components.opponentEnvironment && record.components.opponentEnvironment.percentile);
+  if (!Number.isFinite(score)) return null;
+  return {
+    score,
+    ...matchupSignal(score),
+    source: "opponent-offensive-environment"
+  };
+}
+
 /*
   DEF-specific deterministic SAGE Take -- built locally from the same
   component evidence already resolved for this record. Never routes
@@ -679,6 +698,9 @@ exports.handler =
                   ? "START"
                   : "SIT");
 
+          const matchupEvidence =
+            buildDefMatchupEvidence(record);
+
           return {
             playerID:
               record.playerID,
@@ -694,6 +716,15 @@ exports.handler =
 
             opponent:
               record.opponent,
+
+            matchup:
+              matchupEvidence,
+
+            matchupStrength:
+              matchupEvidence ? matchupEvidence.label : null,
+
+            matchupEvidence:
+              matchupEvidence,
 
             rank:
               positionRank,
@@ -856,3 +887,4 @@ exports.handler =
   };
 
 exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
+exports.buildDefMatchupEvidence = buildDefMatchupEvidence;

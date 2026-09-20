@@ -39,6 +39,9 @@ const DEFAULT_SEASON_TYPE =
 const K_SNAPSHOT_STORE =
   "k-snapshot";
 
+const DEF_SNAPSHOT_STORE =
+  "def-snapshot";
+
 const SCHEDULE_STORE =
   "weekly-sage-schedule";
 
@@ -111,6 +114,41 @@ function normalizeName(value) {
   return String(value || "").trim().toLowerCase()
     .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
     .replace(/[^a-z0-9]/g, "");
+}
+
+function matchupSignal(score) {
+  if (score >= 80) return { signal: "strong_positive", label: "Strong Positive" };
+  if (score >= 60) return { signal: "positive", label: "Positive" };
+  if (score > 40) return { signal: "neutral", label: "Neutral" };
+  if (score > 20) return { signal: "negative", label: "Negative" };
+  return { signal: "strong_negative", label: "Strong Negative" };
+}
+
+function buildKMatchupEvidence(opponent, defenseSnapshot) {
+  if (!opponent || opponent === "BYE" || !defenseSnapshot || !Array.isArray(defenseSnapshot.population)) {
+    return null;
+  }
+  const defense = defenseSnapshot.population.find(function (row) {
+    return normalizeTeam(row && row.team) === normalizeTeam(opponent);
+  });
+  const prevention = Number(defense && defense.components && defense.components.scoringPrevention && defense.components.scoringPrevention.percentile);
+  if (!Number.isFinite(prevention)) return null;
+  const score = Math.max(0, Math.min(100, 100 - prevention));
+  return {
+    score,
+    ...matchupSignal(score),
+    source: "opponent-scoring-prevention"
+  };
+}
+
+async function readDefSnapshotForMatchup({ season, targetWeek, seasonType }) {
+  try {
+    const cached = await getStore({ name: DEF_SNAPSHOT_STORE })
+      .get(`week:${season}:${targetWeek}:${seasonType}`, { type: "json" });
+    return cached && cached.evidenceType === "weekly-sage-def-snapshot" ? cached : null;
+  } catch (error) {
+    return null;
+  }
 }
 
 async function readAdpBaseline(scoring) {
@@ -497,7 +535,8 @@ exports.handler =
       const [
         snapshot,
         schedule,
-        adpSnapshot
+        adpSnapshot,
+        defenseSnapshot
       ] =
         await Promise.all([
           readKSnapshot({
@@ -512,7 +551,13 @@ exports.handler =
             seasonType
           }),
 
-          readAdpBaseline(query.scoring)
+          readAdpBaseline(query.scoring),
+
+          readDefSnapshotForMatchup({
+            season,
+            targetWeek,
+            seasonType
+          })
         ]);
 
       const opponentMap =
@@ -558,6 +603,9 @@ exports.handler =
                   ? "START"
                   : "SIT");
 
+          const matchupEvidence =
+            buildKMatchupEvidence(opponent, defenseSnapshot);
+
           return {
             playerID:
               record.playerID,
@@ -573,6 +621,15 @@ exports.handler =
 
             opponent:
               opponent,
+
+            matchup:
+              matchupEvidence,
+
+            matchupStrength:
+              matchupEvidence ? matchupEvidence.label : null,
+
+            matchupEvidence:
+              matchupEvidence,
 
             rank:
               positionRank,
@@ -741,3 +798,4 @@ exports.handler =
   };
 
 exports.applyEarlySeasonBaseline = applyEarlySeasonBaseline;
+exports.buildKMatchupEvidence = buildKMatchupEvidence;
