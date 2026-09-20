@@ -32,20 +32,25 @@
     return result.replace(/\s{2,}/g, " ").trim();
   }
 
-  function rosterActionSentence(assignment) {
+  function rosterActionSentence(assignment, position) {
+    const isDefense = position === "DEF";
     if (!assignment || assignment.call !== "start") {
-      return "A stronger roster option keeps him on your bench this week.";
+      return isDefense
+        ? "A stronger roster option keeps them on your bench this week."
+        : "A stronger roster option keeps him on your bench this week.";
     }
     if (assignment.slot === "FLEX" || assignment.slot === "SUPERFLEX") {
       return "He still earns a " + assignment.slot + " spot in your lineup this week.";
     }
-    return "He still belongs in your starting lineup this week.";
+    return isDefense
+      ? "They still belong in your starting lineup this week."
+      : "He still belongs in your starting lineup this week.";
   }
 
-  function reconcileSageTake(text, assignment) {
+  function reconcileSageTake(text, assignment, position) {
     if (!assignment) return String(text || "");
     const outlook = stripRawAction(text);
-    const action = rosterActionSentence(assignment);
+    const action = rosterActionSentence(assignment, position);
     return [outlook, action].filter(Boolean).join(" ").trim();
   }
 
@@ -253,7 +258,8 @@
       if (!textNodes.length) return;
 
       const rawText = textNodes.map(function (node) { return node.textContent; }).join(" ").trim();
-      const reconciled = reconcileSageTake(rawText, assignment);
+      const position = row.querySelector(".pos-pill.DEF") ? "DEF" : null;
+      const reconciled = reconcileSageTake(rawText, assignment, position);
       textNodes[0].textContent = reconciled ? " " + reconciled : "";
       for (let i = 1; i < textNodes.length; i++) textNodes[i].textContent = "";
     });

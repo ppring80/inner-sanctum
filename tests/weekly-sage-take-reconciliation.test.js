@@ -32,6 +32,21 @@ assert(defenseBench.includes('Elite Week 1 profile'), 'preserves DEF outlook aft
 assert(!defenseBench.includes('Keep NE locked in'), 'removes team-specific DEF action before roster action is appended');
 assert(defenseBench.includes('keeps him on your bench'), 'reconciles DEF bench decision deterministically');
 
+const defenseStart = reconcile.reconcileSageTake(
+  'Allows few points. Still a small sample this season.',
+  { call: 'start', slot: 'DEF' },
+  'DEF'
+);
+assert(defenseStart.includes('They still belong in your starting lineup'), 'uses unit-appropriate pronouns for a starting defense');
+assert(!defenseStart.includes('He still belongs'), 'never refers to a defense as he');
+
+const personalizedDefenseBench = reconcile.reconcileSageTake(
+  defensePolishedRaw,
+  { call: 'sit', slot: 'BENCH' },
+  'DEF'
+);
+assert(personalizedDefenseBench.includes('keeps them on your bench'), 'uses unit-appropriate pronouns for a benched defense');
+
 const negativeBenchRaw = 'Bench-caliber Week 1 outlook. Best as a depth option this week.';
 const negativeBench = reconcile.reconcileSageTake(negativeBenchRaw, { call: 'sit', slot: 'BENCH' });
 assert(negativeBench.includes('Bench-caliber Week 1 outlook'), 'preserves negative bench outlook');
