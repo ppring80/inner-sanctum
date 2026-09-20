@@ -348,7 +348,8 @@ async function loadWeek(w){
       throw new Error(data.error||data.errors||'No schedule data returned');
     }
     weekData[w]=data.games;
-    setStatus('live','Week '+w+' · '+data.games.length+' games · '+new Date().toLocaleTimeString());
+    var updated=data.generatedAt?new Date(data.generatedAt).toLocaleString():'unknown';
+    setStatus(data.stale?'error':'live','Week '+w+' · '+data.games.length+' games · odds snapshot '+updated+(data.stale?' · STALE':''));
     renderWeek(w);
   }catch(e){
     setStatus('error','Could not load Week '+w);
