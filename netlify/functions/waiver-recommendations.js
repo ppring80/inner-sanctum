@@ -135,11 +135,13 @@ function customerVerdict(item) {
       weakestDepthRank - candidateRank >= 8
     ));
 
-  // Never tell a customer to act immediately when the same evidence cannot
-  // support even a conservative FAAB band. A rank-only edge with no verified
-  // workload or material provider-projection gain remains a review decision.
+  // Never tell a customer to act immediately from market price alone. FAAB can
+  // now be supported by a credible weekly rank, but ADD NOW still requires
+  // verified workload or a material roster-relative projection gain.
   if (action === 'ADD') {
-    return faabMarketBand(item, 'ADD_NOW') ? 'ADD_NOW' : 'REVIEW';
+    return Math.max(workloadStrength(item), projectionStrength(item)) > 0
+      ? 'ADD_NOW'
+      : 'REVIEW';
   }
   if (action === 'WATCH' && meaningfulDepthUpgrade && stashEvidenceQualified(item)) {
     return 'STASH';
@@ -294,12 +296,22 @@ function recommendedCandidate(item, verdict) {
 function faabMarketBand(item, verdict) {
   const workload = workloadStrength(item);
   const projection = projectionStrength(item);
+  const position = normalizedCoveragePosition(item?.position);
+  const rank = finiteNumber(item?.evidence?.sage?.positionRank);
   const trend = item?.evidence?.trend?.direction || item?.evidence?.opportunity?.direction || null;
   const starts = item?.evidence?.rosterImpact?.candidateStarts === true;
 
-  // A label, position, league size, or ownership percentage can refine real
-  // evidence, but can never manufacture a bid by itself.
-  if (Math.max(workload, projection) === 0) return null;
+  // Weekly rank is market evidence even when a player is not a meaningful
+  // upgrade for this particular roster. Keep the qualifying range broad
+  // enough to price normal 12-team waiver pools while excluding deep names.
+  const rankCeiling = { QB: 24, RB: 60, WR: 60, TE: 24, K: 16, DEF: 16 }[position];
+  const credibleWeeklyRank = rank !== null && Number.isFinite(rankCeiling) && rank <= rankCeiling;
+
+  // Ownership, trend labels, and league size can refine a bid but cannot create
+  // one. Verified workload, projection gain, or a credible Weekly SAGE rank can.
+  if (Math.max(workload, projection) === 0) {
+    return credibleWeeklyRank ? 'SPECULATIVE' : null;
+  }
 
   if (verdict === 'ADD_NOW') {
     if (starts && projection >= 3 && workload >= 2 && trend === 'RISER') return 'BREAKOUT';
@@ -345,11 +357,13 @@ function buildFaabGuidance(item, verdict, context = {}) {
   const position = String(item?.position || '').toUpperCase();
   const workload = workloadStrength(item);
   const gain = projectionGain(item);
+  const weeklyRank = finiteNumber(item?.evidence?.sage?.positionRank);
   const percentOwned = finiteNumber(item?.evidence?.percentOwned);
   const marketMultiplier = faabMarketMultiplier(position, teams, scoring);
 
   if (workload > 0) basis.push(`verified workload level ${workload}/3`);
   if (gain !== null && gain >= 2) basis.push(`${gain.toFixed(1)} projected-point roster gain`);
+  if (weeklyRank !== null) basis.push(`${position}${weeklyRank} Weekly SAGE market rank`);
   if (Number.isFinite(teams)) basis.push(`${teams}-team market adjustment`);
   if (marketMultiplier !== faabMarketMultiplier(position, teams, '')) {
     basis.push(`${scoring} positional adjustment`);

@@ -785,7 +785,8 @@ test('Week 1 fallback candidate remains behind when current projection is weaker
   const recommendations = buildCustomerRecommendations(decisions, { teams: 10 });
   assert.strictEqual(decisions[0].decision.action, 'PASS');
   assert.strictEqual(recommendations[0].verdict, 'PASS');
-  assert.strictEqual(recommendations[0].faab, null);
+  assert.strictEqual(recommendations[0].faab.recommendedPct, 1, 'market rank is priced independently of roster fit');
+  assert.strictEqual(recommendations[0].faab.archetype, 'SPECULATIVE');
 });
 
 test('Week 1 projection-backed bench upgrade becomes STASH with FAAB', () => {
@@ -901,7 +902,7 @@ test('provider fallback does not favor a marginal QB projection over the roster 
   assert.strictEqual(recommendations[0].lineupFor, null);
 });
 
-test('provider fallback keeps credible PK and DEF streamers visible without FAAB', () => {
+test('provider fallback keeps credible PK and DEF streamers visible with market FAAB', () => {
   const availablePlayers = [
     {
       name: 'Available Kicker', nflTeam: 'GB', position: 'PK',
@@ -933,7 +934,8 @@ test('provider fallback keeps credible PK and DEF streamers visible without FAAB
     assert.strictEqual(decision.decision.action, 'PASS', `${position} should retain honest roster comparison`);
     assert.strictEqual(recommendation.verdict, 'REVIEW', `${position} streamer should remain reviewable`);
     assert.strictEqual(recommendation.recommended, true, `${position} streamer should remain in Recommended`);
-    assert.strictEqual(recommendation.faab, null, `${position} streamer must not receive invented FAAB`);
+    assert.strictEqual(recommendation.faab.recommendedPct, 1, `${position} streamer receives speculative market FAAB`);
+    assert.strictEqual(recommendation.faab.archetype, 'SPECULATIVE');
     assert.ok(
       recommendation.decision.reasons.some((reason) => reason.includes('behind the weakest comparable')),
       `${position} must disclose that the rostered option is stronger`
