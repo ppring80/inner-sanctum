@@ -224,6 +224,52 @@ function removeStartedGames(positions, now) {
   return removed;
 }
 
+function weeklyRecommendation(position, rank) {
+  const positionRank = Number(rank);
+  if (!Number.isFinite(positionRank) || positionRank < 1) return null;
+  if (position === "QB" || position === "K" || position === "DEF") {
+    return positionRank <= 12 ? "START" : "SIT";
+  }
+  if (position === "TE") {
+    if (positionRank <= 12) return "START";
+    return positionRank <= 24 ? "FLEX" : "SIT";
+  }
+  if (position === "RB" || position === "WR") {
+    if (positionRank <= 24) return "START";
+    return positionRank <= 48 ? "FLEX" : "SIT";
+  }
+  return null;
+}
+
+function scoringLabel(scoring) {
+  const key = String(scoring || "").toLowerCase();
+  if (key === "half" || key === "half-ppr" || key === "halfppr") return "Half-PPR";
+  if (key === "ppr") return "PPR";
+  if (key === "standard" || key === "std") return "Standard";
+  return key ? key.toUpperCase() : "Selected-scoring";
+}
+
+function reconcileRankedRecommendations(positions, scoring) {
+  POSITIONS.forEach(position => {
+    const usesOwnSageTake = position === "K" || position === "DEF";
+    positions[position] = (Array.isArray(positions[position]) ? positions[position] : [])
+      .map((row, index) => {
+        const rank = index + 1;
+        const recommendation = weeklyRecommendation(position, rank);
+        const reconciled = { ...row, rank, recommendation };
+        if (usesOwnSageTake) return reconciled;
+        const baseline = (row.sage && row.sage.baseline) || row.baseline || null;
+        const baselineText = baseline && baseline.applied
+          ? ` Early-season ${scoringLabel(scoring)} baseline weight: ${Math.round(baseline.weight * 100)}%; current-season evidence weight: ${Math.round((1 - baseline.weight) * 100)}%.`
+          : "";
+        return {
+          ...reconciled,
+          sageTake: `${buildWeek2PlusSageTake(reconciled) || row.sageTake || ""}${baselineText}`.trim()
+        };
+      });
+  });
+}
+
 async function loadCentralAvailability() {
   try {
     const store = getStore({ name: "player-data" });
@@ -509,6 +555,7 @@ exports.handler = async function (event) {
     centralAvailability
   );
   const startedGameExclusions = removeStartedGames(positions, new Date());
+  reconcileRankedRecommendations(positions, scoring);
 
   if (successCount === 0) {
     return jsonResponse(502, {
@@ -586,3 +633,6 @@ exports.normalizeGameDate = normalizeGameDate;
 exports.gameMinuteOfDay = gameMinuteOfDay;
 exports.hasGameStarted = hasGameStarted;
 exports.removeStartedGames = removeStartedGames;
+exports.weeklyRecommendation = weeklyRecommendation;
+exports.scoringLabel = scoringLabel;
+exports.reconcileRankedRecommendations = reconcileRankedRecommendations;
