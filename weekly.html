@@ -544,6 +544,7 @@ function showAcolytePreviewBanner() {
   </div>
 
   <button class="my-roster-toggle" id="myRosterToggle" onclick="toggleMyRoster()">🏈 My Roster Only</button>
+  <a class="roster-build-toggle" href="/free-agents">🎯 Free Agents &amp; FAAB</a>
   <button class="roster-build-toggle" id="rosterBuildToggleBtn" onclick="toggleRosterBuildPanel()">🛠 Build My Roster ▾</button>
 </div>
 
@@ -1716,6 +1717,16 @@ function getFilteredSorted() {
 
   rows.sort(
     function(a, b) {
+      // An all-position fantasy board must not let the incomparable K/DEF
+      // SAGE scales bury the offensive positions customers draft and start.
+      // Position-specific views remain ordered only by their selected metric.
+      if (state.posFilter === 'ALL' && state.sortKey === 'proj') {
+        var positionGroup = { QB: 0, RB: 0, WR: 0, TE: 0, K: 1, DEF: 1 };
+        var aGroup = positionGroup[a.pos] != null ? positionGroup[a.pos] : 2;
+        var bGroup = positionGroup[b.pos] != null ? positionGroup[b.pos] : 2;
+        if (aGroup !== bGroup) return aGroup - bGroup;
+      }
+
       var av;
       var bv;
 
@@ -2011,19 +2022,24 @@ function renderWeekSnapshot() {
     return;
   }
 
-  var withProj =
+  var withProviderProjection =
     getAllRows().filter(
       function(p) {
-        return p.sageScore > 0;
+        return Number.isFinite(p.providerProjectedPoints);
       }
     );
 
+  var snapshotCandidates = withProviderProjection.length
+    ? withProviderProjection
+    : getAllRows().filter(function(p) { return Number.isFinite(p.sageScore); });
+
   var topProjected =
-    withProj.length
-      ? withProj.reduce(
+    snapshotCandidates.length
+      ? snapshotCandidates.reduce(
           function(a, b) {
-            return b.sageScore >
-              a.sageScore
+            var aValue = withProviderProjection.length ? a.providerProjectedPoints : a.sageScore;
+            var bValue = withProviderProjection.length ? b.providerProjectedPoints : b.sageScore;
+            return bValue > aValue
               ? b
               : a;
           }
@@ -2155,17 +2171,21 @@ function renderWeekSnapshot() {
   var html = '';
 
   if (topProjected) {
+    var snapshotUsesProjection = withProviderProjection.length > 0;
+    var snapshotValue = snapshotUsesProjection
+      ? topProjected.providerProjectedPoints
+      : topProjected.sageScore;
     html +=
       '<div class="week-snapshot-item">' +
-        '<div class="week-snapshot-label">Top Projected</div>' +
+        '<div class="week-snapshot-label">' + (snapshotUsesProjection ? 'Top Projected' : 'Top SAGE Signal') + '</div>' +
         '<div class="week-snapshot-value">' +
           topProjected.name +
         '</div>' +
         '<div class="week-snapshot-sub">' +
           topProjected.pos +
           ' · ' +
-          topProjected.sageScore.toFixed(1) +
-          ' pts' +
+          snapshotValue.toFixed(1) +
+          (snapshotUsesProjection ? ' pts' : ' SAGE') +
         '</div>' +
       '</div>';
   }
@@ -2199,7 +2219,7 @@ function renderWeekSnapshot() {
           bestStart.opp +
           ' · ' +
           bestStart.sageScore.toFixed(1) +
-          ' pts' +
+          ' SAGE' +
         '</div>' +
       '</div>';
   }
@@ -2215,7 +2235,7 @@ function renderWeekSnapshot() {
           myTop.pos +
           ' · ' +
           myTop.sageScore.toFixed(1) +
-          ' pts' +
+          ' SAGE' +
         '</div>' +
       '</div>';
   }

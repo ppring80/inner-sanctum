@@ -2869,7 +2869,7 @@ function startCbsConnect() {
 */
 
 window.receiveCbsConnection =
-  function (
+  async function (
     captured
   ) {
     var box =
@@ -3032,9 +3032,10 @@ window.receiveCbsConnection =
       renderProviderForm();
       renderChatGptLinkPanel();
 
-      refreshChatGptLinkIfNeeded(
-        "cbs"
-      );
+      var chatGptSnapshotRefreshed =
+        await refreshChatGptLinkIfNeeded(
+          "cbs"
+        );
 
       box =
         document.getElementById(
@@ -3083,6 +3084,12 @@ window.receiveCbsConnection =
                   )
                 )
               : ""
+          ) +
+
+          (
+            chatGptSnapshotRefreshed
+              ? '<br>✓ ChatGPT now has this refreshed roster.'
+              : ''
           );
       }
 
