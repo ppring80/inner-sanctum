@@ -309,7 +309,7 @@
     ================================================================
   */
 
-  function getSeasonFromDocument(doc) {
+  function findSeasonInDocument(doc) {
     const selects =
       [...doc.querySelectorAll(
         "select"
@@ -365,8 +365,11 @@
       }
     }
 
-    return new Date()
-      .getFullYear();
+    return null;
+  }
+
+  function getSeasonFromDocument(doc) {
+    return findSeasonInDocument(doc) || new Date().getFullYear();
   }
 
   function getLeagueNameFromDocument(doc) {
@@ -2782,6 +2785,45 @@
       fulfilled(4);
 
     /*
+      A CBS league URL can remain stable across seasons. Never combine a
+      current page identity with a roster document that explicitly identifies
+      a different season; that is how a prior-year roster can be mislabeled as
+      the current season.
+    */
+    const seasonEvidence = {
+      current:
+        findSeasonInDocument(document),
+      roster:
+        rosterPage
+          ? findSeasonInDocument(rosterPage.doc)
+          : null,
+      standings:
+        standingsPage
+          ? findSeasonInDocument(standingsPage.doc)
+          : null,
+      rules:
+        rulesPage
+          ? findSeasonInDocument(rulesPage.doc)
+          : null,
+    };
+
+    const explicitSeasons =
+      [...new Set(
+        Object.values(seasonEvidence)
+          .filter(function (value) {
+            return Number.isInteger(value);
+          })
+      )];
+
+    if (explicitSeasons.length > 1) {
+      throw new Error(
+        "CBS returned pages from different fantasy seasons (" +
+        explicitSeasons.join(", ") +
+        "). Open the current-season team page and sync again."
+      );
+    }
+
+    /*
       ROSTER
     */
 
@@ -3484,6 +3526,8 @@
 
         sourceHost:
           location.hostname,
+
+        seasonEvidence,
 
         dataQuality,
 
