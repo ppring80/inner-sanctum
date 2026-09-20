@@ -2349,6 +2349,23 @@ document.addEventListener(
 </script>
 
 <script>
+function detectConnectedEspnScoring(connection) {
+  if (String(connection?.provider || '').toLowerCase() !== 'espn') return null;
+  var rawItems = connection?.settings?.scoringSettings?.scoringItems;
+  var items = Array.isArray(rawItems)
+    ? rawItems
+    : (rawItems && typeof rawItems === 'object' ? Object.keys(rawItems).map(function(key) { return rawItems[key]; }) : []);
+  var reception = items.find(function(item) {
+    return Number(item?.statId ?? item?.id) === 53;
+  });
+  var points = Number(reception?.points ?? reception?.pointValue ?? reception?.value);
+  if (!Number.isFinite(points)) return null;
+  if (Math.abs(points - 1) < 0.001) return 'ppr';
+  if (Math.abs(points - 0.5) < 0.001) return 'half-ppr';
+  if (Math.abs(points) < 0.001) return 'standard';
+  return null;
+}
+
 (function applyConnectedLeagueContext() {
   if (
     typeof LeagueConnection ===
@@ -2454,8 +2471,8 @@ document.addEventListener(
   var connectedScoring =
     scoringMap[
       String(
-        connection
-          .scoringFormat ||
+        detectConnectedEspnScoring(connection) ||
+        connection.scoringFormat ||
         ''
       )
         .toLowerCase()

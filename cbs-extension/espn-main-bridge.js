@@ -37,6 +37,22 @@
     return error?.message || String(error) || "ESPN capture failed.";
   }
 
+  function detectScoringFormat(settings) {
+    const rawItems = settings?.scoringSettings?.scoringItems;
+    const items = Array.isArray(rawItems)
+      ? rawItems
+      : (rawItems && typeof rawItems === "object" ? Object.values(rawItems) : []);
+    const reception = items.find(function (item) {
+      return Number(item?.statId ?? item?.id) === 53;
+    });
+    const points = Number(reception?.points ?? reception?.pointValue ?? reception?.value);
+    if (!Number.isFinite(points)) return null;
+    if (Math.abs(points - 1) < 0.001) return "ppr";
+    if (Math.abs(points - 0.5) < 0.001) return "half-ppr";
+    if (Math.abs(points) < 0.001) return "standard";
+    return null;
+  }
+
   function currentUrl() {
     try {
       return new URL(window.location.href);
@@ -467,6 +483,7 @@
       standings: normalizeStandings(leagueData),
       schedule: normalizeSchedule(leagueData),
       matchup: normalizeMatchup(leagueData, myTeam),
+      scoringFormat: detectScoringFormat(leagueData?.settings),
       settings: {
         name: leagueData?.settings?.name || null,
         size: leagueData?.settings?.size || null,
