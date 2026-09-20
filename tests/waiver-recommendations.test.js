@@ -323,7 +323,8 @@ test('Recommended preserves credible QB TE K and DEF coverage during SAGE fallba
     const result = recs.find((item) => item.position === position);
     assert.strictEqual(result.verdict, 'REVIEW');
     assert.strictEqual(result.recommended, true, `${position} should retain credible coverage`);
-    assert.strictEqual(result.faab, null, `${position} review coverage must not invent FAAB`);
+    assert.strictEqual(result.faab.recommendedPct, 1, `${position} review coverage receives speculative market FAAB`);
+    assert.strictEqual(result.faab.archetype, 'SPECULATIVE');
   });
 });
 
@@ -545,7 +546,7 @@ test('summary counts customer-facing verdicts', () => {
   );
 });
 
-test('trend, rank, ownership, and league context alone cannot invent FAAB', () => {
+test('credible Weekly SAGE rank supplies speculative market FAAB independent of roster action', () => {
   const item = decision({
     name: 'Breakout Runner',
     position: 'RB',
@@ -574,12 +575,23 @@ test('trend, rank, ownership, and league context alone cannot invent FAAB', () =
     scoring: 'half-ppr'
   });
 
-  assert.strictEqual(guidance, null);
+  assert.strictEqual(guidance.recommendedPct, 1);
+  assert.strictEqual(guidance.archetype, 'SPECULATIVE');
 });
 
 test('review and pass players without pricing evidence do not receive invented FAAB', () => {
-  assert.strictEqual(buildFaabGuidance(decision(), 'REVIEW', { teams: 12 }), null);
-  assert.strictEqual(buildFaabGuidance(decision(), 'PASS', { teams: 12 }), null);
+  const unpriced = decision({
+    position: 'WR',
+    evidence: {
+      sage: { position: 'WR', positionRank: 95 },
+      rosterImpact: { classification: 'UNKNOWN' },
+      opportunity: null,
+      trend: null,
+      providerProjectedPoints: null
+    }
+  });
+  assert.strictEqual(buildFaabGuidance(unpriced, 'REVIEW', { teams: 12 }), null);
+  assert.strictEqual(buildFaabGuidance(unpriced, 'PASS', { teams: 12 }), null);
 });
 
 test('FAAB market guidance is independent of the roster-action verdict', () => {
@@ -605,6 +617,27 @@ test('FAAB market guidance is independent of the roster-action verdict', () => {
     const guidance = buildFaabGuidance(item, verdict, { teams: 12, scoring: 'half-ppr' });
     assert.ok(guidance, `${verdict} should retain evidence-backed market pricing`);
     assert.strictEqual(guidance.recommendedPct, 3);
+  }
+});
+
+test('top weekly kicker and defense options receive market FAAB despite marginal roster gain', () => {
+  for (const position of ['K', 'DEF']) {
+    const item = decision({
+      position,
+      evidence: {
+        sage: { position, positionRank: position === 'K' ? 5 : 6 },
+        providerProjectedPoints: position === 'K' ? 9.1 : 6,
+        rosterImpact: {
+          classification: 'UPGRADE',
+          comparisonType: 'starting-lineup',
+          candidateStarts: true,
+          projectionDelta: 0.9
+        }
+      }
+    });
+    const guidance = buildFaabGuidance(item, 'REVIEW', { teams: 10 });
+    assert.strictEqual(guidance.recommendedPct, 1);
+    assert.strictEqual(guidance.archetype, 'SPECULATIVE');
   }
 });
 
