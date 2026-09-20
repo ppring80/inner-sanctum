@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Publish Week 2 Carousel | The Inner Sanctum</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #100b06; color: #f8edd2; }
+    main { width: min(680px, calc(100% - 32px)); padding: 32px; border: 1px solid #9d7626; border-radius: 18px; background: #1a1209; box-shadow: 0 18px 60px #0008; }
+    h1 { margin-top: 0; color: #d9aa42; }
+    .summary { padding: 16px; border-radius: 12px; background: #0f0c08; line-height: 1.55; }
+    label { display: block; margin: 22px 0 8px; font-weight: 700; }
+    input { box-sizing: border-box; width: 100%; padding: 14px; border: 1px solid #705821; border-radius: 10px; background: #090705; color: white; font: inherit; }
+    button { width: 100%; margin-top: 16px; padding: 15px; border: 0; border-radius: 10px; background: #d9aa42; color: #171005; font: 800 1rem/1 system-ui, sans-serif; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    #status { min-height: 1.5em; margin-bottom: 0; }
+    .note { color: #c9bda8; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Publish approved Week 2 carousel</h1>
+    <div class="summary">
+      <strong>Instagram:</strong> @theinnersanctum.ff<br>
+      <strong>Media:</strong> 5-image Jones/Bateman carousel<br>
+      <strong>Caption:</strong> Approved injury-update caption
+    </div>
+    <form id="publish-form">
+      <label for="publish-key">Instagram publishing key</label>
+      <input id="publish-key" name="publish-key" type="password" autocomplete="off" required>
+      <p class="note">The key is sent only to the Inner Sanctum publishing function. It is not saved by this page.</p>
+      <button id="publish-button" type="submit">Publish carousel to Instagram</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    const endpoint = "/.netlify/functions/instagram-publish";
+    const payload = {
+      confirmPublish: true,
+      idempotencyKey: "week2-jones-bateman-2026-09-19",
+      caption: "The depth chart moved. SAGE moved with it.\n\nJordan Mason is OUT—Aaron Jones climbs to RB32/FLEX with a documented +4 opportunity boost and a positive matchup.\n\nZay Flowers is OUT—Rashod Bateman should see more opportunities, but SAGE still has him at WR79/SIT. More opportunity doesn’t automatically make someone a start.\n\nSame news. Different verdicts. SAGE moves with the evidence.\n\nCheck the updated Week 2 rankings before locking your lineup:\n\ntheinnersanctum.xyz\n\n#FantasyFootball #FantasyFootballAdvice #StartSit #Week2 #SAGERankings #TheInnerSanctum",
+      imageUrls: [
+        "https://theinnersanctum.xyz/week2-injury-update-cover.jpg",
+        "https://theinnersanctum.xyz/week2-aaron-jones-rises.jpg",
+        "https://theinnersanctum.xyz/week2-rashod-bateman-opportunity.jpg",
+        "https://theinnersanctum.xyz/week2-different-verdicts.jpg",
+        "https://theinnersanctum.xyz/week2-rankings-cta.jpg"
+      ]
+    };
+
+    document.getElementById("publish-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const keyInput = document.getElementById("publish-key");
+      const button = document.getElementById("publish-button");
+      const status = document.getElementById("status");
+      button.disabled = true;
+      status.textContent = "Publishing… do not close this page.";
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-instagram-publish-key": keyInput.value
+          },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "publish_failed");
+        status.textContent = result.duplicate
+          ? `Already published. Instagram media ID: ${result.mediaId}`
+          : `Published successfully. Instagram media ID: ${result.mediaId}`;
+        button.textContent = "Published";
+      } catch (error) {
+        status.textContent = `Could not publish: ${error.message}`;
+        button.disabled = false;
+      } finally {
+        keyInput.value = "";
+      }
+    });
+  </script>
+</body>
+</html>
