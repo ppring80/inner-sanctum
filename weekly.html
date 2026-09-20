@@ -698,6 +698,10 @@ function lineupRankingValue(player) {
   if (getSelectedWeek() === 1) {
     return (typeof player.adp === 'number' && player.adp > 0) ? -player.adp : -Infinity;
   }
+  // rankingScore is the official guarded Weekly SAGE order shared by every
+  // position and by the ChatGPT SAGE app. sageScore is raw current evidence
+  // and must not bypass the early-season baseline guardrails.
+  if (typeof player.rankingScore === 'number') return player.rankingScore;
   return (typeof player.sageScore === 'number') ? player.sageScore : -Infinity;
 }
 
@@ -1124,6 +1128,12 @@ function flattenRankings(rankings) {
           entry.sage && typeof entry.sage.score === 'number'
             ? entry.sage.score
             : (typeof entry.sageScore === 'number' ? entry.sageScore : null),
+        rankingScore:
+          typeof entry.rankingScore === 'number'
+            ? entry.rankingScore
+            : (entry.sage && typeof entry.sage.rankingScore === 'number'
+                ? entry.sage.rankingScore
+                : null),
         providerProjectedPoints:
           typeof entry.projectedPoints === 'number' ? entry.projectedPoints : null,
         sageLabel:
@@ -1177,6 +1187,7 @@ function flattenRankings(rankings) {
         injury: rawStatus === 'DOUBTFUL' ? 'doubtful' : 'out',
         call: 'sit',
         sageScore: null,
+        rankingScore: null,
         providerProjectedPoints: null,
         sageLabel: rawStatus,
         sageConfidence: null,
@@ -1829,12 +1840,17 @@ function getFilteredSorted() {
 
         case 'proj':
         default:
-          av = a.providerProjectedPoints != null
-            ? a.providerProjectedPoints
-            : (getSelectedWeek() === 1 ? a.adp : a.sageScore);
-          bv = b.providerProjectedPoints != null
-            ? b.providerProjectedPoints
-            : (getSelectedWeek() === 1 ? b.adp : b.sageScore);
+          if (getSelectedWeek() === 1) {
+            av = a.adp;
+            bv = b.adp;
+          } else {
+            av = typeof a.rankingScore === 'number'
+              ? a.rankingScore
+              : (a.providerProjectedPoints != null ? a.providerProjectedPoints : a.sageScore);
+            bv = typeof b.rankingScore === 'number'
+              ? b.rankingScore
+              : (b.providerProjectedPoints != null ? b.providerProjectedPoints : b.sageScore);
+          }
           break;
       }
 
