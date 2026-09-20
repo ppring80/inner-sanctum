@@ -15,6 +15,10 @@ const WEEKLY_STATUS = Object.freeze({
     "zay flowers": Object.freeze({
       status: "OUT",
       reason: "Ruled out for Week 2 against New Orleans with a hamstring injury."
+    }),
+    "nico collins": Object.freeze({
+      status: "OUT",
+      reason: "Ruled out for Week 2 against Cincinnati with a hamstring injury."
     })
   })
 });

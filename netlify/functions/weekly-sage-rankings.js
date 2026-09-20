@@ -6,6 +6,8 @@
 // position-specific leaderboards without recalculating their scores,
 // order, or recommendations.
 
+const { connectLambda, getStore } = require("@netlify/blobs");
+
 const DEFAULT_SEASON_TYPE = "reg";
 
 const {
@@ -21,9 +23,15 @@ const {
 );
 
 const CACHE_CONTROL =
-  "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
+  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
+const PLAYER_AVAILABILITY_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K"]);
+const HARD_UNAVAILABLE = new Set([
+  "OUT", "IR", "INACTIVE", "INJURED RESERVE", "RESERVE/INJURED",
+  "SUSPENDED", "COMMISSIONER EXEMPT", "COMMISSIONER'S EXEMPT LIST",
+  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI"
+]);
 
 const LEADERBOARD_FUNCTION_BY_POSITION = {
   QB: "weekly-sage-qb-leaderboard",
@@ -118,6 +126,111 @@ function normalizeInactiveRows(data, position) {
     : [];
 }
 
+function normalizePlayerName(value) {
+  return String(value || "").trim().toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeAvailabilityStatus(value) {
+  return String(value || "").trim().replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ").toUpperCase();
+}
+
+async function loadCentralAvailability() {
+  try {
+    const store = getStore({ name: "player-data" });
+    const cached = await store.get("playerData", { type: "json" });
+    const players = cached && cached.players && typeof cached.players === "object"
+      ? cached.players
+      : {};
+    const byName = new Map();
+    Object.entries(players).forEach(([playerID, player]) => {
+      const key = normalizePlayerName(player && player.longName);
+      if (key && !byName.has(key)) byName.set(key, { ...player, playerID });
+    });
+    const updatedAt = cached && cached.updatedAt ? cached.updatedAt : null;
+    const ageHours = updatedAt && Number.isFinite(Date.parse(updatedAt))
+      ? Math.max(0, (Date.now() - Date.parse(updatedAt)) / 3600000)
+      : null;
+    return {
+      available: Object.keys(players).length > 0,
+      updatedAt,
+      ageHours,
+      fresh: ageHours !== null && ageHours <= 8,
+      playerCount: Object.keys(players).length,
+      players,
+      byName
+    };
+  } catch (error) {
+    return {
+      available: false, updatedAt: null, ageHours: null, fresh: false,
+      playerCount: 0, players: {}, byName: new Map(), error: error.message
+    };
+  }
+}
+
+function applyCentralAvailability(positions, inactive, availability) {
+  const applied = [];
+  if (!availability || !availability.available) return applied;
+
+  PLAYER_AVAILABILITY_POSITIONS.forEach(position => {
+    const activeRows = Array.isArray(positions[position]) ? positions[position] : [];
+    const inactiveRows = Array.isArray(inactive[position]) ? inactive[position] : [];
+    const kept = [];
+
+    activeRows.forEach(row => {
+      const player = (row.playerID && availability.players[String(row.playerID)]) ||
+        availability.byName.get(normalizePlayerName(row.name));
+      const injury = player && player.injury && typeof player.injury === "object"
+        ? player.injury
+        : null;
+      const status = normalizeAvailabilityStatus(injury && injury.designation);
+      const description = injury && injury.description ? String(injury.description) : null;
+
+      if (!status) {
+        kept.push(row);
+        return;
+      }
+
+      if (!HARD_UNAVAILABLE.has(status)) {
+        kept.push({
+          ...row,
+          injuryStatus: status,
+          injuryDescription: description,
+          availabilitySource: "player-data"
+        });
+        return;
+      }
+
+      const alreadyInactive = inactiveRows.some(item =>
+        (row.playerID && item.playerID && String(item.playerID) === String(row.playerID)) ||
+        normalizePlayerName(item.name) === normalizePlayerName(row.name)
+      );
+      if (!alreadyInactive) {
+        const reason = description
+          ? `Current injury report: ${status} — ${description}.`
+          : `Current injury report: ${status}.`;
+        inactiveRows.push({
+          ...row,
+          status,
+          eligibleForWeeklyRanking: false,
+          recommendation: "INELIGIBLE",
+          source: "player-data",
+          reason,
+          sageTake: reason
+        });
+      }
+      applied.push({ playerID: row.playerID || null, name: row.name, position, status });
+    });
+
+    positions[position] = kept;
+    inactive[position] = inactiveRows;
+  });
+
+  return applied;
+}
+
 async function fetchPositionLeaderboard({ baseUrl, position, season, week, seasonType, scoring }) {
   const functionName = LEADERBOARD_FUNCTION_BY_POSITION[position];
   const url =
@@ -165,6 +278,8 @@ exports.handler = async function (event) {
   if (event.httpMethod && event.httpMethod !== "GET") {
     return jsonResponse(405, { error: "Method not allowed." });
   }
+
+  connectLambda(event);
 
   const query = event.queryStringParameters || {};
   const season = String(query.season || new Date().getFullYear());
@@ -300,6 +415,13 @@ exports.handler = async function (event) {
     }
   });
 
+  const centralAvailability = await loadCentralAvailability();
+  const availabilityExclusions = applyCentralAvailability(
+    positions,
+    inactive,
+    centralAvailability
+  );
+
   if (successCount === 0) {
     return jsonResponse(502, {
       evidenceType: "weekly-sage-rankings",
@@ -333,6 +455,22 @@ exports.handler = async function (event) {
       positionsRequested: POSITIONS,
       positionsSucceeded: POSITIONS.filter((_, i) => results[i].ok),
       positionsFailed: POSITIONS.filter((_, i) => !results[i].ok),
+      availability: {
+        source: "cached Tank01 team rosters",
+        available: centralAvailability.available,
+        updatedAt: centralAvailability.updatedAt,
+        ageHours: centralAvailability.ageHours === null
+          ? null
+          : Number(centralAvailability.ageHours.toFixed(2)),
+        fresh: centralAvailability.fresh,
+        freshnessThresholdHours: 8,
+        playerCount: centralAvailability.playerCount,
+        exclusionsApplied: availabilityExclusions.length,
+        positionsCovered: Array.from(PLAYER_AVAILABILITY_POSITIONS),
+        note: centralAvailability.fresh
+          ? "Current cached injury data enforced across offensive positions and kicker."
+          : "Injury cache is stale or unavailable; verify late-breaking game statuses."
+      },
       rankingGuardrails: {
         ...RANKING_GUARDRAIL_POLICY,
         purpose:
@@ -347,3 +485,6 @@ exports.handler = async function (event) {
 };
 
 exports.normalizeInactiveRows = normalizeInactiveRows;
+exports.normalizePlayerName = normalizePlayerName;
+exports.normalizeAvailabilityStatus = normalizeAvailabilityStatus;
+exports.applyCentralAvailability = applyCentralAvailability;
