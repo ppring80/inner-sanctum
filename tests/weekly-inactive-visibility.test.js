@@ -5,7 +5,10 @@ const {
   normalizeInactiveRows,
   applyCentralAvailability,
   hasGameStarted,
-  removeStartedGames
+  removeStartedGames,
+  weeklyRecommendation,
+  scoringLabel,
+  reconcileRankedRecommendations
 } = require('../netlify/functions/weekly-sage-rankings.js');
 
 const rows = normalizeInactiveRows({
@@ -75,5 +78,28 @@ assert.strictEqual(weeklyPositions.QB[0].rank, 1, 'remaining position board is r
 assert.strictEqual(weeklyPositions.RB.length, 0);
 assert.strictEqual(weeklyPositions.K.length, 0);
 assert.strictEqual(weeklyPositions.DEF[0].rank, 1);
+
+
+assert.strictEqual(weeklyRecommendation('QB', 5), 'START');
+assert.strictEqual(weeklyRecommendation('QB', 13), 'SIT');
+assert.strictEqual(weeklyRecommendation('WR', 8), 'START');
+assert.strictEqual(weeklyRecommendation('WR', 30), 'FLEX');
+assert.strictEqual(weeklyRecommendation('WR', 49), 'SIT');
+assert.strictEqual(weeklyRecommendation('TE', 12), 'START');
+assert.strictEqual(weeklyRecommendation('TE', 13), 'FLEX');
+assert.strictEqual(weeklyRecommendation('DEF', 13), 'SIT');
+assert.strictEqual(scoringLabel('half'), 'Half-PPR');
+
+const verdictPositions = {
+  QB: [{ name: 'QB One', recommendation: 'FLEX', role: { adjustedScore: 70 } }],
+  RB: [],
+  WR: [{ name: 'Star WR', recommendation: 'SIT', sage: { baseline: { applied: true, weight: 0.9 } }, role: { adjustedScore: 70 } }],
+  TE: [], K: [], DEF: []
+};
+reconcileRankedRecommendations(verdictPositions, 'half');
+assert.strictEqual(verdictPositions.QB[0].recommendation, 'START');
+assert.strictEqual(verdictPositions.WR[0].recommendation, 'START');
+assert.ok(verdictPositions.WR[0].sageTake.includes('Solid start'));
+assert.ok(verdictPositions.WR[0].sageTake.includes('Half-PPR baseline'));
 
 console.log('Weekly inactive visibility tests passed.');
