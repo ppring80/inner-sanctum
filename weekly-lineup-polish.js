@@ -246,6 +246,7 @@
 
     Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
       if (row.classList.contains("lineup-section-row")) return;
+      if (row.classList.contains("is-unavailable")) return;
       const nameEl = row.querySelector(".cell-name");
       const verdict = row.querySelector(".cell-verdict");
       if (!nameEl || !verdict) return;
