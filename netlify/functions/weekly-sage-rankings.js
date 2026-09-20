@@ -137,6 +137,79 @@ function normalizeAvailabilityStatus(value) {
     .replace(/\s+/g, " ").toUpperCase();
 }
 
+function easternClockParts(now) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(now instanceof Date ? now : new Date(now));
+  const values = {};
+  parts.forEach(part => {
+    if (part.type !== "literal") values[part.type] = part.value;
+  });
+  return {
+    date: `${values.year}${values.month}${values.day}`,
+    minuteOfDay: Number(values.hour) * 60 + Number(values.minute)
+  };
+}
+
+function normalizeGameDate(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length >= 8) return digits.slice(0, 8);
+  return null;
+}
+
+function gameMinuteOfDay(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const match = raw.match(/^(\d{1,2}):(\d{2})\s*([ap](?:m)?)?$/);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  const meridiem = match[3] && match[3][0];
+  if (meridiem) {
+    hour %= 12;
+    if (meridiem === "p") hour += 12;
+  }
+  return hour * 60 + minute;
+}
+
+function hasGameStarted(row, now) {
+  const gameDate = normalizeGameDate(row && row.gameDate);
+  if (!gameDate) return false;
+  const easternNow = easternClockParts(now || new Date());
+  if (gameDate < easternNow.date) return true;
+  if (gameDate > easternNow.date) return false;
+  const kickoffMinute = gameMinuteOfDay(row && row.gameTime);
+  return kickoffMinute !== null && easternNow.minuteOfDay >= kickoffMinute;
+}
+
+function removeStartedGames(positions, now) {
+  const removed = [];
+  POSITIONS.forEach(position => {
+    const rows = Array.isArray(positions[position]) ? positions[position] : [];
+    positions[position] = rows
+      .filter(row => {
+        if (!hasGameStarted(row, now)) return true;
+        removed.push({
+          playerID: row.playerID || null,
+          name: row.name || null,
+          position,
+          gameID: row.gameID || null,
+          gameDate: row.gameDate || null,
+          gameTime: row.gameTime || null
+        });
+        return false;
+      })
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  });
+  return removed;
+}
+
 async function loadCentralAvailability() {
   try {
     const store = getStore({ name: "player-data" });
@@ -421,6 +494,7 @@ exports.handler = async function (event) {
     inactive,
     centralAvailability
   );
+  const startedGameExclusions = removeStartedGames(positions, new Date());
 
   if (successCount === 0) {
     return jsonResponse(502, {
@@ -471,6 +545,12 @@ exports.handler = async function (event) {
           ? "Current cached injury data enforced across offensive positions and kicker."
           : "Injury cache is stale or unavailable; verify late-breaking game statuses."
       },
+      gameEligibility: {
+        rule: "Players and team defenses leave actionable rankings at scheduled kickoff.",
+        timeZone: "America/New_York",
+        exclusionsApplied: startedGameExclusions.length,
+        excluded: startedGameExclusions
+      },
       rankingGuardrails: {
         ...RANKING_GUARDRAIL_POLICY,
         purpose:
@@ -488,3 +568,7 @@ exports.normalizeInactiveRows = normalizeInactiveRows;
 exports.normalizePlayerName = normalizePlayerName;
 exports.normalizeAvailabilityStatus = normalizeAvailabilityStatus;
 exports.applyCentralAvailability = applyCentralAvailability;
+exports.normalizeGameDate = normalizeGameDate;
+exports.gameMinuteOfDay = gameMinuteOfDay;
+exports.hasGameStarted = hasGameStarted;
+exports.removeStartedGames = removeStartedGames;

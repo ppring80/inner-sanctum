@@ -3,7 +3,9 @@
 const assert = require('assert');
 const {
   normalizeInactiveRows,
-  applyCentralAvailability
+  applyCentralAvailability,
+  hasGameStarted,
+  removeStartedGames
 } = require('../netlify/functions/weekly-sage-rankings.js');
 
 const rows = normalizeInactiveRows({
@@ -45,5 +47,28 @@ assert.strictEqual(positions.WR[0].injuryStatus, 'QUESTIONABLE');
 assert.strictEqual(inactive.WR[0].name, 'Out Receiver');
 assert.strictEqual(inactive.WR[0].recommendation, 'INELIGIBLE');
 assert.strictEqual(positions.DEF.length, 0, 'Team DEF remains outside player injury enforcement.');
+
+
+const sundayNoonEastern = new Date('2026-09-20T16:00:00.000Z');
+assert.strictEqual(hasGameStarted({ gameDate: '20260917', gameTime: '8:15p' }, sundayNoonEastern), true);
+assert.strictEqual(hasGameStarted({ gameDate: '20260920', gameTime: '1:00p' }, sundayNoonEastern), false);
+assert.strictEqual(hasGameStarted({ gameDate: '20260920', gameTime: '11:00a' }, sundayNoonEastern), true);
+assert.strictEqual(hasGameStarted({ gameDate: '20260921', gameTime: '8:15 PM' }, sundayNoonEastern), false);
+
+const weeklyPositions = {
+  QB: [
+    { name: 'Thursday QB', rank: 1, gameDate: '20260917', gameTime: '8:15p' },
+    { name: 'Sunday QB', rank: 2, gameDate: '20260920', gameTime: '1:00p' }
+  ],
+  RB: [{ name: 'Thursday RB', rank: 1, gameDate: '2026-09-17', gameTime: '8:15 PM' }],
+  WR: [], TE: [], K: [],
+  DEF: [{ name: 'Future DEF', rank: 3, gameDate: '20260921', gameTime: '8:15p' }]
+};
+const started = removeStartedGames(weeklyPositions, sundayNoonEastern);
+assert.deepStrictEqual(started.map(row => row.name), ['Thursday QB', 'Thursday RB']);
+assert.deepStrictEqual(weeklyPositions.QB.map(row => row.name), ['Sunday QB']);
+assert.strictEqual(weeklyPositions.QB[0].rank, 1, 'remaining position board is renumbered');
+assert.strictEqual(weeklyPositions.RB.length, 0);
+assert.strictEqual(weeklyPositions.DEF[0].rank, 1);
 
 console.log('Weekly inactive visibility tests passed.');
