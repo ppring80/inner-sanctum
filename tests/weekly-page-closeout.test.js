@@ -33,4 +33,14 @@ assert.ok(
   'Week Snapshot must label each numeric scale truthfully'
 );
 
+assert.ok(
+  source.includes("return entry.matchup.label || entry.matchup.signal || null;"),
+  'Week 2 matchup evidence objects must resolve to their customer-facing label'
+);
+
+assert.ok(
+  source.includes('matchup: weeklyMatchupLabel(entry)'),
+  'Weekly rows must never stringify a matchup evidence object'
+);
+
 console.log('weekly-page-closeout.test.js passed');
