@@ -50,14 +50,15 @@ function candidate({
   };
 }
 
-test('ownership and a rising label cannot manufacture a bid', () => {
+test('ownership and a rising label cannot manufacture a positive bid', () => {
   const item = candidate({ projection: null, rosterProjection: null, trend: 'RISER', owned: 88 });
-  assert.strictEqual(buildFaabGuidance(item, 'STASH', { teams: 14, scoring: 'half-ppr' }), null);
+  const faab = buildFaabGuidance(item, 'STASH', { teams: 14, scoring: 'half-ppr' });
+  assert.deepStrictEqual([faab.recommendedPct, faab.aggressivePct, faab.archetype], [0, 1, 'NO_BID']);
 });
 
 test('zero workload and less than two projected points of bench gain produces no bid', () => {
   const item = candidate({ projection: 6.9, rosterProjection: 5, opportunities: 0, owned: 70 });
-  assert.strictEqual(buildFaabGuidance(item, 'STASH', { teams: 12 }), null);
+  assert.strictEqual(buildFaabGuidance(item, 'STASH', { teams: 12 }).recommendedPct, 0);
 });
 
 test('verified breakout plus a major lineup gain earns the only premium band', () => {
@@ -121,7 +122,7 @@ test('Justice Hill-shaped zero workload produces no bid without a real projectio
     name: 'Justice Hill', projection: 6.4, rosterProjection: 4.5,
     opportunities: 0, carries: 0, targets: 0, snaps: 8, owned: 3
   });
-  assert.strictEqual(buildFaabGuidance(item, 'STASH', { teams: 12 }), null);
+  assert.strictEqual(buildFaabGuidance(item, 'STASH', { teams: 12 }).recommendedPct, 0);
 });
 
 test('Chris Brooks-shaped modest receiving usage stays speculative, not 19 percent', () => {
@@ -136,7 +137,7 @@ test('Chris Brooks-shaped modest receiving usage stays speculative, not 19 perce
 test('QB K and DEF ignore synthetic workload and require roster-relative projection gain', () => {
   ['QB', 'K', 'DEF'].forEach((position) => {
     const noGain = candidate({ position, projection: 9, rosterProjection: 8, opportunities: 30 });
-    assert.strictEqual(buildFaabGuidance(noGain, 'STASH', { teams: 12 }), null);
+    assert.strictEqual(buildFaabGuidance(noGain, 'STASH', { teams: 12 }).recommendedPct, 0);
     const gain = candidate({ position, projection: 11, rosterProjection: 8, opportunities: 30 });
     assert.strictEqual(buildFaabGuidance(gain, 'STASH', { teams: 12 }).recommendedPct, 1);
   });

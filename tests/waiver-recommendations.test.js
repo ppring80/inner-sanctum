@@ -579,7 +579,7 @@ test('credible Weekly SAGE rank supplies speculative market FAAB independent of 
   assert.strictEqual(guidance.archetype, 'SPECULATIVE');
 });
 
-test('review and pass players without pricing evidence do not receive invented FAAB', () => {
+test('review and pass players without pricing evidence receive an honest zero bid', () => {
   const unpriced = decision({
     position: 'WR',
     evidence: {
@@ -590,8 +590,12 @@ test('review and pass players without pricing evidence do not receive invented F
       providerProjectedPoints: null
     }
   });
-  assert.strictEqual(buildFaabGuidance(unpriced, 'REVIEW', { teams: 12 }), null);
-  assert.strictEqual(buildFaabGuidance(unpriced, 'PASS', { teams: 12 }), null);
+  for (const verdict of ['REVIEW', 'PASS']) {
+    const guidance = buildFaabGuidance(unpriced, verdict, { teams: 12 });
+    assert.strictEqual(guidance.recommendedPct, 0);
+    assert.strictEqual(guidance.aggressivePct, 1);
+    assert.strictEqual(guidance.archetype, 'NO_BID');
+  }
 });
 
 test('FAAB market guidance is independent of the roster-action verdict', () => {
