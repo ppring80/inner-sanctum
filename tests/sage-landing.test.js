@@ -17,7 +17,7 @@ assert(netlify.includes('for = "/sage"'));
 assert(netlify.includes('Cache-Control = "no-cache, must-revalidate"'));
 assert(landing.includes('Rankings built for <em>this week.</em>'));
 assert(landing.includes('/.netlify/functions/weekly-sage-rankings'));
-assert(landing.includes("var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin_asdk_app_6a99edc0ddfc8191af5dcd6c73e2f752'"));
+assert(landing.includes("var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin_asdk_app_6a99f442d5008191bcda4d6176318fef'"));
 assert(landing.includes('Open SAGE in ChatGPT'));
 assert(landing.includes('Click <strong>Try in chat</strong>'));
 assert(landing.includes("fbq('trackCustom','SageChatGPTClick')"));
