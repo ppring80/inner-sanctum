@@ -190,11 +190,25 @@ function hasGameStarted(row, now) {
 
 function removeStartedGames(positions, now) {
   const removed = [];
+  const startedTeams = new Set();
+  POSITIONS.forEach(position => {
+    const rows = Array.isArray(positions[position]) ? positions[position] : [];
+    rows.forEach(row => {
+      if (!hasGameStarted(row, now)) return;
+      const team = String(row.team || (position === "DEF" ? row.name : ""))
+        .trim().toUpperCase();
+      const opponent = String(row.opponent || "").trim().toUpperCase();
+      if (team) startedTeams.add(team);
+      if (opponent) startedTeams.add(opponent);
+    });
+  });
   POSITIONS.forEach(position => {
     const rows = Array.isArray(positions[position]) ? positions[position] : [];
     positions[position] = rows
       .filter(row => {
-        if (!hasGameStarted(row, now)) return true;
+        const team = String(row.team || (position === "DEF" ? row.name : ""))
+          .trim().toUpperCase();
+        if (!hasGameStarted(row, now) && (!team || !startedTeams.has(team))) return true;
         removed.push({
           playerID: row.playerID || null,
           name: row.name || null,
