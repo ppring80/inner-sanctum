@@ -8,7 +8,9 @@ const netlify = fs.readFileSync('netlify.toml', 'utf8');
 
 assert(!home.includes('Inner Sanctum SAGE inside ChatGPT — coming soon'));
 assert(home.includes('href="/sage"'));
-assert(landing.includes('class="nav-link home" href="/index.html">Home</a>'));
+assert(landing.includes('<form class="home-form" action="/" method="get">'));
+assert(landing.includes('<button class="nav-link home" type="submit">Home</button>'));
+assert(landing.includes('min-width:64px;min-height:38px'));
 assert(!landing.includes('onclick="window.location.assign'));
 assert(landing.includes('class="nav-link" href="/weekly">Member Rankings →</a>'));
 assert(netlify.includes('for = "/sage"'));
