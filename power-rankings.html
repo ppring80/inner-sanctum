@@ -292,7 +292,7 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
       <span class="help-icon" id="helpIcon">▼</span>
     </button>
     <div class="help-body" id="helpBody">
-      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:10px">Each team's Power Score blends three signals — not just where you sit in the standings, but how you got there and where you're headed.</p>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:10px">Each team's Power Score blends three signals — not just where you sit in the standings, but how you got there and where you're headed. When a provider cannot supply a signal, its weight is redistributed across the evidence that is actually available.</p>
       <div class="formula-bar">
         <div class="formula-seg" style="width:45%;background:var(--gold)">45% Record</div>
         <div class="formula-seg" style="width:35%;background:var(--amber)">35% Scoring</div>
@@ -301,8 +301,9 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
       <div class="formula-legend">
         <div class="formula-legend-item"><span class="formula-dot" style="background:var(--gold)"></span>Win/loss record — the most direct signal of team quality</div>
         <div class="formula-legend-item"><span class="formula-dot" style="background:var(--amber)"></span>Points scored vs. league average — separates real dominance from lucky wins</div>
-        <div class="formula-legend-item"><span class="formula-dot" style="background:var(--purple)"></span>Last 3 weeks vs. season average — catches teams heating up or cooling off</div>
+        <div class="formula-legend-item"><span class="formula-dot" style="background:var(--purple)"></span>Last 3 weeks vs. the preceding baseline — catches teams heating up or cooling off</div>
       </div>
+      <p id="formulaCoverageNote" style="font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 0"></p>
     </div>
   </div>
 
@@ -385,6 +386,15 @@ function fmtNum(val, decimals) {
   return (val === null || val === undefined || isNaN(val)) ? '—' : val.toFixed(decimals);
 }
 
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ═══════════════════════════════════════════════════════════
 // MANUAL ROSTER FOUNDATION (added) — data structure/hooks only.
 // No manual-entry UI is built in this pass. Every canonical team
@@ -405,10 +415,11 @@ function setTeamRoster(team, players) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// POWER RANKING FORMULA — LOCKED 2026-06-28
+// POWER RANKING FORMULA — coverage-aware V1
 // ═══════════════════════════════════════════════════════════
-// DATA-INTEGRITY NOTE (added): the formula's weights and structure
-// below are UNCHANGED. What changed is that a team can now genuinely
+// DATA-INTEGRITY NOTE: the base weights remain 45/35/20, but unavailable
+// evidence is now removed and its weight redistributed proportionally.
+// A team can genuinely
 // have zero recorded weekly scores (no more synthetic [0] padding --
 // see buildRealLeagueFromEspn), so every average below is computed
 // null-safely rather than assuming at least one score always exists,
@@ -444,8 +455,23 @@ function computePowerRankings(league) {
   const maxScoring = knownScoringScores.length ? Math.max(...knownScoringScores) : 0;
   const minScoring = knownScoringScores.length ? Math.min(...knownScoringScores) : 0;
 
-  const last3Avgs = teams.map(t => average(t.weeklyScores.slice(-3)));
-  const formScores = teams.map((t, i) => (last3Avgs[i] === null || seasonAvgs[i] === null) ? null : last3Avgs[i] - seasonAvgs[i]);
+  // Form needs at least four completed weeks: three recent weeks plus
+  // a preceding baseline. Comparing the last three to a season average
+  // containing those same weeks diluted the signal and made Weeks 1-3
+  // look as though form evidence existed when it did not.
+  const last3Avgs = teams.map(t => {
+    const scores = Array.isArray(t.weeklyScores) ? t.weeklyScores : [];
+    return scores.length >= 4 ? average(scores.slice(-3)) : null;
+  });
+  const priorAvgs = teams.map(t => {
+    const scores = Array.isArray(t.weeklyScores) ? t.weeklyScores : [];
+    return scores.length >= 4 ? average(scores.slice(0, -3)) : null;
+  });
+  const formScores = teams.map((t, i) =>
+    (last3Avgs[i] === null || priorAvgs[i] === null)
+      ? null
+      : last3Avgs[i] - priorAvgs[i]
+  );
   const knownFormScores = formScores.filter(v => v !== null);
   const maxForm = knownFormScores.length ? Math.max(...knownFormScores) : 0;
   const minForm = knownFormScores.length ? Math.min(...knownFormScores) : 0;
@@ -457,21 +483,37 @@ function computePowerRankings(league) {
   }
 
   const results = teams.map((t, i) => {
-    const recordNorm = normalize(recordScores[i], minRecord, maxRecord);
-    const scoringNorm = normalize(scoringScores[i], minScoring, maxScoring);
-    const formNorm = normalize(formScores[i], minForm, maxForm);
-    const powerScore = (recordNorm * 0.45) + (scoringNorm * 0.35) + (formNorm * 0.20);
+    const components = [
+      { key: 'record', weight: 0.45, value: recordScores[i], normalized: normalize(recordScores[i], minRecord, maxRecord), available: ((t.wins || 0) + (t.losses || 0) + (t.ties || 0)) > 0 },
+      { key: 'scoring', weight: 0.35, value: scoringScores[i], normalized: normalize(scoringScores[i], minScoring, maxScoring), available: scoringScores[i] !== null },
+      { key: 'form', weight: 0.20, value: formScores[i], normalized: normalize(formScores[i], minForm, maxForm), available: formScores[i] !== null }
+    ];
+    const availableWeight = components.reduce((sum, component) => sum + (component.available ? component.weight : 0), 0);
+    const powerWeights = {};
+    const powerScore = availableWeight > 0
+      ? components.reduce((sum, component) => {
+          const effectiveWeight = component.available ? component.weight / availableWeight : 0;
+          powerWeights[component.key] = effectiveWeight;
+          return sum + (component.normalized * effectiveWeight);
+        }, 0)
+      : 0.5;
     return {
       ...t,
       seasonAvg: seasonAvgs[i],
       vsLeagueAvg: scoringScores[i],
       last3Avg: last3Avgs[i],
       formDelta: formScores[i],
-      powerScore
+      powerScore,
+      powerWeights
     };
   });
 
-  results.sort((a, b) => b.powerScore - a.powerScore);
+  results.sort((a, b) =>
+    (b.powerScore - a.powerScore) ||
+    ((b.seasonAvg === null ? -Infinity : b.seasonAvg) - (a.seasonAvg === null ? -Infinity : a.seasonAvg)) ||
+    (((b.wins || 0) + (0.5 * (b.ties || 0))) - ((a.wins || 0) + (0.5 * (a.ties || 0)))) ||
+    String(a.name || '').localeCompare(String(b.name || ''))
+  );
   results.forEach((r, i) => r.rank = i + 1);
   return results;
 }
@@ -517,7 +559,10 @@ function trashCommentary(team, rank, allTeams) {
 
 function analystCommentary(team, rank, allTeams) {
   const diff = team.vsLeagueAvg !== null && team.vsLeagueAvg >= 0 ? '+' : '';
-  return `Rank ${rank} of ${allTeams.length}. Record: ${formatRecord(team)}. Season average ${fmtNum(team.seasonAvg, 1)} pts (${diff}${fmtNum(team.vsLeagueAvg, 1)} vs. league average). Last 3 weeks: ${fmtNum(team.last3Avg, 1)} pts (${team.formDelta !== null && team.formDelta >= 0 ? '+' : ''}${fmtNum(team.formDelta, 1)} vs. own season average).`;
+  const formText = team.formDelta === null
+    ? 'Recent form unavailable.'
+    : `Last 3 weeks: ${fmtNum(team.last3Avg, 1)} pts (${team.formDelta >= 0 ? '+' : ''}${fmtNum(team.formDelta, 1)} vs. preceding baseline).`;
+  return `Rank ${rank} of ${allTeams.length}. Record: ${formatRecord(team)}. Season average ${fmtNum(team.seasonAvg, 1)} pts (${diff}${fmtNum(team.vsLeagueAvg, 1)} vs. league average). ${formText}`;
 }
 
 function getCommentary(persona, team, rank, allTeams) {
@@ -596,30 +641,79 @@ function selectPlatform(p) {
 // but ESPN has no official schema to confirm against, so this should
 // be treated as our best real attempt, worth verifying against Pat's
 // actual connected league rather than assumed perfect on the first
-// try. Returns null (triggering the mock-data fallback below) if the
-// response doesn't have enough usable data yet — most commonly
-// because it's still preseason and no games have been played, so
-// every team's weeklyScores would be empty.
-function buildRealLeagueFromEspn(raw) {
+// try. A valid preseason league remains a real connected league with
+// rankings withheld; only an unusable payload returns null.
+function buildRealLeagueFromEspn(raw, connection) {
   try {
     if (!raw || !Array.isArray(raw.teams) || !raw.teams.length) return null;
+
+    function currentEspnPeriod() {
+      var candidates = [
+        raw.scoringPeriodId,
+        raw.status && raw.status.currentScoringPeriod,
+        raw.status && raw.status.currentMatchupPeriod,
+        raw.status && raw.status.latestScoringPeriod
+      ];
+      for (var i = 0; i < candidates.length; i += 1) {
+        var value = Number(candidates[i]);
+        if (Number.isInteger(value) && value >= 1 && value <= 18) return value;
+      }
+      return 1;
+    }
+
+    function espnScoringLabel() {
+      var settings = raw.settings || {};
+      var rawItems = settings.scoringSettings && settings.scoringSettings.scoringItems;
+      var items = Array.isArray(rawItems)
+        ? rawItems
+        : (rawItems && typeof rawItems === 'object' ? Object.values(rawItems) : []);
+      var reception = items.find(function (item) {
+        return Number(item && (item.statId !== undefined ? item.statId : item.id)) === 53;
+      });
+      var points = Number(reception && (reception.points !== undefined ? reception.points : reception.pointValue));
+      if (Number.isFinite(points)) {
+        if (Math.abs(points - 1) < 0.001) return 'PPR';
+        if (Math.abs(points - 0.5) < 0.001) return 'Half PPR';
+        if (Math.abs(points) < 0.001) return 'Standard';
+      }
+      var captured = String((connection && connection.scoringFormat) || '').toLowerCase();
+      if (captured === 'ppr') return 'PPR';
+      if (captured === 'half-ppr' || captured.indexOf('half') >= 0) return 'Half PPR';
+      if (captured === 'standard') return 'Standard';
+      return 'Unknown';
+    }
+
+    function matchupIsComplete(matchup, currentPeriod) {
+      var period = Number(matchup && matchup.matchupPeriodId);
+      if (!Number.isFinite(period) || period < 1) return false;
+      if (period < currentPeriod) return true;
+      var winner = String((matchup && matchup.winner) || '').toUpperCase();
+      var statusCompleted = Boolean(matchup && matchup.status && matchup.status.type && matchup.status.type.completed === true);
+      return period === currentPeriod && (statusCompleted || winner === 'HOME' || winner === 'AWAY' || winner === 'TIE');
+    }
+
+    var currentPeriod = currentEspnPeriod();
 
     // Build teamId -> weeklyScores[] from the real schedule, in
     // matchupPeriodId order, skipping any matchup that hasn't been
     // played yet (totalPoints is 0/absent for future weeks).
     var scoresByTeam = {};
-    raw.teams.forEach(function (t) { scoresByTeam[t.id] = []; });
+    raw.teams.forEach(function (t) { scoresByTeam[t.id] = {}; });
 
     var schedule = Array.isArray(raw.schedule) ? raw.schedule.slice() : [];
     schedule.sort(function (a, b) { return (a.matchupPeriodId || 0) - (b.matchupPeriodId || 0); });
 
     schedule.forEach(function (m) {
+      if (!matchupIsComplete(m, currentPeriod)) return;
+      var period = Number(m.matchupPeriodId);
       [m.home, m.away].forEach(function (side) {
         if (!side || typeof side.teamId === 'undefined') return;
         var pts = side.totalPoints;
-        if (typeof pts === 'number' && pts > 0) {
-          if (!scoresByTeam[side.teamId]) scoresByTeam[side.teamId] = [];
-          scoresByTeam[side.teamId].push(pts);
+        if (typeof pts === 'number' && Number.isFinite(pts) && pts >= 0) {
+          if (!scoresByTeam[side.teamId]) scoresByTeam[side.teamId] = {};
+          // One fantasy score per team per scoring period. This avoids
+          // double-counting leagues that represent doubleheaders as two rows.
+          scoresByTeam[side.teamId][period] = pts;
         }
       });
     });
@@ -636,7 +730,10 @@ function buildRealLeagueFromEspn(raw) {
         wins: rec.wins || 0,
         losses: rec.losses || 0,
         ties: rec.ties || 0,
-        weeklyScores: scoresByTeam[t.id] || [],
+        weeklyScores: Object.keys(scoresByTeam[t.id] || {})
+          .map(Number)
+          .sort(function (a, b) { return a - b; })
+          .map(function (period) { return scoresByTeam[t.id][period]; }),
         // Manual roster foundation (added) -- data structure/hooks
         // only, no UI yet. Every team from a real provider starts as
         // pure provider data; setTeamRoster() below is the future
@@ -646,12 +743,8 @@ function buildRealLeagueFromEspn(raw) {
       };
     });
 
-    // If nobody has any real weekly scores yet (preseason, or the
-    // connected league simply hasn't played a game), there's nothing
-    // real to rank — signal the caller to fall back to mock data
-    // rather than rendering a table of all-zero teams.
     var teamsWithScores = teams.filter(function (t) { return t.weeklyScores.length > 0; });
-    if (teamsWithScores.length < 2) return null;
+    var performanceAvailable = teamsWithScores.length >= 2;
 
     // A team with genuinely zero weekly scores this early in the
     // season (bye-adjacent edge cases, mid-week connection, a team
@@ -660,14 +753,39 @@ function buildRealLeagueFromEspn(raw) {
     // an empty array as "no data yet" (null averages, neutral
     // normalization) rather than a fabricated 0-point season.
 
+    var teamNameById = {};
+    teams.forEach(function (team) { teamNameById[String(team.teamId)] = team.name; });
+    var currentMatchupPeriod = Number(
+      (raw.status && raw.status.currentMatchupPeriod) || currentPeriod
+    ) || currentPeriod;
+    var matchups = schedule
+      .filter(function (m) { return Number(m.matchupPeriodId) === currentMatchupPeriod; })
+      .map(function (m) {
+        var homeName = m.home && teamNameById[String(m.home.teamId)];
+        var awayName = m.away && teamNameById[String(m.away.teamId)];
+        return homeName && awayName ? { teamA: homeName, teamB: awayName } : null;
+      })
+      .filter(Boolean);
+
+    var completedPeriods = schedule
+      .filter(function (m) { return matchupIsComplete(m, currentPeriod); })
+      .map(function (m) { return Number(m.matchupPeriodId) || 0; });
+    var completedWeek = completedPeriods.length
+      ? Math.max.apply(null, completedPeriods)
+      : 0;
+
     return {
       name: (raw.settings && raw.settings.name) || 'My ESPN League',
       numTeams: teams.length,
-      scoring: 'PPR',
-      week: schedule.length ? Math.max.apply(null, schedule.map(function (m) { return m.matchupPeriodId || 0; })) : 1,
+      scoring: espnScoringLabel(),
+      week: completedWeek,
       platform: 'ESPN Fantasy',
       teams: teams,
-      matchups: [] // real matchup-preview parsing not built yet — renderMatchups() below handles an empty array gracefully
+      matchups: matchups,
+      dataCoverage: performanceAvailable ? 'standings+weekly-scoring' : 'standings-preseason',
+      formAvailable: performanceAvailable && completedWeek >= 4,
+      performanceAvailable: performanceAvailable,
+      preseason: !performanceAvailable
     };
   } catch (e) {
     console.log('buildRealLeagueFromEspn failed, falling back to mock:', e.message);
@@ -684,9 +802,9 @@ function buildRealLeagueFromEspn(raw) {
 // record + PF + weeks for every fantasy team, but not every team's
 // week-by-week scoring history. We therefore use real CBS season scoring
 // (PF / completed weeks) and leave recent form unavailable/null rather
-// than manufacturing weekly scores. The current formula remains 45/35/20;
-// a null form input normalizes neutrally to 0.5 until richer weekly
-// history is captured in a later CBS sync revision.
+// than manufacturing weekly scores. The base formula remains 45/35/20;
+// because form is unavailable, the effective CBS weights are transparently
+// redistributed across record and scoring until richer history is captured.
 function buildRealLeagueFromCbs(conn) {
   try {
     // A connected CBS league is real even when no games have been played.
@@ -823,7 +941,7 @@ function connectMock() {
   if (activeProvider === 'espn' && typeof LeagueConnection !== 'undefined') {
     var conn = LeagueConnection.getConnection('espn');
     if (conn && conn.league) {
-      var realLeague = buildRealLeagueFromEspn(conn.league);
+      var realLeague = buildRealLeagueFromEspn(conn.league, conn);
       if (realLeague) {
         activeLeague = realLeague;
         usingRealData = true;
@@ -888,6 +1006,18 @@ function connectMock() {
     activeLeague.scoring + ' · ' +
     weekLabel + ' · ' +
     platformLabel;
+
+  var formulaCoverageNote = document.getElementById('formulaCoverageNote');
+  if (formulaCoverageNote && state.rankings.length) {
+    var weights = state.rankings[0].powerWeights || {};
+    var parts = [];
+    if (weights.record) parts.push(Math.round(weights.record * 100) + '% record');
+    if (weights.scoring) parts.push(Math.round(weights.scoring * 100) + '% scoring');
+    if (weights.form) parts.push(Math.round(weights.form * 100) + '% form');
+    formulaCoverageNote.textContent = parts.length
+      ? ('Effective weights for the current evidence: ' + parts.join(' · ') + '.')
+      : 'Power scoring will activate after completed games provide real evidence.';
+  }
 
   var attrEl = document.getElementById('attribution');
   if (attrEl) {
@@ -1106,13 +1236,13 @@ function renderRankings() {
         '">' + (performanceAvailable ? team.rank : '—') + '</div>' +
       '<div class="rank-main">' +
         '<div class="rank-team-row">' +
-          '<span class="rank-team-name">' + team.name + '</span>' +
+          '<span class="rank-team-name">' + escapeHtml(team.name) + '</span>' +
           '<span class="rank-record">' + formatRecord(team) + '</span>' +
           '<span class="rank-trend ' + trendClass + '">' +
             trendIcon + ' ' + trendLabel +
           '</span>' +
         '</div>' +
-        '<div class="rank-commentary">' + commentary + '</div>' +
+        '<div class="rank-commentary">' + escapeHtml(commentary) + '</div>' +
       '</div>' +
       '<div class="rank-stats">' +
         '<div class="rank-stat-val">' +
@@ -1184,22 +1314,22 @@ function renderSnapshot() {
   panel.innerHTML =
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Power Leader</div>' +
-      '<div class="snapshot-value">' + powerLeader.name + '</div>' +
+      '<div class="snapshot-value">' + escapeHtml(powerLeader.name) + '</div>' +
       '<div class="snapshot-sub">' + formatRecord(powerLeader) + ' · ' + fmtNum(powerLeader.seasonAvg, 1) + ' pts/wk</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Hottest Team</div>' +
-      '<div class="snapshot-value">' + (hottest ? hottest.name : '—') + '</div>' +
-      '<div class="snapshot-sub">' + (hottest ? (fmtDelta(hottest.formDelta) + ' vs season avg') : 'Recent form unavailable') + '</div>' +
+      '<div class="snapshot-value">' + (hottest ? escapeHtml(hottest.name) : '—') + '</div>' +
+      '<div class="snapshot-sub">' + (hottest ? (fmtDelta(hottest.formDelta) + ' vs preceding baseline') : 'Recent form unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Cooling Off</div>' +
-      '<div class="snapshot-value">' + (coolest ? coolest.name : '—') + '</div>' +
-      '<div class="snapshot-sub">' + (coolest ? (fmtDelta(coolest.formDelta) + ' vs season avg') : 'Recent form unavailable') + '</div>' +
+      '<div class="snapshot-value">' + (coolest ? escapeHtml(coolest.name) : '—') + '</div>' +
+      '<div class="snapshot-sub">' + (coolest ? (fmtDelta(coolest.formDelta) + ' vs preceding baseline') : 'Recent form unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
       '<div class="snapshot-label">Scoring Leader</div>' +
-      '<div class="snapshot-value">' + (scoringLeader ? scoringLeader.name : '—') + '</div>' +
+      '<div class="snapshot-value">' + (scoringLeader ? escapeHtml(scoringLeader.name) : '—') + '</div>' +
       '<div class="snapshot-sub">' + (scoringLeader ? (fmtNum(scoringLeader.seasonAvg, 1) + ' pts/wk') : 'Scoring unavailable') + '</div>' +
     '</div>' +
     '<div class="snapshot-item">' +
@@ -1225,13 +1355,20 @@ function renderMatchups() {
 
   // Active league consistency (added): reads state.activeLeague (the
   // actually-rendered league, real or mock) rather than the hardcoded
-  // mock LEAGUE constant directly. A real connected league with no
-  // matchup-preview data yet (buildRealLeagueFromEspn currently sets
-  // matchups: []) correctly renders no matchup cards rather than
+  // mock LEAGUE constant directly. ESPN supplies the current slate;
+  // CBS currently receives an explicit unavailable state rather than
   // silently showing the mock league's unrelated matchups.
   const matchups = (state.activeLeague && Array.isArray(state.activeLeague.matchups))
     ? state.activeLeague.matchups
     : [];
+
+  if (!matchups.length) {
+    list.innerHTML =
+      '<div class="matchup-card">' +
+        '<div class="rank-commentary">League-wide matchup data is not available from this connection yet. Power Rankings above still use the verified standings and scoring evidence shown.</div>' +
+      '</div>';
+    return;
+  }
 
   matchups.forEach(m => {
     const teamA = byName[m.teamA], teamB = byName[m.teamB];
@@ -1245,18 +1382,18 @@ function renderMatchups() {
     const oracleText = oracleMatchup(teamA, teamB);
     card.innerHTML =
       '<div class="matchup-teams">' +
-        '<div class="matchup-team"><div class="matchup-team-name">' + teamA.name + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + formatRecord(teamA) + '</div></div>' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + escapeHtml(teamA.name) + '</div><div class="matchup-team-rank">Rank #' + teamA.rank + ' · ' + formatRecord(teamA) + '</div></div>' +
         '<div class="matchup-vs">VS</div>' +
-        '<div class="matchup-team"><div class="matchup-team-name">' + teamB.name + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + formatRecord(teamB) + '</div></div>' +
+        '<div class="matchup-team"><div class="matchup-team-name">' + escapeHtml(teamB.name) + '</div><div class="matchup-team-rank">Rank #' + teamB.rank + ' · ' + formatRecord(teamB) + '</div></div>' +
       '</div>' +
       '<hr class="matchup-divider">' +
       '<div class="trash-box-hero">' +
         '<div class="trash-box-hero-label"><span>🔥 The Trash Lord</span></div>' +
-        '<div class="trash-box-hero-text">' + trashText + '</div>' +
+        '<div class="trash-box-hero-text">' + escapeHtml(trashText) + '</div>' +
       '</div>' +
       '<div class="oracle-box-sidekick">' +
         '<div class="oracle-box-sidekick-label">🔮 The Oracle</div>' +
-        '<div class="oracle-box-sidekick-text">' + oracleText + '</div>' +
+        '<div class="oracle-box-sidekick-text">' + escapeHtml(oracleText) + '</div>' +
       '</div>';
 
     const heroLabel = card.querySelector('.trash-box-hero-label');
