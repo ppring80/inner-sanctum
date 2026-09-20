@@ -730,12 +730,12 @@ function renderTeaser(data) {
 // ═══════════════════════════════════════════════════════════
 // MARKET SNAPSHOT (added) — derived entirely from the same `data`
         var unavailableMessage =
+        var unavailableMessage =
         data.status === 'StaleData'
           ? 'Week 2 is still in progress. The first validated 2026 Risers & Fallers report will publish after all Week 2 games are final.'
           : (data.reason || 'Trend data unavailable');
-unavailableMessage
-// object renderTeaser()/renderFullLists() already render from
-// (data.risers, data.fallers, data.playerCount). No new fetches, no
+
+        .risers, data.fallers, data.playerCount). No new fetches, no
 // new calculations — Biggest Riser/Faller reuse the same risers[0]/
 // fallers[0] the teaser cards already show, "Most X By Position" is
 // a plain count over the existing pos field, and Market Activity
@@ -1289,7 +1289,7 @@ async function loadData() {
 
     var data = await res.json();
 
-    if (data.status !== 'Success') {
+    unavailableMessage
       setStatus(
         'error',
         'Trend data unavailable'
