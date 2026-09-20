@@ -7,7 +7,7 @@ const sitemap = fs.readFileSync('sitemap.xml', 'utf8');
 
 assert(!home.includes('Inner Sanctum SAGE inside ChatGPT — coming soon'));
 assert(home.includes('href="/sage"'));
-assert(landing.includes('class="nav-link home" href="/">Home</a>'));
+assert(landing.includes('class="nav-link home" href="https://theinnersanctum.xyz/">Home</a>'));
 assert(landing.includes('Rankings built for <em>this week.</em>'));
 assert(landing.includes('/.netlify/functions/weekly-sage-rankings'));
 assert(landing.includes("var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin_asdk_app_6a99edc0ddfc8191af5dcd6c73e2f752'"));
