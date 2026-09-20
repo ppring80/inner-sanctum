@@ -6,6 +6,23 @@ const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
 
+assert.ok(
+  source.includes("typeof player.rankingScore === 'number'"),
+  'all Week 2+ positions must order by the guarded rankingScore used by the ChatGPT SAGE app'
+);
+assert.ok(
+  source.includes("entry.rankingScore === 'number'"),
+  'Weekly Rankings must preserve rankingScore while flattening every positional response'
+);
+assert.ok(
+  !source.includes("(getSelectedWeek() === 1 ? a.adp : a.sageScore)"),
+  'the page must not sort any position directly on raw sageScore'
+);
+assert.ok(
+  source.includes("av = typeof a.rankingScore === 'number'"),
+  'guarded SAGE ordering must take precedence over provider projections for all positions'
+);
+
 assert.ok(source.includes('function injuryPillHtml(code)'), 'Weekly rows must render live injury designations.');
 assert.ok(source.includes("questionable: 'Q'"), 'Questionable players must receive a visible Q badge.');
 assert.ok(source.includes('injuryPillHtml(p.injury)'), 'The injury badge must be included in the player cell.');
