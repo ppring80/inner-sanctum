@@ -43,4 +43,14 @@ assert.ok(
   'Weekly rows must never stringify a matchup evidence object'
 );
 
+assert.ok(
+  source.includes('detectConnectedEspnScoring(connection) ||'),
+  'Weekly must repair ESPN scoring format from the saved reception rule before trusting stale metadata'
+);
+
+assert.ok(
+  source.includes("if (Math.abs(points - 0.5) < 0.001) return 'half-ppr';"),
+  'Weekly must recognize ESPN half-PPR reception scoring'
+);
+
 console.log('weekly-page-closeout.test.js passed');

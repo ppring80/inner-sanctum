@@ -14,7 +14,11 @@ function leaguePayload() {
   return {
     id: 1094040685,
     scoringPeriodId: 2,
-    settings: { name: 'Los Angeles Pro H2H Points PPR League', size: 10 },
+    settings: {
+      name: 'Los Angeles Pro H2H Points PPR League',
+      size: 10,
+      scoringSettings: { scoringItems: [{ statId: 53, points: 0.5 }] }
+    },
     status: { currentScoringPeriod: 2, currentMatchupPeriod: 2 },
     teams: [{
       id: 10,
@@ -174,6 +178,7 @@ async function runCapture({ availabilityOk = true } = {}) {
   assert.strictEqual(data.availablePlayers.length, 3);
   assert.strictEqual(data.league.availablePlayers.length, 3);
   assert.strictEqual(data.league.scoringPeriodId, 2);
+  assert.strictEqual(data.scoringFormat, 'half-ppr');
   assert.strictEqual(data.availabilityMeta.complete, true);
   assert.strictEqual(data.meta.dataQuality.availablePlayerCount, 3);
 
