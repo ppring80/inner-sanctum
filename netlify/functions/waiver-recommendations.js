@@ -330,8 +330,11 @@ function marketAdjustedPct(value, multiplier) {
 }
 
 function buildFaabGuidance(item, verdict, context = {}) {
-  if (!['ADD_NOW', 'STASH'].includes(verdict)) return null;
-
+  // Price the player independently from the roster-action verdict. A player
+  // can be a WATCH, REVIEW, or PASS for this specific roster and still have a
+  // defensible market bid when provider projections or verified workload
+  // supply enough evidence. The evidence gate below still prevents invented
+  // bids when those inputs are absent.
   const marketBand = faabMarketBand(item, verdict);
   if (!marketBand) return null;
 

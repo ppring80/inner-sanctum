@@ -829,7 +829,7 @@ test('Week 1 projection-backed bench upgrade becomes STASH with FAAB', () => {
   assert.ok(recommendations[0].faab, 'projection-backed stash receives FAAB guidance');
 });
 
-test('provider projection fallback stays a reviewable WATCH without verified workload', () => {
+test('provider projection fallback stays WATCH with evidence-backed market pricing', () => {
   const availablePlayers = [{
     name: 'Projection Candidate', nflTeam: 'SF', position: 'WR',
     availabilityStatus: 'WAIVERS', projectedPoints: 14
@@ -866,7 +866,8 @@ test('provider projection fallback stays a reviewable WATCH without verified wor
   assert.strictEqual(decisions[0].decision.action, 'WATCH');
   assert.strictEqual(recommendations[0].verdict, 'WATCH');
   assert.strictEqual(recommendations[0].recommended, true, 'clear projection edge remains visible for review');
-  assert.strictEqual(recommendations[0].faab, null, 'projection-only skill player does not receive a bid');
+  assert.strictEqual(recommendations[0].faab.recommendedPct, 3, 'projection edge retains calibrated market pricing');
+  assert.strictEqual(recommendations[0].faab.archetype, 'DEPTH_STASH');
 });
 
 test('provider fallback does not favor a marginal QB projection over the roster starter', () => {
