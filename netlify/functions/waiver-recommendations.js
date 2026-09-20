@@ -167,6 +167,7 @@ const FAAB_MARKET_BANDS = Object.freeze({
   // are low-single-digit bids; only verified breakout usage plus a material
   // starting-lineup gain reaches the teens. These are market anchors, not
   // additive bonuses, so weak evidence cannot accumulate into a premium bid.
+  NO_BID: { valuePct: 0, recommendedPct: 0, aggressivePct: 1 },
   SPECULATIVE: { valuePct: 1, recommendedPct: 1, aggressivePct: 2 },
   DEPTH_STASH: { valuePct: 2, recommendedPct: 3, aggressivePct: 5 },
   PRIORITY_STASH: { valuePct: 4, recommendedPct: 6, aggressivePct: 9 },
@@ -310,7 +311,7 @@ function faabMarketBand(item, verdict) {
   // Ownership, trend labels, and league size can refine a bid but cannot create
   // one. Verified workload, projection gain, or a credible Weekly SAGE rank can.
   if (Math.max(workload, projection) === 0) {
-    return credibleWeeklyRank ? 'SPECULATIVE' : null;
+    return credibleWeeklyRank ? 'SPECULATIVE' : 'NO_BID';
   }
 
   if (verdict === 'ADD_NOW') {
@@ -338,6 +339,7 @@ function faabMarketMultiplier(position, teams, scoring) {
 }
 
 function marketAdjustedPct(value, multiplier) {
+  if (value === 0) return 0;
   return Math.max(1, Math.round(value * multiplier));
 }
 
@@ -348,8 +350,6 @@ function buildFaabGuidance(item, verdict, context = {}) {
   // supply enough evidence. The evidence gate below still prevents invented
   // bids when those inputs are absent.
   const marketBand = faabMarketBand(item, verdict);
-  if (!marketBand) return null;
-
   const band = FAAB_MARKET_BANDS[marketBand];
   const basis = [];
   const teams = Number(context?.teams);
@@ -364,6 +364,7 @@ function buildFaabGuidance(item, verdict, context = {}) {
   if (workload > 0) basis.push(`verified workload level ${workload}/3`);
   if (gain !== null && gain >= 2) basis.push(`${gain.toFixed(1)} projected-point roster gain`);
   if (weeklyRank !== null) basis.push(`${position}${weeklyRank} Weekly SAGE market rank`);
+  if (marketBand === 'NO_BID') basis.push('no verified market signal; zero-dollar claim only');
   if (Number.isFinite(teams)) basis.push(`${teams}-team market adjustment`);
   if (marketMultiplier !== faabMarketMultiplier(position, teams, '')) {
     basis.push(`${scoring} positional adjustment`);
