@@ -23,4 +23,8 @@ assert.strictEqual(flowers.status, "OUT");
 const futureFlowers = availabilityForPlayer({ name: "Zay Flowers", team: "BAL" }, 2026, 3);
 assert.strictEqual(futureFlowers.eligible, true, "Dated weekly facts must expire.");
 
+const collins = availabilityForPlayer({ name: "Nico Collins", team: "HOU" }, 2026, 2);
+assert.strictEqual(collins.eligible, false);
+assert.strictEqual(collins.status, "OUT");
+
 console.log("weekly-sage-wr-availability.test.js passed");

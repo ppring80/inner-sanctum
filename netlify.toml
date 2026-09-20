@@ -6,7 +6,8 @@
   environment = { SECRETS_SCAN_ENABLED = "false" }
 
 # PLAYER DATA REFRESH SCHEDULE (added — checklist #215)
-# Runs refresh-player-data.js once a day at 00:00 UTC. That function
+# Runs every six hours Monday-Saturday. Sunday uses the game-day alias below
+# so late OUT/inactive announcements land before lineup lock.
 # loops all 32 NFL teams' rosters in parallel and caches each player's
 # exp (rookie/veteran status) and injury designation to Netlify Blobs,
 # which chat.js then reads on every Sanctum request instead of hitting
@@ -17,7 +18,13 @@
 # fresher than a once-a-day refresh, change this to "0 */6 * * *"
 # (every 6 hours) -- no other code changes needed.
 [functions."refresh-player-data"]
-  schedule = "@daily"
+  schedule = "0 */6 * * 1-6"
+
+# Sunday: midnight/06:00 UTC, then hourly from 12:00-23:00 UTC. This remains
+# under the Tank01 daily ceiling because each run uses one team-list request
+# plus 32 parallel team-roster requests; it never calls per player.
+[functions."refresh-player-data-game-day"]
+  schedule = "0 0,6,12-23 * * 0"
 
 # AUTOMATED FACT-CHECK SCHEDULE (added)
 # Runs qa-fact-check.js daily at 00:30 UTC — deliberately 30 minutes
@@ -303,11 +310,6 @@
 # copy could mislead a user, the same risk this bug demonstrated.
 [[headers]]
   for = "/weekly"
-  [headers.values]
-    Cache-Control = "no-cache, must-revalidate"
-
-[[headers]]
-  for = "/sage"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
 

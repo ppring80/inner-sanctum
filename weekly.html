@@ -1110,7 +1110,9 @@ function flattenRankings(rankings) {
         pos: entry.position || pos,
         team: entry.team || '—',
         opp: entry.opponent || '—',
-        injury: null, // Weekly SAGE does not produce an injury field -- '—' is rendered, never fabricated
+        injury: entry.injuryStatus
+          ? String(entry.injuryStatus).toLowerCase()
+          : null,
         // recommendation is "START"/"FLEX"/"SIT" (or null) from the
         // existing, unmodified positional leaderboard -- lowercased
         // here only to match callTag()'s existing lookup keys, never
@@ -1281,11 +1283,17 @@ function updateWeeklyContextUI() {
   if (bannerText) {
     var providerFallback = state.rankings && state.rankings.metadata &&
       state.rankings.metadata.providerProjectionFallbackUsed === true;
+    var availability = state.rankings && state.rankings.metadata &&
+      state.rankings.metadata.availability;
+    var availabilityNote = availability && availability.updatedAt
+      ? ' Injury data updated ' + new Date(availability.updatedAt).toLocaleString() +
+        (availability.fresh ? '.' : '; verify late-breaking statuses.')
+      : '';
     bannerText.innerHTML = providerFallback
       ? '📊 <strong>Provider Projection Rankings</strong> — Weekly SAGE evidence is updating. Current connected-provider projections are shown without inventing SAGE scores.'
       : (week1
           ? '📊 <strong>Week 1 Rankings</strong> — built from preseason expectations and current player context. Weekly SAGE incorporates regular-season evidence beginning Week 2.'
-          : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.');
+          : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.' + availabilityNote);
   }
 }
 
