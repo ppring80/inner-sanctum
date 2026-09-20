@@ -251,7 +251,7 @@ test('verified workload plus a meaningful bench upgrade becomes STASH', () => {
   assert.ok(result.faab);
 });
 
-test('projection-only skill player stays WATCH and is excluded when the edge is weak', () => {
+test('projection-only skill player stays WATCH but retains speculative market pricing', () => {
   const result = buildCustomerRecommendations([decision({
     decision: { action: 'WATCH', actionable: false },
     evidence: {
@@ -274,7 +274,8 @@ test('projection-only skill player stays WATCH and is excluded when the edge is 
 
   assert.strictEqual(result.verdict, 'WATCH');
   assert.strictEqual(result.recommended, false);
-  assert.strictEqual(result.faab, null);
+  assert.strictEqual(result.faab.recommendedPct, 1);
+  assert.strictEqual(result.faab.archetype, 'SPECULATIVE');
 });
 
 test('equivalent ESPN and CBS evidence produces the same customer decision', () => {
@@ -576,9 +577,35 @@ test('trend, rank, ownership, and league context alone cannot invent FAAB', () =
   assert.strictEqual(guidance, null);
 });
 
-test('review and pass players do not receive an invented FAAB recommendation', () => {
+test('review and pass players without pricing evidence do not receive invented FAAB', () => {
   assert.strictEqual(buildFaabGuidance(decision(), 'REVIEW', { teams: 12 }), null);
   assert.strictEqual(buildFaabGuidance(decision(), 'PASS', { teams: 12 }), null);
+});
+
+test('FAAB market guidance is independent of the roster-action verdict', () => {
+  const item = decision({
+    name: 'Marketable Receiver',
+    position: 'WR',
+    evidence: {
+      providerProjectedPoints: 11,
+      opportunity: { lastGameOpportunities: 7, lastGameTargets: 7 },
+      rosterImpact: {
+        classification: 'SIMILAR',
+        comparisonType: 'starting-lineup',
+        candidateStarts: false,
+        depthComparison: {
+          classification: 'UPGRADE',
+          weakestComparable: { projectedPoints: 8 }
+        }
+      }
+    }
+  });
+
+  for (const verdict of ['WATCH', 'REVIEW', 'PASS']) {
+    const guidance = buildFaabGuidance(item, verdict, { teams: 12, scoring: 'half-ppr' });
+    assert.ok(guidance, `${verdict} should retain evidence-backed market pricing`);
+    assert.strictEqual(guidance.recommendedPct, 3);
+  }
 });
 
 test('customer recommendation preserves team-resolved matchup without SAGE', () => {

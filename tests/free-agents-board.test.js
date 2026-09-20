@@ -395,7 +395,7 @@ const samplePayload = {
     assert.strictEqual(sandbox.recommendedMatch(fringe), true);
   });
 
-  await asyncTest('no-action state explains why FAAB remains blank', async () => {
+  await asyncTest('no-action state explains independent evidence-backed FAAB pricing', async () => {
     const payload = {
       week: 3,
       recommendations: [samplePlayers[3]],
@@ -406,7 +406,7 @@ const samplePayload = {
     await flush();
     const shell = sandbox.document._elements.waiverRoot.innerHTML;
     assert.ok(shell.includes('No forced move'));
-    assert.ok(shell.includes('FAAB stays blank until a player earns an actionable grade'));
+    assert.ok(shell.includes('FAAB reflects market price whenever sufficient projection or workload evidence is available'));
   });
 
   await asyncTest('changing sort to Weekly SAGE reorders the board by position rank', async () => {
