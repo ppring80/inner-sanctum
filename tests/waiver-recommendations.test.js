@@ -81,6 +81,17 @@ function stashEvidence() {
   };
 }
 
+function qualifiedAddEvidence() {
+  return {
+    ...decision().evidence,
+    opportunity: {
+      lastGameOpportunities: 9,
+      lastGameCarries: 2,
+      lastGameTargets: 7
+    }
+  };
+}
+
 test('2026 fallback resolves Week 1 from September 10', () => {
   assert.strictEqual(
     derive2026RegularSeasonWeek(new Date('2026-09-10T20:00:00Z')),
@@ -176,8 +187,18 @@ test('explicit caller week is never overridden', () => {
   assert.strictEqual(JSON.parse(resolved.body).week, 99);
 });
 
-test('ADD becomes customer-facing ADD_NOW', () => {
-  assert.strictEqual(customerVerdict(decision()), 'ADD_NOW');
+test('rank-only ADD without bid-quality evidence stays REVIEW', () => {
+  assert.strictEqual(customerVerdict(decision()), 'REVIEW');
+});
+
+test('evidence-qualified ADD becomes ADD_NOW and includes FAAB', () => {
+  const qualified = decision({ evidence: qualifiedAddEvidence() });
+  const [result] = buildCustomerRecommendations([qualified], {
+    teams: 12,
+    scoring: 'half'
+  });
+  assert.strictEqual(result.verdict, 'ADD_NOW');
+  assert.ok(result.faab, 'ADD_NOW must always carry defensible FAAB guidance');
 });
 
 test('rank edge and rising label alone do not manufacture a STASH verdict', () => {
@@ -451,8 +472,10 @@ test('PASS stays PASS even when trend is rising', () => {
 });
 
 test('ADD NOW exposes conservative same-position swap candidate', () => {
-  const result = buildCustomerRecommendations([decision()])[0];
+  const input = decision({ evidence: qualifiedAddEvidence() });
+  const result = buildCustomerRecommendations([input])[0];
   assert.strictEqual(result.verdict, 'ADD_NOW');
+  assert.ok(result.faab);
   assert.strictEqual(result.swapFor.name, 'Roster Receiver');
   assert.strictEqual(result.quickRead.weeklyRank, 'WR24');
 });
@@ -495,7 +518,7 @@ test('recommendations sort ADD NOW then STASH then WATCH then REVIEW then PASS',
       decision: { action: 'WATCH' },
       evidence: stashEvidence()
     }),
-    decision({ name: 'Add' })
+    decision({ name: 'Add', evidence: qualifiedAddEvidence() })
   ]);
 
   assert.deepStrictEqual(
@@ -506,7 +529,7 @@ test('recommendations sort ADD NOW then STASH then WATCH then REVIEW then PASS',
 
 test('summary counts customer-facing verdicts', () => {
   const items = buildCustomerRecommendations([
-    decision({ name: 'Add' }),
+    decision({ name: 'Add', evidence: qualifiedAddEvidence() }),
     decision({
       name: 'Stash',
       decision: { action: 'WATCH' },

@@ -335,7 +335,11 @@ function extractSageEvidence(row) {
       )
     ),
     sageLabel: firstDefined(nestedSage?.label, row?.sageLabel, row?.label) || null,
-    recommendation: firstDefined(row?.recommendation, row?.verdict) || null,
+    recommendation: firstDefined(
+      row?.recommendation?.label,
+      row?.recommendation,
+      row?.verdict
+    ) || null,
     confidence: numberOrNull(
       firstDefined(
         nestedSage?.confidence,

@@ -135,7 +135,12 @@ function customerVerdict(item) {
       weakestDepthRank - candidateRank >= 8
     ));
 
-  if (action === 'ADD') return 'ADD_NOW';
+  // Never tell a customer to act immediately when the same evidence cannot
+  // support even a conservative FAAB band. A rank-only edge with no verified
+  // workload or material provider-projection gain remains a review decision.
+  if (action === 'ADD') {
+    return faabMarketBand(item, 'ADD_NOW') ? 'ADD_NOW' : 'REVIEW';
+  }
   if (action === 'WATCH' && meaningfulDepthUpgrade && stashEvidenceQualified(item)) {
     return 'STASH';
   }
@@ -491,13 +496,15 @@ function decorateDecision(item, context = {}) {
   const trend = item?.evidence?.trend || null;
   const opportunity = item?.evidence?.opportunity || null;
 
+  const faab = buildFaabGuidance(item, verdict, context);
+
   return {
     ...item,
     verdict,
     recommended: recommendedCandidate(item, verdict),
     opportunity,
     customerActionable: verdict === 'ADD_NOW',
-    faab: buildFaabGuidance(item, verdict, context),
+    faab,
     swapFor:
       verdict === 'ADD_NOW' &&
       rosterImpact?.comparisonType !== 'starting-lineup' &&

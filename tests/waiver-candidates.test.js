@@ -307,6 +307,19 @@ test('production nested Weekly SAGE fields are extracted correctly', () => {
   assert.ok(sage.sageTake);
 });
 
+test('production recommendation objects resolve to their customer label', () => {
+  const sage = extractSageEvidence({
+    _sagePosition: 'RB',
+    _sagePositionRank: 45,
+    recommendation: {
+      label: 'FLEX',
+      explanation: 'Depth option this week.'
+    }
+  });
+  assert.strictEqual(sage.recommendation, 'FLEX');
+  assert.notStrictEqual(String(sage.recommendation), '[object Object]');
+});
+
 test('Week 1 baseline remains rankable without fabricating a SAGE score', () => {
   const row = {
     _sagePosition: 'WR',

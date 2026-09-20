@@ -271,7 +271,7 @@ test('alphabetical is the final tiebreak only, once every other signal ties', ()
 test('verdict tier still takes precedence over roster-impact scoring (verdict meaning unchanged)', () => {
   const pool = [
     decision({ name: 'Aaron Alpha', position: 'RB', action: 'REVIEW', providerProjectedPoints: 30 }),
-    decision({ name: 'Zeke Zulu', position: 'RB', action: 'ADD', providerProjectedPoints: 1, sageMatched: true, sage: { position: 'RB', positionRank: 3 }, rosterImpact: { classification: 'UPGRADE', weakestComparable: { name: 'Bench RB' } } })
+    decision({ name: 'Zeke Zulu', position: 'RB', action: 'ADD', providerProjectedPoints: 1, sageMatched: true, sage: { position: 'RB', positionRank: 3 }, opportunity: { lastGameOpportunities: 15, lastGameCarries: 13, lastGameTargets: 2 }, rosterImpact: { classification: 'UPGRADE', weakestComparable: { name: 'Bench RB' } } })
   ];
   const recs = buildCustomerRecommendations(pool);
   assert.strictEqual(recs[0].verdict, 'ADD_NOW');
