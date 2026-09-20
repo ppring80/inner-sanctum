@@ -2030,6 +2030,13 @@ function renderWeekSnapshot() {
     return;
   }
 
+  function preferSnapshotOffense(rows) {
+    var offense = rows.filter(function(p) {
+      return ['QB', 'RB', 'WR', 'TE'].indexOf(p.pos) !== -1;
+    });
+    return offense.length ? offense : rows;
+  }
+
   var withProviderProjection =
     getAllRows().filter(
       function(p) {
@@ -2040,6 +2047,7 @@ function renderWeekSnapshot() {
   var snapshotCandidates = withProviderProjection.length
     ? withProviderProjection
     : getAllRows().filter(function(p) { return Number.isFinite(p.sageScore); });
+  snapshotCandidates = preferSnapshotOffense(snapshotCandidates);
 
   var topProjected =
     snapshotCandidates.length
@@ -2109,6 +2117,7 @@ function renderWeekSnapshot() {
           'start';
       }
     );
+  starters = preferSnapshotOffense(starters);
 
   var bestStart =
     starters.length
@@ -2139,6 +2148,7 @@ function renderWeekSnapshot() {
             ) !== -1;
         }
       );
+    mine = preferSnapshotOffense(mine);
 
     if (mine.length) {
       myTop =

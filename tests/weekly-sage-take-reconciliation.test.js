@@ -40,4 +40,20 @@ assert(negativeBench.includes('keeps him on your bench'), 'keeps roster decision
 const untouched = reconcile.reconcileSageTake(mahomesRaw, null);
 assert.strictEqual(untouched, mahomesRaw, 'global/non-personalized SAGE Take remains unchanged');
 
+const snapshotPlayers = [
+  { name: 'Eddy Pineiro', pos: 'K', sageScore: 96 },
+  { name: 'Patrick Mahomes', pos: 'QB', sageScore: 82 },
+  { name: 'Chase Brown', pos: 'RB', sageScore: 79 }
+];
+assert.strictEqual(
+  reconcile.snapshotBestByValue(snapshotPlayers, (player) => player.sageScore).name,
+  'Patrick Mahomes',
+  'snapshot headline prefers an offensive lineup player over incomparable K/DEF scores'
+);
+assert.strictEqual(
+  reconcile.snapshotBestByValue(snapshotPlayers.slice(0, 1), (player) => player.sageScore).name,
+  'Eddy Pineiro',
+  'snapshot falls back to K/DEF when no offensive candidate exists'
+);
+
 console.log('weekly-sage-take-reconciliation.test.js passed');
