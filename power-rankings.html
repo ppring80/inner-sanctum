@@ -785,7 +785,7 @@ function buildRealLeagueFromEspn(raw, connection) {
       dataCoverage: performanceAvailable ? 'standings+weekly-scoring' : 'standings-preseason',
       formAvailable: performanceAvailable && completedWeek >= 4,
       performanceAvailable: performanceAvailable,
-      preseason: !performanceAvailable
+      preseason: completedWeek === 0
     };
   } catch (e) {
     console.log('buildRealLeagueFromEspn failed, falling back to mock:', e.message);
@@ -797,6 +797,31 @@ function buildRealLeagueFromEspn(raw, connection) {
 // ═══════════════════════════════════════════════════════════
 // REAL CBS LEAGUE ADAPTER
 // ═══════════════════════════════════════════════════════════
+function inferCbsScoringWeek(conn) {
+  var season = Number(
+    (conn && conn.season) ||
+    (conn && conn.league && conn.league.season) ||
+    (conn && conn.meta && conn.meta.season)
+  );
+  var capturedAt =
+    (conn && conn.syncedAt) ||
+    (conn && conn.meta && conn.meta.capturedAt);
+  var captured = capturedAt ? new Date(capturedAt) : new Date();
+  if (!Number.isInteger(season) || !Number.isFinite(captured.getTime())) return null;
+
+  // The NFL regular season opens on the Thursday following Labor Day.
+  // Treat that Thursday through the following Wednesday as one scoring
+  // period. This lets us recognize when CBS PF already contains points
+  // from a matchup whose standings result has not closed yet.
+  var septemberFirst = new Date(Date.UTC(season, 8, 1));
+  var firstMondayOffset = (8 - septemberFirst.getUTCDay()) % 7;
+  var laborDay = new Date(Date.UTC(season, 8, 1 + firstMondayOffset));
+  var opener = new Date(laborDay.getTime() + (3 * 24 * 60 * 60 * 1000));
+  var elapsed = captured.getTime() - opener.getTime();
+  if (elapsed < 0) return 0;
+  return Math.min(18, Math.floor(elapsed / (7 * 24 * 60 * 60 * 1000)) + 1);
+}
+
 // CBS's existing browser-assisted sync persists league-wide standings
 // plus the connected manager's roster/schedule. The standings provide
 // record + PF + weeks for every fantasy team, but not every team's
@@ -820,6 +845,22 @@ function buildRealLeagueFromCbs(conn) {
     });
     if (standings.length < 2) return null;
 
+    var completedWeeksFromStandings = standings.reduce(function (max, row) {
+      var explicitWeeks = Number(row.weeks);
+      var recordWeeks =
+        (Number(row.wins) || 0) +
+        (Number(row.losses) || 0) +
+        (Number(row.ties) || 0);
+      var weeks = Number.isFinite(explicitWeeks) && explicitWeeks > 0
+        ? explicitWeeks
+        : recordWeeks;
+      return Math.max(max, weeks);
+    }, 0);
+    var providerScoringWeek = inferCbsScoringWeek(conn);
+    var standingsPfMayBeLive =
+      Number.isFinite(providerScoringWeek) &&
+      providerScoringWeek > completedWeeksFromStandings;
+
     var connectedTeamId =
       (conn.teamId !== null && conn.teamId !== undefined)
         ? String(conn.teamId)
@@ -842,7 +883,15 @@ function buildRealLeagueFromCbs(conn) {
           ? explicitWeeks
           : recordWeeks;
 
-      var pointsFor = Number(row.pointsFor);
+      // CBS's standings PF is live/cumulative. During an open matchup it
+      // already includes the current week's partial score even though W/L
+      // still reflects only completed weeks. Never divide that contaminated
+      // total by the completed-week count. A future capture may provide an
+      // explicit completedPointsFor value; prefer it whenever present.
+      var completedPointsFor = Number(row.completedPointsFor);
+      var pointsFor = Number.isFinite(completedPointsFor)
+        ? completedPointsFor
+        : (standingsPfMayBeLive ? NaN : Number(row.pointsFor));
       var seasonAvgOverride =
         completedWeeks > 0 && Number.isFinite(pointsFor)
           ? pointsFor / completedWeeks
@@ -917,10 +966,15 @@ function buildRealLeagueFromCbs(conn) {
       matchups: [],
       dataCoverage: performanceAvailable
         ? 'standings+season-scoring'
-        : 'standings-preseason',
+        : (standingsPfMayBeLive
+            ? 'standings-record-only-live-week'
+            : 'standings-preseason'),
       formAvailable: false,
       performanceAvailable: performanceAvailable,
-      preseason: !performanceAvailable
+      performanceUnavailableReason: standingsPfMayBeLive
+        ? 'CBS is reporting live Week ' + providerScoringWeek + ' cumulative points while standings are final only through Week ' + completedWeeks + '. Rankings are withheld rather than mixing partial and completed scoring.'
+        : null,
+      preseason: completedWeeks === 0
     };
   } catch (e) {
     console.log('buildRealLeagueFromCbs failed:', e.message);
@@ -1031,7 +1085,9 @@ function connectMock() {
       attrEl.textContent =
         activeLeague.performanceAvailable
           ? 'Fantasy data provided by CBS Fantasy · season scoring + standings'
-          : 'Fantasy data provided by CBS Fantasy · preseason league data';
+          : (activeLeague.dataCoverage === 'standings-record-only-live-week'
+              ? 'Fantasy data provided by CBS Fantasy · completed standings available · live cumulative scoring excluded'
+              : 'Fantasy data provided by CBS Fantasy · preseason league data');
     } else if (
       activeProvider &&
       LeagueConnection.PROVIDERS[activeProvider]
@@ -1051,7 +1107,8 @@ function connectMock() {
     if (usingRealData && activeLeague.performanceAvailable === false) {
       mockBanner.innerHTML =
         '🏈 <strong>Connected league loaded.</strong> ' +
-        'Power Rankings will activate after completed games provide real scoring data.';
+        escapeHtml(activeLeague.performanceUnavailableReason ||
+          'Power Rankings will activate after completed games provide real scoring data.');
       mockBanner.style.display = '';
     } else if (usingRealData) {
       mockBanner.style.display = 'none';
@@ -1070,7 +1127,8 @@ function connectMock() {
     resultsSub.textContent =
       state.performanceAvailable
         ? "Updated through this week's games. Click a persona above to see their take on every team."
-        : 'Your connected league is loaded. Rankings and trend commentary will activate after completed games provide real performance data.';
+        : (activeLeague.performanceUnavailableReason ||
+            'Your connected league is loaded. Rankings and trend commentary will activate after completed games provide real performance data.');
   }
 
   renderRankings();
@@ -1226,7 +1284,8 @@ function renderRankings() {
     const commentary =
       performanceAvailable
         ? getCommentary(state.persona, team, team.rank, state.rankings)
-        : 'Preseason — real league data is connected, but no completed scoring exists yet. Power Ranking and trend commentary will activate after games are played.';
+        : (state.activeLeague.performanceUnavailableReason ||
+            'Preseason — real league data is connected, but no completed scoring exists yet. Power Ranking and trend commentary will activate after games are played.');
 
     const card = document.createElement('div');
     card.className = 'rank-card';

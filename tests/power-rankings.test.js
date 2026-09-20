@@ -46,6 +46,7 @@ vm.runInContext([
   extractFunction('escapeHtml', '// MANUAL ROSTER FOUNDATION'),
   extractFunction('computePowerRankings', '// PERSONA COMMENTARY'),
   extractFunction('buildRealLeagueFromEspn', '// REAL CBS LEAGUE ADAPTER'),
+  extractFunction('inferCbsScoringWeek'),
   extractFunction('buildRealLeagueFromCbs', 'function connectMock')
 ].join('\n'), context);
 
@@ -69,6 +70,51 @@ function espnLeague(overrides = {}) {
     ],
     ...overrides
   };
+}
+
+{
+  const attachedWeekOneScores = [
+    ['Gamblers', 1, 0, 206.8, 144.5],
+    ['Last Chance U', 1, 0, 151.5, 151.5],
+    ['DVDA', 1, 0, 147.85, 147.85],
+    ['Hop Madness', 1, 0, 145.6, 145.6],
+    ['Bulldogs', 0, 1, 144.7, 140.35],
+    ['Team JW', 0, 1, 111.9, 111.9]
+  ];
+  const base = {
+    season: 2026,
+    meta: { capturedAt: '2026-09-20T16:00:00.000Z' },
+    standings: attachedWeekOneScores.map((row, index) => ({
+      teamId: index + 1,
+      teamName: row[0],
+      wins: row[1],
+      losses: row[2],
+      ties: 0,
+      pointsFor: row[3]
+    }))
+  };
+  const live = context.buildRealLeagueFromCbs(base);
+  assert.strictEqual(live.week, 1);
+  assert.strictEqual(live.performanceAvailable, false, 'live Week 2 PF must not masquerade as completed Week 1 scoring');
+  assert.strictEqual(live.dataCoverage, 'standings-record-only-live-week');
+  assert.match(live.performanceUnavailableReason, /live Week 2 cumulative points/);
+  assert(live.teams.every((team) => team.seasonAvgOverride === null));
+
+  const completed = context.buildRealLeagueFromCbs({
+    ...base,
+    standings: attachedWeekOneScores.map((row, index) => ({
+      teamId: index + 1,
+      teamName: row[0],
+      wins: row[1],
+      losses: row[2],
+      ties: 0,
+      pointsFor: row[3],
+      completedPointsFor: row[4]
+    }))
+  });
+  assert.strictEqual(completed.performanceAvailable, true, 'explicit completed scoring remains usable during a live week');
+  assert.strictEqual(completed.teams[0].seasonAvgOverride, 144.5);
+  assert.strictEqual(completed.teams[4].seasonAvgOverride, 140.35);
 }
 
 {
