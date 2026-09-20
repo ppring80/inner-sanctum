@@ -21,4 +21,17 @@ assert.strictEqual(doubtfulRows[0].recommendation, "SIT");
 const futureChig = availabilityForPlayer({ name: "Chig Okonkwo", team: "WSH" }, 2026, 3);
 assert.strictEqual(futureChig.eligible, true, "Dated weekly facts must expire.");
 
+const providerOut = availabilityForPlayer({ name: "Other TE", injuryStatus: "RESERVE/INJURED" }, 2026, 2);
+assert.strictEqual(providerOut.eligible, false);
+assert.strictEqual(providerOut.status, "RESERVE/INJURED");
+
+const providerQuestionable = availabilityForPlayer({ name: "Other TE", injuryStatus: "QUESTIONABLE" }, 2026, 2);
+assert.strictEqual(providerQuestionable.eligible, true);
+assert.strictEqual(providerQuestionable.status, "QUESTIONABLE");
+
+const administrativeExempt = availabilityForPlayer({
+  name: "Eligible TE", status: "Exempt/Commissioner Permission", eligible: true
+}, 2026, 2);
+assert.strictEqual(administrativeExempt.eligible, true);
+
 console.log("weekly-sage-te-availability.test.js passed");

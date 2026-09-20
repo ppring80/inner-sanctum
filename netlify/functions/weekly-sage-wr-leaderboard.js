@@ -89,6 +89,8 @@ const ADP_SNAPSHOT_STORE =
 const SUPPORTED_SCORING =
   new Set(["ppr", "half", "standard"]);
 
+const { availabilityForPlayer } = require("./weekly-sage-wr-availability.js");
+
 const EARLY_SEASON_BASELINE_WEIGHT = {
   // One game should inform a Week 2 WR forecast, not replace the
   // established scoring-specific expectation. Decay the prior quickly
@@ -827,7 +829,14 @@ function normalizeSnapshotPlayer(
         row.weeksIncluded
       )
         ? row.weeksIncluded
-        : []
+        : [],
+
+    eligibilityStatus: row.eligibilityStatus || null,
+    injuryStatus: row.injuryStatus || null,
+    availabilityStatus: row.availabilityStatus || null,
+    rosterStatus: row.rosterStatus || null,
+    status: row.status || null,
+    eligible: typeof row.eligible === "boolean" ? row.eligible : undefined
   };
 }
 
@@ -1346,7 +1355,8 @@ function leaderboardRow(
 
 function inactiveRow(
   player,
-  reason
+  reason,
+  status = "bye"
 ) {
   return {
     playerID:
@@ -1367,8 +1377,7 @@ function inactiveRow(
     position:
       POSITION,
 
-    status:
-      "bye",
+    status,
 
     eligibleForWeeklyRanking:
       false,
@@ -2069,6 +2078,13 @@ exports.handler =
         const player of
         players
       ) {
+        const availability = availabilityForPlayer(player, season, targetWeek);
+        player.availability = availability;
+        if (!availability.eligible) {
+          inactive.push(inactiveRow(player, availability.reason, availability.status));
+          continue;
+        }
+
         const classification =
           classifyPlayerSchedule(
             player,
