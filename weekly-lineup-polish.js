@@ -49,11 +49,23 @@
     return [outlook, action].filter(Boolean).join(" ").trim();
   }
 
+  function snapshotBestByValue(list, valueForPlayer) {
+    if (!list || !list.length) return null;
+    const offense = list.filter(function (player) {
+      return ["QB", "RB", "WR", "TE"].indexOf(player.pos) !== -1;
+    });
+    const candidates = offense.length ? offense : list;
+    return candidates.reduce(function (best, player) {
+      return valueForPlayer(player) > valueForPlayer(best) ? player : best;
+    });
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       stripRawAction: stripRawAction,
       rosterActionSentence: rosterActionSentence,
-      reconcileSageTake: reconcileSageTake
+      reconcileSageTake: reconcileSageTake,
+      snapshotBestByValue: snapshotBestByValue
     };
   }
 
@@ -271,11 +283,8 @@
     const scoringLabel = { ppr: "PPR", half: "Half PPR", standard: "Standard" }[scoring] || scoring;
 
     function bestByValue(list) {
-      if (!list.length) return null;
-      return list.reduce(function (best, player) {
-        const current = typeof window.lineupRankingValue === "function" ? window.lineupRankingValue(player) : -Infinity;
-        const bestValue = typeof window.lineupRankingValue === "function" ? window.lineupRankingValue(best) : -Infinity;
-        return current > bestValue ? player : best;
+      return snapshotBestByValue(list, function (player) {
+        return typeof window.lineupRankingValue === "function" ? window.lineupRankingValue(player) : -Infinity;
       });
     }
 
