@@ -68,8 +68,8 @@ const original = [
 ];
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(sandbox.sortRows(original).map((item) => item.name))),
-  original.map((item) => item.name),
-  'Best For Me ordering must remain unchanged'
+  ['Receiver Twenty', 'Defense Six'],
+  'Best For Me must prioritize QB/RB/WR/TE/FLEX ahead of K/DEF'
 );
 
 assert.ok(
