@@ -1064,6 +1064,17 @@ function initializeSelectedWeek() {
   select.value = String(week);
 }
 
+function weeklyMatchupLabel(entry) {
+  if (!entry) return null;
+  if (entry.matchupStrength != null && typeof entry.matchupStrength !== 'object') {
+    return entry.matchupStrength;
+  }
+  if (entry.matchup && typeof entry.matchup === 'object') {
+    return entry.matchup.label || entry.matchup.signal || null;
+  }
+  return entry.matchup != null ? entry.matchup : null;
+}
+
 // Flattens the unified weekly-sage-rankings response's four separate
 // position arrays into ONE array, matching the shape the existing
 // filter/sort/render pipeline below already expects (it was built to
@@ -1133,10 +1144,7 @@ function flattenRankings(rankings) {
           typeof entry.positionRank === 'number'
             ? entry.positionRank
             : (typeof entry.rank === 'number' ? entry.rank : null),
-        matchup:
-          entry.matchupStrength != null
-            ? entry.matchupStrength
-            : (entry.matchup != null ? entry.matchup : null),
+        matchup: weeklyMatchupLabel(entry),
         // Player Profile V1 (added): the detailed component breakdown
         // behind the flattened matchup label above, already present on
         // the backend response, previously discarded here.
