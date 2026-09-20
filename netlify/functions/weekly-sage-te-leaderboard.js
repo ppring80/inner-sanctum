@@ -848,7 +848,14 @@ function normalizeSnapshotPlayer(
         row.weeksIncluded
       )
         ? row.weeksIncluded
-        : []
+        : [],
+
+    eligibilityStatus: row.eligibilityStatus || null,
+    injuryStatus: row.injuryStatus || null,
+    availabilityStatus: row.availabilityStatus || null,
+    rosterStatus: row.rosterStatus || null,
+    status: row.status || null,
+    eligible: typeof row.eligible === "boolean" ? row.eligible : undefined
   };
 }
 
