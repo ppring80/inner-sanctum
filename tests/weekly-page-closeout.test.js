@@ -6,6 +6,10 @@ const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
 
+assert.ok(source.includes('function injuryPillHtml(code)'), 'Weekly rows must render live injury designations.');
+assert.ok(source.includes("questionable: 'Q'"), 'Questionable players must receive a visible Q badge.');
+assert.ok(source.includes('injuryPillHtml(p.injury)'), 'The injury badge must be included in the player cell.');
+
 assert.match(
   source,
   /href="\/free-agents">🎯 Free Agents &amp; FAAB<\/a>/,
