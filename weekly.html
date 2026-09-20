@@ -1306,6 +1306,18 @@ function injuryLabel(code) {
   }[code] || code;
 }
 
+function injuryPillHtml(code) {
+  if (!code || code === 'healthy') return '';
+  var normalized = String(code).toLowerCase();
+  var shortLabel = {
+    questionable: 'Q',
+    doubtful: 'D',
+    out: 'OUT'
+  }[normalized] || String(code).toUpperCase();
+  return '<span class="injury-pill ' + normalized + '" title="' +
+    injuryLabel(normalized) + '">' + shortLabel + '</span>';
+}
+
 function callTag(call) {
   var labels = {
     start:'START',
@@ -1985,6 +1997,7 @@ function renderTable() {
                   '">' +
                     p.pos +
                   '</span>' +
+                  injuryPillHtml(p.injury) +
                 '</div>' +
               '</td>' +
 
