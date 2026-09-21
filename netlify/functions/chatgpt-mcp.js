@@ -59,6 +59,10 @@ const {
   isUnavailableRosterStatus
 } = require("./inner-sanctum-ranking-normalizers");
 
+const {
+  recordSageFunnelEvent
+} = require("./_sage-funnel-analytics.js");
+
 // Unmodified reuse of the existing, already-validated Draft SAGE
 // Opportunity pillar (see draft-opportunity-profile.js's own header:
 // "THIS FILE DOES NOT REDEFINE ANYTHING... No score, no weighting, no
@@ -6312,6 +6316,20 @@ exports.handler =
 
         authContext =
           validation.authInfo;
+
+        const route = getMcpRoute(event);
+        await recordSageFunnelEvent({
+          stage: "first_tool_call",
+          subject: authContext.token,
+          onceKey: authContext.token,
+          metadata: {
+            tool: route.name || "unknown",
+            clientId: authContext.clientId || "unknown",
+            linkedLeague: Boolean(authContext.snapshotKey)
+          }
+        }).catch(error => {
+          console.error("SAGE funnel first_tool_call event failed:", error);
+        });
       }
 
       const headers =
