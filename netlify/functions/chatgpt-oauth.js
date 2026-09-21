@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const { connectLambda, getStore } = require("@netlify/blobs");
+const { recordSageFunnelEvent } = require("./_sage-funnel-analytics.js");
 
 const AUTH_STORE = "chatgpt-oauth";
 const SNAPSHOT_STORE = "league-snapshots";
@@ -37,6 +38,14 @@ const CLIENT_TTL_SECONDS = 365 * 24 * 60 * 60;
 const RANDOM_TOKEN_BYTES = 32;
 const TRANSACTION_COOKIE = "is_oauth_tx";
 const MAX_BODY_BYTES = 100000;
+
+async function trackFunnel(stage, values) {
+  try {
+    await recordSageFunnelEvent({ stage, ...(values || {}) });
+  } catch (error) {
+    console.error("SAGE funnel " + stage + " event failed:", error);
+  }
+}
 
 function nowSeconds() {
   return Math.floor(Date.now() / 1000);
@@ -1696,6 +1705,12 @@ async function handleAuthorize(
     transaction
   );
 
+  await trackFunnel("oauth_opened", {
+    subject: transactionId,
+    onceKey: transactionId,
+    metadata: { clientId }
+  });
+
   return htmlResponse(
     200,
     renderAuthorizationPage(
@@ -1946,6 +1961,12 @@ async function handleApproval(
     ),
     codeRecord
   );
+
+  await trackFunnel("oauth_approved", {
+    subject: transactionId,
+    onceKey: transactionId,
+    metadata: { clientId: transaction.clientId, linkedLeague: Boolean(linkedSnapshotKey) }
+  });
 
   await authStore
     .delete(
@@ -2286,6 +2307,12 @@ async function handleAuthorizationCodeGrant(
       }
     );
   }
+
+  await trackFunnel("token_issued", {
+    subject: clientId,
+    onceKey: code,
+    metadata: { clientId, linkedLeague: Boolean(record.snapshotKey) }
+  });
 
   return jsonResponse(
     200,
