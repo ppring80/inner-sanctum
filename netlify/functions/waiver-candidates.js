@@ -154,6 +154,17 @@ function compatibleIdentity(candidate, evidence) {
   return { ok: true, reason: null };
 }
 
+function normalizeAvailabilityStatus(value) {
+  const status = String(value || '').trim().toUpperCase();
+  if (status === 'FA' || status === 'FREEAGENT' || status === 'FREE AGENT') {
+    return 'FREE_AGENT';
+  }
+  // CBS renders waiver availability as W (9/23), W(9/23), or simply W.
+  // The date is the clearance date, not a different availability state.
+  if (/^W(?:\s*\([^)]*\))?$/.test(status)) return 'WAIVERS';
+  return status;
+}
+
 function findIdentityMatch(candidate, evidenceRows) {
   const candidateName = getPlayerName(candidate);
 
@@ -214,6 +225,26 @@ function findIdentityMatch(candidate, evidenceRows) {
   const match = resolvedIdentityRow.__sourceRow;
   const compatibility = compatibleIdentity(candidate, match);
   if (!compatibility.ok) {
+    // A unique canonical name + position is stable identity. NFL team fields
+    // can legitimately disagree for several hours after a transaction or when
+    // one source refreshes before another. Duplicate names were already
+    // rejected above, and position mismatches remain a hard stop.
+    const providerIdentityPresent = Boolean(
+      firstDefined(
+        candidate?.providerPlayerId,
+        candidate?.playerId,
+        candidate?.id,
+        candidate?.projectedPoints,
+        candidate?.percentOwned
+      ) !== undefined
+    );
+    if (
+      compatibility.reason === 'team_mismatch' &&
+      getPlayerPosition(candidate) !== 'DEF' &&
+      providerIdentityPresent
+    ) {
+      return { match, reason: 'team_mismatch_accepted' };
+    }
     return { match: null, reason: compatibility.reason };
   }
 
@@ -708,11 +739,11 @@ function compareCandidateToLineup(candidate, candidateSage, roster, sageRows, li
 }
 
 function isProviderAvailableStatus(player) {
-  const status = String(
+  const status = normalizeAvailabilityStatus(
     firstDefined(player?.availabilityStatus, player?.status) || ''
-  ).trim().toUpperCase();
+  );
 
-  return ['FREE_AGENT', 'FREEAGENT', 'WAIVERS'].includes(status);
+  return ['FREE_AGENT', 'WAIVERS'].includes(status);
 }
 
 function resolveConnectionInput(body) {
@@ -863,7 +894,9 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
           ? { ...candidate.matchup, opponent }
           : opponent ? { opponent } : null,
         availabilityStatus:
-          firstDefined(candidate?.availabilityStatus, candidate?.status) || null,
+          normalizeAvailabilityStatus(
+            firstDefined(candidate?.availabilityStatus, candidate?.status) || null
+          ),
         percentOwned: numberOrNull(candidate?.percentOwned),
         percentStarted: numberOrNull(candidate?.percentStarted),
         providerProjectedPoints: numberOrNull(candidate?.projectedPoints),
@@ -1234,6 +1267,13 @@ exports.handler = async function (event) {
       opportunityData,
       scheduleData
     });
+    const rosterIdentity = input.roster.map((player) =>
+      findIdentityMatch(player, flattenWeeklyRankings(weeklyData))
+    );
+    const rosterSageMatched = rosterIdentity.filter((result) => result.match).length;
+    const rosterMatchCoverage = input.roster.length
+      ? rosterSageMatched / input.roster.length
+      : 0;
 
     return jsonResponse(
       200,
@@ -1252,6 +1292,9 @@ exports.handler = async function (event) {
           candidatesReturned: candidates.length,
           sageMatched:
             candidates.filter((candidate) => candidate.identity.sageMatched).length,
+          rosterPlayersReceived: input.roster.length,
+          rosterSageMatched,
+          rosterMatchCoverage,
           trendMatched:
             candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
@@ -1297,6 +1340,8 @@ exports._test = {
   getPlayerName,
   getPlayerTeam,
   getPlayerPosition,
+  normalizeAvailabilityStatus,
+  isProviderAvailableStatus,
   findIdentityMatch,
   flattenWeeklyRankings,
   buildTeamOpponentMap,

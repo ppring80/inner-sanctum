@@ -30,7 +30,10 @@ function firstDefined() {
 
 function normalizeAvailabilityStatus(value) {
   const status = String(value || '').trim().toUpperCase();
-  if (status === 'FREEAGENT') return 'FREE_AGENT';
+  if (status === 'FA' || status === 'FREEAGENT' || status === 'FREE AGENT') {
+    return 'FREE_AGENT';
+  }
+  if (/^W(?:\s*\([^)]*\))?$/.test(status)) return 'WAIVERS';
   return status;
 }
 

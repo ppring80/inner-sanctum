@@ -4145,6 +4145,46 @@ function faabPctToDollars(
   );
 }
 
+function positiveFaabBudget(value) {
+  const budget = Number(value);
+  return Number.isInteger(budget) && budget > 0 ? budget : null;
+}
+
+function connectedLeagueFaabBudget(snapshot) {
+  const settings = snapshot && typeof snapshot.settings === "object"
+    ? snapshot.settings
+    : {};
+  const league = snapshot && typeof snapshot.league === "object"
+    ? snapshot.league
+    : {};
+  const candidates = [
+    settings.faabBudget,
+    settings.originalFaabBudget,
+    settings.waiverBudget,
+    settings.acquisitionBudget,
+    settings.waivers && settings.waivers.budget,
+    settings.waiver && settings.waiver.budget,
+    league.faabBudget,
+    league.originalFaabBudget,
+    league.waiverBudget,
+    snapshot && snapshot.faabBudget,
+    snapshot && snapshot.originalFaabBudget
+  ];
+  for (const value of candidates) {
+    const budget = positiveFaabBudget(value);
+    if (budget) return budget;
+  }
+  return null;
+}
+
+function resolveToolFaabBudget(snapshot, suppliedBudget) {
+  const connected = connectedLeagueFaabBudget(snapshot);
+  if (connected) return { budget: connected, source: "connected-league-settings" };
+  const supplied = positiveFaabBudget(suppliedBudget);
+  if (supplied) return { budget: supplied, source: "user-provided" };
+  return { budget: null, source: "unknown" };
+}
+
 function addFaabDollarGuidance(
   recommendation,
   originalBudget
@@ -4189,7 +4229,8 @@ function addFaabDollarGuidance(
 
 function waiverRecommendationsToText({
   recommendations,
-  originalFaabBudget
+  originalFaabBudget,
+  safeToAct = true
 }) {
   const items =
     Array.isArray(recommendations)
@@ -4206,6 +4247,12 @@ function waiverRecommendationsToText({
   const lines = [
     "Inner Sanctum Waiver & FAAB Recommendations"
   ];
+
+  if (!safeToAct) {
+    lines.push(
+      "SAGE could not safely match enough of the connected roster to produce add/drop recommendations. No claim or drop is recommended."
+    );
+  }
 
   items.forEach((item, index) => {
     const faab = item.faab || null;
@@ -4226,7 +4273,7 @@ function waiverRecommendationsToText({
   lines.push(
     originalFaabBudget
       ? `Dollar values use the supplied $${originalFaabBudget} original FAAB budget.`
-      : "No original FAAB budget was supplied, so percentages are authoritative and dollar values are omitted."
+      : "What was this league's original FAAB budget? Until you provide it, SAGE will give percentage-only guidance and will not assume $200."
   );
   lines.push(
     "Read-only: no waiver claim, add, drop, or provider transaction was submitted."
@@ -6101,6 +6148,10 @@ function buildServer(
         DEFAULT_TEAMS;
       const provider =
         cleanString(snapshot && snapshot.provider);
+      const budgetResolution = resolveToolFaabBudget(
+        snapshot,
+        originalFaabBudget
+      );
 
       const baseOutput = {
         source: "Inner Sanctum Waiver & FAAB",
@@ -6112,9 +6163,7 @@ function buildServer(
         scoring: resolvedScoring,
         teams: resolvedTeams,
         originalFaabBudget:
-          Number.isInteger(Number(originalFaabBudget))
-            ? Number(originalFaabBudget)
-            : null,
+          budgetResolution.budget,
         recommendations: [],
         summary: {},
         methodology:
@@ -6171,7 +6220,8 @@ function buildServer(
               connection: {
                 ...snapshot,
                 availablePlayers: normalizedAvailablePlayers
-              }
+              },
+              originalFaabBudget: budgetResolution.budget
             })
           }
         );
@@ -6198,7 +6248,7 @@ function buildServer(
             .map((item) =>
               addFaabDollarGuidance(
                 item,
-                originalFaabBudget
+                budgetResolution.budget
               )
             );
 
@@ -6226,7 +6276,9 @@ function buildServer(
               waiverRecommendationsToText({
                 recommendations,
                 originalFaabBudget:
-                  structuredContent.originalFaabBudget
+                  structuredContent.originalFaabBudget,
+                safeToAct:
+                  data.metadata?.matchingCoverage?.adequate !== false
               })
           }],
           structuredContent
@@ -6694,6 +6746,8 @@ function buildServer(
 
 exports._test = {
   faabPctToDollars,
+  connectedLeagueFaabBudget,
+  resolveToolFaabBudget,
   addFaabDollarGuidance
 };
 

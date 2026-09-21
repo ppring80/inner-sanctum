@@ -27,6 +27,73 @@ function firstPresent() {
   return null;
 }
 
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function connectedFaabBudget(connection) {
+  const settings = connection?.settings || connection?.league?.settings || {};
+  const league = connection?.league || {};
+  const candidates = [
+    settings?.faabBudget,
+    settings?.originalFaabBudget,
+    settings?.waiverBudget,
+    settings?.acquisitionBudget,
+    settings?.waivers?.budget,
+    settings?.waiver?.budget,
+    league?.faabBudget,
+    league?.originalFaabBudget,
+    league?.waiverBudget,
+    connection?.faabBudget,
+    connection?.originalFaabBudget
+  ];
+  for (const value of candidates) {
+    const budget = positiveInteger(value);
+    if (budget) return budget;
+  }
+  return null;
+}
+
+function resolveFaabBudget(body) {
+  const connection = body?.connection && typeof body.connection === 'object'
+    ? body.connection
+    : {};
+  const connected = connectedFaabBudget(connection);
+  if (connected) return { budget: connected, source: 'connected-league-settings' };
+  const supplied = positiveInteger(body?.originalFaabBudget);
+  if (supplied) return { budget: supplied, source: 'user-provided' };
+  return { budget: null, source: 'unknown' };
+}
+
+function pctToDollars(percentage, budget) {
+  const pct = Number(percentage);
+  return Number.isFinite(pct) && positiveInteger(budget)
+    ? Math.round(positiveInteger(budget) * pct / 100)
+    : null;
+}
+
+function addDollarGuidance(item, budget) {
+  if (!item?.faab) return item;
+  return {
+    ...item,
+    faab: {
+      ...item.faab,
+      valueDollars: pctToDollars(item.faab.valuePct, budget),
+      recommendedDollars: pctToDollars(item.faab.recommendedPct, budget),
+      aggressiveDollars: pctToDollars(item.faab.aggressivePct, budget),
+      originalBudget: positiveInteger(budget)
+    }
+  };
+}
+
+function matchingCoverageAdequate(metadata) {
+  const rosterPlayersReceived = Number(metadata?.rosterPlayersReceived) || 0;
+  const rosterSageMatched = Number(metadata?.rosterSageMatched) || 0;
+  const rosterMatchCoverage = Number(metadata?.rosterMatchCoverage) || 0;
+  return rosterPlayersReceived > 0 && rosterSageMatched >= 3 && rosterMatchCoverage >= 0.5;
+}
+
 function derive2026RegularSeasonWeek(now) {
   const current = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(current.getTime())) return null;
@@ -516,6 +583,8 @@ function decorateDecision(item, context = {}) {
 
   const faab = buildFaabGuidance(item, verdict, context);
 
+  const depthWeakest = rosterImpact?.depthComparison?.weakestComparable || weakest;
+  const claimRecommended = ['ADD_NOW', 'STASH'].includes(verdict);
   return {
     ...item,
     verdict,
@@ -524,13 +593,11 @@ function decorateDecision(item, context = {}) {
     customerActionable: verdict === 'ADD_NOW',
     faab,
     swapFor:
-      verdict === 'ADD_NOW' &&
-      rosterImpact?.comparisonType !== 'starting-lineup' &&
-      weakest?.name
+      claimRecommended && depthWeakest?.name
         ? {
-            name: weakest.name,
-            position: weakest.position || null,
-            team: weakest.team || null
+            name: depthWeakest.name,
+            position: depthWeakest.position || null,
+            team: depthWeakest.team || null
           }
         : null,
     lineupFor:
@@ -623,7 +690,11 @@ function summarizeCustomerRecommendations(recommendations) {
 }
 
 exports.handler = async function handler(event) {
-  const candidateResponse = await waiverCandidates.handler(withResolvedWeek(event));
+  const resolvedEvent = withResolvedWeek(event);
+  let requestBody = {};
+  try { requestBody = JSON.parse(resolvedEvent?.body || '{}'); } catch (_) {}
+  const budgetResolution = resolveFaabBudget(requestBody);
+  const candidateResponse = await waiverCandidates.handler(resolvedEvent);
 
   if (!candidateResponse || candidateResponse.statusCode !== 200) {
     return candidateResponse;
@@ -641,9 +712,33 @@ exports.handler = async function handler(event) {
   }
 
   const rawDecisions = buildWaiverDecisions(candidateBody.candidates || []);
-  const recommendations = buildCustomerRecommendations(rawDecisions, {
+  const builtRecommendations = buildCustomerRecommendations(rawDecisions, {
     teams: candidateBody.teams || candidateBody.metadata?.teams || null,
     scoring: candidateBody.scoring || candidateBody.metadata?.scoring || null
+  });
+  const rosterPlayersReceived = Number(candidateBody.metadata?.rosterPlayersReceived) || 0;
+  const rosterSageMatched = Number(candidateBody.metadata?.rosterSageMatched) || 0;
+  const rosterMatchCoverage = Number(candidateBody.metadata?.rosterMatchCoverage) || 0;
+  const coverageAdequate = matchingCoverageAdequate(candidateBody.metadata);
+  const recommendations = builtRecommendations.map((item) => {
+    const safeItem = coverageAdequate ? item : {
+      ...item,
+      verdict: item.verdict === 'PASS' ? 'PASS' : 'REVIEW',
+      recommended: false,
+      customerActionable: false,
+      swapFor: null,
+      lineupFor: null,
+      benchFor: null,
+      faab: null,
+      decision: {
+        ...(item.decision || {}),
+        action: item.verdict === 'PASS' ? 'PASS' : 'REVIEW',
+        actionable: false,
+        reasonCode: 'MATCHING_COVERAGE_INADEQUATE',
+        reasons: ['Connected-roster identity coverage is inadequate for a safe add/drop recommendation.']
+      }
+    };
+    return addDollarGuidance(safeItem, budgetResolution.budget);
   });
 
   return {
@@ -661,10 +756,21 @@ exports.handler = async function handler(event) {
       decisionSummary: summarizeDecisions(rawDecisions),
       metadata: {
         ...(candidateBody.metadata || {}),
+        matchingCoverage: {
+          adequate: coverageAdequate,
+          rosterPlayersReceived,
+          rosterSageMatched,
+          rosterMatchCoverage
+        },
+        originalFaabBudget: budgetResolution.budget,
+        faabBudgetSource: budgetResolution.source,
+        needsOriginalFaabBudget: budgetResolution.budget === null,
         methodology:
           'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated lineup upgrade. FAAB uses verified workload and roster-relative projection gain to select a calibrated market band, then adjusts for league depth and relevant scoring; trend labels and roster percentage cannot create a bid.',
         limitations: [
-          'FAAB guidance is a percentage of the original budget because remaining budget is not supplied by the provider connection.',
+          budgetResolution.budget === null
+            ? 'Original FAAB budget is unknown. Ask the user for it; until supplied, show percentage-only guidance.'
+            : `Dollar guidance uses the ${budgetResolution.source} original FAAB budget.`,
           'No transaction is submitted.',
           'FAAB confidence remains conservative when no current opportunity trend is available.'
         ]
@@ -693,5 +799,9 @@ exports._test = {
   activePenalty,
   ownershipComponent,
   workloadStrength,
-  stashEvidenceQualified
+  stashEvidenceQualified,
+  connectedFaabBudget,
+  resolveFaabBudget,
+  addDollarGuidance,
+  matchingCoverageAdequate
 };
