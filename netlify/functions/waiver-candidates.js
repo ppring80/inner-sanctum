@@ -165,7 +165,7 @@ function normalizeAvailabilityStatus(value) {
   return status;
 }
 
-function findIdentityMatch(candidate, evidenceRows) {
+function findIdentityMatch(candidate, evidenceRows, options = {}) {
   const candidateName = getPlayerName(candidate);
 
   if (!normalizeName(candidateName)) {
@@ -241,7 +241,7 @@ function findIdentityMatch(candidate, evidenceRows) {
     if (
       compatibility.reason === 'team_mismatch' &&
       getPlayerPosition(candidate) !== 'DEF' &&
-      providerIdentityPresent
+      (providerIdentityPresent || options.allowStaleTeam === true)
     ) {
       return { match, reason: 'team_mismatch_accepted' };
     }
@@ -448,7 +448,7 @@ function rankRosterAtPosition(roster, sageRows, position) {
   return (Array.isArray(roster) ? roster : [])
     .filter((player) => getPlayerPosition(player) === position)
     .map((player) => {
-      const sageMatch = findIdentityMatch(player, sageRows);
+      const sageMatch = findIdentityMatch(player, sageRows, { allowStaleTeam: true });
       return {
         player,
         sage: extractSageEvidence(sageMatch.match),
@@ -606,7 +606,7 @@ function deriveEspnLineupFromRoster(roster) {
 }
 
 function buildLineupPlayer(player, sageRows, id, preferProjection = false) {
-  const sageMatch = findIdentityMatch(player, sageRows);
+  const sageMatch = findIdentityMatch(player, sageRows, { allowStaleTeam: true });
   const sage = extractSageEvidence(sageMatch.match);
   return {
     id,
@@ -1268,7 +1268,7 @@ exports.handler = async function (event) {
       scheduleData
     });
     const rosterIdentity = input.roster.map((player) =>
-      findIdentityMatch(player, flattenWeeklyRankings(weeklyData))
+      findIdentityMatch(player, flattenWeeklyRankings(weeklyData), { allowStaleTeam: true })
     );
     const rosterSageMatched = rosterIdentity.filter((result) => result.match).length;
     const rosterMatchCoverage = input.roster.length

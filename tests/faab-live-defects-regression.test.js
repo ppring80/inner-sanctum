@@ -44,6 +44,20 @@ test('position mismatch and ambiguous duplicates still fail safely', () => {
   ).match, null);
 });
 
+test('connected roster rows may tolerate stale team only when name and position are unique', () => {
+  const row = { name: 'Connected Receiver', position: 'WR', team: 'NYJ' };
+  assert.strictEqual(candidates.findIdentityMatch(
+    { name: 'Connected Receiver', position: 'WR', team: 'GB' },
+    [row],
+    { allowStaleTeam: true }
+  ).match, row);
+  assert.strictEqual(candidates.findIdentityMatch(
+    { name: 'Connected Receiver', position: 'TE', team: 'GB' },
+    [row],
+    { allowStaleTeam: true }
+  ).match, null);
+});
+
 test('recommended stash names a concrete weakest roster drop', () => {
   const [item] = recommendations.buildCustomerRecommendations([{
     name: 'Candidate Back', position: 'RB', team: 'SEA',
