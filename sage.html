@@ -57,7 +57,7 @@ footer{background:#0f0b07;color:#8e826e;text-align:center;padding:34px 20px;font
 <main>
 <section id="rankings">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Live SAGE Preview</span><h2><span id="week-label">This Week's</span> Top Five</h2><p>Half-PPR by default. Switch positions or scoring formats without leaving the page.</p></div>
+    <div class="section-head"><span class="eyebrow">Live SAGE Preview</span><h2><span id="week-label">This Week's</span> Top Five</h2><p id="ranking-context">Half-PPR by default. Switch positions or scoring formats without leaving the page.</p></div>
     <div class="rank-shell">
       <div class="rank-top"><div class="rank-title" id="rank-title">Running Backs · Half-PPR</div><div class="controls" id="position-controls"><button class="active" data-position="RB">RB</button><button data-position="WR">WR</button><button data-position="QB">QB</button><button data-position="TE">TE</button></div><div class="controls" id="scoring-controls"><button data-scoring="standard">STD</button><button class="active" data-scoring="half">Half</button><button data-scoring="ppr">PPR</button></div></div>
       <ol class="ranking" id="ranking-list"><li class="status">Loading current SAGE rankings…</li></ol>
@@ -105,6 +105,15 @@ footer{background:#0f0b07;color:#8e826e;text-align:center;padding:34px 20px;font
   var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin_asdk_app_6a99f442d5008191bcda4d6176318fef';
   var state={position:'RB',scoring:'half',data:null};
   var names={RB:'Running Backs',WR:'Wide Receivers',QB:'Quarterbacks',TE:'Tight Ends'};
+  function randomId(){return window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)}
+  function visitorId(){var key='sanctum_sage_visitor_v1',value='';try{value=localStorage.getItem(key)||'';if(!value){value=randomId();localStorage.setItem(key,value)}}catch(error){value=randomId()}return value}
+  function trackFunnel(stage,placement,eventId){
+    var payload=JSON.stringify({stage:stage,placement:placement||'sage',visitorId:visitorId(),eventId:eventId||randomId()});
+    if(navigator.sendBeacon){navigator.sendBeacon('/.netlify/functions/sage-funnel-event',new Blob([payload],{type:'application/json'}));return}
+    fetch('/.netlify/functions/sage-funnel-event',{method:'POST',headers:{'Content-Type':'application/json'},body:payload,keepalive:true}).catch(function(){});
+  }
+  var viewEventId='';try{viewEventId=sessionStorage.getItem('sanctum_sage_view_event_v1')||'';if(!viewEventId){viewEventId=randomId();sessionStorage.setItem('sanctum_sage_view_event_v1',viewEventId)}}catch(error){viewEventId=randomId()}
+  trackFunnel('sage_view','sage_page',viewEventId);
   function nflContext(){
     var now=new Date(),season=now.getUTCFullYear(),week=1;
     if(season===2026){
@@ -116,20 +125,28 @@ footer{background:#0f0b07;color:#8e826e;text-align:center;padding:34px 20px;font
   var context=nflContext();
   document.getElementById('week-label').textContent='Week '+context.week;
   document.querySelectorAll('.prompt-week').forEach(function(el){el.textContent=context.week});
-  document.querySelectorAll('.chatgpt-link').forEach(function(el){el.href=CHATGPT_APP_URL;el.addEventListener('click',function(){if(window.fbq)fbq('trackCustom','SageChatGPTClick')})});
-  function scoreValue(row){return row.sage&&row.sage.score!=null?row.sage.score:(row.sageScore!=null?row.sageScore:null)}
+  document.querySelectorAll('.chatgpt-link').forEach(function(el){el.href=CHATGPT_APP_URL;el.addEventListener('click',function(){trackFunnel('sage_launch',el.closest('.hero')?'hero':'prompt_section');if(window.fbq)fbq('trackCustom','SageChatGPTClick')})});
+  function scoreValue(row){return row.sage&&row.sage.rankingScore!=null?row.sage.rankingScore:(row.rankingScore!=null?row.rankingScore:(row.sage&&row.sage.score!=null?row.sage.score:(row.sageScore!=null?row.sageScore:null)))}
+  function updateRankingContext(){
+    var eligibility=state.data&&state.data.metadata&&state.data.metadata.gameEligibility;
+    var removed=eligibility&&Number(eligibility.exclusionsApplied)||0;
+    document.getElementById('week-label').textContent=(removed>0?'Remaining Week ':'Week ')+context.week;
+    document.getElementById('ranking-context').textContent=removed>0
+      ? 'Games already underway or final are removed. These are the highest-ranked players still available to start; switch positions or scoring formats below.'
+      : 'Half-PPR by default. Switch positions or scoring formats without leaving the page.';
+  }
   function render(){
     var list=document.getElementById('ranking-list'),rows=state.data&&state.data.positions&&state.data.positions[state.position];
     document.getElementById('rank-title').textContent=names[state.position]+' · '+(state.scoring==='half'?'Half-PPR':state.scoring.toUpperCase());
     if(!Array.isArray(rows)||!rows.length){list.innerHTML='<li class="status">These rankings are not available yet. Check back after the weekly refresh.</li>';return}
-    list.innerHTML=rows.slice(0,5).map(function(row,i){var score=scoreValue(row),team=row.team||'',matchup=row.opponent?(' vs '+row.opponent):'';return '<li><span class="rank">'+(i+1)+'</span><span class="player"><strong>'+escapeHtml(row.name||row.playerName||'Player')+'</strong><small>'+escapeHtml(team+matchup)+'</small></span><span class="projected">'+(score!=null?Number(score).toFixed(1):'—')+'<small>SAGE</small></span></li>'}).join('');
+    list.innerHTML=rows.slice(0,5).map(function(row,i){var score=scoreValue(row),team=row.team||'',matchup=row.opponent?(' vs '+row.opponent):'';return '<li><span class="rank">'+(i+1)+'</span><span class="player"><strong>'+escapeHtml(row.name||row.playerName||'Player')+'</strong><small>'+escapeHtml(team+matchup)+'</small></span><span class="projected">'+(score!=null?Number(score).toFixed(1):'—')+'<small>Rank score</small></span></li>'}).join('');
   }
   function escapeHtml(value){var d=document.createElement('div');d.textContent=String(value);return d.innerHTML}
   function load(){
     document.getElementById('ranking-list').innerHTML='<li class="status">Loading current SAGE rankings…</li>';
     fetch('/.netlify/functions/weekly-sage-rankings?season='+context.season+'&week='+context.week+'&seasonType=reg&scoring='+state.scoring+'&teams=12')
       .then(function(res){if(!res.ok)throw new Error('unavailable');return res.json()})
-      .then(function(data){state.data=data;render()}).catch(function(){state.data=null;render()});
+      .then(function(data){state.data=data;updateRankingContext();render()}).catch(function(){state.data=null;updateRankingContext();render()});
   }
   document.getElementById('position-controls').addEventListener('click',function(e){if(!e.target.dataset.position)return;state.position=e.target.dataset.position;this.querySelectorAll('button').forEach(function(b){b.classList.toggle('active',b===e.target)});render()});
   document.getElementById('scoring-controls').addEventListener('click',function(e){if(!e.target.dataset.scoring)return;state.scoring=e.target.dataset.scoring;this.querySelectorAll('button').forEach(function(b){b.classList.toggle('active',b===e.target)});load()});
