@@ -180,12 +180,28 @@ function normalizeAvailabilityStatus(value) {
 
 function findIdentityMatch(candidate, evidenceRows, options = {}) {
   const candidateName = getPlayerName(candidate);
+  const rows = Array.isArray(evidenceRows) ? evidenceRows : [];
+  const candidateIds = new Set(getStablePlayerIds(candidate));
+
+  if (candidateIds.size) {
+    const idMatches = rows.filter((row) =>
+      getStablePlayerIds(row).some((id) => candidateIds.has(id))
+    );
+    if (idMatches.length === 1) {
+      const candidatePosition = getPlayerPosition(candidate);
+      const evidencePosition = getPlayerPosition(idMatches[0]);
+      if (candidatePosition && evidencePosition && candidatePosition !== evidencePosition) {
+        return { match: null, reason: 'position_mismatch' };
+      }
+      return { match: idMatches[0], reason: 'stable_id' };
+    }
+    if (idMatches.length > 1) return { match: null, reason: 'ambiguous_stable_id' };
+  }
 
   if (!normalizeName(candidateName)) {
     return { match: null, reason: 'missing_name' };
   }
 
-  const rows = Array.isArray(evidenceRows) ? evidenceRows : [];
   const identityCandidate = {
     name: candidateName,
     position: getPlayerPosition(candidate)
@@ -1022,7 +1038,8 @@ async function requestWeeklyData(event, season, week, scoring, teams) {
     week: String(week),
     seasonType: 'reg',
     scoring: String(scoring || 'ppr'),
-    teams: String(teams || 12)
+    teams: String(teams || 12),
+    evidenceUsage: 'waiver'
   });
 
   const response = await fetch(

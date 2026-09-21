@@ -224,6 +224,17 @@ function removeStartedGames(positions, now) {
   return removed;
 }
 
+function applyGameEligibility(positions, now, evidenceUsage) {
+  // Lineup/rankings consumers must stop presenting a player at kickoff.
+  // Waiver analysis is different: it needs the completed target week's
+  // authoritative pregame SAGE evidence to compare provider-available players
+  // and the connected roster. Provider availability remains the hard claim
+  // gate, and all injury/inactive exclusions above still apply.
+  return evidenceUsage === "waiver"
+    ? []
+    : removeStartedGames(positions, now);
+}
+
 function weeklyRecommendation(position, rank) {
   const positionRank = Number(rank);
   if (!Number.isFinite(positionRank) || positionRank < 1) return null;
@@ -419,6 +430,7 @@ exports.handler = async function (event) {
   const targetWeek = Number(query.week);
   const seasonType = String(query.seasonType || DEFAULT_SEASON_TYPE);
   const scoring = String(query.scoring || "ppr").toLowerCase();
+  const evidenceUsage = String(query.evidenceUsage || "rankings").toLowerCase();
 
   if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 18) {
     return jsonResponse(400, {
@@ -554,7 +566,7 @@ exports.handler = async function (event) {
     inactive,
     centralAvailability
   );
-  const startedGameExclusions = removeStartedGames(positions, new Date());
+  const startedGameExclusions = applyGameEligibility(positions, new Date(), evidenceUsage);
   reconcileRankedRecommendations(positions, scoring);
 
   if (successCount === 0) {
@@ -607,7 +619,11 @@ exports.handler = async function (event) {
           : "Injury cache is stale or unavailable; verify late-breaking game statuses."
       },
       gameEligibility: {
-        rule: "Players and team defenses leave actionable rankings at scheduled kickoff.",
+        rule: evidenceUsage === "waiver"
+          ? "Preserve target-week pregame SAGE rows as historical waiver evidence; provider availability and inactive-player guardrails remain authoritative."
+          : "Players and team defenses leave actionable rankings at scheduled kickoff.",
+        evidenceUsage,
+        startedGameEvidencePreserved: evidenceUsage === "waiver",
         timeZone: "America/New_York",
         exclusionsApplied: startedGameExclusions.length,
         excluded: startedGameExclusions
@@ -633,6 +649,7 @@ exports.normalizeGameDate = normalizeGameDate;
 exports.gameMinuteOfDay = gameMinuteOfDay;
 exports.hasGameStarted = hasGameStarted;
 exports.removeStartedGames = removeStartedGames;
+exports.applyGameEligibility = applyGameEligibility;
 exports.weeklyRecommendation = weeklyRecommendation;
 exports.scoringLabel = scoringLabel;
 exports.reconcileRankedRecommendations = reconcileRankedRecommendations;

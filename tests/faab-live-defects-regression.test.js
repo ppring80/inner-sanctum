@@ -5,6 +5,7 @@ const candidates = require('../netlify/functions/waiver-candidates.js')._test;
 const decisions = require('../netlify/functions/waiver-decision.js')._test;
 const recommendations = require('../netlify/functions/waiver-recommendations.js')._test;
 const mcp = require('../netlify/functions/chatgpt-mcp.js')._test;
+const weeklyRankings = require('../netlify/functions/weekly-sage-rankings.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -104,6 +105,55 @@ test('canonical identity prefers stable ID and fails closed on position conflict
     candidates.resolveCanonicalIdentity({ name: 'Shared Name', position: 'WR' }, registry).reason,
     'ambiguous_name_position'
   );
+});
+
+test('waiver evidence mode preserves production-format Week 2 rows at all six positions', () => {
+  const positions = {};
+  for (const position of ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']) {
+    positions[position] = [{
+      playerID: position === 'DEF' ? 'NE' : `${position}-1`,
+      name: position === 'DEF' ? 'NE' : `${position} Example`,
+      position,
+      team: position === 'DEF' ? 'NE' : 'NE',
+      gameDate: '20260920',
+      gameTime: '1:00p',
+      sage: { score: 70 }
+    }];
+  }
+  const removed = weeklyRankings.applyGameEligibility(
+    positions,
+    new Date('2026-09-21T12:00:00Z'),
+    'waiver'
+  );
+  assert.strictEqual(removed.length, 0);
+  for (const position of ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']) {
+    assert.strictEqual(positions[position].length, 1, `${position} waiver evidence retained`);
+  }
+});
+
+test('production-format Week 2 rows join roster and free agents by canonical ID then normalized name', () => {
+  const weeklyRows = [
+    ['3139477', 'Patrick Mahomes', 'QB'], ['3929630', 'Saquon Barkley', 'RB'],
+    ['3121422', 'Terry McLaurin', 'WR'], ['4431459', 'Tyler Warren', 'TE'],
+    ['4034949', 'Eddy Pineiro', 'K'], ['NE', 'NE', 'DEF']
+  ].map(([playerID, name, position]) => ({
+    playerID, name, position, team: ({ QB: 'KC', RB: 'PHI', WR: 'WAS', TE: 'IND', K: 'SF', DEF: 'NE' })[position],
+    sage: { score: 70 }, rank: 1
+  }));
+  const roster = [
+    { playerID: '3139477', name: 'Pat Mahomes', position: 'QB', team: 'KC' },
+    { name: 'Saquon Barkley Jr.', position: 'RB', team: 'PHI' },
+    { name: 'Terry McLaurin', position: 'WR', team: 'WAS' },
+    { name: 'Tyler Warren', position: 'TE', team: 'IND' },
+    { name: 'Eddy Pineiro', position: 'K', team: 'SF' },
+    { name: 'NE', position: 'DEF', team: 'NE' }
+  ];
+  roster.forEach((player, index) => {
+    assert.ok(candidates.findIdentityMatch(player, weeklyRows, { allowStaleTeam: true }).match,
+      `${player.position} roster row joins`);
+    assert.ok(candidates.findIdentityMatch({ ...player, availabilityStatus: 'FA' }, weeklyRows).match,
+      `${player.position} free-agent row joins`);
+  });
 });
 
 test('recommended stash names a concrete weakest roster drop', () => {
