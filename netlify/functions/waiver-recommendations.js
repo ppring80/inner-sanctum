@@ -89,9 +89,9 @@ function addDollarGuidance(item, budget) {
 
 function matchingCoverageAdequate(metadata) {
   const rosterPlayersReceived = Number(metadata?.rosterPlayersReceived) || 0;
-  const rosterSageMatched = Number(metadata?.rosterSageMatched) || 0;
+  const rosterIdentified = Number(metadata?.rosterIdentified) || 0;
   const rosterMatchCoverage = Number(metadata?.rosterMatchCoverage) || 0;
-  return rosterPlayersReceived > 0 && rosterSageMatched >= 3 && rosterMatchCoverage >= 0.5;
+  return rosterPlayersReceived > 0 && rosterIdentified >= 3 && rosterMatchCoverage >= 0.5;
 }
 
 function derive2026RegularSeasonWeek(now) {
@@ -717,6 +717,7 @@ exports.handler = async function handler(event) {
     scoring: candidateBody.scoring || candidateBody.metadata?.scoring || null
   });
   const rosterPlayersReceived = Number(candidateBody.metadata?.rosterPlayersReceived) || 0;
+  const rosterIdentified = Number(candidateBody.metadata?.rosterIdentified) || 0;
   const rosterSageMatched = Number(candidateBody.metadata?.rosterSageMatched) || 0;
   const rosterMatchCoverage = Number(candidateBody.metadata?.rosterMatchCoverage) || 0;
   const coverageAdequate = matchingCoverageAdequate(candidateBody.metadata);
@@ -759,6 +760,7 @@ exports.handler = async function handler(event) {
         matchingCoverage: {
           adequate: coverageAdequate,
           rosterPlayersReceived,
+          rosterIdentified,
           rosterSageMatched,
           rosterMatchCoverage
         },

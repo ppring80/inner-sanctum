@@ -21,6 +21,12 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   : ['https://theinnersanctum.xyz'];
 
 const SUPPORTED_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+const NFL_TEAM_CODES = new Set([
+  'ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE',
+  'DAL', 'DEN', 'DET', 'GB', 'HOU', 'IND', 'JAX', 'KC',
+  'LAC', 'LAR', 'LV', 'MIA', 'MIN', 'NE', 'NO', 'NYG',
+  'NYJ', 'PHI', 'PIT', 'SEA', 'SF', 'TB', 'TEN', 'WAS'
+]);
 
 function isOriginAllowed(origin) {
   return !origin || ALLOWED_ORIGINS.includes(origin);
@@ -95,6 +101,13 @@ function normalizePosition(value) {
     return 'K';
   }
   return position;
+}
+
+function getStablePlayerIds(player) {
+  return [player?.canonicalPlayerId, player?.playerID, player?.playerId,
+    player?.providerPlayerId, player?.id]
+    .filter((value) => value !== undefined && value !== null && String(value).trim())
+    .map((value) => String(value).trim());
 }
 
 function getPlayerName(player) {
@@ -249,6 +262,71 @@ function findIdentityMatch(candidate, evidenceRows, options = {}) {
   }
 
   return { match, reason: null };
+}
+
+function buildCanonicalRegistryRows(playerData) {
+  const players = playerData?.players && typeof playerData.players === 'object'
+    ? playerData.players : {};
+  return Object.entries(players).map(([playerID, player]) => ({
+    ...player,
+    playerID: String(player?.playerID || playerID),
+    name: getPlayerName(player),
+    position: getPlayerPosition(player),
+    team: getPlayerTeam(player)
+  }));
+}
+
+function resolveCanonicalIdentity(player, registryRows) {
+  const position = getPlayerPosition(player);
+  const name = getPlayerName(player);
+  if (position === 'DEF') {
+    const team = getPlayerTeam(player) || normalizeTeam(name);
+    return NFL_TEAM_CODES.has(team)
+      ? { match: { playerID: team, name: team, position: 'DEF', team }, reason: 'canonical_defense' }
+      : { match: null, reason: 'unknown_defense' };
+  }
+
+  const rows = Array.isArray(registryRows) ? registryRows : [];
+  const ids = new Set(getStablePlayerIds(player));
+  if (ids.size) {
+    const idMatches = rows.filter((row) => getStablePlayerIds(row).some((id) => ids.has(id)));
+    if (idMatches.length === 1) {
+      const registryPosition = getPlayerPosition(idMatches[0]);
+      if (position && registryPosition && position !== registryPosition) {
+        return { match: null, reason: 'position_conflict' };
+      }
+      return { match: idMatches[0], reason: 'stable_id' };
+    }
+    if (idMatches.length > 1) return { match: null, reason: 'ambiguous_stable_id' };
+  }
+
+  const nameKey = normalizeName(name);
+  if (!nameKey) return { match: null, reason: 'missing_name' };
+  const nameMatches = rows.filter((row) => normalizeName(getPlayerName(row)) === nameKey);
+  const positionMatches = nameMatches.filter((row) =>
+    !position || !getPlayerPosition(row) || getPlayerPosition(row) === position
+  );
+  if (positionMatches.length === 1) return { match: positionMatches[0], reason: 'unique_name_position' };
+  if (positionMatches.length > 1) return { match: null, reason: 'ambiguous_name_position' };
+  if (nameMatches.length) return { match: null, reason: 'position_conflict' };
+  return { match: null, reason: 'name_not_found' };
+}
+
+function classifyRosterIdentities(roster, registryRows, sageRows) {
+  return (Array.isArray(roster) ? roster : []).map((player) => {
+    const canonical = resolveCanonicalIdentity(player, registryRows);
+    if (!canonical.match) {
+      return { player, status: 'unidentified', reason: canonical.reason, canonical: null, sage: null };
+    }
+    const sage = findIdentityMatch(canonical.match, sageRows, { allowStaleTeam: true });
+    return {
+      player,
+      status: sage.match ? 'identified_with_weekly_sage' : 'identified_without_weekly_sage',
+      reason: sage.match ? canonical.reason : sage.reason,
+      canonical: canonical.match,
+      sage: sage.match
+    };
+  });
 }
 
 function flattenWeeklyRankings(weeklyData) {
@@ -1174,6 +1252,17 @@ async function readOpportunityIntel(event, season, week) {
   }
 }
 
+async function readCanonicalPlayerRegistry(event) {
+  try {
+    connectLambda(event);
+    const store = getStore({ name: 'player-data' });
+    const data = (await store.get('playerData', { type: 'json' })) || null;
+    return buildCanonicalRegistryRows(data);
+  } catch (error) {
+    return [];
+  }
+}
+
 exports.handler = async function (event) {
   const origin = event.headers?.origin || event.headers?.Origin || '';
 
@@ -1237,7 +1326,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    let [weeklyData, risersFallersData, opportunityData, scheduleData] = await Promise.all([
+    let [weeklyData, risersFallersData, opportunityData, scheduleData, registryRows] = await Promise.all([
       fetchWeeklyData(
         event,
         input.season,
@@ -1247,7 +1336,8 @@ exports.handler = async function (event) {
       ),
       readRisersFallers(event, input.season, input.week),
       readOpportunityIntel(event, input.season, input.week),
-      fetchWeeklySchedule(event, input.season, input.week)
+      fetchWeeklySchedule(event, input.season, input.week),
+      readCanonicalPlayerRegistry(event)
     ]);
 
     if (weeklyData?.metadata?.degradedMode === true) {
@@ -1267,12 +1357,11 @@ exports.handler = async function (event) {
       opportunityData,
       scheduleData
     });
-    const rosterIdentity = input.roster.map((player) =>
-      findIdentityMatch(player, flattenWeeklyRankings(weeklyData), { allowStaleTeam: true })
-    );
-    const rosterSageMatched = rosterIdentity.filter((result) => result.match).length;
+    const rosterIdentity = classifyRosterIdentities(input.roster, registryRows, flattenWeeklyRankings(weeklyData));
+    const rosterIdentified = rosterIdentity.filter((result) => result.status !== 'unidentified').length;
+    const rosterSageMatched = rosterIdentity.filter((result) => result.status === 'identified_with_weekly_sage').length;
     const rosterMatchCoverage = input.roster.length
-      ? rosterSageMatched / input.roster.length
+      ? rosterIdentified / input.roster.length
       : 0;
 
     return jsonResponse(
@@ -1293,8 +1382,20 @@ exports.handler = async function (event) {
           sageMatched:
             candidates.filter((candidate) => candidate.identity.sageMatched).length,
           rosterPlayersReceived: input.roster.length,
+          rosterIdentified,
           rosterSageMatched,
           rosterMatchCoverage,
+          rosterIdentity: rosterIdentity.map((result) => ({
+            providerPlayerId: getStablePlayerIds(result.player)[0] || null,
+            name: getPlayerName(result.player),
+            position: getPlayerPosition(result.player) || null,
+            team: getPlayerTeam(result.player) || null,
+            status: result.status,
+            matchReason: result.reason,
+            canonicalPlayerId: result.canonical?.playerID || null,
+            canonicalName: result.canonical ? getPlayerName(result.canonical) : null,
+            canonicalTeam: result.canonical ? getPlayerTeam(result.canonical) : null
+          })),
           trendMatched:
             candidates.filter((candidate) => candidate.identity.trendMatched).length,
           trendDataAvailable: Boolean(risersFallersData),
@@ -1343,6 +1444,10 @@ exports._test = {
   normalizeAvailabilityStatus,
   isProviderAvailableStatus,
   findIdentityMatch,
+  getStablePlayerIds,
+  buildCanonicalRegistryRows,
+  resolveCanonicalIdentity,
+  classifyRosterIdentities,
   flattenWeeklyRankings,
   buildTeamOpponentMap,
   buildScheduleOpponentMap,
@@ -1366,5 +1471,6 @@ exports._test = {
   isValidRisersFallersForRequest,
   isValidOpportunityIntelForRequest,
   readRisersFallers,
-  readOpportunityIntel
+  readOpportunityIntel,
+  readCanonicalPlayerRegistry
 };
