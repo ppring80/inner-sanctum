@@ -23,6 +23,18 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
+const MAX_DISPATCH_AGE_MS = 18 * 60 * 60 * 1000;
+
+function isFreshDispatchTimestamp(updatedAt, nowMs = Date.now()) {
+  const updatedAtMs = Date.parse(updatedAt);
+  const ageMs = nowMs - updatedAtMs;
+  return (
+    Number.isFinite(updatedAtMs) &&
+    ageMs >= 0 &&
+    ageMs <= MAX_DISPATCH_AGE_MS
+  );
+}
+
 exports.handler = async (event) => {
   connectLambda(event);
 
@@ -42,9 +54,23 @@ exports.handler = async (event) => {
       };
     }
 
+    if (!isFreshDispatchTimestamp(cached.updatedAt)) {
+      return {
+        statusCode: 200,
+        headers: { ...CORS_HEADERS, "Cache-Control": "no-store" },
+        body: JSON.stringify({
+          hasData: false,
+          stale: true,
+          updatedAt: cached.updatedAt || null,
+          reason: "The latest dispatch cache is stale. Waiting for a verified update.",
+          dispatches: []
+        })
+      };
+    }
+
     return {
       statusCode: 200,
-      headers: CORS_HEADERS,
+      headers: { ...CORS_HEADERS, "Cache-Control": "no-store" },
       body: JSON.stringify({
         hasData: true,
         updatedAt: cached.updatedAt,
@@ -59,4 +85,9 @@ exports.handler = async (event) => {
       body: JSON.stringify({ hasData: false, dispatches: [] })
     };
   }
+};
+
+exports._test = {
+  MAX_DISPATCH_AGE_MS,
+  isFreshDispatchTimestamp
 };
