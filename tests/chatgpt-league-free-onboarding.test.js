@@ -48,7 +48,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   (mcpSource.match(/error:\s*"league_not_connected"/g) || []).length,
-  2
+  3
 );
 
 console.log('11 ChatGPT league-free onboarding assertions passed, 0 failed.');

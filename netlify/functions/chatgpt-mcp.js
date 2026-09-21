@@ -11,6 +11,7 @@
 //   get_weekly_rankings
 //   get_linked_league          (OAuth protected)
 //   get_lineup_recommendation  (OAuth protected)
+//   get_waiver_recommendations (OAuth protected)
 //   get_draft_outlook
 //
 // PRODUCTION DATA SOURCE:
@@ -270,6 +271,52 @@ const LineupRecommendationOutputSchema = z.object({
   unmatchedRosterPlayers: z.array(LineupUnmatchedPlayerSchema),
   unfilledSlots: z.array(LineupUnfilledSlotSchema),
   warnings: z.array(z.string()),
+  error: z.string().optional()
+});
+
+const WaiverFaabSchema = z.object({
+  budgetBasis: z.string(),
+  archetype: z.string(),
+  valuePct: z.number(),
+  recommendedPct: z.number(),
+  aggressivePct: z.number(),
+  valueDollars: z.number().int().nullable(),
+  recommendedDollars: z.number().int().nullable(),
+  aggressiveDollars: z.number().int().nullable(),
+  originalBudget: z.number().int().nullable(),
+  confidence: z.string(),
+  evidence: z.record(z.any()),
+  basis: z.array(z.string())
+});
+
+const WaiverRecommendationSchema = z.object({
+  name: z.string(),
+  position: z.string().nullable(),
+  team: z.string().nullable(),
+  opponent: z.string().nullable(),
+  verdict: z.string(),
+  recommended: z.boolean(),
+  faab: WaiverFaabSchema.nullable(),
+  swapFor: z.record(z.any()).nullable(),
+  lineupFor: z.record(z.any()).nullable(),
+  quickRead: z.record(z.any()),
+  evidence: z.record(z.any())
+});
+
+const WaiverRecommendationsOutputSchema = z.object({
+  source: z.string(),
+  liveFantasyDataConnected: z.boolean(),
+  readOnly: z.boolean(),
+  provider: z.string().nullable(),
+  season: z.number().int(),
+  week: z.number().int(),
+  scoring: z.string(),
+  teams: z.number().int(),
+  originalFaabBudget: z.number().int().nullable(),
+  recommendations: z.array(WaiverRecommendationSchema),
+  summary: z.record(z.any()),
+  methodology: z.string(),
+  limitations: z.array(z.string()),
   error: z.string().optional()
 });
 
@@ -4078,6 +4125,116 @@ function draftOutlookToText({
   return lines.join("\n\n");
 }
 
+function faabPctToDollars(
+  percentage,
+  originalBudget
+) {
+  const pct = Number(percentage);
+  const budget = Number(originalBudget);
+
+  if (
+    !Number.isFinite(pct) ||
+    !Number.isInteger(budget) ||
+    budget < 1
+  ) {
+    return null;
+  }
+
+  return Math.round(
+    budget * pct / 100
+  );
+}
+
+function addFaabDollarGuidance(
+  recommendation,
+  originalBudget
+) {
+  if (
+    !recommendation ||
+    !recommendation.faab
+  ) {
+    return recommendation;
+  }
+
+  const budget =
+    Number.isInteger(Number(originalBudget)) &&
+    Number(originalBudget) > 0
+      ? Number(originalBudget)
+      : null;
+
+  return {
+    ...recommendation,
+    faab: {
+      ...recommendation.faab,
+      valueDollars:
+        faabPctToDollars(
+          recommendation.faab.valuePct,
+          budget
+        ),
+      recommendedDollars:
+        faabPctToDollars(
+          recommendation.faab.recommendedPct,
+          budget
+        ),
+      aggressiveDollars:
+        faabPctToDollars(
+          recommendation.faab.aggressivePct,
+          budget
+        ),
+      originalBudget:
+        budget
+    }
+  };
+}
+
+function waiverRecommendationsToText({
+  recommendations,
+  originalFaabBudget
+}) {
+  const items =
+    Array.isArray(recommendations)
+      ? recommendations
+      : [];
+
+  if (!items.length) {
+    return (
+      "Inner Sanctum found no provider-reported waiver candidates in the " +
+      "submitted list. No player or bid was invented."
+    );
+  }
+
+  const lines = [
+    "Inner Sanctum Waiver & FAAB Recommendations"
+  ];
+
+  items.forEach((item, index) => {
+    const faab = item.faab || null;
+    const bid =
+      faab &&
+      faab.recommendedDollars !== null
+        ? `$${faab.recommendedDollars} (${faab.recommendedPct}%)`
+        : faab
+          ? `${faab.recommendedPct}% of the original FAAB budget`
+          : "No evidence-backed bid";
+
+    lines.push(
+      `${index + 1}. ${item.name} (${item.position || "?"}, ` +
+      `${item.team || "?"}) — ${item.verdict}; recommended bid: ${bid}.`
+    );
+  });
+
+  lines.push(
+    originalFaabBudget
+      ? `Dollar values use the supplied $${originalFaabBudget} original FAAB budget.`
+      : "No original FAAB budget was supplied, so percentages are authoritative and dollar values are omitted."
+  );
+  lines.push(
+    "Read-only: no waiver claim, add, drop, or provider transaction was submitted."
+  );
+
+  return lines.join("\n\n");
+}
+
 // ===========================================================
 // MCP SERVER
 // ===========================================================
@@ -5831,7 +5988,275 @@ function buildServer(
   );
 
   // =========================================================
-  // TOOL #6 — GET DRAFT OUTLOOK
+  // TOOL #6 — GET WAIVER RECOMMENDATIONS
+  // =========================================================
+  //
+  // Accepts only provider-reported/pasted availability supplied by the host,
+  // combines it with the OAuth-authorized linked roster, and delegates every
+  // verdict and percentage to the production waiver-recommendations service.
+  // The bridge performs only the mechanical original-budget dollar conversion.
+  server.registerTool(
+    "get_waiver_recommendations",
+
+    {
+      title:
+        "Get Inner Sanctum Waiver and FAAB Recommendations",
+
+      description:
+        "Returns read-only, roster-aware waiver priorities and evidence-backed " +
+        "FAAB guidance for players the user shows as available in their league. " +
+        "Use this for questions such as 'who should I claim', 'rank these free " +
+        "agents', 'what should I bid', or 'how much FAAB should I spend'. Pass " +
+        "the available players copied, pasted, typed, or extracted from an " +
+        "attached provider free-agent list. The OAuth-authorized linked roster, " +
+        "league size, and scoring settings are used for roster-relative value. " +
+        "FAAB percentages come exclusively from Inner Sanctum's existing " +
+        "production six-band evidence model; this tool must not invent or " +
+        "replace them with generic industry ranges. Dollar values are a " +
+        "mechanical conversion of those percentages using originalFaabBudget. " +
+        "If the original budget is unknown, omit it and report percentages only. " +
+        "This tool never submits a claim or modifies a roster.",
+
+      inputSchema:
+        z.object({
+          availablePlayers:
+            z.array(
+              z.object({
+                name: z.string().min(1),
+                position: z.string().min(1),
+                team: z.string().optional(),
+                availabilityStatus: z.string().optional(),
+                projectedPoints: z.number().optional(),
+                percentOwned: z.number().optional(),
+                percentStarted: z.number().optional(),
+                opponent: z.string().optional()
+              })
+            )
+              .min(1)
+              .max(250)
+              .describe(
+                "Players explicitly shown as available by the user's fantasy provider. Never add names not present in the supplied list."
+              ),
+
+          originalFaabBudget:
+            z.number()
+              .int()
+              .min(1)
+              .max(10000)
+              .optional()
+              .describe(
+                "The league's original full-season FAAB allowance, such as 100 or 200. This converts authoritative percentages to dollars; it is not the manager's remaining balance."
+              ),
+
+          season:
+            z.number()
+              .int()
+              .min(2026)
+              .max(2035)
+              .optional(),
+
+          week:
+            z.number()
+              .int()
+              .min(1)
+              .max(18)
+              .optional()
+        }),
+
+      outputSchema:
+        WaiverRecommendationsOutputSchema,
+
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+
+    async ({
+      availablePlayers,
+      originalFaabBudget,
+      season,
+      week
+    }) => {
+      const snapshot =
+        authContext &&
+        authContext.snapshot
+          ? authContext.snapshot
+          : null;
+
+      const resolvedSeason =
+        season ||
+        num(snapshot && snapshot.league && snapshot.league.season) ||
+        DEFAULT_SEASON;
+      const resolvedWeek =
+        week ||
+        getCurrentNFLWeek();
+      const resolvedScoring =
+        cleanString(snapshot && snapshot.scoringFormat) ||
+        DEFAULT_SCORING;
+      const resolvedTeams =
+        num(snapshot && snapshot.league && snapshot.league.teamCount) ||
+        DEFAULT_TEAMS;
+      const provider =
+        cleanString(snapshot && snapshot.provider);
+
+      const baseOutput = {
+        source: "Inner Sanctum Waiver & FAAB",
+        liveFantasyDataConnected: Boolean(snapshot),
+        readOnly: true,
+        provider,
+        season: resolvedSeason,
+        week: resolvedWeek,
+        scoring: resolvedScoring,
+        teams: resolvedTeams,
+        originalFaabBudget:
+          Number.isInteger(Number(originalFaabBudget))
+            ? Number(originalFaabBudget)
+            : null,
+        recommendations: [],
+        summary: {},
+        methodology:
+          "Production Inner Sanctum waiver decisions and six-band FAAB percentages, with dollar values derived mechanically from the supplied original budget.",
+        limitations: [
+          "Only players explicitly supplied as provider-available are evaluated.",
+          "No transaction is submitted."
+        ]
+      };
+
+      if (!snapshot || !provider) {
+        const structuredContent = {
+          ...baseOutput,
+          error: "league_not_connected"
+        };
+
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text:
+              "Connect an Inner Sanctum league before requesting roster-aware waiver and FAAB recommendations."
+          }],
+          structuredContent
+        };
+      }
+
+      try {
+        const normalizedAvailablePlayers =
+          availablePlayers.map((player) => ({
+            ...player,
+            availabilityStatus:
+              cleanString(player.availabilityStatus) ||
+              "WAIVERS"
+          }));
+        const response = await fetch(
+          `${getRequestBaseUrl(request)}/.netlify/functions/waiver-recommendations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: JSON.stringify({
+              provider,
+              season: resolvedSeason,
+              week: resolvedWeek,
+              scoring: resolvedScoring,
+              teams: resolvedTeams,
+              availablePlayers: normalizedAvailablePlayers,
+              roster: Array.isArray(snapshot.roster)
+                ? snapshot.roster
+                : [],
+              connection: {
+                ...snapshot,
+                availablePlayers: normalizedAvailablePlayers
+              }
+            })
+          }
+        );
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (error) {
+          data = null;
+        }
+
+        if (!response.ok || !data) {
+          throw new Error(
+            data && data.error
+              ? data.error
+              : `HTTP ${response.status}`
+          );
+        }
+
+        const recommendations =
+          (Array.isArray(data.recommendations)
+            ? data.recommendations
+            : [])
+            .map((item) =>
+              addFaabDollarGuidance(
+                item,
+                originalFaabBudget
+              )
+            );
+
+        const structuredContent = {
+          ...baseOutput,
+          provider: data.provider || provider,
+          season: num(data.season) || resolvedSeason,
+          week: num(data.week) || resolvedWeek,
+          recommendations,
+          summary: data.summary || {},
+          methodology:
+            data.metadata && data.metadata.methodology
+              ? data.metadata.methodology
+              : baseOutput.methodology,
+          limitations:
+            data.metadata && Array.isArray(data.metadata.limitations)
+              ? data.metadata.limitations
+              : baseOutput.limitations
+        };
+
+        return {
+          content: [{
+            type: "text",
+            text:
+              waiverRecommendationsToText({
+                recommendations,
+                originalFaabBudget:
+                  structuredContent.originalFaabBudget
+              })
+          }],
+          structuredContent
+        };
+      } catch (error) {
+        console.error(
+          "Inner Sanctum waiver recommendation error:",
+          error
+        );
+
+        const structuredContent = {
+          ...baseOutput,
+          error: "live_waiver_recommendations_unavailable"
+        };
+
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text:
+              "Inner Sanctum could not retrieve live waiver and FAAB recommendations right now."
+          }],
+          structuredContent
+        };
+      }
+    }
+  );
+
+  // =========================================================
+  // TOOL #7 — GET DRAFT OUTLOOK
   // =========================================================
   //
   // Public (no OAuth), read-only, context-free Draft SAGE signals
@@ -6266,6 +6691,11 @@ function buildServer(
 // ===========================================================
 // NETLIFY FUNCTION ADAPTER
 // ===========================================================
+
+exports._test = {
+  faabPctToDollars,
+  addFaabDollarGuidance
+};
 
 exports.handler =
   async function handler(event) {
