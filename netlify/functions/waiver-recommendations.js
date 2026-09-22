@@ -9,6 +9,7 @@
 // context supplied to this endpoint.
 
 const waiverCandidates = require('./waiver-candidates.js');
+const { resolveCurrentNFLWeek } = require('./_current-nfl-week.js');
 const {
   buildWaiverDecisions,
   summarizeDecisions
@@ -94,24 +95,21 @@ function matchingCoverageAdequate(metadata) {
   return rosterPlayersReceived > 0 && rosterIdentified >= 3 && rosterMatchCoverage >= 0.5;
 }
 
+function buildWeekEvidenceMessages(targetWeekValue, evidenceWeekValue, fallbackValue) {
+  const targetWeek = validWeek(targetWeekValue);
+  const evidenceWeek = validWeek(evidenceWeekValue) || targetWeek;
+  const historicalFallbackUsed = Boolean(
+    fallbackValue || (targetWeek && evidenceWeek && targetWeek !== evidenceWeek)
+  );
+  return [
+    `Target recommendation week: ${targetWeek}.`,
+    `Weekly SAGE evidence week: ${evidenceWeek}.`,
+    `Historical fallback used: ${historicalFallbackUsed ? 'true' : 'false'}.`
+  ];
+}
+
 function derive2026RegularSeasonWeek(now) {
-  const current = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(current.getTime())) return null;
-
-  // Waiver decisions roll forward after Monday's slate, not when Thursday's
-  // next game begins. Week 1 therefore runs Sep 10-14 for this endpoint;
-  // Tuesday Sep 15 is the start of the Week 2 waiver-decision window.
-  const weekOneStart = Date.UTC(2026, 8, 10);
-  const weekTwoWaiverStart = Date.UTC(2026, 8, 15, 6);
-  const weekNineteenStart = weekTwoWaiverStart + (17 * 7 * 24 * 60 * 60 * 1000);
-  const currentTime = current.getTime();
-
-  if (currentTime < weekOneStart || currentTime >= weekNineteenStart) {
-    return null;
-  }
-
-  if (currentTime < weekTwoWaiverStart) return 1;
-  return Math.floor((currentTime - weekTwoWaiverStart) / (7 * 24 * 60 * 60 * 1000)) + 2;
+  return resolveCurrentNFLWeek(now, 2026);
 }
 
 function resolveWaiverWeek(body, now = new Date()) {
@@ -574,23 +572,30 @@ function bestForMeCompare(a, b) {
 }
 
 function decorateDecision(item, context = {}) {
-  const verdict = customerVerdict(item);
+  const requestedVerdict = customerVerdict(item);
   const rosterImpact = item?.evidence?.rosterImpact || null;
   const weakest = rosterImpact?.weakestComparable || null;
   const sage = item?.evidence?.sage || null;
   const trend = item?.evidence?.trend || null;
   const opportunity = item?.evidence?.opportunity || null;
 
-  const faab = buildFaabGuidance(item, verdict, context);
-
   const depthWeakest = rosterImpact?.depthComparison?.weakestComparable || weakest;
+  const requestedClaim = ['ADD_NOW', 'STASH'].includes(requestedVerdict);
+  const hasLegalDrop = Boolean(depthWeakest?.name);
+  // Customer-facing claims are actionable only as complete add/drop pairs.
+  // A candidate without a specific legal drop remains REVIEW and receives no
+  // bidding advice, even if its internal roster-impact evidence is positive.
+  const verdict = requestedClaim && !hasLegalDrop ? 'REVIEW' : requestedVerdict;
   const claimRecommended = ['ADD_NOW', 'STASH'].includes(verdict);
+  const faab = claimRecommended
+    ? buildFaabGuidance(item, verdict, context)
+    : null;
   return {
     ...item,
     verdict,
     recommended: recommendedCandidate(item, verdict),
     opportunity,
-    customerActionable: verdict === 'ADD_NOW',
+    customerActionable: claimRecommended,
     faab,
     swapFor:
       claimRecommended && depthWeakest?.name
@@ -739,8 +744,17 @@ exports.handler = async function handler(event) {
         reasons: ['Connected-roster identity coverage is inadequate for a safe add/drop recommendation.']
       }
     };
-    return addDollarGuidance(safeItem, budgetResolution.budget);
+    const actionableItem = ['ADD_NOW', 'STASH'].includes(safeItem.verdict) && safeItem.swapFor?.name
+      ? safeItem
+      : { ...safeItem, faab: null };
+    return addDollarGuidance(actionableItem, budgetResolution.budget);
   });
+
+  const weekEvidenceMessages = buildWeekEvidenceMessages(
+    candidateBody.week,
+    candidateBody.metadata?.sageSourceWeek,
+    candidateBody.metadata?.sageFallbackUsed
+  );
 
   return {
     statusCode: 200,
@@ -770,6 +784,7 @@ exports.handler = async function handler(event) {
         methodology:
           'Provider availability is authoritative. ADD NOW requires a safe Weekly SAGE match and a demonstrated lineup upgrade. FAAB uses verified workload and roster-relative projection gain to select a calibrated market band, then adjusts for league depth and relevant scoring; trend labels and roster percentage cannot create a bid.',
         limitations: [
+          ...weekEvidenceMessages,
           budgetResolution.budget === null
             ? 'Original FAAB budget is unknown. Ask the user for it; until supplied, show percentage-only guidance.'
             : `Dollar guidance uses the ${budgetResolution.source} original FAAB budget.`,
@@ -805,5 +820,6 @@ exports._test = {
   connectedFaabBudget,
   resolveFaabBudget,
   addDollarGuidance,
-  matchingCoverageAdequate
+  matchingCoverageAdequate,
+  buildWeekEvidenceMessages
 };

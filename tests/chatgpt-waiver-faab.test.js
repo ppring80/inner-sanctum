@@ -10,7 +10,7 @@ const source = fs.readFileSync(
   'utf8'
 );
 
-const { faabPctToDollars, addFaabDollarGuidance } = mcp._test;
+const { faabPctToDollars, addFaabDollarGuidance, resolveCurrentNFLWeek } = mcp._test;
 
 assert.strictEqual(faabPctToDollars(1, 200), 2);
 assert.strictEqual(faabPctToDollars(3, 200), 6);
@@ -49,4 +49,11 @@ assert.ok(source.includes('production six-band evidence model'));
 assert.ok(source.includes('/.netlify/functions/waiver-recommendations'));
 assert.ok(!source.includes('FAAB_MARKET_BANDS ='));
 
-console.log('13 ChatGPT waiver/FAAB integration assertions passed, 0 failed.');
+assert.strictEqual(resolveCurrentNFLWeek(new Date('2026-09-22T05:59:59.999Z'), 2026), 2);
+assert.strictEqual(resolveCurrentNFLWeek(new Date('2026-09-22T06:00:00.000Z'), 2026), 3);
+assert.strictEqual((source.match(/getCurrentNFLWeek\(\)/g) || []).length, 6,
+  'all five current-week connector tools route through the shared resolver');
+assert.ok(!source.includes('const seasonStart = new Date('),
+  'the fixed Wednesday connector calculation is removed');
+
+console.log('17 ChatGPT waiver/FAAB integration assertions passed, 0 failed.');

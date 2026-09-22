@@ -49,6 +49,7 @@ const {
 
 const { z } = require("zod");
 const crypto = require("crypto");
+const { resolveCurrentNFLWeek } = require("./_current-nfl-week.js");
 
 const {
   connectLambda,
@@ -477,43 +478,7 @@ function normalizePlayerName(value) {
 }
 
 function getCurrentNFLWeek() {
-  const now = new Date();
-
-  const seasonStart = new Date(
-    Date.UTC(
-      2026,
-      8,
-      9,
-      0,
-      0,
-      0
-    )
-  );
-
-  if (now < seasonStart) {
-    return 1;
-  }
-
-  const millisecondsPerWeek =
-    7 * 24 * 60 * 60 * 1000;
-
-  const diff =
-    now.getTime() -
-    seasonStart.getTime();
-
-  const week =
-    Math.floor(
-      diff /
-      millisecondsPerWeek
-    ) + 1;
-
-  return Math.max(
-    1,
-    Math.min(
-      18,
-      week
-    )
-  );
+  return resolveCurrentNFLWeek(new Date(), DEFAULT_SEASON);
 }
 
 function getRequestBaseUrl(request) {
@@ -6745,6 +6710,8 @@ function buildServer(
 // ===========================================================
 
 exports._test = {
+  getCurrentNFLWeek,
+  resolveCurrentNFLWeek,
   faabPctToDollars,
   connectedLeagueFaabBudget,
   resolveToolFaabBudget,

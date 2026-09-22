@@ -9,7 +9,8 @@ const {
     customerVerdict,
     buildFaabGuidance,
     buildCustomerRecommendations,
-    summarizeCustomerRecommendations
+    summarizeCustomerRecommendations,
+    buildWeekEvidenceMessages
   }
 } = require('../netlify/functions/waiver-recommendations.js');
 
@@ -69,7 +70,7 @@ function stashEvidence() {
       candidateStarts: false,
       depthComparison: {
         classification: 'UPGRADE',
-        weakestComparable: { sage: { positionRank: 42 } }
+        weakestComparable: { name: 'Weak Bench Receiver', position: 'WR', sage: { positionRank: 42 } }
       }
     },
     trend: { direction: 'RISER' },
@@ -118,6 +119,19 @@ test('Week 1 does not advance before the Monday slate is safely complete', () =>
     derive2026RegularSeasonWeek(new Date('2026-09-15T05:59:59Z')),
     1
   );
+});
+
+test('shared resolver changes weeks exactly at Tuesday 06:00 UTC', () => {
+  assert.strictEqual(derive2026RegularSeasonWeek(new Date('2026-09-22T05:59:59.999Z')), 2);
+  assert.strictEqual(derive2026RegularSeasonWeek(new Date('2026-09-22T06:00:00.000Z')), 3);
+});
+
+test('Week 3 target transparently reports completed Week 2 evidence fallback', () => {
+  assert.deepStrictEqual(buildWeekEvidenceMessages(3, 2, true), [
+    'Target recommendation week: 3.',
+    'Weekly SAGE evidence week: 2.',
+    'Historical fallback used: true.'
+  ]);
 });
 
 test('provider Week 1 remains authoritative after the calendar enters the Week 2 waiver window', () => {
@@ -251,7 +265,7 @@ test('verified workload plus a meaningful bench upgrade becomes STASH', () => {
   assert.ok(result.faab);
 });
 
-test('projection-only skill player stays WATCH but retains speculative market pricing', () => {
+test('projection-only skill player stays WATCH without customer-facing bidding advice', () => {
   const result = buildCustomerRecommendations([decision({
     decision: { action: 'WATCH', actionable: false },
     evidence: {
@@ -274,8 +288,7 @@ test('projection-only skill player stays WATCH but retains speculative market pr
 
   assert.strictEqual(result.verdict, 'WATCH');
   assert.strictEqual(result.recommended, false);
-  assert.strictEqual(result.faab.recommendedPct, 1);
-  assert.strictEqual(result.faab.archetype, 'SPECULATIVE');
+  assert.strictEqual(result.faab, null);
 });
 
 test('equivalent ESPN and CBS evidence produces the same customer decision', () => {
@@ -323,8 +336,7 @@ test('Recommended preserves credible QB TE K and DEF coverage during SAGE fallba
     const result = recs.find((item) => item.position === position);
     assert.strictEqual(result.verdict, 'REVIEW');
     assert.strictEqual(result.recommended, true, `${position} should retain credible coverage`);
-    assert.strictEqual(result.faab.recommendedPct, 1, `${position} review coverage receives speculative market FAAB`);
-    assert.strictEqual(result.faab.archetype, 'SPECULATIVE');
+    assert.strictEqual(result.faab, null, `${position} REVIEW has no customer-facing bid`);
   });
 });
 
@@ -471,6 +483,31 @@ test('PASS stays PASS even when trend is rising', () => {
     })),
     'PASS'
   );
+});
+
+test('REVIEW and PASS customer results always suppress FAAB guidance', () => {
+  const items = buildCustomerRecommendations([
+    decision({ name: 'Review Bid Trap', decision: { action: 'REVIEW', actionable: false } }),
+    decision({ name: 'Pass Bid Trap', decision: { action: 'PASS', actionable: false } })
+  ]);
+  items.forEach((item) => assert.strictEqual(item.faab, null));
+});
+
+test('ADD NOW and STASH expose bids only with a specific legal drop', () => {
+  const withDrop = buildCustomerRecommendations([decision({ evidence: qualifiedAddEvidence() })])[0];
+  assert.strictEqual(withDrop.verdict, 'ADD_NOW');
+  assert.ok(withDrop.swapFor?.name);
+  assert.ok(withDrop.faab);
+
+  const withoutDrop = buildCustomerRecommendations([decision({
+    evidence: {
+      ...qualifiedAddEvidence(),
+      rosterImpact: { classification: 'UPGRADE', comparisonType: 'starting-lineup', candidateStarts: true }
+    }
+  })])[0];
+  assert.strictEqual(withoutDrop.verdict, 'REVIEW');
+  assert.strictEqual(withoutDrop.swapFor, null);
+  assert.strictEqual(withoutDrop.faab, null);
 });
 
 test('ADD NOW exposes conservative same-position swap candidate', () => {
