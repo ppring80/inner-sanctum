@@ -79,6 +79,7 @@
     var positions = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
     var byIdentity = {};
     var rosterIdentities = rosterIdentityMap(connection);
+    var explicitProjectionRows = projectionRows(connection);
 
     candidateRows(connection).forEach(function (player) {
       if (!player || player.active === false) return;
@@ -90,6 +91,15 @@
       var team = playerTeam(player);
       var key = normalizeName(name) + '|' + position;
       var isRosterPlayer = rosterIdentities[key] === true;
+      var isExplicitProjection = explicitProjectionRows.indexOf(player) >= 0;
+      if (
+        String(connection && connection.provider || '').toLowerCase() === 'cbs' &&
+        isRosterPlayer &&
+        projectedPoints === 0 &&
+        !isExplicitProjection
+      ) {
+        projectedPoints = null;
+      }
       if (projectedPoints === null && !isRosterPlayer) return;
       var existing = byIdentity[key];
       var row = {
