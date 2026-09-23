@@ -1,6 +1,7 @@
 "use strict";
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { isNetlifyScheduledInvocation, requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 const HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const MAX_TANK01_CALLS_PER_RUN = 8;
 
@@ -63,6 +64,7 @@ exports.handler = async function (event = {}) {
   connectLambda(event);
   if (!isNetlifyScheduledInvocation(event) && event.httpMethod && event.httpMethod !== "GET") return json(405, { error: "Method not allowed." });
   const authError = requireTank01RefreshAuthorization(event); if (authError) return authError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-survivor-odds", calls: MAX_TANK01_CALLS_PER_RUN }); if (budgetError) return budgetError;
   if (!process.env.TANK01_API_KEY) return json(500, { error: "TANK01_API_KEY is not configured." });
   const query = event.queryStringParameters || {}, week = query.week ? Number(query.week) : currentWeek();
   const season = String(query.season || new Date().getUTCFullYear()), seasonType = String(query.seasonType || "reg").toLowerCase();
@@ -83,4 +85,4 @@ exports.handler = async function (event = {}) {
   } catch (error) { return json(502, { cached: false, error: "Survivor refresh failed; existing snapshot retained.", detail: error.message }); }
 };
 exports.numberFrom = numberFrom; exports.probabilities = probabilities; exports.mergeGames = mergeGames; exports.MAX_TANK01_CALLS_PER_RUN = MAX_TANK01_CALLS_PER_RUN;
-exports.config = { schedule: "45 10,16 * * *" };
+// Scheduling remains disabled until the measured multi-day production plan is approved.

@@ -5,38 +5,33 @@
 [context.production]
   environment = { SECRETS_SCAN_ENABLED = "false" }
 
-# TANK01 EMERGENCY CONTAINMENT — 2026-09-23
-# Automatic Tank01-consuming refreshes are disabled after 994 calls were
-# recorded in 24 hours. Existing cached evidence remains readable. Do not
-# restore a schedule until a shared cross-function quota gate is deployed
-# and the measured call budget fits the subscribed RapidAPI plan.
+# TANK01 SHARED DAILY BUDGET — 2026-09-23
+# Every provider-calling job reserves its maximum possible calls from one
+# atomic UTC-day ledger before it starts. The default ceiling is 700, leaving
+# 300 calls of safety below the 1,000-call PRO allowance. The reduced schedules
+# below fit within that ceiling; customer request paths remain cache-only.
 
 # PLAYER DATA REFRESH SCHEDULE (added — checklist #215)
-# Runs every six hours Monday-Saturday. Sunday uses the game-day alias below
-# so late OUT/inactive announcements land before lineup lock.
+# Runs once daily Monday-Saturday. Sunday uses the game-day alias below
+# at four bounded checkpoints so late OUT/inactive announcements can land.
 # loops all 32 NFL teams' rosters in parallel and caches each player's
 # exp (rookie/veteran status) and injury designation to Netlify Blobs,
 # which chat.js then reads on every Sanctum request instead of hitting
 # Tank01 live (32 calls per chat message would be too slow and too
 # expensive). See refresh-player-data.js for the full rationale.
 #
-# @daily = 00:00 UTC every day. If exp/injury data ever needs to be
-# fresher than a once-a-day refresh, change this to "0 */6 * * *"
-# (every 6 hours) -- no other code changes needed.
+# Do not raise this cadence without revising and testing the shared budget.
 [functions."refresh-player-data"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "0 13 * * 1-6"
 
-# Sunday: midnight/06:00 UTC, then hourly from 12:00-23:00 UTC. This remains
-# under the Tank01 daily ceiling because each run uses one team-list request
-# plus 32 parallel team-roster requests; it never calls per player.
+# Sunday: four refreshes from morning through pregame. Each run reserves all
+# 33 possible calls (one team list plus 32 team rosters) before starting.
 [functions."refresh-player-data-game-day"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "0 13,16,19,22 * * 0"
 
 # AUTOMATED FACT-CHECK SCHEDULE (added)
-# Runs qa-fact-check.js daily at 00:30 UTC — deliberately 30 minutes
-# AFTER refresh-player-data's 00:00 UTC run (above), so the
-# player-data cache it samples from is guaranteed fresh for the day
-# rather than racing it. See qa-fact-check.js for full rationale.
+# Runs qa-fact-check.js daily at 00:30 UTC. It reads cached evidence and
+# makes no Tank01 calls.
 [functions."qa-fact-check"]
   schedule = "30 0 * * *"
 
@@ -60,7 +55,7 @@
 # Revisit this timing if the NFL ever schedules a game later than
 # Monday night in a given week (e.g. certain international slates).
 [functions."refresh-risers-fallers"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "0 12 * * 3"
 
 # OPPORTUNITY INTELLIGENCE SCHEDULE (added -- stale-season-cache fix)
 # Runs refresh-opportunity-intel.js's scheduled mode weekly at 12:30 UTC
@@ -90,7 +85,7 @@
 # same safety margin already relied on for refresh-risers-fallers's own
 # 12:00 UTC slot.
 [functions."refresh-opportunity-intel"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "30 12 * * 3"
 
 # CAMP WATCH AUTO-GENERATOR SCHEDULE (added 2026-08-05)
 # Runs generate-camp-watch.js TWICE a day, at 13:00 and 23:00 UTC —
@@ -119,7 +114,7 @@
 # alone -- adjust the hours below manually if that drift ever matters
 # enough to fix.
 [functions."generate-camp-watch"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "0 15 * * *"
 
 # CURRENT NFL FACTS (DEPTH CHART) SCHEDULE — V2.1 (added)
 # Runs refresh-current-nfl-facts.js TWICE a day, at 13:30 and 23:30
@@ -142,7 +137,7 @@
 # refresh-player-snapshot.js's own trigger (currently manual/on-demand
 # per the V2.1 implementation turn, unchanged by this addition).
 [functions."refresh-current-nfl-facts"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "30 15 * * *"
 
 # WEEKLY SAGE SHARED SCHEDULE EVIDENCE
 # Builds and caches the current week's normalized schedule before
@@ -151,7 +146,7 @@
 # Tuesday 08:40 UTC -- 20 minutes before the first positional
 # snapshot refresh at 09:00 UTC.
 [functions."refresh-weekly-sage-schedule"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "40 8 * * 2"
 
 # WEEKLY SAGE DEFENSE EVIDENCE
 # Caches the completed week's defensive matchup evidence, one weekly
@@ -160,7 +155,7 @@
 # Tuesday 08:50 UTC -- after the shared schedule (08:40 UTC) and
 # before the first positional snapshot refresh (09:00 UTC).
 [functions."refresh-weekly-sage-defense"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "50 8 * * 2"
 
 # WEEKLY SAGE PRODUCTION SNAPSHOT REFRESH SCHEDULE (added)
 # Runs each position's dedicated snapshot cache-writer ONCE weekly, at
@@ -190,29 +185,34 @@
 # traffic, per this task's explicit "do not schedule analytical
 # leaderboard functions unless required" instruction.
 [functions."refresh-qb-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "0 9 * * 2"
 
 [functions."refresh-rb-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "5 9 * * 2"
 
 [functions."refresh-wr-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "10 9 * * 2"
 
 [functions."refresh-te-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "15 9 * * 2"
 
 [functions."refresh-k-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "20 9 * * 2"
 
 [functions."refresh-def-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "25 9 * * 2"
 
 # DRAFT OUTLOOK ADP SNAPSHOT
 # Refreshes PPR, half-PPR, and standard ADP once weekly after the
 # positional Weekly SAGE refresh chain completes. The function enforces
 # a hard ceiling of three Tank01 requests per run.
 [functions."refresh-adp-snapshot"]
-  # EMERGENCY DISABLED 2026-09-23 — Tank01 aggregate quota containment.
+  schedule = "30 9 * * 2"
+
+# Survivor odds is limited to one daily refresh and shares the same atomic
+# 700-call budget as every other Tank01 job.
+[functions."refresh-survivor-odds"]
+  schedule = "45 16 * * *"
 
 # OPENAI PLUGIN DOMAIN VERIFICATION
 # OpenAI's plugin submission portal verifies ownership of

@@ -1,6 +1,7 @@
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 // ═══════════════════════════════════════════════════════════════════════
 // RISERS & FALLERS — Feature #131
@@ -224,7 +225,6 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
-
   const params = event.queryStringParameters || {};
   const season = params.season || "2026";
   const currentWeek = params.week ? parseInt(params.week, 10) : getCurrentNFLWeek();
@@ -235,6 +235,9 @@ exports.handler = async (event) => {
     console.log(msg);
     return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: msg }) };
   }
+
+  const budgetError = await requireTank01Budget(event, { job: "refresh-risers-fallers", calls: 34 });
+  if (budgetError) return budgetError;
 
   console.log(`Risers & Fallers: computing week ${previousWeek} -> week ${currentWeek}, season ${season}`);
 

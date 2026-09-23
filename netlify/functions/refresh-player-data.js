@@ -1,5 +1,6 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 // ═══════════════════════════════════════
 // PLAYER DATA REFRESH — checklist #215 follow-up
@@ -88,6 +89,8 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-player-data", calls: 33 });
+  if (budgetError) return budgetError;
 
   // Get the REAL team abbreviation list live, rather than trusting a
   // hardcoded guess (see note above re: the WAS/WSH failure).

@@ -19,6 +19,7 @@ const {
   isNetlifyScheduledInvocation,
   requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 const {
   buildWeeklyDefense
 } = require("./weekly-sage-defense-week.js");
@@ -195,6 +196,8 @@ exports.handler = async function (event) {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-weekly-sage-defense", calls: 17 });
+  if (budgetError) return budgetError;
 
   const query = event.queryStringParameters || {};
   const season = String(

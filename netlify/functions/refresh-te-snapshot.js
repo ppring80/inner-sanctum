@@ -82,6 +82,7 @@ const {
   isNetlifyScheduledInvocation,
   requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 const { buildTeSnapshot } = require("./weekly-sage-te-snapshot.js");
 
@@ -231,6 +232,8 @@ exports.handler = async function (event) {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-te-snapshot", calls: 97 });
+  if (budgetError) return budgetError;
 
   if (!process.env.TANK01_API_KEY) {
     return jsonResponse(500, { error: "TANK01_API_KEY is not configured." });

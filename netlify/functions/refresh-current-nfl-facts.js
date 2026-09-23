@@ -1,5 +1,6 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 // ═══════════════════════════════════════════════════════════════════════
 // CURRENT NFL FACTS — V2.1 (Depth Chart only)
@@ -89,6 +90,8 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-current-nfl-facts", calls: 1 });
+  if (budgetError) return budgetError;
 
   let depthResponse;
   try {

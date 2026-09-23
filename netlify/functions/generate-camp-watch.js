@@ -11,6 +11,7 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 
 const MAX_STORIES = 4;
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 async function fetchTank01News() {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
@@ -102,6 +103,8 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "generate-camp-watch", calls: 1 });
+  if (budgetError) return budgetError;
 
   let newsItems;
   try {
