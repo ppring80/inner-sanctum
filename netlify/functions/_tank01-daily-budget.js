@@ -4,6 +4,7 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 
 const STORE_NAME = "tank01-daily-budget";
 const DEFAULT_DAILY_LIMIT = 700;
+const DEFAULT_NORMAL_LIMIT = 600;
 const MAX_CAS_ATTEMPTS = 8;
 const localFallbackByDay = new Map();
 
@@ -16,6 +17,14 @@ function dailyLimit() {
   return Number.isInteger(configured) && configured > 0
     ? Math.min(configured, 900)
     : DEFAULT_DAILY_LIMIT;
+}
+
+function normalLimit(totalLimit = dailyLimit()) {
+  const configured = Number(process.env.TANK01_NORMAL_CALL_LIMIT);
+  const defaultLimit = Math.min(DEFAULT_NORMAL_LIMIT, totalLimit);
+  return Number.isInteger(configured) && configured > 0
+    ? Math.min(configured, defaultLimit)
+    : defaultLimit;
 }
 
 function killSwitchEnabled() {
@@ -37,8 +46,10 @@ function budgetResponse(result) {
 async function reserveTank01Calls(event, options, dependencies = {}) {
   const job = String(options && options.job || "unknown").trim();
   const requested = Number(options && options.calls);
+  const priority = options && options.priority === "injury" ? "injury" : "normal";
   const now = dependencies.now || new Date();
   const limit = dependencies.limit || dailyLimit();
+  const standardLimit = dependencies.normalLimit || normalLimit(limit);
 
   if (!Number.isInteger(requested) || requested < 1) {
     throw new Error("Tank01 budget reservations require a positive integer call count.");
@@ -58,15 +69,19 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
   // retain an in-memory fallback only for those non-production adapters so
   // budget bookkeeping cannot interfere with legacy cache-write assertions.
   if (typeof store.getWithMetadata !== "function") {
-    const state = localFallbackByDay.get(day) || { day, reserved: 0, jobs: {} };
+    const state = localFallbackByDay.get(day) || { day, reserved: 0, normalReserved: 0, injuryReserved: 0, jobs: {} };
     const reserved = Number(state.reserved || 0);
-    if (reserved + requested > limit) {
+    const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
+    if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
       return { allowed: false, reason: "daily-limit", job, requested, reserved, remaining: Math.max(0, limit - reserved), limit, day };
     }
     const next = {
       day,
       limit,
       reserved: reserved + requested,
+      normalLimit: standardLimit,
+      normalReserved: normalReserved + (priority === "normal" ? requested : 0),
+      injuryReserved: Number(state.injuryReserved || 0) + (priority === "injury" ? requested : 0),
       updatedAt: now.toISOString(),
       jobs: { ...(state.jobs || {}), [job]: Number((state.jobs || {})[job] || 0) + requested }
     };
@@ -78,10 +93,13 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     const current = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
     const state = current && current.data && typeof current.data === "object"
       ? current.data
-      : { day, reserved: 0, jobs: {} };
+      : { day, reserved: 0, normalReserved: 0, injuryReserved: 0, jobs: {} };
     const reserved = Number(state.reserved || 0);
+    // Ledgers written before priority pools existed are treated as normal
+    // consumption. This is conservative and cannot expose the reserved pool.
+    const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
 
-    if (reserved + requested > limit) {
+    if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
       return {
         allowed: false,
         reason: "daily-limit",
@@ -98,6 +116,9 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
       day,
       limit,
       reserved: reserved + requested,
+      normalLimit: standardLimit,
+      normalReserved: normalReserved + (priority === "normal" ? requested : 0),
+      injuryReserved: Number(state.injuryReserved || 0) + (priority === "injury" ? requested : 0),
       updatedAt: now.toISOString(),
       jobs: {
         ...(state.jobs || {}),
@@ -138,9 +159,11 @@ async function requireTank01Budget(event, options, dependencies = {}) {
 module.exports = {
   STORE_NAME,
   DEFAULT_DAILY_LIMIT,
+  DEFAULT_NORMAL_LIMIT,
   MAX_CAS_ATTEMPTS,
   utcDay,
   dailyLimit,
+  normalLimit,
   killSwitchEnabled,
   budgetResponse,
   reserveTank01Calls,
