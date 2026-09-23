@@ -1003,7 +1003,7 @@
           status,
 
           projectedPoints:
-            0,
+            null,
         });
       }
     );
