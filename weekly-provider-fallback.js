@@ -8,6 +8,7 @@
   var POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 
   function numberOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
     var number = Number(value);
     return Number.isFinite(number) ? number : null;
   }
@@ -61,20 +62,35 @@
       .concat(projectionRows(connection));
   }
 
+  function rosterIdentityMap(connection) {
+    var identities = {};
+    var roster = connection && connection.roster;
+    if (!Array.isArray(roster)) return identities;
+    roster.forEach(function (player) {
+      var name = playerName(player);
+      var position = normalizePosition(player && (player.position || player.pos || player.defaultPosition));
+      if (name && position) identities[normalizeName(name) + '|' + position] = true;
+    });
+    return identities;
+  }
+
   function build(connection, options) {
     var settings = options || {};
     var positions = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
     var byIdentity = {};
+    var rosterIdentities = rosterIdentityMap(connection);
 
     candidateRows(connection).forEach(function (player) {
       if (!player || player.active === false) return;
       var name = playerName(player);
       var position = normalizePosition(player.position || player.pos || player.defaultPosition);
       var projectedPoints = playerProjection(player);
-      if (!name || !position || projectedPoints === null) return;
+      if (!name || !position) return;
 
       var team = playerTeam(player);
       var key = normalizeName(name) + '|' + position;
+      var isRosterPlayer = rosterIdentities[key] === true;
+      if (projectedPoints === null && !isRosterPlayer) return;
       var existing = byIdentity[key];
       var row = {
         playerID: player.providerPlayerId || player.cbsPlayerId || player.id || null,
@@ -89,10 +105,12 @@
         sageConfidenceLabel: null,
         baselineEvidenceType: 'provider-projection-fallback',
         recommendation: null,
-        sageTake: 'Provider projection: ' + projectedPoints.toFixed(1) + ' points. Weekly SAGE evidence is updating.'
+        sageTake: projectedPoints === null
+          ? 'Provider projection is unavailable. Weekly SAGE evidence is updating.'
+          : 'Provider projection: ' + projectedPoints.toFixed(1) + ' points. Weekly SAGE evidence is updating.'
       };
 
-      if (!existing || projectedPoints > existing.projectedPoints) {
+      if (!existing || (projectedPoints !== null && (existing.projectedPoints === null || projectedPoints > existing.projectedPoints))) {
         byIdentity[key] = row;
       }
     });
@@ -105,7 +123,12 @@
     POSITIONS.forEach(function (position) {
       positions[position] = positions[position]
         .sort(function (a, b) {
-          return b.projectedPoints - a.projectedPoints || a.name.localeCompare(b.name);
+          if (a.projectedPoints === null && b.projectedPoints !== null) return 1;
+          if (a.projectedPoints !== null && b.projectedPoints === null) return -1;
+          if (a.projectedPoints !== null && b.projectedPoints !== null && a.projectedPoints !== b.projectedPoints) {
+            return b.projectedPoints - a.projectedPoints;
+          }
+          return a.name.localeCompare(b.name);
         })
         .map(function (row, index) {
           return Object.assign({}, row, { rank: index + 1, positionRank: index + 1 });
