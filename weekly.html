@@ -702,6 +702,7 @@ function lineupRankingValue(player) {
   // position and by the ChatGPT SAGE app. sageScore is raw current evidence
   // and must not bypass the early-season baseline guardrails.
   if (typeof player.rankingScore === 'number') return player.rankingScore;
+  if (typeof player.providerProjectedPoints === 'number') return player.providerProjectedPoints;
   return (typeof player.sageScore === 'number') ? player.sageScore : -Infinity;
 }
 
