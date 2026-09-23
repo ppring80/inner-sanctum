@@ -106,6 +106,7 @@
 
 const { connectLambda, getStore } = require("@netlify/blobs");
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 const TANK01_HOST = "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const TARGET_POSITIONS = ["RB", "WR", "TE"];
@@ -929,7 +930,6 @@ exports.handler =
 
     const authorizationError = requireTank01RefreshAuthorization(event);
     if (authorizationError) return authorizationError;
-
     const params =
       event.queryStringParameters ||
       {};
@@ -942,15 +942,17 @@ exports.handler =
 
     if (isManualMode) {
       return runManualRefresh(
-        params
+        params,
+        event
       );
     }
 
-    return runScheduledRefresh();
+    return runScheduledRefresh(event);
   };
 
 async function runManualRefresh(
-  params
+  params,
+  event
 ) {
   const season =
     params.season ||
@@ -971,6 +973,12 @@ async function runManualRefresh(
               !isNaN(w)
           )
       : [1, 2, 3];
+
+  const budgetError = await requireTank01Budget(event, {
+    job: "refresh-opportunity-intel-manual",
+    calls: weeks.length * 17
+  });
+  if (budgetError) return budgetError;
 
   console.log(
     `Opportunity Intelligence manual refresh: fetching weeks [${weeks.join(
@@ -1307,7 +1315,7 @@ async function runManualRefresh(
   };
 }
 
-async function runScheduledRefresh() {
+async function runScheduledRefresh(event) {
   const derivedSeason =
     deriveCurrentSeason(
       new Date()
@@ -1371,6 +1379,12 @@ async function runScheduledRefresh() {
         `Derived next week (${targetWeek}) is beyond the regular season (max ${REGULAR_SEASON_MAX_WEEK}) -- nothing to do until next season.`,
     });
   }
+
+  const budgetError = await requireTank01Budget(event, {
+    job: "refresh-opportunity-intel",
+    calls: 17
+  });
+  if (budgetError) return budgetError;
 
   console.log(
     `Opportunity Intelligence scheduled refresh: season ${derivedSeason}, target week ${targetWeek}${

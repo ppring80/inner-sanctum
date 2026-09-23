@@ -52,6 +52,7 @@
 const TANK01_HOST =
   "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
 const { requireTank01RefreshAuthorization } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 const DEFAULT_SEASON_TYPE =
   "reg";
@@ -508,6 +509,8 @@ exports.handler =
 
     const authorizationError = requireTank01RefreshAuthorization(event);
     if (authorizationError) return authorizationError;
+    const budgetError = await requireTank01Budget(event, { job: "weekly-sage-schedule-direct", calls: 1 });
+    if (budgetError) return budgetError;
 
     if (
       !process.env

@@ -109,29 +109,11 @@ async function logSpend({ inputTokens, outputTokens, persona }) {
 }
 
 // ═══════════════════════════════════════
-// TANK01 DATA FETCHER
-// Remaining live chat calls are intentionally bounded and reviewed
-// separately. Depth charts are NOT fetched here; chat reads the
-// scheduled current-nfl-facts Blob cache instead.
+// CACHED NFL CONTEXT
+// Customer chat requests never call Tank01. News, ADP, player status,
+// and depth-chart context are read from the same bounded snapshots used
+// elsewhere in Inner Sanctum.
 // ═══════════════════════════════════════
-async function fetchTank01(endpoint, params = {}) {
-  const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
-  const queryString = new URLSearchParams(params).toString();
-  const url = `${baseUrl}/${endpoint}${queryString ? "?" + queryString : ""}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "x-rapidapi-host": "tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com",
-      "x-rapidapi-key": process.env.TANK01_API_KEY
-    }
-  });
-
-  if (!response.ok) throw new Error(`Tank01 API error: ${response.status}`);
-  return await response.json();
-}
-
 function getCurrentNFLWeek() {
   const seasonStart = new Date("2026-09-09");
   const now = new Date();
@@ -143,32 +125,34 @@ function getCurrentNFLWeek() {
 async function getLiveNFLContext() {
   const contextParts = [];
 
-  // 1. Top NFL news headlines — bounded live provider call.
+  // 1. Recent NFL headlines — cached by generate-camp-watch.
   try {
-    const news = await fetchTank01("getNFLNews", { topNews: "true", maxItems: "5" });
-    if (news?.body?.length > 0) {
-      const headlines = news.body
+    const store = getStore({ name: "camp-watch" });
+    const news = await store.get("dispatches", { type: "json" });
+    if (Array.isArray(news?.dispatches) && news.dispatches.length > 0) {
+      const headlines = news.dispatches
         .slice(0, 5)
-        .map(item => `- ${item.title}`)
+        .map(item => `- ${item.oracle?.title || item.subject}: ${item.oracle?.excerpt || ""}`)
         .join("\n");
-      contextParts.push(`LATEST NFL NEWS (updated live):\n${headlines}`);
+      contextParts.push(`LATEST CACHED NFL NEWS (${news.updatedAt || "timestamp unavailable"}):\n${headlines}`);
     }
   } catch (e) {
-    console.log("Tank01 news fetch failed:", e.message);
+    console.log("Cached NFL news read failed:", e.message);
   }
 
-  // 2. Current ADP data — bounded live provider call.
+  // 2. Current ADP data — cached by refresh-adp-snapshot.
   try {
-    const adp = await fetchTank01("getNFLADP", { season: "2026" });
-    if (adp?.body?.length > 0) {
-      const adpList = adp.body
+    const store = getStore({ name: "adp-snapshot" });
+    const adp = await store.get("scoring:half", { type: "json" });
+    if (Array.isArray(adp?.players) && adp.players.length > 0) {
+      const adpList = adp.players
         .slice(0, 20)
-        .map(p => `${p.longName || p.playerName} (${p.pos}, ${p.team}): ADP ${p.adp || "N/A"}`)
+        .map(p => `${p.name || p.longName || p.playerName} (${p.position || p.pos}, ${p.team || "FA"}): ADP ${p.adp || "N/A"}`)
         .join("\n");
-      contextParts.push(`CURRENT ADP (Average Draft Position):\n${adpList}`);
+      contextParts.push(`CURRENT CACHED HALF-PPR ADP (${adp.generatedAt || "timestamp unavailable"}):\n${adpList}`);
     }
   } catch (e) {
-    console.log("Tank01 ADP fetch failed:", e.message);
+    console.log("Cached ADP read failed:", e.message);
   }
 
   // 3. Player exp/injury data comes from the scheduled player-data cache.

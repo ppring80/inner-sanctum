@@ -9,6 +9,7 @@ const {
   isNetlifyScheduledInvocation,
   requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 const {
   fetchTank01Adp,
   normalizeScoring
@@ -88,6 +89,8 @@ exports.handler = async function (event) {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
+  const budgetError = await requireTank01Budget(event, { job: "refresh-adp-snapshot", calls: 3 });
+  if (budgetError) return budgetError;
 
   if (SCORING_FORMATS.length > MAX_TANK01_CALLS_PER_RUN) {
     return jsonResponse(500, {

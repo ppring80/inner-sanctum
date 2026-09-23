@@ -84,6 +84,7 @@ const {
   isNetlifyScheduledInvocation,
   requireTank01RefreshAuthorization
 } = require("./_tank01-refresh-guard.js");
+const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 
 const {
   buildWeeklySchedule
@@ -325,6 +326,8 @@ exports.handler =
 
     const authorizationError = requireTank01RefreshAuthorization(event);
     if (authorizationError) return authorizationError;
+    const budgetError = await requireTank01Budget(event, { job: "refresh-weekly-sage-schedule", calls: 1 });
+    if (budgetError) return budgetError;
 
     if (
       !process.env
