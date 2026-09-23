@@ -122,6 +122,23 @@ function getCurrentNFLWeek() {
   return String(Math.max(1, Math.min(18, Math.floor(diffDays / 7) + 1)));
 }
 
+function injuryCacheStatus(updatedAt, now = new Date()) {
+  const updatedMs = Date.parse(updatedAt || "");
+  if (!Number.isFinite(updatedMs)) {
+    return { fresh: false, ageHours: null, label: "timestamp unavailable" };
+  }
+  const ageHours = Math.max(0, (now.getTime() - updatedMs) / (60 * 60 * 1000));
+  // Sunday game-day snapshots run every three hours. On other days the
+  // bounded daily refresh is expected, so use a 26-hour tolerance.
+  const maxAgeHours = now.getUTCDay() === 0 ? 4 : 26;
+  return {
+    fresh: ageHours <= maxAgeHours,
+    ageHours,
+    maxAgeHours,
+    label: `${updatedAt} (${ageHours.toFixed(1)} hours old)`
+  };
+}
+
 async function getLiveNFLContext() {
   const contextParts = [];
 
@@ -158,12 +175,14 @@ async function getLiveNFLContext() {
   // 3. Player exp/injury data comes from the scheduled player-data cache.
   let playerLookup = {};
   let playerDataAge = null;
+  let playerDataFreshness = injuryCacheStatus(null);
   try {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
     if (cached?.players) {
       playerLookup = cached.players;
       playerDataAge = cached.updatedAt;
+      playerDataFreshness = injuryCacheStatus(cached.updatedAt);
     }
   } catch (e) {
     console.log("Player data cache read failed:", e.message);
@@ -236,7 +255,10 @@ async function getLiveNFLContext() {
       }
     });
     if (injuryLines.length > 0) {
-      contextParts.push(`FULL CURRENT INJURY REPORT (every player league-wide with a real designation, not limited to the roster list above):\n${injuryLines.join("\n")}`);
+      const freshnessInstruction = playerDataFreshness.fresh
+        ? "This snapshot is within its freshness window. Report status only as of this timestamp."
+        : "STALE SNAPSHOT: explicitly say that late-breaking status cannot be confirmed and direct the user to the official team/NFL inactive report. Do not claim that an omitted player is currently healthy.";
+      contextParts.push(`LEAGUE-WIDE INJURY SNAPSHOT (${playerDataFreshness.label}). ${freshnessInstruction}\nPlayers with a designation in this snapshot:\n${injuryLines.join("\n")}`);
     }
   }
 
@@ -290,11 +312,11 @@ exports.handler = async (event) => {
           "═══════════════════════════════════",
           "LIVE NFL DATA — AUTHORITATIVE SOURCE:",
           "",
-          "CRITICAL INSTRUCTION: The data below (news, ADP, depth charts, and a full league-wide injury report) is the single source of truth for CURRENT player status — team assignments, and, where shown, experience level and injury status. It reflects trades, free agency moves, roster changes, and injury designations that happened after your training cutoff. Defer to this data over your training knowledge whenever relevant. Specifically: (1) TEAM: never state a player's team from memory if it conflicts with the roster line below. (2) EXPERIENCE: each player line in the roster list may include a tag like ', Rookie' or ', Yr 4' — that tag is the real current answer for whether they're a rookie or how many seasons they've played. A player you remember as an incoming draft prospect may now show 'Yr 2' or higher — trust the tag, not your training-data memory of their draft class. The roster list only covers a limited slice of each team (top players per position) — if a player isn't listed there, you don't have current experience info for them and shouldn't state it from memory either. (3) INJURY — TWO SEPARATE SOURCES: the roster list's inline ', Injury: ...' tags cover only the players listed there. The FULL CURRENT INJURY REPORT section (when present) is DIFFERENT and covers the entire league, not just listed players — treat it as the complete, authoritative injury list. If a player appears in the FULL CURRENT INJURY REPORT, state that exact designation. If a player does NOT appear there, that means no current injury designation exists for them league-wide — you can state they have no reported injury concern with confidence, even if they're not in the roster list above. NEVER FABRICATE AN INJURY FOR ANY PLAYER — including players you mention only in passing or as context for someone else, not just the player the question is directly about; if a name isn't in the FULL CURRENT INJURY REPORT, don't invent or imply an injury for them. CRITICAL — DO NOT DENY A PLAYER'S EXISTENCE: never state or imply that a player is not on a roster, not real, not in your data, or that the user has the wrong name or team, just because they're absent from the roster list — that absence is a coverage gap in that specific list, not evidence the player doesn't exist. If you don't recognize a name or can't find them in the roster list, say plainly that you don't have current team/experience information on that specific player and STOP THERE — do not pair that statement with a team name in the same sentence (e.g. never say anything shaped like 'no record of him on [Team]'s roster' — naming a team right next to an absence-of-data statement functions as a denial that he plays there, even when wrapped in hedging language or mystical phrasing; this exact pattern is what has caused this failure before). Then answer what you can in general terms without naming any team for that player. This does not apply to injury status, which is now fully covered by the FULL CURRENT INJURY REPORT per point (3).",
+          "CRITICAL INSTRUCTION: The data below is cached and each section's timestamp controls what may be claimed. Defer to it over training knowledge, but never call it live or current beyond its stated timestamp. TEAM: never state a player's team from memory if it conflicts with a cached roster line. EXPERIENCE: use a cached Rookie/Yr tag when present; if absent, say current experience information is unavailable. INJURY: use the LEAGUE-WIDE INJURY SNAPSHOT as status only as of its printed timestamp. Always disclose that timestamp when the user asks about a late-breaking injury, game-day availability, or inactive status. If the snapshot says STALE, explicitly say late-breaking status cannot be confirmed and recommend the official team/NFL inactive report; never infer that omission means healthy. Even when fresh, say an omitted player had no designation in that snapshot—not that the player is guaranteed active. NEVER FABRICATE AN INJURY. Never deny a player's existence merely because a limited roster cache omits them.",
           "",
           liveDataContext,
           "═══════════════════════════════════",
-          "Always reference specific players, injury statuses, and projections from the live data above when relevant. This data is current as of today."
+          "Reference cached evidence when relevant and preserve its timestamps. Do not describe cached data as newer than it is."
         ].join("\n")
       });
     }
@@ -343,3 +365,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+module.exports.injuryCacheStatus = injuryCacheStatus;

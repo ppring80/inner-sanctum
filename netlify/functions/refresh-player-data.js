@@ -89,7 +89,13 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
-  const budgetError = await requireTank01Budget(event, { job: "refresh-player-data", calls: 33 });
+  // Player status is the only workload allowed to use the final protected
+  // 100-call pool. Customer traffic can never invoke this handler directly.
+  const budgetError = await requireTank01Budget(event, {
+    job: "refresh-player-data",
+    calls: 33,
+    priority: "injury"
+  });
   if (budgetError) return budgetError;
 
   // Get the REAL team abbreviation list live, rather than trusting a
