@@ -75,12 +75,51 @@ test('returns null instead of inventing rankings without provider projections', 
   assert.strictEqual(result, null);
 });
 
+test('keeps roster players with missing projections without converting null to zero', function () {
+  const result = fallback.build({
+    provider: 'cbs',
+    roster: [
+      { name: 'Missing Projection', position: 'QB', nflTeam: 'KC', projectedPoints: null },
+      { name: 'Real Zero Projection', position: 'QB', nflTeam: 'BUF', projectedPoints: 0 },
+      { name: 'Projected Starter', position: 'QB', nflTeam: 'MIA', projectedPoints: 18.4 }
+    ]
+  }, { season: 2026, week: 3, scoring: 'half' });
+
+  assert.ok(result);
+  assert.deepStrictEqual(result.positions.QB.map((row) => row.name), [
+    'Projected Starter',
+    'Real Zero Projection',
+    'Missing Projection'
+  ]);
+  assert.strictEqual(result.positions.QB[2].projectedPoints, null);
+  assert.ok(result.positions.QB[2].sageTake.includes('projection is unavailable'));
+  assert.ok(!result.positions.QB[2].sageTake.includes('0.0 points'));
+});
+
+test('uses a joined numeric projection in preference to a roster null', function () {
+  const result = fallback.build({
+    provider: 'cbs',
+    roster: [
+      { cbsPlayerId: '12', name: 'Joined Quarterback', position: 'QB', nflTeam: 'KC', projectedPoints: null }
+    ],
+    projections: {
+      playerProjectionsById: [
+        { cbsPlayerId: '12', name: 'Joined Quarterback', position: 'QB', nflTeam: 'KC', projectedPoints: 22.7 }
+      ]
+    }
+  }, { season: 2026, week: 3, scoring: 'half' });
+
+  assert.strictEqual(result.positions.QB[0].projectedPoints, 22.7);
+  assert.ok(result.positions.QB[0].sageTake.includes('22.7 points'));
+});
+
 test('weekly page installs provider fallback for both HTTP and network failures', function () {
   const html = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
   assert.ok(html.includes('/weekly-provider-fallback.js'));
   assert.ok(html.includes('buildConnectedProviderFallback(season, week, scoring)'));
   assert.ok(html.includes('providerProjectionFallbackUsed === true'));
   assert.ok(html.includes('Current connected-provider projections are shown without inventing SAGE scores.'));
+  assert.ok(html.includes("typeof player.providerProjectedPoints === 'number'"));
 });
 
 console.log('weekly provider fallback tests passed');
