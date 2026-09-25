@@ -3,6 +3,7 @@
 const STORIES = [
   {
     id: 'saquon-barkley-stinger-2026-09-24',
+    featured: true,
     player: 'Saquon Barkley',
     team: 'PHI',
     position: 'RB',
@@ -17,6 +18,7 @@ const STORIES = [
   },
   {
     id: 'zay-flowers-availability-2026-09-25',
+    featured: true,
     player: 'Zay Flowers',
     team: 'BAL',
     position: 'WR',
@@ -31,6 +33,7 @@ const STORIES = [
   },
   {
     id: 'puka-nacua-practice-2026-09-25',
+    featured: true,
     player: 'Puka Nacua',
     team: 'LAR',
     position: 'WR',
@@ -42,6 +45,64 @@ const STORIES = [
     sourceLabel: 'Sarah Barshop on X',
     sourceUrl: 'https://x.com/sarahbarshop/status/2103562697929527641',
     publishedAt: '2026-09-25T19:10:04.148Z'
+  },
+  {
+    id: 'nico-collins-out-2026-09-25',
+    player: 'Nico Collins',
+    team: 'HOU',
+    position: 'WR',
+    status: 'Out',
+    statusTone: 'breaking',
+    headline: 'Houston has ruled Collins out Sunday with a hamstring injury.',
+    summary: 'The Texans made Collins unavailable for their Week 3 matchup at Indianapolis.',
+    sageImpact: 'Remove Collins from every lineup. Houston’s remaining receivers and pass-catching backs gain opportunity, but none automatically inherits his full role.',
+    sourceLabel: 'Adam Schefter on X',
+    sourceUrl: 'https://x.com/AdamSchefter/status/2103573231278121246',
+    publishedAt: '2026-09-25T19:51:55.494Z'
+  },
+  {
+    id: 'steelers-backfield-2026-09-25',
+    player: 'Rico Dowdle',
+    relatedPlayers: ['Jaylen Warren'],
+    team: 'PIT',
+    position: 'RB',
+    status: 'Out / Questionable',
+    statusTone: 'breaking',
+    headline: 'Dowdle is out; Warren is questionable with a shoulder injury.',
+    summary: 'Pittsburgh ruled Dowdle out against Cincinnati while Warren carries a questionable designation.',
+    sageImpact: 'Dowdle must come out of lineups. Warren remains usable if active, but his shoulder status makes the remaining Steelers backfield worth monitoring through Sunday.',
+    sourceLabel: 'Adam Schefter on X',
+    sourceUrl: 'https://x.com/AdamSchefter/status/2103572404408635804',
+    publishedAt: '2026-09-25T19:48:38.353Z'
+  },
+  {
+    id: 'bears-quarterbacks-2026-09-25',
+    player: 'Caleb Williams',
+    relatedPlayers: ['Tyson Bagent'],
+    team: 'CHI',
+    position: 'QB',
+    status: 'Monitor',
+    statusTone: 'monitor',
+    headline: 'Williams and Bagent did not practice again.',
+    summary: 'The Bears’ latest injury report showed another non-participation for both quarterbacks.',
+    sageImpact: 'Avoid locking in a Bears quarterback until the starter is confirmed. The uncertainty also lowers confidence in Chicago’s pass catchers.',
+    sourceLabel: 'Ian Rapoport on X',
+    sourceUrl: 'https://x.com/RapSheet/status/2103569019471266046',
+    publishedAt: '2026-09-25T19:35:11.321Z'
+  },
+  {
+    id: 'brock-bowers-questionable-2026-09-25',
+    player: 'Brock Bowers',
+    team: 'LV',
+    position: 'TE',
+    status: 'Questionable',
+    statusTone: 'monitor',
+    headline: 'Bowers is questionable, and Las Vegas does not plan a pregame workout.',
+    summary: 'Klint Kubiak said Bowers’ non-participation was planned and the team will not repeat last week’s pregame workout process.',
+    sageImpact: 'Keep Bowers tentatively active, but confirm his official status. The lack of a planned pregame test suggests the Raiders expect a clearer decision before warmups.',
+    sourceLabel: 'Sam Warren via Ian Rapoport',
+    sourceUrl: 'https://x.com/samwarren83/status/2103557157488881864',
+    publishedAt: '2026-09-25T18:48:03.204Z'
   }
 ];
 
@@ -62,7 +123,7 @@ exports.handler = async function handler(event) {
     },
     body: JSON.stringify({
       version: 1,
-      updatedAt: '2026-09-25T19:35:00Z',
+      updatedAt: '2026-09-25T19:55:00Z',
       mode: 'editorial',
       stories: STORIES
     })
