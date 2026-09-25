@@ -2,14 +2,31 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'provider-adapters.js'), 'utf8');
+const root = path.join(__dirname, '..');
+const providerAdapters = fs.readFileSync(
+  path.join(root, 'provider-adapters.js'),
+  'utf8'
+);
+const connectLeague = fs.readFileSync(
+  path.join(root, 'connect-league.html'),
+  'utf8'
+);
 
-assert.match(source, /function guardLegacyEspnConnectForm\(\)/, 'safe ESPN fallback guard must exist');
-assert.match(source, /#espnLeagueType, #espnPrivateFields, #espnS2, #espnSwid/, 'guard must detect every legacy ESPN credential control');
-assert.match(source, /No League ID, Public\/Private selection, Developer Tools, SWID or espn_s2 copy\/paste is required\./, 'safe customer copy must explicitly replace the legacy workflow');
-assert.match(source, /Inner Sanctum Connect is not active in this browser yet\./, 'missing extension must produce a supported-browser message');
-assert.match(source, /Never paste ESPN cookies or session values here\./, 'fallback must never instruct customers to paste session values');
-assert.match(source, /id=\"espnResult\"/, 'extension-compatible ESPN result hook must remain');
-assert.match(source, /class=\"connect-btn\"/, 'extension-compatible ESPN connect button must remain');
+// Customer continuity: the website must not overwrite the legacy ESPN form.
+assert.doesNotMatch(
+  providerAdapters,
+  /function guardLegacyEspnConnectForm\(\)/,
+  'legacy ESPN form must remain available as a fallback'
+);
 
-console.log('espn-connect-safe-fallback: PASS');
+// Protect the previously working manual ESPN connection path.
+assert.match(connectLeague, /id=\"espnLeagueId\"/);
+assert.match(connectLeague, /id=\"espnLeagueType\"/);
+assert.match(connectLeague, /id=\"espnPrivateFields\"/);
+assert.match(connectLeague, /id=\"espnS2\"/);
+assert.match(connectLeague, /id=\"espnSwid\"/);
+assert.match(connectLeague, /onclick=\"connectEspn\(\)\"/);
+assert.match(connectLeague, /\/\.netlify\/functions\/espn-league/);
+assert.match(connectLeague, /LeagueConnection\.connect\(\s*\"espn\"/);
+
+console.log('espn-legacy-fallback-restored: PASS');
