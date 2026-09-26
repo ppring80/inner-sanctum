@@ -5,6 +5,14 @@ const fs = require('fs');
 const path = require('path');
 const newswire = require('../netlify/functions/sage-newswire');
 
+// Provenance rule: every story must link to its ORIGINAL source. When this
+// test was written every story came from a reporter's X post. Official NFL
+// injury reports are also primary sources for injury designations.
+const APPROVED_SOURCES = [
+  { url: /^https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+$/, label: /( on X$| via )/ },
+  { url: /^https:\/\/www\.nfl\.com\/injuries\/$/, label: /^NFL .*injury report$/ }
+];
+
 async function run() {
   const page = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
 
