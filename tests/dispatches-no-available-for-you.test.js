@@ -61,9 +61,15 @@ test('Dispatches\' former waiver entry points now navigate to /free-agents', () 
   assert.ok(html.includes('href="/free-agents"'), 'at least one real link to the new Free Agents page must exist');
 });
 
-test('Dispatches retains exactly its four intended tabs: This Week, Risers & Fallers, Podcast, Camp Archive', () => {
+// The in-season rebuild (4dfdf84 "Rebuild Dispatches for in-season news",
+// 2026-09-20) intentionally added "Latest Dispatches" as the second tab, backed
+// by #view-latest and /.netlify/functions/get-dispatches. The waiver tab must
+// still never return.
+test('Dispatches retains exactly its five intended tabs: This Week, Latest Dispatches, Risers & Fallers, Podcast, Camp Archive', () => {
   const types = [...html.matchAll(/data-type="([a-z]+)"/g)].map((m) => m[1]);
-  assert.deepStrictEqual(types, ['week', 'trend', 'pod', 'camp']);
+  assert.deepStrictEqual(types, ['week', 'latest', 'trend', 'pod', 'camp']);
+  assert.ok(html.includes('id="view-latest"'), 'the Latest Dispatches tab must have its panel');
+  assert.ok(html.includes("fetch('/.netlify/functions/get-dispatches')"), 'Latest Dispatches must load from get-dispatches');
 });
 
 console.log('');
