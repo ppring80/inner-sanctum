@@ -1,0 +1,8 @@
+# CANONICAL INNER SANCTUM HOST
+#
+# Patreon OAuth issues sanctum_session from the apex host
+# (theinnersanctum.xyz). Keep every customer on that same origin so
+# browser history/bookmarks cannot split authentication between www and
+# apex. Preserve the full path and any query string while forcing HTTPS.
+https://www.theinnersanctum.xyz/* https://theinnersanctum.xyz/:splat 301!
+http://www.theinnersanctum.xyz/* https://theinnersanctum.xyz/:splat 301!
