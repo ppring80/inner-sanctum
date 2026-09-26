@@ -1,0 +1,64 @@
+{
+  "league": {
+    "id": "phase0league",
+    "name": "Phase Zero League",
+    "season": 2026,
+    "teamCount": 10,
+    "divisionCount": 2
+  },
+  "team": {
+    "id": "4",
+    "name": "Golden Baseline FC",
+    "division": "East",
+    "wins": 2,
+    "losses": 1,
+    "ties": 0,
+    "rank": 3,
+    "pointsFor": 341.6,
+    "pointsAgainst": 298.2
+  },
+  "roster": [
+    { "cbsPlayerId": "2507164", "name": "Joe Burrow", "position": "QB", "nflTeam": "CIN", "status": "active", "projectedPoints": null },
+    { "cbsPlayerId": "3116385", "name": "Jahmyr Gibbs", "position": "RB", "nflTeam": "DET", "status": "active", "projectedPoints": null },
+    { "cbsPlayerId": "2871343", "name": "Puka Nacua", "position": "WR", "nflTeam": "LAR", "status": "injured", "projectedPoints": null },
+    { "cbsPlayerId": "3139477", "name": "Brock Bowers", "position": "TE", "nflTeam": "LV", "status": "active", "projectedPoints": null },
+    { "cbsPlayerId": "409", "name": "Houston", "position": "DST", "nflTeam": "HOU", "status": "active", "projectedPoints": null },
+    { "cbsPlayerId": "1985462", "name": "Brandon Aubrey", "position": "K", "nflTeam": "DAL", "status": "reserve", "projectedPoints": null }
+  ],
+  "standings": [
+    { "teamId": "4", "teamName": "Golden Baseline FC", "division": "East", "wins": 2, "losses": 1, "ties": 0, "percentage": 0.667, "gamesBack": 0, "streak": "W1", "divisionRecord": "1-0-0", "pointsFor": 341.6, "pointsAgainst": 298.2 },
+    { "teamId": "7", "teamName": "Regression Rangers", "division": "East", "wins": 1, "losses": 2, "ties": 0, "percentage": 0.333, "gamesBack": 1, "streak": "L2", "divisionRecord": "0-1-0", "pointsFor": 301.4, "pointsAgainst": 322.9 }
+  ],
+  "schedule": [
+    { "week": 1, "opponent": "Regression Rangers", "opponentTeamId": "7", "homeAway": "home", "result": "W 112.4-98.1", "record": "1-0-0" },
+    { "week": 4, "opponent": "Snapshot Sharks", "opponentTeamId": "9", "homeAway": "away", "result": null, "record": null }
+  ],
+  "settings": {
+    "league": { "teams": 10, "divisions": 2 },
+    "rosterLimits": { "active": 16, "reserve": 3 },
+    "lineup": [ { "slot": "QB", "count": 1 }, { "slot": "RB", "count": 2 }, { "slot": "WR", "count": 3 }, { "slot": "TE", "count": 1 }, { "slot": "FLEX", "count": 1 }, { "slot": "K", "count": 1 }, { "slot": "DST", "count": 1 } ],
+    "scoringRules": [ { "category": "Receiving", "rule": "Reception", "points": "1 point" } ],
+    "scoringProfile": { "format": "ppr", "receptionPoints": 1 }
+  },
+  "projections": [],
+  "matchup": {
+    "week": 4,
+    "opponentTeamId": "9",
+    "opponentName": "Snapshot Sharks",
+    "projected": 118.3,
+    "opponentProjected": 109.7
+  },
+  "meta": {
+    "provider": "cbs",
+    "connectionMode": "browser-assisted",
+    "readOnly": true,
+    "captureMode": "multi-page",
+    "connectorVersion": "0.3.1",
+    "capturedAt": "2026-09-26T18:00:00.000Z",
+    "sourceHost": "phase0league.football.cbssports.com",
+    "seasonEvidence": { "current": 2026, "roster": 2026, "standings": 2026, "rules": 2026 },
+    "dataQuality": { "complete": true, "scoringFormat": "ppr" },
+    "pagesRequested": { "roster": "/teams", "standings": "/standings/overall", "schedule": "/schedule/team", "rules": "/rules", "preview": "/scoring/preview" },
+    "warnings": []
+  }
+}

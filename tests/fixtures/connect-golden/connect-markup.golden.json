@@ -1,0 +1,71 @@
+{
+  "recordedFrom": "4812d14",
+  "note": "Recorded by scripts/record-connect-golden.js from current production behavior. Do not edit by hand.",
+  "observations": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "cbs": {
+      "disconnected": {
+        "platformRow": [
+          {
+            "id": "platform-sleeper",
+            "className": "platform-btn"
+          },
+          {
+            "id": "platform-yahoo",
+            "className": "platform-btn"
+          },
+          {
+            "id": "platform-espn",
+            "className": "platform-btn"
+          },
+          {
+            "id": "platform-cbs",
+            "className": "platform-btn selected"
+          }
+        ],
+        "providerForm": {
+          "className": "provider-form show",
+          "innerHTML": "<div class=\"beta-pill\">CBS Connect · Beta</div><div class=\"pf-info\"><strong>Connect CBS without sharing your CBS password.</strong><br>Inner Sanctum opens CBS in a separate tab. You sign into CBS normally, open your fantasy league, and use the Inner Sanctum CBS bookmark to send back read-only league information.</div><div class=\"cbs-feature-grid\"><div class=\"cbs-feature\">League & team</div><div class=\"cbs-feature\">Roster</div><div class=\"cbs-feature\">Standings</div><div class=\"cbs-feature\">Schedule</div><div class=\"cbs-feature\">Scoring rules</div><div class=\"cbs-feature\">League settings</div></div><div class=\"pf-help\"><button class=\"pf-help-toggle\" onclick=\"togglePfHelp(this)\">📖 How CBS Connect works <span class=\"pf-help-icon\">▼</span></button><div class=\"pf-help-body\"><div class=\"pf-step\"><span class=\"pf-step-num\">1</span><span>Click Connect CBS League below. CBS opens in a separate browser tab.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">2</span><span>Sign into CBS normally if needed, then open the fantasy-football league you want to connect.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">3</span><span>Click your Inner Sanctum CBS bookmark on the CBS league page. The sanitized read-only capture returns directly to this Inner Sanctum tab.</span></div></div></div><div class=\"pf-info\"><strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.</div><button class=\"connect-btn\" onclick=\"startCbsConnect()\">Connect CBS League</button><div class=\"connect-note\">CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.</div><div class=\"result-box\" id=\"cbsResult\"></div>"
+        }
+      },
+      "connected": {
+        "providerForm": {
+          "className": "provider-form show",
+          "innerHTML": "<div class=\"beta-pill\">CBS Connect · Beta</div><div class=\"pf-info\"><strong>Connect CBS without sharing your CBS password.</strong><br>Inner Sanctum opens CBS in a separate tab. You sign into CBS normally, open your fantasy league, and use the Inner Sanctum CBS bookmark to send back read-only league information.</div><div class=\"cbs-feature-grid\"><div class=\"cbs-feature\">League & team</div><div class=\"cbs-feature\">Roster</div><div class=\"cbs-feature\">Standings</div><div class=\"cbs-feature\">Schedule</div><div class=\"cbs-feature\">Scoring rules</div><div class=\"cbs-feature\">League settings</div></div><div class=\"pf-help\"><button class=\"pf-help-toggle\" onclick=\"togglePfHelp(this)\">📖 How CBS Connect works <span class=\"pf-help-icon\">▼</span></button><div class=\"pf-help-body\"><div class=\"pf-step\"><span class=\"pf-step-num\">1</span><span>Click Connect CBS League below. CBS opens in a separate browser tab.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">2</span><span>Sign into CBS normally if needed, then open the fantasy-football league you want to connect.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">3</span><span>Click your Inner Sanctum CBS bookmark on the CBS league page. The sanitized read-only capture returns directly to this Inner Sanctum tab.</span></div></div></div><div class=\"pf-info\"><strong>Read only.</strong> Inner Sanctum does not submit lineups, add/drop players, place waiver claims, make trades, or otherwise modify your CBS league.</div><div class=\"result-box success show\"><strong>✓ Phase Zero League connected</strong><br>Golden Baseline FC · 10 teams · PPR</div><button class=\"connect-btn\" onclick=\"startCbsConnect()\">Sync CBS League</button><div class=\"connect-note\">CBS Connect is in beta while we expand testing across additional CBS league configurations. No CBS password or browser cookie is stored by The Inner Sanctum.</div><div class=\"result-box success show\" id=\"cbsResult\"><strong>✓ Phase Zero League connected.</strong><br>Golden Baseline FC · 10 teams · PPR</div>"
+        }
+      }
+    },
+    "espn": {
+      "renderedByPage": {
+        "platformRow": [
+          {
+            "id": "platform-sleeper",
+            "className": "platform-btn"
+          },
+          {
+            "id": "platform-yahoo",
+            "className": "platform-btn"
+          },
+          {
+            "id": "platform-espn",
+            "className": "platform-btn selected"
+          },
+          {
+            "id": "platform-cbs",
+            "className": "platform-btn"
+          }
+        ],
+        "providerForm": {
+          "className": "provider-form show",
+          "innerHTML": "<div class=\"beta-pill\">Beta</div><div class=\"pf-group\"><label>League ID</label><input type=\"text\" id=\"espnLeagueId\" placeholder=\"e.g. 899513\"/><div class=\"pf-hint\">Found in your ESPN league URL after <code>leagueId=</code></div></div><div class=\"pf-group\"><label>League Type</label><select id=\"espnLeagueType\" onchange=\"toggleEspnPrivateFields()\"><option value=\"public\">Public League</option><option value=\"private\">Private League</option></select></div><div id=\"espnPrivateFields\" style=\"display:none\"><div class=\"pf-help\"><button class=\"pf-help-toggle\" onclick=\"togglePfHelp(this)\">📖 How to find your espn_s2 and SWID <span class=\"pf-help-icon\">▼</span></button><div class=\"pf-help-body\"><div class=\"pf-step\"><span class=\"pf-step-num\">1</span><span>Log into fantasy.espn.com and open your league.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">2</span><span>Open Developer Tools → Application/Storage → Cookies → fantasy.espn.com.</span></div><div class=\"pf-step\"><span class=\"pf-step-num\">3</span><span>Copy the values for <code>espn_s2</code> and <code>SWID</code> below.</span></div></div></div><div class=\"pf-group\"><label>espn_s2</label><input type=\"password\" id=\"espnS2\" autocomplete=\"off\" placeholder=\"Paste espn_s2 cookie value\"/></div><div class=\"pf-group\"><label>SWID</label><input type=\"password\" id=\"espnSwid\" autocomplete=\"off\" placeholder=\"e.g. {ABC123-...}\"/></div><div class=\"pf-risk\">⚠️ These values can provide access to your ESPN account session. They are sent only to the ESPN connection function for the current request and are not intentionally saved in Inner Sanctum league connection state.</div></div><button class=\"connect-btn\" onclick=\"connectEspn()\">Connect ESPN League</button><div class=\"connect-note\">Public leagues need only a League ID. Private leagues require ESPN session values for the connection request. ESPN does not provide a supported public fantasy API, so this integration remains beta.</div><div class=\"result-box\" id=\"espnResult\"></div>"
+        }
+      },
+      "afterNoExtensionSafetyGuard": {
+        "providerForm": {
+          "className": "provider-form show",
+          "innerHTML": "<div class=\"beta-pill\">ESPN Connect · Beta</div><div class=\"pf-info\"><strong>Connect ESPN securely.</strong><br>Inner Sanctum uses the Connect extension so you sign into ESPN normally and open the league you want to connect. No League ID, Public/Private selection, Developer Tools, SWID or espn_s2 copy/paste is required.</div><button class=\"connect-btn\" type=\"button\">Connect ESPN League</button><div class=\"connect-note\">Inner Sanctum Connect is not active in this browser yet. Enable or install the supported extension, refresh this page, and try again. Never paste ESPN cookies or session values here.</div><div class=\"result-box\" id=\"espnResult\"></div>"
+        }
+      }
+    }
+  }
+}

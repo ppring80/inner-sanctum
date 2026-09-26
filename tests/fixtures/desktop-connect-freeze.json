@@ -1,0 +1,56 @@
+{
+  "temporary": true,
+  "project": "mobile league-connect (Phase 0 through Phase 1 merge)",
+  "purpose": "Makes any change to the proven desktop CBS/ESPN connection code explicit and reviewable during the mobile project. Not permanent architecture: permanent protection is the behavioral suites (cbs-receiver-golden, espn-delivery-golden, cbs-message-listener, connect-markup-baseline, extension-contract). Delete this manifest and tests/desktop-connect-freeze.test.js when the mobile project merges.",
+  "howToUpdate": "Intentional change? Run `node scripts/record-connect-golden.js --freeze` and justify the diff in the PR.",
+  "recordedFrom": "4812d14",
+  "files": {
+    "cbs-extension/cbs-browser-connector.js": "e788b64317d8f309a9dbecbc7f342e8300d6b3c69e1635e4101aa581004de22d",
+    "cbs-extension/cbs-content-bridge.js": "68e47e7c616209be25024ad3bf1631f7b77478fdd49eb2976d57cf3ed8548e15",
+    "cbs-extension/cbs-free-agent-capture.js": "08bcada7efe8bc1ad677d7d6a05893800b97f0f8d37caf193c8209c295b8dc9b",
+    "cbs-extension/cbs-main-bridge.js": "15aa587a0aaae69f480b2bdaca5074c44521164bc84e56b1e2479c5e6e1b6172",
+    "cbs-extension/espn-content-bridge.js": "0eade8dc7f299144857bc45e73e909dd4a6d98f44955e2a8924425ba6e4e4e4d",
+    "cbs-extension/espn-main-bridge.js": "33df7fc9f0c094cd9f1d34c9871dbc3a8ff9e9150b5f2f7a863f0441b37f108c",
+    "cbs-extension/icons/icon-128.png": "77a487cc45a27dc4ea1b54bc40f59c1dc196a35481f9ec83340a980c3ead82cf",
+    "cbs-extension/icons/icon-16.png": "1173d3ab3816483be4449a764dd880c8a4c19d8fc416501ab8d00cafc855824c",
+    "cbs-extension/icons/icon-32.png": "d5246e474221293362ff92c6fa7bc48abafb7710fac36d17952130430db8c0ec",
+    "cbs-extension/icons/icon-48.png": "5abb692ff6b16a6077c04e0c9c4e0d9ade28c48458867321987d38c639dd1f86",
+    "cbs-extension/manifest.json": "325043cc008e69b7a11d2249bbb2c233f87eecc4f7a3f7f5a104fe0ceabe34e5",
+    "cbs-extension/sanctum-content-bridge.js": "bd90aeccf2eb7b9745a6f0b0a2b2e98b8670ffbd959b3e7dad8cb75f38ade207",
+    "cbs-extension/service-worker-v050.js": "5d81ab6e29b0e0f2ee2042850055b7da4ed9e8cd72e71d47a4826d1ec3da3b53",
+    "cbs-extension/service-worker.js": "905b651a0b661d7a021b3809d6d47f6d195a58f4ab5f3bb329b4fb5529505edb",
+    "provider-adapters.js": "9e9dcdcd7fa1bfd96753a298fff87277824956bd31490d629776c2485119bf86",
+    "league-connection.js": "5c3e15f0b1d47fb115fc43d11dfd3c1cdf8d9a70e4456bd0b134f96eab6a6c94",
+    "netlify/functions/league-snapshot.js": "fc8deb73284b0b1292662841ed2489c46bad1fdcf5aac10e8df8b5dd7f598ebb"
+  },
+  "blocks": {
+    "cbsListenerConstants": {
+      "sha256": "3a87cb17cf19a103f20d364f24e354aea2b791f70e00e57b5f4ede19eaad6225",
+      "length": 139
+    },
+    "startCbsConnect": {
+      "sha256": "b5469170d4354c01c8ee557d39abd822201ca2b924878e7a75fda48fd068ebed",
+      "length": 837
+    },
+    "receiveCbsConnection": {
+      "sha256": "8a5090e0814370e9d018573fbad27a79be6044f5a581d2be78885abc7435c348",
+      "length": 4380
+    },
+    "cbsMessageListener": {
+      "sha256": "2eaf9fceb1115f0740e4635292620f1ae4275d8317bf326ef2200c5ce3f2ebe4",
+      "length": 732
+    },
+    "renderProviderForm": {
+      "sha256": "f6aa92d265f0a3c845de6e2db251aba3831b90cd4f0ad1cb65da6b4bf0bfadc1",
+      "length": 588
+    },
+    "buildCbsForm": {
+      "sha256": "6550a68cc7d1e3903971c6c9728dca3e4568c85ee0f497f8021b2c7e0fff01e6",
+      "length": 3912
+    },
+    "buildEspnForm": {
+      "sha256": "23a08fc7dadbc5eb343ed123f0dad85178fb605b93df2c414233f3054cd44483",
+      "length": 2855
+    }
+  }
+}
