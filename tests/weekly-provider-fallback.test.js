@@ -122,8 +122,8 @@ test('CBS capture initializes unknown roster projections as null', function () {
     path.join(__dirname, '..', 'cbs-extension', 'cbs-browser-connector.js'),
     'utf8'
   );
-  assert.ok(connector.includes('projectedPoints:\\n            null,'));
-  assert.ok(!connector.includes('projectedPoints:\\n            0,'));
+  assert.ok(connector.includes('projectedPoints:\n            null,'));
+  assert.ok(!connector.includes('projectedPoints:\n            0,'));
 });
 
 test('uses a joined numeric projection in preference to a roster null', function () {
