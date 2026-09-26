@@ -1,0 +1,730 @@
+{
+  "recordedFrom": "4812d14",
+  "note": "Recorded by scripts/record-connect-golden.js from current production behavior. Do not edit by hand.",
+  "observations": {
+    "firstDelivery": {
+      "executeScript": {
+        "target": {
+          "tabId": 77
+        },
+        "world": "MAIN",
+        "argCount": 1
+      },
+      "leagueConnectionCalls": [
+        {
+          "method": "connect",
+          "provider": "espn"
+        }
+      ],
+      "refreshChatGptLinkCalls": [
+        {
+          "provider": "espn",
+          "result": false
+        }
+      ],
+      "returned": {
+        "connectionMode": "browser-assisted",
+        "league": {
+          "availablePlayers": [
+            {
+              "availabilityStatus": "FREEAGENT",
+              "name": "Tank Bigsby",
+              "percentOwned": 41.2,
+              "percentStarted": 9.8,
+              "position": "RB",
+              "projectedPoints": 8.4,
+              "providerPlayerId": "4430807",
+              "team": "JAX"
+            }
+          ],
+          "id": "90210",
+          "name": "Phase Zero ESPN League",
+          "scoringPeriodId": 4,
+          "season": 2026,
+          "teamCount": 12
+        },
+        "leagueId": "90210",
+        "leagueName": "Phase Zero ESPN League",
+        "matchup": {
+          "opponentName": "Baseline Bandits",
+          "opponentProjected": 111.5,
+          "opponentTeamId": "11",
+          "projected": 116.2,
+          "week": 4
+        },
+        "meta": {
+          "capturedAt": "2026-09-26T18:00:00.000Z",
+          "dataQuality": {
+            "availablePlayerCount": 1,
+            "complete": true
+          },
+          "readOnly": true,
+          "source": "espn-browser-assisted"
+        },
+        "private": true,
+        "readOnly": true,
+        "roster": [
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "QB",
+            "name": "Joe Burrow",
+            "nflTeam": "CIN",
+            "position": "QB",
+            "projectedPoints": 21.3,
+            "providerPlayerId": "3915511"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "RB",
+            "name": "Jahmyr Gibbs",
+            "nflTeam": "DET",
+            "position": "RB",
+            "projectedPoints": 18.9,
+            "providerPlayerId": "4429795"
+          },
+          {
+            "injuryStatus": "DOUBTFUL",
+            "lineupSlot": "WR",
+            "name": "Puka Nacua",
+            "nflTeam": "LAR",
+            "position": "WR",
+            "projectedPoints": 4.1,
+            "providerPlayerId": "4426515"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "TE",
+            "name": "Brock Bowers",
+            "nflTeam": "LV",
+            "position": "TE",
+            "projectedPoints": 12.6,
+            "providerPlayerId": "4432665"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "D/ST",
+            "name": "Texans D/ST",
+            "nflTeam": "HOU",
+            "position": "D/ST",
+            "projectedPoints": 7.2,
+            "providerPlayerId": "-16034"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "Bench",
+            "name": "Brandon Aubrey",
+            "nflTeam": "DAL",
+            "position": "K",
+            "projectedPoints": 9,
+            "providerPlayerId": "3953687"
+          }
+        ],
+        "schedule": [
+          {
+            "awayScore": null,
+            "awayTeamId": "11",
+            "homeScore": null,
+            "homeTeamId": "6",
+            "week": 4
+          }
+        ],
+        "season": 2026,
+        "settings": {
+          "name": "Phase Zero ESPN League",
+          "rosterSettings": {
+            "lineupSlotCounts": {
+              "0": 1,
+              "2": 2,
+              "4": 2,
+              "6": 1,
+              "16": 1,
+              "17": 1,
+              "20": 7,
+              "23": 1
+            }
+          },
+          "scheduleSettings": {
+            "matchupPeriodCount": 14
+          },
+          "scoringSettings": {
+            "scoringItems": [
+              {
+                "points": 0.5,
+                "statId": 53
+              }
+            ]
+          },
+          "size": 12
+        },
+        "standings": [
+          {
+            "losses": 1,
+            "pointsAgainst": 330.8,
+            "pointsFor": 355.2,
+            "rank": 4,
+            "teamId": "6",
+            "teamName": "Frozen Desktop Dynasty",
+            "ties": 0,
+            "wins": 2
+          }
+        ],
+        "syncedAt": "<normalized-timestamp>",
+        "team": {
+          "id": "6",
+          "losses": 1,
+          "name": "Frozen Desktop Dynasty",
+          "rank": 4,
+          "ties": 0,
+          "wins": 2
+        },
+        "teamCount": 12,
+        "teamId": "6",
+        "teamName": "Frozen Desktop Dynasty"
+      },
+      "storedConnection": {
+        "connectedAt": "<normalized-timestamp>",
+        "connectionId": "espn:90210:6",
+        "connectionMode": "browser-assisted",
+        "league": {
+          "availablePlayers": [
+            {
+              "availabilityStatus": "FREEAGENT",
+              "name": "Tank Bigsby",
+              "percentOwned": 41.2,
+              "percentStarted": 9.8,
+              "position": "RB",
+              "projectedPoints": 8.4,
+              "providerPlayerId": "4430807",
+              "team": "JAX"
+            }
+          ],
+          "id": "90210",
+          "name": "Phase Zero ESPN League",
+          "scoringPeriodId": 4,
+          "season": 2026,
+          "teamCount": 12
+        },
+        "leagueId": "90210",
+        "leagueName": "Phase Zero ESPN League",
+        "matchup": {
+          "opponentName": "Baseline Bandits",
+          "opponentProjected": 111.5,
+          "opponentTeamId": "11",
+          "projected": 116.2,
+          "week": 4
+        },
+        "meta": {
+          "capturedAt": "2026-09-26T18:00:00.000Z",
+          "dataQuality": {
+            "availablePlayerCount": 1,
+            "complete": true
+          },
+          "readOnly": true,
+          "source": "espn-browser-assisted"
+        },
+        "private": true,
+        "provider": "espn",
+        "readOnly": true,
+        "roster": [
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "QB",
+            "name": "Joe Burrow",
+            "nflTeam": "CIN",
+            "position": "QB",
+            "projectedPoints": 21.3,
+            "providerPlayerId": "3915511"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "RB",
+            "name": "Jahmyr Gibbs",
+            "nflTeam": "DET",
+            "position": "RB",
+            "projectedPoints": 18.9,
+            "providerPlayerId": "4429795"
+          },
+          {
+            "injuryStatus": "DOUBTFUL",
+            "lineupSlot": "WR",
+            "name": "Puka Nacua",
+            "nflTeam": "LAR",
+            "position": "WR",
+            "projectedPoints": 4.1,
+            "providerPlayerId": "4426515"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "TE",
+            "name": "Brock Bowers",
+            "nflTeam": "LV",
+            "position": "TE",
+            "projectedPoints": 12.6,
+            "providerPlayerId": "4432665"
+          },
+          {
+            "displayName": "Texans D/ST",
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "D/ST",
+            "name": "HOU",
+            "nflTeam": "HOU",
+            "position": "D/ST",
+            "projectedPoints": 7.2,
+            "providerPlayerId": "-16034",
+            "team": "HOU"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "Bench",
+            "name": "Brandon Aubrey",
+            "nflTeam": "DAL",
+            "position": "K",
+            "projectedPoints": 9,
+            "providerPlayerId": "3953687"
+          }
+        ],
+        "schedule": [
+          {
+            "awayScore": null,
+            "awayTeamId": "11",
+            "homeScore": null,
+            "homeTeamId": "6",
+            "week": 4
+          }
+        ],
+        "season": 2026,
+        "settings": {
+          "name": "Phase Zero ESPN League",
+          "rosterSettings": {
+            "lineupSlotCounts": {
+              "0": 1,
+              "2": 2,
+              "4": 2,
+              "6": 1,
+              "16": 1,
+              "17": 1,
+              "20": 7,
+              "23": 1
+            }
+          },
+          "scheduleSettings": {
+            "matchupPeriodCount": 14
+          },
+          "scoringSettings": {
+            "scoringItems": [
+              {
+                "points": 0.5,
+                "statId": 53
+              }
+            ]
+          },
+          "size": 12
+        },
+        "standings": [
+          {
+            "losses": 1,
+            "pointsAgainst": 330.8,
+            "pointsFor": 355.2,
+            "rank": 4,
+            "teamId": "6",
+            "teamName": "Frozen Desktop Dynasty",
+            "ties": 0,
+            "wins": 2
+          }
+        ],
+        "syncedAt": "<normalized-timestamp>",
+        "team": {
+          "id": "6",
+          "losses": 1,
+          "name": "Frozen Desktop Dynasty",
+          "rank": 4,
+          "ties": 0,
+          "wins": 2
+        },
+        "teamCount": 12,
+        "teamId": "6",
+        "teamName": "Frozen Desktop Dynasty"
+      },
+      "activeConnectionId": "espn:90210:6",
+      "selectedProvider": "espn",
+      "espnResult": {
+        "className": "result-box success show",
+        "text": "✓ Phase Zero ESPN League connected — Frozen Desktop Dynasty.",
+        "html": "✓ Phase Zero ESPN League connected — Frozen Desktop Dynasty."
+      }
+    },
+    "secondDelivery": {
+      "executeScript": {
+        "target": {
+          "tabId": 77
+        },
+        "world": "MAIN",
+        "argCount": 1
+      },
+      "leagueConnectionCalls": [
+        {
+          "method": "update",
+          "provider": "espn"
+        }
+      ],
+      "refreshChatGptLinkCalls": [
+        {
+          "provider": "espn",
+          "result": false
+        }
+      ],
+      "returned": {
+        "connectionMode": "browser-assisted",
+        "league": {
+          "availablePlayers": [
+            {
+              "availabilityStatus": "FREEAGENT",
+              "name": "Tank Bigsby",
+              "percentOwned": 41.2,
+              "percentStarted": 9.8,
+              "position": "RB",
+              "projectedPoints": 8.4,
+              "providerPlayerId": "4430807",
+              "team": "JAX"
+            }
+          ],
+          "id": "90210",
+          "name": "Phase Zero ESPN League",
+          "scoringPeriodId": 4,
+          "season": 2026,
+          "teamCount": 12
+        },
+        "leagueId": "90210",
+        "leagueName": "Phase Zero ESPN League",
+        "matchup": {
+          "opponentName": "Baseline Bandits",
+          "opponentProjected": 111.5,
+          "opponentTeamId": "11",
+          "projected": 116.2,
+          "week": 4
+        },
+        "meta": {
+          "capturedAt": "2026-09-26T18:00:00.000Z",
+          "dataQuality": {
+            "availablePlayerCount": 1,
+            "complete": true
+          },
+          "readOnly": true,
+          "source": "espn-browser-assisted"
+        },
+        "private": true,
+        "readOnly": true,
+        "roster": [
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "QB",
+            "name": "Joe Burrow",
+            "nflTeam": "CIN",
+            "position": "QB",
+            "projectedPoints": 21.3,
+            "providerPlayerId": "3915511"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "RB",
+            "name": "Jahmyr Gibbs",
+            "nflTeam": "DET",
+            "position": "RB",
+            "projectedPoints": 18.9,
+            "providerPlayerId": "4429795"
+          },
+          {
+            "injuryStatus": "DOUBTFUL",
+            "lineupSlot": "WR",
+            "name": "Puka Nacua",
+            "nflTeam": "LAR",
+            "position": "WR",
+            "projectedPoints": 4.1,
+            "providerPlayerId": "4426515"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "TE",
+            "name": "Brock Bowers",
+            "nflTeam": "LV",
+            "position": "TE",
+            "projectedPoints": 12.6,
+            "providerPlayerId": "4432665"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "D/ST",
+            "name": "Texans D/ST",
+            "nflTeam": "HOU",
+            "position": "D/ST",
+            "projectedPoints": 7.2,
+            "providerPlayerId": "-16034"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "Bench",
+            "name": "Brandon Aubrey",
+            "nflTeam": "DAL",
+            "position": "K",
+            "projectedPoints": 9,
+            "providerPlayerId": "3953687"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "Bench",
+            "name": "Tyjae Spears",
+            "nflTeam": "TEN",
+            "position": "RB",
+            "projectedPoints": 6.3,
+            "providerPlayerId": "4596448"
+          }
+        ],
+        "schedule": [
+          {
+            "awayScore": null,
+            "awayTeamId": "11",
+            "homeScore": null,
+            "homeTeamId": "6",
+            "week": 4
+          }
+        ],
+        "season": 2026,
+        "settings": {
+          "name": "Phase Zero ESPN League",
+          "rosterSettings": {
+            "lineupSlotCounts": {
+              "0": 1,
+              "2": 2,
+              "4": 2,
+              "6": 1,
+              "16": 1,
+              "17": 1,
+              "20": 7,
+              "23": 1
+            }
+          },
+          "scheduleSettings": {
+            "matchupPeriodCount": 14
+          },
+          "scoringSettings": {
+            "scoringItems": [
+              {
+                "points": 0.5,
+                "statId": 53
+              }
+            ]
+          },
+          "size": 12
+        },
+        "standings": [
+          {
+            "losses": 1,
+            "pointsAgainst": 330.8,
+            "pointsFor": 355.2,
+            "rank": 4,
+            "teamId": "6",
+            "teamName": "Frozen Desktop Dynasty",
+            "ties": 0,
+            "wins": 2
+          }
+        ],
+        "syncedAt": "<normalized-timestamp>",
+        "team": {
+          "id": "6",
+          "losses": 1,
+          "name": "Frozen Desktop Dynasty",
+          "rank": 4,
+          "ties": 0,
+          "wins": 3
+        },
+        "teamCount": 12,
+        "teamId": "6",
+        "teamName": "Frozen Desktop Dynasty"
+      },
+      "storedConnection": {
+        "connectedAt": "<normalized-timestamp>",
+        "connectionId": "espn:90210:6",
+        "connectionMode": "browser-assisted",
+        "league": {
+          "availablePlayers": [
+            {
+              "availabilityStatus": "FREEAGENT",
+              "name": "Tank Bigsby",
+              "percentOwned": 41.2,
+              "percentStarted": 9.8,
+              "position": "RB",
+              "projectedPoints": 8.4,
+              "providerPlayerId": "4430807",
+              "team": "JAX"
+            }
+          ],
+          "id": "90210",
+          "name": "Phase Zero ESPN League",
+          "scoringPeriodId": 4,
+          "season": 2026,
+          "teamCount": 12
+        },
+        "leagueId": "90210",
+        "leagueName": "Phase Zero ESPN League",
+        "matchup": {
+          "opponentName": "Baseline Bandits",
+          "opponentProjected": 111.5,
+          "opponentTeamId": "11",
+          "projected": 116.2,
+          "week": 4
+        },
+        "meta": {
+          "capturedAt": "2026-09-26T18:00:00.000Z",
+          "dataQuality": {
+            "availablePlayerCount": 1,
+            "complete": true
+          },
+          "readOnly": true,
+          "source": "espn-browser-assisted"
+        },
+        "private": true,
+        "provider": "espn",
+        "readOnly": true,
+        "roster": [
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "QB",
+            "name": "Joe Burrow",
+            "nflTeam": "CIN",
+            "position": "QB",
+            "projectedPoints": 21.3,
+            "providerPlayerId": "3915511"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "RB",
+            "name": "Jahmyr Gibbs",
+            "nflTeam": "DET",
+            "position": "RB",
+            "projectedPoints": 18.9,
+            "providerPlayerId": "4429795"
+          },
+          {
+            "injuryStatus": "DOUBTFUL",
+            "lineupSlot": "WR",
+            "name": "Puka Nacua",
+            "nflTeam": "LAR",
+            "position": "WR",
+            "projectedPoints": 4.1,
+            "providerPlayerId": "4426515"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "TE",
+            "name": "Brock Bowers",
+            "nflTeam": "LV",
+            "position": "TE",
+            "projectedPoints": 12.6,
+            "providerPlayerId": "4432665"
+          },
+          {
+            "displayName": "Texans D/ST",
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "D/ST",
+            "name": "HOU",
+            "nflTeam": "HOU",
+            "position": "D/ST",
+            "projectedPoints": 7.2,
+            "providerPlayerId": "-16034",
+            "team": "HOU"
+          },
+          {
+            "injuryStatus": "ACTIVE",
+            "lineupSlot": "Bench",
+            "name": "Brandon Aubrey",
+            "nflTeam": "DAL",
+            "position": "K",
+            "projectedPoints": 9,
+            "providerPlayerId": "3953687"
+          },
+          {
+            "injuryStatus": "QUESTIONABLE",
+            "lineupSlot": "Bench",
+            "name": "Tyjae Spears",
+            "nflTeam": "TEN",
+            "position": "RB",
+            "projectedPoints": 6.3,
+            "providerPlayerId": "4596448"
+          }
+        ],
+        "schedule": [
+          {
+            "awayScore": null,
+            "awayTeamId": "11",
+            "homeScore": null,
+            "homeTeamId": "6",
+            "week": 4
+          }
+        ],
+        "season": 2026,
+        "settings": {
+          "name": "Phase Zero ESPN League",
+          "rosterSettings": {
+            "lineupSlotCounts": {
+              "0": 1,
+              "2": 2,
+              "4": 2,
+              "6": 1,
+              "16": 1,
+              "17": 1,
+              "20": 7,
+              "23": 1
+            }
+          },
+          "scheduleSettings": {
+            "matchupPeriodCount": 14
+          },
+          "scoringSettings": {
+            "scoringItems": [
+              {
+                "points": 0.5,
+                "statId": 53
+              }
+            ]
+          },
+          "size": 12
+        },
+        "standings": [
+          {
+            "losses": 1,
+            "pointsAgainst": 330.8,
+            "pointsFor": 355.2,
+            "rank": 4,
+            "teamId": "6",
+            "teamName": "Frozen Desktop Dynasty",
+            "ties": 0,
+            "wins": 2
+          }
+        ],
+        "syncedAt": "<normalized-timestamp>",
+        "team": {
+          "id": "6",
+          "losses": 1,
+          "name": "Frozen Desktop Dynasty",
+          "rank": 4,
+          "ties": 0,
+          "wins": 3
+        },
+        "teamCount": 12,
+        "teamId": "6",
+        "teamName": "Frozen Desktop Dynasty"
+      },
+      "activeConnectionId": "espn:90210:6",
+      "selectedProvider": "espn",
+      "espnResult": {
+        "className": "result-box success show",
+        "text": "✓ Phase Zero ESPN League connected — Frozen Desktop Dynasty.",
+        "html": "✓ Phase Zero ESPN League connected — Frozen Desktop Dynasty."
+      }
+    },
+    "incompleteRoster": {
+      "thrownMessage": "Incomplete ESPN league data was received.",
+      "storedState": null
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "league": {
+    "id": "90210",
+    "name": "Phase Zero ESPN League",
+    "season": 2026,
+    "scoringPeriodId": 4,
+    "teamCount": 12,
+    "availablePlayers": [
+      { "providerPlayerId": "4430807", "name": "Tank Bigsby", "position": "RB", "team": "JAX", "availabilityStatus": "FREEAGENT", "percentOwned": 41.2, "percentStarted": 9.8, "projectedPoints": 8.4 }
+    ]
+  },
+  "team": { "id": "6", "name": "Frozen Desktop Dynasty", "wins": 2, "losses": 1, "ties": 0, "rank": 4 },
+  "roster": [
+    { "providerPlayerId": "3915511", "name": "Joe Burrow", "position": "QB", "nflTeam": "CIN", "lineupSlot": "QB", "injuryStatus": "ACTIVE", "projectedPoints": 21.3 },
+    { "providerPlayerId": "4429795", "name": "Jahmyr Gibbs", "position": "RB", "nflTeam": "DET", "lineupSlot": "RB", "injuryStatus": "ACTIVE", "projectedPoints": 18.9 },
+    { "providerPlayerId": "4426515", "name": "Puka Nacua", "position": "WR", "nflTeam": "LAR", "lineupSlot": "WR", "injuryStatus": "DOUBTFUL", "projectedPoints": 4.1 },
+    { "providerPlayerId": "4432665", "name": "Brock Bowers", "position": "TE", "nflTeam": "LV", "lineupSlot": "TE", "injuryStatus": "QUESTIONABLE", "projectedPoints": 12.6 },
+    { "providerPlayerId": "-16034", "name": "Texans D/ST", "position": "D/ST", "nflTeam": "HOU", "lineupSlot": "D/ST", "injuryStatus": "ACTIVE", "projectedPoints": 7.2 },
+    { "providerPlayerId": "3953687", "name": "Brandon Aubrey", "position": "K", "nflTeam": "DAL", "lineupSlot": "Bench", "injuryStatus": "ACTIVE", "projectedPoints": 9.0 }
+  ],
+  "availablePlayers": [
+    { "providerPlayerId": "4430807", "name": "Tank Bigsby", "position": "RB", "team": "JAX", "availabilityStatus": "FREEAGENT", "percentOwned": 41.2, "percentStarted": 9.8, "projectedPoints": 8.4 }
+  ],
+  "availabilityMeta": { "requested": 1000, "returned": 1, "scoringPeriodId": 4 },
+  "standings": [
+    { "teamId": "6", "teamName": "Frozen Desktop Dynasty", "wins": 2, "losses": 1, "ties": 0, "pointsFor": 355.2, "pointsAgainst": 330.8, "rank": 4 }
+  ],
+  "schedule": [
+    { "week": 4, "homeTeamId": "6", "awayTeamId": "11", "homeScore": null, "awayScore": null }
+  ],
+  "matchup": { "week": 4, "opponentTeamId": "11", "opponentName": "Baseline Bandits", "projected": 116.2, "opponentProjected": 111.5 },
+  "scoringFormat": "half-ppr",
+  "settings": {
+    "name": "Phase Zero ESPN League",
+    "size": 12,
+    "rosterSettings": { "lineupSlotCounts": { "0": 1, "2": 2, "4": 2, "6": 1, "16": 1, "17": 1, "20": 7, "23": 1 } },
+    "scoringSettings": { "scoringItems": [ { "statId": 53, "points": 0.5 } ] },
+    "scheduleSettings": { "matchupPeriodCount": 14 }
+  },
+  "meta": {
+    "source": "espn-browser-assisted",
+    "readOnly": true,
+    "capturedAt": "2026-09-26T18:00:00.000Z",
+    "dataQuality": { "complete": true, "availablePlayerCount": 1 }
+  }
+}

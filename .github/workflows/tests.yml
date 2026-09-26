@@ -10,6 +10,13 @@ on:
       - 'privacy.html'
       - 'terms.html'
       - 'google-site-verification*'
+  # Gate pull requests before merge (added in Phase 0 of the mobile
+  # league-connect project). No paths-ignore here on purpose: if this check is
+  # ever made required in branch protection, a docs-only PR must still report
+  # a result instead of waiting forever for a check that never starts.
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
