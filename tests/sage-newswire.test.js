@@ -5,6 +5,14 @@ const fs = require('fs');
 const path = require('path');
 const newswire = require('../netlify/functions/sage-newswire');
 
+// Provenance rule: every story must link to its ORIGINAL source. When this
+// test was written every story came from a reporter's X post. Official NFL
+// injury reports are also primary sources for injury designations.
+const APPROVED_SOURCES = [
+  { url: /^https:\/\/x\.com\/[A-Za-z0-9_]+\/status\/\d+$/, label: /( on X$| via )/ },
+  { url: /^https:\/\/www\.nfl\.com\/injuries\/$/, label: /^NFL .*injury report$/ }
+];
+
 async function run() {
   const page = fs.readFileSync(path.join(__dirname, '..', 'weekly.html'), 'utf8');
 
@@ -25,7 +33,10 @@ async function run() {
     ['player', 'headline', 'summary', 'sageImpact', 'sourceLabel', 'sourceUrl', 'publishedAt'].forEach((field) => {
       assert(story[field], `Story ${story.id || '(unknown)'} is missing ${field}`);
     });
-    assert(/^https:\/\/x\.com\//.test(story.sourceUrl), 'Each current story should link to its original X source');
+    assert(
+      APPROVED_SOURCES.some((source) => source.url.test(story.sourceUrl) && source.label.test(story.sourceLabel)),
+      `Story ${story.id} must link to an approved original source (X post or official NFL injury report) with a matching label; got ${story.sourceLabel} <${story.sourceUrl}>`
+    );
   });
 
   const rejected = await newswire.handler({ httpMethod: 'POST' });

@@ -2,6 +2,27 @@
 
 const assert = require('assert');
 const path = require('path');
+const Module = require('module');
+
+// weekly-sage-rankings.js reads cached availability data from Netlify Blobs.
+// Stub an empty store so this test remains scoped to defense identity.
+const fakeBlobsPath = path.join(__dirname, '__fake_netlify_blobs_weekly_defense__.js');
+require.cache[fakeBlobsPath] = {
+  id: fakeBlobsPath,
+  filename: fakeBlobsPath,
+  loaded: true,
+  exports: {
+    connectLambda: function () {},
+    getStore: function () {
+      return { get: async function () { return null; } };
+    }
+  }
+};
+const originalResolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, ...rest) {
+  if (request === '@netlify/blobs') return fakeBlobsPath;
+  return originalResolveFilename.call(this, request, ...rest);
+};
 
 const rankingsPath = path.join(
   __dirname,
@@ -90,6 +111,7 @@ async function run() {
     console.log('PASS weekly defense roster identity: ESPN HOU D/ST matches Week 1 HOU DEF');
   } finally {
     global.fetch = originalFetch;
+    Module._resolveFilename = originalResolveFilename;
   }
 }
 
