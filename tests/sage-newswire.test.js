@@ -33,7 +33,10 @@ async function run() {
     ['player', 'headline', 'summary', 'sageImpact', 'sourceLabel', 'sourceUrl', 'publishedAt'].forEach((field) => {
       assert(story[field], `Story ${story.id || '(unknown)'} is missing ${field}`);
     });
-    assert(/^https:\/\/x\.com\//.test(story.sourceUrl), 'Each current story should link to its original X source');
+    assert(
+      APPROVED_SOURCES.some((source) => source.url.test(story.sourceUrl) && source.label.test(story.sourceLabel)),
+      `Story ${story.id} must link to an approved original source (X post or official NFL injury report) with a matching label; got ${story.sourceLabel} <${story.sourceUrl}>`
+    );
   });
 
   const rejected = await newswire.handler({ httpMethod: 'POST' });
