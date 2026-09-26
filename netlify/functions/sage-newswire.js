@@ -1,131 +1,28 @@
 'use strict';
 
+const NFL_REPORT = 'https://www.nfl.com/injuries/';
+const story = (id, player, team, position, status, statusTone, headline, summary, sageImpact, publishedAt, extra = {}) => ({ id, player, team, position, status, statusTone, headline, summary, sageImpact, sourceLabel: 'NFL Week 3 injury report', sourceUrl: NFL_REPORT, publishedAt, ...extra });
+
 const STORIES = [
-  {
-    id: 'saquon-barkley-stinger-2026-09-24',
-    featured: true,
-    player: 'Saquon Barkley',
-    team: 'PHI',
-    position: 'RB',
-    status: 'Expected to play',
-    statusTone: 'expected',
-    headline: 'Barkley says the MRI went well and he expects to play Monday night.',
-    summary: 'The Eagles running back is dealing with a stinger suffered against Tennessee. His own update is encouraging, but Philadelphia has not issued the final game designation yet.',
-    sageImpact: 'Keep Barkley in the starting lineup for now. Because he plays Monday, carry a late-game replacement until his final status is official.',
-    sourceLabel: 'Jeff McLane on X',
-    sourceUrl: 'https://x.com/Jeff_McLane/status/2103236479095087517',
-    publishedAt: '2026-09-24T21:33:47.517Z'
-  },
-  {
-    id: 'zay-flowers-availability-2026-09-25',
-    featured: true,
-    player: 'Zay Flowers',
-    team: 'BAL',
-    position: 'WR',
-    status: 'Trending up',
-    statusTone: 'expected',
-    headline: 'Baltimore sounds optimistic about Flowers being available Sunday.',
-    summary: 'Ravens coach Jesse Minter sounded more optimistic about Flowers and Nnamdi Madubuike than Ronnie Stanley, whose status may go to game time.',
-    sageImpact: 'Flowers remains a start if active. Confirm Sunday availability before kickoff, but the latest signal is favorable rather than a reason to bench him now.',
-    sourceLabel: 'Jeff Zrebiec on X',
-    sourceUrl: 'https://x.com/jeffzrebiec/status/2103561938706006148',
-    publishedAt: '2026-09-25T19:07:03.135Z'
-  },
-  {
-    id: 'puka-nacua-practice-2026-09-25',
-    featured: true,
-    player: 'Puka Nacua',
-    team: 'LAR',
-    position: 'WR',
-    status: 'Monitor',
-    statusTone: 'monitor',
-    headline: 'Nacua is working off to the side during Rams practice.',
-    summary: 'Puka Nacua and Kam Kinchens were not working with the main practice group during the portion observed by reporters.',
-    sageImpact: 'Do not treat this as an automatic bench call, but have a contingency ready and wait for the official designation before locking him in.',
-    sourceLabel: 'Sarah Barshop on X',
-    sourceUrl: 'https://x.com/sarahbarshop/status/2103562697929527641',
-    publishedAt: '2026-09-25T19:10:04.148Z'
-  },
-  {
-    id: 'nico-collins-out-2026-09-25',
-    player: 'Nico Collins',
-    team: 'HOU',
-    position: 'WR',
-    status: 'Out',
-    statusTone: 'breaking',
-    headline: 'Houston has ruled Collins out Sunday with a hamstring injury.',
-    summary: 'The Texans made Collins unavailable for their Week 3 matchup at Indianapolis.',
-    sageImpact: 'Remove Collins from every lineup. Houston’s remaining receivers and pass-catching backs gain opportunity, but none automatically inherits his full role.',
-    sourceLabel: 'Adam Schefter on X',
-    sourceUrl: 'https://x.com/AdamSchefter/status/2103573231278121246',
-    publishedAt: '2026-09-25T19:51:55.494Z'
-  },
-  {
-    id: 'steelers-backfield-2026-09-25',
-    player: 'Rico Dowdle',
-    relatedPlayers: ['Jaylen Warren'],
-    team: 'PIT',
-    position: 'RB',
-    status: 'Out / Questionable',
-    statusTone: 'breaking',
-    headline: 'Dowdle is out; Warren is questionable with a shoulder injury.',
-    summary: 'Pittsburgh ruled Dowdle out against Cincinnati while Warren carries a questionable designation.',
-    sageImpact: 'Dowdle must come out of lineups. Warren remains usable if active, but his shoulder status makes the remaining Steelers backfield worth monitoring through Sunday.',
-    sourceLabel: 'Adam Schefter on X',
-    sourceUrl: 'https://x.com/AdamSchefter/status/2103572404408635804',
-    publishedAt: '2026-09-25T19:48:38.353Z'
-  },
-  {
-    id: 'bears-quarterbacks-2026-09-25',
-    player: 'Caleb Williams',
-    relatedPlayers: ['Tyson Bagent'],
-    team: 'CHI',
-    position: 'QB',
-    status: 'Monitor',
-    statusTone: 'monitor',
-    headline: 'Williams and Bagent did not practice again.',
-    summary: 'The Bears’ latest injury report showed another non-participation for both quarterbacks.',
-    sageImpact: 'Avoid locking in a Bears quarterback until the starter is confirmed. The uncertainty also lowers confidence in Chicago’s pass catchers.',
-    sourceLabel: 'Ian Rapoport on X',
-    sourceUrl: 'https://x.com/RapSheet/status/2103569019471266046',
-    publishedAt: '2026-09-25T19:35:11.321Z'
-  },
-  {
-    id: 'brock-bowers-questionable-2026-09-25',
-    player: 'Brock Bowers',
-    team: 'LV',
-    position: 'TE',
-    status: 'Questionable',
-    statusTone: 'monitor',
-    headline: 'Bowers is questionable, and Las Vegas does not plan a pregame workout.',
-    summary: 'Klint Kubiak said Bowers’ non-participation was planned and the team will not repeat last week’s pregame workout process.',
-    sageImpact: 'Keep Bowers tentatively active, but confirm his official status. The lack of a planned pregame test suggests the Raiders expect a clearer decision before warmups.',
-    sourceLabel: 'Sam Warren via Ian Rapoport',
-    sourceUrl: 'https://x.com/samwarren83/status/2103557157488881864',
-    publishedAt: '2026-09-25T18:48:03.204Z'
-  }
+  story('puka-nacua-doubtful-2026-09-26', 'Puka Nacua', 'LAR', 'WR', 'Doubtful', 'breaking', 'Nacua is doubtful for Sunday night after missing Friday practice.', 'The Rams gave Nacua a doubtful designation because of a hip injury. A late kickoff makes waiting especially risky.', 'Move Nacua out of lineups unless you have a viable Sunday-night replacement. His likely absence raises the target outlook for the Rams’ other receivers and tight ends.', '2026-09-26T15:40:00Z', { featured: true }),
+  story('caleb-williams-doubtful-2026-09-26', 'Caleb Williams', 'CHI', 'QB', 'Doubtful', 'breaking', 'Williams is doubtful; backup Tyson Bagent is also questionable.', 'Williams did not practice Friday because of a hamstring injury. Bagent also missed practice while in the concussion protocol.', 'Avoid the Chicago quarterback situation. Downgrade Bears pass catchers until the starter is known, especially with the possibility of an emergency option under center.', '2026-09-26T15:38:00Z', { featured: true, relatedPlayers: ['Tyson Bagent'] }),
+  story('brock-bowers-questionable-2026-09-26', 'Brock Bowers', 'LV', 'TE', 'Questionable', 'monitor', 'Bowers is questionable after sitting out Friday practice.', 'The Raiders tight end is managing a meniscus issue and carries an official questionable designation at New Orleans.', 'Keep Bowers penciled in because tight end replacement value is thin, but confirm his status before kickoff. Line up a same-window alternative.', '2026-09-26T15:35:00Z', { featured: true }),
+  story('zay-flowers-questionable-2026-09-26', 'Zay Flowers', 'BAL', 'WR', 'Questionable', 'monitor', 'Flowers finished the week limited and is questionable at Dallas.', 'Flowers progressed enough to practice Friday, but Baltimore retained the questionable tag because of his hamstring.', 'The limited return is encouraging. Start him if active, but check the early inactive list and keep a replacement ready.', '2026-09-26T15:32:00Z'),
+  story('dj-moore-questionable-2026-09-26', 'DJ Moore', 'BUF', 'WR', 'Questionable', 'monitor', 'Moore and Keon Coleman are both questionable against the Chargers.', 'Moore was limited Friday with an AC-joint injury; Coleman was limited by an ankle injury.', 'Moore carries the larger workload concern even if active. Coleman is a volatile fallback, while the uncertainty strengthens Buffalo’s healthy pass-catching options.', '2026-09-26T15:29:00Z', { relatedPlayers: ['Keon Coleman'] }),
+  story('mike-evans-questionable-2026-09-26', 'Mike Evans', 'SF', 'WR', 'Questionable', 'monitor', 'Evans is questionable after missing Friday practice with a hip injury.', 'San Francisco did not get Evans back onto the practice field before listing him as questionable against Arizona.', 'Treat Evans as a true game-time decision. His missed Friday session is a downgrade, so secure a late-window pivot before Sunday.', '2026-09-26T15:26:00Z'),
+  story('devonta-smith-questionable-2026-09-26', 'DeVonta Smith', 'PHI', 'WR', 'Questionable', 'monitor', 'Smith is questionable, while Dallas Goedert is doubtful.', 'Smith was limited Friday with a hamstring injury. Goedert missed practice with an MCL injury.', 'Smith remains a start if active but needs confirmation. Goedert should be replaced now; his likely absence concentrates targets among Philadelphia’s healthy receivers.', '2026-09-26T15:23:00Z', { relatedPlayers: ['Dallas Goedert'] }),
+  story('steelers-backfield-2026-09-26', 'Jaylen Warren', 'PIT', 'RB', 'Questionable', 'monitor', 'Warren is questionable and Rico Dowdle has been ruled out.', 'Warren was limited Friday by a shoulder injury. Dowdle will not play against Cincinnati because of a toe injury.', 'Warren is playable if active and could control the backfield, but the shoulder adds workload risk. Dowdle belongs on the bench.', '2026-09-26T15:20:00Z', { relatedPlayers: ['Rico Dowdle'] }),
+  story('tyjae-spears-questionable-2026-09-26', 'Tyjae Spears', 'TEN', 'RB', 'Questionable', 'monitor', 'Spears is questionable after a limited Friday practice.', 'The Titans running back is managing an ankle injury entering Sunday’s game at the Giants.', 'Spears is a risky flex until active status is confirmed. His limitation protects additional volume for Tennessee’s other backs.', '2026-09-26T15:17:00Z'),
+  story('hollywood-brown-questionable-2026-09-26', 'Marquise Brown', 'KC', 'WR', 'Questionable', 'monitor', 'Brown is questionable for Kansas City with an ankle injury.', 'The Chiefs added an official questionable designation ahead of Sunday’s game.', 'Brown is a boom-or-bust flex only if active. His absence would consolidate targets among Kansas City’s remaining receivers and tight ends.', '2026-09-26T15:14:00Z'),
+  story('michael-pittman-questionable-2026-09-26', 'Michael Pittman', 'PIT', 'WR', 'Questionable', 'monitor', 'Pittman carries a questionable tag because of a foot injury.', 'Pittsburgh listed Pittman questionable for its matchup with Cincinnati.', 'Pittman can remain in provisional lineups, but the foot issue lowers his floor. Confirm his status before using him as more than a flex.', '2026-09-26T15:11:00Z'),
+  story('marvin-mims-questionable-2026-09-26', 'Marvin Mims', 'DEN', 'WR', 'Questionable', 'monitor', 'Mims is questionable for Denver with a foot injury.', 'The Broncos receiver enters the Rams matchup without a clean bill of health.', 'Mims is a high-variance flex even when healthy. The foot tag makes him better suited to benches unless your alternatives are thin.', '2026-09-26T15:08:00Z'),
+  story('panthers-receivers-questionable-2026-09-26', 'Xavier Legette', 'CAR', 'WR', 'Questionable', 'monitor', 'Legette and Jalen Coker are both questionable at Cleveland.', 'Legette was limited Friday by a knee injury, while Coker was limited by an ankle injury.', 'This is a low-confidence passing game. If either sits, the healthy Carolina receivers gain routes, but the matchup does not create an automatic start.', '2026-09-26T15:05:00Z', { relatedPlayers: ['Jalen Coker'] }),
+  story('joe-burrow-cleared-2026-09-26', 'Joe Burrow', 'CIN', 'QB', 'Set to start', 'expected', 'Burrow practiced fully and is set to start Sunday.', 'Burrow was a full participant while working through a back issue.', 'Start Burrow normally. His clearance also restores confidence in Cincinnati’s primary pass catchers.', '2026-09-26T15:02:00Z'),
+  story('sam-darnold-cleared-2026-09-26', 'Sam Darnold', 'SEA', 'QB', 'Cleared', 'expected', 'Darnold is off the injury report and will start Sunday.', 'Seattle removed Darnold from the final report after he worked through a glute injury.', 'Darnold is available for two-QB and superflex lineups. His clearance stabilizes the outlook for Seattle’s receivers.', '2026-09-26T14:59:00Z'),
+  story('saquon-barkley-stinger-2026-09-26', 'Saquon Barkley', 'PHI', 'RB', 'Expected to play', 'expected', 'Barkley continues to expect to play Monday night after a favorable MRI.', 'The Eagles running back is managing the stinger he suffered last week. His own update remains encouraging ahead of Philadelphia’s final designation.', 'Keep Barkley in the lineup, but because he plays Monday, retain a late-game replacement until Philadelphia makes his status official.', '2026-09-26T14:56:00Z', { sourceLabel: 'Jeff McLane on X', sourceUrl: 'https://x.com/Jeff_McLane/status/2103236479095087517' })
 ];
 
 exports.handler = async function handler(event) {
-  if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers: { 'Content-Type': 'application/json', Allow: 'GET' },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
-
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'public, max-age=120, s-maxage=120'
-    },
-    body: JSON.stringify({
-      version: 1,
-      updatedAt: '2026-09-25T19:55:00Z',
-      mode: 'editorial',
-      stories: STORIES
-    })
-  };
+  if (event.httpMethod !== 'GET') return { statusCode: 405, headers: { 'Content-Type': 'application/json', Allow: 'GET' }, body: JSON.stringify({ error: 'Method not allowed' }) };
+  return { statusCode: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=120, s-maxage=120' }, body: JSON.stringify({ version: 1, updatedAt: '2026-09-26T16:40:00Z', mode: 'editorial', stories: STORIES }) };
 };
