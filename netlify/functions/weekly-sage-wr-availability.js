@@ -20,6 +20,11 @@ const WEEKLY_STATUS = Object.freeze({
       status: "OUT",
       reason: "Ruled out for Week 2 against Cincinnati with a hamstring injury."
     })
+  }),
+  "2026:3": Object.freeze({
+    "nico collins": Object.freeze({ status: "OUT", reason: "Week 3 inactive." }),
+    "puka nacua": Object.freeze({ status: "DOUBTFUL", reason: "Week 3 doubtful." }),
+    "zay flowers": Object.freeze({ status: "QUESTIONABLE", reason: "Week 3 questionable." })
   })
 });
 

@@ -20,6 +20,12 @@ const WEEKLY_STARTERS = Object.freeze({
     NYJ: "Geno Smith", PHI: "Jalen Hurts", PIT: "Aaron Rodgers",
     SEA: "Drew Lock", SF: "Brock Purdy", TB: "Baker Mayfield",
     TEN: "Cam Ward", WSH: "Jayden Daniels"
+  }),
+  "2026:3": Object.freeze({
+    MIN: "Kyler Murray",
+    NYG: "Jameis Winston",
+    SEA: "Sam Darnold",
+    WSH: "Marcus Mariota"
   })
 });
 
@@ -34,6 +40,43 @@ const WEEKLY_FACTS = Object.freeze({
       name: "Carson Wentz", team: "MIN", status: "CONFIRMED_STARTER",
       eligible: true, source: "Week 2 starter announcement",
       reason: "Confirmed Minnesota starter for Week 2."
+    })
+  }),
+  "2026:3": Object.freeze({
+    calebwilliams: Object.freeze({
+      name: "Caleb Williams", team: "CHI", status: "OUT", eligible: false,
+      source: "Bears Week 3 final status",
+      reason: "Ruled out for Week 3 with a hamstring injury."
+    }),
+    jaydendaniels: Object.freeze({
+      name: "Jayden Daniels", team: "WSH", status: "OUT", eligible: false,
+      source: "Commanders Week 3 final status",
+      reason: "Ruled out for Week 3 with a left elbow injury; Marcus Mariota will start."
+    }),
+    jaxsondart: Object.freeze({
+      name: "Jaxson Dart", team: "NYG", status: "OUT", eligible: false,
+      source: "Giants starter announcement",
+      reason: "Out for the remainder of the 2026 regular season with a knee injury; Jameis Winston will start."
+    }),
+    kylermurray: Object.freeze({
+      name: "Kyler Murray", team: "MIN", status: "CONFIRMED_STARTER", eligible: true,
+      source: "Vikings starter announcement",
+      reason: "Cleared the concussion protocol and confirmed as Minnesota's Week 3 starter."
+    }),
+    jameiswinston: Object.freeze({
+      name: "Jameis Winston", team: "NYG", status: "CONFIRMED_STARTER", eligible: true,
+      source: "Giants starter announcement",
+      reason: "Confirmed as the Giants' Week 3 starter."
+    }),
+    marcusmariota: Object.freeze({
+      name: "Marcus Mariota", team: "WSH", status: "CONFIRMED_STARTER", eligible: true,
+      source: "Commanders starter announcement",
+      reason: "Confirmed as Washington's Week 3 starter."
+    }),
+    samdarnold: Object.freeze({
+      name: "Sam Darnold", team: "SEA", status: "CONFIRMED_STARTER", eligible: true,
+      source: "Seahawks Week 3 status",
+      reason: "Cleared to start Week 3 after the glute injury."
     })
   })
 });
