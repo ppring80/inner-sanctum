@@ -30,6 +30,26 @@ const WEEKLY_FACTS = Object.freeze({
       backfieldRole: "committee", vacatedOpportunity: 0.45,
       reason: "Unavailable for Week 2; backfield opportunity must be reassigned."
     })
+  }),
+  "2026:3": Object.freeze({
+    ricodowdle: Object.freeze({
+      status: "OUT", eligible: false, source: "NFL Week 3 injury report",
+      name: "Rico Dowdle", team: "PIT",
+      backfieldRole: "committee", vacatedOpportunity: 0.35,
+      reason: "Ruled out for Week 3 with a toe injury."
+    }),
+    jonahcoleman: Object.freeze({
+      status: "OUT", eligible: false, source: "NFL Week 3 injury report",
+      name: "Jonah Coleman", team: "DEN",
+      backfieldRole: "committee", vacatedOpportunity: 0.40,
+      reason: "Ruled out for Week 3 with an ankle injury."
+    }),
+    jaylenwright: Object.freeze({
+      status: "DOUBTFUL", eligible: true, source: "NFL Week 3 injury report",
+      name: "Jaylen Wright", team: "MIA",
+      backfieldRole: "reserve", vacatedOpportunity: 0,
+      reason: "Doubtful for Week 3 with stinger/foot injuries; retain for visibility but treat as highly unlikely to play."
+    })
   })
 });
 
