@@ -445,6 +445,11 @@ function loadConnectPage(options = {}) {
   const loadedScripts = [];
   const skippedScripts = [];
   const reloads = [];
+  const historyCalls = [];
+  // Ordered log of fetch / history.replaceState calls (lets tests prove a
+  // secret is removed from the URL before it is sent anywhere).
+  const timeline = [];
+  const pageUrl = new URL(options.url || PAGE_URL);
 
   const popup = { closed: false, focusCalls: 0, focus() { this.focusCalls += 1; }, close() { this.closed = true; } };
 
@@ -453,22 +458,36 @@ function loadConnectPage(options = {}) {
     document,
     navigator: {
       userAgent: options.userAgent || DESKTOP_UA,
+      maxTouchPoints: options.maxTouchPoints || 0,
       clipboard: { writeText: async () => {} }
     },
     location: {
-      href: PAGE_URL,
-      origin: 'https://theinnersanctum.xyz',
-      protocol: 'https:',
-      host: 'theinnersanctum.xyz',
-      hostname: 'theinnersanctum.xyz',
-      pathname: '/connect-league',
-      search: '',
-      hash: '',
+      href: pageUrl.href,
+      origin: pageUrl.origin,
+      protocol: pageUrl.protocol,
+      host: pageUrl.host,
+      hostname: pageUrl.hostname,
+      pathname: pageUrl.pathname,
+      search: pageUrl.search,
+      hash: pageUrl.hash,
       reload() { reloads.push(Date.now()); },
       assign() {},
       replace() {}
     },
-    history: { replaceState() {}, pushState() {} },
+    history: {
+      state: null,
+      replaceState(state, title, url) {
+        historyCalls.push({ method: 'replaceState', url: String(url) });
+        timeline.push({ type: 'replaceState', url: String(url) });
+        if (url !== undefined && url !== null) {
+          const next = new URL(String(url), window.location.href);
+          Object.assign(window.location, {
+            href: next.href, pathname: next.pathname, search: next.search, hash: next.hash
+          });
+        }
+      },
+      pushState() {}
+    },
     localStorage: makeStorage(),
     sessionStorage: makeStorage(),
     crypto: webcrypto,
@@ -505,6 +524,7 @@ function loadConnectPage(options = {}) {
     },
     async fetch(url, init) {
       fetchCalls.push({ url: String(url), init: init || {} });
+      timeline.push({ type: 'fetch', url: String(url), locationHref: window.location.href });
       const res = options.fetchResponder
         ? await options.fetchResponder(String(url), init || {})
         : { status: 200, body: {} };
@@ -577,6 +597,8 @@ function loadConnectPage(options = {}) {
     loadedScripts,
     skippedScripts,
     reloads,
+    historyCalls,
+    timeline,
     popup,
     timers,
     run(code, filename) { return vm.runInContext(code, context, { filename: filename || 'harness-eval.js' }); },
