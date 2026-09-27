@@ -24,6 +24,9 @@ jobs:
           cat phase1-transfer/harness.*.part > /tmp/phase1/tests/helpers/connect-page-harness.js
           cat phase1-transfer/mobile-test.*.part > /tmp/phase1/tests/mobile-connect.test.js
 
+          echo "mobile=$(git hash-object /tmp/phase1/mobile-connect.js)"
+          echo "harness=$(git hash-object /tmp/phase1/tests/helpers/connect-page-harness.js)"
+          echo "mobiletest=$(git hash-object /tmp/phase1/tests/mobile-connect.test.js)"
           test "$(git hash-object /tmp/phase1/mobile-connect.js)" = "77b8257136dd5ea9ab88ce33996e8ab3b08b7302"
           test "$(git hash-object /tmp/phase1/tests/helpers/connect-page-harness.js)" = "6eee53ff878651cd7837430e0bf62ef9985dca09"
           test "$(git hash-object /tmp/phase1/tests/mobile-connect.test.js)" = "84d98843d302b683756775b3c78cb7e7f79a00c9"
