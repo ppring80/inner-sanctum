@@ -1,0 +1,205 @@
+  };
+  window.CustomEvent = function CustomEvent(type, init) { return createEvent(type, init); };
+  window.Event = function Event(type, init) { return createEvent(type, init); };
+  window.MutationObserver = class { constructor(cb) { this.cb = cb; } observe() {} disconnect() {} takeRecords() { return []; } };
+  window.HTMLElement = FakeElement;
+  window.Element = FakeElement;
+  window.Node = FakeNode;
+  window.window = window;
+  window.self = window;
+  window.globalThis = window;
+  window.top = window;
+  window.parent = window;
+
+  const context = vm.createContext(window);
+
+  function runScript(code, filename) {
+    vm.runInContext(code, context, { filename });
+  }
+
+  function executeScriptElement(el) {
+    const src = el.getAttribute('src');
+    if (src) {
+      if (/^\/[\w./-]+\.js$/.test(src) && fs.existsSync(path.join(REPO_ROOT, src))) {
+        runScript(readRepoFile(src.slice(1)), src.slice(1));
+        loadedScripts.push(src);
+        el.dispatchEvent(createEvent('load'));
+      } else {
+        skippedScripts.push(src);
+      }
+      return;
+    }
+    runScript(el._innerHTML, 'connect-league.html#inline-script-' + loadedScripts.length);
+    loadedScripts.push('inline');
+  }
+
+  const html = readRepoFile('connect-league.html');
+  const htmlStart = html.search(/<html[\s>]/i);
+  const inner = html.slice(html.indexOf('>', htmlStart) + 1, html.lastIndexOf('</html>'));
+  parseInto(document, document.documentElement, inner);
+
+  // Scripts the page injects after load (for example team-context.js) run when inserted.
+  document._onInsert = (node) => {
+    if (node.nodeType === 1 && node.tagName === 'SCRIPT' && node.getAttribute('src')) {
+      executeScriptElement(node);
+    }
+  };
+
+  const pageScripts = document.querySelectorAll('script');
+  pageScripts.forEach(executeScriptElement);
+
+  const harness = {
+    window,
+    document,
+    context,
+    fetchCalls,
+    openCalls,
+    loadedScripts,
+    skippedScripts,
+    reloads,
+    historyCalls,
+    timeline,
+    popup,
+    timers,
+    run(code, filename) { return vm.runInContext(code, context, { filename: filename || 'harness-eval.js' }); },
+    domReady() {
+      document.readyState = 'interactive';
+      document.dispatchEvent(createEvent('DOMContentLoaded'));
+      document.readyState = 'complete';
+    },
+    /** Run queued timers (and the microtasks between them) until idle. */
+    async settle(maxRounds = 50) {
+      for (let round = 0; round < maxRounds; round += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+        if (!timers.length) return;
+        timers.sort((a, b) => a.ms - b.ms || a.id - b.id);
+        const next = timers.shift();
+        next.fn(...next.args);
+      }
+      throw new Error('connect-page-harness: timers did not settle');
+    },
+    getStoredState() {
+      const raw = window.localStorage.getItem('innerSanctum_leagueConnections');
+      return raw ? JSON.parse(raw) : null;
+    },
+    windowListeners(type) { return windowListeners.listenerEntries(type); },
+    documentListeners(type) { return document.listenerEntries(type); },
+    createEvent
+  };
+
+  if (options.domReady !== false) harness.domReady();
+  return harness;
+}
+
+/* ------------------------------------------------------------------ */
+/* Chrome extension worker loader (for ESPN/CBS delivery contracts)    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Load the real extension background worker (service-worker-v050.js, which
+ * importScripts("service-worker.js")) with a recording chrome API stub.
+ */
+function loadExtensionWorker(options = {}) {
+  const executeScriptCalls = [];
+  const runtimeListeners = [];
+  const updatedListeners = [];
+  const sanctumUrl = options.sanctumUrl || PAGE_URL;
+  const chrome = {
+    runtime: { onMessage: { addListener(fn) { runtimeListeners.push(fn); } } },
+    tabs: {
+      onUpdated: { addListener(fn) { updatedListeners.push(fn); } },
+      onRemoved: { addListener() {} },
+      async get(id) { return { id, url: sanctumUrl, active: true }; },
+      async query() { return []; },
+      async create(opts) { return { id: 900, url: opts.url, active: true }; },
+      async update(id, opts) { return { id, ...(opts || {}) }; },
+      async sendMessage() { return { success: true }; }
+    },
+    storage: { session: { async get() { return {}; }, async set() {}, async remove() {} } },
+    scripting: {
+      async executeScript(details) {
+        executeScriptCalls.push(details);
+        return [{ result: null }];
+      }
+    }
+  };
+  const extDir = path.join(REPO_ROOT, 'cbs-extension');
+  const sandbox = { chrome, console, setTimeout, clearTimeout, Date, Promise, Set, Map };
+  sandbox.globalThis = sandbox;
+  sandbox.self = sandbox;
+  const context = vm.createContext(sandbox);
+  sandbox.importScripts = (...files) => {
+    files.forEach((file) => {
+      vm.runInContext(fs.readFileSync(path.join(extDir, file), 'utf8'), context, { filename: 'cbs-extension/' + file });
+    });
+  };
+  vm.runInContext(
+    fs.readFileSync(path.join(extDir, 'service-worker-v050.js'), 'utf8'),
+    context,
+    { filename: 'cbs-extension/service-worker-v050.js' }
+  );
+  return { chrome, context, sandbox, executeScriptCalls, runtimeListeners, updatedListeners };
+}
+
+/**
+ * Execute a function captured from chrome.scripting.executeScript inside the
+ * page, the way Chrome does for world "MAIN": the function is serialized with
+ * toString() and invoked with JSON-cloned args in the page's global scope.
+ */
+function runInjectedFunction(harness, details) {
+  const args = JSON.parse(JSON.stringify(details.args || []));
+  harness.context.__phase0InjectedArgs = args;
+  try {
+    return harness.run('(' + details.func.toString() + ').apply(null, __phase0InjectedArgs)', 'executeScript-func.js');
+  } finally {
+    delete harness.context.__phase0InjectedArgs;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Golden normalization                                                */
+/* ------------------------------------------------------------------ */
+
+const VOLATILE_KEYS = new Set(['syncedAt', 'connectedAt']);
+
+function normalizeVolatile(value) {
+  if (Array.isArray(value)) return value.map(normalizeVolatile);
+  if (value && typeof value === 'object') {
+    const out = {};
+    Object.keys(value).sort().forEach((key) => {
+      out[key] = VOLATILE_KEYS.has(key) && typeof value[key] === 'string'
+        ? '<normalized-timestamp>'
+        : normalizeVolatile(value[key]);
+    });
+    return out;
+  }
+  return value;
+}
+
+/** Record every call to selected LeagueConnection methods (delegating to the real ones). */
+function spyLeagueConnection(harness, methods = ['connect', 'update', 'updateConnection']) {
+  const LC = harness.window.LeagueConnection;
+  const calls = [];
+  methods.forEach((name) => {
+    const original = LC[name];
+    if (typeof original !== 'function') return;
+    LC[name] = function (...args) {
+      calls.push({ method: name, provider: typeof args[0] === 'string' ? args[0] : null });
+      return original.apply(this, args);
+    };
+  });
+  return calls;
+}
+
+module.exports = {
+  REPO_ROOT,
+  PAGE_URL,
+  DESKTOP_UA,
+  loadConnectPage,
+  loadExtensionWorker,
+  runInjectedFunction,
+  normalizeVolatile,
+  spyLeagueConnection,
+  matchesSelector,
+  readRepoFile
+};
