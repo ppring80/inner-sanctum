@@ -17,6 +17,28 @@ const WEEKLY_STATUS = Object.freeze({
       status: "DOUBTFUL",
       reason: "Doubtful for Week 2; retain for ranking visibility but flag the availability risk."
     })
+  }),
+  "2026:3": Object.freeze({
+    "brock bowers": Object.freeze({
+      status: "QUESTIONABLE",
+      reason: "Questionable for Week 3 with a knee injury after missing Friday practice."
+    }),
+    "dallas goedert": Object.freeze({
+      status: "OUT",
+      reason: "Ruled out for Week 3 with a knee injury."
+    }),
+    "mason taylor": Object.freeze({
+      status: "OUT",
+      reason: "Ruled out for Week 3 with a thumb injury."
+    }),
+    "chig okonkwo": Object.freeze({
+      status: "OUT",
+      reason: "Ruled out for Week 3 with a hamstring injury."
+    }),
+    "colby parkinson": Object.freeze({
+      status: "QUESTIONABLE",
+      reason: "Questionable for Week 3 with a knee injury."
+    })
   })
 });
 
