@@ -1,0 +1,181 @@
+/*
+  THE INNER SANCTUM — mobile-connect.js  (Phase 1, mobile league-connect)
+  ------------------------------------------------------------------------
+  Provider-neutral "bring your league to this device" flow.
+
+  <script src="/mobile-connect.js"></script>
+  (include after league-connection.js and provider-adapters.js)
+
+  DESKTOP (Windows, Mac, Linux — including touch-screen laptops)
+    - Never rewrites the CBS or ESPN provider forms.
+    - Adds a separate "Send to my phone" panel after #providerForms when the
+      active league is a supported provider. It creates a one-time link via
+      /.netlify/functions/connection-handoff and shows it as a QR code plus a
+      copyable link.
+
+  MOBILE (Android, iPhone, iPad including iPadOS desktop-style user agents)
+    - For CBS and ESPN, replaces the desktop-only connection instructions with
+      one provider-neutral message: already connected on a computer? Bring your
+      league to this device.
+
+  ANY DEVICE
+    - /connect-league#handoff=<code> (production form): the code is read and
+      removed from the address bar as soon as this script evaluates, before any
+      request, then claimed once, validated, and saved with the same
+      LeagueConnection API the existing connection flows use; then the ChatGPT
+      snapshot refresh runs and the connected state renders. A fragment is
+      never sent in HTTP requests, server logs or Referer headers.
+    - /connect-league?handoff=<code> is still accepted for compatibility with
+      links created before the fragment form; it is removed the same way.
+    - The code is never written to localStorage or sessionStorage.
+
+  What moves between devices is the finished, sanitized LeagueConnection
+  record. No provider password, cookie or session value is ever involved, and
+  the ChatGPT link is never included.
+
+  Adding a provider later (for example Yahoo) only requires adding it to
+  HANDOFF_PROVIDERS here and in the handoff function.
+*/
+
+(function () {
+  "use strict";
+
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  var HANDOFF_ENDPOINT = "/.netlify/functions/connection-handoff";
+  var HANDOFF_PROVIDERS = ["cbs", "espn"];
+  var QR_SCRIPT_SRC = "/vendor/qrcode-generator-2.0.4.js";
+  var DESKTOP_PANEL_ID = "isDeviceHandoffPanel";
+  var MOBILE_FORM_CLASS = "is-mobile-connect";
+  var MOBILE_RESULT_ID = "isMobileConnectResult";
+  var STYLE_ID = "isMobileConnectStyles";
+  var HANDOFF_PARAM = "handoff";
+
+  var PROVIDER_NAMES = { cbs: "CBS", espn: "ESPN", yahoo: "Yahoo", sleeper: "Sleeper" };
+
+  /* ------------------------------------------------------------------ */
+  /* Device detection                                                    */
+  /* ------------------------------------------------------------------ */
+
+  function detectDevice(nav) {
+    var ua = String((nav && nav.userAgent) || "");
+    var touchPoints = Number((nav && nav.maxTouchPoints) || 0);
+
+    // Order matters: Windows/Linux desktops (touch screens included) are never
+    // mobile, even though they may report touch points.
+    if (/Android/i.test(ua)) return { mobile: true, kind: "android" };
+    if (/iPhone|iPod/i.test(ua)) return { mobile: true, kind: "iphone" };
+    if (/iPad/i.test(ua)) return { mobile: true, kind: "ipad" };
+    // iPadOS 13+ Safari reports a Macintosh user agent. Macs have no touch
+    // screen (maxTouchPoints is 0), so a "Macintosh" with multi-touch is an iPad.
+    if (/Macintosh/i.test(ua) && touchPoints > 1) return { mobile: true, kind: "ipad" };
+    return { mobile: false, kind: "desktop" };
+  }
+
+  var device = detectDevice(window.navigator);
+
+  /* ------------------------------------------------------------------ */
+  /* Helpers                                                             */
+  /* ------------------------------------------------------------------ */
+
+  function providerName(provider) {
+    return PROVIDER_NAMES[provider] || "your";
+  }
+
+  function isHandoffProvider(provider) {
+    return HANDOFF_PROVIDERS.indexOf(provider) >= 0;
+  }
+
+  function hasValue(value) {
+    return value !== null && value !== undefined && String(value).trim() !== "";
+  }
+
+  function isTransferableRecord(record) {
+    return Boolean(
+      record &&
+      typeof record === "object" &&
+      isHandoffProvider(record.provider) &&
+      hasValue(record.leagueId) &&
+      hasValue(record.teamId) &&
+      Array.isArray(record.roster)
+    );
+  }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function leagueConnection() {
+    return window.LeagueConnection || null;
+  }
+
+  function currentSelectedProvider() {
+    try {
+      return window.selectedProvider || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function formatTime(iso) {
+    var date = new Date(iso);
+    if (isNaN(date.getTime())) return "";
+    try {
+      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } catch (e) {
+      return date.toISOString().slice(11, 16);
+    }
+  }
+
+  function formatSynced(iso) {
+    var date = new Date(iso);
+    if (isNaN(date.getTime())) return "";
+    try {
+      return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    } catch (e) {
+      return date.toISOString().slice(0, 16).replace("T", " ");
+    }
+  }
+
+  function ensureStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    var style = el("style");
+    style.id = STYLE_ID;
+    style.textContent =
+      ".is-handoff-panel{margin-top:16px;padding:16px;border:1px solid rgba(201,162,75,.35);border-radius:10px;background:rgba(20,15,9,.6)}" +
+      ".is-handoff-title{font-family:'Cinzel',serif;font-size:14px;color:#f2e6c8;margin-bottom:6px}" +
+      ".is-handoff-copy{font-size:13px;color:#b9a882;margin:0 0 12px}" +
+      ".is-handoff-btn{background:#C9A24B;color:#140f09;border:0;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer}" +
+      ".is-handoff-btn[disabled]{opacity:.6;cursor:wait}" +
+      ".is-handoff-output{margin-top:14px}" +
+      ".is-handoff-qr{background:#fff;padding:10px;border-radius:8px;display:inline-block;line-height:0}" +
+      ".is-handoff-qr svg{width:200px;height:200px}" +
+      ".is-handoff-link-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}" +
+      ".is-handoff-link{flex:1 1 260px;min-width:0;background:#1d160d;color:#f2e6c8;border:1px solid rgba(201,162,75,.35);border-radius:6px;padding:8px;font-size:12px}" +
+      ".is-handoff-copy-btn{background:transparent;color:#C9A24B;border:1px solid #C9A24B;border-radius:6px;padding:8px 12px;cursor:pointer}" +
+      ".is-handoff-note{font-size:12px;color:#9c8c68;margin-top:8px}" +
+      ".is-handoff-status{margin-top:10px;font-size:13px}" +
+      ".is-handoff-status.error{color:#e8907a}.is-handoff-status.success{color:#9fd6a1}";
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  // Fragment (#handoff=) is the production form; the query form (?handoff=)
+  // is accepted only for compatibility with earlier links.
+  function readHandoffCode() {
+    var loc = window.location;
+    try {
+      var hash = String(loc.hash || "").replace(/^#/, "");
+      var fromFragment = new URLSearchParams(hash).get(HANDOFF_PARAM);
+      if (fromFragment) return fromFragment;
+      return new URLSearchParams(loc.search || "").get(HANDOFF_PARAM) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function stripHandoffFromUrl() {
+    var loc = window.location;
+
