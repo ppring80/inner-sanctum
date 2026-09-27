@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - phase1-transfer-staging
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
