@@ -20,6 +20,23 @@ const WEEKLY_STATUS = Object.freeze({
       status: "OUT",
       reason: "Ruled out for Week 2 against Cincinnati with a hamstring injury."
     })
+  }),
+  "2026:3": Object.freeze({
+    "nico collins": Object.freeze({ status: "OUT", reason: "Ruled out for Week 3 with a hamstring injury." }),
+    "puka nacua": Object.freeze({ status: "DOUBTFUL", reason: "Doubtful for Week 3 after missing practice all week with a hip/groin injury." }),
+    "zay flowers": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a hamstring injury after limited practice." }),
+    "dj moore": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a shoulder injury." }),
+    "keon coleman": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with an ankle injury." }),
+    "mike evans": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a hip injury." }),
+    "michael pittman": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a foot injury." }),
+    "marvin mims": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a foot injury." }),
+    "xavier legette": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with a knee injury." }),
+    "jalen coker": Object.freeze({ status: "QUESTIONABLE", reason: "Questionable for Week 3 with an ankle injury." }),
+    "marquise brown": Object.freeze({ status: "OUT", reason: "Ruled out for Week 3 with an ankle injury." }),
+    "andrei iosivas": Object.freeze({ status: "OUT", reason: "Ruled out for Week 3 with a thumb injury." }),
+    "alec pierce": Object.freeze({ status: "OUT", reason: "Ruled out for Week 3 with a heel injury." }),
+    "demarcus robinson": Object.freeze({ status: "OUT", reason: "Ruled out for Week 3 with an ankle injury." }),
+    "devonta smith": Object.freeze({ status: "ACTIVE", reason: "Full participant Saturday with no Week 3 game designation." })
   })
 });
 
