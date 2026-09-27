@@ -18,10 +18,10 @@ assert(netlify.includes('Cache-Control = "no-cache, must-revalidate"'));
 assert(landing.includes('Rankings built for <em>this week.</em>'));
 assert(landing.includes('/.netlify/functions/weekly-sage-rankings'));
 assert(landing.includes("var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin_asdk_app_6a99f442d5008191bcda4d6176318fef'"));
-assert(landing.includes('Open SAGE in ChatGPT'));
-assert(landing.includes('Click <strong>Try in chat</strong>'));
+assert(landing.includes('Use SAGE in ChatGPT'));
+assert(landing.includes('Opens the official Inner Sanctum SAGE page in ChatGPT. Click <strong>Try in chat</strong> to start.'));
 assert(landing.includes("fbq('trackCustom','SageChatGPTClick')"));
-assert(landing.includes('No subscription or connected league required'));
+assert(landing.includes('No subscription or connected league required'));\nassert(!landing.includes('class="hero-starters"'));
 assert(sitemap.includes('https://theinnersanctum.xyz/sage'));
 
 console.log('SAGE landing page regression tests passed.');
