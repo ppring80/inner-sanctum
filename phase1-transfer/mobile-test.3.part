@@ -1,0 +1,81 @@
+    });
+    assert.strictEqual(h.historyCalls[0].url, '/connect-league?ref=qr#tab=espn');
+    assert.ok(!h.window.location.href.includes(CODE));
+  });
+
+  await test('a link opened in an already-open tab (fragment change, no reload) is imported and removed', async () => {
+    const record = await realCbsRecord();
+    const { calls, responder } = claimResponder({ status: 200, body: { success: true, record } });
+    const h = loadConnectPage({ userAgent: UA.androidChrome, fetchResponder: responder });
+    assert.strictEqual(calls.length, 0, 'nothing claimed on a normal visit');
+    Object.assign(h.window.location, { hash: '#handoff=' + CODE, href: FRAGMENT_LINK });
+    h.window.dispatchEvent(h.createEvent('hashchange'));
+    assert.ok(!h.window.location.href.includes(CODE), 'removed synchronously in the hashchange handler');
+    await h.window.InnerSanctumDeviceConnect.whenImported();
+    await h.settle();
+    assert.deepStrictEqual(calls.map((c) => c.body), [{ action: 'claim', code: CODE }]);
+    assert.deepStrictEqual(scenarios.clone(h.window.LeagueConnection.getConnection('cbs')), record);
+    h.timeline.filter((e) => e.type === 'fetch').forEach((e) => assert.ok(!e.locationHref.includes(CODE)));
+  });
+
+  /* ---------------- end to end through the real handler ---------------- */
+
+  await test('end to end: desktop Send to my phone -> phone opens link -> league connected; link cannot be reused', async () => {
+    const fake = createFakeBlobs();
+    const handoff = loadFunctionWithFakeBlobs('netlify/functions/connection-handoff.js', fake);
+    const viaHandler = async (url, init) => {
+      if (!/connection-handoff/.test(url)) return { status: 200, body: {} };
+      const res = await handoff.handler({
+        httpMethod: init.method,
+        headers: { origin: 'https://theinnersanctum.xyz', 'x-nf-client-connection-ip': '203.0.113.20' },
+        body: init.body
+      });
+      return { status: res.statusCode, body: JSON.parse(res.body) };
+    };
+
+    const desktop = loadConnectPage({ fetchResponder: viaHandler });
+    await desktop.window.receiveCbsConnection(scenarios.readInput('cbs-capture.input.json'));
+    await desktop.settle();
+    desktop.document.querySelector('#isDeviceHandoffPanel .is-handoff-btn').click();
+    await waitFor(() => desktop.document.querySelector('#isDeviceHandoffPanel .is-handoff-link'), 'link');
+    const link = desktop.document.querySelector('#isDeviceHandoffPanel .is-handoff-link').getAttribute('value');
+    assert.match(link, /^https:\/\/theinnersanctum\.xyz\/connect-league#handoff=[A-Za-z0-9_-]{43}$/);
+    assert.ok(!link.includes('?handoff='));
+    const secret = link.split('#handoff=')[1];
+    assert.ok(!allBrowserStorage(desktop).includes(secret), 'desktop never stores the code');
+
+    const phone = loadConnectPage({ url: link, userAgent: UA.androidChrome, fetchResponder: viaHandler });
+    await phone.window.InnerSanctumDeviceConnect.whenImported();
+    await phone.settle();
+
+    // After a successful claim the code exists nowhere on the phone or server.
+    assert.ok(!phone.window.location.href.includes(secret), 'not in the address bar');
+    assert.ok(!allBrowserStorage(phone).includes(secret), 'not in localStorage/sessionStorage');
+    assert.ok(!phone.document.documentElement.outerHTML.includes(secret), 'not in the page DOM');
+    phone.timeline.filter((e) => e.type === 'fetch').forEach((e) => {
+      assert.ok(!e.url.includes(secret), 'never in a request URL');
+      assert.ok(!e.locationHref.includes(secret), 'already removed from the page URL when requests start');
+    });
+    fake.stores.forEach((entries, storeName) => {
+      entries.forEach((entry, key) => {
+        assert.ok(!key.includes(secret), 'not a storage key in ' + storeName);
+        assert.ok(!entry.raw.includes(secret), 'not a stored value in ' + storeName);
+      });
+    });
+    assert.deepStrictEqual(
+      scenarios.clone(phone.window.LeagueConnection.getConnection('cbs')),
+      scenarios.clone(desktop.window.LeagueConnection.getConnection('cbs'))
+    );
+    assert.strictEqual(phone.document.getElementById('isMobileConnectResult').className, 'result-box success show');
+
+    const second = loadConnectPage({ url: link, userAgent: UA.iphoneSafari, maxTouchPoints: 5, fetchResponder: viaHandler });
+    await second.window.InnerSanctumDeviceConnect.whenImported();
+    assert.match(second.document.getElementById('isMobileConnectResult').textContent, /expired or was already used/);
+    assert.strictEqual(second.getStoredState(), null);
+  });
+
+  console.log('mobile-connect.test.js: ' + passed + ' passed');
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
