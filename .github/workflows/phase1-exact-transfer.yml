@@ -1,9 +1,7 @@
 name: Phase 1 Exact Transfer
 
 on:
-  push:
-    branches:
-      - phase1-transfer-staging
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: phase1-transfer-staging
           fetch-depth: 0
 
       - name: Reassemble and verify validated source
