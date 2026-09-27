@@ -1,0 +1,70 @@
+name: Phase 1 Exact Transfer
+
+on:
+  push:
+    branches:
+      - phase1-transfer-staging
+
+permissions:
+  contents: write
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reassemble and verify validated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/phase1/tests/helpers /tmp/phase1/tests /tmp/phase1/netlify/functions /tmp/phase1/vendor /tmp/phase1/docs
+          cat phase1-transfer/mobile-connect.*.part > /tmp/phase1/mobile-connect.js
+          cat phase1-transfer/harness.*.part > /tmp/phase1/tests/helpers/connect-page-harness.js
+          cat phase1-transfer/mobile-test.*.part > /tmp/phase1/tests/mobile-connect.test.js
+
+          test "$(git hash-object /tmp/phase1/mobile-connect.js)" = "77b8257136dd5ea9ab88ce33996e8ab3b08b7302"
+          test "$(git hash-object /tmp/phase1/tests/helpers/connect-page-harness.js)" = "6eee53ff878651cd7837430e0bf62ef9985dca09"
+          test "$(git hash-object /tmp/phase1/tests/mobile-connect.test.js)" = "84d98843d302b683756775b3c78cb7e7f79a00c9"
+
+          cp netlify/functions/connection-handoff.js /tmp/phase1/netlify/functions/
+          cp tests/connection-handoff.test.js /tmp/phase1/tests/
+          cp tests/helpers/fake-netlify-blobs.js /tmp/phase1/tests/helpers/
+          cp tests/vendor-integrity.test.js /tmp/phase1/tests/
+          cp vendor/README.md vendor/qrcode-generator-2.0.4.js /tmp/phase1/vendor/
+          cp docs/MOBILE_LEAGUE_CONNECT.md /tmp/phase1/docs/
+          cp connect-league.html /tmp/phase1/
+
+      - name: Build exact Phase 1 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main feature/universal-mobile-league-connect
+          git checkout -B feature/universal-mobile-league-connect origin/main
+
+          cp /tmp/phase1/mobile-connect.js .
+          cp /tmp/phase1/connect-league.html .
+          mkdir -p netlify/functions tests/helpers vendor docs
+          cp /tmp/phase1/netlify/functions/connection-handoff.js netlify/functions/
+          cp /tmp/phase1/tests/connection-handoff.test.js tests/
+          cp /tmp/phase1/tests/mobile-connect.test.js tests/
+          cp /tmp/phase1/tests/vendor-integrity.test.js tests/
+          cp /tmp/phase1/tests/helpers/fake-netlify-blobs.js tests/helpers/
+          cp /tmp/phase1/tests/helpers/connect-page-harness.js tests/helpers/
+          cp /tmp/phase1/vendor/README.md /tmp/phase1/vendor/qrcode-generator-2.0.4.js vendor/
+          cp /tmp/phase1/docs/MOBILE_LEAGUE_CONNECT.md docs/
+
+          git add mobile-connect.js connect-league.html netlify/functions/connection-handoff.js \
+            tests/connection-handoff.test.js tests/mobile-connect.test.js tests/vendor-integrity.test.js \
+            tests/helpers/fake-netlify-blobs.js tests/helpers/connect-page-harness.js \
+            vendor/README.md vendor/qrcode-generator-2.0.4.js docs/MOBILE_LEAGUE_CONNECT.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat: universal mobile league connection"
+
+          test "$(git rev-parse HEAD^{tree})" = "3f9821a2356ed9414c7b2352d46bdfb52d622e9b"
+          git push --force-with-lease=refs/heads/feature/universal-mobile-league-connect:f8221e276c25f4545096fe98156a0149fdf4a91c \
+            origin HEAD:refs/heads/feature/universal-mobile-league-connect
