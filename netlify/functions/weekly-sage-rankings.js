@@ -1,3 +1,4 @@
+const { readWeeklyProjections, attachProjectionPositions } = require("./_weekly-projections.js");
 // netlify/functions/weekly-sage-rankings.js
 //
 // WEEKLY SAGE — UNIFIED WEEKLY RANKINGS ENDPOINT
@@ -230,7 +231,7 @@ function applyGameEligibility(positions, now, evidenceUsage) {
   // authoritative pregame SAGE evidence to compare provider-available players
   // and the connected roster. Provider availability remains the hard claim
   // gate, and all injury/inactive exclusions above still apply.
-  return evidenceUsage === "waiver"
+  return (evidenceUsage === "waiver" || evidenceUsage === "archive")
     ? []
     : removeStartedGames(positions, now);
 }
@@ -444,6 +445,8 @@ exports.handler = async function (event) {
     });
   }
 
+  const projectionCache = seasonType === "reg" ? await readWeeklyProjections(season,targetWeek,scoring) : null;
+
   let baseUrl;
   try {
     baseUrl = getBaseUrl(event);
@@ -479,6 +482,8 @@ exports.handler = async function (event) {
         });
       }
 
+      const week1Positions = normalizeWeek1DefenseIdentity(data.positions);
+      const projectionCoverage = attachProjectionPositions(week1Positions,projectionCache);
       return jsonResponse(200, {
         evidenceType: "weekly-sage-rankings",
         schemaVersion: 1,
@@ -488,10 +493,11 @@ exports.handler = async function (event) {
         seasonType,
         scoring,
         teams: Number(teams),
-        positions: normalizeWeek1DefenseIdentity(data.positions),
+        positions: week1Positions,
         failures: data.failures,
         metadata: {
           ...data.metadata,
+          projections: projectionCoverage,
           route: "week1-adp-baseline",
           defenseIdentity: "canonical-nfl-team-code"
         }
@@ -560,6 +566,7 @@ exports.handler = async function (event) {
     }
   });
 
+  const projectionCoverage = attachProjectionPositions(positions,projectionCache);
   const centralAvailability = await loadCentralAvailability();
   const availabilityExclusions = applyCentralAvailability(
     positions,
@@ -599,6 +606,8 @@ exports.handler = async function (event) {
     failures,
 
     metadata: {
+      projections: projectionCoverage,
+      complete: successCount === POSITIONS.length,
       positionsRequested: POSITIONS,
       positionsSucceeded: POSITIONS.filter((_, i) => results[i].ok),
       positionsFailed: POSITIONS.filter((_, i) => !results[i].ok),
@@ -619,11 +628,11 @@ exports.handler = async function (event) {
           : "Injury cache is stale or unavailable; verify late-breaking game statuses."
       },
       gameEligibility: {
-        rule: evidenceUsage === "waiver"
+        rule: (evidenceUsage === "waiver" || evidenceUsage === "archive")
           ? "Preserve target-week pregame SAGE rows as historical waiver evidence; provider availability and inactive-player guardrails remain authoritative."
           : "Players and team defenses leave actionable rankings at scheduled kickoff.",
         evidenceUsage,
-        startedGameEvidencePreserved: evidenceUsage === "waiver",
+        startedGameEvidencePreserved: (evidenceUsage === "waiver" || evidenceUsage === "archive"),
         timeZone: "America/New_York",
         exclusionsApplied: startedGameExclusions.length,
         excluded: startedGameExclusions

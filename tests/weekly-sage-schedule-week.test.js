@@ -11,12 +11,12 @@ assert.strictEqual(
   'the schedule writer must remain on Week 1 before Tuesday'
 );
 assert.strictEqual(
-  getCurrentNFLWeek(new Date('2026-09-15T00:00:00Z')),
+  getCurrentNFLWeek(new Date('2026-09-15T06:00:00Z')),
   2,
   'the schedule writer must advance with positional snapshots on Tuesday'
 );
 assert.strictEqual(
-  getCurrentNFLWeek(new Date('2026-09-22T00:00:00Z')),
+  getCurrentNFLWeek(new Date('2026-09-22T06:00:00Z')),
   3,
   'each later Tuesday must advance exactly one week'
 );

@@ -14,6 +14,7 @@
 // calculate FAAB, or submit transactions.
 
 const { connectLambda, getStore } = require('@netlify/blobs');
+const {readWeeklyProjections, fillProjection} = require('./_weekly-projections.js');
 const PlayerIdentity = require('../../player-identity.js');
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
@@ -994,6 +995,7 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         percentOwned: numberOrNull(candidate?.percentOwned),
         percentStarted: numberOrNull(candidate?.percentStarted),
         providerProjectedPoints: numberOrNull(candidate?.projectedPoints),
+        projection: candidate.projection || null,
         identity: {
           sageMatched: Boolean(sageMatch.match),
           sageMatchReason: sageMatch.reason,
@@ -1343,7 +1345,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    let [weeklyData, risersFallersData, opportunityData, scheduleData, registryRows] = await Promise.all([
+    let [weeklyData, risersFallersData, opportunityData, scheduleData, registryRows, projectionCache] = await Promise.all([
       fetchWeeklyData(
         event,
         input.season,
@@ -1354,8 +1356,12 @@ exports.handler = async function (event) {
       readRisersFallers(event, input.season, input.week),
       readOpportunityIntel(event, input.season, input.week),
       fetchWeeklySchedule(event, input.season, input.week),
-      readCanonicalPlayerRegistry(event)
+      readCanonicalPlayerRegistry(event),
+      readWeeklyProjections(input.season,input.week,input.scoring)
     ]);
+
+    input.availablePlayers = input.availablePlayers.map(player => fillProjection(player,projectionCache));
+    input.roster = input.roster.map(player => fillProjection(player,projectionCache));
 
     if (weeklyData?.metadata?.degradedMode === true) {
       weeklyData = buildProviderProjectionFallback(
@@ -1418,6 +1424,9 @@ exports.handler = async function (event) {
           trendDataAvailable: Boolean(risersFallersData),
           opportunityDataAvailable: Boolean(opportunityData),
           scheduleDataAvailable: Boolean(scheduleData),
+          projectionCacheAvailable: Boolean(projectionCache),
+          projectionCacheUpdatedAt: projectionCache?.generatedAt || null,
+          projectionsMatched: candidates.filter(row => row.providerProjectedPoints !== null).length,
           sageRequestedWeek: input.week,
           sageSourceWeek:
             Number(weeklyData?.metadata?.sourceWeek) ||
@@ -1426,6 +1435,7 @@ exports.handler = async function (event) {
           sageFallbackUsed: weeklyData?.metadata?.fallbackUsed === true,
           sageFallbackAttempts: weeklyData?.metadata?.fallbackAttempts || [],
           sageUnavailable: weeklyData?.metadata?.degradedMode === true,
+          sageIncomplete: (weeklyData?.metadata?.positionsFailed || []).length > 0,
           sageUnavailableReason: weeklyData?.metadata?.degradedReason || null,
           providerProjectionFallbackUsed:
             weeklyData?.metadata?.projectionFallbackUsed === true,

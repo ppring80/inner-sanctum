@@ -1,3 +1,4 @@
+const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
 // netlify/functions/weekly-sage-te-snapshot.js
 //
 // WEEKLY SAGE — TE POPULATION SNAPSHOT
@@ -393,16 +394,7 @@ async function fetchScheduleWeek({
   week,
   seasonType
 }) {
-  const url =
-    `${baseUrl}/.netlify/functions/weekly-sage-schedule` +
-    `?season=${encodeURIComponent(season)}` +
-    `&week=${encodeURIComponent(week)}` +
-    `&seasonType=${encodeURIComponent(seasonType)}`;
-
-  const data =
-    await fetchJson(
-      url
-    );
+  const data = await readCachedWeeklySchedule({ season, week, seasonType });
 
   return {
     week,

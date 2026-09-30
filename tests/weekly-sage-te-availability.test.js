@@ -18,7 +18,7 @@ assert.deepStrictEqual(applyAvailabilityRiskAdjustments(doubtfulRows), { adjuste
 assert.strictEqual(doubtfulRows[0].rankingScore, 68);
 assert.strictEqual(doubtfulRows[0].recommendation, "SIT");
 
-const futureChig = availabilityForPlayer({ name: "Chig Okonkwo", team: "WSH" }, 2026, 3);
+const futureChig = availabilityForPlayer({ name: "Chig Okonkwo", team: "WSH" }, 2026, 4);
 assert.strictEqual(futureChig.eligible, true, "Dated weekly facts must expire.");
 
 const providerOut = availabilityForPlayer({ name: "Other TE", injuryStatus: "RESERVE/INJURED" }, 2026, 2);

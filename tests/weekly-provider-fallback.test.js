@@ -148,7 +148,7 @@ test('weekly page installs provider fallback for both HTTP and network failures'
   assert.ok(html.includes('/weekly-provider-fallback.js'));
   assert.ok(html.includes('buildConnectedProviderFallback(season, week, scoring)'));
   assert.ok(html.includes('providerProjectionFallbackUsed === true'));
-  assert.ok(html.includes('Current connected-provider projections are shown without inventing SAGE scores.'));
+  assert.ok(html.includes('Connected roster evidence only. Full weekly rankings are temporarily unavailable; automatic recovery is retrying.'));
   assert.ok(html.includes("typeof player.providerProjectedPoints === 'number'"));
 });
 

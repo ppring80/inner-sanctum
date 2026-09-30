@@ -85,8 +85,8 @@ test('week rollover fallback is disclosed instead of presenting stale SAGE as cu
 test('upstream Weekly SAGE outage keeps the provider board visible in degraded mode', () => {
   assert.ok(mainScript.includes('sageUnavailable===true'));
   assert.ok(mainScript.includes('WEEKLY SAGE UPDATING'));
-  assert.ok(mainScript.includes('Provider board available'));
-  assert.ok(mainScript.includes('Players remain visible using provider and opportunity evidence'));
+  assert.ok(mainScript.includes('Evidence needs verification'));
+  assert.ok(mainScript.includes('Some players lack enough verified ranking, projection, or roster evidence'));
 });
 
 test('provider projection fallback is labeled honestly in the table', () => {
@@ -406,7 +406,7 @@ const samplePayload = {
     await flush();
     const shell = sandbox.document._elements.waiverRoot.innerHTML;
     assert.ok(shell.includes('No forced move'));
-    assert.ok(shell.includes('Every available player receives FAAB guidance; 0% means no positive bid is supported by the current evidence'));
+    assert.ok(shell.includes('FAAB bids appear only for supported ADD NOW or STASH recommendations'));
   });
 
   await asyncTest('changing sort to Weekly SAGE reorders the board by position rank', async () => {

@@ -139,68 +139,9 @@
 [functions."refresh-current-nfl-facts"]
   schedule = "30 15 * * *"
 
-# WEEKLY SAGE SHARED SCHEDULE EVIDENCE
-# Builds and caches the current week's normalized schedule before
-# any positional Weekly SAGE snapshot refresh begins.
-#
-# Tuesday 08:40 UTC -- 20 minutes before the first positional
-# snapshot refresh at 09:00 UTC.
-[functions."refresh-weekly-sage-schedule"]
-  schedule = "40 8 * * 2"
-
-# WEEKLY SAGE DEFENSE EVIDENCE
-# Caches the completed week's defensive matchup evidence, one weekly
-# schedule cycle behind the positional snapshots.
-#
-# Tuesday 08:50 UTC -- after the shared schedule (08:40 UTC) and
-# before the first positional snapshot refresh (09:00 UTC).
-[functions."refresh-weekly-sage-defense"]
-  schedule = "50 8 * * 2"
-
-# WEEKLY SAGE PRODUCTION SNAPSHOT REFRESH SCHEDULE (added)
-# Runs each position's dedicated snapshot cache-writer ONCE weekly, at
-# 09:00 UTC every Tuesday, staggered 5 minutes apart (QB/RB/WR/TE/K/DEF) to
-# avoid six functions contending for Tank01 rate limits/CPU at the
-# exact same instant -- the same staggering rationale already used
-# for refresh-player-data (00:00 UTC) vs. its dependent job (00:30
-# UTC) above.
-#
-# TIMING: 09:00 UTC is safely after Monday Night Football concludes
-# (MNF kicks off ~8:15pm ET / ~00:15 UTC Tuesday and typically
-# finishes by ~03:30 UTC), leaving buffer for Tank01 to finalize box
-# scores, while still landing well before "Tuesday morning" for every
-# US time zone (09:00 UTC = 4:00am CT / 5:00am ET / 2:00am PT) so
-# Weekly Rankings is ready before customers check it.
-#
-# All six positions can safely run independently from the same
-# completed-week data -- there is no cross-position dependency, so
-# this is a staggering choice for load/contention only, not a
-# required execution order.
-#
-# Only the six snapshot cache-writers are scheduled here. The
-# positional leaderboards and the unified weekly-sage-rankings
-# endpoint remain request-time reads (they read whatever the most
-# recent scheduled snapshot refresh already cached) -- scheduling
-# them would recompute nothing new and only add unnecessary Tank01
-# traffic, per this task's explicit "do not schedule analytical
-# leaderboard functions unless required" instruction.
-[functions."refresh-qb-snapshot"]
-  schedule = "0 9 * * 2"
-
-[functions."refresh-rb-snapshot"]
-  schedule = "5 9 * * 2"
-
-[functions."refresh-wr-snapshot"]
-  schedule = "10 9 * * 2"
-
-[functions."refresh-te-snapshot"]
-  schedule = "15 9 * * 2"
-
-[functions."refresh-k-snapshot"]
-  schedule = "20 9 * * 2"
-
-[functions."refresh-def-snapshot"]
-  schedule = "25 9 * * 2"
+# Weekly SAGE dependency refreshes are coordinated by recover-weekly-sage
+# below. The watchdog resolves schedule -> defense -> position dependencies,
+# dispatches signed background workers, and skips complete week caches.
 
 # DRAFT OUTLOOK ADP SNAPSHOT
 # Refreshes PPR, half-PPR, and standard ADP once weekly after the
@@ -370,3 +311,11 @@
   for = "/free-agents"
   [headers.values]
     Cache-Control = "no-cache, must-revalidate"
+
+# Cache-only watchdog; missing dependencies are rebuilt in signed background jobs.
+# Completed weeks make no provider calls. Workers share the existing daily budget.
+[functions."recover-weekly-sage"]
+  schedule = "*/10 * * * *"
+
+# Newswire and projections are also coordinated by the watchdog.
+# Both refresh every six hours with bounded retries and the shared budget.

@@ -21,7 +21,8 @@ assert(landing.includes("var CHATGPT_APP_URL='https://chatgpt.com/plugins/plugin
 assert(landing.includes('Use SAGE in ChatGPT'));
 assert(landing.includes('Opens the official Inner Sanctum SAGE page in ChatGPT. Click <strong>Try in chat</strong> to start.'));
 assert(landing.includes("fbq('trackCustom','SageChatGPTClick')"));
-assert(landing.includes('No subscription or connected league required'));\nassert(landing.includes('class="hero-starters"'));
+assert(landing.includes('No subscription or connected league required'));
+assert(landing.includes('class="hero-starters"'));
 assert(landing.includes('Who should I start this week?'));
 assert(landing.includes('Compare two players'));
 assert(landing.includes("Show this week's top 20"));

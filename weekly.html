@@ -681,6 +681,7 @@ function showAcolytePreviewBanner() {
             <th>Team</th>
             <th onclick="setSort('opp')" id="th-opp">Opponent <span class="sort-arrow">▼</span></th>
             <th>Matchup</th>
+            <th>Projection</th>
             <th>SAGE Take</th>
           </tr>
         </thead>
@@ -1159,6 +1160,7 @@ function escapeNewswireHtml(value) {
 }
 
 function formatNewswireTime(value) {
+  if (!value) return 'Source time unavailable';
   var date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleString([], {
@@ -1225,7 +1227,7 @@ function renderNewswire() {
   if (!stories.length) {
     var message = newswireState.view === 'roster'
       ? ((state.myRosterNames || []).length
-          ? 'No current news matches your roster. That is usually good news.'
+          ? 'No current source headlines match your roster. Check official injury reports for game status.'
           : 'Connect a league or build your roster to prioritize your players.')
       : (newswireState.error
           ? 'The Newswire could not refresh. Weekly rankings remain available below.'
@@ -1500,7 +1502,7 @@ function loadWeeklyRankings() {
     '&week=' + encodeURIComponent(String(week)) +
     '&seasonType=reg' +
     '&scoring=' + encodeURIComponent(scoring) +
-    '&teams=12';
+    '&teams=12&evidenceUsage=archive';
 
   return fetch(url, { credentials: 'same-origin' })
     .then(function (res) {
@@ -1514,7 +1516,7 @@ function loadWeeklyRankings() {
         ? flattenRankings(result.data).length
         : 0;
       if (!result.ok || !result.data || !result.data.positions || !rowsReturned) {
-        var fallback = buildConnectedProviderFallback(season, week, scoring);
+        var fallback = state.myRosterOnly ? buildConnectedProviderFallback(season, week, scoring) : null;
 
         if (fallback) {
           state.rankings = fallback;
@@ -1529,7 +1531,8 @@ function loadWeeklyRankings() {
         }
       } else {
         state.rankings = result.data;
-        state.loadError = null;
+        state.loadError = result.data.metadata && result.data.metadata.positionsFailed && result.data.metadata.positionsFailed.length
+          ? 'Weekly SAGE is incomplete. Missing positions: ' + result.data.metadata.positionsFailed.join(', ') + '. Automatic recovery is retrying.' : null;
         state.sortKey = 'proj';
         state.sortDir = week === 1 ? 'asc' : 'desc';
       }
@@ -1538,7 +1541,7 @@ function loadWeeklyRankings() {
     })
     .catch(function (err) {
       state.loading = false;
-      var fallback = buildConnectedProviderFallback(season, week, scoring);
+      var fallback = state.myRosterOnly ? buildConnectedProviderFallback(season, week, scoring) : null;
       state.rankings = fallback;
       state.loadError = fallback
         ? null
@@ -1579,8 +1582,8 @@ function updateWeeklyContextUI() {
       ? ' Injury data updated ' + new Date(availability.updatedAt).toLocaleString() +
         (availability.fresh ? '.' : '; verify late-breaking statuses.')
       : '';
-    bannerText.innerHTML = providerFallback
-      ? '📊 <strong>Provider Projection Rankings</strong> — Weekly SAGE evidence is updating. Current connected-provider projections are shown without inventing SAGE scores.'
+    bannerText.innerHTML = state.loadError ? '<strong>Weekly SAGE updating</strong> — ' + escapeNewswireHtml(state.loadError) : providerFallback
+      ? '📊 <strong>Provider Projection Rankings</strong> — Weekly SAGE evidence is updating. Connected roster evidence only. Full weekly rankings are temporarily unavailable; automatic recovery is retrying.'
       : (week1
           ? '📊 <strong>Week 1 Rankings</strong> — built from preseason expectations and current player context. Weekly SAGE incorporates regular-season evidence beginning Week 2.'
           : '📊 <strong>Weekly SAGE</strong> — rankings use prior-week evidence to produce the current week’s start/sit intelligence.' + availabilityNote);
@@ -1743,7 +1746,11 @@ function toggleMyRoster() {
       state.myRosterOnly
     );
 
-  renderTable();
+  if (!state.rankings || (state.rankings.metadata && state.rankings.metadata.providerProjectionFallbackUsed)) {
+    loadWeeklyRankings();
+  } else {
+    renderTable();
+  }
 }
 
 function setSort(key) {
@@ -1876,6 +1883,7 @@ function mapWeeklyRowToProfileModel(row, effectiveCall) {
   var call = (effectiveCall !== undefined) ? effectiveCall : row.call;
 
   var rankStats = [];
+  if (Number.isFinite(row.providerProjectedPoints)) rankStats.push({label:'Projected Points',value:row.providerProjectedPoints.toFixed(1)});
   if (row.positionRank != null) {
     rankStats.push({ label: row.pos + ' Rank', value: String(row.positionRank) });
   }
@@ -2272,7 +2280,7 @@ function renderTable() {
             '">' +
 
               '<td class="cell-proj">' +
-                (rowIndex + 1) +
+                (state.rankings && state.rankings.metadata && state.rankings.metadata.providerProjectionFallbackUsed ? '—' : rowIndex + 1) +
               '</td>' +
 
               '<td>' +
@@ -2312,6 +2320,8 @@ function renderTable() {
               '<td>' +
                 matchupCellHtml(p.matchup) +
               '</td>' +
+
+              '<td class="cell-mono">' + (Number.isFinite(p.providerProjectedPoints) ? p.providerProjectedPoints.toFixed(1) : '—') + '</td>' +
 
               '<td>' +
                 '<div class="cell-verdict">' +

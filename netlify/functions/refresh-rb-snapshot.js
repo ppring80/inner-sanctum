@@ -117,46 +117,8 @@ const STORE_NAME =
 
   UPDATE firstWeek2PipelineTuesday for future NFL seasons.
 */
-function getCurrentNFLWeek() {
-  const firstWeek2PipelineTuesday =
-    new Date(
-      "2026-09-15T00:00:00Z"
-    );
-
-  const now =
-    new Date();
-
-  if (
-    now <
-    firstWeek2PipelineTuesday
-  ) {
-    return 1;
-  }
-
-  const diffDays =
-    Math.floor(
-      (
-        now -
-        firstWeek2PipelineTuesday
-      ) /
-      (
-        1000 *
-        60 *
-        60 *
-        24
-      )
-    );
-
-  return Math.max(
-    2,
-    Math.min(
-      18,
-      Math.floor(
-        diffDays /
-        7
-      ) + 2
-    )
-  );
+function getCurrentNFLWeek(now = new Date()) {
+  return require("./_current-nfl-week.js").resolveCurrentNFLWeek(now);
 }
 
 function jsonResponse(

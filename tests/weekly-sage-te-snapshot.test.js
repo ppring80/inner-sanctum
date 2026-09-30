@@ -27,6 +27,12 @@
 'use strict';
 
 const assert = require('assert');
+const Module = require('module');
+const originalLoad = Module._load;
+Module._load = function(name, parent, isMain) {
+  if (name === './_weekly-sage-schedule-cache.js') return { readCachedWeeklySchedule: async ({week}) => ({games: [{gameID: week === 1 ? 'G1' : 'G2', away: 'NYJ', home: 'NE', gameDate: week === 1 ? '20260914' : '20260921', gameTime: '1:00', gameStatus: 'Final'}]}) };
+  return originalLoad.call(this, name, parent, isMain);
+};
 
 const {
   buildTeSnapshot,
@@ -41,6 +47,8 @@ const {
     MINIMUM_TARGETS_PER_GAME
   }
 } = require('../netlify/functions/weekly-sage-te-snapshot.js');
+
+Module._load = originalLoad;
 
 let passed = 0, failed = 0;
 const failures = [];
