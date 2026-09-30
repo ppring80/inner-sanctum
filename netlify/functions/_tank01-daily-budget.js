@@ -89,8 +89,13 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     return { allowed: true, reason: "reserved", job, requested, reserved: next.reserved, remaining: limit - next.reserved, limit, day };
   }
 
+  // Lambda connectLambda configures an edge URL but no uncachedEdgeURL.
+  // Strong reads therefore throw before any provider work. Read through the
+  // supported adapter: onlyIfMatch/onlyIfNew remain the atomic safety boundary.
+  // A stale ETag cannot reserve calls: the conditional write loses and retries
+  // or fails closed. It never increases the ledger from a stale read.
   for (let attempt = 1; attempt <= MAX_CAS_ATTEMPTS; attempt += 1) {
-    const current = await store.getWithMetadata(key, { type: "json", consistency: "strong" });
+    const current = await store.getWithMetadata(key, { type: "json" });
     const state = current && current.data && typeof current.data === "object"
       ? current.data
       : { day, reserved: 0, normalReserved: 0, injuryReserved: 0, jobs: {} };

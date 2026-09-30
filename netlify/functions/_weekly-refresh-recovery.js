@@ -37,8 +37,8 @@ async function inspectJobs(getStore, season, week) {
   const state = getStore({ name: STATE_STORE });
   const rows = [];
   for (const job of jobsForWeek(season, week)) {
-    const cached = await getStore({ name: job.store }).get(cacheKey(job), { type: 'json', consistency: 'strong' });
-    const status = await state.get(stateKey(job), { type: 'json', consistency: 'strong' });
+    const cached = await getStore({ name: job.store }).get(cacheKey(job), { type: 'json' });
+    const status = await state.get(stateKey(job), { type: 'json' });
     rows.push({ ...job, ready: completeCache(cached, job), status });
   }
   return rows;
@@ -76,26 +76,29 @@ function verify(body, signature, now = Date.now()) {
 async function runJob(job, event, dependencies) {
   const { getStore, build, now = Date.now() } = dependencies;
   const cache = getStore({ name: job.store });
-  if (completeCache(await cache.get(cacheKey(job), { type: 'json', consistency: 'strong' }), job)) return { status: 'ready', skipped: true };
+  if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job)) return { status: 'ready', skipped: true };
   const state = getStore({ name: STATE_STORE });
   const key = stateKey(job);
-  const previous = await state.getWithMetadata(key, { type: 'json', consistency: 'strong' });
+  const previous = await state.getWithMetadata(key, { type: 'json' });
   if (!canRetry(previous && previous.data, now)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const value = { status: 'running', day, attemptLimit: ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {
-    if (completeCache(await cache.get(cacheKey(job), { type: 'json', consistency: 'strong' }), job)) {
+    if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job)) {
       await state.setJSON(key, { ...value, status: 'ready', leaseUntil: 0 });
       return { status: 'ready', skipped: true };
     }
     // Claim precedes the existing builder's atomic provider budget reservation.
     const result = await build(job, event);
-    const ready = result.statusCode === 200 && completeCache(await cache.get(cacheKey(job), { type: 'json', consistency: 'strong' }), job);
-    let detail = null;
-    try { const response = JSON.parse(result.body || '{}'); detail = response.error || null; } catch (_) {}
-    const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? 0 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
+    let response = {};
+    try { response = JSON.parse(result.body || '{}'); } catch (_) {}
+    // Each builder validates completeness before writing and returns cached:true.
+    // Do not reject its successful write because the Lambda edge read can lag.
+    const ready = result.statusCode === 200 && (response.cached === true || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
+    const detail = response.error || null;
+    const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
     await state.setJSON(key, final);
     console.log('WEEKLY_REFRESH_RESULT', JSON.stringify({ job: job.job, week: job.week, ...final }));
     return final;
