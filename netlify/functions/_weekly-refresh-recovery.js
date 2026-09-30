@@ -105,7 +105,7 @@ async function runJob(job, event, dependencies) {
     try { response = JSON.parse(result.body || '{}'); } catch (_) {}
     // Each builder validates completeness before writing and returns cached:true.
     // Do not reject its successful write because the Lambda edge read can lag.
-    const ready = result.statusCode === 200 && (response.cached === true || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
+    const ready = result.statusCode === 200 && (response.cached === true || (response.writeOccurred === true && response.gamesFailed === 0 && response.noOp === false) || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
     const detail = response.error || null;
     const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
     await state.setJSON(key, final);

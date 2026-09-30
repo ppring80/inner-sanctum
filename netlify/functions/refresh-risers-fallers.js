@@ -161,6 +161,7 @@ async function fetchPlayerStatsForGames(gameIDs) {
   );
 
   const allPlayers = [];
+  let failed = 0;
   results.forEach((result, i) => {
     const gameID = gameIDs[i];
     if (result.status === "fulfilled") {
@@ -168,12 +169,15 @@ async function fetchPlayerStatsForGames(gameIDs) {
       if (playerStats && typeof playerStats === "object") {
         Object.values(playerStats).forEach(p => allPlayers.push(p));
       } else {
+        failed++;
         console.log(`No playerStats object in box score for ${gameID}`);
       }
     } else {
+      failed++;
       console.log(`Box score fetch failed for ${gameID}:`, result.reason?.message);
     }
   });
+  if (failed) throw new Error(`${failed} box scores failed; previous trend cache preserved.`);
   return allPlayers;
 }
 
@@ -252,10 +256,12 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: msg }) };
   }
 
-  const [currentPlayers, previousPlayers] = await Promise.all([
-    fetchPlayerStatsForGames(currentGameIDs),
-    fetchPlayerStatsForGames(previousGameIDs)
-  ]);
+  let currentPlayers, previousPlayers;
+  try {
+    [currentPlayers,previousPlayers] = await Promise.all([fetchPlayerStatsForGames(currentGameIDs),fetchPlayerStatsForGames(previousGameIDs)]);
+  } catch (error) {
+    return {statusCode:502,body:JSON.stringify({cached:false,error:error.message})};
+  }
 
   const currentSummary = buildWeekSummary(currentPlayers);
   const previousSummary = buildWeekSummary(previousPlayers);
@@ -355,6 +361,7 @@ exports.handler = async (event) => {
   return {
     statusCode: 200,
     body: JSON.stringify({
+      cached: true,
       currentWeek,
       previousWeek,
       playerCount: result.playerCount,
