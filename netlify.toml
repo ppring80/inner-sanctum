@@ -315,6 +315,9 @@
 # Cache-only watchdog; missing dependencies are rebuilt in signed background jobs.
 # Completed weeks make no provider calls. Workers share the existing daily budget.
 [functions."recover-weekly-sage"]
+# Tuesday rollover initiates the new week automatically. Ten-minute checks
+# continue recovery and refresh projections, news and player availability;
+# fresh caches do not call Tank01. Availability retries use the protected budget.
   schedule = "*/10 * * * *"
 
 # Newswire and projections are also coordinated by the watchdog.

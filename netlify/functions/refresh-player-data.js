@@ -110,9 +110,9 @@ exports.handler = async (event) => {
     console.log("getNFLTeams fetch failed, cannot build team list:", e.message);
   }
 
-  if (teamAbvs.length === 0) {
+  if (new Set(teamAbvs).size !== 32 || teamAbvs.length !== 32) {
     console.log("Player data refresh aborted: no team list available");
-    return { statusCode: 500 };
+    return { statusCode: 502, body: JSON.stringify({cached:false,error:"Provider did not supply all 32 teams; previous cache preserved."}) };
   }
 
   const playerMap = {};
@@ -127,7 +127,7 @@ exports.handler = async (event) => {
     const teamAbv = teamAbvs[i];
     if (result.status === "fulfilled") {
       const roster = result.value?.body?.roster;
-      if (Array.isArray(roster)) {
+      if (Array.isArray(roster) && roster.length > 0) {
         roster.forEach(p => {
           if (p.playerID) {
             playerMap[p.playerID] = {
@@ -150,6 +150,10 @@ exports.handler = async (event) => {
     }
   });
 
+  if (teamsFailed || teamsSucceeded !== 32 || Object.keys(playerMap).length < 1000) {
+    return {statusCode:502,body:JSON.stringify({cached:false,error:`Player availability coverage incomplete: ${teamsSucceeded}/32 teams, ${Object.keys(playerMap).length} players; previous cache preserved.`})};
+  }
+
   const store = getStore({ name: "player-data" });
   await store.setJSON("playerData", {
     updatedAt: new Date().toISOString(),
@@ -164,5 +168,5 @@ exports.handler = async (event) => {
     (teamsFailed > 0 ? ` (${teamsFailed} team(s) failed — see logs above)` : "")
   );
 
-  return { statusCode: 200 };
+  return { statusCode: 200, body: JSON.stringify({cached:true,teamsSucceeded,teamsFailed,playerCount:Object.keys(playerMap).length}) };
 };

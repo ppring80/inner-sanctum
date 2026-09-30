@@ -1167,19 +1167,8 @@ function buildProviderProjectionFallback(availablePlayers, roster, metadata = {}
 
 async function fetchWeeklySchedule(event, season, week) {
   try {
-    const baseUrl = getBaseUrl(event);
-    const query = new URLSearchParams({
-      season: String(season),
-      week: String(week),
-      seasonType: 'reg'
-    });
-    const response = await fetch(
-      `${baseUrl}/.netlify/functions/weekly-sage-schedule?${query.toString()}`,
-      { method: 'GET', headers: { Accept: 'application/json' } }
-    );
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data && Array.isArray(data.games) ? data : null;
+    connectLambda(event);
+    return await require('./_weekly-sage-schedule-cache.js').readCachedWeeklySchedule({season,week,seasonType:'reg'});
   } catch (error) {
     return null;
   }

@@ -4,6 +4,9 @@ const { jobsForWeek, verify, runJob, inspectJobs, nextJob } = require('./_weekly
 
 // Static imports keep every builder in the background function bundle.
 const builders = {
+  'refresh-opportunity-intel': require('./refresh-opportunity-intel.js'),
+  'refresh-risers-fallers': require('./refresh-risers-fallers.js'),
+  'refresh-player-data': require('./refresh-player-data.js'),
   'refresh-sage-newswire': require('./refresh-sage-newswire.js'),
   'refresh-weekly-projections': require('./refresh-weekly-projections.js'),
   'refresh-weekly-sage-schedule': require('./refresh-weekly-sage-schedule.js'),
@@ -30,7 +33,7 @@ exports.handler = async event => {
       // Verified internal invocation; never expose the refresh/API secret.
       httpMethod: undefined,
       headers: { ...incoming.headers, host: new URL(process.env.URL).host, 'x-forwarded-proto': 'https' },
-      queryStringParameters: { season: selected.season, week: String(selected.week), seasonType: selected.seasonType }
+      queryStringParameters: selected.job === 'refresh-opportunity-intel' ? {} : { season: selected.season, week: String(selected.week), seasonType: selected.seasonType }
     })
   };
   const started = Date.now();

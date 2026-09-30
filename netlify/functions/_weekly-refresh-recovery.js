@@ -13,14 +13,23 @@ function jobsForWeek(season, targetWeek) {
   for (let week = 1; week <= targetWeek; week++) add('refresh-weekly-sage-schedule', 'weekly-sage-schedule', week, 'weekly-sage-schedule');
   for (let week = 1; week < targetWeek; week++) add('refresh-weekly-sage-defense', 'weekly-sage-defense', week, 'weekly-sage-defense-week');
   for (const position of (targetWeek >= 2 ? ['qb', 'rb', 'wr', 'te', 'k', 'def'] : [])) add(`refresh-${position}-snapshot`, `${position}-snapshot`, targetWeek, `weekly-sage-${position}-snapshot`);
+  for (let week = 1; week < targetWeek; week++) add('refresh-opportunity-intel','opportunity-intel',week,'weekly-opportunity');
+  if (targetWeek >= 3) add('refresh-risers-fallers','risers-fallers',targetWeek-1,'weekly-trends');
+  add('refresh-player-data', 'player-data', targetWeek, 'player-availability-cache');
   add('refresh-weekly-projections', 'weekly-projections', targetWeek, 'weekly-projection-cache');
   add('refresh-sage-newswire', 'sage-newswire', targetWeek, 'source-headlines');
   return jobs;
 }
-const cacheKey = job => job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
-const stateKey = job => `${job.job}:${cacheKey(job)}`;
+const cacheKey = job => ['opportunity-intel','risers-fallers'].includes(job.store) ? 'latest' : job.store === 'player-data' ? 'playerData' : job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
+const stateKey = job => `${job.job}:${cacheKey(job)}${['opportunity-intel','risers-fallers'].includes(job.store) ? ':'+job.season+':'+job.week : ''}`;
 
 function completeCache(value, job) {
+  if (job.store === 'opportunity-intel') return Boolean(value && String(value.season) === job.season && Math.max(...(value.weeksRequested || [])) >= job.week && value.gamesFound > 0 && value.gamesFailed === 0 && Object.keys(value.records || {}).length > 0);
+  if (job.store === 'risers-fallers') return Boolean(value && String(value.season) === job.season && Number(value.currentWeek) === job.week && Number(value.previousWeek) === job.week-1 && Object.keys(value.allDeltas || {}).length > 0);
+  if (job.store === 'player-data') {
+    const age = value && Date.now()-Date.parse(value.updatedAt);
+    return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000);
+  }
   if (job.store === 'sage-newswire') {
     const age = value && Date.now()-Date.parse(value.updatedAt);
     return Boolean(value && value.mode === 'source-headlines' && Array.isArray(value.stories) && value.stories.length && Number.isFinite(age) && age >= 0 && age < 6*60*60*1000);
@@ -52,7 +61,7 @@ function canRetry(status, now = Date.now()) {
 
 function nextJob(rows, now = Date.now()) {
   for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
-    const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
+    const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
     if (pending.length) return pending.find(row => canRetry(row.status, now)) || null;
   }
   return null;
