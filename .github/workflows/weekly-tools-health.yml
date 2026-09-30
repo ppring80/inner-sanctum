@@ -1,0 +1,23 @@
+name: Weekly Tools Production Health
+on:
+  schedule:
+    # Every Tuesday, 07:00 Pacific daylight / 06:00 Pacific standard.
+    # January covers the final regular-season rollover.
+    - cron: '0 14 * 1,9-12 2'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: weekly-tools-production-health
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify real caches and controlled FAAB fixtures
+        run: node scripts/verify-weekly-tools.js
