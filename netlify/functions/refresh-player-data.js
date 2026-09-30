@@ -135,7 +135,8 @@ exports.handler = async (event) => {
               pos: p.pos,
               team: p.team || teamAbv,
               exp: p.exp,
-              injury: p.injury
+              injury: p.injury,
+              rosterStatus: p.rosterStatus || p.status || null
             };
           }
         });
@@ -155,6 +156,11 @@ exports.handler = async (event) => {
   }
 
   const store = getStore({ name: "player-data" });
+  const previous = await store.get("playerData", {type:"json"});
+  for (const [id,player] of Object.entries(previous?.players || {})) {
+    const status = String(player.injury?.designation || player.rosterStatus || "").toUpperCase().replace(/[_-]/g," ");
+    if (!playerMap[id] && ["IR","INJURED RESERVE","RESERVE/INJURED","PUP","RESERVE/PUP","NFI","RESERVE/NFI","SUSPENDED"].includes(status)) playerMap[id]={...player,reserveStatusRetained:true};
+  }
   await store.setJSON("playerData", {
     updatedAt: new Date().toISOString(),
     playerCount: Object.keys(playerMap).length,

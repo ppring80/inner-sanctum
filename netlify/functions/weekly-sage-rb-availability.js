@@ -64,6 +64,8 @@ function normalizeStatus(value) {
 }
 
 function availabilityForPlayer(player, season, week) {
+  const reserve = require("./_reserve-transactions.js").reserveTransaction(player || {},season,week);
+  if (reserve) return {...reserve,eligible:false,backfieldRole:"committee",vacatedOpportunity:0.40};
   const weekly = WEEKLY_FACTS[`${season}:${Number(week)}`] || {};
   const fact = weekly[normalizeName(player && (player.name || player.longName))];
   if (fact) return { ...fact };

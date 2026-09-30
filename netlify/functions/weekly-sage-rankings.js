@@ -315,9 +315,9 @@ async function loadCentralAvailability() {
   }
 }
 
-function applyCentralAvailability(positions, inactive, availability) {
+function applyCentralAvailability(positions, inactive, availability, season, week) {
   const applied = [];
-  if (!availability || !availability.available) return applied;
+  availability = availability || {players:{},byName:new Map(),available:false};
 
   PLAYER_AVAILABILITY_POSITIONS.forEach(position => {
     const activeRows = Array.isArray(positions[position]) ? positions[position] : [];
@@ -330,11 +330,12 @@ function applyCentralAvailability(positions, inactive, availability) {
       const injury = player && player.injury && typeof player.injury === "object"
         ? player.injury
         : null;
-      const status = normalizeAvailabilityStatus(injury && injury.designation);
-      const description = injury && injury.description ? String(injury.description) : null;
+      const reserve = require("./_reserve-transactions.js").reserveTransaction(row,season,week);
+      const status = reserve ? reserve.status : normalizeAvailabilityStatus((injury && injury.designation) || player?.rosterStatus);
+      const description = reserve ? reserve.reason : injury && injury.description ? String(injury.description) : null;
 
       if (!status) {
-        kept.push(row);
+        kept.push(player ? {...row,availabilityVerified:true} : {...row,status:"UNVERIFIED",availabilityVerified:false,injuryStatus:"UNVERIFIED",availabilitySource:"player-data",injuryDescription:"Player absent from the current roster/injury cache; availability is not verified."});
         return;
       }
 
@@ -361,7 +362,8 @@ function applyCentralAvailability(positions, inactive, availability) {
           status,
           eligibleForWeeklyRanking: false,
           recommendation: "INELIGIBLE",
-          source: "player-data",
+          source: reserve ? reserve.source : "player-data",
+          sourceUrl: reserve?.sourceUrl || null,
           reason,
           sageTake: reason
         });
@@ -571,7 +573,9 @@ exports.handler = async function (event) {
   const availabilityExclusions = applyCentralAvailability(
     positions,
     inactive,
-    centralAvailability
+    centralAvailability,
+    season,
+    targetWeek
   );
   const startedGameExclusions = applyGameEligibility(positions, new Date(), evidenceUsage);
   reconcileRankedRecommendations(positions, scoring);

@@ -19,6 +19,8 @@ async function main(){
  const data=await request(`weekly-sage-rankings?season=${season}&week=${week}&scoring=half-ppr&evidenceUsage=archive`);
  assert.equal(data.metadata.complete,true);assert.equal(data.metadata.availability.fresh,true,'Player availability stale');assert.equal(data.metadata.projections.fresh,true,'Projections stale');
  const pool={};
+ const {TRANSACTIONS,reserveTransaction}=require('../netlify/functions/_reserve-transactions');
+ for(const transaction of TRANSACTIONS){if(!reserveTransaction(transaction,season,week))continue;assert(!Object.values(data.positions).flat().some(row=>String(row.playerID)===transaction.playerID||row.name===transaction.name),`${transaction.name}: confirmed reserve player appears in active rankings`);}
  for(const pos of positions){const rows=data.positions[pos];assert(rows.length>0,`${pos}: empty rankings`);assert(rows.every(x=>x.opponent),`${pos}: missing opponent`);pool[pos]=rows.filter(x=>Number.isFinite(x.projectedPoints));assert(pool[pos].length>0,`${pos}: no matched projections`);}
  const news=await request('sage-newswire');assert(news.stories.length>0);assert(Date.now()-Date.parse(news.updatedAt)<24*3600000,'Newswire stale');
  for(const upgrade of [true,false]){
