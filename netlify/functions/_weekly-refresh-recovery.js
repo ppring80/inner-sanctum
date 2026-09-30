@@ -62,7 +62,7 @@ function canRetry(status, now = Date.now()) {
 function nextJob(rows, now = Date.now()) {
   for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
-    if (pending.length) return pending.find(row => canRetry(row.status, now)) || null;
+    if (pending.length) return pending.find(row => canRetry(row.status, now) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))) || null;
   }
   return null;
 }
@@ -105,7 +105,7 @@ async function runJob(job, event, dependencies) {
     try { response = JSON.parse(result.body || '{}'); } catch (_) {}
     // Each builder validates completeness before writing and returns cached:true.
     // Do not reject its successful write because the Lambda edge read can lag.
-    const ready = result.statusCode === 200 && (response.cached === true || (response.writeOccurred === true && response.gamesFailed === 0 && response.noOp === false) || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
+    const ready = result.statusCode === 200 && (response.cached === true || (response.writeOccurred === true && response.gamesFailed === 0 && response.noOp === false && Number(response.targetWeek) === job.week) || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
     const detail = response.error || null;
     const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
     await state.setJSON(key, final);

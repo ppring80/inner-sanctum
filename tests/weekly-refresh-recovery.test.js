@@ -35,6 +35,12 @@ async function main() {
   assert(completeCache(availability,injury));
   assert(!completeCache({...availability,teamsSucceeded:31,teamsFailed:1},injury));
   assert(!completeCache({...availability,updatedAt:new Date(Date.now()-9*3600000).toISOString()},injury));
+  const workload = jobs.filter(j => j.store === 'opportunity-intel');
+  assert.deepEqual(workload.map(j=>j.week),[1,2,3]);
+  assert(!completeCache({season:'2025',weeksRequested:[1,2,3],gamesFound:16,gamesFailed:0,records:{player:{}}},workload[0]));
+  const sequence=jobs.map(j=>({...j,ready:j.store !== 'opportunity-intel'}));
+  sequence.find(j=>j.store==='opportunity-intel').status={leaseUntil:Date.now()+60000};
+  assert.equal(nextJob(sequence),null,'next completed week waits for previous cache visibility');
   const job = jobs.find(j => j.job === 'refresh-qb-snapshot');
   const snapshot = { evidenceType: job.evidenceType, season: '2026', targetWeek: 4, seasonType: 'reg', population: [{name: 'QB'}], failures: [], nextStep: {ready:true} };
   assert(completeCache(snapshot, job));
