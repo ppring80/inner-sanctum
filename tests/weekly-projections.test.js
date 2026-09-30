@@ -17,6 +17,8 @@ const half={...cache,scoring:'half',fresh:true,rows:cache.rows.map(row=>({...row
 const candidate={name:'Player RB 1',position:'RB',nflTeam:'SEA',projectedPoints:null};
 const filled=fillProjection(candidate,half);assert.equal(filled.projectedPoints,20);assert.equal(filled.projection.source,'Tank01');assert.equal(filled.projection.week,4);
 assert.equal(fillProjection({...candidate,projectedPoints:12.3},half).projectedPoints,12.3,'retain an actual league-provider projection');
+assert.equal(fillProjection({...candidate,projectedPoints:99},half,true).projectedPoints,20,'stale league projections must use current cache');
+assert.equal(fillProjection({...candidate,projectedPoints:99},null,true).projectedPoints,null,'stale numbers must not survive a current-cache outage');
 assert.equal(matchProjection({...candidate,nflTeam:'BUF'},half),null,'wrong team must fail closed');
 assert.equal(matchProjection({...candidate,position:'WR'},half),null,'wrong position must fail closed');
 const duplicate={...half,rows:[...half.rows,{...half.rows.find(row=>row.name===candidate.name)}]};

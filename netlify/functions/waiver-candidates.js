@@ -889,6 +889,7 @@ function resolveConnectionInput(body) {
 
   return {
     provider,
+    providerProjectionWeek: numberOrNull(firstDefined(body?.providerProjectionWeek, connection?.league?.scoringPeriodId, connection?.availabilityMeta?.week)),
     availablePlayers: Array.isArray(availablePlayers) ? availablePlayers : [],
     roster: Array.isArray(roster) ? roster : [],
     lineupConstruction:
@@ -1360,8 +1361,9 @@ exports.handler = async function (event) {
       readWeeklyProjections(input.season,input.week,input.scoring)
     ]);
 
-    input.availablePlayers = input.availablePlayers.map(player => fillProjection(player,projectionCache));
-    input.roster = input.roster.map(player => fillProjection(player,projectionCache));
+    const staleProviderWeek = input.providerProjectionWeek !== null && input.providerProjectionWeek !== input.week;
+    input.availablePlayers = input.availablePlayers.map(player => fillProjection(player,projectionCache,staleProviderWeek));
+    input.roster = input.roster.map(player => fillProjection(player,projectionCache,staleProviderWeek));
 
     if (weeklyData?.metadata?.degradedMode === true) {
       weeklyData = buildProviderProjectionFallback(
@@ -1424,6 +1426,7 @@ exports.handler = async function (event) {
           trendDataAvailable: Boolean(risersFallersData),
           opportunityDataAvailable: Boolean(opportunityData),
           scheduleDataAvailable: Boolean(scheduleData),
+          staleProviderProjectionsRejected: staleProviderWeek,
           projectionCacheAvailable: Boolean(projectionCache),
           projectionCacheUpdatedAt: projectionCache?.generatedAt || null,
           projectionsMatched: candidates.filter(row => row.providerProjectedPoints !== null).length,

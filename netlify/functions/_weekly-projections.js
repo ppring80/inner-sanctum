@@ -86,6 +86,7 @@ function matchProjection(player, cache) {
   return Identity.resolveRosterPlayer({name,position},rows);
 }
 function fillProjection(player, cache, preferCache = false) {
+  if (preferCache) player = {...player,projectedPoints:null,projection:null};
   if (!preferCache && finite(player.projectedPoints) !== null) return player;
   const matched = matchProjection(player,cache);
   if (!matched) return player;

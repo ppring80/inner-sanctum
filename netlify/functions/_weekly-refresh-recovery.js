@@ -35,13 +35,13 @@ function completeCache(value, job) {
 
 async function inspectJobs(getStore, season, week) {
   const state = getStore({ name: STATE_STORE });
-  const rows = [];
-  for (const job of jobsForWeek(season, week)) {
-    const cached = await getStore({ name: job.store }).get(cacheKey(job), { type: 'json' });
-    const status = await state.get(stateKey(job), { type: 'json' });
-    rows.push({ ...job, ready: completeCache(cached, job), status });
-  }
-  return rows;
+  return Promise.all(jobsForWeek(season,week).map(async job => {
+    const [cached,status] = await Promise.all([
+      getStore({name:job.store}).get(cacheKey(job),{type:'json'}),
+      state.get(stateKey(job),{type:'json'})
+    ]);
+    return {...job,ready:completeCache(cached,job),status};
+  }));
 }
 
 function canRetry(status, now = Date.now()) {

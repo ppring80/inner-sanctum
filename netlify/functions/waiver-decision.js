@@ -287,6 +287,7 @@ function buildWaiverDecisions(candidates) {
       availabilityStatus: normalizeAvailabilityStatus(candidate?.availabilityStatus),
       decision: classifyCandidate(candidate),
       evidence: {
+        projection: candidate?.projection || null,
         sage: candidate?.sage || null,
         trend: candidate?.trend || null,
         opportunity: candidate?.opportunity || null,
