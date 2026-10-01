@@ -1,0 +1,148 @@
+{
+  "module": "defense-coverage-pressure-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-qb-coverage",
+      "url": "https://blogs.usafootball.com/blog/730/teach-your-quarterback-how-to-read-defenses",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-ripliz",
+      "url": "https://blogs.usafootball.com/blog/7272/high-school-coordinator-explains-the-details-of-rip-liz-coverage/",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-sim-pressure",
+      "url": "https://blogs.usafootball.com/blog/7544/how-to-play-cover-3-behind-a-simulated-pressure",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-double-a",
+      "url": "https://blogs.usafootball.com/blog/7224/coaches-note-preview-different-pressures-from-the-double-a-gap-mug-package",
+      "publisher": "USA Football"
+    }
+  ],
+  "entries": [
+    {
+      "id": "coverage-1",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Cover 1 baseline",
+      "summary": "A single deep safety structure with man coverage underneath is a common Cover 1 baseline; actual rules and leverage vary by system.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-coverage"
+        }
+      ]
+    },
+    {
+      "id": "coverage-2",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Cover 2 baseline",
+      "summary": "A two-deep structure can divide deep responsibility between two safeties with underneath defenders handling shorter zones; variants can alter those rules.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-coverage"
+        }
+      ]
+    },
+    {
+      "id": "coverage-3",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Cover 3 baseline and match variants",
+      "summary": "A Cover 3 baseline divides the deep field into three zones, but match variants such as Rip/Liz can convert responsibilities based on receiver releases, so SAGE must distinguish spot-drop labels from pattern-match rules.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-coverage"
+        },
+        {
+          "sourceId": "usa-ripliz"
+        }
+      ]
+    },
+    {
+      "id": "coverage-4",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Cover 4 / quarters baseline",
+      "summary": "Four-deep/quarters structures distribute deep responsibility across corners and safeties; match-quarter systems add formation and route-dependent rules that cannot be captured by a static four-zone diagram.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-coverage"
+        }
+      ]
+    },
+    {
+      "id": "pressure-simulated",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "pressure",
+        "protection"
+      ],
+      "title": "Simulated pressure",
+      "summary": "A defense can threaten pressure with multiple potential rushers yet rush only four, changing which defenders rush/drop while preserving a conventional rush count. SAGE must not equate a pressure presentation with a blitz.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-sim-pressure"
+        },
+        {
+          "sourceId": "usa-double-a"
+        }
+      ],
+      "fantasyImplications": [
+        "Potential effects on protection identification, QB processing and route timing require empirical validation."
+      ]
+    },
+    {
+      "id": "hypothesis-coverage-granularity",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "fantasy-implications",
+        "coverage"
+      ],
+      "title": "Coverage-rule granularity may outperform simple man/zone splits",
+      "summary": "Player/offense matchup models may improve when match rules, shell rotation and pressure presentation are distinguished from coarse man/zone labels.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-ripliz"
+        },
+        {
+          "sourceId": "usa-sim-pressure"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}
