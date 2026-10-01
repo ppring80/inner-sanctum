@@ -406,7 +406,7 @@ const samplePayload = {
     await flush();
     const shell = sandbox.document._elements.waiverRoot.innerHTML;
     assert.ok(shell.includes('No forced move'));
-    assert.ok(shell.includes('FAAB bids appear only for supported ADD NOW or STASH recommendations'));
+    assert.ok(shell.includes('FAAB market estimates remain visible'));
   });
 
   await asyncTest('changing sort to Weekly SAGE reorders the board by position rank', async () => {

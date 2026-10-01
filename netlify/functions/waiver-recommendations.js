@@ -75,17 +75,18 @@ function pctToDollars(percentage, budget) {
 }
 
 function addDollarGuidance(item, budget) {
-  if (!item?.faab) return item;
-  return {
-    ...item,
-    faab: {
-      ...item.faab,
-      valueDollars: pctToDollars(item.faab.valuePct, budget),
-      recommendedDollars: pctToDollars(item.faab.recommendedPct, budget),
-      aggressiveDollars: pctToDollars(item.faab.aggressivePct, budget),
+  const result = { ...item };
+  for (const key of ['faab', 'marketFaab']) {
+    if (!item?.[key]) continue;
+    const bid = item[key];
+    result[key] = { ...bid,
+      valueDollars: pctToDollars(bid.valuePct, budget),
+      recommendedDollars: pctToDollars(bid.recommendedPct, budget),
+      aggressiveDollars: pctToDollars(bid.aggressivePct, budget),
       originalBudget: positiveInteger(budget)
-    }
-  };
+    };
+  }
+  return result;
 }
 
 function matchingCoverageAdequate(metadata) {
@@ -147,9 +148,9 @@ function resolveWaiverWeek(body, now = new Date()) {
   const resolvedProviderWeek = validWeek(providerWeek);
   const waiverWeek = season === 2026 ? derive2026RegularSeasonWeek(now) : null;
 
-  // The connected provider is authoritative for its league's active scoring
-  // period. The calendar is only a fallback when the provider supplies none.
-  return resolvedProviderWeek || waiverWeek;
+  // A saved connection must not pin automatic weekly tools to a past week.
+  // Explicit historical requests are still preserved by withResolvedWeek.
+  return waiverWeek ? Math.max(resolvedProviderWeek || 0, waiverWeek) : resolvedProviderWeek;
 }
 
 function withResolvedWeek(event) {
@@ -403,6 +404,41 @@ function faabMarketMultiplier(position, teams, scoring) {
   return multiplier;
 }
 
+// Market estimates never use this customer's roster gain or add/drop verdict.
+function buildMarketFaab(item, context = {}) {
+  const position = normalizedCoveragePosition(item?.position);
+  const rank = finiteNumber(item?.evidence?.sage?.positionRank);
+  const workload = workloadStrength(item);
+  const projected = finiteNumber(item?.evidence?.providerProjectedPoints);
+  const matched = item?.identity?.sageMatched !== false;
+  if (!matched || (!rank && workload === 0 && projected === null)) return null;
+  const teams = Number(context.teams) || 12;
+  const starters = { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DEF: 1 }[position];
+  if (!starters) return null;
+  const tier = rank && rank > 0 ? rank / (teams * starters) : null;
+  let band = 'NO_BID';
+  if (tier !== null) {
+    if (tier <= 0.5) band = ['K','DEF'].includes(position) ? 'SPECULATIVE' : 'LINEUP_ADD';
+    else if (tier <= 1) band = ['K','DEF'].includes(position) ? 'SPECULATIVE' : 'DEPTH_STASH';
+    else if (tier <= 2) band = 'SPECULATIVE';
+  }
+  if (['RB','WR','TE'].includes(position)) {
+    if (workload >= 3) band = 'PRIORITY_STASH';
+    else if (workload >= 2 && ['NO_BID','SPECULATIVE'].includes(band)) band = 'DEPTH_STASH';
+    else if (workload > 0 && band === 'NO_BID') band = 'SPECULATIVE';
+  }
+  const multiplier = faabMarketMultiplier(position, teams, normalizeScoring(context.scoring));
+  const anchor = FAAB_MARKET_BANDS[band];
+  return {
+    estimateType: 'market-value', budgetBasis: 'original-budget-percent', archetype: band,
+    valuePct: marketAdjustedPct(anchor.valuePct, multiplier),
+    recommendedPct: marketAdjustedPct(anchor.recommendedPct, multiplier),
+    aggressivePct: marketAdjustedPct(anchor.aggressivePct, multiplier),
+    confidence: 'MEDIUM',
+    basis: [rank ? `${position}${rank} Weekly SAGE market rank` : 'Verified current projection/workload', `${teams}-team market; independent of your roster`]
+  };
+}
+
 function marketAdjustedPct(value, multiplier) {
   if (value === 0) return 0;
   return Math.max(1, Math.round(value * multiplier));
@@ -597,6 +633,7 @@ function decorateDecision(item, context = {}) {
     opportunity,
     customerActionable: claimRecommended,
     faab,
+    marketFaab: buildMarketFaab(item, context),
     swapFor:
       claimRecommended && depthWeakest?.name
         ? {
@@ -803,6 +840,7 @@ exports._test = {
   withResolvedWeek,
   customerVerdict,
   buildFaabGuidance,
+  buildMarketFaab,
   verdictPriority,
   decorateDecision,
   buildCustomerRecommendations,

@@ -134,13 +134,13 @@ test('Week 3 target transparently reports completed Week 2 evidence fallback', (
   ]);
 });
 
-test('provider Week 1 remains authoritative after the calendar enters the Week 2 waiver window', () => {
+test('saved provider Week 1 advances automatically into the Week 2 waiver window', () => {
   assert.strictEqual(
     resolveWaiverWeek(
       { connection: { provider: 'espn', currentWeek: 1, season: 2026 } },
       new Date('2026-09-15T06:00:00Z')
     ),
-    1
+    2
   );
 });
 
@@ -156,7 +156,7 @@ test('ESPN available-player scoring period recovers provider week for an existin
       },
       new Date('2026-09-15T07:00:00Z')
     ),
-    1
+    2
   );
 });
 

@@ -31,7 +31,7 @@ async function main(){
   if(week>=2)assert.equal(result.metadata.opportunityDataAvailable,true,'Current opportunity evidence missing');
   if(week>=3)assert.equal(result.metadata.trendDataAvailable,true,'Current trend evidence missing');
   let bids=0;
-  for(const row of result.recommendations){if(!row.faab)continue;bids++;assert(['ADD_NOW','STASH'].includes(row.verdict),'Unsupported verdict has bid');assert(row.swapFor||row.lineupFor||row.benchFor,'Bid has no roster move');assert.equal(row.faab.recommendedDollars,Math.round(row.faab.recommendedPct*2));}
+  for(const row of result.recommendations){assert(row.marketFaab,`${row.position}: missing market estimate with verified evidence`);assert.equal(row.marketFaab.recommendedDollars,Math.round(row.marketFaab.recommendedPct*2));if(!row.faab)continue;bids++;assert(['ADD_NOW','STASH'].includes(row.verdict),'Unsupported verdict has bid');assert(row.swapFor||row.lineupFor||row.benchFor,'Bid has no roster move');assert.equal(row.faab.recommendedDollars,Math.round(row.faab.recommendedPct*2));}
   if(upgrade)assert(bids>0,'Verified upgrade fixture produced no bid');else assert.equal(bids,0,'Downgrade fixture produced bids');
  }
  console.log(`PASS: season ${season}, week ${week}; complete rankings, fresh availability/projections/news, current waiver evidence, supported FAAB bids and dollar conversion.`);
