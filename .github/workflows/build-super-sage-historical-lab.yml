@@ -51,6 +51,7 @@ jobs:
           print(json.dumps({"playerWeeks":len(p),"games":len(g),"manifest":m}, indent=2))
           PY
       - name: Upload Historical Lab artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: super-sage-historical-lab-2019-2026w3
