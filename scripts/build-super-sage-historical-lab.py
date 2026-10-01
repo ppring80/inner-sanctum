@@ -89,8 +89,7 @@ def main():
     args = p.parse_args()
     outdir = Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
     players, schedule, meta = build(args.start, args.end, args.end_2026_week)
-    players.to_parquet(outdir / "player-weeks.parquet", index=False)
-    schedule.to_parquet(outdir / "games.parquet", index=False)
+    # CSV is the portable baseline artifact; Parquet can be added later as an optimized representation.\n    players.to_csv(outdir / "player-weeks.csv", index=False)\n    schedule.to_csv(outdir / "games.csv", index=False)
     (outdir / "manifest.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(json.dumps(meta, indent=2))
 
