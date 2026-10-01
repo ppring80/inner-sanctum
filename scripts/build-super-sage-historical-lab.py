@@ -13,7 +13,7 @@ import argparse, json
 from pathlib import Path
 import pandas as pd
 
-BASE = "https://github.com/nflverse/nflverse-data/releases/download/player_stats/player_stats.csv"
+PLAYER_WEEK_BASE = "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.csv"
 SCHEDULE = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
 
 def fantasy_points(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,7 +31,14 @@ def fantasy_points(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def build(start=2019, end=2026, end_2026_week=3):
-    stats = pd.read_csv(BASE, low_memory=False)
+    frames = []
+    for season in range(start, end + 1):
+        url = PLAYER_WEEK_BASE.format(season=season)
+        frame = pd.read_csv(url, low_memory=False)
+        if "season" not in frame.columns:
+            frame["season"] = season
+        frames.append(frame)
+    stats = pd.concat(frames, ignore_index=True, sort=False)
     stats["season"] = pd.to_numeric(stats["season"], errors="coerce")
     stats["week"] = pd.to_numeric(stats["week"], errors="coerce")
     keep = stats["season"].between(start, end)
