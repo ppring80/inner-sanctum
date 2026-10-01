@@ -1,0 +1,343 @@
+{
+  "module": "modern-nfl-offensive-arms-race-2010-2026-v1",
+  "version": 1,
+  "course": {
+    "title": "The Modern NFL Offensive Arms Race — 2010–2026",
+    "method": "Document innovation, defensive counter, offensive response, player-role effects and testable fantasy hypotheses. Do not infer causality from trend coincidence alone."
+  },
+  "sources": [
+    {
+      "id": "espn-decade-evolution",
+      "publisher": "ESPN",
+      "url": "https://www.espn.com/nfl/story/_/id/28373283/how-pro-football-changed-10-years-12-ways-nfl-evolved-decade",
+      "evidence": [
+        "shotgun growth",
+        "QB/RB rushing shift",
+        "shorter average pass",
+        "completion growth",
+        "RB receptions"
+      ]
+    },
+    {
+      "id": "nfl-qb-revolution",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/news/quarterback-revolution",
+      "evidence": [
+        "college concepts normalized",
+        "RPO",
+        "zone-read",
+        "tempo",
+        "mobile QB adaptation"
+      ]
+    },
+    {
+      "id": "nfl-option-evolution",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/news/option-or-wildcat-whatever-it-s-called-nfl-offenses-evolving-09000d5d827f6b73",
+      "evidence": [
+        "2011 mobile-QB/read-option math"
+      ]
+    },
+    {
+      "id": "nfl-packaged-rg3",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/news/mike-shanahan-implements-baylor-plays-to-help-rg3-0ap1000000061442",
+      "evidence": [
+        "packaged plays",
+        "college-to-NFL adaptation"
+      ]
+    },
+    {
+      "id": "nfl-rpo-mariota",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/news/marcus-mariota-s-stellar-debut-fueled-by-titans-sharp-game-plan-0ap3000000531204",
+      "evidence": [
+        "RPO defender conflict",
+        "quick-game attachments"
+      ]
+    },
+    {
+      "id": "nfl-fangio-2022",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/_amp/first-look-at-no-1-pick-travon-walker-s-fit-with-jags-plus-an-exploding-nfl-tren",
+      "evidence": [
+        "two-high shell",
+        "light boxes",
+        "post-snap rotation",
+        "explosive suppression"
+      ]
+    },
+    {
+      "id": "espn-fangio-2025",
+      "publisher": "ESPN",
+      "url": "https://www.espn.com/nfl/story/_/id/43508406/philadelphia-eagles-vic-fangio-defensive-coordinator-created-force-philly-cusp-super-bowl",
+      "evidence": [
+        "shell philosophy",
+        "low blitz",
+        "coverage disguise"
+      ]
+    },
+    {
+      "id": "nfl-split-safety-2026",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/news/the-coverage-that-turned-the-seahawks-into-super-bowl-winners-and-is-taking-the-nfl-by-storm",
+      "evidence": [
+        "2019-2025 split-safety pressure/coverage data",
+        "2025 efficiency",
+        "hybrid defender requirements"
+      ]
+    },
+    {
+      "id": "nfl-wr-transition-2020",
+      "publisher": "NFL.com",
+      "url": "https://www.nfl.com/_amp/2020-nfl-draft-learning-curve-for-young-wrs-thing-of-the-past-0ap3000001108999",
+      "evidence": [
+        "high-school/college spread/RPO development",
+        "receiver route exposure",
+        "trickle-up"
+      ]
+    }
+  ],
+  "eras": [
+    {
+      "id": "era-2010-2013",
+      "label": "Spread and quarterback-number revolution",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "summary": "NFL offenses increasingly incorporated spread passing, shotgun, designed QB runs, zone read and packaged concepts that had matured in high school/college football. A QB run threat changed box arithmetic because the ball carrier was also the player taking the snap.",
+      "innovation": [
+        "spread concepts",
+        "shotgun",
+        "zone read",
+        "designed QB run",
+        "packaged plays"
+      ],
+      "defensiveProblem": [
+        "account for quarterback as runner",
+        "defend perimeter and interior options without surrendering favorable passing looks"
+      ],
+      "playerRoleEffects": [
+        "QB rushing becomes structural weapon",
+        "perimeter receivers participate in packaged answers"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-option-evolution"
+        },
+        {
+          "sourceId": "nfl-packaged-rg3"
+        }
+      ]
+    },
+    {
+      "id": "era-2014-2018",
+      "label": "RPO and college-concept normalization",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "summary": "RPOs and related college concepts moved from novelty toward normal NFL tools. Offenses combined run action with quick pass answers and defender reads, reducing the need to force young quarterbacks into older pro-only structures.",
+      "innovation": [
+        "RPO",
+        "quick-game attachments",
+        "college-to-pro system adaptation"
+      ],
+      "defensiveProblem": [
+        "second-level defenders placed in run/pass conflict",
+        "fast decisions punish leverage"
+      ],
+      "playerRoleEffects": [
+        "slot/TE quick-route opportunity",
+        "QB decision efficiency",
+        "receivers run routes on run-tagged structures"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-rpo-mariota"
+        },
+        {
+          "sourceId": "nfl-qb-revolution"
+        }
+      ]
+    },
+    {
+      "id": "era-2010s-aggregate",
+      "label": "Shotgun and shorter-pass environment",
+      "knowledgeClass": "FACT",
+      "summary": "ESPN's decade analysis reported shotgun rising from 56% of plays at the beginning of the 2010s to 79% at the end; QB rushing yards rose 36%, RB rushing yards fell 13%, average pass depth fell 6%, completion percentage rose from 60.5% to 64%, and RB receptions rose 17%.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "espn-decade-evolution"
+        }
+      ],
+      "limitations": [
+        "These are decade-level associations, not proof that any one schematic change caused every statistical shift."
+      ]
+    },
+    {
+      "id": "era-2019-2022-defense",
+      "label": "Explosive-pass suppression and the Fangio-family response",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "summary": "A prominent defensive response prioritized limiting explosive passes using two-high presentations, lighter boxes and post-snap coverage rotation while attempting to fit the run from depth. The objective was often to force offenses into longer, more mistake-prone drives.",
+      "innovation": [
+        "two-high shell",
+        "light box",
+        "post-snap rotation",
+        "match coverage"
+      ],
+      "defensivePurpose": [
+        "remove deep ball",
+        "muddy quarterback identification",
+        "force patient offense"
+      ],
+      "offensiveProblem": [
+        "win efficiently underneath",
+        "run effectively versus lighter boxes",
+        "diagnose post-snap movement"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-fangio-2022"
+        },
+        {
+          "sourceId": "espn-fangio-2025"
+        }
+      ],
+      "limitations": [
+        "Fangio-family is a broad label; implementations differ by coach/personnel/year."
+      ]
+    },
+    {
+      "id": "era-2023-2026-split-safety",
+      "label": "Split-safety systems diversify",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "summary": "Split-safety football evolved beyond passive two-deep defense. NFL analysis through 2025 documents defenses combining split-safety coverage with pressure and hybrid defenders; in 2025 offenses converted first downs on 29.0% of dropbacks against split-safety, tied for the lowest rate in the 2018-2025 sample.",
+      "innovation": [
+        "split-safety blitz",
+        "hybrid nickel/safety roles",
+        "coverage-pressure disguise"
+      ],
+      "defensivePurpose": [
+        "retain explosive suppression while creating pressure/uncertainty"
+      ],
+      "offensiveProblem": [
+        "identify pressure without assuming two-high means conservative rush",
+        "attack versatile underneath defenders"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-split-safety-2026"
+        }
+      ],
+      "limitations": [
+        "2025 results are one season and should not be universalized to every split-safety defense."
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "concept-trickle-up",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "history",
+        "offense",
+        "player-development"
+      ],
+      "title": "Modern concepts can trickle up from lower levels",
+      "summary": "NFL sources describe spread, RPO and option concepts moving from high school/college into the NFL as incoming players arrived with years of experience in those systems.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-qb-revolution"
+        },
+        {
+          "sourceId": "nfl-wr-transition-2020"
+        }
+      ]
+    },
+    {
+      "id": "concept-counter-cycle",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "history",
+        "strategy",
+        "analytics"
+      ],
+      "title": "Scheme evolution is an offense-defense counter cycle",
+      "summary": "Modern NFL strategy should be modeled as iterative adaptation: offensive innovation creates stress, defenses build counters, and offenses respond to those counters. SAGE should time-scope tendencies rather than assume a scheme's historical success persists unchanged.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "nfl-option-evolution"
+        },
+        {
+          "sourceId": "nfl-fangio-2022"
+        },
+        {
+          "sourceId": "nfl-split-safety-2026"
+        }
+      ],
+      "limitations": [
+        "This is a synthesis across documented developments; exact causal chains require narrower evidence."
+      ]
+    },
+    {
+      "id": "hypothesis-era-role-shift",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "fantasy-implications",
+        "history",
+        "scheme"
+      ],
+      "title": "League-level strategic counters can shift fantasy value by role before aggregate rankings react",
+      "summary": "When defenses change shell, box, pressure or matchup behavior league-wide, offensive counters may redistribute opportunity among outside WR, slot, TE, RB and rushing QB roles. SAGE should test whether role-level scheme indicators lead conventional fantasy-points-allowed trends.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "espn-decade-evolution"
+        },
+        {
+          "sourceId": "nfl-fangio-2022"
+        },
+        {
+          "sourceId": "nfl-split-safety-2026"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    },
+    {
+      "id": "hypothesis-defensive-counter-detection",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "fantasy-implications",
+        "learning",
+        "scheme"
+      ],
+      "title": "Detecting defensive counter-adoption may identify changing offensive opportunity",
+      "summary": "If SAGE can detect a meaningful change in how opponents defend an offense or concept, it may identify target/touch redistribution before season-long aggregate statistics fully reflect the change.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "nfl-split-safety-2026"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}
