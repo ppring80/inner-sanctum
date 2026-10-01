@@ -1,0 +1,151 @@
+{
+  "module": "coverage-motion-v1",
+  "version": 1,
+  "entries": [
+    {
+      "id": "concept-safety-shell",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Safety-shell structure",
+      "summary": "Pre-snap and post-snap safety structure is evidence used to narrow possible coverage families; the initial picture can be disguised and must not be treated as the final coverage.",
+      "principles": [
+        "Track middle-open/two-high versus middle-closed/single-high structure.",
+        "Compare pre-snap alignment with post-snap rotation."
+      ],
+      "indicators": [
+        "safety depth and leverage",
+        "rotation at/after snap",
+        "corner leverage"
+      ],
+      "limitations": [
+        "Shell alone does not uniquely identify coverage.",
+        "Modern match coverages and disguise can make static labels misleading."
+      ],
+      "relationships": [
+        "motion-response",
+        "man-zone-evidence",
+        "post-snap-rotation"
+      ],
+      "fantasyImplications": [
+        "Potential input to matchup analysis only after team/player performance versus structures is measured and validated."
+      ],
+      "status": "curated",
+      "era": null,
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Foundational football concept; authoritative source set to be attached during library sourcing pass."
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "concept-motion-response",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "defense",
+        "motion",
+        "coverage"
+      ],
+      "title": "Motion as diagnostic evidence",
+      "summary": "Pre-snap motion can force defensive communication or adjustment and provide evidence about responsibility, leverage and coverage structure.",
+      "principles": [
+        "Observe whether a defender travels, bumps or exchanges responsibility.",
+        "Observe safety, nickel and linebacker responses to motion.",
+        "Use the response as evidence, not as a one-signal coverage declaration."
+      ],
+      "indicators": [
+        "defender travels",
+        "secondary bumps",
+        "safety rotates",
+        "nickel/linebacker adjusts",
+        "box count changes"
+      ],
+      "limitations": [
+        "A traveling defender does not prove pure man coverage.",
+        "Match rules and disguise can mimic man/zone tells."
+      ],
+      "relationships": [
+        "safety-shell",
+        "man-zone-evidence",
+        "formation-strength",
+        "player-alignment"
+      ],
+      "fantasyImplications": [
+        "Hypothesis: offenses/players that exploit motion-created information may have matchup-specific advantages versus defenses whose preferred structures are exposed or stressed by motion."
+      ],
+      "status": "curated",
+      "era": null,
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "experience_note",
+          "source": "Pat",
+          "note": "Former Z/slot receiver: safety alignment and defensive movement in response to frequent pre-snap motion were primary tells."
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "hypothesis-scheme-interaction",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "fantasy-implications",
+        "coverage"
+      ],
+      "title": "Offense-defense scheme interaction improves fantasy matchup evaluation",
+      "summary": "Fantasy matchup quality may improve when SAGE measures how an offense/player performs against the coverage structures an opponent actually uses, rather than relying primarily on aggregate fantasy points allowed.",
+      "principles": [
+        "Measure defensive usage percentages by structure.",
+        "Measure offensive and player efficiency/opportunity against the same structures.",
+        "Intersect tendency, performance, role and sample confidence."
+      ],
+      "indicators": [
+        "man/zone rates",
+        "single-high/two-high rates",
+        "coverage family rates",
+        "player target share/YPRR by structure"
+      ],
+      "limitations": [
+        "Early samples can be distorted by opponent quality, injuries, game state and quarterback quality.",
+        "Correlation is not automatically causal."
+      ],
+      "relationships": [
+        "safety-shell",
+        "motion-response",
+        "opponent-quality-adjustment"
+      ],
+      "fantasyImplications": [
+        "Candidate input for Weekly SAGE matchup adjustments after backtesting."
+      ],
+      "status": "needs-validation",
+      "era": null,
+      "season": 2026,
+      "week": null,
+      "sample": null,
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "type": "design_hypothesis",
+          "note": "Super SAGE Scheme Intelligence design discussion."
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}
