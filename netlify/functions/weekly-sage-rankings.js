@@ -24,7 +24,7 @@ const {
 );
 
 const CACHE_CONTROL =
-  "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+  "no-store";
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 const PLAYER_AVAILABILITY_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K"]);
@@ -386,14 +386,16 @@ async function fetchPositionLeaderboard({ baseUrl, position, season, week, seaso
       season,
       week: String(week),
       seasonType,
-      scoring
+      scoring,
+      _fresh: String(Date.now())
     }).toString()}`;
 
   let response;
   try {
     response = await fetch(url, {
       method: "GET",
-      headers: { Accept: "application/json" }
+      headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      cache: "no-store"
     });
   } catch (error) {
     return {
@@ -418,6 +420,9 @@ async function fetchPositionLeaderboard({ baseUrl, position, season, week, seaso
     };
   }
 
+  if (!Array.isArray(data.leaderboard) || (!data.leaderboard.length && !normalizeInactiveRows(data, position).length)) {
+    return { ok: false, error: `${position} leaderboard returned no player evidence` };
+  }
   return { ok: true, data };
 }
 
@@ -472,7 +477,8 @@ exports.handler = async function (event) {
     try {
       const response = await fetch(url, {
         method: "GET",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      cache: "no-store"
       });
 
       const data = await response.json();

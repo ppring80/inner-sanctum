@@ -1504,11 +1504,29 @@ function loadWeeklyRankings() {
     '&scoring=' + encodeURIComponent(scoring) +
     '&teams=12&evidenceUsage=archive';
 
-  return fetch(url, { credentials: 'same-origin' })
-    .then(function (res) {
-      return res.json().catch(function () { return null; }).then(function (data) {
-        return { ok: res.ok, data: data };
+  function missingPositions(data) {
+    var declared = data && data.metadata && data.metadata.positionsFailed || [];
+    return ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].filter(function(pos) {
+      var active = data && data.positions && data.positions[pos];
+      var inactive = data && data.inactive && data.inactive[pos];
+      return declared.indexOf(pos) !== -1 ||
+        (!Array.isArray(active) || !active.length) &&
+        (!Array.isArray(inactive) || !inactive.length);
+    });
+  }
+  function readRankings() {
+    return fetch(url + '&_fresh=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function(res) {
+        return res.json().catch(function() { return null; }).then(function(data) {
+          return { ok: res.ok, data: data };
+        });
       });
+  }
+  return readRankings()
+    .then(function(result) {
+      // One cache-only retry; never accept an empty position as complete.
+      return result.ok && result.data && missingPositions(result.data).length
+        ? readRankings() : result;
     })
     .then(function (result) {
       state.loading = false;
@@ -1531,8 +1549,9 @@ function loadWeeklyRankings() {
         }
       } else {
         state.rankings = result.data;
-        state.loadError = result.data.metadata && result.data.metadata.positionsFailed && result.data.metadata.positionsFailed.length
-          ? 'Weekly SAGE is incomplete. Missing positions: ' + result.data.metadata.positionsFailed.join(', ') + '. Automatic recovery is retrying.' : null;
+        var missing = missingPositions(result.data);
+        state.loadError = missing.length
+          ? 'Weekly SAGE is incomplete. Missing positions: ' + missing.join(', ') + '. Automatic recovery is retrying.' : null;
         state.sortKey = 'proj';
         state.sortDir = week === 1 ? 'asc' : 'desc';
       }

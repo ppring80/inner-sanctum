@@ -25,6 +25,21 @@ async function main() {
   context.fetch=async url=>{assert(url.includes('evidenceUsage=archive'));return {ok:true,json:async()=>({positions:{RB:[{name:'Full pool RB'}]},metadata:{positionsFailed:['QB']}})}};
   await context.loadWeeklyRankings();assert(context.state.loadError.includes('QB'),'partial data must be disclosed');
   assert.equal(context.state.rankings.positions.RB[0].name,'Full pool RB');
+  const fullPool = Object.fromEntries(['QB','RB','WR','TE','K','DEF'].map(pos => [pos,[{name:pos+' player'}]]));
+  let reads = 0;
+  context.fetch = async (url, options) => {
+    assert(url.includes('_fresh=')); assert.equal(options.cache,'no-store'); reads++;
+    return {ok:true,json:async()=>({positions: reads === 1 ? {...fullPool,WR:[]} : fullPool,metadata:{complete:true,positionsFailed:[]}})};
+  };
+  await context.loadWeeklyRankings();
+  assert.equal(reads,2,'silently empty WR triggers one fresh retry');
+  assert.equal(context.state.rankings.positions.WR.length,1);
+  assert.equal(context.state.loadError,null);
+  reads=0;
+  context.fetch=async()=>{reads++;return {ok:true,json:async()=>({positions:{...fullPool,WR:[]},metadata:{complete:true,positionsFailed:[]}})}};
+  await context.loadWeeklyRankings();
+  assert.equal(reads,2,'persistent empty WR retry is bounded');
+  assert(context.state.loadError.includes('WR'),'empty WR cannot masquerade as complete');
   const positions={QB:[{name:'Completed QB',gameDate:'20260927',gameTime:'1:00p',position:'QB'}]};
   applyGameEligibility(positions,new Date('2026-09-30T04:00:00Z'),'archive');
   assert.equal(positions.QB.length,1,'full weekly view keeps completed game rankings');
