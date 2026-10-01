@@ -22,7 +22,7 @@ assert.ok(
 );
 
 const matchup = buildFootballReasoningPacket(
-  "Does an offense have a fantasy advantage when it performs well against the coverage structure its opponent uses most?"
+  "offense defense scheme interaction improves fantasy matchup evaluation"
 );
 assert.ok(matchup.researchHypotheses.length > 0, "expected scheme/fantasy hypothesis");
 assert.ok(
