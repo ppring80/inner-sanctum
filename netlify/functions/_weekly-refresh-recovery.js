@@ -17,7 +17,7 @@ function jobsForWeek(season, targetWeek) {
   if (targetWeek >= 3) add('refresh-risers-fallers','risers-fallers',targetWeek-1,'weekly-trends');
   add('refresh-player-data', 'player-data', targetWeek, 'player-availability-cache');
   add('refresh-weekly-projections', 'weekly-projections', targetWeek, 'weekly-projection-cache');
-  add('refresh-sage-newswire', 'sage-newswire', targetWeek, 'source-headlines');
+  add('refresh-sage-newswire', 'sage-newswire', targetWeek, 'editorial-with-sources');
   return jobs;
 }
 const cacheKey = job => ['opportunity-intel','risers-fallers'].includes(job.store) ? 'latest' : job.store === 'player-data' ? 'playerData' : job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
@@ -32,7 +32,7 @@ function completeCache(value, job) {
   }
   if (job.store === 'sage-newswire') {
     const age = value && Date.now()-Date.parse(value.updatedAt);
-    return Boolean(value && value.mode === 'source-headlines' && Array.isArray(value.stories) && value.stories.length && Number.isFinite(age) && age >= 0 && age < 6*60*60*1000);
+    return Boolean(value && value.mode === 'editorial-with-sources' && value.collection?.automaticStories > 0 && Array.isArray(value.stories) && value.stories.length && Number.isFinite(age) && age >= 0 && age < 6*60*60*1000);
   }
   if (job.store === 'weekly-projections') return require('./_weekly-projections.js').validCache(value, job.season, job.week, require('./_weekly-projections.js').REFRESH_MS);
   if (!value || value.evidenceType !== job.evidenceType || String(value.season) !== job.season || Number(value.targetWeek ?? value.week) !== job.week || value.seasonType !== job.seasonType) return false;

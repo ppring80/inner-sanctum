@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('assert');const {analyzeStories}=require('../netlify/functions/_newswire-analysis');
+const input=[{id:'report-1',player:'Test Player',headline:'Test Player limited at practice',sourceUrl:'https://www.nfl.com/news/test',publishedAt:'2026-09-29T10:00:00Z',_sourceContext:'Team says Test Player was limited, not ruled out.'}];
+const fetcher=result=>async()=>({ok:true,json:async()=>({content:[{type:'text',text:JSON.stringify(result)}]})});
+(async()=>{await assert.rejects(analyzeStories(input,fetcher({}),null),/unavailable/);
+ const good={stories:[{id:'report-1',summary:'The team reports limited practice for Test Player; game availability remains undecided.',sageImpact:'Keep an alternative ready for Test Player until the final designation. Limited practice alone does not establish a missed game or justify dropping the player.',status:'Practice watch'}]};
+ const rows=await analyzeStories(input,fetcher(good),'test-key');assert.equal(rows[0].sourceUrl,input[0].sourceUrl);assert.equal(rows[0].publishedAt,input[0].publishedAt);assert(!('_sourceContext' in rows[0]));
+ await assert.rejects(analyzeStories(input,fetcher({stories:[{...good.stories[0],id:'invented'}]}),'test-key'),/identity/);
+ await assert.rejects(analyzeStories(input,fetcher({stories:[{...good.stories[0],sageImpact:'Check the report against your player’s current injury designation and role before changing your lineup.'}]}),'test-key'),/product contract/);
+ console.log('Source-grounded Newswire analysis preserves provenance and rejects missing coverage and boilerplate.');})().catch(e=>{console.error(e);process.exitCode=1});
