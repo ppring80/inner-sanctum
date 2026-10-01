@@ -420,8 +420,10 @@ async function fetchPositionLeaderboard({ baseUrl, position, season, week, seaso
     };
   }
 
-  if (!Array.isArray(data.leaderboard) || (!data.leaderboard.length && !normalizeInactiveRows(data, position).length)) {
-    return { ok: false, error: `${position} leaderboard returned no player evidence` };
+  if (!Array.isArray(data.leaderboard) || !data.leaderboard.length) {
+    const reasons = (Array.isArray(data.failures) ? data.failures : []).slice(0, 3)
+      .map(item => typeof item === 'string' ? item : item && item.error).filter(Boolean);
+    return { ok: false, data, error: `${position} leaderboard returned no active player evidence${reasons.length ? ': ' + reasons.join('; ') : ''}` };
   }
   return { ok: true, data };
 }
@@ -569,7 +571,7 @@ exports.handler = async function (event) {
       successCount++;
     } else {
       positions[position] = [];
-      inactive[position] = [];
+      inactive[position] = result.data ? normalizeInactiveRows(result.data, position) : [];
       failures[position] = [result.error];
     }
   });

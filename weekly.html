@@ -1490,6 +1490,7 @@ function flattenRankings(rankings) {
 }
 
 function loadWeeklyRankings() {
+  var requestId = state.weeklyRequestId = (state.weeklyRequestId || 0) + 1;
   state.loading = true;
   state.loadError = null;
 
@@ -1508,10 +1509,8 @@ function loadWeeklyRankings() {
     var declared = data && data.metadata && data.metadata.positionsFailed || [];
     return ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].filter(function(pos) {
       var active = data && data.positions && data.positions[pos];
-      var inactive = data && data.inactive && data.inactive[pos];
       return declared.indexOf(pos) !== -1 ||
-        (!Array.isArray(active) || !active.length) &&
-        (!Array.isArray(inactive) || !inactive.length);
+        (!Array.isArray(active) || !active.length);
     });
   }
   function readRankings() {
@@ -1524,11 +1523,13 @@ function loadWeeklyRankings() {
   }
   return readRankings()
     .then(function(result) {
+      if (requestId !== state.weeklyRequestId) return result;
       // One cache-only retry; never accept an empty position as complete.
       return result.ok && result.data && missingPositions(result.data).length
         ? readRankings() : result;
     })
     .then(function (result) {
+      if (requestId !== state.weeklyRequestId) return;
       state.loading = false;
       var rowsReturned = result.data && result.data.positions
         ? flattenRankings(result.data).length
@@ -1559,6 +1560,7 @@ function loadWeeklyRankings() {
       renderTable();
     })
     .catch(function (err) {
+      if (requestId !== state.weeklyRequestId) return;
       state.loading = false;
       var fallback = state.myRosterOnly ? buildConnectedProviderFallback(season, week, scoring) : null;
       state.rankings = fallback;
@@ -2882,6 +2884,7 @@ function detectConnectedEspnScoring(connection) {
       'scoringSelect'
     );
 
+  var connectedScoringChanged = connectedScoring && scoringSelect && scoringSelect.value !== connectedScoring;
   if (
     connectedScoring &&
     scoringSelect
@@ -3016,7 +3019,8 @@ function detectConnectedEspnScoring(connection) {
     this only re-renders the same already-loaded state.rankings with
     roster-connection context applied.
   */
-  renderTable();
+  if (connectedScoringChanged) loadWeeklyRankings();
+  else renderTable();
   renderNewswire();
 })();
 </script>
