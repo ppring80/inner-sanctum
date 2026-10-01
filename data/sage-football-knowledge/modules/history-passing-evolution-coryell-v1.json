@@ -1,0 +1,263 @@
+{
+  "module": "history-passing-evolution-coryell-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "hof-gillman",
+      "authority": "historical-authority",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/players/sid-gillman",
+      "accessed": "2026-10-01"
+    },
+    {
+      "id": "hof-coryell",
+      "authority": "historical-authority",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/players/don-coryell",
+      "accessed": "2026-10-01"
+    },
+    {
+      "id": "hof-air-coryell",
+      "authority": "historical-feature",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/news/air-coryell",
+      "accessed": "2026-10-01"
+    },
+    {
+      "id": "hof-tight-end",
+      "authority": "historical-feature",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/news/the-tight-end-trend",
+      "accessed": "2026-10-01"
+    },
+    {
+      "id": "nfl-terms",
+      "authority": "primary",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/rules-officiating/nfl-football-basics/football-terms",
+      "accessed": "2026-10-01"
+    }
+  ],
+  "entries": [
+    {
+      "id": "history-sid-gillman-passing",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "coaching"
+      ],
+      "title": "Sid Gillman and passing-offense development",
+      "summary": "The Pro Football Hall of Fame identifies Sid Gillman as a leading authority on forward-passing offense and describes his Chargers as a major influence on professional passing strategy.",
+      "principles": [
+        "Treat Gillman as an important node in the historical passing-offense graph.",
+        "Study his concepts separately before asserting direct lineage to a later system."
+      ],
+      "limitations": [
+        "Influence does not imply that every later vertical passing concept originated with Gillman."
+      ],
+      "relationships": [
+        "INFLUENCED:professional-passing-offense"
+      ],
+      "fantasyImplications": [
+        "Historical context only until linked to modern observed concepts and validated fantasy effects."
+      ],
+      "status": "curated",
+      "era": "1950s-1970s",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-gillman"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "history-coryell-record",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "coaching"
+      ],
+      "title": "Don Coryell offensive record and influence",
+      "summary": "Coryell revived the St. Louis Cardinals and San Diego Chargers; the Hall of Fame records that his Chargers led the NFL in passing seven of eight seasons and consistently ranked among the league's top offenses.",
+      "principles": [
+        "Study Coryell as both a historical coach and an offensive-system innovator.",
+        "Separate documented outcomes from later schematic interpretations."
+      ],
+      "limitations": [
+        "Team passing rank alone does not identify which concepts caused success."
+      ],
+      "relationships": [
+        "USES_CONCEPT:pass-oriented-offense",
+        "RELATED_TO:air-coryell"
+      ],
+      "fantasyImplications": [
+        "Historical foundation for later study of role creation, field stretching and mismatch usage; no direct ranking adjustment."
+      ],
+      "status": "curated",
+      "era": "1970s-1980s",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-coryell"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "history-coryell-open-man",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "pass-game"
+      ],
+      "title": "Coryell offense stressed the whole field and multiple eligible receivers",
+      "summary": "A Hall of Fame historical feature quotes former Chargers receiver John Jefferson describing Coryell's offense as using the entire field and all eligible skill-position weapons, with plays designed to involve multiple receivers and find the open man.",
+      "principles": [
+        "Model system intent as distributing stress across the field and eligible receivers.",
+        "Preserve this as participant testimony rather than universal schematic law."
+      ],
+      "limitations": [
+        "Participant recollection is strong historical evidence but not a complete playbook taxonomy."
+      ],
+      "relationships": [
+        "STRESSES:entire-field",
+        "USES_CONCEPT:multi-eligible-pass-distribution"
+      ],
+      "fantasyImplications": [
+        "Generates hypotheses about how system structure can create opportunity across WR/TE/RB roles; must be tested in modern descendants."
+      ],
+      "status": "curated",
+      "era": "1978-1986 Chargers",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-air-coryell"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "history-coryell-option-pass",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "coverage"
+      ],
+      "title": "Coryell option-passing response to coverage",
+      "summary": "The Hall of Fame's Air Coryell history describes a St. Louis option-passing system in which the quarterback evaluated pass coverage and attacked its weak area.",
+      "principles": [
+        "Connect offensive decisions to defensive structure.",
+        "Treat coverage recognition as part of offensive problem solving, not merely a post-play statistic."
+      ],
+      "limitations": [
+        "The source does not provide a complete rule set for the option-passing system."
+      ],
+      "relationships": [
+        "PERFORMS_AGAINST:coverage-structure",
+        "RELATED_TO:coverage-diagnosis"
+      ],
+      "fantasyImplications": [
+        "Supports investigation of offense-versus-coverage interaction as a fantasy-relevant hypothesis."
+      ],
+      "status": "curated",
+      "era": "1970s Cardinals",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-air-coryell"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "history-coryell-tight-end-mismatch",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "positions"
+      ],
+      "title": "Coryell and tight-end mismatch deployment",
+      "summary": "Kellen Winslow credited Coryell with changing how the tight end could be deployed; Hall of Fame material describes two-tight-end personnel being used to preserve blocking while creating receiving mismatches.",
+      "principles": [
+        "Personnel can be used to force defensive matchup decisions.",
+        "Position labels do not fully describe receiving deployment."
+      ],
+      "limitations": [
+        "Do not infer that all Coryell descendants use two-tight-end personnel similarly."
+      ],
+      "relationships": [
+        "USES_CONCEPT:personnel-mismatch",
+        "BENEFITS_ROLE:receiving-tight-end"
+      ],
+      "fantasyImplications": [
+        "Historical basis for studying how personnel/mismatch design changes TE route and target opportunity."
+      ],
+      "status": "curated",
+      "era": "1979-1980s Chargers",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-tight-end"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "concept-shift-vs-motion-boundary",
+      "knowledgeClass": "FACT",
+      "domain": [
+        "rules",
+        "motion",
+        "terminology"
+      ],
+      "title": "NFL shift terminology baseline",
+      "summary": "NFL Football Operations defines a shift as simultaneous pre-snap movement of two or more offensive players. Super SAGE should preserve official terminology and distinguish shifts from other pre-snap movement.",
+      "principles": [
+        "Use official rule terminology as baseline.",
+        "Do not casually collapse shift and motion into one label when analyzing play structure."
+      ],
+      "limitations": [
+        "This entry establishes terminology, not every legal-motion rule."
+      ],
+      "relationships": [
+        "RELATED_TO:motion-response"
+      ],
+      "fantasyImplications": [
+        "Improves data classification; no direct fantasy adjustment."
+      ],
+      "status": "curated",
+      "era": "2026",
+      "season": 2026,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-terms"
+        }
+      ],
+      "validation": null
+    }
+  ]
+}
