@@ -1,0 +1,94 @@
+{
+  "module": "football-history-v1",
+  "version": 1,
+  "entries": [
+    {
+      "id": "history-evolution-principle",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "rules",
+        "strategy"
+      ],
+      "title": "Football evolves through rule, personnel and strategic interaction",
+      "summary": "Football strategy changes as rules, player specialization, substitution, passing rules, roster construction and opposing innovations change. Historical concepts must be interpreted in their era before applying them to modern football.",
+      "principles": [
+        "Preserve era context.",
+        "Track innovation and defensive/offensive counter-innovation.",
+        "Do not assume historical statistical environments are directly comparable."
+      ],
+      "limitations": [
+        "Historical attribution can be contested; provenance should preserve competing accounts."
+      ],
+      "fantasyImplications": [
+        "Historical knowledge primarily improves causal/schematic understanding; direct fantasy application requires modern evidence."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Program-level historical principle; detailed sourced timeline pending."
+        }
+      ]
+    },
+    {
+      "id": "history-systems-lineage",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "coaching",
+        "coaching-trees"
+      ],
+      "title": "Systems evolve through coaching lineages and adaptation",
+      "summary": "Named offensive and defensive systems are families of ideas that evolve as coaches teach, combine and adapt concepts; labels should not be treated as immutable playbooks.",
+      "principles": [
+        "Track coach-to-coach influence separately from current observed tendency.",
+        "Record concepts inherited, changed or abandoned."
+      ],
+      "limitations": [
+        "Coaching-tree membership does not prove a current team uses a particular concept at a particular rate."
+      ],
+      "fantasyImplications": [
+        "Lineage can generate hypotheses about role and scheme, but current usage evidence must dominate."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Historical/coaching graph principle; named lineages to be sourced individually."
+        }
+      ]
+    },
+    {
+      "id": "history-coryell-program",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "coaching"
+      ],
+      "title": "Coryell system study node",
+      "summary": "Create a sourced study of Don Coryell's offensive philosophy, historical development, terminology/concepts, coaching influence, defensive responses and modern descendants. No specific schematic claim is promoted until sourced.",
+      "principles": [
+        "Separate contemporary primary evidence from later summaries.",
+        "Map concepts and descendants rather than reducing the system to a single label such as vertical passing."
+      ],
+      "limitations": [
+        "Air Coryell is often used loosely; system-specific claims require sourcing and era context."
+      ],
+      "fantasyImplications": [
+        "Potential historical foundation for understanding modern vertical spacing and role concepts; fantasy use requires current-team evidence and validation."
+      ],
+      "status": "needs-source",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "type": "program_seed",
+          "note": "Prioritized because it connects historical study, modern scheme lineage and first-hand user experience."
+        }
+      ]
+    }
+  ]
+}
