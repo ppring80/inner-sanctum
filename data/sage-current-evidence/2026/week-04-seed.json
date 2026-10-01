@@ -1,0 +1,153 @@
+{
+  "dataset": "super-sage-current-evidence-2026-week4-seed",
+  "generatedAt": "2026-10-01T05:30:00Z",
+  "note": "Seed evidence from current public web sources. This file is evidence, not a ranking override. Refresh according to Current Evidence freshness rules.",
+  "evidence": [
+    {
+      "type": "SCHEME",
+      "sourceTier": "trusted-data",
+      "source": "Sharp Football Analysis — NFL Secondary Statistics: Coverage Scheme Stats & Rates",
+      "sourceUrl": "https://www.sharpfootballanalysis.com/stats-nfl/nfl-coverage-schemes/",
+      "claim": "Through the current 2026 sample, New England is 28.6% man, 62.9% zone, 44.2% middle-closed, and 48.1% middle-open.",
+      "observedAt": "2026-09-29T14:47:18Z",
+      "season": 2026,
+      "week": 4,
+      "team": "NE",
+      "metric": "coverage_structure_rates",
+      "value": {
+        "man": 28.6,
+        "zone": 62.9,
+        "middleClosed": 44.2,
+        "middleOpen": 48.1
+      },
+      "unit": "percent",
+      "sample": null
+    },
+    {
+      "type": "SCHEME",
+      "sourceTier": "trusted-data",
+      "source": "Sharp Football Analysis — NFL Secondary Statistics: Coverage Scheme Stats & Rates",
+      "sourceUrl": "https://www.sharpfootballanalysis.com/stats-nfl/nfl-coverage-schemes/",
+      "claim": "Through the current 2026 sample, Buffalo is 11.1% man, 79.9% zone, 43.5% middle-closed, and 50.8% middle-open.",
+      "observedAt": "2026-09-29T14:47:18Z",
+      "season": 2026,
+      "week": 4,
+      "team": "BUF",
+      "metric": "coverage_structure_rates",
+      "value": {
+        "man": 11.1,
+        "zone": 79.9,
+        "middleClosed": 43.5,
+        "middleOpen": 50.8
+      },
+      "unit": "percent",
+      "sample": null
+    },
+    {
+      "type": "TEAM_TENDENCY",
+      "sourceTier": "trusted-data",
+      "source": "Sharp Football Analysis — NFL Offensive Personnel Usage",
+      "sourceUrl": "https://www.sharpfootballanalysis.com/stats-nfl/nfl-offensive-personnel/",
+      "claim": "Buffalo has used 11 personnel on 44% of plays, 12 personnel on 21%, and 13 personnel on 30%; 55% of plays have used two or more tight ends across 179 offensive plays.",
+      "observedAt": "2026-09-29T14:47:53Z",
+      "season": 2026,
+      "week": 4,
+      "team": "BUF",
+      "metric": "personnel_usage",
+      "value": {
+        "personnel11": 44,
+        "personnel12": 21,
+        "personnel13": 30,
+        "twoPlusTE": 55
+      },
+      "unit": "percent",
+      "sample": {
+        "plays": 179
+      }
+    },
+    {
+      "type": "MATCHUP",
+      "sourceTier": "primary",
+      "source": "NFL.com — Josh Allen 2026 splits",
+      "sourceUrl": "https://www.nfl.com/players/josh-allen/stats/splits/2026/",
+      "claim": "NFL.com currently lists Josh Allen at 40 completions on 60 attempts for 582 passing yards, 5 passing touchdowns and 0 interceptions across the displayed September 2026 split.",
+      "observedAt": "2026-09-30T00:00:00Z",
+      "season": 2026,
+      "week": 4,
+      "team": "BUF",
+      "player": "Josh Allen",
+      "metric": "passing_split",
+      "value": {
+        "completions": 40,
+        "attempts": 60,
+        "yards": 582,
+        "touchdowns": 5,
+        "interceptions": 0
+      },
+      "unit": "season_to_date_displayed",
+      "sample": {
+        "games": 2
+      }
+    },
+    {
+      "type": "INJURY_STATUS",
+      "sourceTier": "primary",
+      "source": "NFL.com — Official Week 4 injury report",
+      "sourceUrl": "https://www.nfl.com/injuries/league/2026/reg4",
+      "claim": "New England CB Christian Gonzalez was listed as Did Not Participate on the Week 4 injury report available Sept. 30.",
+      "observedAt": "2026-09-30T19:18:00Z",
+      "season": 2026,
+      "week": 4,
+      "team": "NE",
+      "player": "Christian Gonzalez",
+      "metric": "practice_status",
+      "value": "DNP",
+      "unit": null,
+      "sample": null
+    },
+    {
+      "type": "MATCHUP",
+      "sourceTier": "trusted-reporting",
+      "source": "NFL.com — Patriots defense sustainability analysis",
+      "sourceUrl": "https://www.nfl.com/news/the-patriots-have-started-strong-on-defense-what-s-sustainable-and-what-isn-t",
+      "claim": "NFL.com reported after two weeks that New England ranked first in points allowed per drive, third in defensive EPA per play, fourth in yards per play allowed (4.5), and seventh in defensive success rate, while explicitly cautioning about small sample/opponent context.",
+      "observedAt": "2026-09-24T11:16:00Z",
+      "season": 2026,
+      "week": 4,
+      "team": "NE",
+      "metric": "early_defensive_efficiency",
+      "value": {
+        "yardsPerPlayAllowed": 4.5
+      },
+      "unit": null,
+      "sample": {
+        "weeks": 2
+      },
+      "note": "Source explicitly flags small-sample and opponent-quality concerns."
+    },
+    {
+      "type": "MATCHUP",
+      "sourceTier": "trusted-data",
+      "source": "Sharp Football Analysis — Patriots vs Bills Week 4 Worksheet",
+      "sourceUrl": "https://www.sharpfootballanalysis.com/fantasy/patriots-bills-week-4-fantasy-football-preview-nfl-worksheet-rich-hribar-2026/",
+      "claim": "Entering Week 4, Buffalo is listed at 33.7 points per game, 6.5 yards per play and a 47.7% offensive success rate; New England is listed at 17.0 points allowed per game, 4.8 defensive yards per play and a league-low 23.0 yards allowed per drive.",
+      "observedAt": "2026-09-30T18:13:53Z",
+      "season": 2026,
+      "week": 4,
+      "team": "BUF",
+      "metric": "week4_matchup_context",
+      "value": {
+        "buffaloPointsPerGame": 33.7,
+        "buffaloYardsPerPlay": 6.5,
+        "buffaloSuccessRate": 47.7,
+        "newEnglandPointsAllowedPerGame": 17,
+        "newEnglandDefYardsPerPlay": 4.8,
+        "newEnglandYardsAllowedPerDrive": 23
+      },
+      "unit": null,
+      "sample": {
+        "weeks": 3
+      }
+    }
+  ]
+}
