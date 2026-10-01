@@ -1,0 +1,233 @@
+{
+  "module": "defensive-fronts-run-fits-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "nfl-terms-defense",
+      "authority": "primary",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/rules-officiating/nfl-football-basics/football-terms"
+    },
+    {
+      "id": "usa-dl-doubleteams",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/678/defensive-line-techniques"
+    },
+    {
+      "id": "usa-force-cutback",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/866/use-these-drills-to-apply-force-and-cutback-rules-to-fit-any-defense"
+    },
+    {
+      "id": "usa-front-trends",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7457/defensive-trends-coverages-fronts-and-pressures"
+    },
+    {
+      "id": "usa-20-runfits",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7188/learn-how-to-defend-the-20-personnel-run-game"
+    },
+    {
+      "id": "usa-quarters-runfit",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7422/college-coach-details-quarters-coverage-part-2"
+    }
+  ],
+  "entries": [
+    {
+      "id": "defense-front-role-baseline",
+      "knowledgeClass": "FACT",
+      "domain": [
+        "defense",
+        "fronts",
+        "positions"
+      ],
+      "title": "Defensive line role baseline",
+      "summary": "NFL Football Operations describes defensive ends as edge defenders who pressure quarterbacks and stop runners, while defensive tackles typically align inside opposite guards to disrupt backfield action and the run game.",
+      "principles": [
+        "Use official position terminology as a baseline, not as a complete scheme description."
+      ],
+      "limitations": [
+        "Modern fronts use hybrid alignments and roles that exceed simple position labels."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-terms-defense"
+        }
+      ]
+    },
+    {
+      "id": "defense-gap-integrity",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "fronts",
+        "run-fits"
+      ],
+      "title": "Gap integrity",
+      "summary": "Run defense assigns defenders responsibility for spaces created by the offensive front; block type and movement can threaten those responsibilities, making gap integrity a central run-defense concept.",
+      "principles": [
+        "Analyze defender responsibility together with offensive blocking movement.",
+        "Distinguish vertical gap-scheme double teams from horizontal zone combinations when the source/system does."
+      ],
+      "limitations": [
+        "One-gap/two-gap terminology and technique details vary by system."
+      ],
+      "relationships": [
+        "COUNTERS:zone-run",
+        "COUNTERS:gap-run"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-dl-doubleteams"
+        }
+      ]
+    },
+    {
+      "id": "defense-force-cutback",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "run-fits",
+        "leverage"
+      ],
+      "title": "Force and cutback structure",
+      "summary": "One documented run-fit framework teaches perimeter force and cutback responsibilities so the defense controls where the runner can go rather than treating 'contain' as an isolated edge task.",
+      "principles": [
+        "Identify the force player by call/structure rather than position label alone.",
+        "Run fits involve coordinated leverage across levels."
+      ],
+      "limitations": [
+        "The cited force terminology is coach/system-specific."
+      ],
+      "relationships": [
+        "RELATED_TO:coverage-rotation",
+        "RELATED_TO:run-fit"
+      ],
+      "fantasyImplications": [
+        "Potential input to RB scheme-matchup analysis after validation."
+      ],
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-force-cutback"
+        }
+      ]
+    },
+    {
+      "id": "defense-tite-front",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "fronts",
+        "run-fits",
+        "rpo"
+      ],
+      "title": "Tite-front structure",
+      "summary": "USA Football coaching material describes the tite front as a tightened interior structure commonly represented by 4i-0-4i alignments, used in part to defend interior runs while preserving defenders for perimeter/pass threats.",
+      "principles": [
+        "Separate front alignment from coverage shell.",
+        "Track how the nose and 4i techniques are coached within the specific system."
+      ],
+      "limitations": [
+        "Tite-front implementation varies; 4i-0-4i does not define every associated coverage or run-fit rule."
+      ],
+      "relationships": [
+        "COUNTERS:interior-run",
+        "RELATED_TO:rpo-defense"
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-front-trends"
+        },
+        {
+          "sourceId": "usa-20-runfits"
+        }
+      ]
+    },
+    {
+      "id": "defense-front-coverage-coupling",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "fronts",
+        "coverage",
+        "run-fits"
+      ],
+      "title": "Front, coverage and run fit are coupled",
+      "summary": "Defensive structure cannot be understood from the front alone: coverage rotation can determine force/support responsibilities and change how defenders fit the run.",
+      "principles": [
+        "Model front plus coverage plus fit responsibility.",
+        "Do not label a defensive matchup from personnel count alone."
+      ],
+      "limitations": [
+        "Specific fit rules are call- and system-dependent."
+      ],
+      "relationships": [
+        "RELATED_TO:coverage-rotation",
+        "RELATED_TO:force-cutback"
+      ],
+      "fantasyImplications": [
+        "A future Scheme Intelligence model should join front usage, coverage and offensive run concept before adjusting RB matchup."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-quarters-runfit"
+        },
+        {
+          "sourceId": "usa-20-runfits"
+        }
+      ]
+    },
+    {
+      "id": "hypothesis-run-fit-fantasy",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "fantasy-implications",
+        "run-game"
+      ],
+      "title": "Run-concept versus front/run-fit interaction may improve RB forecasts",
+      "summary": "SAGE may improve rushing forecasts by matching an offense's run-concept usage and RB role to an opponent's front/run-fit tendencies rather than relying primarily on aggregate rushing yards or fantasy points allowed.",
+      "principles": [
+        "Condition on concept usage, personnel and sample quality.",
+        "Account for offensive-line health and opponent quality."
+      ],
+      "limitations": [
+        "Public classification quality may be inconsistent; game script can confound observed rushing results."
+      ],
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-front-trends"
+        },
+        {
+          "sourceId": "usa-dl-doubleteams"
+        },
+        {
+          "sourceId": "usa-20-runfits"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}
