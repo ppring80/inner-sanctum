@@ -1,0 +1,30 @@
+name: Super SAGE Evidence Refresh
+
+on:
+  schedule:
+    # Tuesday after the weekly rollover and Friday for injury/role refresh.
+    - cron: '30 14 * 9-12 2'
+    - cron: '30 14 * 9-12 5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-sage-evidence-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Refresh Super SAGE current evidence
+        env:
+          REFRESH_URL: https://theinnersanctum.xyz/.netlify/functions/refresh-super-sage-evidence
+          REFRESH_SECRET: ${{ secrets.TANK01_REFRESH_SECRET }}
+        run: |
+          test -n "$REFRESH_SECRET"
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $REFRESH_SECRET" \
+            "$REFRESH_URL"
