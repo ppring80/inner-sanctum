@@ -1,0 +1,114 @@
+{
+  "module": "passing-concepts-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-four-strong",
+      "url": "https://blogs.usafootball.com/blog/7594/how-andy-reid-is-stressing-defenses-with-a-4-strong-passing-concept",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-yankee",
+      "url": "https://blogs.usafootball.com/blog/6266/how-to-create-explosive-passing-plays-with-the-yankee-concept",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-hank",
+      "url": "https://blogs.usafootball.com/blog/7736/teaching-the-quarterback-to-read-hank",
+      "publisher": "USA Football"
+    }
+  ],
+  "entries": [
+    {
+      "id": "pass-space-stress",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "pass-game",
+        "route-concepts"
+      ],
+      "title": "Passing concepts stress space and defender rules",
+      "summary": "Route combinations are designed to stress particular defenders, zones, leverage or assignment rules; SAGE should analyze concepts as interacting routes rather than independent route labels.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-four-strong"
+        },
+        {
+          "sourceId": "usa-hank"
+        }
+      ]
+    },
+    {
+      "id": "pass-yankee",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "pass-game",
+        "play-action"
+      ],
+      "title": "Yankee-style post/cross play-action stress",
+      "summary": "A post/deep-cross play-action concept can stress deep safety structure and use run action to influence defenders; the preferred throw changes with coverage response.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-yankee"
+        }
+      ],
+      "limitations": [
+        "Terminology and coaching rules vary; do not assume every post-cross concept uses identical reads."
+      ]
+    },
+    {
+      "id": "pass-hank",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "pass-game",
+        "coverage"
+      ],
+      "title": "Hank-style underneath zone stress",
+      "summary": "One documented Hank implementation uses underneath routes to stretch Cover 3 hook/curl-flat defenders and gives the quarterback movement keys based on those defenders.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-hank"
+        }
+      ],
+      "limitations": [
+        "This is a documented implementation, not a universal definition for every playbook."
+      ]
+    },
+    {
+      "id": "hypothesis-route-coverage",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "fantasy-implications",
+        "pass-game"
+      ],
+      "title": "Route-concept versus coverage interaction can improve player opportunity forecasts",
+      "summary": "If SAGE knows a team's concept usage, a defense's rules, and a player's participation within those concepts, it may forecast targets/explosives more accurately than aggregate matchup statistics alone.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-four-strong"
+        },
+        {
+          "sourceId": "usa-yankee"
+        },
+        {
+          "sourceId": "usa-hank"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}

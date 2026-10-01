@@ -1,0 +1,139 @@
+{
+  "module": "history-rule-evolution-passing-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "hof-forward-pass",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/news/changing-the-rules-archived"
+    },
+    {
+      "id": "hof-1960-79",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/football-history/general-history-chronology-1960-to-1979"
+    },
+    {
+      "id": "nfl-competition",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/rules-officiating/rulebook/competition-committee"
+    },
+    {
+      "id": "hof-qb-radio",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/news/moments-in-nfl-history-call-1-800-QB-RADIO"
+    },
+    {
+      "id": "hof-passer-rating",
+      "publisher": "Pro Football Hall of Fame",
+      "url": "https://www.profootballhof.com/news/nfl-s-passer-rating"
+    }
+  ],
+  "entries": [
+    {
+      "id": "history-forward-pass-1906",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "rules",
+        "pass-game"
+      ],
+      "title": "Legalization and early constraints of the forward pass",
+      "summary": "Hall of Fame history dates legal professional forward passing to 1906 and notes that early rules constrained its use substantially. SAGE should treat the modern passing game as the product of rule evolution rather than a timeless statistical environment.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-forward-pass"
+        }
+      ]
+    },
+    {
+      "id": "history-1970s-open-pass",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "rules",
+        "pass-game",
+        "protection"
+      ],
+      "title": "1970s rule changes opened the passing environment",
+      "summary": "Hall of Fame chronology records 1970s changes intended to open the passing game, culminating in 1978 restrictions on receiver contact beyond five yards and a pass-blocking interpretation permitting extended arms/open hands.",
+      "principles": [
+        "Time-scope passing statistics around major rule environments.",
+        "Consider rule changes when comparing eras or evaluating strategic innovation."
+      ],
+      "limitations": [
+        "Rule change and offensive output can be associated without assuming a single-cause explanation."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-1960-79"
+        }
+      ]
+    },
+    {
+      "id": "history-rule-governance",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "rules",
+        "governance"
+      ],
+      "title": "NFL rule governance evolved from college inheritance to professional process",
+      "summary": "NFL Football Operations states that the league's early rules followed the college rulebook; a professional Rules Committee was formed in 1932, and the Competition Committee replaced it in 1968.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-competition"
+        }
+      ]
+    },
+    {
+      "id": "history-coach-qb-tech",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "technology",
+        "quarterback",
+        "coaching"
+      ],
+      "title": "Coach-to-quarterback communication technology evolved over decades",
+      "summary": "Hall of Fame history describes Paul Brown's 1950s experimentation with helmet radio communication and its much later path to mainstream use, illustrating that technology can change how strategy is communicated and executed.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-qb-radio"
+        }
+      ]
+    },
+    {
+      "id": "history-passer-rating",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "analytics",
+        "quarterback"
+      ],
+      "title": "NFL passer rating is an era-specific statistical construct",
+      "summary": "The Hall of Fame records that the current passer-rating system was developed from historical qualified-passer data and adopted by the NFL in 1973. SAGE should treat metrics as designed measures with assumptions, not football truth.",
+      "principles": [
+        "Know how a metric is constructed before using it.",
+        "Prefer metrics appropriate to the decision and era."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-passer-rating"
+        }
+      ],
+      "fantasyImplications": [
+        "Supports the broader rule that no single legacy metric should dominate QB evaluation."
+      ]
+    }
+  ]
+}

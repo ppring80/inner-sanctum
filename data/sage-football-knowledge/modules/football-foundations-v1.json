@@ -1,0 +1,154 @@
+{
+  "module": "football-foundations-v1",
+  "version": 1,
+  "entries": [
+    {
+      "id": "foundation-down-distance-field",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "rules",
+        "situational-football"
+      ],
+      "title": "Down, distance and field position",
+      "summary": "Offensive and defensive decisions are constrained by down, yards-to-gain, field position, clock and score; tendencies must be conditioned on situation.",
+      "principles": [
+        "Avoid treating aggregate tendencies as situation-free.",
+        "Separate neutral situations from obvious passing/rushing situations."
+      ],
+      "limitations": [
+        "Small situational samples are noisy."
+      ],
+      "fantasyImplications": [
+        "Usage and efficiency expectations should account for likely game situations, but fantasy weighting requires validation."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Foundational concept; source set pending."
+        }
+      ]
+    },
+    {
+      "id": "foundation-personnel",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "personnel",
+        "formations"
+      ],
+      "title": "Offensive personnel groupings",
+      "summary": "Personnel groupings describe eligible skill-position composition and shape the defensive response, formation possibilities and player opportunity.",
+      "principles": [
+        "Track RB/TE/WR composition separately from formation.",
+        "Personnel and alignment are related but not identical."
+      ],
+      "limitations": [
+        "Teams can create atypical formations from the same personnel."
+      ],
+      "fantasyImplications": [
+        "Personnel participation can clarify route/touch opportunity and role stability."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Foundational concept; source set pending."
+        }
+      ]
+    },
+    {
+      "id": "foundation-receiver-alignments",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "positions",
+        "pass-game"
+      ],
+      "title": "X, Z and slot receiver roles",
+      "summary": "Receiver labels describe alignment and assignment tendencies, not fixed player archetypes. X is commonly attached to the line, Z commonly aligns off the line and can motion more freely, while slot describes an inside alignment; modern offenses move players among roles.",
+      "principles": [
+        "Separate listed position from snap alignment.",
+        "Track motion and formation-specific responsibilities."
+      ],
+      "limitations": [
+        "Terminology varies by system and modern offenses blur traditional labels."
+      ],
+      "fantasyImplications": [
+        "Alignment and motion can change matchup, release access, route tree and target opportunity."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "experience_note",
+          "source": "Pat",
+          "note": "Played Z/slot in a motion-heavy offense; frequent pre-snap motion used to read defensive response."
+        },
+        {
+          "type": "curation",
+          "note": "Authoritative sourcing pending."
+        }
+      ]
+    },
+    {
+      "id": "foundation-run-families",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "run-game"
+      ],
+      "title": "Run concept families",
+      "summary": "Run games can be organized into broad zone and gap/man families, with concepts such as inside/outside zone, power, counter, duo and related variants creating different blocking rules and reads.",
+      "principles": [
+        "Identify concept family before attributing RB performance solely to player talent.",
+        "Consider box count, front, line movement and back read."
+      ],
+      "limitations": [
+        "Terminology and blocking details vary by team."
+      ],
+      "fantasyImplications": [
+        "Scheme fit, line health and defensive front interaction may affect rushing opportunity/efficiency; predictive use requires validation."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Foundational concept; detailed modules/sources pending."
+        }
+      ]
+    },
+    {
+      "id": "foundation-pass-protection",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "protection",
+        "pass-game"
+      ],
+      "title": "Pass protection structure",
+      "summary": "Protection rules determine how an offense accounts for rushers and influence route participation, quarterback timing and pressure responses.",
+      "principles": [
+        "Distinguish pressure from blitz.",
+        "Account for RB/TE protection responsibilities when evaluating receiving opportunity."
+      ],
+      "limitations": [
+        "Protection calls and adjustments are often not fully observable from public data."
+      ],
+      "fantasyImplications": [
+        "Protection burden can alter routes and targets for RB/TE and change QB/WR efficiency."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "type": "curation",
+          "note": "Foundational concept; source set pending."
+        }
+      ]
+    }
+  ]
+}

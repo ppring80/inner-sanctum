@@ -1,0 +1,107 @@
+{
+  "module": "coverage-split-field-and-diagnosis-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-qb-read",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/697/follow-this-formula-to-identify-pass-coverages"
+    },
+    {
+      "id": "usa-hank",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7736/teaching-the-quarterback-to-read-hank"
+    },
+    {
+      "id": "usa-fire3",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7377/fire-3-simulated-pressure"
+    }
+  ],
+  "entries": [
+    {
+      "id": "coverage-diagnosis-process",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "quarterback",
+        "coverage",
+        "situational-football"
+      ],
+      "title": "Coverage diagnosis is a process, not a single tell",
+      "summary": "One coaching framework begins with game situation, then safety structure and secondary/blitz indicators. Super SAGE should treat pre-snap indicators probabilistically and confirm with post-snap behavior.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-read"
+        }
+      ],
+      "limitations": [
+        "The cited checklist is a coaching framework, not a universal quarterback progression."
+      ]
+    },
+    {
+      "id": "coverage-cover6",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage",
+        "split-field"
+      ],
+      "title": "Cover 6 / quarter-quarter-half family",
+      "summary": "USA Football coaching material identifies Cover 6 as a quarter-quarter-half coverage option. SAGE should model split-field coverage as potentially different rules to opposite sides rather than forcing one whole-field label.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-fire3"
+        }
+      ]
+    },
+    {
+      "id": "coverage-tampa2-context",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Tampa 2 changes underneath/deep-middle behavior",
+      "summary": "A documented offensive teaching example distinguishes Tampa 2 from conventional Cover 2 because the middle defender's depth can make the structure behave differently for route reads. SAGE should not treat all two-high Cover 2-family calls as identical.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-hank"
+        }
+      ],
+      "limitations": [
+        "This entry captures an offensive teaching perspective, not a complete Tampa 2 defensive manual."
+      ]
+    },
+    {
+      "id": "hypothesis-shell-postsnap",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "coverage",
+        "fantasy-implications"
+      ],
+      "title": "Post-snap coverage behavior should outrank static pre-snap shell labels",
+      "summary": "Because defenses can rotate/disguise and split rules by side, SAGE may gain predictive value from post-snap coverage classification and player-side assignment rather than pre-snap shell percentages alone.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-qb-read"
+        },
+        {
+          "sourceId": "usa-fire3"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}

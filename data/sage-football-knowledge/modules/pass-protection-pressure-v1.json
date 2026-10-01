@@ -1,0 +1,133 @@
+{
+  "module": "pass-protection-pressure-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-gap-responsibility",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/908/building-an-offensive-line-principles-of-gap-responsibility"
+    },
+    {
+      "id": "usa-protection-analysis",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/4912/build-a-plan-to-improve-pass-protection-for-next-year-by-conducting-this-postseason-analysis"
+    },
+    {
+      "id": "usa-shallow-protection",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7300/coaches-notes-preview-adding-the-shallow-concept-to-your-passing-game"
+    },
+    {
+      "id": "usa-vr-protection-id",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7619/using-vr-in-season"
+    }
+  ],
+  "entries": [
+    {
+      "id": "protection-full-slide",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "protection"
+      ],
+      "title": "Full-slide gap protection",
+      "summary": "One documented protection family assigns the offensive line to slide toward gap responsibilities, commonly leaving a back responsible for the backside edge. SAGE should model protection as assignment structure, not merely offensive-line quality.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-gap-responsibility"
+        }
+      ],
+      "limitations": [
+        "Protection terminology/rules vary by system."
+      ]
+    },
+    {
+      "id": "protection-man-slide",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "protection"
+      ],
+      "title": "Man/slide protection",
+      "summary": "Documented mixed protections assign one or more blockers man responsibility while other linemen slide to gap responsibilities; backs can own the gap created between those rules.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-gap-responsibility"
+        },
+        {
+          "sourceId": "usa-shallow-protection"
+        }
+      ]
+    },
+    {
+      "id": "protection-identification",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "protection",
+        "quarterback",
+        "running-back"
+      ],
+      "title": "Protection identification is multi-position work",
+      "summary": "Protection identification can involve quarterback, running backs and offensive line before the snap; SAGE should not attribute every pressure event solely to an offensive lineman.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-vr-protection-id"
+        }
+      ]
+    },
+    {
+      "id": "protection-failure-causes",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "protection",
+        "analytics"
+      ],
+      "title": "Separate assignment, technique and scheme weakness",
+      "summary": "A protection failure can arise from assignment error, technique failure, or a structural weakness against a particular pressure. Time-to-hurry/hit/sack adds context but does not by itself identify the cause.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-protection-analysis"
+        }
+      ],
+      "fantasyImplications": [
+        "Potentially separates persistent protection problems from QB/coverage-driven sacks and may improve QB/receiver matchup analysis after validation."
+      ]
+    },
+    {
+      "id": "hypothesis-protection-role",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "fantasy-implications",
+        "protection",
+        "positions"
+      ],
+      "title": "Protection responsibility can alter fantasy route opportunity",
+      "summary": "When RBs or TEs absorb protection responsibility, route participation and target opportunity may change; SAGE should test protection burden together with pressure environment rather than infer receiving opportunity from snap share alone.",
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-gap-responsibility"
+        },
+        {
+          "sourceId": "usa-vr-protection-id"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}

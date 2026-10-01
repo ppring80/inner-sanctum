@@ -1,0 +1,192 @@
+{
+  "module": "official-foundations-source-pack-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "nfl-2026-rulebook",
+      "authority": "primary",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/rules-officiating/2026-nfl-rulebook",
+      "use": [
+        "rules",
+        "definitions",
+        "field",
+        "timing",
+        "players",
+        "scrimmage",
+        "passing",
+        "kicking",
+        "scoring"
+      ],
+      "note": "Current-rule authority; time-scope to 2026."
+    },
+    {
+      "id": "nfl-rule-evolution",
+      "authority": "primary",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/the-rules/evolution-of-the-nfl-rules/",
+      "use": [
+        "history",
+        "rule-evolution",
+        "era-context"
+      ],
+      "note": "Use to connect rule changes to strategic evolution without assuming causation unless supported."
+    },
+    {
+      "id": "nfl-football-terms",
+      "authority": "primary",
+      "publisher": "NFL Football Operations",
+      "url": "https://operations.nfl.com/rules-officiating/nfl-football-basics/football-terms",
+      "use": [
+        "terminology"
+      ],
+      "note": "Canonical NFL-facing terminology baseline."
+    },
+    {
+      "id": "usa-football-match-coverage",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7313/setting-the-front-in-match-coverage-man-free-with-zone-principles",
+      "use": [
+        "defense",
+        "match-coverage",
+        "run-fits",
+        "coverage-counters"
+      ],
+      "note": "Coach-authored educational source; preserve system-specific framing."
+    },
+    {
+      "id": "usa-football-concept-consolidation",
+      "authority": "coaching-education",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/1563/consolidate-concepts-for-more-efficient-teaching-and-thought-process",
+      "use": [
+        "offense",
+        "route-concepts",
+        "teaching",
+        "2x2",
+        "3x1"
+      ],
+      "note": "Coach-authored example of organizing route concepts; do not universalize its terminology."
+    }
+  ],
+  "entries": [
+    {
+      "id": "fact-2026-rulebook-authority",
+      "knowledgeClass": "FACT",
+      "domain": [
+        "rules"
+      ],
+      "title": "2026 NFL rules baseline",
+      "summary": "The current NFL rulebook is the authoritative baseline for 2026 NFL playing rules and definitions used by Super SAGE.",
+      "status": "curated",
+      "era": "2026",
+      "season": 2026,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-2026-rulebook"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "history-rule-strategy-context",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "rules",
+        "strategy"
+      ],
+      "title": "Rule changes alter the strategic environment",
+      "summary": "NFL rules have evolved over time; Super SAGE must time-scope historical strategy and statistics to the rules environment in which they occurred.",
+      "status": "curated",
+      "era": "multi-era",
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "nfl-rule-evolution"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "concept-match-coverage-system-specific",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "defense",
+        "coverage"
+      ],
+      "title": "Match coverage combines assignment rules with coverage structure",
+      "summary": "Match-coverage teaching can combine man-like assignment/switch rules with zone principles. SAGE must avoid reducing every defensive snap to a binary man-versus-zone label.",
+      "principles": [
+        "Preserve the coach/system's own rules when known.",
+        "Model match coverage separately from simplistic man/zone classification."
+      ],
+      "limitations": [
+        "The cited source describes one coach's implementation and is not a universal NFL definition."
+      ],
+      "relationships": [
+        "CONFLICTS_WITH:binary-man-zone-only"
+      ],
+      "fantasyImplications": [
+        "Coverage classification quality may affect player matchup splits; predictive impact remains unvalidated."
+      ],
+      "status": "curated",
+      "era": null,
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-football-match-coverage"
+        }
+      ],
+      "validation": null
+    },
+    {
+      "id": "concept-route-system-organization",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "pass-game",
+        "route-concepts"
+      ],
+      "title": "Passing concepts are organized as systems, not isolated routes",
+      "summary": "A passing offense may organize a compact family of concepts and tags across formations rather than carry every route combination as a separate play. SAGE should distinguish individual routes from concept structure and system rules.",
+      "principles": [
+        "Separate route from route concept.",
+        "Track formation structure such as 2x2 and 3x1 when evidence is available.",
+        "Preserve system-specific terminology."
+      ],
+      "limitations": [
+        "The cited example is one coaching system, not a universal taxonomy."
+      ],
+      "relationships": [
+        "USES_CONCEPT:route-family",
+        "SUPPORTED_BY:usa-football-concept-consolidation"
+      ],
+      "fantasyImplications": [
+        "Concept structure may help explain which alignments and receivers are stressed against particular coverages; fantasy use requires validation."
+      ],
+      "status": "curated",
+      "era": null,
+      "season": null,
+      "week": null,
+      "sample": null,
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-football-concept-consolidation"
+        }
+      ],
+      "validation": null
+    }
+  ]
+}

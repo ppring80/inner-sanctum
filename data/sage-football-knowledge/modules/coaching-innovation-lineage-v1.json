@@ -1,0 +1,145 @@
+{
+  "module": "coaching-innovation-lineage-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "hof-paul-brown",
+      "url": "https://www.profootballhof.com/players/paul-brown",
+      "publisher": "Pro Football Hall of Fame"
+    },
+    {
+      "id": "hof-master-innovator",
+      "url": "https://www.profootballhof.com/news/master-innovator",
+      "publisher": "Pro Football Hall of Fame"
+    },
+    {
+      "id": "hof-walsh",
+      "url": "https://www.profootballhof.com/news/bill-walsh-1931-2007",
+      "publisher": "Pro Football Hall of Fame"
+    },
+    {
+      "id": "hof-gibbs",
+      "url": "https://www.profootballhof.com/news/gold-jacket-spotlight-joe-gibbs-overcomes-rough-starts",
+      "publisher": "Pro Football Hall of Fame"
+    },
+    {
+      "id": "hof-lebeau",
+      "url": "https://www.profootballhof.com/news/gold-jacket-spotlight-ageless-coach-dick-lebeau",
+      "publisher": "Pro Football Hall of Fame"
+    }
+  ],
+  "entries": [
+    {
+      "id": "history-paul-brown-modernization",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "coaching",
+        "analytics"
+      ],
+      "title": "Paul Brown and systematic professional coaching",
+      "summary": "Hall of Fame histories credit Paul Brown with major professional-coaching innovations including year-round staff, classroom/notebook teaching, film/statistical study, player grading and sideline play-calling.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-paul-brown"
+        },
+        {
+          "sourceId": "hof-master-innovator"
+        }
+      ],
+      "relationships": [
+        "INFLUENCED:modern-coaching-process",
+        "INFLUENCED:bill-walsh"
+      ]
+    },
+    {
+      "id": "history-brown-walsh-lineage",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "coaching",
+        "coaching-trees",
+        "offense"
+      ],
+      "title": "Paul Brown to Bill Walsh offensive lineage",
+      "summary": "Hall of Fame material records Walsh acknowledging that he learned core offensive ideas from Paul Brown in Cincinnati; SAGE should treat the later West Coast offense as an evolved lineage rather than an isolated invention.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-master-innovator"
+        },
+        {
+          "sourceId": "hof-walsh"
+        }
+      ],
+      "limitations": [
+        "Lineage does not mean the systems were identical."
+      ]
+    },
+    {
+      "id": "history-walsh-west-coast",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "offense",
+        "coaching"
+      ],
+      "title": "Bill Walsh and West Coast offense development",
+      "summary": "The Hall of Fame credits Walsh's offensive expertise and West Coast offense with helping transform San Francisco into a championship team; SAGE should study its mechanics in dedicated sourced modules rather than infer them from the label alone.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-walsh"
+        }
+      ]
+    },
+    {
+      "id": "history-coryell-gibbs-lineage",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "coaching",
+        "coaching-trees",
+        "offense"
+      ],
+      "title": "Coryell to Joe Gibbs coaching lineage",
+      "summary": "Hall of Fame material documents Gibbs learning under Coryell at San Diego State, rejoining him in St. Louis, and later serving as Coryell's offensive coordinator in San Diego before becoming Washington head coach.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-gibbs"
+        }
+      ],
+      "limitations": [
+        "Gibbs subsequently adapted his own system; lineage must not be treated as identity."
+      ]
+    },
+    {
+      "id": "history-lebeau-zone-blitz",
+      "knowledgeClass": "HISTORICAL_KNOWLEDGE",
+      "domain": [
+        "history",
+        "defense",
+        "pressure",
+        "coaching"
+      ],
+      "title": "Dick LeBeau and zone-blitz development",
+      "summary": "The Hall of Fame describes Dick LeBeau as the creator of the zone-blitz scheme and notes its broad adoption. This becomes a historical node for later pressure/coverage study.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "hof-lebeau"
+        }
+      ],
+      "fantasyImplications": [
+        "Historical knowledge only until modern pressure structures and player effects are measured."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "module": "run-game-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-multiple-runs",
+      "url": "https://blogs.usafootball.com/blog/956/3%20specific%20ways%20to%20believe%20in%20your%20athlete",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-gap-system",
+      "url": "https://blogs.usafootball.com/blog/7304/the-gap-run-system",
+      "publisher": "USA Football"
+    },
+    {
+      "id": "usa-rpo",
+      "url": "https://blogs.usafootball.com/blog/7047/learn-how-nfl-offenses-use-rpo-s",
+      "publisher": "USA Football"
+    }
+  ],
+  "entries": [
+    {
+      "id": "run-multiplicity",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "run-game",
+        "formations",
+        "motion"
+      ],
+      "title": "Run concepts can remain stable across presentation",
+      "summary": "A core run concept can be presented from multiple formations, personnel groups and motions while preserving underlying blocking rules. SAGE should separate concept from presentation.",
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-multiple-runs"
+        }
+      ]
+    },
+    {
+      "id": "run-zone-gap",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "run-game"
+      ],
+      "title": "Zone and gap families require different rule-level analysis",
+      "summary": "Inside/outside zone and gap concepts such as power/counter represent distinct blocking/read families. Player evaluation should consider the actual concept and defensive interaction rather than treating all carries as equivalent.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-multiple-runs"
+        },
+        {
+          "sourceId": "usa-gap-system"
+        }
+      ]
+    },
+    {
+      "id": "run-rpo-conflict",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "run-game",
+        "pass-game"
+      ],
+      "title": "RPO structure can put a defender in conflict",
+      "summary": "RPO designs can preserve a run concept while changing blocking/read responsibility so the quarterback reads a defender and chooses among run/pass answers.",
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-rpo"
+        }
+      ],
+      "fantasyImplications": [
+        "May redistribute QB/RB/receiver opportunity relative to a superficially similar called run; predictive effect requires validation."
+      ]
+    }
+  ]
+}
