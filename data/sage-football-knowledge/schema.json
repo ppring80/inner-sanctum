@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "required": [
+    "id",
+    "knowledgeClass",
+    "domain",
+    "title",
+    "summary",
+    "status",
+    "provenance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "knowledgeClass": {
+      "enum": [
+        "FACT",
+        "CONCEPT",
+        "HISTORICAL_KNOWLEDGE",
+        "HYPOTHESIS",
+        "VALIDATED_INSIGHT",
+        "EXPERIENCE_NOTE"
+      ]
+    },
+    "domain": {
+      "type": "array"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "principles": {
+      "type": "array"
+    },
+    "indicators": {
+      "type": "array"
+    },
+    "limitations": {
+      "type": "array"
+    },
+    "relationships": {
+      "type": "array"
+    },
+    "fantasyImplications": {
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "curated",
+        "needs-source",
+        "needs-validation",
+        "validated",
+        "deprecated"
+      ]
+    },
+    "era": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "season": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "week": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "sample": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "moderate",
+        "high",
+        "not-rated"
+      ]
+    },
+    "provenance": {
+      "type": "array"
+    },
+    "validation": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}
