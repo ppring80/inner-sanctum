@@ -1,0 +1,308 @@
+{
+  "module": "receiver-qb-advanced-v1",
+  "version": 1,
+  "sources": [
+    {
+      "id": "usa-wr-press-release",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7121/coaching-the-wide-receiver-the-press-release"
+    },
+    {
+      "id": "usa-slot-release",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7237/coaching-the-wide-receiver-2nd-level-slot-releases"
+    },
+    {
+      "id": "usa-progression",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/5978/how-the-progression-passing-game-works"
+    },
+    {
+      "id": "usa-sight-adjust",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/4307/follow-these-8-rules-for-quarterback-and-receiver-sight-adjustment"
+    },
+    {
+      "id": "usa-scramble",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/1061/get-more-out-of-your-7-on-7-drills"
+    },
+    {
+      "id": "usa-spacing",
+      "publisher": "USA Football",
+      "url": "https://blogs.usafootball.com/blog/7510/detailing-the-spacing-concept"
+    }
+  ],
+  "entries": [
+    {
+      "id": "receiver-leverage-plan",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "positions",
+        "receiver",
+        "coverage"
+      ],
+      "title": "Receiver release plan begins with leverage and route purpose",
+      "summary": "A receiver's release should be chosen in relation to defender leverage, coverage evidence and the assigned route; winning immediately at the line is not always the objective if it harms the route's later breakpoint.",
+      "principles": [
+        "Assess defender leverage and positioning.",
+        "Use coverage evidence from the receiver's side/triangle.",
+        "Match release plan to route objective rather than treating every release as a race."
+      ],
+      "limitations": [
+        "The cited teaching language is coach-specific; technique and terminology vary."
+      ],
+      "relationships": [
+        "RELATED_TO:route-stem",
+        "RELATED_TO:coverage-diagnosis"
+      ],
+      "fantasyImplications": [
+        "Release/leverage skill may affect separation and route success versus particular coverage techniques; predictive use requires player-level evidence."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-wr-press-release"
+        }
+      ]
+    },
+    {
+      "id": "slot-leverage-vulnerability",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "positions",
+        "receiver",
+        "slot",
+        "coverage"
+      ],
+      "title": "Slot receivers read leverage and vulnerable space",
+      "summary": "One receiver-teaching framework emphasizes identifying what an underneath defender is protecting, then threatening the defender's leverage/vulnerable area to force a reaction and preserve a clean vertical release.",
+      "principles": [
+        "Alignment can reveal what space a defender is trying to protect.",
+        "Attack angles/leverage to make the defender declare technique."
+      ],
+      "limitations": [
+        "Coverage rules vary; alignment alone does not prove responsibility."
+      ],
+      "relationships": [
+        "RELATED_TO:motion-response",
+        "RELATED_TO:coverage-shell"
+      ],
+      "fantasyImplications": [
+        "Could help classify which slot archetypes fit particular coverage structures; requires validation."
+      ],
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-slot-release"
+        }
+      ]
+    },
+    {
+      "id": "qb-progression-vs-coverage-read",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "quarterback",
+        "pass-game"
+      ],
+      "title": "Progression and coverage-read approaches are distinct decision frameworks",
+      "summary": "Passing systems can sequence eligible receivers in a progression and/or key defensive structure/defenders to determine the throw. SAGE should model the offense's actual decision rules when known rather than assuming every quarterback reads plays identically.",
+      "principles": [
+        "Separate receiver progression from defender-keyed reads.",
+        "Timing/protection constrain how far a quarterback can progress."
+      ],
+      "limitations": [
+        "The cited source presents one coaching taxonomy; NFL systems blend methods and terminology."
+      ],
+      "relationships": [
+        "RELATED_TO:pass-protection",
+        "RELATED_TO:route-concept"
+      ],
+      "fantasyImplications": [
+        "Primary-read structure and defender-keyed concepts may help explain target concentration and change when coverage changes."
+      ],
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-progression"
+        }
+      ]
+    },
+    {
+      "id": "qb-wr-sight-adjustment",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "quarterback",
+        "receiver",
+        "pressure"
+      ],
+      "title": "Quarterback-receiver sight adjustments",
+      "summary": "One coaching framework teaches coordinated quarterback/receiver adjustments to defensive movement and pressure, including monitoring safety location before and after the snap. SAGE should understand that route responsibility can change because of defensive structure rather than treating the called route as immutable.",
+      "principles": [
+        "QB and receiver must share the adjustment rule.",
+        "Safety movement is evidence that can trigger or confirm adjustment in some systems."
+      ],
+      "limitations": [
+        "Specific sight-adjustment rules are system-specific and cannot be generalized to every offense."
+      ],
+      "relationships": [
+        "RELATED_TO:safety-shell",
+        "RELATED_TO:pressure-identification",
+        "RELATED_TO:route-adjustment"
+      ],
+      "fantasyImplications": [
+        "Pressure/coverage can alter target depth and route outcome; requires current-system evidence before fantasy use."
+      ],
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-sight-adjust"
+        }
+      ]
+    },
+    {
+      "id": "scramble-rules",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "quarterback",
+        "receiver",
+        "scramble"
+      ],
+      "title": "Scramble phase changes receiver responsibilities",
+      "summary": "Receivers can transition from their called route into coached scramble rules after the quarterback escapes; the scramble phase should therefore be modeled separately from the original route concept when evaluating extended-play opportunity.",
+      "principles": [
+        "Initial route remains live until the play transitions to scramble behavior.",
+        "Scramble rules are coordinated, not random freelancing, when coached."
+      ],
+      "limitations": [
+        "Rules vary by team and may not be publicly observable."
+      ],
+      "relationships": [
+        "RELATED_TO:qb-mobility",
+        "RELATED_TO:extended-play"
+      ],
+      "fantasyImplications": [
+        "Mobile/creation QBs may change route depth and target opportunity during extended plays; player/team-specific validation required."
+      ],
+      "status": "curated",
+      "confidence": "moderate",
+      "provenance": [
+        {
+          "sourceId": "usa-scramble"
+        }
+      ]
+    },
+    {
+      "id": "movement-key",
+      "knowledgeClass": "CONCEPT",
+      "domain": [
+        "offense",
+        "quarterback",
+        "coverage"
+      ],
+      "title": "Movement-key reads",
+      "summary": "Documented passing concepts can key a particular defender's movement: the defender's expansion, squeeze or leverage determines which route becomes available. SAGE should be able to represent the defender being stressed, not merely the nominal coverage label.",
+      "principles": [
+        "Identify the defender the concept puts in conflict.",
+        "Track the offensive answer to each movement response."
+      ],
+      "limitations": [
+        "Movement keys are concept- and system-specific."
+      ],
+      "relationships": [
+        "STRESSES:defender-rule",
+        "RELATED_TO:spacing-concept"
+      ],
+      "fantasyImplications": [
+        "Could explain why particular positions receive targets against particular coverage structures."
+      ],
+      "status": "curated",
+      "confidence": "high",
+      "provenance": [
+        {
+          "sourceId": "usa-spacing"
+        }
+      ]
+    },
+    {
+      "id": "experience-z-motion-read",
+      "knowledgeClass": "EXPERIENCE_NOTE",
+      "domain": [
+        "offense",
+        "receiver",
+        "motion",
+        "coverage"
+      ],
+      "title": "Z/slot practitioner note: safety alignment and motion response",
+      "summary": "Pat reports that while playing Z/slot in a motion-heavy college offense, safety alignment and the defense's response to his pre-snap movement were primary tells used to adjust his understanding before the snap.",
+      "principles": [
+        "Treat motion as an information-generating event.",
+        "Compare safety alignment with defender response to motion."
+      ],
+      "limitations": [
+        "First-hand experience from one offensive system; not universal evidence of how all systems teach Z/slot play."
+      ],
+      "relationships": [
+        "SUPPORTED_BY:motion-response-concept",
+        "RELATED_TO:sight-adjustment"
+      ],
+      "fantasyImplications": [
+        "Generates hypotheses for modern motion/coverage interaction; does not directly alter rankings."
+      ],
+      "status": "curated",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "type": "experience_note",
+          "source": "Pat",
+          "note": "College Z/slot receiver; frequent pre-snap motion."
+        }
+      ]
+    },
+    {
+      "id": "hypothesis-read-target-share",
+      "knowledgeClass": "HYPOTHESIS",
+      "domain": [
+        "analytics",
+        "fantasy-implications",
+        "quarterback",
+        "receiver"
+      ],
+      "title": "Concept read structure may explain target-share changes",
+      "summary": "If SAGE can identify primary reads, movement keys, coverage adjustments and player alignment, it may better distinguish repeatable target opportunity from game-specific box-score volume.",
+      "principles": [
+        "Measure route participation and read structure separately.",
+        "Condition on coverage, pressure and quarterback."
+      ],
+      "limitations": [
+        "Public data may not reliably identify progression order or sight-adjustment rules."
+      ],
+      "status": "needs-validation",
+      "confidence": "not-rated",
+      "provenance": [
+        {
+          "sourceId": "usa-progression"
+        },
+        {
+          "sourceId": "usa-spacing"
+        },
+        {
+          "sourceId": "usa-sight-adjust"
+        }
+      ],
+      "validation": {
+        "required": true,
+        "state": "not-started"
+      }
+    }
+  ]
+}
