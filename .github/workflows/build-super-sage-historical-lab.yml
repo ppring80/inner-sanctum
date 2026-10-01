@@ -1,0 +1,59 @@
+name: Build Super SAGE Historical Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_season:
+        description: First season to ingest
+        required: true
+        default: '2019'
+      end_2026_week:
+        description: Last 2026 week to ingest
+        required: true
+        default: '3'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install importer dependency
+        run: python -m pip install --disable-pip-version-check pandas
+      - name: Build historical lab
+        run: |
+          python scripts/build-super-sage-historical-lab.py \
+            --start "${{ inputs.start_season }}" \
+            --end 2026 \
+            --end-2026-week "${{ inputs.end_2026_week }}" \
+            --out data/sage-historical-lab
+      - name: Validate historical lab
+        run: |
+          python - <<'PY'
+          import json, pandas as pd
+          from pathlib import Path
+          root=Path("data/sage-historical-lab")
+          p=pd.read_csv(root/"player-weeks.csv", low_memory=False)
+          g=pd.read_csv(root/"games.csv", low_memory=False)
+          m=json.loads((root/"manifest.json").read_text())
+          assert len(p) > 10000, f"too few player-weeks: {len(p)}"
+          assert set(range(int("${{ inputs.start_season }}"), 2027)).issubset(set(p.season.astype(int).unique()))
+          assert int(p.loc[p.season==2026,"week"].max()) == int("${{ inputs.end_2026_week }}")
+          assert not p.loc[(p.season==2026)&(p.week>int("${{ inputs.end_2026_week }}"))].shape[0]
+          assert {"fantasy_std","fantasy_half_ppr","fantasy_ppr"}.issubset(p.columns)
+          assert len(g) > 1000, f"too few games: {len(g)}"
+          print(json.dumps({"playerWeeks":len(p),"games":len(g),"manifest":m}, indent=2))
+          PY
+      - name: Upload Historical Lab artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: super-sage-historical-lab-2019-2026w3
+          path: data/sage-historical-lab/
+          if-no-files-found: error
+          retention-days: 30
