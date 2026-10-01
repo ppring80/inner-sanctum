@@ -1,0 +1,29 @@
+{
+  "module": "knowledge-graph-v1",
+  "version": 1,
+  "relationshipTypes": [
+    "INFLUENCED",
+    "COACHED_WITH",
+    "DESCENDS_FROM",
+    "USES_CONCEPT",
+    "COUNTERS",
+    "STRESSES",
+    "ALIGNS_AS",
+    "MOTIONS_TO",
+    "ROTATES_TO",
+    "INDICATES",
+    "PERFORMS_AGAINST",
+    "PLAYS_AT_RATE",
+    "BENEFITS_ROLE",
+    "CONFLICTS_WITH",
+    "SUPPORTED_BY",
+    "CHALLENGED_BY",
+    "VALIDATED_BY"
+  ],
+  "rules": [
+    "Relationships require provenance before status=validated.",
+    "Coaching lineage never implies current scheme usage without current evidence.",
+    "Historical and current-season edges are time-scoped.",
+    "Hypothetical examples cannot create FACT edges."
+  ]
+}
