@@ -1,0 +1,14 @@
+"use strict";
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const src = fs.readFileSync(path.join(__dirname, "../scripts/build-super-sage-historical-lab.py"), "utf8");
+assert.ok(src.includes("2019-2025 full regular seasons + 2026 Weeks 1-3"));
+assert.ok(src.includes("fantasy_half_ppr"));
+assert.ok(src.includes("fantasy_ppr"));
+assert.ok(src.includes("fantasy_std"));
+assert.ok(src.includes("season_type"));
+assert.ok(src.includes("game_type"));
+assert.ok(src.includes("lookAheadRule"));
+assert.ok(src.includes("to_parquet"));
+console.log("Super SAGE historical importer contract assertions passed.");
