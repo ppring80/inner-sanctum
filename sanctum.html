@@ -955,6 +955,7 @@ function handleAuthResultParams() {
       <div class="lineup-week-bar">
         <span class="lineup-week-label">📅 NFL Week</span>
         <select class="lineup-week-select" id="lineupWeek">
+          <option value="" selected disabled>Loading current week…</option>
           <option value="1">Week 1</option><option value="2">Week 2</option>
           <option value="3">Week 3</option><option value="4">Week 4</option>
           <option value="5">Week 5</option><option value="6">Week 6</option>
@@ -1619,6 +1620,10 @@ function getLineupAdvice() {
   }
 
   var week = document.getElementById('lineupWeek').value;
+  if (!week) {
+    document.getElementById('lineupWeek').focus();
+    return;
+  }
   var lineupSummary = 'It is NFL Week ' + week + '. Here is my current lineup:\n\n' +
     'STARTERS:\n' + starters.join('\n') +
     (bench.length ? '\n\nBENCH:\n' + bench.join(', ') : '');
@@ -2076,5 +2081,6 @@ document.addEventListener('click', function (e) {
   if (typeof connectSleeper === 'function') connectSleeper();
 })();
 </script>
+<script src="/manual-lineup-week.js"></script>
 </body>
 </html>
