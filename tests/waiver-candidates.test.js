@@ -986,3 +986,27 @@ test('lineup impact labels a candidate who remains on the bench as depth only', 
 });
 
 console.log(`\n${passed} waiver-candidate tests passed.`);
+
+test('current schedule replaces saved ESPN opponent, venue, date and bye flag together', () => {
+  const epoch = Date.parse('2026-10-04T17:00:00Z') / 1000;
+  const candidate = { name: 'Malik Washington', position: 'WR', team: 'MIA', availabilityStatus: 'FREE_AGENT', opponent: 'KC', homeAway: 'AWAY', gameTime: '2026-09-27T17:00:00Z', matchup: { opponent: 'KC', homeAway: 'AWAY', gameTime: '2026-09-27T17:00:00Z', bye: true } };
+  const input = { availablePlayers: [candidate], roster: [], weeklyData: {positions: {}}, scheduleData: {games: [{away: 'MIN', home: 'MIA', gameTime_epoch: epoch}]}, staleProviderWeek: true };
+  const row = enrichCandidates(input)[0];
+  assert.strictEqual(row.opponent, 'MIN');
+  assert.strictEqual(row.homeAway, 'HOME');
+  assert.strictEqual(row.gameTime, '2026-10-04T17:00:00.000Z');
+  assert.deepStrictEqual(row.matchup, {opponent: 'MIN', homeAway: 'HOME', gameTime: row.gameTime, bye: false});
+  // Current cache wins even when the provider doesn't report its captured week.
+  assert.deepStrictEqual(enrichCandidates({...input, staleProviderWeek: false})[0].matchup, row.matchup);
+  const bye = enrichCandidates({...input, scheduleData: {games: [], byeTeams: ['MIA']}})[0];
+  assert.deepStrictEqual(bye.matchup, {opponent: 'BYE', homeAway: null, gameTime: null, bye: true});
+  const missingTime = enrichCandidates({...input, scheduleData: {games: [{away: 'MIN', home: 'MIA'}]}})[0];
+  assert.strictEqual(missingTime.gameTime, null, 'Never fill a missing current kickoff with last week');
+  const missingSchedule = enrichCandidates({...input, scheduleData: null})[0];
+  assert.strictEqual(missingSchedule.gameTime, null);
+  assert.strictEqual(missingSchedule.opponent, null);
+  const providerFallback = enrichCandidates({...input, scheduleData: null, staleProviderWeek: false})[0];
+  assert.strictEqual(providerFallback.gameTime, candidate.gameTime, 'Preserve provider fallback when not known stale');
+  const milliseconds = enrichCandidates({...input, scheduleData: {games: [{away: 'MIN', home: 'MIA', gameTime_epoch: epoch*1000}]}})[0];
+  assert.strictEqual(milliseconds.gameTime, row.gameTime);
+});
