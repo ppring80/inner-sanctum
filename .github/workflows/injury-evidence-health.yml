@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: '45 * * * *'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Inner Sanctum Tests"]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
@@ -10,6 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   check:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,7 +27,7 @@ jobs:
           REFRESH_SECRET: ${{ secrets.TANK01_REFRESH_SECRET }}
         run: |
           test -n "$REFRESH_SECRET"
-          curl --fail-with-body --silent --show-error --max-time 90 \
+          curl --fail-with-body --silent --show-error --max-time 30 --retry 8 --retry-delay 15 --retry-all-errors \
             -H "Authorization: Bearer $REFRESH_SECRET" \
             https://theinnersanctum.xyz/.netlify/functions/refresh-injury-transactions
       - name: Verify cached evidence freshness
