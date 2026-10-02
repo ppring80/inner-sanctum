@@ -24,6 +24,7 @@ async function main(){
  assert.match(context.note,/Etienne.*IR/);assert.equal(context.rankRecalculated,false);assert.match(context.note,/share is not verified/);
  assert.equal(h.roleContext({...miller,team:'DEN'},{},merged.records,2026,4),null);
  assert.equal(h.roleContext(miller,{},merged.records,2026,3),null);
+ assert.equal(h.roleContext(miller,{},merged.records,2026,5),null,'historical reserve evidence must not indefinitely block drops after next weekly rebuild');
  miller.roleContext=context;const evidence=extractSageEvidence(miller);assert.deepEqual(evidence.roleContext,context);
  const candidate={name:'Fixture Add',position:'RB',decision:{action:'ADD',reasons:[]},evidence:{sage:{position:'RB',positionRank:10,availabilityVerified:true},opportunity:{lastGameOpportunities:15},rosterImpact:{classification:'UPGRADE',comparisonType:'same-position-fallback',weakestComparable:{name:miller.name,position:'RB',team:'NO',sage:evidence}}}};
  const guarded=decorateDecision(candidate,{teams:12});assert.equal(guarded.verdict,'REVIEW');assert.equal(guarded.swapFor,null);assert.equal(guarded.faab,null);assert(guarded.marketFaab);assert.equal(guarded.decision.reasonCode,'TEAMMATE_ROLE_CHANGED');
