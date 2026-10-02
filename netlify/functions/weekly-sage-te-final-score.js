@@ -426,7 +426,8 @@ async function fetchMatchup({
   week,
   seasonType,
   team,
-  position
+  position,
+  prebuiltMatchup
 }) {
   const url =
     buildUrl({
@@ -452,7 +453,7 @@ async function fetchMatchup({
     });
 
   const data =
-    await fetchJson(
+    prebuiltMatchup || await fetchJson(
       url
     );
 
@@ -928,7 +929,8 @@ async function buildTeFinalScore({
   targetWeek,
   seasonType,
   playerID,
-  prebuiltSnapshot
+  prebuiltSnapshot,
+  prebuiltMatchup
 }) {
       /*
         STEP 1
@@ -996,7 +998,8 @@ async function buildTeFinalScore({
           team:
             player.team,
           position:
-            POSITION
+            POSITION,
+      prebuiltMatchup
         });
 
       const matchup =

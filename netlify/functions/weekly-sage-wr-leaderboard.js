@@ -126,9 +126,7 @@ const {
   "./weekly-sage-wr-final-score.js"
 );
 
-const { buildMatchupDefense } = require("./weekly-sage-matchup-defense.js");
-const { buildPlayerMatchup } = require("./weekly-sage-player-matchup.js");
-const { handler: readDefenseSeason } = require("./weekly-sage-defense-season.js");
+const { cachedMatchupsForPosition } = require('./_weekly-cached-player-matchup');
 
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
@@ -2012,26 +2010,9 @@ exports.handler =
           )
         ]);
 
-      // Read and validate cached defense evidence once. Per-player HTTP
-      // self-fetches can fail the entire WR population despite ready caches.
-      const defenseResponse = await readDefenseSeason({ ...event,
-        queryStringParameters: { season, week: String(targetWeek), seasonType }
+      const matchupForTeam = await cachedMatchupsForPosition(event, {
+        baseUrl, season, targetWeek, seasonType, schedule, position: "WR"
       });
-      if (defenseResponse.statusCode !== 200) {
-        throw new Error(`Cached WR defense evidence unavailable: ${defenseResponse.body}`);
-      }
-      const matchupDefense = await buildMatchupDefense({ baseUrl, season,
-        week: targetWeek, seasonType,
-        prebuiltDefenseSeason: JSON.parse(defenseResponse.body)
-      });
-      const matchupByTeam = new Map();
-      function matchupForTeam(team) {
-        if (!matchupByTeam.has(team)) matchupByTeam.set(team,
-          buildPlayerMatchup({ baseUrl, season, week: targetWeek, seasonType,
-            team, position: "WR", prebuiltSchedule: schedule,
-            prebuiltMatchupDefense: matchupDefense }));
-        return matchupByTeam.get(team);
-      }
 
       const rawPlayers =
         extractSnapshotPlayers(

@@ -1,3 +1,4 @@
+const { cachedMatchupsForPosition } = require('./_weekly-cached-player-matchup');
 // netlify/functions/weekly-sage-qb-leaderboard.js
 //
 // WEEKLY SAGE — QB LEADERBOARD
@@ -1510,6 +1511,10 @@ exports.handler =
           })
         ]);
 
+      const matchupForTeam = await cachedMatchupsForPosition(event, {
+        baseUrl, season, targetWeek, seasonType, schedule, position: "QB"
+      });
+
       let players =
         snapshotPlayers(
           snapshot
@@ -1668,7 +1673,8 @@ exports.handler =
                     player.playerID,
 
                   prebuiltSnapshot:
-                    snapshot
+                    snapshot,
+                  prebuiltMatchup: await matchupForTeam(player.team)
                 });
 
               const row =
