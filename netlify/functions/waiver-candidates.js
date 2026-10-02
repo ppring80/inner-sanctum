@@ -400,27 +400,27 @@ function buildTeamOpponentMap(sageRows) {
   return opponentsByTeam;
 }
 
-function buildScheduleOpponentMap(scheduleData) {
-  const opponentsByTeam = new Map();
-  const games = Array.isArray(scheduleData?.games) ? scheduleData.games : [];
-
-  games.forEach((game) => {
-    const away = normalizeTeam(game?.away);
-    const home = normalizeTeam(game?.home);
-    if (!away || !home) return;
-    opponentsByTeam.set(away, home);
-    opponentsByTeam.set(home, away);
-  });
-
-  const byeTeams = Array.isArray(scheduleData?.byeTeams)
-    ? scheduleData.byeTeams
-    : [];
-  byeTeams.forEach((team) => {
+function buildScheduleMatchupMap(scheduleData) {
+  const matchups = new Map();
+  for (const game of (Array.isArray(scheduleData?.games) ? scheduleData.games : [])) {
+    const away = normalizeTeam(game?.away), home = normalizeTeam(game?.home);
+    if (!away || !home) continue;
+    const epoch = Number(game.gameTime_epoch);
+    const gameTime = Number.isFinite(epoch) && epoch > 0
+      ? new Date(epoch < 1e12 ? epoch * 1000 : epoch).toISOString()
+      : null;
+    matchups.set(away, { opponent: home, homeAway: 'AWAY', gameTime, bye: false });
+    matchups.set(home, { opponent: away, homeAway: 'HOME', gameTime, bye: false });
+  }
+  for (const team of (Array.isArray(scheduleData?.byeTeams) ? scheduleData.byeTeams : [])) {
     const normalized = normalizeTeam(team);
-    if (normalized) opponentsByTeam.set(normalized, 'BYE');
-  });
+    if (normalized) matchups.set(normalized, { opponent: 'BYE', homeAway: null, gameTime: null, bye: true });
+  }
+  return matchups;
+}
 
-  return opponentsByTeam;
+function buildScheduleOpponentMap(scheduleData) {
+  return new Map([...buildScheduleMatchupMap(scheduleData)].map(([team, matchup]) => [team, matchup.opponent]));
 }
 
 function buildTrendRows(risersFallersData) {
@@ -936,9 +936,9 @@ function resolveConnectionInput(body) {
   };
 }
 
-function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData, scheduleData }) {
+function enrichCandidates({ availablePlayers, roster, lineupConstruction, weeklyData, risersFallersData, opportunityData, scheduleData, staleProviderWeek = false }) {
   const sageRows = flattenWeeklyRankings(weeklyData);
-  const scheduleOpponents = buildScheduleOpponentMap(scheduleData);
+  const scheduleMatchups = buildScheduleMatchupMap(scheduleData);
   const sageOpponents = buildTeamOpponentMap(sageRows);
   const trendRows = buildTrendRows(risersFallersData);
   const opportunityRows = buildOpportunityRows(opportunityData);
@@ -959,12 +959,16 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
       const opportunity = extractOpportunityEvidence(opportunityMatch.match);
       const position = getPlayerPosition(candidate) || sage?.position || null;
       const team = getPlayerTeam(candidate) || null;
-      const directOpponent = firstDefined(candidate?.opponent, candidate?.opp);
-      const opponent = directOpponent
-        ? (String(directOpponent).trim().toUpperCase() === 'BYE'
-            ? 'BYE'
-            : normalizeTeam(directOpponent))
-        : scheduleOpponents.get(team) || sage?.opponent || sageOpponents.get(team) || null;
+      const currentMatchup = scheduleMatchups.get(team);
+      const directOpponent = staleProviderWeek ? null : firstDefined(candidate?.opponent, candidate?.opp);
+      const opponent = currentMatchup?.opponent || sage?.opponent || sageOpponents.get(team) ||
+        (directOpponent ? (String(directOpponent).trim().toUpperCase() === 'BYE' ? 'BYE' : normalizeTeam(directOpponent)) : null);
+      // Never merge current opponents with a saved provider's prior-week date or bye flag.
+      const matchup = currentMatchup || (staleProviderWeek
+        ? (opponent ? { opponent, homeAway: null, gameTime: null, bye: opponent === 'BYE' } : null)
+        : { ...(candidate?.matchup || {}), opponent,
+            homeAway: firstDefined(candidate?.homeAway, candidate?.matchup?.homeAway) || null,
+            gameTime: firstDefined(candidate?.gameTime, candidate?.matchup?.gameTime) || null });
       const rosterEvidence = position
         ? rankRosterAtPosition(roster, sageRows, position)
         : [];
@@ -987,11 +991,9 @@ function enrichCandidates({ availablePlayers, roster, lineupConstruction, weekly
         position,
         team,
         opponent,
-        homeAway: firstDefined(candidate?.homeAway, candidate?.matchup?.homeAway) || null,
-        gameTime: firstDefined(candidate?.gameTime, candidate?.matchup?.gameTime) || null,
-        matchup: candidate?.matchup && typeof candidate.matchup === 'object'
-          ? { ...candidate.matchup, opponent }
-          : opponent ? { opponent } : null,
+        homeAway: matchup?.homeAway || null,
+        gameTime: matchup?.gameTime || null,
+        matchup,
         availabilityStatus:
           normalizeAvailabilityStatus(
             firstDefined(candidate?.availabilityStatus, candidate?.status) || null
@@ -1372,7 +1374,8 @@ exports.handler = async function (event) {
       weeklyData,
       risersFallersData,
       opportunityData,
-      scheduleData
+      scheduleData,
+      staleProviderWeek
     });
     const rosterIdentity = classifyRosterIdentities(input.roster, registryRows, flattenWeeklyRankings(weeklyData));
     const rosterIdentified = rosterIdentity.filter((result) => result.status !== 'unidentified').length;
