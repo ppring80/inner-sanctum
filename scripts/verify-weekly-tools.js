@@ -35,6 +35,7 @@ async function main(){
  assert.equal(unmatched.sage,null,'Multi-initial player inherited another SAGE rank');
  assert.equal(unmatched.opportunity,null,'Multi-initial player inherited another usage record');
  assert.equal(unmatched.providerProjectedPoints,null,'Multi-initial player inherited another projection');
+ if(week>=3){const trends=await request('get-risers-fallers');assert.equal(trends.status,'Success','Public trends endpoint failed');assert.equal(trends.fullAccess,false,'Anonymous check must remain a preview');assert.equal(trends.preview,true);assert(trends.risers.length<=1&&trends.fallers.length<=1,'Preview exposed full paid lists');}
  const marketEstimates=new Map();
  for(const upgrade of [true,false]){
   const roster=[],availablePlayers=[];

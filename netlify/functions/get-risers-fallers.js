@@ -180,7 +180,7 @@ exports.handler = async (event) => {
       ? (Array.isArray(data.risers) ? data.risers : [])
       : (Array.isArray(data.risers) ? data.risers.slice(0, 1) : []);
 
-    const fallers = fulAccess
+    const fallers = fullAccess
       ? (Array.isArray(data.fallers) ? data.fallers : [])
       : (Array.isArray(data.fallers) ? data.fallers.slice(0, 1) : []);
 
