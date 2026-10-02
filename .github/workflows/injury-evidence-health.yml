@@ -22,13 +22,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Bounded official refresh and recovery (no Tank01)
-        env:
-          REFRESH_SECRET: ${{ secrets.TANK01_REFRESH_SECRET }}
-        run: |
-          test -n "$REFRESH_SECRET"
-          curl --fail-with-body --silent --show-error --max-time 30 --retry 8 --retry-delay 15 --retry-all-errors \
-            -H "Authorization: Bearer $REFRESH_SECRET" \
-            https://theinnersanctum.xyz/.netlify/functions/refresh-injury-transactions
       - name: Verify cached evidence freshness
         run: node scripts/verify-injury-evidence.js

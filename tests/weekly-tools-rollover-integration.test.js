@@ -21,12 +21,13 @@ const built=[],dispatches=[];let failWR=true;
 function load(name,extra={}){const sandbox={exports:{},Date:TestDate,URL,process,console:{log(){},error(){}},fetch:async(url,options)=>{dispatches.push(options);const result=await worker.handler({httpMethod:'POST',headers:options.headers,body:options.body});return{ok:true,status:202,result};},require:p=>p==='@netlify/blobs'?{getStore,connectLambda(){}}:extra[p]||require('../netlify/functions/'+p)};vm.runInNewContext(fs.readFileSync('netlify/functions/'+name,'utf8'),sandbox);return sandbox.exports;}
 const builders={};for(const job of recovery.jobsForWeek(2026,5))builders['./'+job.job+'.js']={handler:async event=>{const selected=recovery.jobsForWeek(2026,5).find(j=>j.job===job.job&&String(j.week)===(job.store==='opportunity-intel'?String(recovery.resolveCurrentNFLWeek(new Date())-1):event.queryStringParameters.week));built.push(selected.job+':'+selected.week);if(selected.job==='refresh-wr-snapshot'&&failWR)return{statusCode:429,body:JSON.stringify({error:'Fixture budget exhausted'})};await getStore({name:selected.store}).setJSON(recovery.cacheKey(selected),fixture(selected));return{statusCode:200,body:JSON.stringify({cached:true})};}};
 const worker=load('weekly-sage-refresh-background.js',builders);
-const watchdog=load('recover-weekly-sage.js');
+let injuryChecks=0;
+const watchdog=load('recover-weekly-sage.js',{'./refresh-injury-transactions':{handler:async()=>{injuryChecks++;return {statusCode:200,body:'{"cached":true}'};}}});
 async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=process.env.TANK01_REFRESH_TOKEN,url=process.env.URL;global.Date=TestDate;process.env.TANK01_REFRESH_TOKEN='fixture-only-secret';process.env.URL='https://fixture.invalid';
  try{
   // Begin with complete Week 4 evidence, then run the real scheduler and signed worker at rollover.
   for(const job of recovery.jobsForWeek(2026,4))await getStore({name:job.store}).setJSON(recovery.cacheKey(job),fixture(job));
-  assert.equal(JSON.parse((await watchdog.handler({})).body).ready,true);assert.equal(dispatches.length,0);
+  assert.equal(JSON.parse((await watchdog.handler({})).body).ready,true);assert.equal(dispatches.length,0);assert.equal(injuryChecks,1,'official injury check also runs when weekly caches are complete');
   instant=Date.parse('2026-10-06T06:00:00Z');
   await watchdog.handler({});assert(dispatches.length===1);assert(built.includes('refresh-weekly-sage-schedule:5'));assert(built.includes('refresh-weekly-sage-defense:4'));
   const wr=recovery.jobsForWeek(2026,5).find(j=>j.job==='refresh-wr-snapshot');

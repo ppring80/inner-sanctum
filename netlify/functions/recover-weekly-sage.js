@@ -7,6 +7,10 @@ exports.handler = async event => {
   const denied = requireTank01RefreshAuthorization(event);
   if (denied) return denied;
   connectLambda(event);
+  // Independent official evidence: stale-only, shared lease, zero Tank01 calls.
+  // The authenticated Netlify recovery loop supplies retries without a GitHub secret.
+  try { await require("./refresh-injury-transactions").handler(event); }
+  catch(error) { console.error("INJURY_RECOVERY_FAILED", error.message); }
   const season = new Date().getUTCFullYear();
   const week = resolveCurrentNFLWeek(new Date(), season);
   const rows = await inspectJobs(getStore, season, week);
