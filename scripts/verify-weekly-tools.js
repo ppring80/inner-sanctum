@@ -23,6 +23,7 @@ async function main(){
  for(const transaction of TRANSACTIONS){if(!reserveTransaction(transaction,season,week))continue;assert(!Object.values(data.positions).flat().some(row=>String(row.playerID)===transaction.playerID||row.name===transaction.name),`${transaction.name}: confirmed reserve player appears in active rankings`);}
  for(const pos of positions){const rows=data.positions[pos];assert(rows.length>0,`${pos}: empty rankings`);assert(rows.every(x=>x.opponent),`${pos}: missing opponent`);pool[pos]=rows.filter(x=>Number.isFinite(x.projectedPoints));assert(pool[pos].length>0,`${pos}: no matched projections`);}
  const news=await request('sage-newswire');assert(news.stories.length>0);assert.equal(news.mode,'editorial-with-sources','Automatic editorial source refresh incomplete');assert(news.stories.every(s=>s.publishedAt&&s.sageImpact&&s.sageImpact.length>50),'Newswire lacks verified dates or analysis');assert(!news.stories.some(s=>/^(Latest Buzz|Depth Charts|Consistency Ratings|xTD Leaders|xFP Leaders)$/.test(s.headline)),'Generic resource links displaced player news');assert(!news.stories.some(s=>s.sageImpact.includes('This headline alone does not establish availability')),'Newswire boilerplate returned');assert(Date.now()-Date.parse(news.updatedAt)<24*3600000,'Newswire stale');
+ const marketEstimates=new Map();
  for(const upgrade of [true,false]){
   const roster=[],availablePlayers=[];
   for(const pos of positions){const rows=pool[pos];const n=['RB','WR'].includes(pos)?2:1;const owned=upgrade?rows.slice(-n):rows.slice(0,n);roster.push(...owned.map(identity));const candidate=upgrade?rows[0]:rows.at(-1);availablePlayers.push({...identity(candidate),availabilityStatus:'FREE_AGENT'});}
@@ -30,10 +31,18 @@ async function main(){
   assert.equal(result.metadata.sageIncomplete,false);assert.equal(result.metadata.sageFallbackUsed,false);assert.equal(result.metadata.scheduleDataAvailable,true);
   if(week>=2)assert.equal(result.metadata.opportunityDataAvailable,true,'Current opportunity evidence missing');
   if(week>=3)assert.equal(result.metadata.trendDataAvailable,true,'Current trend evidence missing');
+  assert.equal(result.recommendations.length,positions.length,'FAAB check lost a provider-supplied candidate');
+  assert.deepEqual([...new Set(result.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'FAAB check must cover every position');
   let bids=0;
-  for(const row of result.recommendations){assert(row.marketFaab,`${row.position}: missing market estimate with verified evidence`);assert.equal(row.marketFaab.recommendedDollars,Math.round(row.marketFaab.recommendedPct*2));if(!row.faab)continue;bids++;assert(['ADD_NOW','STASH'].includes(row.verdict),'Unsupported verdict has bid');assert(row.swapFor||row.lineupFor||row.benchFor,'Bid has no roster move');assert.equal(row.faab.recommendedDollars,Math.round(row.faab.recommendedPct*2));}
+  for(const row of result.recommendations){assert(row.marketFaab,`${row.position}: missing market estimate with verified evidence`);const f=row.marketFaab;for(const key of ['valuePct','recommendedPct','aggressivePct'])assert(Number.isFinite(f[key])&&f[key]>=0&&f[key]<=100,`${row.position}: invalid ${key}`);assert(f.valuePct<=f.recommendedPct&&f.recommendedPct<=f.aggressivePct,`${row.position}: inverted FAAB bands`);assert.equal(f.recommendedDollars,Math.round(f.recommendedPct*2));if(upgrade)marketEstimates.set(row.position,f);if(!row.faab)continue;bids++;assert(['ADD_NOW','STASH'].includes(row.verdict),'Unsupported verdict has bid');assert(row.swapFor||row.lineupFor||row.benchFor,'Bid has no roster move');assert.equal(row.faab.recommendedDollars,Math.round(row.faab.recommendedPct*2));}
   if(upgrade)assert(bids>0,'Verified upgrade fixture produced no bid');else assert.equal(bids,0,'Downgrade fixture produced bids');
  }
+ // Price the same six candidates against a different roster. Market value
+ // must survive a WATCH/REVIEW/PASS verdict and remain independent of roster fit.
+ const independent=await request('waiver-recommendations',{provider:'health-check-fixture',season,week,scoring:'half-ppr',teams:12,originalFaabBudget:200,roster:positions.flatMap(pos=>pool[pos].slice(1,['RB','WR'].includes(pos)?3:2).map(identity)),availablePlayers:positions.map(pos=>({...identity(pool[pos][0]),availabilityStatus:'FREE_AGENT'})),lineupConstruction:{QB:1,RB:2,WR:2,TE:1,K:1,DEF:1}});
+ assert.equal(independent.recommendations.length,positions.length,'Independent market check lost a candidate');
+ assert.deepEqual([...new Set(independent.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'Independent market check must cover every position');
+ for(const row of independent.recommendations){assert(marketEstimates.has(row.position),`Unexpected FAAB position ${row.position}`);assert.deepEqual(row.marketFaab,marketEstimates.get(row.position),`${row.position}: market value changed with roster fit`);}
  console.log(`PASS: season ${season}, week ${week}; complete rankings, fresh availability/projections/news, current waiver evidence, supported FAAB bids and dollar conversion.`);
 }
 main().catch(error=>{console.error(error.message);process.exitCode=1;});
