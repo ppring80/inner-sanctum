@@ -5833,7 +5833,8 @@ function buildServer(
               item =>
                 !isUnavailableRosterStatus(
                   item.entry &&
-                  item.entry.rosterStatus
+                  item.entry.rosterStatus,
+                  snapshot.provider
                 )
             );
 
@@ -5842,7 +5843,8 @@ function buildServer(
               item =>
                 isUnavailableRosterStatus(
                   item.entry &&
-                  item.entry.rosterStatus
+                  item.entry.rosterStatus,
+                  snapshot.provider
                 )
             );
 
@@ -5881,7 +5883,8 @@ function buildServer(
                 reason:
                   isUnavailableRosterStatus(
                     item.entry &&
-                    item.entry.rosterStatus
+                    item.entry.rosterStatus,
+                    snapshot.provider
                   )
                     ? `Roster status ${item.entry.rosterStatus} is unavailable for an active lineup slot.`
                     : buildLineupSageReason(
@@ -6710,6 +6713,7 @@ function buildServer(
 // ===========================================================
 
 exports._test = {
+  buildServer,
   getCurrentNFLWeek,
   resolveCurrentNFLWeek,
   faabPctToDollars,

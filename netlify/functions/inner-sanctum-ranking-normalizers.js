@@ -41,13 +41,18 @@ function cleanRankingText(value) {
   return null;
 }
 
-function isUnavailableRosterStatus(value) {
+function isUnavailableRosterStatus(value, provider) {
   const normalized = String(value || "")
     .trim()
     .toUpperCase()
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
 
+  if (String(provider || "").trim().toLowerCase() === "cbs" && normalized === "I") return true;
+  // CBS RS/Reserve is the fantasy bench, not NFL injured reserve.
+  // Preserve the conservative generic meaning when provider is unknown.
+  if (String(provider || "").trim().toLowerCase() === "cbs" &&
+      (normalized === "RS" || normalized === "RESERVE")) return false;
   return UNAVAILABLE_ROSTER_STATUSES.has(normalized);
 }
 
