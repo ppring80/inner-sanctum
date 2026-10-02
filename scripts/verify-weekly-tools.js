@@ -3,6 +3,7 @@
 // never represents a customer's provider pool. No claim is submitted and
 // none of these endpoints calls Tank01.
 const assert=require('node:assert/strict');
+const {_test:{normalizeTeam}}=require('../netlify/functions/waiver-candidates');
 const {resolveCurrentNFLWeek}=require('../netlify/functions/_current-nfl-week');
 const base=process.env.SAGE_HEALTH_URL || 'https://theinnersanctum.xyz';
 const positions=['QB','RB','WR','TE','K','DEF'];
@@ -33,7 +34,7 @@ async function main(){
   if(week>=3)assert.equal(result.metadata.trendDataAvailable,true,'Current trend evidence missing');
   assert.equal(result.recommendations.length,positions.length,'FAAB check lost a provider-supplied candidate');
   assert.deepEqual([...new Set(result.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'FAAB check must cover every position');
-  for(const row of result.recommendations){const source=pool[row.position].find(p=>p.name===row.name&&p.team===row.team);assert.equal(row.opponent,source.opponent,`${row.position}: saved provider opponent overrode current week`);assert.equal(row.matchup?.opponent,row.opponent);assert.equal(row.matchup?.bye,row.opponent==='BYE');assert(!row.gameTime||Date.parse(row.gameTime)>Date.parse(`${season}-09-01T00:00:00Z`),'Stale provider kickoff leaked into current schedule');}
+  for(const row of result.recommendations){const source=pool[row.position].find(p=>p.name===row.name);assert(source,`${row.position}: unexpected candidate identity`);assert.equal(row.opponent,normalizeTeam(source.opponent),`${row.position}: saved provider opponent overrode current week`);assert.equal(row.matchup?.opponent,row.opponent);assert.equal(row.matchup?.bye,row.opponent==='BYE');assert(!row.gameTime||Date.parse(row.gameTime)>Date.parse(`${season}-09-01T00:00:00Z`),'Stale provider kickoff leaked into current schedule');}
   let bids=0;
   for(const row of result.recommendations){assert(row.marketFaab,`${row.position}: missing market estimate with verified evidence`);const f=row.marketFaab;for(const key of ['valuePct','recommendedPct','aggressivePct'])assert(Number.isFinite(f[key])&&f[key]>=0&&f[key]<=100,`${row.position}: invalid ${key}`);assert(f.valuePct<=f.recommendedPct&&f.recommendedPct<=f.aggressivePct,`${row.position}: inverted FAAB bands`);assert.equal(f.recommendedDollars,Math.round(f.recommendedPct*2));if(upgrade)marketEstimates.set(row.position,f);if(!row.faab)continue;bids++;assert(['ADD_NOW','STASH'].includes(row.verdict),'Unsupported verdict has bid');assert(row.swapFor||row.lineupFor||row.benchFor,'Bid has no roster move');assert.equal(row.faab.recommendedDollars,Math.round(row.faab.recommendedPct*2));}
   if(upgrade)assert(bids>0,'Verified upgrade fixture produced no bid');else assert.equal(bids,0,'Downgrade fixture produced bids');
