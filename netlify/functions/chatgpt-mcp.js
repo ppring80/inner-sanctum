@@ -769,8 +769,10 @@ function findPlayerInRows(
           );
 
         return (
-          candidate.includes(target) ||
-          target.includes(candidate)
+          candidate && target && (
+            (` ${candidate} `).includes(` ${target} `) ||
+            (` ${target} `).includes(` ${candidate} `)
+          )
         );
       }
     );
@@ -788,10 +790,15 @@ function findPlayer(
   rankings,
   requestedName
 ) {
+  // Profiles may inspect excluded players; they must never substitute an
+  // unrelated defense when an injury removes the requested active row.
+  const inactive = Object.fromEntries(Object.entries(rankings.inactive || {}).map(([position, rows]) => [position,
+    (Array.isArray(rows) ? rows : []).map(row => ({...row, rank:undefined, positionRank:undefined, overallRank:undefined, adp:undefined,
+      sage:null, sageScore:undefined, sageLabel:null, sageConfidence:undefined, sageConfidenceLabel:null,
+      recommendation:"INELIGIBLE", sageTake:row.reason || row.sageTake || `Unavailable: ${row.status || "inactive"}.`}))
+  ]));
   return findPlayerInRows(
-    flattenRankings(
-      rankings
-    ),
+    [...flattenRankings(rankings), ...flattenRankings({positions:inactive})],
     requestedName
   );
 }
@@ -3968,8 +3975,10 @@ function findAdpEntryByName(
           );
 
         return (
-          candidate.includes(target) ||
-          target.includes(candidate)
+          candidate && target && (
+            (` ${candidate} `).includes(` ${target} `) ||
+            (` ${target} `).includes(` ${candidate} `)
+          )
         );
       }
     );

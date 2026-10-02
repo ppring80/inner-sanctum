@@ -37,6 +37,11 @@ async function main(){
  try{const server=_test.buildServer(new Request('https://fixture.invalid/.netlify/functions/chatgpt-mcp'),{snapshot:{provider:'cbs',scoringFormat:'half-ppr',league:{season:2026,teamCount:12},roster:[{name:miller.name,position:'RB',status:'RS'}],settings:{lineupSlots:[{slot:'RB',count:1}]}}});
   const lineup=await server._registeredTools.get_lineup_recommendation.handler({week:4});assert.match(lineup.structuredContent.starters[0].reason,/Etienne.*IR/);
   const profile=await server._registeredTools.get_player_profile.handler({player:miller.name,scoring:'half',week:4});assert.match(profile.structuredContent.profile.insight,/Etienne.*IR/);
+  global.fetch=async()=>({ok:true,status:200,json:async()=>({positions:{DEF:[{name:'NE',position:'DEF',team:'NE',rank:5,recommendation:'START'}]},inactive:{RB:[{...runner,status:'IR',rank:27,sage:{label:'Above Average'},reason:'Official transaction: IR — Etienne unavailable.'}]},metadata:{complete:true}})});
+  const injured=await server._registeredTools.get_player_profile.handler({player:'Travis Etienne',scoring:'half',week:4});assert.equal(injured.structuredContent.profile.identity.name,runner.name);assert.equal(injured.structuredContent.profile.verdict.action,'INELIGIBLE');assert.equal(injured.structuredContent.profile.rankProjection,null,'inactive player has no actionable rank');assert.match(injured.structuredContent.profile.insight,/IR/);
+  const unknown=await server._registeredTools.get_player_profile.handler({player:'Unknown Etienne',scoring:'half',week:4});assert.equal(unknown.structuredContent.found,false,'word fragment cannot resolve to NE defense');
+  const defense=await server._registeredTools.get_player_profile.handler({player:'NE',scoring:'half',week:4});assert.equal(defense.structuredContent.profile.identity.name,'NE','exact defense lookup preserved');
+  global.fetch=async()=>({ok:true,status:200,json:async()=>({positions:{RB:[miller]},metadata:{complete:true}})});
   const compare=await server._registeredTools.compare_players.handler({players:[miller.name,'Unknown'],scoring:'half',week:4});assert.match(compare.structuredContent.players[0].profile.insight,/Etienne.*IR/);
  }finally{global.fetch=oldFetch;}
  const originalLoad=Module._load;let injuryRecoveries=0;
