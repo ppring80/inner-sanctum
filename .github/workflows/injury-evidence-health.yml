@@ -9,6 +9,7 @@ on:
     branches: [main]
 permissions:
   contents: read
+  id-token: write
 concurrency:
   group: injury-evidence-health
   cancel-in-progress: false
@@ -22,5 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Recover official evidence using short-lived workflow identity
+        run: node scripts/refresh-injury-evidence-workflow.js
       - name: Verify cached evidence freshness
         run: node scripts/verify-injury-evidence.js
