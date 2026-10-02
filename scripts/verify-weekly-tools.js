@@ -29,7 +29,7 @@ async function main(){
  assert(fullNameRow,'Need a full-name fixture for identity health check');
  const [first,last]=fullNameRow.name.split(' ');
  const fakeName=`${first[0]}.${first[0]}. ${last}`;
- const identityCheck=await request('waiver-candidates',{provider:'health-check-fixture',season,week,providerProjectionWeek:week-1,scoring:'half-ppr',roster:[],availablePlayers:[{name:fakeName,position:'RB',availabilityStatus:'FREE_AGENT'}]});
+ const identityCheck=await request('waiver-candidates',{provider:'health-check-fixture',season,week,providerProjectionWeek:week-1,scoring:'half-ppr',roster:[],availablePlayers:[{name:fakeName,providerPlayerId:fullNameRow.playerID,position:'RB',availabilityStatus:'FREE_AGENT'}]});
  assert.equal(identityCheck.candidates.length,1);
  const unmatched=identityCheck.candidates[0];
  assert.equal(unmatched.sage,null,'Multi-initial player inherited another SAGE rank');

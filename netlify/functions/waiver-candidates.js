@@ -111,6 +111,21 @@ function getStablePlayerIds(player) {
     .map((value) => String(value).trim());
 }
 
+function corroboratedIdMatch(candidate, evidence, rows) {
+  // These keys identify our canonical/Tank01 registry. Generic provider IDs
+  // can overlap a different provider's numeric namespace and need name evidence.
+  const canonicalIds = [candidate?.canonicalPlayerId, candidate?.playerID]
+    .filter(value => value !== undefined && value !== null && String(value).trim())
+    .map(value => String(value).trim());
+  const evidenceIds = getStablePlayerIds(evidence);
+  if (canonicalIds.some(id => evidenceIds.includes(id))) return true;
+  const resolved = PlayerIdentity.resolveRosterPlayer(
+    { name: getPlayerName(candidate), position: getPlayerPosition(candidate) },
+    rows.map(row => ({ name: getPlayerName(row), position: getPlayerPosition(row), source: row }))
+  );
+  return resolved?.source === evidence;
+}
+
 function getPlayerName(player) {
   if (getPlayerPosition(player) === 'DEF') {
     const teamCode = getPlayerTeam(player);
@@ -186,7 +201,7 @@ function findIdentityMatch(candidate, evidenceRows, options = {}) {
 
   if (candidateIds.size) {
     const idMatches = rows.filter((row) =>
-      getStablePlayerIds(row).some((id) => candidateIds.has(id))
+      getStablePlayerIds(row).some((id) => candidateIds.has(id)) && corroboratedIdMatch(candidate, row, rows)
     );
     if (idMatches.length === 1) {
       const candidatePosition = getPlayerPosition(candidate);
@@ -306,7 +321,7 @@ function resolveCanonicalIdentity(player, registryRows) {
   const rows = Array.isArray(registryRows) ? registryRows : [];
   const ids = new Set(getStablePlayerIds(player));
   if (ids.size) {
-    const idMatches = rows.filter((row) => getStablePlayerIds(row).some((id) => ids.has(id)));
+    const idMatches = rows.filter((row) => getStablePlayerIds(row).some((id) => ids.has(id)) && corroboratedIdMatch(player, row, rows));
     if (idMatches.length === 1) {
       const registryPosition = getPlayerPosition(idMatches[0]);
       if (position && registryPosition && position !== registryPosition) {
