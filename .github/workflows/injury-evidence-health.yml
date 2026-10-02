@@ -1,0 +1,29 @@
+name: Injury Evidence Health
+on:
+  schedule:
+    - cron: '45 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: injury-evidence-health
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Bounded official refresh and recovery (no Tank01)
+        env:
+          REFRESH_SECRET: ${{ secrets.TANK01_REFRESH_SECRET }}
+        run: |
+          test -n "$REFRESH_SECRET"
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            -H "Authorization: Bearer $REFRESH_SECRET" \
+            https://theinnersanctum.xyz/.netlify/functions/refresh-injury-transactions
+      - name: Verify cached evidence freshness
+        run: node scripts/verify-injury-evidence.js

@@ -29,6 +29,11 @@
 [functions."refresh-player-data-game-day"]
   schedule = "0 13,16,19,22 * * 0"
 
+# One shared official reserve/activation check per hour; ZERO Tank01 calls.
+# Six official monthly feeds, with bounded pagination, freshness skip and atomic lease.
+[functions."refresh-injury-transactions"]
+  schedule = "20 * * * *"
+
 # AUTOMATED FACT-CHECK SCHEDULE (added)
 # Runs qa-fact-check.js daily at 00:30 UTC. It reads cached evidence and
 # makes no Tank01 calls.

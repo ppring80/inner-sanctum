@@ -493,6 +493,7 @@ function extractSageEvidence(row) {
     sageTake: row?.sageTake || null,
     injuryStatus: row?.injuryStatus || null,
     injuryDescription: row?.injuryDescription || null,
+    roleContext: row?.roleContext || null,
     availabilityVerified: typeof row?.availabilityVerified === 'boolean' ? row.availabilityVerified : null,
     opponent: firstDefined(row?.opponent, row?.opp) || null,
     baselineEvidenceType: row?.baselineEvidenceType || null,
