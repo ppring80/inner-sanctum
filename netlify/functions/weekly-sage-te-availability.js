@@ -2,7 +2,7 @@ const HARD_INELIGIBLE = new Set([
   "OUT", "IR", "INACTIVE", "INJURED RESERVE", "RESERVE/INJURED",
   "SUSPENDED", "EXEMPT", "COMMISSIONER EXEMPT",
   "COMMISSIONER'S EXEMPT LIST", "COMMISSIONER EXEMPT NO PLAY",
-  "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI"
+  "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI", "UNSIGNED", "RELEASED", "WAIVED", "CUT"
 ]);
 
 // Dated facts deliberately expire after the target week. These are verified
@@ -62,11 +62,11 @@ function availabilityForPlayer(player, season, week) {
     reason: fact.reason
   };
 
-  const status = normalizeStatus(player && (
-    player.eligibilityStatus || player.injuryStatus ||
-    player.availabilityStatus || player.rosterStatus || player.status
-  ));
-  const hardUnavailable = player && player.eligible !== true && (
+  const statuses = player ? [player.eligibilityStatus, player.injuryStatus,
+    player.availabilityStatus, player.rosterStatus, player.status].map(normalizeStatus).filter(Boolean) : [];
+  const status = statuses.find(value => HARD_INELIGIBLE.has(value)) ||
+    (player?.active === false ? "INACTIVE" : statuses[0]) || "";
+  const hardUnavailable = player && (
     player.eligible === false || HARD_INELIGIBLE.has(status)
   );
   return {

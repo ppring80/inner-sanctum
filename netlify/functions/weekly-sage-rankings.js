@@ -31,7 +31,7 @@ const PLAYER_AVAILABILITY_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K"]);
 const HARD_UNAVAILABLE = new Set([
   "OUT", "IR", "INACTIVE", "INJURED RESERVE", "RESERVE/INJURED",
   "SUSPENDED", "COMMISSIONER EXEMPT", "COMMISSIONER'S EXEMPT LIST",
-  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI"
+  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI", "UNSIGNED", "RELEASED", "WAIVED", "CUT"
 ]);
 
 const LEADERBOARD_FUNCTION_BY_POSITION = {
@@ -292,7 +292,10 @@ async function loadCentralAvailability() {
     const byName = new Map();
     Object.entries(players).forEach(([playerID, player]) => {
       const key = normalizePlayerName(player && player.longName);
-      if (key && !byName.has(key)) byName.set(key, { ...player, playerID });
+      if (key) {
+        if (!byName.has(key)) byName.set(key, []);
+        byName.get(key).push({ ...player, playerID });
+      }
     });
     const updatedAt = cached && cached.updatedAt ? cached.updatedAt : null;
     const ageHours = updatedAt && Number.isFinite(Date.parse(updatedAt))
@@ -325,17 +328,28 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
     const kept = [];
 
     activeRows.forEach(row => {
-      const player = (row.playerID && availability.players[String(row.playerID)]) ||
-        availability.byName.get(normalizePlayerName(row.name));
+      const compatible = candidate => candidate &&
+        String(candidate.pos || candidate.position || "").toUpperCase() === position;
+      const identified = row.playerID && availability.players[String(row.playerID)];
+      const named = availability.byName.get(normalizePlayerName(row.name));
+      const candidates = (Array.isArray(named) ? named : named ? [named] : [])
+        .filter(candidate => compatible(candidate) && (!row.team ||
+          String(candidate.team || "").toUpperCase() === String(row.team).toUpperCase()));
+      const player = identified && (!(identified.pos || identified.position) || compatible(identified))
+        ? identified : candidates.length === 1 ? candidates[0] : null;
       const injury = player && player.injury && typeof player.injury === "object"
         ? player.injury
         : null;
       const reserve = require("./_reserve-transactions.js").reserveTransaction(row,season,week);
-      const status = reserve ? reserve.status : normalizeAvailabilityStatus((injury && injury.designation) || player?.rosterStatus);
+      const reported = [(injury && injury.designation), player?.rosterStatus]
+        .map(normalizeAvailabilityStatus).filter(Boolean);
+      const status = reserve ? reserve.status : reported.find(value => HARD_UNAVAILABLE.has(value)) ||
+        (player?.active === false ? "INACTIVE" : reported[0]);
+      const verified = compatible(player) && availability.fresh === true;
       const description = reserve ? reserve.reason : injury && injury.description ? String(injury.description) : null;
 
       if (!status) {
-        kept.push(player ? {...row,availabilityVerified:true} : {...row,status:"UNVERIFIED",availabilityVerified:false,injuryStatus:"UNVERIFIED",availabilitySource:"player-data",injuryDescription:"Player absent from the current roster/injury cache; availability is not verified."});
+        kept.push(player ? {...row,availabilityVerified:verified} : {...row,status:"UNVERIFIED",availabilityVerified:false,injuryStatus:"UNVERIFIED",availabilitySource:"player-data",injuryDescription:"Player absent from the current roster/injury cache; availability is not verified."});
         return;
       }
 
@@ -343,6 +357,7 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
         kept.push({
           ...row,
           injuryStatus: status,
+          availabilityVerified: verified,
           injuryDescription: description,
           availabilitySource: "player-data"
         });
