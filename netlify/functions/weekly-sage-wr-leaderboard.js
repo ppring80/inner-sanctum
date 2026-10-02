@@ -126,6 +126,8 @@ const {
   "./weekly-sage-wr-final-score.js"
 );
 
+const { cachedMatchupsForPosition } = require('./_weekly-cached-player-matchup');
+
 const CACHE_CONTROL =
   "public, max-age=300, s-maxage=21600, stale-while-revalidate=86400";
 
@@ -2008,6 +2010,10 @@ exports.handler =
           )
         ]);
 
+      const matchupForTeam = await cachedMatchupsForPosition(event, {
+        baseUrl, season, targetWeek, seasonType, schedule, position: "WR"
+      });
+
       const rawPlayers =
         extractSnapshotPlayers(
           snapshot
@@ -2147,7 +2153,8 @@ exports.handler =
                     player.playerID,
 
                   prebuiltSnapshot:
-                    snapshot
+                    snapshot,
+                  prebuiltMatchup: await matchupForTeam(player.team)
                 });
 
               const row =

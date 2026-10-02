@@ -1,3 +1,4 @@
+const { cachedMatchupsForPosition } = require('./_weekly-cached-player-matchup');
 // netlify/functions/weekly-sage-te-leaderboard.js
 //
 // WEEKLY SAGE — TE LEADERBOARD
@@ -1903,6 +1904,10 @@ exports.handler =
           fetchAdpBaseline(scoring)
         ]);
 
+      const matchupForTeam = await cachedMatchupsForPosition(event, {
+        baseUrl, season, targetWeek, seasonType, schedule, position: "TE"
+      });
+
       const rawPlayers =
         extractSnapshotPlayers(
           snapshot
@@ -2042,7 +2047,8 @@ exports.handler =
                     player.playerID,
 
                   prebuiltSnapshot:
-                    snapshot
+                    snapshot,
+                  prebuiltMatchup: await matchupForTeam(player.team)
                 });
 
               const row =

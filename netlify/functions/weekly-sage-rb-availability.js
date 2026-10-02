@@ -6,7 +6,7 @@
 const HARD_UNAVAILABLE = new Set([
   "OUT", "IR", "INACTIVE", "INJURED RESERVE", "RESERVE/INJURED",
   "SUSPENDED", "COMMISSIONER EXEMPT", "COMMISSIONER'S EXEMPT LIST",
-  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI"
+  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI", "UNSIGNED", "RELEASED", "WAIVED", "CUT"
 ]);
 
 const WEEKLY_FACTS = Object.freeze({
@@ -70,11 +70,11 @@ function availabilityForPlayer(player, season, week) {
   const fact = weekly[normalizeName(player && (player.name || player.longName))];
   if (fact) return { ...fact };
 
-  const status = normalizeStatus(player && (
-    player.eligibilityStatus || player.injuryStatus ||
-    player.availabilityStatus || player.rosterStatus || player.status
-  ));
-  const hardUnavailable = player && player.eligible !== true && (
+  const statuses = player ? [player.eligibilityStatus, player.injuryStatus,
+    player.availabilityStatus, player.rosterStatus, player.status].map(normalizeStatus).filter(Boolean) : [];
+  const status = statuses.find(value => HARD_UNAVAILABLE.has(value)) ||
+    (player?.active === false ? "INACTIVE" : statuses[0]) || "";
+  const hardUnavailable = player && (
     player.eligible === false || HARD_UNAVAILABLE.has(status)
   );
   return {

@@ -136,7 +136,8 @@ exports.handler = async (event) => {
               team: p.team || teamAbv,
               exp: p.exp,
               injury: p.injury,
-              rosterStatus: p.rosterStatus || p.status || null
+              rosterStatus: p.rosterStatus || p.status || null,
+              ...(typeof p.active === "boolean" ? {active:p.active} : {})
             };
           }
         });
