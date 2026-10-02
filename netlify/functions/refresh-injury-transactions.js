@@ -3,7 +3,9 @@ const {connectLambda,getStore}=require('@netlify/blobs');
 const {requireTank01RefreshAuthorization}=require('./_tank01-refresh-guard');
 const {STORE,parseTransactions,mergeTransactions}=require('./_injury-transactions');
 exports.handler=async event=>{
-  const denied=requireTank01RefreshAuthorization(event);if(denied)return denied;connectLambda(event);
+  const denied=requireTank01RefreshAuthorization(event);
+  if(denied){const authorization=Object.entries(event.headers||{}).find(([key])=>key.toLowerCase()==='authorization')?.[1]||'';const token=/^Bearer\s+(.+)$/i.exec(authorization)?.[1];if(!await require('./_injury-workflow-auth').verifyWorkflowToken(token))return denied;}
+  connectLambda(event);
   const now=new Date(),store=getStore({name:STORE}),previous=await store.get('latest',{type:'json'});
   if(previous&&now-Date.parse(previous.checkedAt)<50*60000)return {statusCode:200,body:JSON.stringify({cached:true,skipped:true})};
   const lease=await store.getWithMetadata('refresh-lease',{type:'json'});
