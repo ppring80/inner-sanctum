@@ -724,9 +724,8 @@ function flattenRankings(rankings) {
               null,
 
             sageTake:
-              cleanString(
-                entry.sageTake
-              )
+              [weeklyAvailabilityNote(entry), cleanString(entry.sageTake)]
+                .filter(Boolean).join(" ") || null
           });
         }
       );
@@ -3191,6 +3190,18 @@ function matchRosterEntryToSageRow(
   return suffixToleredCandidates.length === 1
     ? suffixToleredCandidates[0]
     : null;
+}
+
+function weeklyAvailabilityNote(row) {
+  const status = String(row.injuryStatus || "").trim().toUpperCase();
+  const notes = [];
+  if (["Q", "QUESTIONABLE", "D", "DOUBTFUL"].includes(status)) {
+    notes.push(`Injury status: ${status}${row.injuryDescription ? " — " + row.injuryDescription : ""}.`);
+  }
+  if (row.availabilityVerified === false) {
+    notes.push("Availability is not verified by fresh roster/injury evidence; confirm game status before starting.");
+  }
+  return notes.join(" ");
 }
 
 function buildLineupSageReason(row) {
