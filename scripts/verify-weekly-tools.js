@@ -17,6 +17,7 @@ async function main(){
  if(season===2026 && now<Date.parse('2026-09-10T00:00:00Z')){console.log('Before regular-season opener; skipped.');return;}
  const week=resolveCurrentNFLWeek(now,season);assert(week,'Current season requires a supported week calendar.');
  const status=await request('weekly-sage-status');assert.equal(status.ready,true,'Weekly caches incomplete');assert.equal(status.week,week);
+ assert.equal(status.injuryTransactions?.fresh,true,'Official injury transaction cache missing or stale');
  const data=await request(`weekly-sage-rankings?season=${season}&week=${week}&scoring=half-ppr&evidenceUsage=archive`);
  assert.equal(data.metadata.complete,true);assert.equal(data.metadata.availability.fresh,true,'Player availability stale');assert.equal(data.metadata.projections.fresh,true,'Projections stale');
  const pool={};

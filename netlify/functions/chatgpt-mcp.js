@@ -3195,6 +3195,7 @@ function matchRosterEntryToSageRow(
 function weeklyAvailabilityNote(row) {
   const status = String(row.injuryStatus || "").trim().toUpperCase();
   const notes = [];
+  if(row.roleContext?.note && !String(row.sageTake || "").includes(row.roleContext.note)) notes.push(row.roleContext.note);
   if (["Q", "QUESTIONABLE", "D", "DOUBTFUL"].includes(status)) {
     notes.push(`Injury status: ${status}${row.injuryDescription ? " — " + row.injuryDescription : ""}.`);
   }

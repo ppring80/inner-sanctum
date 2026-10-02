@@ -286,6 +286,7 @@ async function loadCentralAvailability() {
   try {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
+    const transactionCache = await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
     const players = cached && cached.players && typeof cached.players === "object"
       ? cached.players
       : {};
@@ -308,12 +309,14 @@ async function loadCentralAvailability() {
       fresh: ageHours !== null && ageHours <= 8,
       playerCount: Object.keys(players).length,
       players,
-      byName
+      byName,
+      transactions: require('./_injury-transactions').mergeTransactions(transactionCache,[]).records,
+      transactionsCheckedAt: transactionCache?.checkedAt || null
     };
   } catch (error) {
     return {
       available: false, updatedAt: null, ageHours: null, fresh: false,
-      playerCount: 0, players: {}, byName: new Map(), error: error.message
+      playerCount: 0, players: {}, byName: new Map(), transactions:require('./_injury-transactions').VERIFIED, error: error.message
     };
   }
 }
@@ -342,9 +345,10 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
       const injury = player && player.injury && typeof player.injury === "object"
         ? player.injury
         : null;
-      const reserve = require("./_reserve-transactions.js").reserveTransaction(row,season,week);
+      const transaction = require('./_injury-transactions').matchingTransaction(row,season,week,availability.transactions);
+      const reserve = transaction ? (transaction.status==='ACTIVE'?null:transaction) : require("./_reserve-transactions.js").reserveTransaction(row,season,week);
       const reported = [(injury && injury.designation), player?.rosterStatus]
-        .map(normalizeAvailabilityStatus).filter(Boolean);
+        .map(normalizeAvailabilityStatus).filter(Boolean).filter(status=>transaction?.status!=='ACTIVE'||!['IR','INJURED RESERVE','RESERVE/INJURED','PUP','RESERVE/PUP','NFI','RESERVE/NFI'].includes(status));
       const status = reserve ? reserve.status : reported.find(value => HARD_UNAVAILABLE.has(value)) ||
         (player?.active === false ? "INACTIVE" : reported[0]);
       const verified = compatible(player) && availability.fresh === true;
@@ -604,6 +608,13 @@ exports.handler = async function (event) {
   );
   const startedGameExclusions = applyGameEligibility(positions, new Date(), evidenceUsage);
   reconcileRankedRecommendations(positions, scoring);
+  // Shared read-time context: one cached status change reaches every weekly
+  // consumer, without rebuilding provider statistics or inventing workload.
+  const roleEvidence = [...require('./_reserve-transactions').TRANSACTIONS.filter(t=>Number(season)===t.season&&targetWeek>=t.fromWeek&&(!t.activationWeek||targetWeek<t.activationWeek)&&!require('./_injury-transactions').matchingTransaction(t,season,targetWeek,centralAvailability.transactions)),...(centralAvailability.transactions||[])];
+  for(const row of positions.RB||[]) {
+    const context=require('./_injury-transactions').roleContext(row,centralAvailability.players,roleEvidence,season,targetWeek,centralAvailability.updatedAt);
+    if(context){row.roleContext=context;row.sageTake=`${context.note} ${row.sageTake||''}`;}
+  }
 
   if (successCount === 0) {
     return jsonResponse(502, {
@@ -650,6 +661,7 @@ exports.handler = async function (event) {
         fresh: centralAvailability.fresh,
         freshnessThresholdHours: 8,
         playerCount: centralAvailability.playerCount,
+        transactionsCheckedAt: centralAvailability.transactionsCheckedAt,
         exclusionsApplied: availabilityExclusions.length,
         positionsCovered: Array.from(PLAYER_AVAILABILITY_POSITIONS),
         note: centralAvailability.fresh

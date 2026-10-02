@@ -617,18 +617,20 @@ function decorateDecision(item, context = {}) {
   const opportunity = item?.evidence?.opportunity || null;
 
   const depthWeakest = rosterImpact?.depthComparison?.weakestComparable || weakest;
+  const affectedDrop = depthWeakest?.sage?.roleContext?.status === 'REASSESS';
   const requestedClaim = ['ADD_NOW', 'STASH'].includes(requestedVerdict);
   const hasLegalDrop = Boolean(depthWeakest?.name);
   // Customer-facing claims are actionable only as complete add/drop pairs.
   // A candidate without a specific legal drop remains REVIEW and receives no
   // bidding advice, even if its internal roster-impact evidence is positive.
-  const verdict = requestedClaim && !hasLegalDrop ? 'REVIEW' : requestedVerdict;
+  const verdict = requestedClaim && (!hasLegalDrop || affectedDrop) ? 'REVIEW' : requestedVerdict;
   const claimRecommended = ['ADD_NOW', 'STASH'].includes(verdict);
   const faab = claimRecommended
     ? buildFaabGuidance(item, verdict, context)
     : null;
   return {
     ...item,
+    ...(affectedDrop ? {decision:{...item.decision,action:'REVIEW',actionable:false,reasonCode:'TEAMMATE_ROLE_CHANGED',reasons:[...(item.decision?.reasons||[]),depthWeakest.sage.roleContext.note]}} : {}),
     verdict,
     recommended: recommendedCandidate(item, verdict),
     opportunity,
@@ -644,7 +646,7 @@ function decorateDecision(item, context = {}) {
           }
         : null,
     lineupFor:
-      rosterImpact?.comparisonType === 'starting-lineup' &&
+      !affectedDrop && rosterImpact?.comparisonType === 'starting-lineup' &&
       rosterImpact?.candidateStarts &&
       rosterImpact?.classification === 'UPGRADE' &&
       weakest?.name
@@ -656,7 +658,7 @@ function decorateDecision(item, context = {}) {
           }
         : null,
     benchFor:
-      rosterImpact?.comparisonType === 'starting-lineup' &&
+      !affectedDrop && rosterImpact?.comparisonType === 'starting-lineup' &&
       rosterImpact?.candidateStarts === false &&
       rosterImpact?.depthComparison?.classification === 'UPGRADE' &&
       rosterImpact.depthComparison?.weakestComparable?.name
