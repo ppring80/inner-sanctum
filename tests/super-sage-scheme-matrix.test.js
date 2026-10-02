@@ -1,0 +1,12 @@
+"use strict";
+const assert=require("assert");
+const {NFL_TEAMS,buildSchemeMatrix}=require("../netlify/functions/_super-sage-scheme-matrix");
+const rows=NFL_TEAMS.map((team,i)=>({team,season:2026,week:4,observedAt:"2026-09-29T14:47:00Z",source:"verified-test-source",sample:{plays:100+i},defense:{zonePct:60},offense:{motionPct:50,personnel11Pct:55}}));
+const matrix=buildSchemeMatrix(rows);
+assert.strictEqual(matrix.teamCount,32);
+assert.strictEqual(matrix.complete,true);
+assert.deepStrictEqual(matrix.missingTeams,[]);
+assert.strictEqual(matrix.teams.ATL.defense.zonePct,60);
+assert.strictEqual(matrix.teams.ATL.offense.motionPct,50);
+assert.strictEqual(matrix.canChangeProductionRanking,false);
+console.log("Super SAGE Scheme Matrix assertions passed.");
