@@ -1,0 +1,31 @@
+'use strict';
+const assert = require('node:assert/strict');
+const Identity = require('../player-identity');
+const {_test:{enrichCandidates}} = require('../netlify/functions/waiver-candidates');
+const {fillProjection} = require('../netlify/functions/_weekly-projections');
+const {buildWaiverDecisions} = require('../netlify/functions/waiver-decision');
+const {_test:{buildCustomerRecommendations}} = require('../netlify/functions/waiver-recommendations');
+const jonathan = {name:'Jonathan Taylor',position:'RB',team:'IND',opponent:'WAS',positionRank:4,sageScore:76.2,projectedPoints:18.3,availabilityVerified:true};
+const jj = {name:'J.J. Taylor',position:'RB',availabilityStatus:'FREE_AGENT'};
+for (const name of ['J.J. Taylor','J. J. Taylor','J J Taylor','J.J. Taylor Jr.']) {
+ assert.equal(Identity.resolveRosterPlayer({...jj,name},[jonathan]),null,name);
+ const filled=fillProjection({...jj,name},{rows:[jonathan],source:'Tank01',targetWeek:4},true);
+ assert.equal(filled.projectedPoints,null,'Do not inherit Jonathan projection');
+ const rows=enrichCandidates({availablePlayers:[filled],roster:[],weeklyData:{positions:{RB:[jonathan]}},opportunityData:{records:{jonathan:{...jonathan,lastGameCarries:23,lastGameTargets:3}}},risersFallersData:{risers:[jonathan]}});
+ assert.equal(rows[0].sage,null,'Do not inherit Jonathan rank');
+ assert.equal(rows[0].trend,null,'Do not inherit Jonathan trend');
+ assert.equal(rows[0].opportunity,null,'Do not inherit Jonathan usage');
+ assert.equal(rows[0].opponent,null,'Do not inherit Jonathan matchup');
+ const recommendation=buildCustomerRecommendations(buildWaiverDecisions(rows))[0];
+ assert.notEqual(recommendation.verdict,'ADD_NOW');
+ assert.notEqual(recommendation.verdict,'STASH');
+ assert.equal(recommendation.faab,null);
+}
+assert.equal(Identity.resolveRosterPlayer({name:'J. Taylor',position:'RB'},[jonathan]),jonathan);
+assert.equal(Identity.resolveRosterPlayer({name:'J. Taylor',position:'RB'},[jonathan,jj]),null,'Ambiguity remains blocked');
+assert.equal(Identity.resolveRosterPlayer({name:'J. Taylor',position:'RB'},[jj]),null);
+assert.equal(Identity.resolveRosterPlayer({name:'J.J. Taylor',position:'RB'},[{...jj,name:'JJ Taylor'}]).name,'JJ Taylor','Exact punctuation normalization remains supported');
+assert.equal(Identity.resolveRosterPlayer({name:'T. Etienne Jr.',position:'RB'},[{name:'Travis Etienne',position:'RB'}]).name,'Travis Etienne');
+assert.equal(Identity.resolveRosterPlayer({name:'Cam Little',position:'K'},[{name:'Cameron Little',position:'K'}]).name,'Cameron Little');
+assert.equal(Identity.resolveRosterPlayer({name:'A. St. Brown',position:'WR'},[{name:'Amon-Ra St. Brown',position:'WR'}]).name,'Amon-Ra St. Brown');
+console.log('PASS: multi-initial names cannot borrow another player’s rankings, projections, usage, matchup or actionable FAAB; legitimate exact, nickname and single-initial matches preserved.');
