@@ -27,4 +27,5 @@ assert.equal(Identity.resolveRosterPlayer({name:'J. Taylor',position:'RB'},[jj])
 assert.equal(Identity.resolveRosterPlayer({name:'J.J. Taylor',position:'RB'},[{...jj,name:'JJ Taylor'}]).name,'JJ Taylor','Exact punctuation normalization remains supported');
 assert.equal(Identity.resolveRosterPlayer({name:'T. Etienne Jr.',position:'RB'},[{name:'Travis Etienne',position:'RB'}]).name,'Travis Etienne');
 assert.equal(Identity.resolveRosterPlayer({name:'Cam Little',position:'K'},[{name:'Cameron Little',position:'K'}]).name,'Cameron Little');
+assert.equal(Identity.resolveRosterPlayer({name:'A. St. Brown',position:'WR'},[{name:'Amon-Ra St. Brown',position:'WR'}]).name,'Amon-Ra St. Brown');
 console.log('PASS: multi-initial names cannot borrow another player’s rankings, projections, usage, matchup or actionable FAAB; legitimate exact, nickname and single-initial matches preserved.');

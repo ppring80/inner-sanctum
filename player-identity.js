@@ -135,8 +135,9 @@
 
     // Multiple initials are a distinct name (J.J. Taylor is not Jonathan Taylor).
     // Only a single initial followed by a surname can use abbreviation fallback.
+    // Preserve compound surnames such as A. St. Brown.
     var sourceTokens = stripTerminalSuffix(cleanTokens(sourceName));
-    var abbreviated = sourceTokens.length === 2 && sourceParts.first.length === 1;
+    var abbreviated = sourceTokens.length >= 2 && sourceParts.first.length === 1 && sourceTokens[1].length > 1;
     if (!abbreviated) return null;
 
     var fallback = rankingRows.filter(function (row) {
@@ -150,7 +151,7 @@
     if (fallback.length !== 1) return null;
     // A single initial also cannot establish identity with a multi-initial name.
     var targetTokens = stripTerminalSuffix(cleanTokens(fallback[0].name));
-    return targetTokens.length === 2 ? fallback[0] : null;
+    return targetTokens[0].length === 1 && targetTokens[1].length === 1 ? null : fallback[0];
   }
 
   function resolveRosterNames(roster, rankingRows) {
