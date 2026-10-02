@@ -10,7 +10,7 @@ async function main(){
  const {value}=await identity.json();if(!value)throw Error('GitHub workflow identity token missing.');
  // The short-lived token is never printed or persisted.
  for(let attempt=0;attempt<9;attempt++){
-  const response=await fetch('https://theinnersanctum.xyz/.netlify/functions/refresh-injury-transactions',{headers:{Authorization:'Bearer '+value},signal:AbortSignal.timeout(30000)});
+  const response=await fetch('https://theinnersanctum.xyz/.netlify/functions/injury-evidence-recovery',{headers:{Authorization:'Bearer '+value},signal:AbortSignal.timeout(30000)});
   if(response.ok){console.log(await response.text());return;}
   if(attempt===8)throw Error('Official injury refresh failed: HTTP '+response.status);
   await new Promise(resolve=>setTimeout(resolve,15000));
