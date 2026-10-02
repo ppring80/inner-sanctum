@@ -49,7 +49,7 @@ function matchingTransaction(player, season, week, records) {
 function roleContext(row, players, transactions, season, week, updatedAt) {
   if(row.position!=='RB')return null;
   const unavailable=new Map();
-  for(const r of transactions||[])if(r.team===row.team&&r.status!=='ACTIVE'&&matchingTransaction({name:r.name,team:r.team,position:'RB'},season,week,[r])) {
+  for(const r of transactions||[])if(r.team===row.team&&r.status!=='ACTIVE'&&Number(r.fromWeek||require('./_current-nfl-week').resolveCurrentNFLWeek(new Date(r.reportedAt+'T12:00:00Z'),Number(season)))===Number(week)&&matchingTransaction({name:r.name,team:r.team,position:'RB'},season,week,[r])) {
     const roster=Object.values(players||{}).find(p=>p.team===r.team&&playerKey(p.longName)===playerKey(r.name));
     if(r.position==='RB'||roster?.pos==='RB')unavailable.set(playerKey(r.name),r);
   }
