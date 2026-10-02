@@ -94,7 +94,7 @@ test('canonical identity prefers stable ID and fails closed on position conflict
     { playerID: '2', name: 'Shared Name', position: 'WR', team: 'MIA' }
   ];
   assert.strictEqual(
-    candidates.resolveCanonicalIdentity({ playerId: '1', name: 'Old Name', position: 'WR' }, registry).reason,
+    candidates.resolveCanonicalIdentity({ canonicalPlayerId: '1', name: 'Old Name', position: 'WR' }, registry).reason,
     'stable_id'
   );
   assert.strictEqual(
