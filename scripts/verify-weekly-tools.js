@@ -24,6 +24,17 @@ async function main(){
  for(const transaction of TRANSACTIONS){if(!reserveTransaction(transaction,season,week))continue;assert(!Object.values(data.positions).flat().some(row=>String(row.playerID)===transaction.playerID||row.name===transaction.name),`${transaction.name}: confirmed reserve player appears in active rankings`);}
  for(const pos of positions){const rows=data.positions[pos];assert(rows.length>0,`${pos}: empty rankings`);assert(rows.every(x=>x.opponent),`${pos}: missing opponent`);pool[pos]=rows.filter(x=>Number.isFinite(x.projectedPoints));assert(pool[pos].length>0,`${pos}: no matched projections`);}
  const news=await request('sage-newswire');assert(news.stories.length>0);assert.equal(news.mode,'editorial-with-sources','Automatic editorial source refresh incomplete');assert(news.stories.every(s=>s.publishedAt&&s.sageImpact&&s.sageImpact.length>50),'Newswire lacks verified dates or analysis');assert(!news.stories.some(s=>/^(Latest Buzz|Depth Charts|Consistency Ratings|xTD Leaders|xFP Leaders)$/.test(s.headline)),'Generic resource links displaced player news');assert(!news.stories.some(s=>s.sageImpact.includes('This headline alone does not establish availability')),'Newswire boilerplate returned');assert(Date.now()-Date.parse(news.updatedAt)<24*3600000,'Newswire stale');
+ // A synthetic multi-initial name must not borrow a genuine player's evidence.
+ const fullNameRow=pool.RB.find(row=>/^[A-Za-z]{3,} [A-Za-z]+$/.test(row.name));
+ assert(fullNameRow,'Need a full-name fixture for identity health check');
+ const [first,last]=fullNameRow.name.split(' ');
+ const fakeName=`${first[0]}.${first[0]}. ${last}`;
+ const identityCheck=await request('waiver-candidates',{provider:'health-check-fixture',season,week,providerProjectionWeek:week-1,scoring:'half-ppr',roster:[],availablePlayers:[{name:fakeName,position:'RB',availabilityStatus:'FREE_AGENT'}]});
+ assert.equal(identityCheck.candidates.length,1);
+ const unmatched=identityCheck.candidates[0];
+ assert.equal(unmatched.sage,null,'Multi-initial player inherited another SAGE rank');
+ assert.equal(unmatched.opportunity,null,'Multi-initial player inherited another usage record');
+ assert.equal(unmatched.providerProjectedPoints,null,'Multi-initial player inherited another projection');
  const marketEstimates=new Map();
  for(const upgrade of [true,false]){
   const roster=[],availablePlayers=[];
