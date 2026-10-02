@@ -25,6 +25,17 @@ async function main(){
  const candidate={name:row.name,position:'RB',availabilityStatus:'FREE_AGENT',providerProjectedPoints:20,identity:{sageMatched:true},sage,rosterImpact:{classification:'UPGRADE',comparisonType:'same-position-fallback',weakestComparable:{name:'Fixture Bench',sage:{positionRank:50,sageScore:30}}}};
  const decisions=buildWaiverDecisions([candidate]);assert(decisions[0].decision.reasons.some(reason=>reason.includes('Ankle')));assert(decisions[0].decision.reasons.some(reason=>reason.includes('not verified')));
  const result=decorateDecision({...decisions[0],decision:{...decisions[0].decision,action:'ADD'}});assert.equal(result.verdict,'REVIEW');assert.equal(result.faab,null);assert.equal(result.customerActionable,false);assert(result.marketFaab,'market value remains separate from unsafe add advice');
+ const candidatesModule=require('../netlify/functions/waiver-candidates');
+ const savedCandidatesHandler=candidatesModule.handler;
+ candidatesModule.handler=async()=>({statusCode:200,body:JSON.stringify({season:2026,week:4,candidates:[candidate],metadata:{rosterPlayersReceived:3,rosterIdentified:0,rosterMatchCoverage:0}})});
+ try{
+  const response=await require('../netlify/functions/waiver-recommendations').handler({httpMethod:'POST',body:JSON.stringify({week:4})});
+  const guarded=JSON.parse(response.body).recommendations[0];
+  assert.equal(guarded.customerActionable,false);assert.equal(guarded.faab,null);
+  assert(guarded.decision.reasons.some(reason=>reason.includes('identity coverage')));
+  assert(guarded.decision.reasons.some(reason=>reason.includes('Ankle')),'coverage guard must preserve injury context');
+  assert(guarded.decision.reasons.some(reason=>reason.includes('not verified')),'coverage guard must preserve freshness warning');
+ }finally{candidatesModule.handler=savedCandidatesHandler;}
  const saved=global.fetch;global.fetch=async()=>({ok:true,status:200,json:async()=>({positions:{QB:[],RB:[row],WR:[],TE:[],K:[],DEF:[]},metadata:{complete:true}})});
  try{
   const snapshot={provider:'cbs',scoringFormat:'half-ppr',league:{season:2026,teamCount:12},roster:[{name:row.name,position:'RB',status:'A'}],settings:{lineupSlots:[{slot:'RB',count:1}]}};

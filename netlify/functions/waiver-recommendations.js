@@ -779,7 +779,11 @@ exports.handler = async function handler(event) {
         action: item.verdict === 'PASS' ? 'PASS' : 'REVIEW',
         actionable: false,
         reasonCode: 'MATCHING_COVERAGE_INADEQUATE',
-        reasons: ['Connected-roster identity coverage is inadequate for a safe add/drop recommendation.']
+        reasons: [
+          'Connected-roster identity coverage is inadequate for a safe add/drop recommendation.',
+          ...(item.decision?.reasons || []).filter(reason =>
+            reason.startsWith('Injury status:') || reason.startsWith('Availability is not verified'))
+        ]
       }
     };
     const actionableItem = ['ADD_NOW', 'STASH'].includes(safeItem.verdict) && safeItem.swapFor?.name
