@@ -104,6 +104,32 @@ const MATCHUP_EXPLANATION = {
 // MCP OUTPUT SCHEMAS
 // ===========================================================
 
+const SuperSageResponseGuidanceSchema = z.object({
+  format: z.literal("1/3/10"),
+  summaryFirst: z.literal(true),
+  askForMoreDetail: z.literal(true),
+  followUpPrompt: z.string(),
+  yesBehavior: z.string(),
+  noBehavior: z.string(),
+  evidenceRule: z.string()
+});
+
+function buildSuperSageResponseGuidance(subject = "this recommendation") {
+  const cleanSubject = cleanString(subject) || "this recommendation";
+  return {
+    format: "1/3/10",
+    summaryFirst: true,
+    askForMoreDetail: true,
+    followUpPrompt: `Would you like the deeper SAGE analysis on ${cleanSubject}?`,
+    yesBehavior:
+      "Continue with relevant verified scheme, pressure, opportunity, matchup, split, sample-size, timeframe, and source evidence returned by Inner Sanctum. Do not repeat the summary.",
+    noBehavior:
+      "Stop after the concise recommendation. Do not volunteer additional analytics.",
+    evidenceRule:
+      "Never invent an advanced metric. If deeper verified evidence is unavailable, say so."
+  };
+}
+
 const StatSchema = z.object({
   label: z.string(),
   value: z.string()
@@ -156,6 +182,7 @@ const ProfileSchema = z.object({
 });
 
 const PlayerProfileOutputSchema = z.object({
+  superSageResponse: SuperSageResponseGuidanceSchema.optional(),
   found: z.boolean(),
   source: z.string(),
   liveFantasyDataConnected: z.boolean(),
@@ -258,6 +285,7 @@ const LineupContextSchema = z.object({
 });
 
 const LineupRecommendationOutputSchema = z.object({
+  superSageResponse: SuperSageResponseGuidanceSchema.optional(),
   source: z.string(),
   inputSource: z.enum([
     "linked_league",
@@ -305,6 +333,7 @@ const WaiverRecommendationSchema = z.object({
 });
 
 const WaiverRecommendationsOutputSchema = z.object({
+  superSageResponse: SuperSageResponseGuidanceSchema.optional(),
   source: z.string(),
   liveFantasyDataConnected: z.boolean(),
   readOnly: z.boolean(),
@@ -384,6 +413,7 @@ const ComparisonDecisionSchema = z.object({
 });
 
 const ComparePlayersOutputSchema = z.object({
+  superSageResponse: SuperSageResponseGuidanceSchema.optional(),
   source: z.string(),
   liveFantasyDataConnected: z.boolean(),
   season: z.number().int(),
@@ -418,6 +448,7 @@ const WeeklyRankingPlayerSchema = z.object({
 });
 
 const WeeklyRankingsOutputSchema = z.object({
+  superSageResponse: SuperSageResponseGuidanceSchema.optional(),
   source: z.string(),
   liveFantasyDataConnected: z.boolean(),
   season: z.number().int(),
@@ -4668,6 +4699,7 @@ function buildServer(
         requestedPlayers.length < 2
       ) {
         const structuredContent = {
+          superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. ")),
           source: "Inner Sanctum",
           liveFantasyDataConnected: true,
           season: resolvedSeason,
@@ -4780,6 +4812,7 @@ function buildServer(
           );
 
         const structuredContent = {
+          superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. ")),
           source: "Inner Sanctum",
           liveFantasyDataConnected: true,
           season: resolvedSeason,
@@ -4842,6 +4875,7 @@ function buildServer(
         );
 
         const structuredContent = {
+          superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. ")),
           source: "Inner Sanctum",
           liveFantasyDataConnected: false,
           season: resolvedSeason,
@@ -5060,6 +5094,7 @@ function buildServer(
             );
 
         const structuredContent = {
+          superSageResponse: buildSuperSageResponseGuidance(`${resolvedPosition} Week ${resolvedWeek} rankings`),
           source:
             "Inner Sanctum Weekly SAGE",
 
@@ -6143,6 +6178,7 @@ function buildServer(
       );
 
       const baseOutput = {
+        superSageResponse: buildSuperSageResponseGuidance("these waiver and FAAB recommendations"),
         source: "Inner Sanctum Waiver & FAAB",
         liveFantasyDataConnected: Boolean(snapshot),
         readOnly: true,
