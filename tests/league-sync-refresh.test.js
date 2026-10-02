@@ -1,0 +1,32 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
+const events={},writes=[],nodes={};let now=Date.parse('2026-10-06T06:01:00Z');
+class Clock extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
+const c={provider:'espn',connectionId:'espn:123:7',leagueId:'123',teamId:'7',season:2026,syncedAt:'2026-10-06T05:59:00Z'};
+const window={LeagueConnection:{getActiveConnection:()=>c,updateConnection:(id,data)=>{writes.push({id,data});return data;}},addEventListener:(type,cb)=>events[type]=cb,removeEventListener(){},postMessage(){},setInterval(){}};
+const document={readyState:'loading',hidden:false,addEventListener(){},querySelector:()=>null,getElementById:()=>null};
+vm.runInNewContext(fs.readFileSync('league-sync.js','utf8'),{window,document,location:{origin:'https://theinnersanctum.xyz'},Date:Clock,Map,Math,Promise,setTimeout,clearTimeout});
+assert.equal(window.LeagueSync.needsRefresh(c),true,'Tuesday boundary forces refresh even on a recent snapshot');
+assert.equal(window.LeagueSync.needsRefresh({...c,syncedAt:new Clock().toISOString()}),false);
+const data={league:{id:'123',season:2026,availablePlayers:[]},team:{id:'7'},roster:[{name:'Real Player'}],meta:{capturedAt:new Clock().toISOString(),dataQuality:{complete:true}},availabilityMeta:{complete:true}};
+window.LeagueSync.applyCapture(c,data,now);assert.equal(writes.length,1);assert.equal(writes[0].data.syncedAt,new Clock().toISOString());
+for(const bad of [{...data,team:{id:'8'}},{...data,league:{...data.league,season:2025}},{...data,availabilityMeta:{complete:false}},{...data,meta:{...data.meta,capturedAt:'2026-09-27T00:00:00Z'}},{...data,meta:{...data.meta,warnings:['Could not collect CBS free agents: HTTP 500']}}])assert.throws(()=>window.LeagueSync.applyCapture(c,bad,now));
+assert.equal(writes.length,1,'Failed or mismatched captures never overwrite saved data or refresh timestamp');
+let listener;const calls=[];const tabs=[{id:1,url:'https://fantasy.espn.com/football/team?leagueId=999&teamId=7'},{id:2,url:'https://fantasy.espn.com/football/team?leagueId=123&teamId=7'},{id:3,url:'https://widebodies.football.cbssports.com/teams/rosters'}];
+let result=data;
+const api={runtime:{onMessage:{addListener:cb=>listener=cb}},tabs:{query:async()=>tabs,sendMessage:async(id,message)=>{calls.push({id,message});return {success:true,data:result};}}};
+vm.runInNewContext(fs.readFileSync('cbs-extension/league-sync-worker.js','utf8'),{globalThis:{chrome:api},URL,Map,Promise,Error,Number,String});
+const send=(connection,url='https://theinnersanctum.xyz/free-agents')=>new Promise(resolve=>listener({type:'INNER_SANCTUM_REFRESH_LEAGUE',connection},{tab:{id:9,url}},resolve));
+(async()=>{
+ let requests=0;
+ window.postMessage=message=>{requests++;setImmediate(()=>{events.message({source:window,origin:'https://theinnersanctum.xyz',data:{type:'INNER_SANCTUM_REFRESH_LEAGUE_ACK',requestId:message.requestId}});events.message({source:window,origin:'https://theinnersanctum.xyz',data:{type:'INNER_SANCTUM_REFRESH_LEAGUE_RESPONSE',requestId:message.requestId,success:true,data}});});};
+ const fresh=await Promise.all([window.LeagueSync.refreshIfNeeded(c),window.LeagueSync.refreshIfNeeded(c)]);
+ assert.equal(requests,1,'Concurrent tool loads share a single provider capture');
+ assert.equal(fresh[0].syncedAt,data.meta.capturedAt);
+ let response=await send(c);assert.equal(response.success,true);assert.equal(calls[0].id,2,'Only the matching ESPN league is captured');
+ result={...data,team:{id:'8'}};response=await send(c);assert.equal(response.success,false,'Different team rejected');
+ response=await send(c,'https://attacker.example/free-agents');assert.equal(response.success,false,'Foreign origin rejected');
+ result={...data,league:{id:'widebodies',season:2026},team:{id:'5'}};response=await send({...c,provider:'cbs',leagueId:'widebodies',teamId:'5'});assert.equal(response.success,true);assert.equal(calls.at(-1).id,3);assert.equal(calls.at(-1).message.type,'INNER_SANCTUM_CBS_CAPTURE');
+ tabs.length=0;response=await send(c);assert.equal(response.success,false,'No matching tab produces explicit failure without opening tabs');
+ console.log('PASS: Tuesday sync, validated fresh captures, retained failures, matching CBS/ESPN tabs and origin/team/season boundaries.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

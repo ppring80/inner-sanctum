@@ -211,7 +211,7 @@
       connectionMode: safe.connectionMode || previous.connectionMode || PROVIDERS[provider]?.connectionMode || null,
       readOnly: safe.readOnly ?? previous.readOnly ?? PROVIDERS[provider]?.readOnly ?? true,
       connectedAt: previous.connectedAt || safe.connectedAt || now,
-      syncedAt: safe.syncedAt || now,
+      syncedAt: safe.syncedAt || previous.syncedAt || now,
     };
     merged.leagueId = leagueIdOf(merged);
     merged.leagueName = leagueNameOf(merged);

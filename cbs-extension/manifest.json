@@ -1,15 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "The Inner Sanctum — Connect",
-  "version": "0.5.2",
+  "name": "The Inner Sanctum \u2014 Connect",
+  "version": "0.5.3",
   "description": "Read-only fantasy league connection helper for The Inner Sanctum.",
-
   "permissions": [
     "tabs",
     "scripting",
     "storage"
   ],
-
   "host_permissions": [
     "https://*.football.cbssports.com/*",
     "https://fantasy.espn.com/*",
@@ -17,18 +15,15 @@
     "https://theinnersanctum.xyz/*",
     "https://www.theinnersanctum.xyz/*"
   ],
-
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-
   "background": {
     "service_worker": "service-worker-v050.js"
   },
-
   "content_scripts": [
     {
       "matches": [
@@ -82,11 +77,21 @@
       ],
       "run_at": "document_idle",
       "world": "ISOLATED"
+    },
+    {
+      "matches": [
+        "https://theinnersanctum.xyz/*",
+        "https://www.theinnersanctum.xyz/*"
+      ],
+      "js": [
+        "league-sync-content-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
     }
   ],
-
   "action": {
-    "default_title": "The Inner Sanctum — Connect",
+    "default_title": "The Inner Sanctum \u2014 Connect",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
