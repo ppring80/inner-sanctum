@@ -31,7 +31,7 @@ const PLAYER_AVAILABILITY_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K"]);
 const HARD_UNAVAILABLE = new Set([
   "OUT", "IR", "INACTIVE", "INJURED RESERVE", "RESERVE/INJURED",
   "SUSPENDED", "COMMISSIONER EXEMPT", "COMMISSIONER'S EXEMPT LIST",
-  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI", "UNSIGNED", "RELEASED", "WAIVED", "CUT"
+  "COMMISSIONER EXEMPT NO PLAY", "PUP", "RESERVE/PUP", "NFI", "RESERVE/NFI", "UNSIGNED", "RELEASED", "WAIVED", "CUT", "PS", "PRACTICE SQUAD"
 ]);
 
 const LEADERBOARD_FUNCTION_BY_POSITION = {
@@ -328,8 +328,10 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
     const kept = [];
 
     activeRows.forEach(row => {
-      const compatible = candidate => candidate &&
-        String(candidate.pos || candidate.position || "").toUpperCase() === position;
+      const compatible = candidate => {
+        const reportedPosition = String(candidate?.pos || candidate?.position || "").toUpperCase();
+        return candidate && (reportedPosition === "PK" ? "K" : reportedPosition) === position;
+      };
       const identified = row.playerID && availability.players[String(row.playerID)];
       const named = availability.byName.get(normalizePlayerName(row.name));
       const candidates = (Array.isArray(named) ? named : named ? [named] : [])

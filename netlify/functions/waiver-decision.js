@@ -51,6 +51,11 @@ function buildReasons(candidate) {
   const trend = candidate?.trend || null;
   const impact = candidate?.rosterImpact || null;
   const weakest = impact?.weakestComparable || null;
+  if (sage?.availabilityVerified === false) reasons.push('Availability is not verified by fresh roster/injury evidence.');
+  if (['Q', 'QUESTIONABLE', 'D', 'DOUBTFUL'].includes(String(sage?.injuryStatus || '').toUpperCase())) {
+    reasons.push(`Injury status: ${sage.injuryStatus}${sage.injuryDescription ? ' — ' + sage.injuryDescription : ''}.`);
+  }
+
 
   if (sage?.position && sage?.positionRank) {
     reasons.push(

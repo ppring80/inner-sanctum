@@ -178,6 +178,7 @@ function withResolvedWeek(event) {
 
 function customerVerdict(item) {
   const action = item?.decision?.action || 'REVIEW';
+  if (item?.evidence?.sage?.availabilityVerified === false) return action === 'PASS' ? 'PASS' : 'REVIEW';
   const impact = item?.evidence?.rosterImpact || null;
   const depth = impact?.depthComparison ||
     (impact?.comparisonType === 'same-position-fallback' ? impact : null);
