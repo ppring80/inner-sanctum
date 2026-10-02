@@ -732,11 +732,34 @@ function summarizeCustomerRecommendations(recommendations) {
   return summary;
 }
 
+function providerSnapshotFreshness(connection, now = Date.now()) {
+  if (!connection || !['cbs', 'espn'].includes(connection.provider)) return null;
+  const syncedAt = connection.syncedAt || null;
+  const stamp = Date.parse(syncedAt || '');
+  const valid = Number.isFinite(stamp) && stamp <= now + 60000;
+  const ageHours = valid ? Math.max(0, (now - stamp) / 3600000) : null;
+  const bucket = time => Math.floor((time - Date.UTC(2026, 8, 15, 6)) / (7 * 86400000));
+  const stale = valid && (ageHours >= 24 || bucket(stamp) !== bucket(now));
+  return { syncedAt, ageHours, stale, status: !valid ? 'unknown' : stale ? 'stale' : 'current', refreshNeeded: !valid || stale };
+}
+
+function guardStaleSnapshot(item, freshness) {
+  if (!freshness?.stale || !['ADD_NOW', 'STASH'].includes(item.verdict)) return item;
+  return { ...item, verdict: 'REVIEW', recommended: false, customerActionable: false,
+    swapFor: null, lineupFor: null, benchFor: null, faab: null,
+    decision: { ...(item.decision || {}), action: 'REVIEW', actionable: false,
+      reasonCode: 'PROVIDER_SNAPSHOT_STALE', reasons: [
+        'Refresh the connected league before acting: saved roster and free-agent availability are stale.',
+        ...(item.decision?.reasons || []).filter(reason => reason.startsWith('Injury status:') || reason.startsWith('Availability is not verified'))
+      ] } };
+}
+
 exports.handler = async function handler(event) {
   const resolvedEvent = withResolvedWeek(event);
   let requestBody = {};
   try { requestBody = JSON.parse(resolvedEvent?.body || '{}'); } catch (_) {}
   const budgetResolution = resolveFaabBudget(requestBody);
+  const providerSnapshot = providerSnapshotFreshness(requestBody.connection);
   const candidateResponse = await waiverCandidates.handler(resolvedEvent);
 
   if (!candidateResponse || candidateResponse.statusCode !== 200) {
@@ -786,9 +809,10 @@ exports.handler = async function handler(event) {
         ]
       }
     };
-    const actionableItem = ['ADD_NOW', 'STASH'].includes(safeItem.verdict) && safeItem.swapFor?.name
-      ? safeItem
-      : { ...safeItem, faab: null };
+    const verifiedItem = guardStaleSnapshot(safeItem, providerSnapshot);
+    const actionableItem = ['ADD_NOW', 'STASH'].includes(verifiedItem.verdict) && verifiedItem.swapFor?.name
+      ? verifiedItem
+      : { ...verifiedItem, faab: null };
     return addDollarGuidance(actionableItem, budgetResolution.budget);
   });
 
@@ -813,6 +837,7 @@ exports.handler = async function handler(event) {
       decisionSummary: summarizeDecisions(rawDecisions),
       metadata: {
         ...(candidateBody.metadata || {}),
+        providerSnapshot,
         matchingCoverage: {
           adequate: coverageAdequate,
           rosterPlayersReceived,
@@ -839,6 +864,8 @@ exports.handler = async function handler(event) {
 };
 
 exports._test = {
+  providerSnapshotFreshness,
+  guardStaleSnapshot,
   validWeek,
   derive2026RegularSeasonWeek,
   resolveWaiverWeek,

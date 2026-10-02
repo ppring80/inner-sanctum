@@ -182,3 +182,5 @@ extensionApi.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) 
   if (pending.providerTabId !== tabId) await setPendingEspn({ ...pending, providerTabId: tabId });
   await retryPendingEspnCapture(tabId, pending.sanctumTabId);
 });
+
+importScripts("league-sync-worker.js");

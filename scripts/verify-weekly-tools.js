@@ -53,8 +53,10 @@ async function main(){
  }
  // Price the same six candidates against a different roster. Market value
  // must survive a WATCH/REVIEW/PASS verdict and remain independent of roster fit.
- const independent=await request('waiver-recommendations',{provider:'health-check-fixture',season,week,scoring:'half-ppr',teams:12,originalFaabBudget:200,roster:positions.flatMap(pos=>pool[pos].slice(1,['RB','WR'].includes(pos)?3:2).map(identity)),availablePlayers:positions.map(pos=>({...identity(pool[pos][0]),availabilityStatus:'FREE_AGENT'})),lineupConstruction:{QB:1,RB:2,WR:2,TE:1,K:1,DEF:1}});
+ const independent=await request('waiver-recommendations',{provider:'health-check-fixture',connection:{provider:'cbs',syncedAt:'2000-01-01T00:00:00Z'},season,week,scoring:'half-ppr',teams:12,originalFaabBudget:200,roster:positions.flatMap(pos=>pool[pos].slice(1,['RB','WR'].includes(pos)?3:2).map(identity)),availablePlayers:positions.map(pos=>({...identity(pool[pos][0]),availabilityStatus:'FREE_AGENT'})),lineupConstruction:{QB:1,RB:2,WR:2,TE:1,K:1,DEF:1}});
  assert.equal(independent.recommendations.length,positions.length,'Independent market check lost a candidate');
+ assert.equal(independent.metadata.providerSnapshot.stale,true,'Stale snapshot was not disclosed');
+ for(const row of independent.recommendations){assert.equal(row.faab,null,'Stale snapshot supplied an actionable bid');assert(!['ADD_NOW','STASH'].includes(row.verdict),'Stale snapshot supplied an actionable move');}
  assert.deepEqual([...new Set(independent.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'Independent market check must cover every position');
  for(const row of independent.recommendations){assert(marketEstimates.has(row.position),`Unexpected FAAB position ${row.position}`);assert.deepEqual(row.marketFaab,marketEstimates.get(row.position),`${row.position}: market value changed with roster fit`);}
  console.log(`PASS: season ${season}, week ${week}; complete rankings, fresh availability/projections/news, current waiver evidence, supported FAAB bids and dollar conversion.`);

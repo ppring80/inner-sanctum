@@ -252,4 +252,12 @@ function loadLeagueConnection(initialState) {
   assert.strictEqual(api.getConnectionsByProvider('espn')[0].leagueId, '2');
 })();
 
+(function partialEditsDoNotPretendToFetch() {
+ const { api } = loadLeagueConnection();
+ const c=api.connect('cbs',{leagueId:'widebodies',teamId:'5',syncedAt:'2026-09-27T00:00:00Z'});
+ api.updateConnection(c.connectionId,{teamName:'Updated display name'});
+ assert.strictEqual(api.getActiveConnection().syncedAt,'2026-09-27T00:00:00Z');
+ api.updateConnection(c.connectionId,{syncedAt:'2026-10-02T00:00:00Z'});
+ assert.strictEqual(api.getActiveConnection().syncedAt,'2026-10-02T00:00:00Z');
+})();
 console.log('league-connection-v2.test.js passed');
