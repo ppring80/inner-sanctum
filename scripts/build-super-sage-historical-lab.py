@@ -51,7 +51,7 @@ def build(start=2019, end=2026, end_2026_week=3):
 
     wanted = [
         "season","week","player_id","player_name","player_display_name",
-        "position","position_group","recent_team","opponent_team",
+        "position","position_group","recent_team","team","opponent_team",
         "completions","attempts","passing_yards","passing_tds","interceptions",
         "carries","rushing_yards","rushing_tds",
         "targets","receptions","receiving_yards","receiving_tds",
