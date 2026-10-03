@@ -1,0 +1,11 @@
+"use strict";
+const assert=require("assert");
+const {evaluateSchemeSource}=require("../netlify/functions/_super-sage-scheme-source-gate");
+const teams={}; for(let i=1;i<=32;i++) teams["T"+i]={zonePct:70,manPct:30,dropbacks:100,cover3Pct:35};
+let x=evaluateSchemeSource({source:"approved",season:2026,throughWeek:3,observedAt:"2026-10-02T20:00:00Z",usageStatus:"permission_confirmed",teams});
+assert.strictEqual(x.decision,"APPROVED_FOR_COLUMBIA");
+delete teams.T1.dropbacks;
+x=evaluateSchemeSource({source:"approved",season:2026,throughWeek:3,observedAt:"2026-10-02T20:00:00Z",usageStatus:"permission_confirmed",teams});
+assert.strictEqual(x.decision,"DO_NOT_INGEST");
+assert.strictEqual(x.canChangeProductionRanking,false);
+console.log("Super SAGE scheme-source gate assertions passed.");
