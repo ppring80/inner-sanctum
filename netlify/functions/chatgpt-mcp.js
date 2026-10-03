@@ -6233,6 +6233,19 @@ function buildServer(
             reason: buildComparativeLineupReason(starter, assignment.bench),
             _row: undefined
           }));
+
+          // Material facts on plausible legal alternatives are customer value,
+          // even when that player is not the single comparator chosen by the
+          // optimizer. Surface a compact initial watch item instead of hiding
+          // the state change behind deeper analysis.
+          const materialBenchContext = assignment.bench
+            .filter(item => materialStateChangeNote(item.row))
+            .map(item => ({
+              player: item.row.name,
+              position: item.row.position,
+              team: item.row.team || null,
+              note: materialStateChangeNote(item.row)
+            }));
         } else {
           bench = matchedEntries.map(
             (item) => ({
@@ -6277,7 +6290,8 @@ function buildServer(
           bench,
           unmatchedRosterPlayers,
           unfilledSlots,
-          warnings
+          warnings,
+          materialBenchContext: typeof materialBenchContext !== "undefined" ? materialBenchContext : []
         };
 
         return {
