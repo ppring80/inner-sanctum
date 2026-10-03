@@ -1,0 +1,11 @@
+"use strict";
+const assert=require("assert");
+const {buildImpactGraph}=require("../netlify/functions/_super-sage-impact-graph");
+let x=buildImpactGraph({event:"OUT",player:"LT",team:"AAA",opponent:"BBB",position:"OL"});
+assert.ok(x.reanalysisScope.includes("AAA:QB"));
+assert.ok(x.reanalysisScope.includes("AAA:RB"));
+assert.strictEqual(x.canChangeProductionRanking,false);
+x=buildImpactGraph({event:"OUT",player:"CB1",team:"BBB",opponent:"AAA",position:"CB"});
+assert.ok(x.reanalysisScope.includes("AAA:WR"));
+assert.ok(x.reanalysisScope.includes("AAA:QB"));
+console.log("Super SAGE impact-graph assertions passed.");
