@@ -1,0 +1,11 @@
+"use strict";
+const assert=require("assert");
+const {reviewLearningCase}=require("../netlify/functions/_super-sage-learning-case");
+const record={id:"abc",season:2026,week:4,player:{name:"Test WR"},decision:{direction:"START"},learningStatus:"READY_FOR_REVIEW",outcome:{actualFantasyPoints:4.2,observedAt:"2026-10-05T23:00:00Z"}};
+let x=reviewLearningCase(record,{decisionProcess:"GOOD_DECISION",explanationQuality:"GOOD",varianceNotes:["10 targets, low conversion"]});
+assert.strictEqual(x.learning.createHypothesis,false);
+assert.strictEqual(x.learning.nextStep,"RETAIN_AS_CALIBRATION_CASE");
+x=reviewLearningCase(record,{decisionProcess:"BAD_DECISION",evidenceGaps:["missed role loss"],hypothesis:"Role-loss signal should update faster."});
+assert.strictEqual(x.learning.createHypothesis,true);
+assert.strictEqual(x.canChangeProductionRanking,false);
+console.log("Super SAGE learning-case assertions passed.");
