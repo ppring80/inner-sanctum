@@ -103,12 +103,19 @@ test('a promoted verified signal + projection + same tier + no added uncertainty
   assert.ok(d.slots[0].gate.conditions.every((c) => c.passed));
 });
 
-test('the projection is never sufficient on its own, however large', () => {
+test('a projection never overrides contradictory or incomplete evidence, however large', () => {
+  // Approved semantics: a sourced projection may resolve an otherwise ORDINARY
+  // comparison when the complete current evidence is coherent. Here the
+  // established-role evidence is incomplete, so the comparison is SURPRISING
+  // and keeps the forward-evidence burden.
   const d = decide([
     { name: 'Projected RB', position: 'RB', rank: 41, ...projection(25) },
     { name: 'Established WR', position: 'WR', rank: 27, ...projection(6) }
   ]);
   assert.strictEqual(d.slots[0].starter.name, 'Established WR');
+  assert.strictEqual(d.slots[0].gate.comparisonClass, 'SURPRISING');
+  assert.ok(d.slots[0].gate.classReasons.some((r) => /Established-role evidence is incomplete/.test(r)));
+  assert.strictEqual(d.slots[0].gate.resolution, 'FORWARD_EVIDENCE_GATE');
 });
 
 test('candidate, observed, rejected and unverified signals cannot displace', () => {
@@ -199,7 +206,10 @@ test('the explanation is derived only from the decision record', () => {
     { name: 'Established WR', position: 'WR', rank: 27, team: 'TB', environmentContext: { type: 'QB_AVAILABILITY_CHANGE', status: 'REASSESS', note: qbNote }, ...projection(10) }
   ]);
   const e = explainLineup(d).slots[0];
-  assert.strictEqual(e.headline, 'START ESTABLISHED WR over BUSY RB — Moderate edge');
+  // Intentional change (approved baseline validity): the verified QB change puts
+  // the starter's baseline under REASSESS, which caps confidence at Limited.
+  assert.strictEqual(d.slots[0].starter.baselineValidity.state, 'REASSESS');
+  assert.strictEqual(e.headline, 'START ESTABLISHED WR over BUSY RB — Limited edge');
   assert.ok(e.why.some((w) => /stronger established Weekly SAGE standing/.test(w)));
   assert.ok(e.why.some((w) => /6\.7 recent opportunities per game are observed workload, not a verified forecast/.test(w)));
   assert.ok(e.materialFacts.some((m) => m.includes(qbNote)), 'material state change in the initial output');

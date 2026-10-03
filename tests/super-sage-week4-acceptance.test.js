@@ -72,6 +72,51 @@ function checkRules(label, result) {
       .forEach((c) => assert.match(c.note, /not verified/));
   });
 
+  const packets = [...record.slots.flatMap((s) => [s.starter, s.comparator, ...(s.candidates || [])]), ...record.bench, ...record.unavailable].filter(Boolean);
+
+  test(`${label}: no INVALID or UNAVAILABLE baseline decides a slot`, () => {
+    record.slots.filter((s) => s.starter).forEach((s) => {
+      const st = s.starter.baselineValidity.state;
+      assert.ok(st !== 'UNAVAILABLE', s.slotLabel);
+      if (st === 'INVALID') assert.strictEqual(s.decidedBy, 'INVALID_BASELINE_ONLY_OPTION', s.slotLabel);
+    });
+  });
+
+  test(`${label}: every player with a fresh OUT-leaning status corroborated by a near-zero fresh projection is INVALID`, () => {
+    const { isNearZeroProjection, POLICY } = require('../netlify/functions/_super-sage-decision-policy.js');
+    packets.forEach((p) => {
+      const eff = p.baselineValidity.effectiveStatus;
+      if (eff && eff.status === 'DOUBTFUL' && p.projection.admissible && p.projection.fresh && isNearZeroProjection(POLICY, p.projection.points, null)) {
+        assert.strictEqual(p.baselineValidity.state, 'INVALID', p.name);
+      }
+    });
+  });
+
+  test(`${label}: a REASSESS starter never carries more than Limited confidence`, () => {
+    record.slots.filter((s) => s.starter && s.starter.baselineValidity.state === 'REASSESS').forEach((s) => assert.strictEqual(s.confidence.label, 'Limited', s.slotLabel));
+  });
+
+  test(`${label}: every displacement met its comparison class's burden`, () => {
+    record.slots.forEach((s) => {
+      if (s.decidedBy === 'CURRENT_EVIDENCE_COMPARISON') { assert.strictEqual(s.gate.comparisonClass, 'ORDINARY'); assert.ok(s.gate.band && s.gate.band.calibrated); }
+      if (s.decidedBy === 'DISPLACEMENT_GATE_PASSED') assert.ok(s.gate.comparisonClass !== 'PROHIBITED' && s.gate.conditions.every((c) => c.passed));
+    });
+  });
+
+  test(`${label}: observed workload never appears as expected opportunity; role expansion is never claimed without validation`, () => {
+    packets.forEach((p) => {
+      assert.ok(p.expectedOpportunity.every((e) => e.decisionActive === true), p.name);
+      if (p.roleExpansion) assert.strictEqual(p.roleExpansion.claimed, p.roleExpansion.validated, p.name);
+    });
+  });
+
+  test(`${label}: scope is START/SIT and the observed-opportunity source is recorded`, () => {
+    assert.strictEqual(record.decisionScope, 'START_SIT');
+    record.bench.forEach((b) => assert.strictEqual(b.lineupStatus, 'BENCH'));
+    assert.ok(record.observedOpportunity && record.observedOpportunity.status);
+    if (record.observedOpportunity.status === 'AVAILABLE') assert.ok(record.observedOpportunity.provenance.weeksIncluded.every((w) => w < record.request.week));
+  });
+
   test(`${label}: MCP and website express the identical decision`, () => {
     assert.deepStrictEqual(decisionOf(mcp), decisionOf(website));
     assert.deepStrictEqual(decisionOf(website), record.slots.map((s) => ({ slot: s.slotLabel, player: s.starter ? s.starter.name : null, confidence: s.confidence.label })));

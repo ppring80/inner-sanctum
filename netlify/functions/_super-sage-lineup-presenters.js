@@ -21,10 +21,15 @@ function requireRecord(record) {
 }
 
 // ChatGPT / MCP: compact 1/3/10 initial response per slot.
+const validityOf = (p) => (p && p.baselineValidity ? p.baselineValidity.state : null);
+const classOf = (slot) => (slot.gate && slot.gate.comparisonClass ? slot.gate.comparisonClass : null);
+
 function toMcpLineup(record) {
   requireRecord(record);
   return {
     decisionId: record.decisionId,
+    scope: record.decisionScope || null,
+    rosterValueNote: record.rosterValue ? record.rosterValue.note : null,
     starters: record.slots.map((slot) => ({
       slot: slot.slotLabel,
       player: slot.starter ? slot.starter.name : null,
@@ -33,12 +38,14 @@ function toMcpLineup(record) {
       noCallCandidates: slot.candidates ? slot.candidates.map((p) => p.name) : null,
       versus: slot.comparator ? slot.comparator.name : null,
       confidence: slot.confidence.label,
+      baseline: validityOf(slot.starter),
+      comparisonClass: classOf(slot),
       headline: slot.explanation.headline,
       why: slot.explanation.why,
       materialFacts: slot.explanation.materialFacts,
       whatCouldChange: slot.explanation.whatCouldChange
     })),
-    bench: record.bench.map((p) => ({ player: p.name, position: p.position, team: p.team })),
+    bench: record.bench.map((p) => ({ player: p.name, position: p.position, team: p.team, status: "BENCH" })),
     unavailable: record.unavailable.map((p) => ({ player: p.name, position: p.position, status: p.availability.rosterStatus || p.availability.injuryStatus })),
     watch: record.benchWatch
   };
@@ -49,6 +56,8 @@ function toWebsiteLineup(record) {
   requireRecord(record);
   return {
     decisionId: record.decisionId,
+    scope: record.decisionScope || null,
+    rosterValueNote: record.rosterValue ? record.rosterValue.note : null,
     rows: record.slots.map((slot, index) => ({
       order: index + 1,
       slotLabel: slot.slotLabel,
@@ -58,6 +67,8 @@ function toWebsiteLineup(record) {
       verdict: slot.starter ? "START" : "NO CALL",
       noCallCandidates: slot.candidates ? slot.candidates.map((p) => p.name) : null,
       confidenceLabel: slot.confidence.label,
+      baselineState: validityOf(slot.starter),
+      comparisonClass: classOf(slot),
       summary: slot.explanation.headline,
       details: {
         why: slot.explanation.why,
