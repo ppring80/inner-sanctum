@@ -3432,26 +3432,57 @@ function weeklyAvailabilityNote(row) {
   return notes.join(" ");
 }
 
+function materialStateChangeNote(row) {
+  const notes = [];
+  if (row && row.roleContext && row.roleContext.note) notes.push(String(row.roleContext.note));
+  if (row && row.environmentContext && row.environmentContext.note) notes.push(String(row.environmentContext.note));
+  return notes.join(" ");
+}
+
 function buildLineupSageReason(row) {
-  if (row.sageTake) {
-    return row.sageTake;
+  const notes = [];
+  const stateChange = materialStateChangeNote(row);
+  if (stateChange) notes.push(stateChange);
+  if (row.sageTake && !notes.some(note => String(row.sageTake).includes(note))) notes.push(row.sageTake);
+
+  if (!notes.length) {
+    const bits = [];
+    if (row.sageLabel) bits.push(row.sageLabel);
+    if (row.matchup) bits.push(`${row.matchup} matchup`);
+    if (bits.length) notes.push(bits.join(" · "));
   }
+  return notes.join(" ") || null;
+}
 
-  const bits = [];
+function buildComparativeLineupReason(starter, alternatives) {
+  const eligible = (alternatives || []).filter(item =>
+    item && item.row && starter.eligiblePositions.includes(item.row.position)
+  ).sort((a,b)=>lineupPlayerValue(b.row)-lineupPlayerValue(a.row));
+  const challenger = eligible[0];
+  if (!challenger) return starter.reason;
 
-  if (row.sageLabel) {
-    bits.push(row.sageLabel);
+  const winner = starter._row;
+  const loser = challenger.row;
+  const reasons = [];
+  const winnerOpp = winner?.components?.opportunity?.opportunities;
+  const loserOpp = loser?.components?.opportunity?.opportunities;
+
+  if (winnerOpp && Number.isFinite(Number(winnerOpp.avgLast3))) {
+    reasons.push(`${starter.player} has about ${Number(winnerOpp.avgLast3).toFixed(1)} recent opportunities per game`);
   }
-
-  if (row.matchup) {
-    bits.push(
-      `${row.matchup} matchup`
-    );
+  if (winner?.matchup && loser?.matchup && winner.matchup !== loser.matchup) {
+    reasons.push(`${winner.matchup.toLowerCase()} matchup versus ${loser.matchup.toLowerCase()} for ${loser.name}`);
   }
+  const loserState = materialStateChangeNote(loser);
+  if (loserState) reasons.push(`${loser.name} carries a material state change: ${loserState}`);
+  const winnerState = materialStateChangeNote(winner);
+  if (winnerState) reasons.push(`${starter.player} carries a material state change: ${winnerState}`);
 
-  return bits.length
-    ? bits.join(" · ")
-    : null;
+  const confidence = starter._row?.sageConfidenceLabel || starter._row?.confidence || "limited";
+  const why = reasons.slice(0,3).join("; ");
+  return why
+    ? `${starter.player} over ${loser.name}: ${why}. SAGE confidence: ${String(confidence).toLowerCase()}.`
+    : `${starter.player} over ${loser.name} based on the existing Weekly SAGE ordering. SAGE confidence: ${String(confidence).toLowerCase()}.`;
 }
 
 function buildStarterRecord(
@@ -3487,7 +3518,8 @@ function buildStarterRecord(
     reason:
       buildLineupSageReason(
         row
-      )
+      ),
+    _row: row
   };
 }
 
@@ -6192,6 +6224,15 @@ function buildServer(
 
           unfilledSlots =
             assignment.unfilledSlots;
+
+          // 1/3/10 initial explanation: identify the strongest legal benched
+          // alternative and explain the decisive verified evidence. Material
+          // state changes are never hidden behind opt-in detail.
+          starters = starters.map(starter => ({
+            ...starter,
+            reason: buildComparativeLineupReason(starter, assignment.bench),
+            _row: undefined
+          }));
         } else {
           bench = matchedEntries.map(
             (item) => ({
