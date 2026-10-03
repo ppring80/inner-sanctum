@@ -1,0 +1,13 @@
+"use strict";
+const assert=require("assert");
+const {createDecisionRecord,appendOutcome,linkReanalysis}=require("../netlify/functions/_super-sage-decision-ledger");
+const a=createDecisionRecord({season:2026,week:4,player:{name:"Test RB",position:"RB"},decision:"START",confidence:"high",createdAt:"2026-10-02T20:00:00Z",evidenceSnapshot:{rank:10}});
+assert.strictEqual(a.learningStatus,"AWAITING_OUTCOME");
+const b=appendOutcome(a,{observedAt:"2026-10-05T23:00:00Z",actualFantasyPoints:18.4});
+assert.strictEqual(b.decision.direction,"START");
+assert.strictEqual(b.evidenceSnapshot.rank,10);
+assert.strictEqual(b.learningStatus,"READY_FOR_REVIEW");
+const c=linkReanalysis(a,createDecisionRecord({season:2026,week:4,player:{name:"Test RB"},decision:"START",createdAt:"2026-10-03T20:00:00Z"}));
+assert.strictEqual(c.previousDecisionId,a.id);
+assert.strictEqual(c.reanalysis,true);
+console.log("Super SAGE decision-ledger assertions passed.");
