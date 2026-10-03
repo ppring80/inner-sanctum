@@ -577,6 +577,56 @@ async function fetchDefensivePerformance({
   }
 }
 
+async function fetchGameEnvironmentSnapshot({
+  baseUrl,
+  season,
+  week
+}) {
+  const url =
+    baseUrl +
+    "/.netlify/functions/survivor-odds" +
+    "?season=" + encodeURIComponent(season) +
+    "&week=" + encodeURIComponent(week) +
+    "&seasonType=reg";
+  try {
+    const response = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data && Array.isArray(data.games) && !data.stale ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function attachGameEnvironment(row, oddsSnapshot) {
+  if (!row || !row.team || !oddsSnapshot || !Array.isArray(oddsSnapshot.games)) return row;
+  const team = String(row.team).toUpperCase();
+  const game = oddsSnapshot.games.find(g => String(g.home||"").toUpperCase()===team || String(g.away||"").toUpperCase()===team);
+  if (!game) return row;
+  const isHome=String(game.home||"").toUpperCase()===team;
+  const homeSpread=Number.isFinite(Number(game.spread))?Number(game.spread):null;
+  const teamSpread=homeSpread===null?null:(isHome?homeSpread:-homeSpread);
+  const total=Number.isFinite(Number(game.total))?Number(game.total):null;
+  const teamImpliedPoints=total!==null&&teamSpread!==null?Number(((total-teamSpread)/2).toFixed(1)):null;
+  const opponentImpliedPoints=total!==null&&teamSpread!==null?Number(((total+teamSpread)/2).toFixed(1)):null;
+  return {
+    ...row,
+    matchupEvidence:{
+      ...(row.matchupEvidence||{}),
+      gameEnvironment:{
+        opponent:row.opponent||null,spread:teamSpread,total,
+        teamImpliedPoints,opponentImpliedPoints,
+        teamWinPct:isHome?game.homeWinPct:game.awayWinPct,
+        sportsbook:game.sportsbook||null,
+        generatedAt:oddsSnapshot.generatedAt||null,
+        ageMinutes:oddsSnapshot.ageMinutes??null,
+        source:"Inner Sanctum cached Survivor odds",
+        rule:"Market context is evidence, not a player recommendation."
+      }
+    }
+  };
+}
+
 async function fetchOpportunityIntelligence({
   baseUrl,
   player,
@@ -4642,6 +4692,9 @@ function buildServer(
             structuredContent
           };
         }
+
+        const oddsSnapshot = await fetchGameEnvironmentSnapshot({ baseUrl, season: resolvedSeason, week: resolvedWeek });
+        row = attachGameEnvironment(row, oddsSnapshot);
 
         const opportunityData = row
           ? await fetchOpportunityIntelligence({
