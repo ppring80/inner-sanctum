@@ -178,7 +178,8 @@ const ProfileSchema = z.object({
   risks: z.array(z.string()).nullable(),
   outlookNote: z.string().nullable(),
   insight: z.string().nullable(),
-  context: ProfileContextSchema
+  context: ProfileContextSchema,
+  columbia: z.record(z.any()).optional()
 });
 
 const PlayerProfileOutputSchema = z.object({
@@ -1027,7 +1028,10 @@ function buildProfileModel(
 
       source:
         "Inner Sanctum Weekly SAGE"
-    }
+    },
+
+    columbia:
+      buildColumbiaBridgePacket(row)
   };
 }
 
