@@ -74,13 +74,21 @@ def build(players,games):
     d["week"]=pd.to_numeric(d.week,errors="coerce")
     for c in ("fantasy_half_ppr","targets","carries","attempts"):
         d[c]=pd.to_numeric(d[c],errors="coerce").fillna(0)
-    team_col="recent_team" if "recent_team" in d.columns else "team"
-    d=d.rename(columns={team_col:"team"})
+    # Historical Lab V1 can contain both recent_team and team. Renaming
+    # recent_team to team would create duplicate column labels and make the
+    # market-data merge ambiguous. Build one explicit join key instead.
+    if "recent_team" in d.columns:
+        d["market_team"]=d["recent_team"]
+    elif "team" in d.columns:
+        d["market_team"]=d["team"]
+    else:
+        raise KeyError("Historical player-weeks missing recent_team/team join key")
     d=d.sort_values(["season","player_id","week"])
     for c in ("fantasy_half_ppr","targets","carries","attempts"):
         grp=d.groupby(["season","player_id"],sort=False)[c]
         d[c+"_avg3"]=grp.transform(lambda s:s.shift(1).rolling(3,min_periods=1).mean())
-    d=d.merge(team_environment(games),on=["season","week","team"],how="left")
+    env=team_environment(games).rename(columns={"team":"market_team"})
+    d=d.merge(env,on=["season","week","market_team"],how="left")
     d=d[d.fantasy_half_ppr_avg3.notna()].copy()
 
     result={
