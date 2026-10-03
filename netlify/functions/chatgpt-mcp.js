@@ -4669,7 +4669,7 @@ function buildServer(
         // Keep this lookup exact/fail-closed; never fall through to an unrelated
         // defense or similarly named player.
         if (!row) {
-          row = findProfilePlayer(
+          row = findPlayer(
             rankings,
             requestedPlayer
           );
