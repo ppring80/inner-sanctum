@@ -56,6 +56,7 @@ function mergeGames(games, oddsByGameId) {
     return { gameID, gameDate: game.gameDate || null, gameTime: game.gameTime || null, away: game.away || null, home: game.home || null,
       awayWinPct: p.away === null ? null : Math.round(p.away * 1000) / 10, homeWinPct: p.home === null ? null : Math.round(p.home * 1000) / 10,
       probabilityMethod: p.method, spread: selected ? numberFrom(selected.book, ["homeTeamSpread", "awayTeamSpread", "homeSpread", "awaySpread"]) : null,
+      total: selected ? numberFrom(selected.book, ["total", "totalOver", "overUnder", "gameTotal", "totalPoints"]) : null,
       sportsbook: selected?.name || null, oddsFound: Boolean(selected) };
   });
 }
@@ -78,7 +79,7 @@ exports.handler = async function (event = {}) {
     const oddsByGameId = {}; let calls = 1;
     for (const gameDate of dates) { const odds = await tank01Fetch("getNFLBettingOdds", { gameDate }); calls += 1; if (odds?.body && typeof odds.body === "object") Object.assign(oddsByGameId, odds.body); }
     const merged = mergeGames(games, oddsByGameId);
-    if (!merged.some((g) => g.spread !== null || g.homeWinPct !== null)) return json(422, { cached: false, error: "No usable odds; existing snapshot retained." });
+    if (!merged.some((g) => g.spread !== null || g.total !== null || g.homeWinPct !== null)) return json(422, { cached: false, error: "No usable odds; existing snapshot retained." });
     const snapshot = { status: "Success", evidenceType: "survivor-odds-snapshot", generatedAt: new Date().toISOString(), week: String(week), season, seasonType, tank01Calls: calls, games: merged };
     const key = `week:${season}:${week}:${seasonType}`; await getStore({ name: "survivor-odds" }).setJSON(key, snapshot);
     return json(200, { cached: true, key, games: merged.length, tank01Calls: calls, maxTank01CallsPerRun: MAX_TANK01_CALLS_PER_RUN, generatedAt: snapshot.generatedAt });
