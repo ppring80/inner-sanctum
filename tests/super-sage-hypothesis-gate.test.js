@@ -1,0 +1,12 @@
+"use strict";
+const assert=require("assert");
+const {evaluateHypothesisPromotion}=require("../netlify/functions/_super-sage-hypothesis-gate");
+const all={DISCOVERY:{status:"PASS"},VALIDATION:{status:"PASS"},HOLDOUT:{status:"PASS"},PROSPECTIVE:{status:"PASS"},SKEPTIC:{status:"PASS"}};
+let x=evaluateHypothesisPromotion({id:"H1",title:"Targets persist",stages:all});
+assert.strictEqual(x.promoted,true);
+assert.strictEqual(x.decision,"APPROVED_FOR_PRODUCTION_REVIEW");
+assert.strictEqual(x.canAutoDeploy,false);
+x=evaluateHypothesisPromotion({id:"H2",title:"Bad idea",stages:{...all,HOLDOUT:{status:"FAIL"}}});
+assert.strictEqual(x.promoted,false);
+assert.strictEqual(x.decision,"REJECT_OR_REVISE");
+console.log("Super SAGE hypothesis-promotion assertions passed.");
