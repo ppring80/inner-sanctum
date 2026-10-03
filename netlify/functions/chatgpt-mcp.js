@@ -4663,6 +4663,18 @@ function buildServer(
             requestedPlayer
           );
 
+        // Weekly SAGE intentionally removes unavailable players from the active
+        // position pool. Player Profile must still resolve the exact inactive
+        // player so customers can see the authoritative INELIGIBLE/IR context.
+        // Keep this lookup exact/fail-closed; never fall through to an unrelated
+        // defense or similarly named player.
+        if (!row) {
+          row = findPlayer(
+            rankings,
+            requestedPlayer
+          );
+        }
+
         if (!row) {
           const structuredContent = {
             found: false,
