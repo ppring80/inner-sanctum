@@ -4548,9 +4548,22 @@ function buildServer(
             scoring: resolvedScoring
           });
 
+        const defenseData =
+          await fetchDefensivePerformance({
+            baseUrl,
+            season: resolvedSeason,
+            week: resolvedWeek
+          });
+
+        const rows =
+          attachDefensivePerformance(
+            flattenRankings(rankings),
+            defenseData
+          );
+
         const row =
-          findPlayer(
-            rankings,
+          findPlayerInRows(
+            rows,
             requestedPlayer
           );
 
