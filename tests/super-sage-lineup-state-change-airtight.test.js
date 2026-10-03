@@ -1,0 +1,12 @@
+"use strict";
+const fs=require("fs"),assert=require("assert");
+const weekly=fs.readFileSync("netlify/functions/weekly-sage-rankings.js","utf8");
+const mcp=fs.readFileSync("netlify/functions/chatgpt-mcp.js","utf8");
+assert(weekly.includes("Transactions are a second verified path"),"verified transaction fallback missing");
+assert(weekly.includes("QB_AVAILABILITY_CHANGE"),"QB environment context missing");
+assert(weekly.includes("for(const pos of ['WR','TE','RB'])"),"QB propagation scope missing");
+assert(weekly.includes("does not assign an unverified numerical penalty"),"conservative-truth guardrail missing");
+assert(mcp.includes("materialBenchContext"),"material bench context missing");
+assert(mcp.includes("Material facts on plausible legal alternatives"),"initial-output material-fact rule missing");
+assert(mcp.includes("buildComparativeLineupReason"),"comparative lineup explanation missing");
+console.log("Super SAGE airtight state-change explanation contract: PASS");
