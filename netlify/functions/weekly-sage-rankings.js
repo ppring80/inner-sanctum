@@ -616,6 +616,32 @@ exports.handler = async function (event) {
     if(context){row.roleContext=context;row.sageTake=`${context.note} ${row.sageTake||''}`;}
   }
 
+  // Columbia state-change propagation: a verified unavailable QB changes the
+  // offensive environment for same-team WR/TE/RB. This schedules/reports
+  // reassessment only; it never invents a fantasy-point penalty or replacement
+  // quality. The material fact is carried into the initial 1/3/10 explanation.
+  const unavailableQbs=[];
+  for(const p of Object.values(centralAvailability.players||{})) {
+    const pos=String(p?.pos||p?.position||'').toUpperCase();
+    if(pos!=='QB') continue;
+    const status=normalizeAvailabilityStatus(p?.injury?.designation||p?.rosterStatus);
+    if(HARD_UNAVAILABLE.has(status)||p?.active===false) unavailableQbs.push({
+      name:p.longName||p.name||'Starting quarterback',
+      team:String(p.team||'').toUpperCase(),
+      status:status||'OUT',
+      description:p?.injury?.description||null
+    });
+  }
+  for(const qb of unavailableQbs) {
+    for(const pos of ['WR','TE','RB']) for(const row of positions[pos]||[]) {
+      if(String(row.team||'').toUpperCase()!==qb.team) continue;
+      row.environmentContext={
+        type:'QB_AVAILABILITY_CHANGE',status:'REASSESS',source:'fresh central availability',
+        note:`Offensive environment change: ${qb.name} (${qb.status}) unavailable. ${row.name} will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty.`
+      };
+    }
+  }
+
   if (successCount === 0) {
     return jsonResponse(502, {
       evidenceType: "weekly-sage-rankings",
