@@ -1,0 +1,12 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes("function buildColumbiaBridgePacket(row)"));
+assert.ok(src.includes("verifiedAdvancedEvidence"));
+assert.ok(src.includes("A false readiness flag means the tributary is dry at this bridge."));
+assert.ok(src.includes("matchupEvidence"));
+assert.ok(src.includes("components"));
+assert.ok(src.includes("columbia: z.record(z.any()).optional()"));
+console.log("ChatGPT Columbia bridge assertions passed.");
