@@ -577,6 +577,52 @@ async function fetchDefensivePerformance({
   }
 }
 
+async function fetchOpportunityIntelligence({
+  baseUrl,
+  player,
+  position
+}) {
+  if (!["RB", "WR", "TE"].includes(position)) return null;
+  const url =
+    baseUrl +
+    "/.netlify/functions/opportunity-intel" +
+    "?player=" + encodeURIComponent(player) +
+    "&pos=" + encodeURIComponent(position);
+  try {
+    const response = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data && data.opportunities ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function attachOpportunityIntelligence(row, opportunityData) {
+  if (!row || !opportunityData || !["RB", "WR", "TE"].includes(row.position)) return row;
+  return {
+    ...row,
+    components: {
+      ...(row.components || {}),
+      opportunity: {
+        opportunities: opportunityData.opportunities || null,
+        rushing: opportunityData.rushing || null,
+        receiving: opportunityData.receiving || null,
+        persistence: opportunityData.persistence || null,
+        signals: opportunityData.signals || [],
+        computedAt: opportunityData.meta?.computedAt || null,
+        sourcePositions: opportunityData.meta?.sourcePositions || [row.position],
+        source: "Inner Sanctum Opportunity Intelligence",
+        limitations: [
+          "Current V1 opportunity is carries plus targets.",
+          "Routes, route participation, air yards and red-zone opportunity are not present in this cache.",
+          "QB opportunity is intentionally not inferred from the RB/WR/TE model."
+        ]
+      }
+    }
+  };
+}
+
 function attachDefensivePerformance(rows, defenseData) {
   if (!Array.isArray(rows) || !defenseData || !defenseData.matchups) return rows;
   return rows.map((row) => {
@@ -4561,7 +4607,7 @@ function buildServer(
             defenseData
           );
 
-        const row =
+        let row =
           findPlayerInRows(
             rows,
             requestedPlayer
@@ -4596,6 +4642,19 @@ function buildServer(
             structuredContent
           };
         }
+
+        const opportunityData = row
+          ? await fetchOpportunityIntelligence({
+              baseUrl,
+              player: row.name,
+              position: row.position
+            })
+          : null;
+
+        row = attachOpportunityIntelligence(
+          row,
+          opportunityData
+        );
 
         const profile =
           buildProfileModel(
@@ -4860,10 +4919,17 @@ function buildServer(
 
         const defenseData = await fetchDefensivePerformance({ baseUrl, season: resolvedSeason, week: resolvedWeek });
 
-        const rows = attachDefensivePerformance(
+        let rows = attachDefensivePerformance(
           flattenRankings(rankings),
           defenseData
         );
+
+        const opportunityByKey = {};
+        await Promise.all(rows.filter(r => requestedPlayers.some(n => normalizePlayerName(n) === normalizePlayerName(r.name))).map(async r => {
+          const data = await fetchOpportunityIntelligence({ baseUrl, player: r.name, position: r.position });
+          opportunityByKey[normalizePlayerName(r.name) + "|" + r.position] = data;
+        }));
+        rows = rows.map(r => attachOpportunityIntelligence(r, opportunityByKey[normalizePlayerName(r.name) + "|" + r.position] || null));
 
         const comparisonPlayers = [];
         const foundPlayers = [];
