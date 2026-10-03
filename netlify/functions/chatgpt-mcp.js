@@ -444,7 +444,8 @@ const WeeklyRankingPlayerSchema = z.object({
   sageConfidenceLabel: z.string().nullable(),
   matchup: z.string().nullable(),
   adp: z.number().nullable(),
-  sageTake: z.string().nullable()
+  sageTake: z.string().nullable(),
+  columbia: z.record(z.any()).optional()
 });
 
 const WeeklyRankingsOutputSchema = z.object({
@@ -1878,6 +1879,38 @@ function sortWeeklyRankingRows(
     );
 }
 
+function buildColumbiaBridgePacket(row) {
+  const matchupEvidence =
+    row && row.matchupEvidence && typeof row.matchupEvidence === "object"
+      ? row.matchupEvidence
+      : null;
+  const components =
+    row && row.components && typeof row.components === "object"
+      ? row.components
+      : null;
+  return {
+    version: 1,
+    source: "The Columbia",
+    readiness: {
+      weeklySage: true,
+      matchupEvidence: Boolean(matchupEvidence),
+      weeklyComponents: Boolean(components),
+      scheme: Boolean(matchupEvidence && (matchupEvidence.scheme || matchupEvidence.coverage)),
+      defensivePerformance: Boolean(matchupEvidence && (matchupEvidence.defensivePerformance || matchupEvidence.defense)),
+      qbStress: Boolean(matchupEvidence && (matchupEvidence.qbStress || matchupEvidence.pressure)),
+      opportunity: Boolean(components && (components.opportunity || components.role || components.usage)),
+      gameEnvironment: Boolean(matchupEvidence && matchupEvidence.gameEnvironment),
+      opponentQuality: Boolean(matchupEvidence && matchupEvidence.opponentQuality)
+    },
+    verifiedAdvancedEvidence: {
+      matchupEvidence,
+      components
+    },
+    rule:
+      "Only fields present in verifiedAdvancedEvidence may be used for deeper SAGE analysis. A false readiness flag means the tributary is dry at this bridge."
+  };
+}
+
 function mapWeeklyRankingRow(row) {
   return {
     rank:
@@ -1937,7 +1970,10 @@ function mapWeeklyRankingRow(row) {
 
     sageTake:
       row.sageTake ||
-      null
+      null,
+
+    columbia:
+      buildColumbiaBridgePacket(row)
   };
 }
 
