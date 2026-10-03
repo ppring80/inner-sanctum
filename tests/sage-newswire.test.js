@@ -16,6 +16,12 @@ const newswire=require('../netlify/functions/sage-newswire');const {normalizeSto
  assert.equal(parseFeed('<rss><item><title><![CDATA[Test &amp; report]]></title><link>https://www.espn.com/nfl/story/1</link><pubDate>Tue, 29 Sep 2026 10:00:00 GMT</pubDate></item></rss>','ESPN')[0].title,'Test & report');
  assert.equal(articleMetadata('<script type="application/ld+json">{"@type":"NewsArticle","headline":"Test Player ruled out","datePublished":"2026-09-29T10:00:00Z"}</script>','https://www.nfl.com/news/test').publishedAt,'2026-09-29T10:00:00Z');
  cache={mode:'editorial-with-sources',updatedAt:new Date().toISOString(),stories};assert.equal((await newswire.handler({httpMethod:'GET'})).statusCode,200);
+ const live=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);
+ assert(live.stories.some(s=>s.player==='Justin Jefferson'&&s.status==='OUT'),'manual reports appear immediately despite a fresh older automatic cache');
+ assert(live.stories.some(s=>s.player==='Breece Hall'&&s.status==='OUT'),'shared roundup URL must retain each affected player');
+ assert(live.stories.some(s=>s.player==='Zay Flowers'&&s.status==='Questionable'));
+ assert(live.stories.filter(s=>s.featured).every(s=>Date.parse(s.publishedAt)>=Date.parse('2026-10-02')));
+ assert.equal(mergeStories([{player:'One',sourceUrl:'same',headline:'One out'},{player:'Two',sourceUrl:'same',headline:'Two out'}],[]).length,2);
  cache={mode:'source-headlines',updatedAt:new Date().toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
  assert.equal((await newswire.handler({httpMethod:'POST'})).statusCode,405);console.log('Newswire source coverage, editorial preservation, relevance, publication dates and specific analysis passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
