@@ -1,0 +1,12 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes("async function fetchDefensivePerformance"));
+assert.ok(src.includes("function attachDefensivePerformance"));
+assert.ok(src.includes("Inner Sanctum Weekly SAGE Defensive Matchup Intelligence"));
+assert.ok(src.includes("defensivePerformance"));
+assert.ok(src.includes("weeksIncluded"));
+assert.ok(src.includes("rawEvidence"));
+console.log("ChatGPT defensive-performance Columbia bridge assertions passed.");
