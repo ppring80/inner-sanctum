@@ -1,0 +1,10 @@
+"use strict";
+const assert=require("assert");
+const {buildGameEnvironment}=require("../netlify/functions/_super-sage-game-environment");
+const x=buildGameEnvironment({team:"AAA",opponent:"BBB",total:48,spread:-6,observedAt:"2026-10-02T20:00:00Z",source:"verified"});
+assert.strictEqual(x.teamImpliedPoints,27);
+assert.strictEqual(x.opponentImpliedPoints,21);
+assert.strictEqual(x.contextualSignals.expectedScoring,"high");
+assert.strictEqual(x.contextualSignals.expectedScript,"favored");
+assert.strictEqual(x.canChangeProductionRanking,false);
+console.log("Super SAGE game-environment assertions passed.");
