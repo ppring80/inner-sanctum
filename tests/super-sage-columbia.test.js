@@ -1,0 +1,13 @@
+"use strict";
+const assert=require("assert");
+const {buildPlayerEvidencePacket,buildColumbiaWeeklySnapshot}=require("../netlify/functions/_super-sage-columbia");
+const p=buildPlayerEvidencePacket({player:{name:"Test WR",position:"WR",team:"AAA",opponent:"BBB"},weeklySage:{rank:12,recommendation:"START"},currentEvidence:{evidence:[{claim:"role stable"}]},matchupIntelligence:{advancedDetail:{metrics:[]}}});
+assert.strictEqual(p.source,"Super SAGE Columbia Evidence Packet");
+assert.strictEqual(p.readiness.weeklySage,true);
+assert.strictEqual(p.readiness.advancedCustomerDetail,true);
+assert.strictEqual(p.canChangeProductionRanking,false);
+const s=buildColumbiaWeeklySnapshot({season:2026,week:4,players:[{player:{name:"Test WR",position:"WR"}}]});
+assert.strictEqual(s.source,"The Columbia");
+assert.strictEqual(s.playerCount,1);
+assert.strictEqual(s.byPosition.WR.length,1);
+console.log("Super SAGE Columbia evidence packet assertions passed.");
