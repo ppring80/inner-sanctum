@@ -1,0 +1,39 @@
+name: Audit Super SAGE Historical Cause Ledger
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pandas
+      - name: Build cause ledger
+        run: python scripts/build-super-sage-historical-cause-ledger.py --start 2019 --end 2025 --out data/sage-historical-cause-ledger
+      - name: Temporal and coverage audit
+        run: |
+          python - <<'PY'
+          import json,pandas as pd
+          from pathlib import Path
+          p=Path("data/sage-historical-cause-ledger")
+          d=pd.read_csv(p/"cause-ledger.csv",low_memory=False)
+          m=json.loads((p/"cause-ledger-manifest.json").read_text())
+          assert len(d)==m["rows"] and len(d)>0
+          assert d.week.between(1,22).all()
+          assert d.season.between(2019,2025).all()
+          assert not d[["season","week","player_name","report_status"]].isna().any().any()
+          counts=d.groupby("season").size().to_dict()
+          assert set(counts)==set(range(2019,2026)), counts
+          print(json.dumps({"rows":len(d),"bySeason":counts,"statuses":d.report_status.astype(str).str.lower().value_counts().to_dict(),"temporalRule":m["temporalRule"]},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: super-sage-historical-cause-ledger-v1
+          path: data/sage-historical-cause-ledger/
+          if-no-files-found: error
+          retention-days: 30
