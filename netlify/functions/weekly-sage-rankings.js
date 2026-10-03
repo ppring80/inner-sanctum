@@ -621,17 +621,21 @@ exports.handler = async function (event) {
   // reassessment only; it never invents a fantasy-point penalty or replacement
   // quality. The material fact is carried into the initial 1/3/10 explanation.
   const unavailableQbs=[];
-  for(const p of Object.values(centralAvailability.players||{})) {
+  const seenQbs=new Set();
+  const addUnavailableQb=(p,source)=>{
     const pos=String(p?.pos||p?.position||'').toUpperCase();
-    if(pos!=='QB') continue;
-    const status=normalizeAvailabilityStatus(p?.injury?.designation||p?.rosterStatus);
-    if(HARD_UNAVAILABLE.has(status)||p?.active===false) unavailableQbs.push({
-      name:p.longName||p.name||'Starting quarterback',
-      team:String(p.team||'').toUpperCase(),
-      status:status||'OUT',
-      description:p?.injury?.description||null
-    });
-  }
+    if(pos!=='QB') return;
+    const tx=require('./_injury-transactions').matchingTransaction({name:p.longName||p.name,team:p.team,position:'QB'},season,targetWeek,roleEvidence);
+    const status=normalizeAvailabilityStatus(tx?.status||p?.injury?.designation||p?.rosterStatus||(p?.active===false?'INACTIVE':''));
+    if(!HARD_UNAVAILABLE.has(status)&&p?.active!==false) return;
+    const team=String(p.team||'').toUpperCase(), name=p.longName||p.name||'Quarterback', k=team+'|'+normalizePlayerName(name);
+    if(!team||seenQbs.has(k)) return; seenQbs.add(k);
+    unavailableQbs.push({name,team,status:status||'OUT',description:tx?.reason||p?.injury?.description||null,source:tx?.source||source});
+  };
+  for(const p of Object.values(centralAvailability.players||{})) addUnavailableQb(p,'fresh central availability');
+  // Transactions are a second verified path. This prevents a material QB event
+  // from disappearing merely because the roster cache omitted/lagged the QB.
+  for(const tx of roleEvidence) if(String(tx?.position||'').toUpperCase()==='QB'&&tx.status!=='ACTIVE') addUnavailableQb({name:tx.name,longName:tx.name,team:tx.team,position:'QB',rosterStatus:tx.status,injury:{description:tx.reason}},tx.source||'verified transaction');
   for(const qb of unavailableQbs) {
     for(const pos of ['WR','TE','RB']) for(const row of positions[pos]||[]) {
       if(String(row.team||'').toUpperCase()!==qb.team) continue;
