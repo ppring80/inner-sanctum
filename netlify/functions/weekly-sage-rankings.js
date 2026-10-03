@@ -287,6 +287,9 @@ async function loadCentralAvailability() {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
     const transactionCache = await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
+    const newswireCache = await getStore({name:'sage-newswire'}).get('latest',{type:'json'}).catch(()=>null);
+    const editorialNewswire = require('./_newswire-editorial').editorialStories();
+    const newswireStories = [...editorialNewswire,...(Array.isArray(newswireCache?.stories)?newswireCache.stories:[])];
     const players = cached && cached.players && typeof cached.players === "object"
       ? cached.players
       : {};
@@ -311,12 +314,13 @@ async function loadCentralAvailability() {
       players,
       byName,
       transactions: require('./_injury-transactions').mergeTransactions(transactionCache,[]).records,
-      transactionsCheckedAt: transactionCache?.checkedAt || null
+      transactionsCheckedAt: transactionCache?.checkedAt || null,
+      newswireStories
     };
   } catch (error) {
     return {
       available: false, updatedAt: null, ageHours: null, fresh: false,
-      playerCount: 0, players: {}, byName: new Map(), transactions:require('./_injury-transactions').VERIFIED, error: error.message
+      playerCount: 0, players: {}, byName: new Map(), transactions:require('./_injury-transactions').VERIFIED, newswireStories:require('./_newswire-editorial').editorialStories(), error: error.message
     };
   }
 }
@@ -636,6 +640,16 @@ exports.handler = async function (event) {
   // Transactions are a second verified path. This prevents a material QB event
   // from disappearing merely because the roster cache omitted/lagged the QB.
   for(const tx of roleEvidence) if(String(tx?.position||'').toUpperCase()==='QB'&&tx.status!=='ACTIVE') addUnavailableQb({name:tx.name,longName:tx.name,team:tx.team,position:'QB',rosterStatus:tx.status,injury:{description:tx.reason}},tx.source||'verified transaction');
+  // The verified Newswire is the authoritative bridge for late weekly OUT
+  // reports that are not reserve transactions and may precede provider-cache
+  // refresh. Only explicit QB OUT reports qualify; monitor/practice stories do
+  // not. This is context propagation, never a numerical fantasy adjustment.
+  for(const story of centralAvailability.newswireStories||[]) {
+    if(String(story?.position||'').toUpperCase()!=='QB'||String(story?.status||'').toUpperCase()!=='OUT') continue;
+    const team=String(story.team||'').toUpperCase(), name=story.player||'Quarterback', k=team+'|'+normalizePlayerName(name);
+    if(!team||seenQbs.has(k)) continue; seenQbs.add(k);
+    unavailableQbs.push({name,team,status:'OUT',description:story.summary||story.headline||null,source:story.sourceLabel||'verified SAGE Newswire'});
+  }
   for(const qb of unavailableQbs) {
     for(const pos of ['WR','TE','RB']) for(const row of positions[pos]||[]) {
       if(String(row.team||'').toUpperCase()!==qb.team) continue;

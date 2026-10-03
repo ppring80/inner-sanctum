@@ -1,0 +1,12 @@
+"use strict";
+const fs=require("fs"),assert=require("assert");
+const weekly=fs.readFileSync("netlify/functions/weekly-sage-rankings.js","utf8");
+const editorial=fs.readFileSync("netlify/functions/_newswire-editorial.js","utf8");
+assert(editorial.includes('"baker-mayfield-20261002"'),"Mayfield verified Week 4 event missing");
+assert(editorial.includes('"team": "TB", "position": "QB", "status": "OUT"'),"Mayfield event must be explicit QB OUT");
+assert(weekly.includes("newswireStories"),"Weekly SAGE must ingest verified Newswire events");
+assert(weekly.includes("String(story?.status||'').toUpperCase()!=='OUT'"),"Only explicit OUT newswire events may propagate");
+assert(weekly.includes("String(story?.position||'').toUpperCase()!=='QB'"),"Newswire propagation must be QB scoped");
+assert(weekly.includes("This is context propagation, never a numerical fantasy adjustment"),"No invented penalty guardrail missing");
+assert(weekly.includes("for(const pos of ['WR','TE','RB'])"),"QB state must propagate to affected skill positions");
+console.log("Columbia verified Newswire state-event bridge: PASS");
