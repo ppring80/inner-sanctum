@@ -1,0 +1,12 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes("async function fetchOpportunityIntelligence"));
+assert.ok(src.includes("function attachOpportunityIntelligence"));
+assert.ok(src.includes("Inner Sanctum Opportunity Intelligence"));
+assert.ok(src.includes("Current V1 opportunity is carries plus targets."));
+assert.ok(src.includes("QB opportunity is intentionally not inferred"));
+assert.ok(src.includes("computedAt"));
+console.log("ChatGPT Opportunity Columbia bridge assertions passed.");
