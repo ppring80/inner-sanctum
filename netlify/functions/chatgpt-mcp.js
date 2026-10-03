@@ -556,6 +556,59 @@ function buildWeeklyRankingsUrl({
 // PRODUCTION WEEKLY SAGE RETRIEVAL
 // ===========================================================
 
+async function fetchDefensivePerformance({
+  baseUrl,
+  season,
+  week
+}) {
+  const url =
+    baseUrl +
+    "/.netlify/functions/weekly-sage-matchup-defense" +
+    "?season=" + encodeURIComponent(season) +
+    "&week=" + encodeURIComponent(week) +
+    "&seasonType=reg";
+  try {
+    const response = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data && data.evidenceType === "weekly-sage-matchup-defense" ? data : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function attachDefensivePerformance(rows, defenseData) {
+  if (!Array.isArray(rows) || !defenseData || !defenseData.matchups) return rows;
+  return rows.map((row) => {
+    const opponent = cleanString(row.opponent);
+    const defense = opponent ? defenseData.matchups[opponent] : null;
+    if (!defense) return row;
+    const relevant = row.position === "RB" ? defense.run
+      : ["QB","WR","TE"].includes(row.position) ? (row.position === "QB" ? defense.pass : defense.receiving)
+      : null;
+    if (!relevant) return row;
+    return {
+      ...row,
+      matchupEvidence: {
+        ...(row.matchupEvidence || {}),
+        defensivePerformance: {
+          opponent,
+          games: defense.games,
+          weeksIncluded: defenseData.weeksIncluded || [],
+          generatedAt: defenseData.generatedAt || null,
+          methodology: defenseData.methodology || null,
+          profile: relevant,
+          rawEvidence: defense.rawEvidence || null,
+          explanation: row.position === "RB"
+            ? defense.explanation?.run || null
+            : defense.explanation?.pass || null,
+          source: "Inner Sanctum Weekly SAGE Defensive Matchup Intelligence"
+        }
+      }
+    };
+  });
+}
+
 async function fetchWeeklyRankings({
   baseUrl,
   season,
@@ -4792,10 +4845,12 @@ function buildServer(
             scoring: resolvedScoring
           });
 
-        const rows =
-          flattenRankings(
-            rankings
-          );
+        const defenseData = await fetchDefensivePerformance({ baseUrl, season: resolvedSeason, week: resolvedWeek });
+
+        const rows = attachDefensivePerformance(
+          flattenRankings(rankings),
+          defenseData
+        );
 
         const comparisonPlayers = [];
         const foundPlayers = [];
@@ -5106,10 +5161,12 @@ function buildServer(
             scoring: resolvedScoring
           });
 
-        const rows =
-          flattenRankings(
-            rankings
-          );
+        const defenseData = await fetchDefensivePerformance({ baseUrl, season: resolvedSeason, week: resolvedWeek });
+
+        const rows = attachDefensivePerformance(
+          flattenRankings(rankings),
+          defenseData
+        );
 
         const filteredRows =
           filterWeeklyRankingRows(
