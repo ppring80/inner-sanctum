@@ -1,0 +1,11 @@
+"use strict";
+const assert=require("assert");
+const {detectMaterialChanges}=require("../netlify/functions/_super-sage-material-change");
+let x=detectMaterialChanges({status:"ACTIVE",targetSharePct:20,weeklyRank:12,spread:-2},{status:"IR",targetSharePct:21,weeklyRank:11,spread:-2.5});
+assert.strictEqual(x.materialChange,true);
+assert.strictEqual(x.action,"REANALYZE_AFFECTED_PLAYERS");
+assert.ok(x.materialChanges.some(c=>c.type==="availability"));
+x=detectMaterialChanges({targetSharePct:20,weeklyRank:12},{targetSharePct:22,weeklyRank:11});
+assert.strictEqual(x.materialChange,false);
+assert.strictEqual(x.action,"NO_REANALYSIS");
+console.log("Super SAGE material-change assertions passed.");
