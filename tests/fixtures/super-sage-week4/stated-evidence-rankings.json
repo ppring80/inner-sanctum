@@ -1,0 +1,33 @@
+{
+  "source": "ONLY the facts stated in Pat's Week 4 brief. NOT a production export. Every rank, tier, score and projection not stated in the brief is deliberately absent. Replace with production-rankings.json (scripts/capture-super-sage-week4.js) for the real acceptance run.",
+  "positions": {
+    "QB": [
+      { "name": "Patrick Mahomes", "position": "QB", "team": "KC" },
+      { "name": "Drake Maye", "position": "QB", "team": "NE" }
+    ],
+    "RB": [
+      { "name": "Saquon Barkley", "position": "RB", "team": "PHI" },
+      { "name": "Chase Brown", "position": "RB", "team": "CIN" },
+      { "name": "Emmett Johnson", "position": "RB", "matchup": "Neutral", "sage": { "confidenceLabel": "Limited" },
+        "components": { "opportunity": { "opportunities": { "avgLast3": 6.7 } } } },
+      { "name": "Blake Corum", "position": "RB", "team": "LAR", "matchup": "Positive", "sage": { "confidenceLabel": "Limited" },
+        "components": { "opportunity": { "opportunities": { "avgLast3": 11 } } } },
+      { "name": "Kendre Miller", "position": "RB",
+        "roleContext": { "status": "REASSESS", "projectionRecalculated": false,
+          "note": "Backfield role change: Travis Etienne (IR) unavailable. Increased work is possible; the share is not verified." } }
+    ],
+    "WR": [
+      { "name": "Malik Nabers", "position": "WR", "team": "NYG" },
+      { "name": "Terry McLaurin", "position": "WR", "team": "WAS" },
+      { "name": "Chris Godwin", "position": "WR", "team": "TB", "recommendation": "FLEX",
+        "environmentContext": { "type": "QB_AVAILABILITY_CHANGE", "status": "REASSESS",
+          "note": "Offensive environment change: Baker Mayfield (OUT) unavailable; rookie Jalon Daniels is starting. SAGE does not assign an unverified numerical penalty." } },
+      { "name": "Jakobi Meyers", "position": "WR", "recommendation": "FLEX",
+        "components": { "opportunity": { "opportunities": { "avgLast3": 4, "lastGame": 8 } } } },
+      { "name": "Courtland Sutton", "position": "WR", "team": "DEN", "recommendation": "SIT" }
+    ],
+    "TE": [
+      { "name": "Tyler Warren", "position": "TE", "team": "IND" }
+    ]
+  }
+}

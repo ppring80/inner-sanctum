@@ -1,0 +1,32 @@
+{
+  "source": "Pat's Week 4 acceptance brief (CBS, 12 teams, Half-PPR, The Vanilla Gorilla, 0-3).",
+  "season": 2026,
+  "week": 4,
+  "scoring": "half",
+  "teams": 12,
+  "slots": [
+    { "slotLabel": "QB", "eligiblePositions": ["QB"], "count": 1 },
+    { "slotLabel": "RB", "eligiblePositions": ["RB"], "count": 2 },
+    { "slotLabel": "WR", "eligiblePositions": ["WR"], "count": 2 },
+    { "slotLabel": "TE", "eligiblePositions": ["TE"], "count": 1 },
+    { "slotLabel": "W/R/T", "eligiblePositions": ["RB", "WR", "TE"], "count": 2 }
+  ],
+  "roster": [
+    { "name": "Patrick Mahomes", "position": "QB" },
+    { "name": "Drake Maye", "position": "QB" },
+    { "name": "Saquon Barkley", "position": "RB" },
+    { "name": "Chase Brown", "position": "RB" },
+    { "name": "Emmett Johnson", "position": "RB" },
+    { "name": "Kendre Miller", "position": "RB" },
+    { "name": "Blake Corum", "position": "RB" },
+    { "name": "Travis Etienne", "position": "RB", "rosterStatus": "IR" },
+    { "name": "Jonah Coleman", "position": "RB", "rosterStatus": "IR" },
+    { "name": "Malik Nabers", "position": "WR" },
+    { "name": "Terry McLaurin", "position": "WR", "rosterStatus": "Q" },
+    { "name": "Chris Godwin", "position": "WR" },
+    { "name": "Jakobi Meyers", "position": "WR" },
+    { "name": "Courtland Sutton", "position": "WR" },
+    { "name": "Tyler Warren", "position": "TE" }
+  ],
+  "productionLineupReported": ["Patrick Mahomes", "Saquon Barkley", "Chase Brown", "Malik Nabers", "Terry McLaurin", "Tyler Warren", "Emmett Johnson", "Blake Corum"]
+}

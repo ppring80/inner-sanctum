@@ -95,6 +95,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .lineup-pbadge.TE{background:#a06010}.lineup-pbadge.K{background:#6a6a6a}.lineup-pbadge.DEF{background:#8a2020}
 .lineup-pbadge.FLEX{background:#6a1b9a}.lineup-pbadge.SUPERFLEX{background:#7a3010}.lineup-pbadge.BENCH{background:#6a6a64}
 .lineup-total{font-size:12px;color:var(--muted)}
+.super-sage-answer{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;font-family:Lora,serif;font-size:13px}
+.super-sage-answer .ssa-one{font-weight:600;margin-bottom:4px}.super-sage-answer .ssa-three{margin:6px 0 6px 18px}
+.super-sage-answer .ssa-ten{margin-top:4px;color:var(--muted)}.super-sage-answer .ssa-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);margin-top:6px}
 
 /* ── BUILD MY ROSTER (added) — same collapsible-panel visual pattern
    as League Lineup Setup above, so this reads as one consistent
@@ -597,6 +600,8 @@ function showAcolytePreviewBanner() {
   </div>
 </div>
 
+<div class="super-sage-answer" id="superSageAnswer" hidden></div>
+
 <div class="lineup-panel" id="lineupPanel">
   <div class="lineup-grid" id="lineupGrid"></div>
   <div class="lineup-total">Total roster spots: <strong id="lineupTotal">—</strong></div>
@@ -815,56 +820,116 @@ function lineupRankingValue(player) {
   return (typeof player.sageScore === 'number') ? player.sageScore : -Infinity;
 }
 
+// ─── My Roster starter assignment: ONE shared Super SAGE decision ───
+// The lineup is decided server-side by the shared Super SAGE authority
+// (/.netlify/functions/super-sage-lineup) — the SAME record ChatGPT receives.
+// This page only PRESENTS it: no local ranking, slot filling, confidence or
+// fallback. While the decision loads, or if it is unavailable, no player is
+// marked START by the page.
+var superSageLineup = { key: null, status: 'idle', data: null, error: null };
+
+function superSageLineupSlots() {
+  var lineup = getWeeklyLineupConstruction();
+  var slots = [];
+  ['QB','RB','WR','TE','K','DEF'].forEach(function (pos) {
+    var n = Number(lineup[pos]) || 0;
+    if (n > 0) slots.push({ slotLabel: pos, eligiblePositions: [pos], count: n });
+  });
+  if (Number(lineup.FLEX) > 0) slots.push({ slotLabel: 'FLEX', eligiblePositions: FLEX_ELIGIBLE.FLEX, count: Number(lineup.FLEX) });
+  if (Number(lineup.SUPERFLEX) > 0) slots.push({ slotLabel: 'SUPERFLEX', eligiblePositions: FLEX_ELIGIBLE.SFLEX, count: Number(lineup.SUPERFLEX) });
+  return slots;
+}
+
+function superSageLineupRequest() {
+  if (!state.myRosterNames || !state.myRosterNames.length) return null;
+  var rowsByName = {};
+  getAllRows().forEach(function (r) { rowsByName[r.name] = r; });
+  var details = {};
+  (state.connectedRosterDetails || []).forEach(function (d) { details[d.name] = d; });
+  var roster = state.myRosterNames.map(function (name) {
+    var row = rowsByName[name], d = details[name] || {};
+    var position = (row && row.pos) || d.position || null;
+    return position ? { name: name, position: position, team: (row && row.team) || d.team || null, rosterStatus: d.rosterStatus || null } : null;
+  }).filter(Boolean);
+  var slots = superSageLineupSlots();
+  if (!roster.length || !slots.length) return null;
+  return {
+    season: Number(getSelectedSeason()), week: getSelectedWeek(), scoring: getScoringFormat(),
+    teams: state.connectedTeamCount || 12, provider: state.connectedProvider || null, roster: roster, slots: slots
+  };
+}
+
+function requestSuperSageLineup(body, key) {
+  superSageLineup = { key: key, status: 'loading', data: null, error: null };
+  fetch('/.netlify/functions/super-sage-lineup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+    .then(function (res) {
+      if (superSageLineup.key !== key) return; // a newer request superseded this one
+      superSageLineup = res.ok && res.body && res.body.status === 'DECIDED'
+        ? { key: key, status: 'decided', data: res.body, error: null }
+        : { key: key, status: 'unavailable', data: res.body || null, error: (res.body && (res.body.reason || res.body.error)) || 'unavailable' };
+      renderSuperSageAnswer();
+      if (typeof renderTable === 'function') renderTable();
+    })
+    .catch(function (err) {
+      if (superSageLineup.key !== key) return;
+      superSageLineup = { key: key, status: 'unavailable', data: null, error: err && err.message || 'network error' };
+      renderSuperSageAnswer();
+      if (typeof renderTable === 'function') renderTable();
+    });
+}
+
 function getRosterLineupAssignments() {
   var assignments = {};
-  if (!state.myRosterNames || !state.myRosterNames.length) return assignments;
-
-  var rosterNameSet = {};
-  state.myRosterNames.forEach(function(name) { rosterNameSet[name] = true; });
-
-  var rosterPlayers = getAllRows()
-    .filter(function(player) { return rosterNameSet[player.name] === true; })
-    .slice()
-    .sort(function(a, b) { return lineupRankingValue(b) - lineupRankingValue(a); });
-
-  rosterPlayers.forEach(function(player) {
-    assignments[player.name] = { call: 'sit', slot: 'BENCH' };
+  var body = superSageLineupRequest();
+  if (!body) return assignments;
+  var key = JSON.stringify(body);
+  if (superSageLineup.key !== key) { requestSuperSageLineup(body, key); return assignments; }
+  if (superSageLineup.status !== 'decided') return assignments;
+  var record = superSageLineup.data.record;
+  var byName = {};
+  record.slots.forEach(function (slot) {
+    if (!slot.starter) return;
+    byName[slot.starter.name] = { call: 'start', slot: slot.slotLabel, decisionState: slot.decisionState, hasValidatedEdge: slot.hasValidatedEdge, confidence: slot.confidence.label };
   });
-
-  var available = rosterPlayers.filter(function(player) {
-    return player.eligibleForWeeklyRanking !== false;
+  record.bench.forEach(function (p) { byName[p.name] = { call: 'sit', slot: 'BENCH' }; });
+  record.unavailable.forEach(function (p) { byName[p.name] = { call: 'sit', slot: 'OUT' }; });
+  // Map the record's canonical names back to the page's roster names.
+  var norm = function (n) { return String(n || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var strip = function (n) { return norm(String(n || '').replace(/[\s,]+(jr|sr|ii|iii|iv)\.?$/i, '')); };
+  var recordKeys = Object.keys(byName);
+  state.myRosterNames.forEach(function (name) {
+    var hit = byName[name] ? name : recordKeys.filter(function (k) { return strip(k) === strip(name); })[0];
+    if (hit) assignments[name] = byName[hit];
   });
-
-  function fillSlots(slot, count, eligiblePositions) {
-    for (var i = 0; i < count; i++) {
-      var bestIndex = -1;
-      for (var j = 0; j < available.length; j++) {
-        if (eligiblePositions.indexOf(available[j].pos) !== -1) {
-          bestIndex = j;
-          break;
-        }
-      }
-      if (bestIndex === -1) break;
-      var selected = available.splice(bestIndex, 1)[0];
-      assignments[selected.name] = { call: 'start', slot: slot };
-    }
-  }
-
-  var lineup = getWeeklyLineupConstruction();
-  ['QB','RB','WR','TE','K','DEF'].forEach(function(pos) {
-    fillSlots(pos, Number(lineup[pos]) || 0, [pos]);
-  });
-  fillSlots('FLEX', Number(lineup.FLEX) || 0, FLEX_ELIGIBLE.FLEX);
-  fillSlots('SUPERFLEX', Number(lineup.SUPERFLEX) || 0, FLEX_ELIGIBLE.SFLEX);
-
   return assignments;
+}
+
+function renderSuperSageAnswer() {
+  var box = document.getElementById('superSageAnswer');
+  if (!box) return;
+  if (!state.myRosterOnly || superSageLineup.status === 'idle') { box.hidden = true; return; }
+  box.hidden = false;
+  var esc = function (t) { return String(t).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  if (superSageLineup.status === 'loading') { box.innerHTML = '<div class="ssa-one">Super SAGE is deciding your lineup…</div>'; return; }
+  if (superSageLineup.status !== 'decided') {
+    box.innerHTML = '<div class="ssa-one">Super SAGE lineup decision unavailable right now (' + esc(superSageLineup.error) + '). No starters are recommended until it is available.</div>';
+    return;
+  }
+  var a = superSageLineup.data.customerAnswer;
+  box.innerHTML =
+    a.oneSecond.map(function (l) { return '<div class="ssa-one">' + esc(l) + '</div>'; }).join('') +
+    (a.threeSeconds.length ? '<ul class="ssa-three">' + a.threeSeconds.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '') +
+    (a.tenSeconds.length ? '<details class="ssa-ten"><summary>More: state changes and what could change</summary><ul>' + a.tenSeconds.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></details>' : '') +
+    '<div class="ssa-id">Super SAGE decision ' + esc(a.decisionId.slice(0, 12)) + '</div>';
 }
 
 function rosterLineupTag(assignment) {
   if (!assignment) return '';
   var tag = callTag(assignment.call);
-  var slot = assignment.call === 'start' ? assignment.slot : 'BENCH';
-  return tag + '<span class="lineup-slot-label">' + slot + '</span>';
+  var slot = assignment.call === 'start' ? assignment.slot : (assignment.slot === 'OUT' ? 'OUT' : 'BENCH');
+  var provisional = assignment.call === 'start' && assignment.hasValidatedEdge === false ? ' · PROVISIONAL' : '';
+  return tag + '<span class="lineup-slot-label">' + slot + provisional + '</span>';
 }
 
 // ─── Build My Roster (added) ───
@@ -2183,6 +2248,7 @@ function getFilteredSorted() {
 }
 
 function renderTable() {
+  renderSuperSageAnswer();
   var rows =
     getFilteredSorted();
 
@@ -2848,6 +2914,15 @@ function detectConnectedEspnScoring(connection) {
           }
         );
   }
+
+  // Identity inputs for the shared Super SAGE decision (no ranking here).
+  state.connectedRosterDetails = Array.isArray(connection.roster)
+    ? connection.roster.filter(function (p) { return p && p.name; }).map(function (p) {
+        return { name: String(p.name).trim(), position: p.position || null, rosterStatus: p.status || null, team: p.nflTeam || null };
+      })
+    : [];
+  state.connectedProvider = connection.provider || null;
+  state.connectedTeamCount = connection.teamCount || (connection.league && connection.league.teamCount) || null;
 
   /*
     Map the shared connection scoring format to the values already
