@@ -90,6 +90,9 @@ function statusEvidenceFor(candidate, row, request) {
     const status = injury || (row.availabilityVerified === false || upper(row.status) === "UNVERIFIED" ? "UNVERIFIED"
       : row.availabilityVerified === true ? "ACTIVE" : "");
     if (status) items.push({ family: "production-availability", source: "Inner Sanctum availability", status, asOf: meta.updatedAt || null, fresh: prodFresh });
+    // The availability feed itself being unavailable is NOT neutral evidence:
+    // availability is then unverified for every player.
+    if (!status && meta.available === false) items.push({ family: "production-availability", source: "Inner Sanctum availability (feed unavailable)", status: "UNVERIFIED", asOf: null, fresh: true });
   }
   if (candidate.inactiveRow) {
     items.push({ family: "production-inactive", source: candidate.inactiveRow.source || "Inner Sanctum inactive list",
@@ -154,7 +157,11 @@ function buildEvidencePacket(candidate, request) {
     position: upper(candidate.position || (row && row.position)),
     team: (row && row.team) || candidate.team || null,
     matched: Boolean(row),
-    availability: { rosterStatus: rosterStatus || null, injuryStatus: injuryStatus || null, statusEvidence: statusEvidenceFor(candidate, row, request),
+    availability: { rosterStatus: rosterStatus || null, injuryStatus: injuryStatus || null,
+      // Evidence pass-through for presentation (no decision reads these).
+      injuryDescription: (row && row.injuryDescription) || (candidate.inactiveRow && (candidate.inactiveRow.reason || candidate.inactiveRow.sageTake)) || null,
+      availabilityVerified: row ? (row.availabilityVerified === true ? true : row.availabilityVerified === false ? false : null) : null,
+      statusEvidence: statusEvidenceFor(candidate, row, request),
       effectiveStatus: null, conflict: null, unavailable: false, questionable: false },
     baseline: {
       positionRank,
@@ -810,8 +817,39 @@ function publicPacket(p) {
  * The single decision authority entry point.
  * Same roster + scoring + week + evidence => identical record (and decisionId).
  */
-function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [] }) {
-  const candidates = matchRosterToRankings(roster, rankings);
+// Candidates from the SHARED roster identity module (_super-sage-roster-identity.js),
+// so every consumer resolves identity identically. Identity only: the row
+// each roster entry resolved to, the canonical roster status, and nothing else.
+function candidatesFromMatched(matched, unmatched = [], rankings = null) {
+  const inactiveFor = (entry) => {
+    const positions = (entry.eligiblePositions && entry.eligiblePositions.length ? entry.eligiblePositions : [entry.position]).map(upper);
+    for (const pos of positions) {
+      const list = (rankings && rankings.inactive && rankings.inactive[pos]) || [];
+      const hit = list.find((r) => (entry.sageCompatibleId && String(r.playerID || "") === String(entry.sageCompatibleId))
+        || normalizeName(r.name) === normalizeName(entry.name));
+      if (hit) return { pos, row: hit };
+    }
+    return null;
+  };
+  return [
+    ...(matched || []).map(({ entry, row }) => ({
+      name: row.name, position: upper(row.position), team: row.team || entry.team || null,
+      playerID: row.playerID || null, rosterStatus: entry.rosterStatus || null, rosterStatusAsOf: entry.rosterStatusAsOf || null,
+      row, inactiveRow: null
+    })),
+    ...(unmatched || []).map((entry) => {
+      const inactive = inactiveFor(entry);
+      return {
+        name: entry.name, position: inactive ? inactive.pos : upper((entry.eligiblePositions || [])[0] || entry.position || ""),
+        team: entry.team || null, playerID: null, rosterStatus: entry.rosterStatus || null, rosterStatusAsOf: entry.rosterStatusAsOf || null,
+        row: null, inactiveRow: inactive ? inactive.row : null
+      };
+    })
+  ];
+}
+
+function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [], matchedRoster = null }) {
+  const candidates = matchedRoster ? candidatesFromMatched(matchedRoster.matched, matchedRoster.unmatched, rankings) : matchRosterToRankings(roster, rankings);
   const decision = decideLineup({ rankings, candidates, slots, scoring, season, week, registry, policy, opportunity, statusUpdates });
   const rosterKeys = new Set(candidates.map((c) => `${normalizeName(c.name)}|${c.position}`));
   const explanation = explainLineup(decision);
@@ -866,6 +904,7 @@ function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, w
 
 module.exports = {
   buildLineupDecisionRecord,
+  candidatesFromMatched,
   matchRosterToRankings,
   RECORD_SCHEMA_VERSION,
   DECISION_SCOPE,

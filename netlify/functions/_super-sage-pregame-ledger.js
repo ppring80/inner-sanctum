@@ -42,7 +42,7 @@ function canonical(value) {
 const sha256 = (v) => crypto.createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 const orNull = (v) => (v === undefined ? null : v);
 
-function playerEntry(row, position, lineupEligible) {
+function playerEntry(row, position, lineupEligible, kickoffFor = null) {
   const sage = row.sage || {};
   const p = row.projection && typeof row.projection === "object" ? row.projection : null;
   const stateChanges = [row.roleContext, row.environmentContext, row.teamContext]
@@ -53,6 +53,7 @@ function playerEntry(row, position, lineupEligible) {
     playerID: orNull(row.playerID), name: orNull(row.name), team: orNull(row.team || row.currentTeam), position,
     opponent: orNull(row.opponent), gameID: orNull(row.gameID), gameDate: orNull(row.gameDate), gameTime: orNull(row.gameTime),
     lineupEligible,
+    kickoff: kickoffFor ? orNull(kickoffFor(row, position)) : null,
     weeklySage: {
       rank: orNull(row.rank), recommendation: orNull(row.recommendation),
       confidenceLabel: orNull(row.sageConfidenceLabel || sage.confidenceLabel),
@@ -73,7 +74,7 @@ function playerEntry(row, position, lineupEligible) {
  * strictly before it; opportunity (fromSnapshot/loadObservedOpportunity result);
  * decisionRecords (Super SAGE records); registry.
  */
-function buildPregameLedgerEntry({ rankings, generatedAt, firstKickoff = null, opportunity = null, decisionRecords = [], registry = SIGNALS } = {}) {
+function buildPregameLedgerEntry({ rankings, generatedAt, firstKickoff = null, opportunity = null, decisionRecords = [], registry = SIGNALS, kickoffFor = null, excludedPlayers = [], kickoffSource = null } = {}) {
   if (!rankings || !rankings.positions) throw new Error("Pregame ledger entry requires a Weekly SAGE rankings response.");
   const at = Date.parse(generatedAt);
   if (!Number.isFinite(at)) throw new Error("Pregame ledger entry requires a valid generatedAt timestamp.");
@@ -84,8 +85,8 @@ function buildPregameLedgerEntry({ rankings, generatedAt, firstKickoff = null, o
   }
   const players = [];
   POSITIONS.forEach((pos) => {
-    (rankings.positions[pos] || []).forEach((row) => players.push(playerEntry(row, pos, true)));
-    ((rankings.inactive && rankings.inactive[pos]) || []).forEach((row) => players.push(playerEntry(row, pos, false)));
+    (rankings.positions[pos] || []).forEach((row) => players.push(playerEntry(row, pos, true, kickoffFor)));
+    ((rankings.inactive && rankings.inactive[pos]) || []).forEach((row) => players.push(playerEntry(row, pos, false, kickoffFor)));
   });
   const promoted = Object.entries(registry).filter(([, s]) => s.status === "promoted").map(([id, s]) => ({ id, positions: s.positions || [] }));
   const meta = rankings.metadata || {};
@@ -96,6 +97,10 @@ function buildPregameLedgerEntry({ rankings, generatedAt, firstKickoff = null, o
     generatedAt: new Date(at).toISOString(),
     firstKickoff: firstKickoff ? new Date(Date.parse(firstKickoff)).toISOString() : null,
     pregameVerified: firstKickoff != null,
+    kickoffSource: orNull(kickoffSource),
+    // Players left out because their game had kicked off or its kickoff could
+    // not be established at generation time (never written as pregame).
+    excludedPlayers: (excludedPlayers || []).map((x) => ({ name: orNull(x.name), position: orNull(x.position), team: orNull(x.team), reason: orNull(x.reason) })),
     sources: {
       rankingsGeneratedAt: orNull(rankings.generatedAt),
       rankingsComplete: orNull(meta.complete),

@@ -51,6 +51,26 @@ const { z } = require("zod");
 const crypto = require("crypto");
 const { resolveCurrentNFLWeek } = require("./_current-nfl-week.js");
 
+// ONE roster identity resolver for every Super SAGE consumer (moved verbatim
+// from this file into the shared module).
+const {
+  normalizePlayerName,
+  stripGenerationalSuffix,
+  normalizeTeamCode,
+  matchRosterEntryToSageRow
+} = require("./_super-sage-roster-identity.js");
+
+// ONE Super SAGE decision authority (shared with the website).
+const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
+const {
+  toCustomerAnswer,
+  customerAnswerText,
+  toMcpStartersFromRecord
+} = require("./_super-sage-lineup-presenters.js");
+const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
+const { buildKickoffIndex, decisionCutoff } = require("./_super-sage-kickoff.js");
+const { loadObservedOpportunity, normalizeName: normalizeProducerName } = require("./_super-sage-opportunity-evidence.js");
+
 const {
   connectLambda,
   getStore
@@ -489,26 +509,6 @@ function num(value) {
     : null;
 }
 
-function normalizePlayerName(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    // Strips invisible/zero-width characters (zero-width space,
-    // zero-width non-joiner/joiner, BOM, soft hyphen) on their own
-    // independent merits: this kind of character can end up embedded
-    // in browser-scraped provider text without being visible in it,
-    // and removing it can only allow a previously-blocked correct
-    // match to succeed -- it never makes two genuinely different
-    // visible names equal, so it carries no false-match risk. This
-    // is NOT the confirmed cause of any specific known mismatch (see
-    // the generational-suffix handling in matchRosterEntryToSageRow()
-    // below for that); it is retained purely as harmless, generally
-    // useful defensive normalization for scraped text.
-    .replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, "")
-    .replace(/\s+/g, " ");
-}
 
 function getCurrentNFLWeek() {
   return resolveCurrentNFLWeek(new Date(), DEFAULT_SEASON);
@@ -627,22 +627,41 @@ function attachGameEnvironment(row, oddsSnapshot) {
   };
 }
 
+// Shared Super SAGE observed-opportunity reader (the same temporally guarded
+// reader the lineup authority uses), read once per season/week instead of one
+// HTTP call per player. Unavailable or temporally unsafe evidence returns null
+// (the gap stays visible: no opportunity component is attached), never a
+// locally reconstructed value.
+const sharedOpportunityCache = new Map();
+const SHARED_OPPORTUNITY_TTL_MS = 60 * 1000;
+async function loadSharedOpportunitySnapshot({ season, week }) {
+  const key = `${season}:${week}`;
+  const hit = sharedOpportunityCache.get(key);
+  if (hit && Date.now() - hit.at < SHARED_OPPORTUNITY_TTL_MS) return hit.promise;
+  const promise = (async () => {
+    let schedule = null;
+    try { schedule = await readCachedWeeklySchedule({ season, week, seasonType: "reg" }); } catch (error) { schedule = null; }
+    const cutoff = decisionCutoff(buildKickoffIndex(schedule, { season, week }));
+    let store = null;
+    try { store = getStore({ name: "opportunity-intel" }); } catch (error) { store = null; }
+    return loadObservedOpportunity({ season, week, store, decisionCutoff: cutoff.ok ? cutoff.cutoff : null });
+  })();
+  sharedOpportunityCache.set(key, { at: Date.now(), promise });
+  return promise;
+}
+
 async function fetchOpportunityIntelligence({
-  baseUrl,
   player,
-  position
+  position,
+  season,
+  week
 }) {
   if (!["RB", "WR", "TE"].includes(position)) return null;
-  const url =
-    baseUrl +
-    "/.netlify/functions/opportunity-intel" +
-    "?player=" + encodeURIComponent(player) +
-    "&pos=" + encodeURIComponent(position);
   try {
-    const response = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data && data.opportunities ? data : null;
+    const snapshot = await loadSharedOpportunitySnapshot({ season, week });
+    if (!snapshot || snapshot.status !== "AVAILABLE") return null;
+    const record = snapshot.records[`${normalizeProducerName(player)}|${position}`];
+    return record && record.opportunities ? { ...record, provenance: snapshot.provenance } : null;
   } catch (error) {
     return null;
   }
@@ -663,6 +682,8 @@ function attachOpportunityIntelligence(row, opportunityData) {
         computedAt: opportunityData.meta?.computedAt || null,
         sourcePositions: opportunityData.meta?.sourcePositions || [row.position],
         source: "Inner Sanctum Opportunity Intelligence",
+        // Shared Super SAGE temporal provenance (weeks actually observed).
+        provenance: opportunityData.provenance || null,
         limitations: [
           "Current V1 opportunity is carries plus targets.",
           "Routes, route participation, air yards and red-zone opportunity are not present in this cache.",
@@ -3284,11 +3305,6 @@ function expandLineupSlots(slots) {
 // skill-position players, so it cannot cross-match a real player on
 // the same team, and it cannot cross-match a different team's
 // defense.
-function normalizeTeamCode(value) {
-  return String(value || "")
-    .trim()
-    .toUpperCase();
-}
 
 // Confirmed real case: CBS captured "Kyle Pitts"; Weekly SAGE listed
 // the same player as "Kyle Pitts Sr." -- a generational-suffix
@@ -3298,126 +3314,8 @@ function normalizeTeamCode(value) {
 // exact-equality comparison on a deterministically-defined
 // normalization, not fuzzy/partial/edit-distance name matching, and
 // nothing else about the name is altered.
-const GENERATIONAL_SUFFIX_PATTERN =
-  /[\s,]+(jr|sr|ii|iii|iv)\.?$/i;
 
-function stripGenerationalSuffix(
-  normalizedName
-) {
-  return normalizedName
-    .replace(
-      GENERATIONAL_SUFFIX_PATTERN,
-      ""
-    )
-    .trim();
-}
 
-function matchRosterEntryToSageRow(
-  rosterEntry,
-  sageRows,
-  usedRowKeys
-) {
-  const rowKey = (row) =>
-    `${row.playerID || ""}|${normalizePlayerName(row.name)}|${row.position}`;
-
-  if (rosterEntry.sageCompatibleId) {
-    const byId = sageRows.find(
-      (row) =>
-        row.playerID &&
-        row.playerID === rosterEntry.sageCompatibleId &&
-        rosterEntry.eligiblePositions.includes(
-          row.position
-        ) &&
-        !usedRowKeys.has(
-          rowKey(row)
-        )
-    );
-
-    if (byId) {
-      return byId;
-    }
-  }
-
-  if (
-    rosterEntry.eligiblePositions.includes(
-      "DEF"
-    ) &&
-    rosterEntry.team
-  ) {
-    const normalizedTeam =
-      normalizeTeamCode(
-        rosterEntry.team
-      );
-
-    const byTeam = sageRows.find(
-      (row) =>
-        row.position === "DEF" &&
-        normalizeTeamCode(row.team) ===
-          normalizedTeam &&
-        !usedRowKeys.has(
-          rowKey(row)
-        )
-    );
-
-    if (byTeam) {
-      return byTeam;
-    }
-  }
-
-  const normalizedName =
-    normalizePlayerName(
-      rosterEntry.name
-    );
-
-  const byName = sageRows.find(
-    (row) =>
-      normalizePlayerName(row.name) ===
-        normalizedName &&
-      rosterEntry.eligiblePositions.includes(
-        row.position
-      ) &&
-      !usedRowKeys.has(
-        rowKey(row)
-      )
-  );
-
-  if (byName) {
-    return byName;
-  }
-
-  // Last resort: same base name once a generational suffix is
-  // stripped from either side, same eligible position. Still an
-  // exact-equality comparison, not a fuzzy one -- but because
-  // stripping a suffix necessarily discards information that could
-  // distinguish two different real people (e.g. a genuine "Jr."/
-  // "Sr." pair both currently active at the same position), this
-  // only resolves when EXACTLY ONE remaining SAGE row matches. If
-  // stripping suffixes makes more than one row match, that is a
-  // real ambiguity this function must not silently guess through,
-  // so it returns unmatched rather than picking either candidate.
-  const strippedRosterName =
-    stripGenerationalSuffix(
-      normalizedName
-    );
-
-  const suffixToleredCandidates =
-    sageRows.filter(
-      (row) =>
-        stripGenerationalSuffix(
-          normalizePlayerName(row.name)
-        ) === strippedRosterName &&
-        rosterEntry.eligiblePositions.includes(
-          row.position
-        ) &&
-        !usedRowKeys.has(
-          rowKey(row)
-        )
-    );
-
-  return suffixToleredCandidates.length === 1
-    ? suffixToleredCandidates[0]
-    : null;
-}
 
 function weeklyAvailabilityNote(row) {
   const status = String(row.injuryStatus || "").trim().toUpperCase();
@@ -4742,9 +4640,10 @@ function buildServer(
 
         const opportunityData = row
           ? await fetchOpportunityIntelligence({
-              baseUrl,
               player: row.name,
-              position: row.position
+              position: row.position,
+              season: resolvedSeason,
+              week: resolvedWeek
             })
           : null;
 
@@ -5023,7 +4922,7 @@ function buildServer(
 
         const opportunityByKey = {};
         await Promise.all(rows.filter(r => requestedPlayers.some(n => normalizePlayerName(n) === normalizePlayerName(r.name))).map(async r => {
-          const data = await fetchOpportunityIntelligence({ baseUrl, player: r.name, position: r.position });
+          const data = await fetchOpportunityIntelligence({ player: r.name, position: r.position, season: resolvedSeason, week: resolvedWeek });
           opportunityByKey[normalizePlayerName(r.name) + "|" + r.position] = data;
         }));
         rows = rows.map(r => attachOpportunityIntelligence(r, opportunityByKey[normalizePlayerName(r.name) + "|" + r.position] || null));
@@ -6150,102 +6049,72 @@ function buildServer(
         let starters = [];
         let bench = [];
         let unfilledSlots = [];
+        let superSage = null;
 
         if (lineupRequirementsAvailable) {
-          const expandedSlots =
-            expandLineupSlots(
-              lineupSlots
+          // ONE SHARED SUPER SAGE AUTHORITY. This tool no longer assigns
+          // slots, ranks players, or computes confidence: it hands the roster,
+          // the league's own slots and this single Weekly SAGE response to
+          // the shared service and PRESENTS the returned decision record.
+          let schedule = null;
+          let scheduleError = null;
+          try {
+            schedule = await readCachedWeeklySchedule({ season: resolvedSeason, week: resolvedWeek, seasonType: "reg" });
+          } catch (scheduleReadError) {
+            scheduleError = scheduleReadError && scheduleReadError.message;
+          }
+          let opportunityStore = null;
+          try {
+            opportunityStore = getStore({ name: "opportunity-intel" });
+          } catch (storeError) {
+            opportunityStore = null;
+          }
+
+          superSage = await decideSharedLineup({
+            rankings,
+            roster: rosterEntries,
+            provider: snapshot.provider,
+            slots: lineupSlots,
+            season: resolvedSeason,
+            week: resolvedWeek,
+            scoring: resolvedScoring,
+            schedule,
+            scheduleError,
+            opportunityStore
+          });
+
+          if (superSage.status === "DECIDED") {
+            const record = superSage.record;
+            starters = toMcpStartersFromRecord(record);
+            const rosterStatusByName = new Map(
+              matchedEntries.map((item) => [normalizePlayerName(item.row.name), item.entry && item.entry.rosterStatus || null])
             );
-
-          const availableMatchedEntries =
-            matchedEntries.filter(
-              item =>
-                !isUnavailableRosterStatus(
-                  item.entry &&
-                  item.entry.rosterStatus,
-                  snapshot.provider
-                )
-            );
-
-          const unavailableMatchedEntries =
-            matchedEntries.filter(
-              item =>
-                isUnavailableRosterStatus(
-                  item.entry &&
-                  item.entry.rosterStatus,
-                  snapshot.provider
-                )
-            );
-
-          const assignment =
-            assignLineupSlotsOptimally(
-              expandedSlots,
-              availableMatchedEntries
-            );
-
-          starters =
-            assignment.starters;
-
-          bench =
-            [
-              ...assignment.bench,
-              ...unavailableMatchedEntries
-            ].map(
-              (item) => ({
-                playerID:
-                  item.row.playerID ||
-                  null,
-                player: item.row.name,
-                position: item.row.position,
-                team: item.row.team || null,
-                recommendation:
-                  item.row.recommendation
-                    ? item.row.recommendation.toUpperCase()
-                    : null,
-                sageLabel:
-                  item.row.sageLabel ||
-                  null,
-                rosterStatus:
-                  item.entry &&
-                  item.entry.rosterStatus ||
-                  null,
-                reason:
-                  isUnavailableRosterStatus(
-                    item.entry &&
-                    item.entry.rosterStatus,
-                    snapshot.provider
-                  )
-                    ? `Roster status ${item.entry.rosterStatus} is unavailable for an active lineup slot.`
-                    : buildLineupSageReason(
-                        item.row
-                      )
-              })
-            );
-
-          unfilledSlots =
-            assignment.unfilledSlots;
-
-          // 1/3/10 initial explanation: identify the strongest legal benched
-          // alternative and explain the decisive verified evidence. Material
-          // state changes are never hidden behind opt-in detail.
-          starters = starters.map(starter => ({
-            ...starter,
-            reason: buildComparativeLineupReason(starter, assignment.bench),
-            _row: undefined
-          }));
-
-          // Material facts on plausible legal alternatives are customer value,
-          // even when that player is not the single comparator chosen by the
-          // optimizer. Surface a compact initial watch item instead of hiding
-          // the state change behind deeper analysis.
-          const materialBenchContext = assignment.bench
-            .filter(item => materialStateChangeNote(item.row))
-            .map(item => ({
-              player: item.row.name,
-              position: item.row.position,
-              team: item.row.team || null,
-              note: materialStateChangeNote(item.row)
-            }));
+            bench = [
+              ...record.bench.map((p) => ({
+                player: p.name,
+                position: p.position,
+                team: p.team || null,
+                weeklySage: p.baseline && p.baseline.positionRank != null ? `${p.position}${p.baseline.positionRank}` : null,
+                recommendation: p.baseline && p.baseline.tier || null,
+                rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || null,
+                lineupStatus: "BENCH",
+                rosterImplication: "NONE",
+                reason: "Start/sit call for this week only; does not imply drop."
+              })),
+              ...record.unavailable.map((p) => ({
+                player: p.name,
+                position: p.position,
+                team: p.team || null,
+                rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || (p.availability && (p.availability.rosterStatus || p.availability.injuryStatus)) || null,
+                lineupStatus: "UNAVAILABLE",
+                rosterImplication: "NONE",
+                reason: `Unavailable for an active lineup slot (${(p.availability && p.availability.effectiveStatus && p.availability.effectiveStatus.reported) || (p.availability && (p.availability.rosterStatus || p.availability.injuryStatus)) || "unavailable"}).`
+              }))
+            ];
+            unfilledSlots = record.unfilled;
+          } else {
+            warnings.push(`Super SAGE could not produce a lineup decision: ${superSage.reason}.`);
+          }
         } else {
           bench = matchedEntries.map(
             (item) => ({
@@ -6274,6 +6143,10 @@ function buildServer(
           );
         }
 
+        const customerAnswer = superSage && superSage.record
+          ? toCustomerAnswer(superSage.record, superSage.evidenceStatus)
+          : null;
+
         const structuredContent = {
           source: usingPastedRoster
             ? "Inner Sanctum Weekly SAGE (pasted roster)"
@@ -6291,7 +6164,27 @@ function buildServer(
           unmatchedRosterPlayers,
           unfilledSlots,
           warnings,
-          materialBenchContext: typeof materialBenchContext !== "undefined" ? materialBenchContext : []
+          materialBenchContext: superSage && superSage.record ? superSage.record.benchWatch : [],
+          superSage: superSage && superSage.record ? {
+            authority: "super-sage-lineup-decision",
+            decisionId: superSage.record.decisionId,
+            decisionScope: superSage.record.decisionScope || "START_SIT",
+            serviceVersion: superSage.serviceVersion,
+            evidenceStatus: superSage.evidenceStatus,
+            kickoff: superSage.kickoff,
+            customerAnswer,
+            decision: superSage.record.slots.map((slot) => ({
+              slot: slot.slotLabel,
+              starter: slot.starter ? slot.starter.name : null,
+              versus: slot.comparator ? slot.comparator.name : null,
+              decisionState: slot.decisionState,
+              hasValidatedEdge: slot.hasValidatedEdge,
+              confidence: slot.confidence.label,
+              decidedBy: slot.decidedBy,
+              comparisonClass: slot.gate ? slot.gate.comparisonClass || null : null,
+              resolution: slot.gate ? slot.gate.resolution || null : null
+            }))
+          } : (superSage ? { authority: "super-sage-lineup-decision", decisionId: null, status: superSage.status, reason: superSage.reason, evidenceStatus: superSage.evidenceStatus } : null)
         };
 
         return {
@@ -6299,19 +6192,28 @@ function buildServer(
             {
               type: "text",
               text:
-                lineupRecommendationToText({
-                  context,
-                  inputSource:
-                    usingPastedRoster
-                      ? "pasted_roster"
-                      : "linked_league",
-                  lineupRequirementsAvailable,
-                  starters,
-                  bench,
-                  unmatchedRosterPlayers,
-                  unfilledSlots,
-                  warnings
-                })
+                customerAnswer
+                  ? [
+                      customerAnswerText(customerAnswer),
+                      unmatchedRosterPlayers.length
+                        ? `Not in this week's Weekly SAGE rankings: ${unmatchedRosterPlayers.map((p) => p.rosterName).join(", ")}.`
+                        : "",
+                      warnings.length ? `Notes: ${warnings.join(" ")}` : "",
+                      `Super SAGE decision ${customerAnswer.decisionId.slice(0, 12)} — ask for the full evidence on any slot.`
+                    ].filter(Boolean).join("\n\n")
+                  : lineupRecommendationToText({
+                      context,
+                      inputSource:
+                        usingPastedRoster
+                          ? "pasted_roster"
+                          : "linked_league",
+                      lineupRequirementsAvailable,
+                      starters,
+                      bench,
+                      unmatchedRosterPlayers,
+                      unfilledSlots,
+                      warnings
+                    })
             }
           ],
           structuredContent

@@ -327,3 +327,12 @@
 
 # Newswire and projections are also coordinated by the watchdog.
 # Both refresh every six hours with bounded retries and the shared budget.
+
+# SUPER SAGE PREGAME EVIDENCE LEDGER
+# Preserves immutable pregame snapshots (Blob store "super-sage-pregame-ledger")
+# for future calibration. Reads caches only: ZERO Tank01 calls. Five daily
+# checks; the function writes only when no baseline exists for the week or the
+# next real (schedule-derived) kickoff is within 4 hours, and only players whose
+# game has not kicked off. Never overwrites; never throws; not on any customer path.
+[functions."super-sage-pregame-ledger-snapshot"]
+  schedule = "30 11,14,16,19,23 * * *"

@@ -88,11 +88,13 @@ async function test(name, fn) { await fn(); passed += 1; console.log('  ok - ' +
     await assert.rejects(() => writePregameLedgerEntry(store, { ...entry, week: 5 }), /does not verify/);
   });
 
-  await test('not wired: no Netlify function or scheduled job imports the ledger yet', async () => {
+  await test('wired only to the scheduled snapshot function; no customer path imports the ledger', async () => {
     const dir = path.join(__dirname, '..', 'netlify', 'functions');
     const importers = fs.readdirSync(dir).filter((f) => f.endsWith('.js') && f !== '_super-sage-pregame-ledger.js')
       .filter((f) => fs.readFileSync(path.join(dir, f), 'utf8').includes('_super-sage-pregame-ledger'));
-    assert.deepStrictEqual(importers, []);
+    assert.deepStrictEqual(importers, ['super-sage-pregame-ledger-snapshot.js']);
+    const toml = fs.readFileSync(path.join(__dirname, '..', 'netlify.toml'), 'utf8');
+    assert.match(toml, /\[functions\."super-sage-pregame-ledger-snapshot"\]\s*\n\s*schedule = "30 11,14,16,19,23 \* \* \*"/);
   });
 
   console.log('super-sage-pregame-ledger.test.js: ' + passed + ' passed');
