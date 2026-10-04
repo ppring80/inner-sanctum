@@ -321,6 +321,10 @@ const LineupRecommendationOutputSchema = z.object({
   unmatchedRosterPlayers: z.array(LineupUnmatchedPlayerSchema),
   unfilledSlots: z.array(LineupUnfilledSlotSchema),
   warnings: z.array(z.string()),
+  // Rich shared-authority detail is additive. The public starter/bench row
+  // contract remains stable for existing MCP consumers.
+  materialBenchContext: z.array(z.any()).optional(),
+  superSage: z.record(z.any()).optional(),
   error: z.string().optional()
 });
 
@@ -6091,20 +6095,24 @@ function buildServer(
             );
             bench = [
               ...record.bench.map((p) => ({
+                playerID: null,
                 player: p.name,
-                position: p.position,
+                position: p.position || null,
                 team: p.team || null,
-                weeklySage: p.baseline && p.baseline.positionRank != null ? `${p.position}${p.baseline.positionRank}` : null,
                 recommendation: p.baseline && p.baseline.tier || null,
+                sageLabel: null,
                 rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || null,
                 lineupStatus: "BENCH",
                 rosterImplication: "NONE",
                 reason: "Start/sit call for this week only; does not imply drop."
               })),
               ...record.unavailable.map((p) => ({
+                playerID: null,
                 player: p.name,
-                position: p.position,
+                position: p.position || null,
                 team: p.team || null,
+                recommendation: p.baseline && p.baseline.tier || null,
+                sageLabel: null,
                 rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || (p.availability && (p.availability.rosterStatus || p.availability.injuryStatus)) || null,
                 lineupStatus: "UNAVAILABLE",
                 rosterImplication: "NONE",

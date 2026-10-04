@@ -175,12 +175,31 @@ function customerAnswerText(answer) {
 function toMcpStartersFromRecord(record) {
   requireRecord(record);
   return record.slots.filter((s) => s.starter).map((s) => ({
-    slot: s.slotLabel, player: s.starter.name, position: s.starter.position, team: s.starter.team || null,
-    weeklySage: rankLabel(s.starter), tier: s.starter.baseline ? s.starter.baseline.tier : null,
-    decisionState: s.decisionState, hasValidatedEdge: s.hasValidatedEdge !== false, confidence: s.confidence.label,
+    // Compatibility presentation only: preserve the established public MCP
+    // contract while the richer shared-authority detail stays in superSage.
+    slotLabel: s.slotLabel,
+    eligiblePositions: Array.isArray(s.eligiblePositions) ? s.eligiblePositions : [],
+    // Internal aliases retained for existing parity/airtight regression consumers.
+    slot: s.slotLabel,
+    playerID: null,
+    player: s.starter.name,
+    position: s.starter.position || null,
+    team: s.starter.team || null,
+    recommendation: s.starter.baseline ? s.starter.baseline.tier || null : null,
+    sageLabel: null,
+    matchup: s.starter.matchup || null,
+    rosterStatus: s.starter.availability
+      ? s.starter.availability.rosterStatus || s.starter.availability.injuryStatus || null
+      : null,
+    weeklySage: rankLabel(s.starter),
+    tier: s.starter.baseline ? s.starter.baseline.tier : null,
+    decisionState: s.decisionState,
+    hasValidatedEdge: s.hasValidatedEdge !== false,
+    confidence: s.confidence.label,
     versus: s.comparator ? s.comparator.name : null,
     // Material state changes are never hidden behind opt-in detail.
-    reason: [s.explanation.headline, ...s.explanation.why.slice(0, 2), ...s.explanation.materialFacts, statusLine(s.starter)].filter(Boolean).join(" ")
+    reason: [s.explanation.headline, ...s.explanation.why.slice(0, 2), ...s.explanation.materialFacts, statusLine(s.starter)]
+      .filter(Boolean).join(" ") || null
   }));
 }
 
