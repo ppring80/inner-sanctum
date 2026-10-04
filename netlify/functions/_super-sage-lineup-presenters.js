@@ -122,14 +122,14 @@ function evidenceSnapshot(p) {
   const bits = [];
   const rank = rankLabel(p);
   if (rank) bits.push(rank + (p.baseline && p.baseline.tier ? `/${p.baseline.tier}` : ""));
-  if (p.projection && p.projection.value != null) bits.push(`projection ${fmt(p.projection.value)}`);
+  if (p.projection && p.projection.points != null) bits.push(`projection ${fmt(p.projection.points)}`);
   if (p.observedOpportunity && p.observedOpportunity.avgLast3 != null) {
     bits.push(`${fmt(p.observedOpportunity.avgLast3)} recent opportunities/game`);
   }
   if (p.establishedRole && p.establishedRole.status === "ESTABLISHED" && p.establishedRole.level) {
     bits.push(`${p.establishedRole.level} established role`);
   }
-  if (p.matchup && p.matchup.label) bits.push(`${p.matchup.label} matchup`);
+  if (p.matchup) bits.push(`${String(p.matchup)} matchup`);
   return bits;
 }
 function decisionEvidenceLine(slot) {
