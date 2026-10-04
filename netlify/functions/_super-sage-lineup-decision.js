@@ -681,7 +681,7 @@ function explainSlot(record) {
     why.push(c
       ? `${s.name} holds the stronger established Weekly SAGE standing (${label(s)}) than ${c.name} (${label(c)}).`
       : `${s.name} holds the strongest Weekly SAGE standing for ${record.slotLabel} (${label(s)}).`);
-    if (record.decidedBy === "BASELINE_TIE") why.push(`Their Weekly SAGE standings are tied; this is a close call.`);
+    if (record.decidedBy === "BASELINE_TIE") why.push(`Cross-position standing alone does not establish a large edge; confidence remains limited unless validated forward evidence separates the options.`);
     if (record.gate && c) crossPositionLines(record, why, whatCouldChange);
   }
 
