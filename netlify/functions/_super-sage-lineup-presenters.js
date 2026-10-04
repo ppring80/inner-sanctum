@@ -38,6 +38,8 @@ function toMcpLineup(record) {
       noCallCandidates: slot.candidates ? slot.candidates.map((p) => p.name) : null,
       versus: slot.comparator ? slot.comparator.name : null,
       confidence: slot.confidence.label,
+      decisionState: slot.decisionState || null,
+      hasValidatedEdge: slot.hasValidatedEdge !== false,
       baseline: validityOf(slot.starter),
       comparisonClass: classOf(slot),
       headline: slot.explanation.headline,
@@ -64,7 +66,9 @@ function toWebsiteLineup(record) {
       playerName: slot.starter ? slot.starter.name : null,
       pos: slot.starter ? slot.starter.position : null,
       team: slot.starter ? slot.starter.team || "—" : "—",
-      verdict: slot.starter ? "START" : "NO CALL",
+      verdict: !slot.starter ? "NO CALL" : slot.decisionState === "PROVISIONAL_UNRESOLVED" ? "START (PROVISIONAL)" : slot.decisionState === "CLOSE_CALL_WITHIN_NOISE" ? "START (CLOSE CALL)" : "START",
+      decisionState: slot.decisionState || null,
+      hasValidatedEdge: slot.hasValidatedEdge !== false,
       noCallCandidates: slot.candidates ? slot.candidates.map((p) => p.name) : null,
       confidenceLabel: slot.confidence.label,
       baselineState: validityOf(slot.starter),
@@ -86,9 +90,9 @@ function toWebsiteLineup(record) {
 // parity tests to prove every consumer expresses the same decision.
 function decisionOf(presentation) {
   if (Array.isArray(presentation.starters)) {
-    return presentation.starters.map((s) => ({ slot: s.slot, player: s.player, confidence: s.confidence }));
+    return presentation.starters.map((s) => ({ slot: s.slot, player: s.player, confidence: s.confidence, decisionState: s.decisionState, hasValidatedEdge: s.hasValidatedEdge }));
   }
-  return presentation.rows.map((r) => ({ slot: r.slotLabel, player: r.playerName, confidence: r.confidenceLabel }));
+  return presentation.rows.map((r) => ({ slot: r.slotLabel, player: r.playerName, confidence: r.confidenceLabel, decisionState: r.decisionState, hasValidatedEdge: r.hasValidatedEdge }));
 }
 
 module.exports = { toMcpLineup, toWebsiteLineup, decisionOf };

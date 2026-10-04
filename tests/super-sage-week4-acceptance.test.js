@@ -119,7 +119,7 @@ function checkRules(label, result) {
 
   test(`${label}: MCP and website express the identical decision`, () => {
     assert.deepStrictEqual(decisionOf(mcp), decisionOf(website));
-    assert.deepStrictEqual(decisionOf(website), record.slots.map((s) => ({ slot: s.slotLabel, player: s.starter ? s.starter.name : null, confidence: s.confidence.label })));
+    assert.deepStrictEqual(decisionOf(website), record.slots.map((s) => ({ slot: s.slotLabel, player: s.starter ? s.starter.name : null, confidence: s.confidence.label, decisionState: s.decisionState, hasValidatedEdge: s.hasValidatedEdge })));
   });
 }
 

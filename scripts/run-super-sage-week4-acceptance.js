@@ -51,11 +51,11 @@ function report(result) {
   record.slots.forEach((slot) => {
     const e = slot.explanation;
     lines.push(`[${slot.slotLabel}] ${e.headline}`);
-    lines.push(`  decided by: ${slot.decidedBy}; confidence ${slot.confidence.label} (${slot.confidence.rules.join('; ') || 'no qualifying rules'})`);
+    lines.push(`  decided by: ${slot.decidedBy}; state ${slot.decisionState}${slot.hasValidatedEdge === false ? ' (NO validated edge)' : ''}; confidence ${slot.confidence.label} (${slot.confidence.rules.join('; ') || 'no qualifying rules'})`);
     e.why.forEach((w) => lines.push(`  why: ${w}`));
     e.materialFacts.forEach((m) => lines.push(`  material: ${m}`));
     e.whatCouldChange.forEach((w) => lines.push(`  could change: ${w}`));
-    if (slot.reassessedFrom) lines.push(`  set aside (REASSESS): ${slot.reassessedFrom}`);
+    if (slot.reassessedFrom) lines.push(slot.reassessedFromCarriedForward ? `  audit: ${slot.reassessedFrom} remains set aside from an earlier slot (not part of this comparison)` : `  set aside (REASSESS): ${slot.reassessedFrom}`);
     if (slot.gate) {
       lines.push(`  comparison with ${slot.comparator.name}: class ${slot.gate.comparisonClass}, resolution ${slot.gate.resolution}`);
       (slot.gate.classReasons || []).forEach((r) => lines.push(`    class reason: ${r}`));

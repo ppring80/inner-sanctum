@@ -351,7 +351,10 @@ function classifyComparison(challenger, incumbent) {
   const cr = challenger.establishedRole || {}, ir = incumbent.establishedRole || {};
   if (cr.status !== "ESTABLISHED" || ir.status !== "ESTABLISHED") {
     reasons.push(`Established-role evidence is incomplete (${challenger.name}: ${cr.status || "none"}; ${incumbent.name}: ${ir.status || "none"}).`);
-  } else if (ROLE_LEVEL_ORDER[cr.level] > ROLE_LEVEL_ORDER[ir.level]) {
+  } else if (challenger.position === incumbent.position && ROLE_LEVEL_ORDER[cr.level] > ROLE_LEVEL_ORDER[ir.level]) {
+    // Producer volume labels are position-calibrated: they are ordinal only
+    // WITHIN a position. Across positions they describe each player's role but
+    // prove nothing about whose workload is larger (no validated mapping).
     reasons.push(`Observed workload contradicts the challenge: ${challenger.name}'s established role (${cr.level}) is below ${incumbent.name}'s (${ir.level}).`);
   }
   return { comparisonClass: reasons.length ? "SURPRISING" : "ORDINARY", reasons };
@@ -505,6 +508,17 @@ function stableKey(p) {
   return `${p.position}|${String(p.name || "").toLowerCase()}|${p.team || ""}`;
 }
 
+// Resolutions where SAGE holds the incumbent WITHOUT a validated edge, and the
+// customer-facing state each produces.
+const UNRESOLVED_RESOLUTIONS = new Map([
+  ["ORDINARY_UNRESOLVED_UNCALIBRATED", "PROVISIONAL_UNRESOLVED"],
+  ["ORDINARY_WITHIN_NOISE_BAND", "CLOSE_CALL_WITHIN_NOISE"]
+]);
+const NO_EDGE_CONFIDENCE = {
+  PROVISIONAL_UNRESOLVED: { label: "Unresolved", rules: ["conservative hold: an ORDINARY comparison the uncalibrated projection-noise policy cannot resolve; no validated edge"] },
+  CLOSE_CALL_WITHIN_NOISE: { label: "Close call", rules: ["conservative hold: the projection difference is within the calibrated noise band; no validated edge"] }
+};
+
 function decideFlexSlot(slot, pool, request) {
   const eligibleAll = pool.filter((p) => slot.eligiblePositions.includes(p.position));
   if (!eligibleAll.length) return null;
@@ -539,10 +553,15 @@ function decideFlexSlot(slot, pool, request) {
   // challengers, otherwise the next established option.
   const byProjection = evaluations.filter((e) => e.challenger.projection.admissible)
     .sort((a, b) => b.challenger.projection.points - a.challenger.projection.points);
-  const mostRelevant = byProjection[0] || evaluations[0] || null;
+  // An ORDINARY comparison the policy cannot yet resolve is the comparison
+  // that matters: the incumbent is a conservative hold, not a validated edge.
+  const unresolved = byProjection.filter((e) => UNRESOLVED_RESOLUTIONS.has(e.result.resolution));
+  const mostRelevant = unresolved[0] || byProjection[0] || evaluations[0] || null;
   const comparator = mostRelevant ? mostRelevant.challenger : (reassessedFrom || ordered[1] || null);
+  const decisionState = mostRelevant && UNRESOLVED_RESOLUTIONS.has(mostRelevant.result.resolution)
+    ? UNRESOLVED_RESOLUTIONS.get(mostRelevant.result.resolution) : "DECIDED";
   return { starter: incumbent, comparator, decidedBy: evaluations.length && decidedBy === "ESTABLISHED_BASELINE" ? "ESTABLISHED_BASELINE_PRESERVED" : decidedBy,
-    gate: mostRelevant ? mostRelevant.result : null, blockedChallengers: evaluations, reassessedFrom };
+    gate: mostRelevant ? mostRelevant.result : null, blockedChallengers: evaluations, reassessedFrom, decisionState };
 }
 
 function decideLineup({ rankings, candidates, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [] }) {
@@ -561,6 +580,7 @@ function decideLineup({ rankings, candidates, slots, scoring, season, week, regi
 
   const records = [];
   const unfilled = [];
+  const setAsideSoFar = new Set();
   expandSlots(slots).forEach((slot) => {
     const decision = slot.eligiblePositions.length === 1 ? decideFixedSlot(slot, pool) : decideFlexSlot(slot, pool, request);
     if (!decision) { unfilled.push({ slotLabel: slot.slotLabel, eligiblePositions: slot.eligiblePositions }); return; }
@@ -576,12 +596,18 @@ function decideLineup({ rankings, candidates, slots, scoring, season, week, regi
         comparisonClass: e.result.comparisonClass || null, resolution: e.result.resolution || null, classReasons: e.result.classReasons || [],
         failed: e.result.conditions.filter((c) => !c.passed).map((c) => c.code) })),
       reassessedFrom: decision.reassessedFrom || null,
+      // True when an earlier slot already set this player aside for the same
+      // evidence: the slot did not newly decide that, so its explanation does
+      // not repeat the narrative (kept here for audit).
+      reassessedFromCarriedForward: Boolean(decision.reassessedFrom && setAsideSoFar.has(decision.reassessedFrom)),
+      decisionState: decision.decisionState || (decision.starter ? "DECIDED" : "NO_CALL"),
       promotedSignal: decision.promotedSignal || null,
       candidates: decision.candidates || null,
-      confidence: decision.starter
-        ? confidenceFor(decision.starter, decision.comparator, decision.decidedBy)
-        : { label: "None", rules: ["no legal option has Weekly SAGE standing"] }
+      confidence: !decision.starter
+        ? { label: "None", rules: ["no legal option has Weekly SAGE standing"] }
+        : NO_EDGE_CONFIDENCE[decision.decisionState] || confidenceFor(decision.starter, decision.comparator, decision.decidedBy)
     });
+    if (decision.reassessedFrom) setAsideSoFar.add(decision.reassessedFrom);
   });
 
   const benchWatch = pool.filter((p) => p.stateChanges.length).map((p) => ({ name: p.name, position: p.position, stateChanges: p.stateChanges }));
@@ -614,7 +640,10 @@ function explainSlot(record) {
 
   const validityText = (p) => p.baselineValidity.triggers.map((t) => t.detail).join(" ");
   const r = record.reassessedFrom;
-  if (r) {
+  const decidedHere = r && record.decidedBy === "BASELINE_REASSESSED";
+  if (r && record.reassessedFromCarriedForward && decidedHere) {
+    why.push(`${r.name} remains set aside (see the earlier ${r.position} slot).`);
+  } else if (decidedHere) {
     why.push(`${r.name} (${label(r)}) leads in Weekly SAGE, but that standing is under REASSESS and was set aside for this slot: ${validityText(r)}`);
     why.push(`A VALID ${r.position} with a higher fresh projection was available, so ${r.name}'s standing no longer gets the benefit of the doubt.`);
     whatCouldChange.push(`${r.name}'s current-state evidence clearing would restore that standing's authority.`);
@@ -636,6 +665,8 @@ function explainSlot(record) {
     why.push(`${s.name} starts on a promoted, verified forward signal: ${record.promotedSignal.id}.`);
   } else if (record.decidedBy === "UNRANKED_FILL") {
     why.push(`${s.name} is the only remaining legal option for ${record.slotLabel}. Weekly SAGE has no standing for this player.`);
+  } else if (NO_EDGE_CONFIDENCE[record.decisionState] && c && record.gate) {
+    unresolvedLines(record, why, whatCouldChange);
   } else if (record.decidedBy === "DISPLACEMENT_GATE_PASSED") {
     why.push(`${s.name} (${label(s)}) displaces ${c.name} (${label(c)}). Every displacement condition passed:`);
     record.gate.conditions.forEach((cond) => why.push(cond.detail));
@@ -659,13 +690,32 @@ function explainSlot(record) {
 
   return {
     slot: record.slotLabel,
-    headline: c ? `START ${s.name.toUpperCase()} over ${c.name.toUpperCase()} — ${record.confidence.label} edge` : `START ${s.name.toUpperCase()}`,
+    headline: NO_EDGE_CONFIDENCE[record.decisionState] && c
+      ? `${record.decisionState === "PROVISIONAL_UNRESOLVED" ? "PROVISIONAL" : "CLOSE CALL"}: START ${s.name.toUpperCase()} — no validated edge over ${c.name.toUpperCase()}`
+      : c ? `START ${s.name.toUpperCase()} over ${c.name.toUpperCase()} — ${record.confidence.label} edge` : `START ${s.name.toUpperCase()}`,
+    decisionState: record.decisionState,
     why,
     materialFacts: [...new Set(materialFacts)],
     whatCouldChange: [...new Set(whatCouldChange)],
     confidence: record.confidence.label,
     decidedBy: record.decidedBy
   };
+}
+
+// A conservative hold is explained as exactly that: the incumbent is kept by
+// the decision process, not because SAGE has shown an edge.
+function unresolvedLines(record, why, whatCouldChange) {
+  const s = record.starter, c = record.comparator, band = record.gate.band || {};
+  const proj = (p) => (freshAdmissible(p) ? p.projection.points.toFixed(1) : "n/a");
+  if (record.decisionState === "PROVISIONAL_UNRESOLVED") {
+    why.push(`${s.name} (${label(s)}) is kept as the conservative incumbent because the projection-noise policy has not yet been calibrated by historical backtest.`);
+    why.push(`${c.name} (${label(c)}) projects higher in the current source (${c.projection.source}: ${proj(c)} vs ${proj(s)}), but SAGE cannot yet show that the gap exceeds normal projection error. This is a conservative hold, not a validated edge.`);
+    whatCouldChange.push("A calibrated projection-noise band (historical backtest) would resolve this comparison.");
+  } else {
+    why.push(`${s.name} (${label(s)}) is kept as the conservative incumbent: the projection difference with ${c.name} (${proj(c)} vs ${proj(s)}) is within the calibrated noise band (${band.value}).`);
+    why.push("Neither player has a validated edge; this is a close call.");
+  }
+  whatCouldChange.push(`Verified, validated evidence of a larger role for ${c.name}.`);
 }
 
 function crossPositionLines(record, why, whatCouldChange) {
@@ -797,6 +847,9 @@ function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, w
       decidedBy: r.decidedBy,
       gate: r.gate,
       reassessedFrom: r.reassessedFrom ? r.reassessedFrom.name : null,
+      reassessedFromCarriedForward: r.reassessedFromCarriedForward,
+      decisionState: r.decisionState,
+      hasValidatedEdge: r.decisionState === "DECIDED",
       blockedChallengers: r.blockedChallengers,
       promotedSignal: r.promotedSignal,
       candidates: r.candidates ? r.candidates.map(publicPacket) : null,

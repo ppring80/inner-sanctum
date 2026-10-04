@@ -45,7 +45,7 @@ function fixture() {
   return { rankings: { positions }, roster, slots, scoring: 'half', season: 2026, week: 4 };
 }
 
-const recordDecision = (record) => record.slots.map((s) => ({ slot: s.slotLabel, player: s.starter ? s.starter.name : null, confidence: s.confidence.label }));
+const recordDecision = (record) => record.slots.map((s) => ({ slot: s.slotLabel, player: s.starter ? s.starter.name : null, confidence: s.confidence.label, decisionState: s.decisionState, hasValidatedEdge: s.hasValidatedEdge }));
 
 let passed = 0;
 function test(name, fn) { fn(); passed += 1; console.log('  ok - ' + name); }

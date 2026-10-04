@@ -35,10 +35,11 @@ const allPackets = (r) => [...r.slots.flatMap((s) => [s.starter, s.comparator]),
 
 // TEST-ONLY observed snapshot giving every rostered RB/WR/TE the same
 // established moderate role, so ORDINARY comparisons can exist mechanically.
-const equalRoles = fromSnapshot({ season: ROSTER.season, weeksRequested: [1, 2, 3], computedAt: 'test-only', records: Object.fromEntries(ROSTER.roster
+const { withRawGames } = require('./helpers/opportunity-snapshot.js');
+const equalRoles = fromSnapshot(withRawGames({ weeks: [1, 2, 3], computedAt: '2026-09-30T00:00:00Z', records: Object.fromEntries(ROSTER.roster
   .filter((p) => ['RB', 'WR', 'TE'].includes(p.position)).map((p) => [`${normalizePlayerName(p.name)}|${p.position}`, {
     opportunities: { lastGame: 8, avgLast3: 8, avgLast5: 8 }, persistence: { gamesSampled: 3 },
-    signals: [{ type: 'sampleSize', value: 'adequate' }, { type: 'trendClassification', value: 'stable' }, { type: 'volumeTier', value: 'moderate-volume' }] }])) },
+    signals: [{ type: 'sampleSize', value: 'adequate' }, { type: 'trendClassification', value: 'stable' }, { type: 'volumeTier', value: 'moderate-volume' }] }])) }),
   { season: ROSTER.season, week: ROSTER.week });
 
 let passed = 0;

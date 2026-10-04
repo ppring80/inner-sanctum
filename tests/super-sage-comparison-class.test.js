@@ -34,9 +34,10 @@ function rankings(extra = []) {
   extra.forEach((x) => { positions[x.position][x.rank - 1] = x; });
   return { metadata: { availability: { updatedAt: T0, fresh: true } }, positions };
 }
-const opp = (map) => fromSnapshot({ season: 2026, weeksRequested: [1, 2, 3], computedAt: T0, records: Object.fromEntries(Object.entries(map).map(([k, [avg, vol]]) => [k, {
+const { withRawGames } = require('./helpers/opportunity-snapshot.js');
+const opp = (map) => fromSnapshot(withRawGames({ weeks: [1, 2, 3], computedAt: T0, records: Object.fromEntries(Object.entries(map).map(([k, [avg, vol]]) => [k, {
   opportunities: { lastGame: avg, avgLast3: avg, avgLast5: avg }, persistence: { gamesSampled: 3 },
-  signals: [{ type: 'sampleSize', value: 'adequate' }, { type: 'trendClassification', value: 'stable' }, { type: 'volumeTier', value: vol }] }])) }, { season: 2026, week: 4 });
+  signals: [{ type: 'sampleSize', value: 'adequate' }, { type: 'trendClassification', value: 'stable' }, { type: 'volumeTier', value: vol }] }])) }), { season: 2026, week: 4 });
 const slots = [{ slotLabel: 'W/R/T', eligiblePositions: ['RB', 'WR'], count: 1 }];
 function run(players, { policy = POLICY, opportunity = null } = {}) {
   return buildLineupDecisionRecord({ rankings: rankings(players), roster: players.map((x) => ({ name: x.name, position: x.position })), slots, scoring: 'half', season: 2026, week: 4, policy, opportunity });
@@ -65,7 +66,14 @@ test('coherent complete evidence is ORDINARY; while uncalibrated, the projection
   assert.strictEqual(s.starter.name, 'Incumbent RB');
   assert.strictEqual(s.gate.comparisonClass, 'ORDINARY');
   assert.strictEqual(s.gate.resolution, 'ORDINARY_UNRESOLVED_UNCALIBRATED');
-  assert.ok(s.explanation.why.some((w) => /projection-noise band is not yet calibrated/.test(w)));
+  // An unresolved comparison is a conservative hold, never an edge.
+  assert.strictEqual(s.decisionState, 'PROVISIONAL_UNRESOLVED');
+  assert.strictEqual(s.hasValidatedEdge, false);
+  assert.strictEqual(s.confidence.label, 'Unresolved');
+  assert.match(s.explanation.headline, /^PROVISIONAL: START INCUMBENT RB — no validated edge over CHALLENGER WR$/);
+  assert.ok(!/(Strong|Moderate|Limited) edge/.test(s.explanation.headline));
+  assert.ok(s.explanation.why.some((w) => /not yet been calibrated/.test(w)));
+  assert.ok(s.explanation.why.some((w) => /conservative hold, not a validated edge/.test(w)));
 });
 
 test('with a calibrated band, a coherent ORDINARY comparison is resolved by a projection gap beyond the band', () => {
@@ -76,6 +84,11 @@ test('with a calibrated band, a coherent ORDINARY comparison is resolved by a pr
   const within = run([INC, CH(8.0)], { opportunity: roles, policy: TEST_ONLY_CALIBRATED });
   assert.strictEqual(within.slots[0].starter.name, 'Incumbent RB');
   assert.strictEqual(within.slots[0].gate.resolution, 'ORDINARY_WITHIN_NOISE_BAND');
+  assert.strictEqual(within.slots[0].decisionState, 'CLOSE_CALL_WITHIN_NOISE');
+  assert.strictEqual(within.slots[0].confidence.label, 'Close call');
+  assert.strictEqual(within.slots[0].hasValidatedEdge, false);
+  assert.strictEqual(beyond.slots[0].decisionState, 'DECIDED');
+  assert.strictEqual(beyond.slots[0].hasValidatedEdge, true);
 });
 
 test('a projection never overrides contradictory evidence (each contradiction makes the comparison SURPRISING)', () => {
@@ -92,11 +105,21 @@ test('a projection never overrides contradictory evidence (each contradiction ma
   });
 });
 
-test('observed workload contradicting the challenge makes it SURPRISING; incomplete role evidence too', () => {
-  const contradict = opp({ 'incumbent rb|RB': [16, 'high-volume'], 'challenger wr|WR': [3, 'role-player'] });
-  const r = run([INC, CH(12)], { opportunity: contradict, policy: TEST_ONLY_CALIBRATED });
-  assert.strictEqual(r.slots[0].gate.comparisonClass, 'SURPRISING');
-  assert.ok(r.slots[0].gate.classReasons.some((x) => /Observed workload contradicts/.test(x)));
+test('position-calibrated volume labels are never ranked across positions; incomplete role evidence is still SURPRISING', () => {
+  // RB high-volume vs WR role-player: labels describe each role, but there is
+  // no validated mapping between positions, so no contradiction is claimed.
+  const labels = opp({ 'incumbent rb|RB': [16, 'high-volume'], 'challenger wr|WR': [3, 'role-player'] });
+  const r = run([INC, CH(12)], { opportunity: labels, policy: TEST_ONLY_CALIBRATED });
+  assert.ok(!r.slots[0].gate.classReasons.some((x) => /Observed workload contradicts/.test(x)), 'no cross-position label contradiction');
+  assert.strictEqual(r.slots[0].gate.comparisonClass, 'ORDINARY');
+  // ...and the reverse labelling changes nothing either (label symmetry).
+  const reversed = run([INC, CH(12)], { opportunity: opp({ 'incumbent rb|RB': [3, 'role-player'], 'challenger wr|WR': [16, 'high-volume'] }), policy: TEST_ONLY_CALIBRATED });
+  assert.strictEqual(reversed.slots[0].gate.comparisonClass, r.slots[0].gate.comparisonClass);
+  assert.strictEqual(reversed.slots[0].starter.name, r.slots[0].starter.name);
+  // Labels still DESCRIBE each player's own role.
+  const described = [r.slots[0].starter, r.slots[0].comparator].map((x) => `${x.name}: ${x.establishedRole.description}`);
+  assert.ok(described.some((d) => /^Incumbent RB: Established high-volume role/.test(d)), described.join(' | '));
+  assert.ok(described.some((d) => /^Challenger WR: Established role-player role/.test(d)), described.join(' | '));
   const incomplete = run([INC, CH(12)], { policy: TEST_ONLY_CALIBRATED });
   assert.ok(incomplete.slots[0].gate.classReasons.some((x) => /Established-role evidence is incomplete/.test(x)));
 });

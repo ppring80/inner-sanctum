@@ -14,7 +14,9 @@ const record = (avg, volume = 'moderate-volume', sample = 'adequate', trend = 's
   opportunities: { lastGame: avg, avgLast3: avg, avgLast5: avg }, persistence: { gamesSampled: 3 },
   signals: [{ type: 'sampleSize', value: sample }, { type: 'trendClassification', value: trend }, { type: 'volumeTier', value: volume }]
 });
-const snap = (weeks, records, season = 2026) => ({ season, weeksRequested: weeks, computedAt: '2026-10-01T00:00:00Z', records });
+const { withRawGames } = require('./helpers/opportunity-snapshot.js');
+// Raw games (the leakage authority) carry exactly the weeks the snapshot claims.
+const snap = (weeks, records, season = 2026) => withRawGames({ weeks, records, season });
 const store = (map) => ({ async get(key) { return map[key] || null; } });
 
 let passed = 0;
@@ -35,7 +37,7 @@ async function test(name, fn) { await fn(); passed += 1; console.log('  ok - ' +
     }
   });
 
-  await test('a snapshot that does not declare its weeks, or is from another season, is rejected', async () => {
+  await test('a snapshot without raw observations, or from another season, is rejected', async () => {
     assert.strictEqual(validateSnapshot({ records: {} }, { season: 2026, week: 4 }).ok, false);
     assert.strictEqual(fromSnapshot(snap([1, 2, 3], {}, 2025), { season: 2026, week: 4 }).status, 'REJECTED');
   });
