@@ -179,6 +179,8 @@ function toMcpStartersFromRecord(record) {
     // contract while the richer shared-authority detail stays in superSage.
     slotLabel: s.slotLabel,
     eligiblePositions: Array.isArray(s.eligiblePositions) ? s.eligiblePositions : [],
+    // Internal aliases retained for existing parity/airtight regression consumers.
+    slot: s.slotLabel,
     playerID: null,
     player: s.starter.name,
     position: s.starter.position || null,
@@ -189,6 +191,12 @@ function toMcpStartersFromRecord(record) {
     rosterStatus: s.starter.availability
       ? s.starter.availability.rosterStatus || s.starter.availability.injuryStatus || null
       : null,
+    weeklySage: rankLabel(s.starter),
+    tier: s.starter.baseline ? s.starter.baseline.tier : null,
+    decisionState: s.decisionState,
+    hasValidatedEdge: s.hasValidatedEdge !== false,
+    confidence: s.confidence.label,
+    versus: s.comparator ? s.comparator.name : null,
     // Material state changes are never hidden behind opt-in detail.
     reason: [s.explanation.headline, ...s.explanation.why.slice(0, 2), ...s.explanation.materialFacts, statusLine(s.starter)]
       .filter(Boolean).join(" ") || null
