@@ -112,6 +112,34 @@ const STATE_TAG = { PROVISIONAL_UNRESOLVED: "provisional", CLOSE_CALL_WITHIN_NOI
 const shortName = (p) => (p ? p.name : "—");
 const rankLabel = (p) => (p && p.baseline && p.baseline.positionRank != null ? `${p.position}${p.baseline.positionRank}` : (p ? p.position : ""));
 
+// SUPER SAGE PRODUCT CONTRACT V1
+// Customer-facing explanations must make non-obvious decisions understandable,
+// not merely expose which internal rule fired. Everything here is presentation
+// of evidence already frozen in the decision record; it never re-decides.
+const fmt = (n) => Number.isFinite(Number(n)) ? Number(n).toFixed(1) : null;
+function evidenceSnapshot(p) {
+  if (!p) return [];
+  const bits = [];
+  const rank = rankLabel(p);
+  if (rank) bits.push(rank + (p.baseline && p.baseline.tier ? `/${p.baseline.tier}` : ""));
+  if (p.projection && p.projection.value != null) bits.push(`projection ${fmt(p.projection.value)}`);
+  if (p.observedOpportunity && p.observedOpportunity.avgLast3 != null) {
+    bits.push(`${fmt(p.observedOpportunity.avgLast3)} recent opportunities/game`);
+  }
+  if (p.establishedRole && p.establishedRole.status === "ESTABLISHED" && p.establishedRole.level) {
+    bits.push(`${p.establishedRole.level} established role`);
+  }
+  if (p.matchup && p.matchup.label) bits.push(`${p.matchup.label} matchup`);
+  return bits;
+}
+function decisionEvidenceLine(slot) {
+  if (!slot || !slot.starter || !slot.comparator) return null;
+  const a = evidenceSnapshot(slot.starter);
+  const b = evidenceSnapshot(slot.comparator);
+  if (!a.length && !b.length) return null;
+  return `${slot.starter.name}: ${a.join(", ")}. ${slot.comparator.name}: ${b.join(", ")}.`;
+}
+
 function statusLine(p) {
   const a = (p && p.availability) || {};
   if (!a.injuryStatus) return null;
@@ -141,11 +169,13 @@ function toCustomerAnswer(record, evidenceStatus = null) {
       const triggers = leader && leader.baselineValidity ? leader.baselineValidity.triggers.map((t) => TRIGGER_PHRASE[t.code]).filter(Boolean) : [];
       three.push(`${s.reassessedFrom}${leader ? ` (${rankLabel(leader)})` : ""} is set aside this week: current evidence contradicts his ranking${triggers.length ? ` (${[...new Set(triggers)].join(", ")})` : ""}. ${shortName(s.starter)} starts instead.`);
     } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator) {
-      three.push(`${shortName(s.starter)} is a provisional hold over ${shortName(s.comparator)}: ${shortName(s.comparator)} projects higher, but SAGE can't yet prove the gap beats normal projection error (calibration pending).`);
+      const evidence = decisionEvidenceLine(s);
+      three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is PROVISIONAL — no validated edge. ${evidence ? evidence + " " : ""}${shortName(s.comparator)} projects higher, but SAGE cannot yet prove that advantage exceeds normal projection error. This is a conservative hold, not proof that ${shortName(s.starter)} is the better play.`);
     } else if (s.decisionState === "CLOSE_CALL_WITHIN_NOISE" && s.comparator) {
       three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is a close call: the projection gap is within normal error.`);
     } else if (s.decidedBy === "DISPLACEMENT_GATE_PASSED" || s.decidedBy === "CURRENT_EVIDENCE_COMPARISON") {
-      three.push(`${shortName(s.starter)} starts over ${shortName(s.comparator)} on complete, coherent current evidence.`);
+      const evidence = decisionEvidenceLine(s);
+      three.push(`${shortName(s.starter)} starts over ${shortName(s.comparator)} on complete, coherent current evidence.${evidence ? " " + evidence : ""}`);
     }
   });
   if (noCall.length) three.push(`No call for ${noCall.map((s) => s.slotLabel).join(", ")}: Weekly SAGE has no standing for the candidates.`);
@@ -155,6 +185,12 @@ function toCustomerAnswer(record, evidenceStatus = null) {
   const firstSentence = (t) => { const m = String(t).match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : String(t); };
   (record.benchWatch || []).forEach((w) => { if (w.notes && w.notes.length) ten.push(`${w.player}: ${firstSentence(w.notes[0])}`); });
   decided.forEach((s) => { const line = statusLine(s.starter); if (line) ten.push(`${shortName(s.starter)} — ${line}`); });
+  // Non-obvious calls get a compact evidence comparison in the 10-second layer.
+  decided.filter((s) => s.comparator && (s.hasValidatedEdge === false || s.confidence.label === "Limited" || s.decidedBy === "BASELINE_REASSESSED"))
+    .forEach((s) => {
+      const line = decisionEvidenceLine(s);
+      if (line) ten.push(`Evidence: ${line}`);
+    });
   const could = [...new Set(decided.filter((s) => s.hasValidatedEdge === false || s.decidedBy === "BASELINE_REASSESSED")
     .flatMap((s) => s.explanation.whatCouldChange))].slice(0, 4);
   could.forEach((c) => ten.push(`Could change: ${c}`));
