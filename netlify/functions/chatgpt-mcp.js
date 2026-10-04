@@ -6102,6 +6102,8 @@ function buildServer(
                 recommendation: p.baseline && p.baseline.tier || null,
                 sageLabel: null,
                 rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || null,
+                lineupStatus: "BENCH",
+                rosterImplication: "NONE",
                 reason: "Start/sit call for this week only; does not imply drop."
               })),
               ...record.unavailable.map((p) => ({
@@ -6112,6 +6114,8 @@ function buildServer(
                 recommendation: p.baseline && p.baseline.tier || null,
                 sageLabel: null,
                 rosterStatus: rosterStatusByName.get(normalizePlayerName(p.name)) || (p.availability && (p.availability.rosterStatus || p.availability.injuryStatus)) || null,
+                lineupStatus: "UNAVAILABLE",
+                rosterImplication: "NONE",
                 reason: `Unavailable for an active lineup slot (${(p.availability && p.availability.effectiveStatus && p.availability.effectiveStatus.reported) || (p.availability && (p.availability.rosterStatus || p.availability.injuryStatus)) || "unavailable"}).`
               }))
             ];
