@@ -100,6 +100,19 @@ const SERVER_INFO = {
 
 const AUTH_STORE = "chatgpt-oauth";
 const SNAPSHOT_STORE = "league-snapshots";
+
+// Connected-league roster freshness contract. Browser-captured provider rosters
+// cannot be refreshed server-side without the provider browser session, so
+// personalized START/SIT fails closed once the captured roster is older than
+// this window instead of silently recommending players from stale membership.
+const MAX_LINKED_ROSTER_AGE_MS = 12 * 60 * 60 * 1000;
+
+function linkedRosterFreshness(snapshot, nowMs = Date.now()) {
+  const syncedAt = snapshot && snapshot.syncedAt ? Date.parse(snapshot.syncedAt) : NaN;
+  if (!Number.isFinite(syncedAt)) return { fresh: false, ageMs: null, reason: "missing_sync_time" };
+  const ageMs = Math.max(0, nowMs - syncedAt);
+  return { fresh: ageMs <= MAX_LINKED_ROSTER_AGE_MS, ageMs, reason: ageMs <= MAX_LINKED_ROSTER_AGE_MS ? null : "stale_roster" };
+}
 const MCP_RESOURCE =
   "https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp";
 const PROTECTED_RESOURCE_METADATA_URL =
@@ -5802,6 +5815,49 @@ function buildServer(
         };
       }
 
+      if (!usingPastedRoster) {
+        const freshness = linkedRosterFreshness(snapshot);
+        if (!freshness.fresh) {
+          const synced = snapshot.syncedAt || null;
+          const warning = synced
+            ? `Your connected roster was last refreshed at ${synced}. Reconnect/refresh the league before SAGE makes a lineup recommendation.`
+            : "SAGE cannot verify when your connected roster was last refreshed. Reconnect/refresh the league before requesting a lineup recommendation.";
+          return {
+            isError: true,
+            content: [{ type: "text", text: warning }],
+            structuredContent: {
+              source: "Inner Sanctum",
+              inputSource: "linked_league",
+              liveFantasyDataConnected: true,
+              lineupRequirementsAvailable: Boolean(snapshot.settings),
+              readOnly: true,
+              context: {
+                provider: snapshot.provider || null,
+                league: {
+                  id: snapshot.league && snapshot.league.id || null,
+                  name: snapshot.league && snapshot.league.name || null,
+                  season: snapshot.league && Number.isFinite(Number(snapshot.league.season)) ? Number(snapshot.league.season) : null,
+                  teamCount: snapshot.league && Number.isFinite(Number(snapshot.league.teamCount)) ? Number(snapshot.league.teamCount) : null
+                },
+                team: {
+                  id: snapshot.team && snapshot.team.id || null,
+                  name: snapshot.team && snapshot.team.name || null
+                },
+                week: resolvedWeek,
+                scoring: snapshot.scoringFormat || "unknown",
+                syncedAt: synced
+              },
+              starters: [],
+              bench: [],
+              unmatchedRosterPlayers: [],
+              unfilledSlots: [],
+              warnings: [warning],
+              error: freshness.reason
+            }
+          };
+        }
+      }
+
       const league =
         snapshot.league &&
         typeof snapshot.league === "object"
@@ -6994,6 +7050,8 @@ function buildServer(
 // ===========================================================
 
 exports._test = {
+  linkedRosterFreshness,
+  MAX_LINKED_ROSTER_AGE_MS,
   buildServer,
   getCurrentNFLWeek,
   resolveCurrentNFLWeek,
