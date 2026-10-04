@@ -1670,6 +1670,24 @@ function chooseComparisonWinner(
   }
 
   // 3. Existing production SAGE score.
+  // Same-position comparisons may use the existing score as a fallback.
+  // Cross-position comparisons must NOT manufacture a final winner from raw
+  // SAGE score or matchup. The shared Super SAGE lineup authority treats those
+  // comparisons conservatively and requires comparable/validated evidence.
+  if (positions.size > 1) {
+    return {
+      preferredPlayer: null,
+      preferredPlayerID: null,
+      action: null,
+      basis: [
+        "Cross-position comparison: no validated edge from comparable Super SAGE evidence."
+      ],
+      explanation:
+        "Super SAGE does not declare a final cross-position winner from raw SAGE score or matchup alone. Use the shared lineup authority for roster-context placement; if that authority marks the comparison provisional, this comparison remains provisional too.",
+      final: false
+    };
+  }
+
   const playersWithSageScore =
     foundPlayers.filter(
       (item) =>
