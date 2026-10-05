@@ -20,6 +20,11 @@ const newswire=require('../netlify/functions/sage-newswire');const {normalizeSto
  assert(live.stories.some(s=>s.player==='Justin Jefferson'&&s.status==='OUT'),'manual reports appear immediately despite a fresh older automatic cache');
  assert(live.stories.some(s=>s.player==='Breece Hall'&&s.status==='OUT'),'shared roundup URL must retain each affected player');
  assert(live.stories.some(s=>s.player==='Zay Flowers'&&s.status==='Questionable'));
+ assert(live.stories.some(s=>s.player==='Saquon Barkley'&&/hamstring/i.test(s.headline)),'Oct 4 Barkley injury must appear');
+ assert(live.stories.some(s=>s.player==="Ja'Marr Chase"&&s.status==='Concussion'),'Oct 4 Chase concussion must appear');
+ assert(live.stories.some(s=>s.player==='Lamar Jackson'&&/ankle/i.test(s.headline)),'Oct 4 Lamar injury must appear');
+ assert(live.stories.some(s=>s.player==='Rashee Rice'&&/hamstring/i.test(s.headline)),'Oct 4 Rice injury must appear');
+ assert(live.stories.some(s=>s.player==='Tyquan Thornton'&&/dislocated ankle/i.test(s.headline)),'Oct 4 Thornton injury must appear');
  assert(live.stories.filter(s=>s.featured).every(s=>Date.parse(s.publishedAt)>=Date.parse('2026-10-02')));
  assert.equal(mergeStories([{player:'One',sourceUrl:'same',headline:'One out'},{player:'Two',sourceUrl:'same',headline:'Two out'}],[]).length,2);
  cache={mode:'source-headlines',updatedAt:new Date().toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
