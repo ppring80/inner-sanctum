@@ -1,0 +1,11 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes('"get_week_postmortem"'),"MCP must expose Turbine #6 postmortem tool");
+assert.ok(src.includes('name: "super-sage-learning-packets"'),"postmortem must read dedicated learning packet store");
+assert.ok(src.includes("I will not reconstruct a pregame decision after the fact."),"postmortem must fail closed when frozen packets are absent");
+assert.ok(src.includes("buildWeekPostmortem"),"postmortem must delegate presentation to Turbine #6 presenter");
+assert.ok(src.includes("No learning case can automatically change production SAGE."),"postmortem must preserve promotion guardrail");
+console.log("Super SAGE Turbine #6 MCP wiring assertions passed.");
