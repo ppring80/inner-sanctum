@@ -1,0 +1,13 @@
+"use strict";
+const assert=require("assert");
+const {RAW_CASES}=require("./fixtures/super-sage-operator-unscripted-v1");
+const {inferRawCase}=require("../netlify/functions/_super-sage-operator-unscripted");
+const u09=inferRawCase(RAW_CASES.find(x=>x.id==="U09"));
+const view=u09.evidence.map(e=>({text:e.text,effect:e.effect,group:e.causalHint,material:e.materialChange}));
+console.log(JSON.stringify({id:"U09",evidence:view,independent:u09.independentEvidence.map(e=>({text:e.text,effect:e.effect,group:e.causalHint})),movement:u09.movement,threshold:u09.threshold},null,2));
+assert.strictEqual(u09.causalGroups.filter(g=>g==="role-erosion").length,1,"role erosion manifestations must collapse to one causal group");
+assert.strictEqual(new Set(u09.causalGroups).size,u09.causalGroups.length,"independent groups must be unique");
+assert.ok(u09.causalGroups.includes("history"),"historical prior is a separate evidence lineage");
+assert.ok(u09.causalGroups.includes("emerging-role"),"challenger current role is a separate evidence lineage");
+assert.strictEqual(u09.movement,"PRIOR_INVALIDATED");
+console.log("U09 facet inspection: PASS");
