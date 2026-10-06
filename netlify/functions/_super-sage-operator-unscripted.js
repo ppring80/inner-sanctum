@@ -48,19 +48,26 @@ function inferRawCase(raw={}){
  // evidence must exceed reinforcing evidence by >=2. Close cases stay put.
  let threshold="NOT_CROSSED";
  if(invalid.length) threshold="CROSSED";
- else if(reassess.length) threshold="UNRESOLVED";
+ else if(reassess.length && !informationComplete) threshold="UNRESOLVED";
+ else if(reassess.length && informationComplete){
+   // Complete information removes the escape hatch: reconcile known structural
+   // changes instead of calling them unresolved. Two or more challenger-side
+   // independent lines can cross; otherwise preserve the prior narrowly.
+   threshold=challenge.length>=2?"CROSSED":"NOT_CROSSED";
+ }
  else if(challenge.length>=reinforce.length+2) threshold="CROSSED";
 
  // Uncertainty is not one thing. MISSING_INFORMATION means a material state is
  // unresolved; CLOSE_CALL means the known evidence competes without crossing;
  // STABLE means the available evidence supports a clear threshold state.
- const unresolvedMaterial=evidence.some(e=>e.materialChange&&e.effect==="REASSESS_PRIOR");
+ const informationComplete=raw.informationState==="COMPLETE";
+ const unresolvedMaterial=!informationComplete && evidence.some(e=>e.materialChange&&e.effect==="REASSESS_PRIOR");
  let uncertaintyType="STABLE";
  if(threshold==="UNRESOLVED"&&unresolvedMaterial) uncertaintyType="MISSING_INFORMATION";
  else if(threshold==="NOT_CROSSED"&&challenge.length&&reinforce.length) uncertaintyType="CLOSE_CALL";
 
  return {id:raw.id,label:raw.label,mode:"SHADOW",canChangeProductionDecision:false,
-  prior:raw.prior||null,challenger:raw.challenger||null,customerConcern:raw.customerConcern||null,
+  prior:raw.prior||null,challenger:raw.challenger||null,customerConcern:raw.customerConcern||null,informationState:raw.informationState||"OPEN",
   evidence,independentEvidence:independent,causalGroups:[...byGroup.keys()],
   movement,threshold,uncertaintyType,
   guardrails:{finalPlayerCallAllowed:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
