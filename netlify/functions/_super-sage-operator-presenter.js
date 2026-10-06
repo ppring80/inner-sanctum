@@ -41,7 +41,7 @@ function presentDecision(trace,{customerConcern=null}={}){
 
   const p=[];
   p.push(`I'd start ${pick}.`);
-  if(concern) p.push(`Your concern is legitimate: ${sentence(lower(concern))}`);
+  if(concern) p.push(`Your concern is legitimate: ${sentence(concern)}`);
   if(reasons.length) p.push(reasons.slice(0,depth==="DEEP"?3:2).join(" "));
   if(losing && counter.length) p.push(`${losing} is a legitimate consideration. ${counter.slice(0,depth==="DEEP"?2:1).join(" ")}`);
   if(confidence) p.push(`I'd call this ${confidence.toLowerCase()} confidence.`);
