@@ -4,9 +4,9 @@ const {CASES}=require("./fixtures/super-sage-operator-gauntlet-v1");
 const {buildDecisionTrace}=require("../netlify/functions/_super-sage-decision-grammar");
 const {presentDecision}=require("../netlify/functions/_super-sage-operator-presenter");
 
-assert.strictEqual(CASES.length,10);
+const IDS=["G02","G06","G11","G17","G19","G22","G26","G36","G39","G43"];\nconst batch=IDS.map(id=>CASES.find(c=>c.id===id));\nassert.ok(batch.every(Boolean));
 const results=[];
-for(const c of CASES){
+for(const c of batch){
  const trace=buildDecisionTrace(c.input);
  const presentation=presentDecision(trace);
  assert.strictEqual(trace.mode,"SHADOW",c.id);
