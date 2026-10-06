@@ -23,7 +23,7 @@ function inferFact(f={}){
  else if(/more work|more touches|increased.*usage/i.test(text)) effect="CHALLENGES_PRIOR";
  else if(CHALLENGE.test(text)) effect="CHALLENGES_PRIOR";
  else if(REINFORCE.test(text)) effect="REINFORCES_PRIOR";
- return {...f,effect,materialChange:f.verified===true&&MATERIAL.test(text)};
+ const materialChange=f.verified===true&&MATERIAL.test(text);\n const evidenceStrength=!f.verified?"NONE":(effect==="INVALIDATES_PRIOR"?"STRUCTURAL":(materialChange?"MATERIAL":(effect==="REASSESS_PRIOR"?"MATERIAL":"SUPPORTING")));\n return {...f,effect,materialChange,evidenceStrength};
 }
 function inferRawCase(raw={}){
  const evidence=(raw.facts||[]).map(inferFact);
@@ -35,7 +35,7 @@ function inferRawCase(raw={}){
  const invalid=independent.filter(e=>e.effect==="INVALIDATES_PRIOR");
  const reassess=independent.filter(e=>e.effect==="REASSESS_PRIOR");
  const challenge=independent.filter(e=>e.effect==="CHALLENGES_PRIOR");
- const reinforce=independent.filter(e=>e.effect==="REINFORCES_PRIOR");
+ const reinforce=independent.filter(e=>e.effect==="REINFORCES_PRIOR");\n const materialChallenge=independent.filter(e=>e.effect==="CHALLENGES_PRIOR"&&["MATERIAL","STRUCTURAL"].includes(e.evidenceStrength));\n const materialReassess=reassess.filter(e=>["MATERIAL","STRUCTURAL"].includes(e.evidenceStrength));
  const informationComplete=raw.informationState==="COMPLETE";
  let movement="NO_DECISION_ACTIVE_MOVEMENT";
  if(invalid.length) movement="PRIOR_INVALIDATED";
@@ -54,7 +54,7 @@ function inferRawCase(raw={}){
    // Complete information removes the escape hatch: reconcile known structural
    // changes instead of calling them unresolved. Two or more challenger-side
    // independent lines can cross; otherwise preserve the prior narrowly.
-   threshold=challenge.length>=2?"CROSSED":"NOT_CROSSED";
+   threshold=(challenge.length>=2 || (materialReassess.length>=1 && challenge.length>=1) || materialChallenge.length>=1)?"CROSSED":"NOT_CROSSED";
  }
  else if(challenge.length>=reinforce.length+2) threshold="CROSSED";
 
@@ -68,7 +68,7 @@ function inferRawCase(raw={}){
 
  return {id:raw.id,label:raw.label,mode:"SHADOW",canChangeProductionDecision:false,
   prior:raw.prior||null,challenger:raw.challenger||null,customerConcern:raw.customerConcern||null,informationState:raw.informationState||"OPEN",
-  evidence,independentEvidence:independent,causalGroups:[...byGroup.keys()],
+  evidence,independentEvidence:independent,causalGroups:[...byGroup.keys()],evidenceStrength:{materialReassess:materialReassess.length,materialChallenge:materialChallenge.length},
   movement,threshold,uncertaintyType,
   guardrails:{finalPlayerCallAllowed:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
 }
