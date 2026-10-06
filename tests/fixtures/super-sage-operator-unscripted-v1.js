@@ -54,6 +54,31 @@ const RAW_CASES=[
 {text:"Player A has a tiny role edge.",verified:true,source:"current role",causalHint:"a-role"},
 {text:"Player B has a tiny matchup edge.",verified:true,source:"current matchup",causalHint:"b-matchup"},
 {text:"Projection difference is within normal model noise.",verified:true,source:"projection uncertainty",causalHint:"projection-noise"},
-{text:"No material injury, role, opponent-personnel or scheme change is known.",verified:true,source:"current state",causalHint:"stable-state"}]}
+{text:"No material injury, role, opponent-personnel or scheme change is known.",verified:true,source:"current state",causalHint:"stable-state"}]},
+{id:"U11",label:"Complete conflict QB — no more news coming",informationState:"COMPLETE",prior:{player:"Veteran QB",strength:"MODERATE"},challenger:{player:"Dual-Threat QB"},facts:[
+{text:"Veteran QB has a small projection edge.",verified:true,source:"current projection",causalHint:"projection"},
+{text:"Dual-Threat QB has the better verified pass-defense matchup.",verified:true,source:"current matchup",causalHint:"matchup"},
+{text:"Dual-Threat QB has an independent rushing production path.",verified:true,source:"observed role",causalHint:"rushing"},
+{text:"Dual-Threat QB's starting left tackle is out.",verified:true,source:"official final status",causalHint:"offense-losses"},
+{text:"Dual-Threat QB's WR1 is out.",verified:true,source:"official final status",causalHint:"offense-losses"},
+{text:"All relevant final statuses are known and no additional pre-lock information is expected.",verified:true,source:"decision clock",causalHint:"information-complete"}]},
+{id:"U12",label:"Complete conflict WR — defensive help versus offensive damage",informationState:"COMPLETE",prior:{player:"Established WR",strength:"STRONG"},challenger:{player:"Alternative WR"},facts:[
+{text:"Opponent CB1 is out and directly matched the Established WR's alignment.",verified:true,source:"official final status",causalHint:"secondary-state"},
+{text:"Established WR's starting quarterback is out.",verified:true,source:"official final status",causalHint:"qb-state"},
+{text:"Heavy wind is confirmed for the game window.",verified:true,source:"current weather",causalHint:"weather-state"},
+{text:"Alternative WR retains a stable full-time role in a neutral environment.",verified:true,source:"current role",causalHint:"alternative-role"},
+{text:"All relevant final statuses are known and no additional pre-lock information is expected.",verified:true,source:"decision clock",causalHint:"information-complete"}]},
+{id:"U13",label:"Complete conflict RB — matchup versus damaged blocking",informationState:"COMPLETE",prior:{player:"Established RB",strength:"STRONG"},challenger:{player:"Alternative RB"},facts:[
+{text:"Established RB retains the stronger verified touch role.",verified:true,source:"current role",causalHint:"incumbent-role"},
+{text:"Established RB has the better run-defense matchup.",verified:true,source:"current matchup",causalHint:"run-matchup"},
+{text:"Two starting offensive linemen are out.",verified:true,source:"official final status",causalHint:"ol-state"},
+{text:"Alternative RB has a stable three-down role in a neutral matchup.",verified:true,source:"current role",causalHint:"alternative-role"},
+{text:"All relevant final statuses are known and no additional pre-lock information is expected.",verified:true,source:"decision clock",causalHint:"information-complete"}]},
+{id:"U14",label:"Complete conflict ranking versus fresh role",informationState:"COMPLETE",prior:{player:"Ranking Favorite",strength:"MODERATE"},challenger:{player:"Fresh Role Player"},facts:[
+{text:"The current published ranking favors Ranking Favorite.",verified:true,source:"ranking snapshot",causalHint:"ranking"},
+{text:"Fresh Role Player received a verified material role increase after that ranking snapshot.",verified:true,source:"official/team role update",causalHint:"fresh-role"},
+{text:"Fresh Role Player also has the slightly better matchup.",verified:true,source:"current matchup",causalHint:"matchup"},
+{text:"All relevant final statuses are known and no additional pre-lock information is expected.",verified:true,source:"decision clock",causalHint:"information-complete"}]}
+
 ];
 module.exports={RAW_CASES};
