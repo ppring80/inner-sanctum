@@ -45,7 +45,7 @@ function presentDecision(trace,{customerConcern=null}={}){
   if(reasons.length) p.push(reasons.slice(0,depth==="DEEP"?3:2).join(" "));
   if(losing && counter.length) p.push(`${losing} is a legitimate consideration. ${counter.slice(0,depth==="DEEP"?2:1).join(" ")}`);
   if(confidence) p.push(`I'd call this ${confidence.toLowerCase()} confidence.`);
-  if(flips.length && depth!=="QUICK") p.push(`I'd reopen the decision if ${lower(flips[0])}`);
+  if(flips.length) p.push(`I'd reopen the decision if ${lower(flips[0])}`);
 
   return {
     version:VERSION,type:"SUPER_SAGE_PRESENTATION",mode:"SHADOW",available:true,
