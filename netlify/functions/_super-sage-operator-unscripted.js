@@ -65,4 +65,41 @@ function inferRawCase(raw={}){
   movement,threshold,uncertaintyType,
   guardrails:{finalPlayerCallAllowed:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
 }
-module.exports={inferFact,inferRawCase};
+
+function provisionalCall(raw={}){
+ const inference=inferRawCase(raw);
+ const incumbent=raw?.prior?.player||null;
+ const challenger=raw?.challenger?.player||null;
+ let selected=null;
+ let status="NO_CALL";
+ let rationale=null;
+
+ if(inference.threshold==="CROSSED"){
+   selected=challenger;
+   status="PROVISIONAL_CALL";
+   rationale="Independent decision-active evidence crossed the threshold against the prior.";
+ } else if(inference.threshold==="NOT_CROSSED"){
+   selected=incumbent;
+   status="PROVISIONAL_CALL";
+   rationale=inference.uncertaintyType==="CLOSE_CALL"
+     ?"The evidence is close, but it did not cross the threshold required to overturn the prior."
+     :"The available decision-active evidence did not overturn the prior.";
+ } else if(inference.threshold==="UNRESOLVED"){
+   status="CONDITIONAL";
+   rationale="A material state remains unresolved; a definitive player call would manufacture certainty.";
+ }
+
+ return {
+   type:"SUPER_SAGE_PROVISIONAL_CALL",
+   mode:"TUMBLER_ONLY",
+   canChangeProductionDecision:false,
+   selected,status,rationale,
+   incumbent,challenger,
+   movement:inference.movement,
+   threshold:inference.threshold,
+   uncertaintyType:inference.uncertaintyType,
+   evidenceUsed:inference.independentEvidence.map(e=>({text:e.text,effect:e.effect,group:e.causalHint||e.text})),
+   guardrails:{productionAuthority:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}
+ };
+}
+module.exports={inferFact,inferRawCase,provisionalCall};
