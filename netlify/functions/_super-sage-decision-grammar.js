@@ -43,7 +43,8 @@ function normalizeEvidence(item = {}, index = 0) {
     fresh: item.fresh !== false,
     source: clean(item.source),
     causalGroup: clean(item.causalGroup) || clean(item.id) || `evidence-${index + 1}`,
-    note: clean(item.note)
+    note: clean(item.note),
+    customerConcern: item.customerConcern === true || item.source === "customer-stated-concern"
   };
 }
 
