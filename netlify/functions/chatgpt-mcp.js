@@ -70,6 +70,7 @@ const {
 const { readCachedWeeklySchedule } = require("./_weekly-sage-schedule-cache.js");
 const { buildKickoffIndex, decisionCutoff } = require("./_super-sage-kickoff.js");
 const { loadObservedOpportunity, normalizeName: normalizeProducerName } = require("./_super-sage-opportunity-evidence.js");
+const { buildWeekPostmortem, postmortemText } = require("./_super-sage-postmortem-presenter.js");
 
 const {
   connectLambda,
@@ -325,6 +326,18 @@ const LineupRecommendationOutputSchema = z.object({
   // contract remains stable for existing MCP consumers.
   materialBenchContext: z.array(z.any()).optional(),
   superSage: z.record(z.any()).optional(),
+  error: z.string().optional()
+});
+
+const WeekPostmortemOutputSchema = z.object({
+  source: z.string(),
+  available: z.boolean(),
+  readOnly: z.boolean(),
+  season: z.number().int(),
+  week: z.number().int(),
+  teamName: z.string().nullable(),
+  report: z.record(z.any()).nullable(),
+  limitations: z.array(z.string()),
   error: z.string().optional()
 });
 
@@ -6278,6 +6291,67 @@ function buildServer(
           ],
           structuredContent
         };
+      }
+    }
+  );
+
+  // =========================================================
+  // TURBINE #6 — GET WEEK POSTMORTEM
+  // =========================================================
+  // Read-only. Consumes only completed, already-attributed learning packets
+  // from the dedicated postgame store. It never reconstructs a historical
+  // decision with hindsight and never changes rankings or production policy.
+  server.registerTool(
+    "get_week_postmortem",
+    {
+      title: "Get Super SAGE Week Postmortem",
+      description:
+        "Reviews completed Super SAGE decisions for a prior week and separates decision quality, prediction misses, evidence quality, explanation quality, injuries, and ordinary variance. Use for questions such as 'what went wrong last week', 'was my lineup bad or unlucky', or 'what should SAGE learn'. The tool reads only frozen completed learning packets; if no temporally valid packets exist it fails closed rather than recreating a pregame decision with hindsight. It is read-only and cannot change rankings or production logic.",
+      inputSchema: z.object({
+        season: z.number().int().min(2026).max(2035).optional(),
+        week: z.number().int().min(1).max(18)
+      }),
+      outputSchema: WeekPostmortemOutputSchema,
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+    },
+    async ({ season, week }) => {
+      const snapshot = authContext && authContext.snapshot ? authContext.snapshot : null;
+      const resolvedSeason = season || num(snapshot && snapshot.league && snapshot.league.season) || DEFAULT_SEASON;
+      const teamName = cleanString(snapshot && snapshot.team && snapshot.team.name);
+      const base = {
+        source: "Super SAGE Turbine #6",
+        available: false,
+        readOnly: true,
+        season: resolvedSeason,
+        week,
+        teamName,
+        report: null,
+        limitations: [
+          "Only frozen pregame decisions with separately appended postgame outcomes are admissible.",
+          "No historical decision is recreated from postgame information.",
+          "No learning case can automatically change production SAGE."
+        ]
+      };
+      if (!snapshot || !authContext || !authContext.snapshotKey) {
+        return { isError: true, content: [{ type: "text", text: "A linked Inner Sanctum league is required for a personalized Super SAGE postmortem." }], structuredContent: { ...base, error: "league_not_connected" } };
+      }
+      try {
+        const store = getStore({ name: "super-sage-learning-packets" });
+        const prefix = authContext.snapshotKey + "/" + resolvedSeason + "/w" + String(week).padStart(2, "0") + "/";
+        const listed = await store.list({ prefix });
+        const packets = [];
+        for (const blob of (listed && listed.blobs) || []) {
+          const packet = await store.get(blob.key, { type: "json" });
+          if (packet && packet.type === "SUPER_SAGE_LEARNING_PACKET" && packet.decisionId) packets.push(packet);
+        }
+        if (!packets.length) {
+          return { content: [{ type: "text", text: "Super SAGE has no completed, hindsight-safe learning packets for that linked team and week. I will not reconstruct a pregame decision after the fact." }], structuredContent: base };
+        }
+        const report = buildWeekPostmortem(packets, { teamName: teamName || "Linked team", season: resolvedSeason, week });
+        return { content: [{ type: "text", text: postmortemText(report) }], structuredContent: { ...base, available: true, report } };
+      } catch (error) {
+        console.error("Super SAGE postmortem error:", error);
+        return { isError: true, content: [{ type: "text", text: "Super SAGE could not read the completed learning packets right now." }], structuredContent: { ...base, error: "postmortem_unavailable" } };
       }
     }
   );
