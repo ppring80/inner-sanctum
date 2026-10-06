@@ -51,10 +51,18 @@ function inferRawCase(raw={}){
  else if(reassess.length) threshold="UNRESOLVED";
  else if(challenge.length>=reinforce.length+2) threshold="CROSSED";
 
+ // Uncertainty is not one thing. MISSING_INFORMATION means a material state is
+ // unresolved; CLOSE_CALL means the known evidence competes without crossing;
+ // STABLE means the available evidence supports a clear threshold state.
+ const unresolvedMaterial=evidence.some(e=>e.materialChange&&e.effect==="REASSESS_PRIOR");
+ let uncertaintyType="STABLE";
+ if(threshold==="UNRESOLVED"&&unresolvedMaterial) uncertaintyType="MISSING_INFORMATION";
+ else if(threshold==="NOT_CROSSED"&&challenge.length&&reinforce.length) uncertaintyType="CLOSE_CALL";
+
  return {id:raw.id,label:raw.label,mode:"SHADOW",canChangeProductionDecision:false,
   prior:raw.prior||null,challenger:raw.challenger||null,customerConcern:raw.customerConcern||null,
   evidence,independentEvidence:independent,causalGroups:[...byGroup.keys()],
-  movement,threshold,
+  movement,threshold,uncertaintyType,
   guardrails:{finalPlayerCallAllowed:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
 }
 module.exports={inferFact,inferRawCase};
