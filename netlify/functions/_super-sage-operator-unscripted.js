@@ -10,7 +10,7 @@ const MATERIAL=/ruled out|role reduction|role expanded|role increase|starting qu
 const INVALIDATE=/verified role reduction|stronger current opportunity role/i;
 const REASSESS=/ruled out|game-time decision|heavy wind|role expanded|role increase|starting quarterback|offensive linemen|left tackle|wr1|ranking.*stale|no new ranking/i;
 const CONTEXT=/must-win situation|customer says/i;
-const CHALLENGE=/better opponent matchup|independent rushing|stronger current opportunity|increased.*usage|more touches|previously handled|tiny matchup edge|poor\.$|poor$/i;
+const CHALLENGE=/better(?: verified)?(?: pass-defense)? matchup|better opponent matchup|independent rushing|stronger current opportunity|increased.*usage|more touches|previously handled|tiny matchup edge|slightly better matchup|poor\\.$|poor$/i;
 const REINFORCE=/historical rushing role|projection edge|weekly ranking favors|multi-season elite history|tiny role edge|larger historical|favorable/i;
 
 function inferFact(f={}){
