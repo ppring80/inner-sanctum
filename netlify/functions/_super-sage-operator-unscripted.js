@@ -36,6 +36,7 @@ function inferRawCase(raw={}){
  const reassess=independent.filter(e=>e.effect==="REASSESS_PRIOR");
  const challenge=independent.filter(e=>e.effect==="CHALLENGES_PRIOR");
  const reinforce=independent.filter(e=>e.effect==="REINFORCES_PRIOR");
+ const informationComplete=raw.informationState==="COMPLETE";
  let movement="NO_DECISION_ACTIVE_MOVEMENT";
  if(invalid.length) movement="PRIOR_INVALIDATED";
  else if(reassess.length) movement="PRIOR_REQUIRES_REASSESSMENT";
@@ -60,7 +61,6 @@ function inferRawCase(raw={}){
  // Uncertainty is not one thing. MISSING_INFORMATION means a material state is
  // unresolved; CLOSE_CALL means the known evidence competes without crossing;
  // STABLE means the available evidence supports a clear threshold state.
- const informationComplete=raw.informationState==="COMPLETE";
  const unresolvedMaterial=!informationComplete && evidence.some(e=>e.materialChange&&e.effect==="REASSESS_PRIOR");
  let uncertaintyType="STABLE";
  if(threshold==="UNRESOLVED"&&unresolvedMaterial) uncertaintyType="MISSING_INFORMATION";
