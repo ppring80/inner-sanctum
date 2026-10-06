@@ -20,6 +20,7 @@ function inferFact(f={}){
  else if(INVALIDATE.test(text)) effect="INVALIDATES_PRIOR";
  else if(REASSESS.test(text)) effect="REASSESS_PRIOR";
  else if(CONTEXT.test(text)) effect="CONTEXT_ONLY";
+ else if(/more work|more touches|increased.*usage/i.test(text)) effect="CHALLENGES_PRIOR";
  else if(CHALLENGE.test(text)) effect="CHALLENGES_PRIOR";
  else if(REINFORCE.test(text)) effect="REINFORCES_PRIOR";
  return {...f,effect,materialChange:f.verified===true&&MATERIAL.test(text)};
