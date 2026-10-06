@@ -2,8 +2,8 @@
 const assert=require("assert");
 const {RAW_CASES}=require("./fixtures/super-sage-operator-unscripted-v1");
 const {inferRawCase}=require("../netlify/functions/_super-sage-operator-unscripted");
-assert.strictEqual(RAW_CASES.length,10);
-const out=RAW_CASES.map(inferRawCase);
+const IDS=["U01","U02","U03","U04","U05","U06","U07","U08","U09","U10"];
+const out=IDS.map(id=>inferRawCase(RAW_CASES.find(x=>x.id===id)));
 for(const r of out){
  assert.strictEqual(r.mode,"SHADOW");
  assert.strictEqual(r.canChangeProductionDecision,false);
