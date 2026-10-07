@@ -3,7 +3,7 @@ const assert=require("assert");
 const fs=require("fs");
 const path=require("path");
 const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
-assert.ok(src.includes('process.env.SUPER_SAGE_REVIEWER_PEEPHOLE === "true"'),"peephole must be explicitly deployment-gated");
+assert.ok(src.includes('process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true"'),"peephole execution must be explicitly deployment-gated");
 assert.ok(src.includes('"get_shadow_decision"'),"private reviewer tool required");
 assert.ok(src.includes('getStore({ name: "super-sage-shadow-lab" })'),"peephole must read only the private shadow store");
 assert.ok(src.includes('store.get("decision/" + decisionId, { type: "json" })'),"peephole must read by immutable production decision ID");
