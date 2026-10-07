@@ -12,5 +12,5 @@ assert.ok(src.includes("productionAuthority: false"),"artifact must have zero pr
 assert.ok(src.includes("canChangeCustomerDecision: false"),"artifact cannot change customer decisions");
 assert.ok(src.includes("outcomeDataAllowed: false"),"peephole cannot admit outcomes");
 assert.ok(src.includes("automaticPromotionAllowed: false"),"peephole cannot auto-promote");
-assert.ok(!src.includes("get_shadow_decision", src.indexOf("LIVE READ-ONLY TOOLS:"), src.indexOf("PRODUCTION DATA SOURCE:")),"peephole must not be advertised in public live tool header");
+const header=src.slice(src.indexOf("LIVE READ-ONLY TOOLS:"),src.indexOf("PRODUCTION DATA SOURCE:"));\nassert.ok(!header.includes("get_shadow_decision"),"peephole must not be advertised in public live tool header");
 console.log("Private Super SAGE shadow peephole boundary: PASS");
