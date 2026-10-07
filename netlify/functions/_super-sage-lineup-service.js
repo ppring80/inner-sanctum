@@ -78,7 +78,7 @@ function availabilityStatus(rankings) {
  * @param now             Date (defaults to now)
  */
 async function decideSharedLineup({ rankings = null, rankingsError = null, roster = [], provider = null, slots = [], season, week, scoring,
-  schedule = null, scheduleError = null, opportunityStore = null, now = new Date() } = {}) {
+  schedule = null, scheduleError = null, opportunityStore = null, now = new Date(), shadowRecord = null, shadowCaseLabel = null } = {}) {
   const evidenceStatus = { weeklySage: weeklySageStatus(rankings, rankingsError) };
   if (evidenceStatus.weeklySage.status === "UNAVAILABLE") {
     return { status: "UNAVAILABLE", reason: "WEEKLY_SAGE_UNAVAILABLE", record: null, evidenceStatus, serviceVersion: SERVICE_VERSION };
