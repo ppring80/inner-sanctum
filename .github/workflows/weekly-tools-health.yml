@@ -1,9 +1,11 @@
 name: Weekly Tools Production Health
 on:
   schedule:
-    # Every Tuesday, 07:00 Pacific daylight / 06:00 Pacific standard.
+    # Tuesday morning production acceptance checks. GitHub cron is UTC and
+    # cannot express America/Los_Angeles DST directly, so run at both candidate
+    # 06:00 Pacific UTC offsets; the read-only verifier is safe to run twice.
     # January covers the final regular-season rollover.
-    - cron: '0 14 * 1,9-12 2'
+    - cron: '0 13,14 * 1,9-12 2'
   workflow_dispatch:
 permissions:
   contents: read
