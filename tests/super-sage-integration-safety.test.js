@@ -45,6 +45,14 @@ let passed = 0;
 async function test(name, fn) { await fn(); passed += 1; console.log('  ok - ' + name); }
 
 (async () => {
+  await test('raw Rookie record survives the service without changing production', async () => {
+    const result = await decide();
+    const { buildAutomaticShadowRecord } = require('../netlify/functions/_super-sage-live-shadow-adapter.js');
+    assert.deepStrictEqual(result.shadowRecord, buildAutomaticShadowRecord(result.record));
+    assert.strictEqual(result.shadowRecord.productionDecisionId, result.record.decisionId);
+    assert.strictEqual(result.shadowRecord.slots.length, result.record.slots.length);
+    assert.ok(result.shadowRecord.slots.some(s => s.shadow && s.shadow.rationale && s.shadow.evidenceUsed.length), 'actual Rookie rationale and evidence must survive');
+  });
   // ── Kickoff cutoffs ───────────────────────────────────────────────────
   await test('ET conversion honours DST; epoch accepted in seconds or milliseconds', async () => {
     assert.strictEqual(easternToIso('20260913', '1:00p'), '2026-09-13T17:00:00.000Z'); // EDT

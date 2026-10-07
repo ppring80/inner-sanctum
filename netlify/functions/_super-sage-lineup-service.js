@@ -149,6 +149,7 @@ async function decideSharedLineup({ rankings = null, rankingsError = null, roste
     evidenceStatus,
     kickoff: index.ok ? { weekFirstKickoff: weekCutoff.ok ? weekCutoff.cutoff : null, source: index.source, unknownGames: index.unknownGames.map((g) => g.gameID) } : null,
     serviceVersion: SERVICE_VERSION,
+    shadowRecord: automaticShadowRecord,
     shadowComparison
   };
 }
