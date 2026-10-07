@@ -2175,6 +2175,29 @@ function getFilteredSorted() {
         if (aGroup !== bGroup) return aGroup - bGroup;
       }
 
+      // Availability rows are informational appendices, not ranked rows.
+      // Keep them visible in ALL/position views, but never let their null
+      // ranking/projection values sort ahead of the real Weekly SAGE board.
+      var aUnavailable = a.eligibleForWeeklyRanking === false ? 1 : 0;
+      var bUnavailable = b.eligibleForWeeklyRanking === false ? 1 : 0;
+      if (aUnavailable !== bUnavailable) return aUnavailable - bUnavailable;
+
+      // Within a single natural-position view, the authoritative backend
+      // position rank is the primary order. This locks the website to the
+      // same Weekly SAGE ordering exposed through MCP instead of re-ranking
+      // players from partial/null display metrics.
+      if (
+        state.posFilter !== 'ALL' &&
+        state.sortKey === 'proj' &&
+        a.pos === state.posFilter &&
+        b.pos === state.posFilter &&
+        Number.isFinite(a.positionRank) &&
+        Number.isFinite(b.positionRank) &&
+        a.positionRank !== b.positionRank
+      ) {
+        return a.positionRank - b.positionRank;
+      }
+
       var av;
       var bv;
 
