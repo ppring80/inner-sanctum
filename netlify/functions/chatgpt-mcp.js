@@ -6120,6 +6120,40 @@ function buildServer(
 
           if (superSage.status === "DECIDED") {
             const record = superSage.record;
+
+            // PRIVATE SHADOW LAB: persist Rookie's observational scorecard by
+            // immutable production decision ID. This is deliberately outside
+            // structuredContent/customer text and can never change the call.
+            // A lab write failure is non-blocking: customer SAGE still returns.
+            if (superSage.shadowComparison && record && record.decisionId) {
+              try {
+                const shadowLabStore = getStore({ name: "super-sage-shadow-lab" });
+                await shadowLabStore.setJSON(
+                  `decision/${record.decisionId}`,
+                  {
+                    version: 1,
+                    type: "SUPER_SAGE_PRIVATE_SHADOW_LAB",
+                    capturedAt: new Date().toISOString(),
+                    productionDecisionId: record.decisionId,
+                    season: resolvedSeason,
+                    week: resolvedWeek,
+                    scoring: resolvedScoring,
+                    comparison: superSage.shadowComparison,
+                    rules: {
+                      customerVisible: false,
+                      productionAuthority: false,
+                      canChangeCustomerDecision: false,
+                      outcomeDataAllowed: false,
+                      automaticPromotionAllowed: false
+                    }
+                  },
+                  { onlyIfNew: true }
+                );
+              } catch (shadowLabError) {
+                console.error("Super SAGE shadow lab write failed:", shadowLabError && shadowLabError.message);
+              }
+            }
+
             starters = toMcpStartersFromRecord(record);
             const rosterStatusByName = new Map(
               matchedEntries.map((item) => [normalizePlayerName(item.row.name), item.entry && item.entry.rosterStatus || null])
