@@ -6393,9 +6393,8 @@ function buildServer(
   // =========================================================
   // INTERNAL REVIEWER — GET PRIVATE SHADOW DECISION
   // =========================================================
-  // Deliberately gated off unless the deployment explicitly enables the
-  // reviewer peephole. Never advertised to ordinary customer deployments.
-  if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE === "true") {
+  // Always registered so MCP discovery is stable. Private store access remains
+  // deployment-gated at execution time before any shadow artifact is read.
     server.registerTool(
       "get_shadow_decision",
       {
@@ -6416,6 +6415,9 @@ function buildServer(
       },
       async ({ decisionId }) => {
         const base = { available: false, readOnly: true, decisionId, artifact: null };
+        if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true") {
+          return { isError: true, content: [{ type: "text", text: "Private Rookie review is not enabled on this deployment." }], structuredContent: { ...base, error: "reviewer_peephole_disabled" } };
+        }
         try {
           const store = getStore({ name: "super-sage-shadow-lab" });
           const artifact = await store.get("decision/" + decisionId, { type: "json" });
@@ -6443,7 +6445,6 @@ function buildServer(
         }
       }
     );
-  }
 
   // =========================================================
   // TOOL #6 — GET WAIVER RECOMMENDATIONS
