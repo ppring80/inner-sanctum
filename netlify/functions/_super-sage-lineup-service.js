@@ -29,6 +29,7 @@ const { buildLineupDecisionRecord } = require("./_super-sage-lineup-decision.js"
 const { matchRoster, canonicalRosterStatus } = require("./_super-sage-roster-identity.js");
 const { buildKickoffIndex, decisionCutoff, teamKickoffState } = require("./_super-sage-kickoff.js");
 const { loadObservedOpportunity } = require("./_super-sage-opportunity-evidence.js");
+const { buildLiveShadowComparison } = require("./_super-sage-live-shadow.js");
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 const SERVICE_VERSION = 1;
