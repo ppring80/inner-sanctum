@@ -1,0 +1,1479 @@
+{
+  "evidenceType": "super-sage-lineup-decision",
+  "decisionId": "19b0d383467490aaaae64fc4ff35ecc30015595d719d1a586d3c8858ab638f75",
+  "decisionScope": "START_SIT",
+  "request": {
+    "season": 2026,
+    "week": 5,
+    "scoring": "half"
+  },
+  "slots": [
+    {
+      "slotLabel": "DST",
+      "starter": {
+        "name": "BAL",
+        "position": "DEF",
+        "standing": {
+          "tier": "SIT",
+          "tierIndex": 2,
+          "depth": 0.65,
+          "positionRank": 26
+        },
+        "matchup": "Negative",
+        "projection": {
+          "admissible": true,
+          "points": 6.5,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": null,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "A",
+            "family": "provider-roster",
+            "source": "Provider roster",
+            "asOf": null
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "A",
+            "family": "provider-roster",
+            "source": "Provider roster",
+            "asOf": null
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": null,
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START BAL BAL is the strongest available DEF in Weekly SAGE (DEF26, SIT tier)."
+      }
+    },
+    {
+      "slotLabel": "K",
+      "starter": {
+        "name": "Eddy Pineiro",
+        "position": "K",
+        "standing": {
+          "tier": "START",
+          "tierIndex": 0,
+          "depth": 0.5,
+          "positionRank": 7
+        },
+        "matchup": "Strong Negative",
+        "projection": {
+          "admissible": true,
+          "points": 6.5,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": null,
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START EDDY PINEIRO Eddy Pineiro is the strongest available K in Weekly SAGE (K7, START tier)."
+      }
+    },
+    {
+      "slotLabel": "QB",
+      "starter": {
+        "name": "Drake Maye",
+        "position": "QB",
+        "standing": {
+          "tier": "SIT",
+          "tierIndex": 2,
+          "depth": 0.14634146341463414,
+          "positionRank": 19
+        },
+        "matchup": "Negative",
+        "projection": {
+          "admissible": true,
+          "points": 18.48,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": null,
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": null,
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START DRAKE MAYE Drake Maye is the strongest available QB in Weekly SAGE (QB19, SIT tier)."
+      }
+    },
+    {
+      "slotLabel": "RB",
+      "starter": {
+        "name": "Chase Brown",
+        "position": "RB",
+        "standing": {
+          "tier": "START",
+          "tierIndex": 0,
+          "depth": 0.3333333333333333,
+          "positionRank": 9
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 15.34,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": {
+        "name": "Saquon Barkley",
+        "position": "RB",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.625,
+          "positionRank": 40
+        },
+        "matchup": "Strong Negative",
+        "projection": {
+          "admissible": true,
+          "points": 9.15,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": "QUESTIONABLE",
+          "injuryDescription": "Oct 5: Eagles head coach Nick Sirianni didn't provide an update on Barkley's status Monday when asked about the hamstring injury the running back sustained during Sunday's loss to the Rams, Zach Berman of The Athletic reports. \"We'll have more answers Wednesday probably with that stuff,\" Sirianni added.",
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "ACTIVE",
+              "asOf": null
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            }
+          ],
+          "unavailable": false,
+          "questionable": true
+        },
+        "stateChanges": [
+          {
+            "type": "ROLE_CHANGE",
+            "status": "REASSESS",
+            "verified": true,
+            "redistributionVerified": false,
+            "magnitudeValidated": false,
+            "note": "Backfield role change: Tank Bigsby (IR) unavailable. Saquon Barkley's prior workload and weekly rank may understate the changed opportunity. Increased work is possible; the share is not verified. Do not use the old rank alone to recommend dropping this player."
+          },
+          {
+            "type": "INJURY_DESIGNATION",
+            "status": "QUESTIONABLE",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Saquon Barkley carries a QUESTIONABLE designation (Inner Sanctum availability)."
+          },
+          {
+            "type": "AVAILABILITY_CONFLICT",
+            "status": "CONFLICT",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Availability sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status (QUESTIONABLE) applies."
+          }
+        ],
+        "uncertainty": [
+          {
+            "code": "INJURY_DESIGNATION",
+            "text": "QUESTIONABLE injury designation"
+          },
+          {
+            "code": "UNVERIFIED_REDISTRIBUTION",
+            "text": "backfield role change with unverified redistribution"
+          }
+        ],
+        "baselineValidity": {
+          "state": "REASSESS",
+          "authority": "GOVERNS_WITHOUT_BENEFIT_OF_DOUBT",
+          "triggers": [
+            {
+              "code": "STATUS_QUESTIONABLE",
+              "family": "production-availability",
+              "detail": "Inner Sanctum availability lists QUESTIONABLE.",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            },
+            {
+              "code": "SOURCE_CONFLICT",
+              "family": "availability",
+              "detail": "Sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status applies."
+            },
+            {
+              "code": "ROLE_CHANGE",
+              "family": "role",
+              "detail": "Verified role change; redistribution not verified."
+            }
+          ],
+          "conflict": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "ACTIVE",
+              "asOf": null
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "A verified role change makes expansion possible, but no validated evidence forecasts its size."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Strong"
+      },
+      "explanation": {
+        "headline": "START CHASE BROWN over SAQUON BARKLEY \u2014 Strong edge Chase Brown (RB9, START tier) ranks ahead of Saquon Barkley (RB40, FLEX tier) in Weekly SAGE. Saquon Barkley: Backfield role change: Tank Bigsby (IR) unavailable. Saquon Barkley's prior workload and weekly rank may understate the changed opportunity. Increased work is possible; the share is not verified. Do not use the old rank alone to recommend dropping this player. Saquon Barkley: Saquon Barkley carries a QUESTIONABLE designation (Inner Sanctum availability). Saquon Barkley: Availability sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status (QUESTIONABLE) applies."
+      }
+    },
+    {
+      "slotLabel": "RB",
+      "starter": {
+        "name": "Saquon Barkley",
+        "position": "RB",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.625,
+          "positionRank": 40
+        },
+        "matchup": "Strong Negative",
+        "projection": {
+          "admissible": true,
+          "points": 9.15,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": "QUESTIONABLE",
+          "injuryDescription": "Oct 5: Eagles head coach Nick Sirianni didn't provide an update on Barkley's status Monday when asked about the hamstring injury the running back sustained during Sunday's loss to the Rams, Zach Berman of The Athletic reports. \"We'll have more answers Wednesday probably with that stuff,\" Sirianni added.",
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "ACTIVE",
+              "asOf": null
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            }
+          ],
+          "unavailable": false,
+          "questionable": true
+        },
+        "stateChanges": [
+          {
+            "type": "ROLE_CHANGE",
+            "status": "REASSESS",
+            "verified": true,
+            "redistributionVerified": false,
+            "magnitudeValidated": false,
+            "note": "Backfield role change: Tank Bigsby (IR) unavailable. Saquon Barkley's prior workload and weekly rank may understate the changed opportunity. Increased work is possible; the share is not verified. Do not use the old rank alone to recommend dropping this player."
+          },
+          {
+            "type": "INJURY_DESIGNATION",
+            "status": "QUESTIONABLE",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Saquon Barkley carries a QUESTIONABLE designation (Inner Sanctum availability)."
+          },
+          {
+            "type": "AVAILABILITY_CONFLICT",
+            "status": "CONFLICT",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Availability sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status (QUESTIONABLE) applies."
+          }
+        ],
+        "uncertainty": [
+          {
+            "code": "INJURY_DESIGNATION",
+            "text": "QUESTIONABLE injury designation"
+          },
+          {
+            "code": "UNVERIFIED_REDISTRIBUTION",
+            "text": "backfield role change with unverified redistribution"
+          }
+        ],
+        "baselineValidity": {
+          "state": "REASSESS",
+          "authority": "GOVERNS_WITHOUT_BENEFIT_OF_DOUBT",
+          "triggers": [
+            {
+              "code": "STATUS_QUESTIONABLE",
+              "family": "production-availability",
+              "detail": "Inner Sanctum availability lists QUESTIONABLE.",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            },
+            {
+              "code": "SOURCE_CONFLICT",
+              "family": "availability",
+              "detail": "Sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status applies."
+            },
+            {
+              "code": "ROLE_CHANGE",
+              "family": "role",
+              "detail": "Verified role change; redistribution not verified."
+            }
+          ],
+          "conflict": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "ACTIVE",
+              "asOf": null
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "A verified role change makes expansion possible, but no validated evidence forecasts its size."
+        }
+      },
+      "comparator": {
+        "name": "Blake Corum",
+        "position": "RB",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.6666666666666666,
+          "positionRank": 41
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 7.38,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Limited"
+      },
+      "explanation": {
+        "headline": "START SAQUON BARKLEY over BLAKE CORUM \u2014 Limited edge Saquon Barkley (RB40, FLEX tier) ranks ahead of Blake Corum (RB41, FLEX tier) in Weekly SAGE. Saquon Barkley: Backfield role change: Tank Bigsby (IR) unavailable. Saquon Barkley's prior workload and weekly rank may understate the changed opportunity. Increased work is possible; the share is not verified. Do not use the old rank alone to recommend dropping this player. Saquon Barkley: Saquon Barkley carries a QUESTIONABLE designation (Inner Sanctum availability). Saquon Barkley: Availability sources disagree: Provider roster ACTIVE vs Inner Sanctum availability QUESTIONABLE; the most severe fresh status (QUESTIONABLE) applies. Status: QUESTIONABLE \u2014 Oct 5: Eagles head coach Nick Sirianni didn't provide an update on Barkley's status Monday when asked about the hamstring injury the running back sustained during Sunday's loss to the Rams, Zach Berman of The Athletic reports. \"We'll have more answers Wednesday probably with that stuff,\" Sirianni added."
+      }
+    },
+    {
+      "slotLabel": "TE",
+      "starter": {
+        "name": "Tyler Warren",
+        "position": "TE",
+        "standing": {
+          "tier": "START",
+          "tierIndex": 0,
+          "depth": 0.6666666666666666,
+          "positionRank": 9
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 8.9,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": null,
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START TYLER WARREN Tyler Warren is the strongest available TE in Weekly SAGE (TE9, START tier)."
+      }
+    },
+    {
+      "slotLabel": "WR",
+      "starter": {
+        "name": "Malik Nabers",
+        "position": "WR",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0,
+          "positionRank": 25
+        },
+        "matchup": "Positive",
+        "projection": {
+          "admissible": true,
+          "points": 8.94,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": {
+        "name": "Terry McLaurin",
+        "position": "WR",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.2916666666666667,
+          "positionRank": 32
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": false,
+          "reason": "No projection available."
+        },
+        "availability": {
+          "rosterStatus": null,
+          "injuryStatus": "QUESTIONABLE",
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": true
+        },
+        "stateChanges": [
+          {
+            "type": "QB_AVAILABILITY_CHANGE",
+            "status": "REASSESS",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+          },
+          {
+            "type": "INJURY_DESIGNATION",
+            "status": "QUESTIONABLE",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Terry McLaurin carries a QUESTIONABLE designation (Inner Sanctum availability)."
+          }
+        ],
+        "uncertainty": [
+          {
+            "code": "INJURY_DESIGNATION",
+            "text": "QUESTIONABLE injury designation"
+          },
+          {
+            "code": "QB_ENVIRONMENT_CHANGE",
+            "text": "changed quarterback environment (no validated magnitude)"
+          }
+        ],
+        "baselineValidity": {
+          "state": "REASSESS",
+          "authority": "GOVERNS_WITHOUT_BENEFIT_OF_DOUBT",
+          "triggers": [
+            {
+              "code": "STATUS_QUESTIONABLE",
+              "family": "production-availability",
+              "detail": "Inner Sanctum availability lists QUESTIONABLE.",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            },
+            {
+              "code": "QB_ENVIRONMENT_CHANGE",
+              "family": "environment",
+              "detail": "Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+            }
+          ],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START MALIK NABERS over TERRY MCLAURIN \u2014 Moderate edge Malik Nabers (WR25, FLEX tier) ranks ahead of Terry McLaurin (WR32, FLEX tier) in Weekly SAGE. Terry McLaurin: Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty. Terry McLaurin: Terry McLaurin carries a QUESTIONABLE designation (Inner Sanctum availability)."
+      }
+    },
+    {
+      "slotLabel": "WR",
+      "starter": {
+        "name": "Terry McLaurin",
+        "position": "WR",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.2916666666666667,
+          "positionRank": 32
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": false,
+          "reason": "No projection available."
+        },
+        "availability": {
+          "rosterStatus": null,
+          "injuryStatus": "QUESTIONABLE",
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "QUESTIONABLE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": true
+        },
+        "stateChanges": [
+          {
+            "type": "QB_AVAILABILITY_CHANGE",
+            "status": "REASSESS",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+          },
+          {
+            "type": "INJURY_DESIGNATION",
+            "status": "QUESTIONABLE",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Terry McLaurin carries a QUESTIONABLE designation (Inner Sanctum availability)."
+          }
+        ],
+        "uncertainty": [
+          {
+            "code": "INJURY_DESIGNATION",
+            "text": "QUESTIONABLE injury designation"
+          },
+          {
+            "code": "QB_ENVIRONMENT_CHANGE",
+            "text": "changed quarterback environment (no validated magnitude)"
+          }
+        ],
+        "baselineValidity": {
+          "state": "REASSESS",
+          "authority": "GOVERNS_WITHOUT_BENEFIT_OF_DOUBT",
+          "triggers": [
+            {
+              "code": "STATUS_QUESTIONABLE",
+              "family": "production-availability",
+              "detail": "Inner Sanctum availability lists QUESTIONABLE.",
+              "asOf": "2026-10-07T00:10:55.761Z"
+            },
+            {
+              "code": "QB_ENVIRONMENT_CHANGE",
+              "family": "environment",
+              "detail": "Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+            }
+          ],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "QUESTIONABLE",
+            "reported": "QUESTIONABLE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": {
+        "name": "Chris Godwin Jr.",
+        "position": "WR",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.9166666666666666,
+          "positionRank": 47
+        },
+        "matchup": "Strong Positive",
+        "projection": {
+          "admissible": true,
+          "points": 7.04,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [
+          {
+            "type": "QB_AVAILABILITY_CHANGE",
+            "status": "REASSESS",
+            "verified": true,
+            "magnitudeValidated": false,
+            "note": "Offensive environment change: Baker Mayfield (OUT) unavailable. Chris Godwin Jr. will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+          }
+        ],
+        "uncertainty": [
+          {
+            "code": "QB_ENVIRONMENT_CHANGE",
+            "text": "changed quarterback environment (no validated magnitude)"
+          }
+        ],
+        "baselineValidity": {
+          "state": "REASSESS",
+          "authority": "GOVERNS_WITHOUT_BENEFIT_OF_DOUBT",
+          "triggers": [
+            {
+              "code": "QB_ENVIRONMENT_CHANGE",
+              "family": "environment",
+              "detail": "Offensive environment change: Baker Mayfield (OUT) unavailable. Chris Godwin Jr. will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty."
+            }
+          ],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Limited"
+      },
+      "explanation": {
+        "headline": "START TERRY MCLAURIN over CHRIS GODWIN JR. \u2014 Limited edge Terry McLaurin (WR32, FLEX tier) ranks ahead of Chris Godwin Jr. (WR47, FLEX tier) in Weekly SAGE. Terry McLaurin: Offensive environment change: Jayden Daniels (OUT) unavailable. Terry McLaurin will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty. Terry McLaurin: Terry McLaurin carries a QUESTIONABLE designation (Inner Sanctum availability). Chris Godwin Jr.: Offensive environment change: Baker Mayfield (OUT) unavailable. Chris Godwin Jr. will play with a changed quarterback environment. SAGE does not assign an unverified numerical penalty; confidence should reflect the uncertainty. Status: QUESTIONABLE"
+      }
+    },
+    {
+      "slotLabel": "RB-WR-TE",
+      "starter": {
+        "name": "Blake Corum",
+        "position": "RB",
+        "standing": {
+          "tier": "FLEX",
+          "tierIndex": 1,
+          "depth": 0.6666666666666666,
+          "positionRank": 41
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 7.38,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": {
+        "name": "Courtland Sutton",
+        "position": "WR",
+        "standing": {
+          "tier": "SIT",
+          "tierIndex": 2,
+          "depth": 0.2153846153846154,
+          "positionRank": 63
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 9.2,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": null,
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Strong"
+      },
+      "explanation": {
+        "headline": "START BLAKE CORUM over COURTLAND SUTTON \u2014 Strong edge Blake Corum holds the stronger established Weekly SAGE standing (RB41, FLEX tier) than Courtland Sutton (WR63, SIT tier). Comparison class with Courtland Sutton: SURPRISING (Courtland Sutton is one Weekly SAGE tier weaker (SIT vs FLEX).)."
+      }
+    },
+    {
+      "slotLabel": "RB-WR-TE",
+      "starter": {
+        "name": "Jakobi Meyers",
+        "position": "WR",
+        "standing": {
+          "tier": "SIT",
+          "tierIndex": 2,
+          "depth": 0.03076923076923077,
+          "positionRank": 51
+        },
+        "matchup": "Neutral",
+        "projection": {
+          "admissible": true,
+          "points": 6.59,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": "A",
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "provider-roster",
+              "source": "Provider roster",
+              "status": "A",
+              "asOf": null,
+              "fresh": true
+            },
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "comparator": {
+        "name": "Kendre Miller",
+        "position": "RB",
+        "standing": {
+          "tier": "SIT",
+          "tierIndex": 2,
+          "depth": 0.13043478260869565,
+          "positionRank": 55
+        },
+        "matchup": "Negative",
+        "projection": {
+          "admissible": true,
+          "points": 4.99,
+          "source": "Tank01",
+          "scoring": "half",
+          "week": 5,
+          "fresh": true,
+          "updatedAt": "2026-10-07T00:11:01.216Z"
+        },
+        "availability": {
+          "rosterStatus": null,
+          "injuryStatus": null,
+          "injuryDescription": null,
+          "availabilityVerified": true,
+          "statusEvidence": [
+            {
+              "family": "production-availability",
+              "source": "Inner Sanctum availability",
+              "status": "ACTIVE",
+              "asOf": "2026-10-07T00:10:55.761Z",
+              "fresh": true
+            }
+          ],
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          },
+          "conflict": null,
+          "unavailable": false,
+          "questionable": false
+        },
+        "stateChanges": [],
+        "uncertainty": [
+          {
+            "code": "LIMITED_SAGE_CONFIDENCE",
+            "text": "limited Weekly SAGE confidence"
+          }
+        ],
+        "baselineValidity": {
+          "state": "VALID",
+          "authority": "GOVERNS",
+          "triggers": [],
+          "conflict": null,
+          "effectiveStatus": {
+            "status": "ACTIVE",
+            "reported": "ACTIVE",
+            "family": "production-availability",
+            "source": "Inner Sanctum availability",
+            "asOf": "2026-10-07T00:10:55.761Z"
+          }
+        },
+        "roleExpansion": {
+          "claimed": false,
+          "validated": false,
+          "basis": [],
+          "note": "No validated evidence of role expansion."
+        }
+      },
+      "decisionState": "DECIDED",
+      "confidence": {
+        "label": "Moderate"
+      },
+      "explanation": {
+        "headline": "START JAKOBI MEYERS over KENDRE MILLER \u2014 Moderate edge Jakobi Meyers holds the stronger established Weekly SAGE standing (WR51, SIT tier) than Kendre Miller (RB55, SIT tier). Comparison class with Kendre Miller: SURPRISING (The fresh projection does not favour Kendre Miller. Kendre Miller adds uncertainty: limited Weekly SAGE confidence.)."
+      }
+    }
+  ],
+  "fixtureSource": "Frozen live pregame record 19b0d383, captured 2026-10-07T06:06:03.963Z; player evidence only, no league identity or outcomes."
+}
