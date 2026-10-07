@@ -1,0 +1,18 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes('getStore({ name: "super-sage-shadow-lab" })'),"private shadow lab store required");
+assert.ok(src.includes("decision/${record.decisionId}"),"lab key must use immutable production decision ID");
+assert.ok(src.includes("{ onlyIfNew: true }"),"shadow lab must be append/create-only for a decision ID");
+assert.ok(src.includes("customerVisible: false"),"shadow artifact must be private");
+assert.ok(src.includes("productionAuthority: false"),"shadow artifact must have zero production authority");
+assert.ok(src.includes("canChangeCustomerDecision: false"),"shadow cannot change customer call");
+assert.ok(src.includes("outcomeDataAllowed: false"),"shadow lab cannot admit outcome data");
+assert.ok(src.includes("automaticPromotionAllowed: false"),"shadow lab cannot auto-promote");
+assert.ok(src.includes('console.error("Super SAGE shadow lab write failed:"'),"lab persistence failure must be caught/non-blocking");
+const persist=src.indexOf("PRIVATE SHADOW LAB");
+const present=src.indexOf("starters = toMcpStartersFromRecord(record)",persist);
+assert.ok(persist>=0&&present>persist,"private persistence must not replace the existing customer presenter path");
+console.log("Private Super SAGE shadow lab persistence boundary: PASS");
