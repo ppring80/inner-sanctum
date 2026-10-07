@@ -1,0 +1,16 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const src=fs.readFileSync(path.join(__dirname,"../netlify/functions/chatgpt-mcp.js"),"utf8");
+assert.ok(src.includes('process.env.SUPER_SAGE_REVIEWER_PEEPHOLE === "true"'),"peephole must be explicitly deployment-gated");
+assert.ok(src.includes('"get_shadow_decision"'),"private reviewer tool required");
+assert.ok(src.includes('getStore({ name: "super-sage-shadow-lab" })'),"peephole must read only the private shadow store");
+assert.ok(src.includes('store.get("decision/" + decisionId, { type: "json" })'),"peephole must read by immutable production decision ID");
+assert.ok(src.includes("customerVisible: false"),"artifact must remain private");
+assert.ok(src.includes("productionAuthority: false"),"artifact must have zero production authority");
+assert.ok(src.includes("canChangeCustomerDecision: false"),"artifact cannot change customer decisions");
+assert.ok(src.includes("outcomeDataAllowed: false"),"peephole cannot admit outcomes");
+assert.ok(src.includes("automaticPromotionAllowed: false"),"peephole cannot auto-promote");
+assert.ok(!src.includes("get_shadow_decision", src.indexOf("LIVE READ-ONLY TOOLS:"), src.indexOf("PRODUCTION DATA SOURCE:")),"peephole must not be advertised in public live tool header");
+console.log("Private Super SAGE shadow peephole boundary: PASS");
