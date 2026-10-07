@@ -1,0 +1,17 @@
+"use strict";
+const assert=require("assert");
+const fs=require("fs");
+const path=require("path");
+const p=path.join(__dirname,"../netlify/functions/_super-sage-lineup-service.js");
+const src=fs.readFileSync(p,"utf8");
+assert.ok(src.includes('require("./_super-sage-live-shadow.js")'),"shared service must import shadow harness");
+assert.ok(src.includes("shadowRecord = null"),"shadow input must be optional and default off");
+assert.ok(src.includes("const record = buildLineupDecisionRecord"),"production decision must still be built by frozen authority");
+const prodAt=src.indexOf("const record = buildLineupDecisionRecord");
+const shadowAt=src.indexOf("const shadowComparison = shadowRecord ?");
+assert.ok(prodAt>=0&&shadowAt>prodAt,"production record must be created before any shadow comparison");
+assert.ok(src.includes("productionRecord: record"),"shadow comparison must observe the production record");
+assert.ok(src.includes("shadowComparison\n  };")||src.includes("shadowComparison\r\n  };"),"service may return observational artifact");
+assert.ok(!src.includes("record = shadowRecord"),"shadow must never replace production record");
+assert.ok(!src.includes("buildLineupDecisionRecord(shadow"),"shadow must never enter production authority");
+console.log("Shared lineup shadow attachment boundary: PASS");
