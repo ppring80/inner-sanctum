@@ -17,13 +17,14 @@ function inferFact(f={}){
  const text=String(f.text||"").trim();
  let effect="CONFLICTED_UNKNOWN";
  if(!f.verified) effect="CONFLICTED_UNKNOWN";
+ else if(EFFECTS.has(f.effect)) effect=f.effect;
  else if(INVALIDATE.test(text)) effect="INVALIDATES_PRIOR";
  else if(REASSESS.test(text)) effect="REASSESS_PRIOR";
  else if(CONTEXT.test(text)) effect="CONTEXT_ONLY";
  else if(/more work|more touches|increased.*usage/i.test(text)) effect="CHALLENGES_PRIOR";
  else if(CHALLENGE.test(text)) effect="CHALLENGES_PRIOR";
  else if(REINFORCE.test(text)) effect="REINFORCES_PRIOR";
- const materialChange=f.verified===true&&MATERIAL.test(text);
+ const materialChange=f.verified===true&&(f.materialChange===true||MATERIAL.test(text));
  const evidenceStrength=!f.verified?"NONE":(effect==="INVALIDATES_PRIOR"?"STRUCTURAL":(materialChange?"MATERIAL":(effect==="REASSESS_PRIOR"?"MATERIAL":"SUPPORTING")));
  return {...f,effect,materialChange,evidenceStrength};
 }

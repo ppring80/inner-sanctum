@@ -14,14 +14,20 @@
 
 const crypto=require("crypto");
 
-const VERSION=1;
+const VERSION=2;
 const GRADES=new Set(["PASS","PASS_DIFFERENT_CALL","QUESTIONABLE","FAIL","UNREVIEWED"]);
 const clean=v=>v==null?null:String(v).trim()||null;
 const hash=v=>crypto.createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0,24);
 
 function slotMap(record){
   const m=new Map();
-  for(const s of (record&&record.slots)||[]) m.set(String(s.slotLabel||"").toUpperCase(),s);
+  const counts=new Map();
+  for(const s of (record&&record.slots)||[]) {
+    const label=String(s.slotLabel||"").toUpperCase();
+    const occurrence=(counts.get(label)||0)+1;
+    counts.set(label,occurrence);
+    m.set(label+"#"+occurrence,{slot:s,label,occurrence});
+  }
   return m;
 }
 
@@ -31,11 +37,14 @@ function buildLiveShadowComparison({season,week,scoring,productionRecord,shadowR
   const prod=slotMap(productionRecord), shadow=slotMap(shadowRecord);
   const labels=[...new Set([...prod.keys(),...shadow.keys()])].sort();
   const slots=labels.map(label=>{
-    const p=prod.get(label)||null,s=shadow.get(label)||null;
+    const pe=prod.get(label)||null,se=shadow.get(label)||null;
+    const p=pe&&pe.slot,s=se&&se.slot;
     const productionStarter=clean(p&&p.starter&&p.starter.name);
     const shadowStarter=clean(s&&s.starter&&s.starter.name);
     return {
-      slotLabel:label,
+      slotLabel:(pe||se).label,
+      slotKey:label,
+      occurrence:(pe||se).occurrence,
       productionStarter,
       shadowStarter,
       sameCall:Boolean(productionStarter&&shadowStarter&&productionStarter===shadowStarter),
@@ -48,7 +57,7 @@ function buildLiveShadowComparison({season,week,scoring,productionRecord,shadowR
     };
   });
   const body={version:VERSION,type:"SUPER_SAGE_LIVE_SHADOW_COMPARISON",season:Number(season),week:Number(week),scoring:clean(scoring),decisionAt:at,caseLabel:clean(caseLabel),slots,
-    summary:{slotsCompared:slots.length,agreements:slots.filter(x=>x.sameCall).length,disagreements:slots.filter(x=>x.productionStarter&&x.shadowStarter&&!x.sameCall).length},
+    summary:{slotsCompared:slots.length,agreements:slots.filter(x=>x.sameCall).length,disagreements:slots.filter(x=>x.productionStarter&&x.shadowStarter&&!x.sameCall).length,noCalls:slots.filter(x=>!x.shadowStarter).length},
     authority:{customerDecision:"PRODUCTION_ONLY",shadowCanChangeProduction:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
   return {...body,id:hash(body)};
 }
