@@ -6391,6 +6391,61 @@ function buildServer(
   );
 
   // =========================================================
+  // INTERNAL REVIEWER — GET PRIVATE SHADOW DECISION
+  // =========================================================
+  // Deliberately gated off unless the deployment explicitly enables the
+  // reviewer peephole. Never advertised to ordinary customer deployments.
+  if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE === "true") {
+    server.registerTool(
+      "get_shadow_decision",
+      {
+        title: "Get Super SAGE Private Shadow Decision",
+        description:
+          "Internal read-only reviewer tool. Reads a previously persisted Rookie shadow scorecard by immutable production decision ID. It never recalculates a decision, reads outcomes, changes rankings, or changes the customer answer.",
+        inputSchema: z.object({
+          decisionId: z.string().min(32).max(128)
+        }),
+        outputSchema: z.object({
+          available: z.boolean(),
+          readOnly: z.literal(true),
+          decisionId: z.string(),
+          artifact: z.record(z.any()).nullable(),
+          error: z.string().optional()
+        }),
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      async ({ decisionId }) => {
+        const base = { available: false, readOnly: true, decisionId, artifact: null };
+        try {
+          const store = getStore({ name: "super-sage-shadow-lab" });
+          const artifact = await store.get("decision/" + decisionId, { type: "json" });
+          if (!artifact || artifact.type !== "SUPER_SAGE_PRIVATE_SHADOW_LAB" || artifact.productionDecisionId !== decisionId) {
+            return { content: [{ type: "text", text: "No private Rookie shadow scorecard exists for that decision ID." }], structuredContent: base };
+          }
+          const safe = {
+            ...artifact,
+            rules: {
+              ...(artifact.rules || {}),
+              customerVisible: false,
+              productionAuthority: false,
+              canChangeCustomerDecision: false,
+              outcomeDataAllowed: false,
+              automaticPromotionAllowed: false
+            }
+          };
+          return {
+            content: [{ type: "text", text: "Private Rookie shadow scorecard loaded for decision " + decisionId.slice(0, 12) + "." }],
+            structuredContent: { ...base, available: true, artifact: safe }
+          };
+        } catch (error) {
+          console.error("Super SAGE shadow peephole error:", error);
+          return { isError: true, content: [{ type: "text", text: "The private Rookie shadow scorecard could not be read." }], structuredContent: { ...base, error: "shadow_lab_unavailable" } };
+        }
+      }
+    );
+  }
+
+  // =========================================================
   // TOOL #6 — GET WAIVER RECOMMENDATIONS
   // =========================================================
   //
