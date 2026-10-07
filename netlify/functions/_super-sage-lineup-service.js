@@ -133,12 +133,18 @@ async function decideSharedLineup({ rankings = null, rankingsError = null, roste
   const record = buildLineupDecisionRecord({
     rankings: authorityRankings, slots, scoring, season, week, opportunity, statusUpdates, matchedRoster
   });
+  // Observational only: production authority has already completed above.
+  const shadowComparison = shadowRecord ? buildLiveShadowComparison({
+    season, week, scoring, productionRecord: record, shadowRecord,
+    decisionAt: now.toISOString(), caseLabel: shadowCaseLabel || null
+  }) : null;
   return {
     status: "DECIDED",
     record,
     evidenceStatus,
     kickoff: index.ok ? { weekFirstKickoff: weekCutoff.ok ? weekCutoff.cutoff : null, source: index.source, unknownGames: index.unknownGames.map((g) => g.gameID) } : null,
-    serviceVersion: SERVICE_VERSION
+    serviceVersion: SERVICE_VERSION,
+    shadowComparison
   };
 }
 
