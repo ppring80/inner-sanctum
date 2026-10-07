@@ -2,6 +2,7 @@
 
 // Shadow-only translation of the frozen production packet. Structured evidence
 // supplies direction; a prose regex must never reverse which player benefits.
+const { presentShadowSlot } = require("./_super-sage-shadow-presenter.js");
 const { provisionalCall } = require("./_super-sage-operator-unscripted.js");
 const MATCHUPS = ["Strong Negative", "Negative", "Neutral", "Positive", "Strong Positive"];
 const TIERS = ["START", "FLEX", "SIT"];
@@ -66,11 +67,11 @@ function confidenceFor(slot, call) {
   const productionLimited = ["LIMITED", "LOW"].includes(String(slot?.confidence?.label || "").toUpperCase());
   return { label: uncertain || productionLimited ? "LOW" : "MODERATE" };
 }
-function shadowSlot(slot) {
+function buildShadowSlot(slot) {
   const incumbent = slot?.starter || null, challenger = slot?.comparator || null;
   // Do not inherit Production's explanation or claim its validated edge.
   const { explanation, ...packet } = slot || {};
-  if (!incumbent || !challenger) return { ...packet, starter: null, decisionState: "UNRESOLVED", hasValidatedEdge: false, confidence: { label: "LOW" }, decidedBy: "operator-shadow-no-comparator", shadow: { selected: null, callStatus: "NO_CALL", uncertaintyType: "MISSING_INFORMATION", rationale: "No recorded comparator is available for an independent review.", evidenceUsed: [] }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
+  if (!incumbent || !challenger) return { ...packet, starter: null, decisionState: "UNRESOLVED", hasValidatedEdge: false, confidence: { label: "LOW" }, decidedBy: "operator-shadow-no-comparator", shadow: { selected: null, incumbent: incumbent?.name || null, challenger: challenger?.name || null, missingInformation: ["No recorded comparator is available for an independent review.", ...(incumbent ? missingInformation(incumbent) : [])], callStatus: "NO_CALL", uncertaintyType: "MISSING_INFORMATION", rationale: "No recorded comparator is available for an independent review.", evidenceUsed: [] }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
   const facts = evidenceFacts(incumbent, challenger);
   const missing = [...missingInformation(incumbent), ...missingInformation(challenger)];
   const raw = { id: "live-" + String(slot.slotLabel || "slot"), label: "Live lineup shadow", informationState: missing.length ? "OPEN" : "COMPLETE", prior: { player: incumbent.name, strength: "MODERATE" }, challenger: { player: challenger.name }, facts };
@@ -90,6 +91,10 @@ function shadowSlot(slot) {
   }
   const chosen = call.selected === challenger.name ? challenger : call.selected === incumbent.name ? incumbent : null;
   return { ...packet, starter: chosen, comparator: chosen === challenger ? incumbent : challenger, decidedBy: "operator-shadow", decisionState: chosen ? "DECIDED" : "UNRESOLVED", hasValidatedEdge: false, confidence: confidenceFor(slot, call), shadow: { selected: call.selected, incumbent: incumbent.name, challenger: challenger.name, informationState: raw.informationState, missingInformation: raw.informationState === "COMPLETE" ? [] : missing, callStatus: call.status, movement: call.movement, threshold: call.threshold, uncertaintyType: call.uncertaintyType, rationale: call.rationale, evidenceUsed: call.evidenceUsed }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
+}
+function shadowSlot(slot) {
+  const result = buildShadowSlot(slot);
+  return { ...result, presentation: presentShadowSlot(result) };
 }
 function buildAutomaticShadowRecord(productionRecord) {
   if (!productionRecord || productionRecord.evidenceType !== "super-sage-lineup-decision") throw new Error("Frozen production lineup decision required.");
