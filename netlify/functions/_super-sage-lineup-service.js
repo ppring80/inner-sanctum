@@ -29,6 +29,8 @@ const { buildLineupDecisionRecord } = require("./_super-sage-lineup-decision.js"
 const { matchRoster, canonicalRosterStatus } = require("./_super-sage-roster-identity.js");
 const { buildKickoffIndex, decisionCutoff, teamKickoffState } = require("./_super-sage-kickoff.js");
 const { loadObservedOpportunity } = require("./_super-sage-opportunity-evidence.js");
+const { buildLiveShadowComparison } = require("./_super-sage-live-shadow.js");
+const { buildAutomaticShadowRecord } = require("./_super-sage-live-shadow-adapter.js");
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 const SERVICE_VERSION = 1;
@@ -77,7 +79,7 @@ function availabilityStatus(rankings) {
  * @param now             Date (defaults to now)
  */
 async function decideSharedLineup({ rankings = null, rankingsError = null, roster = [], provider = null, slots = [], season, week, scoring,
-  schedule = null, scheduleError = null, opportunityStore = null, now = new Date() } = {}) {
+  schedule = null, scheduleError = null, opportunityStore = null, now = new Date(), shadowRecord = null, shadowCaseLabel = null } = {}) {
   const evidenceStatus = { weeklySage: weeklySageStatus(rankings, rankingsError) };
   if (evidenceStatus.weeklySage.status === "UNAVAILABLE") {
     return { status: "UNAVAILABLE", reason: "WEEKLY_SAGE_UNAVAILABLE", record: null, evidenceStatus, serviceVersion: SERVICE_VERSION };
@@ -132,12 +134,22 @@ async function decideSharedLineup({ rankings = null, rankingsError = null, roste
   const record = buildLineupDecisionRecord({
     rankings: authorityRankings, slots, scoring, season, week, opportunity, statusUpdates, matchedRoster
   });
+  // Observational only: production authority has already completed above.
+  // If no explicit shadow is supplied, Rookie automatically consumes the
+  // frozen production evidence packet. This performs no provider/network call
+  // and cannot alter the production record.
+  const automaticShadowRecord = shadowRecord || buildAutomaticShadowRecord(record);
+  const shadowComparison = buildLiveShadowComparison({
+    season, week, scoring, productionRecord: record, shadowRecord: automaticShadowRecord,
+    decisionAt: now.toISOString(), caseLabel: shadowCaseLabel || "AUTO_LIVE_SHADOW"
+  });
   return {
     status: "DECIDED",
     record,
     evidenceStatus,
     kickoff: index.ok ? { weekFirstKickoff: weekCutoff.ok ? weekCutoff.cutoff : null, source: index.source, unknownGames: index.unknownGames.map((g) => g.gameID) } : null,
-    serviceVersion: SERVICE_VERSION
+    serviceVersion: SERVICE_VERSION,
+    shadowComparison
   };
 }
 
