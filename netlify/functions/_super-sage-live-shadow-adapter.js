@@ -33,6 +33,8 @@ function evidenceFacts(starter, challenger) {
   for (const [side, player] of [["incumbent", starter], ["challenger", challenger]]) {
     for (const change of player?.stateChanges || []) {
       if (change?.verified !== true) continue;
+      // The validated role fact below already carries the direction of this change.
+      if (change.type === "ROLE_CHANGE" && change.magnitudeValidated === true && player?.roleExpansion?.validated === true) continue;
       // A verified change does not verify either its magnitude or its direction.
       facts.push(fact(`${player.name}: ${change.note || change.type || "Verified state change."}`, "frozen state change", `${side}-${change.type || "state-change"}`, "REASSESS_PRIOR", true));
     }
@@ -41,7 +43,7 @@ function evidenceFacts(starter, challenger) {
     }
   }
   const sp = starter?.projection, cp = challenger?.projection;
-  if (sp?.admissible === true && cp?.admissible === true && finite(sp.points) && finite(cp.points) && sp.points !== cp.points) {
+  if (sp?.admissible === true && cp?.admissible === true && sp.fresh !== false && cp.fresh !== false && finite(sp.points) && finite(cp.points) && sp.points !== cp.points) {
     const winner = cp.points > sp.points ? challenger : starter;
     facts.push(fact(`${winner.name} has the current projection advantage (${winner.projection.points} vs ${winner === starter ? cp.points : sp.points}).`, "frozen projection", "projection", winner === challenger ? "CHALLENGES_PRIOR" : "REINFORCES_PRIOR"));
   }
@@ -73,13 +75,21 @@ function shadowSlot(slot) {
   const missing = [...missingInformation(incumbent), ...missingInformation(challenger)];
   const raw = { id: "live-" + String(slot.slotLabel || "slot"), label: "Live lineup shadow", informationState: missing.length ? "OPEN" : "COMPLETE", prior: { player: incumbent.name, strength: "MODERATE" }, challenger: { player: challenger.name }, facts };
   let call = provisionalCall(raw);
-  if (!facts.length || incumbent?.availability?.unavailable || challenger?.availability?.unavailable) {
-    call = { ...call, selected: null, status: "NO_CALL", uncertaintyType: "MISSING_INFORMATION", rationale: !facts.length ? "No admissible comparative evidence is available." : "An unavailable player cannot receive an independent start recommendation." };
+  if (String(incumbent.name || "").trim().toLowerCase() === String(challenger.name || "").trim().toLowerCase()) {
+    call = { ...call, selected: null, status: "NO_CALL", uncertaintyType: "MISSING_INFORMATION", rationale: "Two records for the same player cannot establish an independent comparison." };
+  } else if (incumbent?.availability?.unavailable || challenger?.availability?.unavailable) {
+    const available = incumbent.availability?.unavailable ? challenger : incumbent;
+    const excluded = available === incumbent ? challenger : incumbent;
+    const canCall = excluded.availability?.availabilityVerified === true && available.availability?.unavailable !== true && !missingInformation(available).length;
+    if (canCall) raw.informationState = "COMPLETE";
+    call = { ...call, selected: canCall ? available.name : null, status: canCall ? "PROVISIONAL_CALL" : "NO_CALL", movement: "ELIGIBILITY_RESOLVED", threshold: canCall ? (available === incumbent ? "NOT_CROSSED" : "CROSSED") : "UNRESOLVED", uncertaintyType: canCall ? "STABLE" : "MISSING_INFORMATION", rationale: canCall ? `${available.name} is verified available; ${excluded.name} is verified unavailable for an active lineup slot.` : "Player eligibility does not support a verified available alternative.", evidenceUsed: canCall ? [{ text: `${excluded.name} is verified unavailable; ${available.name} is verified available.`, effect: available === incumbent ? "REINFORCES_PRIOR" : "INVALIDATES_PRIOR", group: "eligibility" }] : [] };
+  } else if (!facts.length) {
+    call = { ...call, selected: null, status: "NO_CALL", uncertaintyType: "MISSING_INFORMATION", rationale: "No admissible comparative evidence is available." };
   } else if (missing.length) {
     call = { ...call, selected: null, status: "CONDITIONAL", uncertaintyType: "MISSING_INFORMATION", rationale: "Unresolved player evidence prevents a definitive independent call." };
   }
   const chosen = call.selected === challenger.name ? challenger : call.selected === incumbent.name ? incumbent : null;
-  return { ...packet, starter: chosen, comparator: chosen === challenger ? incumbent : challenger, decidedBy: "operator-shadow", decisionState: chosen ? "DECIDED" : "UNRESOLVED", hasValidatedEdge: false, confidence: confidenceFor(slot, call), shadow: { selected: call.selected, incumbent: incumbent.name, challenger: challenger.name, informationState: raw.informationState, missingInformation: missing, callStatus: call.status, movement: call.movement, threshold: call.threshold, uncertaintyType: call.uncertaintyType, rationale: call.rationale, evidenceUsed: call.evidenceUsed }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
+  return { ...packet, starter: chosen, comparator: chosen === challenger ? incumbent : challenger, decidedBy: "operator-shadow", decisionState: chosen ? "DECIDED" : "UNRESOLVED", hasValidatedEdge: false, confidence: confidenceFor(slot, call), shadow: { selected: call.selected, incumbent: incumbent.name, challenger: challenger.name, informationState: raw.informationState, missingInformation: raw.informationState === "COMPLETE" ? [] : missing, callStatus: call.status, movement: call.movement, threshold: call.threshold, uncertaintyType: call.uncertaintyType, rationale: call.rationale, evidenceUsed: call.evidenceUsed }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
 }
 function buildAutomaticShadowRecord(productionRecord) {
   if (!productionRecord || productionRecord.evidenceType !== "super-sage-lineup-decision") throw new Error("Frozen production lineup decision required.");
