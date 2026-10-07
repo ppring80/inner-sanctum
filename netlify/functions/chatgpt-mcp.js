@@ -6138,6 +6138,7 @@ function buildServer(
                     season: resolvedSeason,
                     week: resolvedWeek,
                     scoring: resolvedScoring,
+                    shadowRecord: superSage.shadowRecord,
                     comparison: superSage.shadowComparison,
                     rules: {
                       customerVisible: false,
