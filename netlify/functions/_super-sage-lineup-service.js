@@ -30,6 +30,7 @@ const { matchRoster, canonicalRosterStatus } = require("./_super-sage-roster-ide
 const { buildKickoffIndex, decisionCutoff, teamKickoffState } = require("./_super-sage-kickoff.js");
 const { loadObservedOpportunity } = require("./_super-sage-opportunity-evidence.js");
 const { buildLiveShadowComparison } = require("./_super-sage-live-shadow.js");
+const { buildAutomaticShadowRecord } = require("./_super-sage-live-shadow-adapter.js");
 
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 const SERVICE_VERSION = 1;
@@ -134,10 +135,14 @@ async function decideSharedLineup({ rankings = null, rankingsError = null, roste
     rankings: authorityRankings, slots, scoring, season, week, opportunity, statusUpdates, matchedRoster
   });
   // Observational only: production authority has already completed above.
-  const shadowComparison = shadowRecord ? buildLiveShadowComparison({
-    season, week, scoring, productionRecord: record, shadowRecord,
-    decisionAt: now.toISOString(), caseLabel: shadowCaseLabel || null
-  }) : null;
+  // If no explicit shadow is supplied, Rookie automatically consumes the
+  // frozen production evidence packet. This performs no provider/network call
+  // and cannot alter the production record.
+  const automaticShadowRecord = shadowRecord || buildAutomaticShadowRecord(record);
+  const shadowComparison = buildLiveShadowComparison({
+    season, week, scoring, productionRecord: record, shadowRecord: automaticShadowRecord,
+    decisionAt: now.toISOString(), caseLabel: shadowCaseLabel || "AUTO_LIVE_SHADOW"
+  });
   return {
     status: "DECIDED",
     record,
