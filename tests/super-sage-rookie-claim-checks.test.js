@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('assert');
 const {validateClaims,revalidateCached}=require('../netlify/functions/_super-sage-rookie-claim-checks');
-const {validate,formatGroundedAnswer}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const {validate,formatGroundedAnswer,strictSchema}=require('../netlify/functions/_super-sage-shadow-fast-review');
 const packet={players:[{id:'A',name:'Chris Godwin Jr.',position:'WR',facts:[{field:'projection',factId:'A:projection',value:{points:8.2}},{field:'establishedRole',factId:'A:establishedRole',value:{description:'Established role: about 5 opportunities per game recently.'}}]},{id:'B',name:'Jakobi Meyers',position:'WR',facts:[{field:'projection',factId:'B:projection',value:{points:7.67}}]}]};
 const cases=[
  ['The projection spread plus matchup make Godwin the better floor play here.','unsupported_floor_comparison'],
@@ -21,6 +21,7 @@ const cases=[
  ['Sutton is healthy and consistent.','availability_overstated_as_health'],
  ['His clear health makes him the choice.','availability_overstated_as_health'],
  ['He is active and healthy for week 5.','availability_overstated_as_health'],
+ ['He is a healthier but lower-volume option.','availability_overstated_as_health'],
  ['Work share post-Bigsby trade remains unknown.','unsupported_trade_event']
 ];
 for(const [explanation,error] of cases) assert.ok(validateClaims({explanation},packet).includes(error),error);
@@ -51,3 +52,5 @@ const input={selected:'A',confidence:'MEDIUM',explanationSentences:[{text:'Start
 const originalInput=JSON.stringify(input),formatted=formatGroundedAnswer(input);
 assert.strictEqual(formatted.explanation,linked.explanation);assert.strictEqual(formatted.selected,input.selected);assert.strictEqual(JSON.stringify(input),originalInput);assert.deepStrictEqual(validate(formatted,grounded),[]);
 assert.deepStrictEqual(formatted.explanationSentences,input.explanationSentences);
+const limited={type:'object',additionalProperties:false,properties:{sentences:{type:'array',minItems:3,maxItems:3,items:{type:'object',additionalProperties:false,properties:{factIds:{type:'array',minItems:1,maxItems:4,items:{type:'string'}}}}}}};
+const compatible=strictSchema(limited);assert.strictEqual(compatible.properties.sentences.minItems,1);assert.strictEqual(compatible.properties.sentences.maxItems,undefined);assert.strictEqual(compatible.properties.sentences.items.properties.factIds.maxItems,undefined);assert.strictEqual(limited.properties.sentences.maxItems,3);
