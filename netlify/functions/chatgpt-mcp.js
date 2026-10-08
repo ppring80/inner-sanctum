@@ -66,6 +66,7 @@ const {
 const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
 const { buildEvidence: buildRookieEvidence, hash: rookieHash, runReview: runFullRookieReview } = require("./_super-sage-shadow-llm.js");
 const { runFastReview: runRookieReview } = require("./_super-sage-shadow-fast-review.js");
+const { runNextDrill } = require("./_super-sage-rookie-drill.js");
 const {
   toCustomerAnswer,
   customerAnswerText,
@@ -6465,18 +6466,18 @@ function buildServer(
   server.registerTool(
     "run_shadow_llm_review",
     {
-      title: "Run Rookie 10-Second Pair Benchmark",
-      description: "Private reviewer speed benchmark: compares Godwin versus Meyers from the authorized owner's frozen evidence, without Production's answer. Haiku 4.5 model speed comparison, 10-second provider deadline, concise structured answer. Preserves exact output and measured provider/server timing. Default mode is focused; full mode preserves the background full-lineup review. One speed-benchmark call per UTC day; cached reads make no new provider call. Focused mode is one pair, never a full lineup or customer authority.",
-      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["focused", "full"]).optional() }),
+      title: "Run Rookie Four-Case Haiku Drill",
+      description: "Private reviewer Haiku drill: each invocation runs the next of four fixed cases from owned frozen evidence, including one explicitly synthetic missing-evidence test. At most four provider calls globally for this curriculum, one per case, with no retries. Ten-second provider deadline; full tool latency measured separately. After all cases, returns saved results without new model calls. Default mode is drill; focused preserves the prior pair benchmark, full preserves background Sonnet lineup review. Never changes customer decisions.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["drill", "focused", "full"]).optional() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },
-    async ({ decisionId, mode = "focused" }) => {
+    async ({ decisionId, mode = "drill" }) => {
       if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext || !authContext.snapshotKey) {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review requires an enabled private reviewer deployment and an authorized linked league." }] };
       }
       try {
         const toolStart = performance.now();
-        const review = await (mode === "full" ? runFullRookieReview : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
+        const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
         const invocationTiming = {
           ...(authContext.rookieInvocationTiming || {}),
           reviewCallMs: Math.round(performance.now() - toolStart),

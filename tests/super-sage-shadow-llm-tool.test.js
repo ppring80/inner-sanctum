@@ -13,7 +13,7 @@ Module._load = function(request, parent, isMain) {
 const { buildServer } = require('../netlify/functions/chatgpt-mcp')._test;
 const previousGate = process.env.SUPER_SAGE_REVIEWER_PEEPHOLE;
 (async () => {
- const args = { decisionId: 'a'.repeat(64) };
+ const args = { decisionId: 'a'.repeat(64), mode: 'focused' };
  delete process.env.SUPER_SAGE_REVIEWER_PEEPHOLE;
  const closed = buildServer({}, { snapshotKey: 'linked-owner' });
  assert.strictEqual(closed.tools.run_shadow_llm_review.options.annotations.readOnlyHint, false);
