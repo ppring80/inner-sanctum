@@ -1,0 +1,46 @@
+'use strict';
+const assert = require('assert');
+const { buildEvidence, validateAnswer, runReview, hash, VERSION, SYSTEM } = require('../netlify/functions/_super-sage-shadow-llm');
+const fixture = JSON.parse(JSON.stringify(require('./fixtures/super-sage-live-shadow-week5.json')));
+// Historical sanitized fixture omitted eligibility; supply explicit test settings.
+for (const slot of fixture.slots) slot.eligiblePositions = slot.slotLabel === 'RB-WR-TE' ? ['RB','WR','TE'] : [slot.slotLabel === 'DST' ? 'DEF' : slot.slotLabel];
+const before = JSON.stringify(fixture);
+const evidence = buildEvidence(fixture);
+assert.strictEqual(JSON.stringify(fixture), before);
+const packetText = JSON.stringify(evidence.packet);
+for (const forbidden of ['decidedBy', 'reassessedFrom', 'blockedChallengers', 'productionDecisionId', 'baselineValidity', 'hasValidatedEdge', 'decisionState', 'explanation', 'comparator', 'starter', 'lineupStatus']) assert.ok(!packetText.includes('"' + forbidden + '"'), forbidden);
+const swapped = JSON.parse(before);
+for (const slot of swapped.slots) [slot.starter, slot.comparator] = [slot.comparator, slot.starter];
+assert.deepStrictEqual(buildEvidence(swapped), evidence, 'Candidate ordering must not reveal Production pick');
+assert.ok(SYSTEM.includes('Make your own decision'));
+const simple = { decisionId: 'a'.repeat(64), request: { season: 2026, week: 5, scoring: 'half' }, slots: [{ slotLabel: 'RB', eligiblePositions: ['RB'], starter: { name: 'Alpha', position: 'RB', standing: { positionRank: 1 }, availability: { unavailable: false } }, comparator: { name: 'Beta', position: 'RB', standing: { positionRank: 2 }, availability: { unavailable: false } } }] };
+const frozenEvidence = buildEvidence(simple);
+const answer = { slots: [{ slotId: 'S1', playerId: 'P2', confidence: 'LOW', explanation: 'Independent model decision, intentionally different from the recorded incumbent.', countercase: 'Alpha has a better standing.', missingInformation: [], reconsider: ['New verified role evidence.'], factIds: ['P2:standing', 'P1:standing'] }] };
+assert.deepStrictEqual(validateAnswer(answer, frozenEvidence.packet), []);
+assert.ok(validateAnswer({ slots: [{ ...answer.slots[0], playerId: 'UNKNOWN' }] }, frozenEvidence.packet).includes('invalid_ineligible_or_duplicate_player'));
+assert.ok(validateAnswer({ slots: [{ ...answer.slots[0], factIds: ['invented'] }] }, frozenEvidence.packet).includes('invalid_fact_citations'));
+assert.ok(validateAnswer({ slots: [{ ...answer.slots[0], playerId: null }] }, frozenEvidence.packet).includes('no_call_without_blocker'));
+assert.ok(validateAnswer({ slots: [null] }, frozenEvidence.packet).length);
+const unavailable = JSON.parse(JSON.stringify(frozenEvidence.packet)); unavailable.players[1].facts.find(f => f.field === 'availability').value.unavailable = true;
+assert.ok(validateAnswer(answer, unavailable).includes('unavailable_player_selected'));
+const store = () => {
+ const data = new Map([[`evidence/${simple.decisionId}/${hash('owner')}`, { ownerHash: hash('owner'), frozenEvidence }]]);
+ return { data, async get(key) { return data.get(key) || null; }, async setJSON(key, value, options = {}) { if (options.onlyIfNew && data.has(key)) return { modified: false }; data.set(key, value); return { modified: true }; } };
+};
+(async () => {
+ let calls = 0;
+ const mockFetch = async (_url, options) => { calls++; const input = JSON.parse(options.body); assert.strictEqual(input.model, 'claude-sonnet-4-6'); assert.ok(!input.messages[0].content.includes('explanation')); return { ok: true, async json() { return { id: 'synthetic-provider-id', model: input.model, stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 100 }, content: [{ type: 'text', text: JSON.stringify(answer) }] }; } }; };
+ const s = store(), args = { store: s, decisionId: simple.decisionId, ownerHash: hash('owner'), apiKey: 'synthetic-key', fetchImpl: mockFetch, now: new Date('2026-10-08T00:00:00Z') };
+ const [a,b] = await Promise.all([runReview(args), runReview(args)]);
+ assert.strictEqual(calls, 1); assert.ok([a.status,b.status].includes('REVIEW_READY'));
+ const cached = await runReview(args); assert.strictEqual(calls, 1); assert.strictEqual(cached.rawText, JSON.stringify(answer)); assert.strictEqual(cached.answer.slots[0].playerId, 'P2'); assert.strictEqual(cached.rules.productionAuthority, false); assert.strictEqual(cached.semanticReviewRequired, true);
+ assert.strictEqual((await runReview({ ...args, ownerHash: hash('other') })).error, 'owned_frozen_evidence_unavailable');
+ const secondId = 'b'.repeat(64); s.data.set(`evidence/${secondId}/${hash('owner')}`, { ownerHash: hash('owner'), frozenEvidence });
+ assert.strictEqual((await runReview({ ...args, decisionId: secondId })).error, 'daily_model_call_limit'); assert.strictEqual(calls, 1);
+ const unconfigured = store(); assert.strictEqual((await runReview({ ...args, store: unconfigured, apiKey: null })).error, 'model_not_configured'); assert.ok(!unconfigured.data.has(`llm/${VERSION}/${simple.decisionId}/${hash('owner')}`));
+ const broken = store(); const invalid = await runReview({ ...args, store: broken, fetchImpl: async () => ({ ok: true, json: async () => ({ stop_reason: 'max_tokens', content: [{ type: 'text', text: 'not JSON' }] }) }) });
+ assert.strictEqual(invalid.status, 'INVALID'); assert.strictEqual(invalid.rawText, 'not JSON'); assert.ok(invalid.validationErrors.includes('incomplete_model_response'));
+ const failed = store(); const failure = await runReview({ ...args, store: failed, fetchImpl: async () => { throw new Error('sensitive-provider-detail'); } }); assert.strictEqual(failure.status, 'UNAVAILABLE'); assert.ok(!JSON.stringify(failure).includes('sensitive-provider-detail')); assert.ok(!failure.answer);
+ const corrupt = store(); corrupt.data.get(`evidence/${simple.decisionId}/${hash('owner')}`).frozenEvidence = { ...frozenEvidence, evidenceHash: 'bad' }; assert.strictEqual((await runReview({ ...args, store: corrupt })).error, 'evidence_integrity_failure');
+ console.log('Independent Rookie contracts passed: blind evidence, own decision, exact raw output, no authority, owner isolation, atomic dedup, daily cap, provider failures, invalid responses. Provider calls here are mocked; no live LLM claim.');
+})().catch(error => { console.error(error); process.exit(1); });
