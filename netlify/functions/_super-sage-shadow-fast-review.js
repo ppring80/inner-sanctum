@@ -20,6 +20,11 @@ function formatGroundedAnswer(input) {
   // and caveat. Original input remains in rawText/rawContent without alteration.
   return { ...input, explanation: sentences.map(s => s.text).join("\n"), sentenceFactIds: sentences.map(s => s.factIds), factIds: [...new Set(sentences.flatMap(s => s.factIds))] };
 }
+function strictSchema(value) {
+  if (Array.isArray(value)) return value.map(strictSchema);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "maxItems").map(([key, item]) => [key, key === "minItems" ? Math.min(item, 1) : strictSchema(item)]));
+}
 function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
   const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
@@ -62,13 +67,15 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   let focused;
   try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence); } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
   const system = focused.packet.requireSentenceEvidence ? GROUNDED_SYSTEM : SYSTEM;
-  const schema = focused.packet.requireSentenceEvidence ? GROUNDED_SCHEMA : SCHEMA;
+  const grounded = focused.packet.requireSentenceEvidence === true;
+  const schema = grounded ? strictSchema(GROUNDED_SCHEMA) : SCHEMA;
+  const model = grounded ? "claude-sonnet-4-6" : MODEL;
   const maxTokens = focused.packet.requireSentenceEvidence ? 550 : 400;
   const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}`;
   const cached = await store.get(key, { type: "json" });
   if (cached) return { ...revalidateCached(cached, cached.status === "REVIEW_READY" ? validate(cached.answer, focused.packet) : []), cached: true };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model: MODEL, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: 10000, promptHash: hash(system), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: 10000, promptHash: hash(system), rules: RULES };
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   if (!reservation?.modified) return { ...base, error: "review_already_reserved" };
   // This explicitly requested speed benchmark has its own one-call daily cap;
@@ -119,7 +126,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   else {
     const providerStart = clock();
     try {
-      const response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(10000), headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } }) });
+      const response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(10000), headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema, ...(grounded ? { strict: true } : {}) }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } }) });
       if (!response.ok) {
         const detail = await response.json().catch(() => ({}));
         const error = new Error(`provider_http_${response.status}`);
@@ -135,9 +142,9 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > 10000) validationErrors.push("model_deadline_exceeded");
-      result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || MODEL, requestId: body.id, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
+      result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || model, requestId: body.id, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
     } catch (e) { result = { ...base, status: "UNAVAILABLE", error: e.name === "TimeoutError" || e.name === "AbortError" ? "ten_second_model_timeout" : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
   }
   await store.setJSON(key, result); return result;
 }
-module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer };
+module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
