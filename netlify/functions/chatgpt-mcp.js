@@ -62,6 +62,7 @@ const {
 
 // ONE Super SAGE decision authority (shared with the website).
 const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
+const { buildEvidence: buildRookieEvidence, runReview: runRookieReview, hash: rookieHash } = require("./_super-sage-shadow-llm.js");
 const {
   toCustomerAnswer,
   customerAnswerText,
@@ -6150,6 +6151,14 @@ function buildServer(
                   },
                   { onlyIfNew: true }
                 );
+                if (authContext && authContext.snapshotKey) {
+                  const ownerHash = rookieHash(authContext.snapshotKey);
+                  await shadowLabStore.setJSON(
+                    `evidence/${record.decisionId}/${ownerHash}`,
+                    { ownerHash, frozenEvidence: buildRookieEvidence(record), capturedAt: new Date().toISOString() },
+                    { onlyIfNew: true }
+                  );
+                }
               } catch (shadowLabError) {
                 console.error("Super SAGE shadow lab write failed:", shadowLabError && shadowLabError.message);
               }
@@ -6446,6 +6455,30 @@ function buildServer(
         }
       }
     );
+
+  // Explicit private model invocation; discovery is stable, execution gated.
+  // Unlike the peephole, this action writes a research artifact and spends
+  // one bounded provider call. It never runs as part of a customer lineup.
+  server.registerTool(
+    "run_shadow_llm_review",
+    {
+      title: "Run Independent Rookie LLM Review",
+      description: "Private reviewer action: asks an independent Anthropic model to decide from owned, frozen pregame evidence without Production's answer. Stores exact model output; at most one provider call globally per UTC day and one attempt per decision/version. Never changes the customer recommendation. Requires the reviewer deployment gate and an OAuth-linked league.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/) }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
+    },
+    async ({ decisionId }) => {
+      if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext || !authContext.snapshotKey) {
+        return { isError: true, content: [{ type: "text", text: "Independent Rookie review requires an enabled private reviewer deployment and an authorized linked league." }] };
+      }
+      try {
+        const review = await runRookieReview({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
+        return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: JSON.stringify(review) }], structuredContent: { review } };
+      } catch {
+        return { isError: true, content: [{ type: "text", text: "Independent Rookie review could not be stored or requested. No customer recommendation was changed." }] };
+      }
+    }
+  );
 
   // =========================================================
   // TOOL #6 — GET WAIVER RECOMMENDATIONS
