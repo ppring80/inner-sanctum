@@ -16,7 +16,7 @@ function validateClaims(answer, packet) {
   if (!facts.some(f => f.field === "projection" && Number.isFinite(f.value?.ceiling)) && /\b(?:less|more|greater|higher|lacks?|missing)\s+(?:the\s+)?(?:upside|ceiling)\b/i.test(text)) errors.push("unsupported_ceiling_comparison");
   // These packets do not establish how provider projections were adjusted.
   if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
-  if (/\b(?:is|fully|confirmed|clear|perfect)\s+health(?:y)?\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\b(?:is|fully|confirmed|clear|perfect|active and)\s+health(?:y)?\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
   if (/\btrade\b/i.test(text) && !facts.some(f => /\btrade\b/i.test(JSON.stringify(f.value)))) errors.push("unsupported_trade_event");
   if (/\bboth\s+(?:players\s+)?(?:sit|are)\s+in\s+(?:the\s+)?flex\s+tier\b/i.test(text) && packet.players.some(p => p.facts?.find(f => f.field === "standing")?.value?.tier !== "FLEX")) errors.push("standing_tier_misrepresented");
   if (/\b(?:will|he'll|she'll)\s+(?:see|get|receive|have)\s+(?:more|at least\s+\d|\d)/i.test(text)) errors.push("guaranteed_future_workload");
@@ -33,4 +33,9 @@ function validateClaims(answer, packet) {
   }
   return [...new Set(errors)];
 }
-module.exports = { validateClaims };
+function revalidateCached(review, errors) {
+  if (review.status !== "REVIEW_READY" || !errors.length) return review;
+  // Reassess the returned view; preserve the original stored answer and status.
+  return { ...review, storedStatus: review.status, status: "INVALID", validationErrors: [...new Set([...(review.validationErrors || []), ...errors])], revalidated: true };
+}
+module.exports = { validateClaims, revalidateCached };

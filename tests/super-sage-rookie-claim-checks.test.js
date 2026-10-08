@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('assert');
-const {validateClaims}=require('../netlify/functions/_super-sage-rookie-claim-checks');
+const {validateClaims,revalidateCached}=require('../netlify/functions/_super-sage-rookie-claim-checks');
 const {validate}=require('../netlify/functions/_super-sage-shadow-fast-review');
 const packet={players:[{id:'A',name:'Chris Godwin Jr.',position:'WR',facts:[{field:'projection',factId:'A:projection',value:{points:8.2}},{field:'establishedRole',factId:'A:establishedRole',value:{description:'Established role: about 5 opportunities per game recently.'}}]},{id:'B',name:'Jakobi Meyers',position:'WR',facts:[{field:'projection',factId:'B:projection',value:{points:7.67}}]}]};
 const cases=[
@@ -17,6 +17,7 @@ const cases=[
  ['His projection of 5.29 reflects uncertainty about availability.','unsupported_projection_adjustment'],
  ['Sutton is healthy and consistent.','availability_overstated_as_health'],
  ['His clear health makes him the choice.','availability_overstated_as_health'],
+ ['He is active and healthy for week 5.','availability_overstated_as_health'],
  ['Work share post-Bigsby trade remains unknown.','unsupported_trade_event']
 ];
 for(const [explanation,error] of cases) assert.ok(validateClaims({explanation},packet).includes(error),error);
@@ -32,3 +33,7 @@ const tiers={players:[{facts:[{field:'standing',value:{tier:'FLEX'}}]},{facts:[{
 assert.ok(validateClaims({explanation:'Both players sit in the flex tier.'},tiers).includes('standing_tier_misrepresented'));
 assert.deepStrictEqual(validateClaims({explanation:'One player has a higher positional rank.'},tiers),[]);
 console.log('Rookie claim regressions reject observed failure patterns and accept honest forecasts. These checks are not exhaustive semantic verification.');
+const old={status:'REVIEW_READY',answer:{explanation:'He is active and healthy for week 5.'},rawText:'original exact text'};
+const reassessed=revalidateCached(old,validateClaims(old.answer,packet));
+assert.strictEqual(reassessed.status,'INVALID');assert.strictEqual(reassessed.storedStatus,'REVIEW_READY');assert.strictEqual(reassessed.rawText,old.rawText);assert.strictEqual(old.status,'REVIEW_READY');
+assert.strictEqual(revalidateCached(old,[]),old);
