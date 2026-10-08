@@ -8,11 +8,18 @@ const SYSTEM = `Independently choose one starter in this private frozen pair com
 const SCHEMA = { type: "object", additionalProperties: false, required: ["selected", "confidence", "explanation", "caveat", "reconsider", "factIds"], properties: {
   selected: { type: ["string", "null"], enum: ["A", "B", null] }, confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] }, explanation: { type: "string", description: "60-80 words. Pick first, two decisive facts, main risk, why the tradeoff favors the pick. Use only supplied evidence." }, caveat: { type: "string", description: "At most 12 words: a supported risk or explicit unknown. Active is not proof of health; unknown QB quality is not unproven quality." }, reconsider: { type: "string", description: "At most 18 words: specific new pregame evidence that could reverse this choice. Do not promise a changed projection or automatic switch." }, factIds: { type: "array", items: { type: "string" } }
 } };
-const GROUNDED_SYSTEM = `${SYSTEM} For this evidence-linking test, write the explanation as 2-4 connected sentences, one sentence per newline. For each sentence return the supplied fact IDs that support its factual claims in sentenceFactIds at the same index. State your chosen starter in the first sentence. Cite recent usage as recent usage and status as listed status. Do not turn these into guaranteed work, scoring bounds or health clearance. Use the supplied evidence to make a qualified decision, not a blanket refusal because risks exist. Sentence links are public source attribution, not private reasoning. Do not repeat citations in spoken text.`;
-const GROUNDED_SCHEMA = { ...SCHEMA, required: [...SCHEMA.required, "sentenceFactIds"], properties: { ...SCHEMA.properties,
-  explanation: { type: "string", description: "2-4 connected sentences, separated by newlines, about 60-80 words total. Pick first; compare supported evidence; acknowledge risk and explain the lean." },
-  sentenceFactIds: { type: "array", minItems: 2, maxItems: 4, items: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } }, description: "Each entry cites the supplied facts supporting the corresponding explanation sentence. Do not infer facts absent from those sources." }
+const GROUNDED_SYSTEM = `${SYSTEM} For this evidence-linking test, return explanationSentences: 2-4 connected sentences, each with its supporting supplied fact IDs. Together these sentences are your public explanation, about 60-80 words total. State your chosen starter first. Cite recent usage as recent usage and status as listed status. Do not turn these into guaranteed work, scoring bounds or health clearance. Make a qualified decision, not a blanket refusal because risks exist. Source links are public attribution, not private reasoning. Do not repeat citations in spoken text.`;
+const GROUNDED_SCHEMA = { type: "object", additionalProperties: false, required: ["selected", "confidence", "explanationSentences", "caveat", "reconsider"], properties: {
+  selected: SCHEMA.properties.selected, confidence: SCHEMA.properties.confidence, caveat: SCHEMA.properties.caveat, reconsider: SCHEMA.properties.reconsider,
+  explanationSentences: { type: "array", minItems: 2, maxItems: 4, description: "Your connected public explanation. Pick first, decisive comparison, risk and why you still lean this way. About 60-80 words total.", items: { type: "object", additionalProperties: false, required: ["text", "factIds"], properties: { text: { type: "string", description: "One sentence, using only claims supported by the cited facts." }, factIds: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } } } } }
 } };
+function formatGroundedAnswer(input) {
+  const sentences = input?.explanationSentences;
+  if (!Array.isArray(sentences) || !sentences.every(s => typeof s?.text === "string" && Array.isArray(s.factIds))) return input;
+  // Mechanical presentation only: retain every model-authored sentence, choice
+  // and caveat. Original input remains in rawText/rawContent without alteration.
+  return { ...input, explanation: sentences.map(s => s.text).join("\n"), sentenceFactIds: sentences.map(s => s.factIds), factIds: [...new Set(sentences.flatMap(s => s.factIds))] };
+}
 function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
   const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
@@ -123,7 +130,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       const calls = (body.content || []).filter(c => c.type === "tool_use" && c.name === "submit_decision");
       const rawText = calls.length === 1 ? JSON.stringify(calls[0].input) : (body.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
       let answer = null, validationErrors;
-      try { answer = JSON.parse(rawText); validationErrors = validate(answer, focused.packet); } catch { validationErrors = ["invalid_json"]; }
+      try { const input = JSON.parse(rawText); answer = focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = validate(answer, focused.packet); } catch { validationErrors = ["invalid_json"]; }
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > 10000) validationErrors.push("model_deadline_exceeded");
@@ -132,4 +139,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   }
   await store.setJSON(key, result); return result;
 }
-module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview };
+module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer };
