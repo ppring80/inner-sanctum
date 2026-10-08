@@ -15,8 +15,9 @@ const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,o
  const ablation=p.scope==='SYNTHETIC_EVIDENCE_ABLATION';
  const factIds=p.players.flatMap(p=>p.facts.slice(0,1).map(f=>f.factId));
  assert.ok(request.tools[0].input_schema.required.includes('explanationSentences'));
- const texts=ablation?['No call: essential availability and role evidence is absent.','A supported comparison needs more evidence.']:['Start the supported candidate.','Further evidence could change the choice.'];
- const answer={selected:ablation?null:'A',confidence:'LOW',explanationSentences:texts.map((text,i)=>({text,factIds:[factIds[i]]})),caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.'};
+ assert.strictEqual(request.max_tokens,550);assert.strictEqual(request.tools[0].input_schema.properties.explanationSentences.maxItems,3);
+ const texts=ablation?['No call: essential availability and role evidence is absent.','A supported comparison needs more evidence.','Neither candidate has supplied facts to support a choice.']:['Start the supported candidate.','Further evidence could change the choice.','The supplied evidence supports a qualified lean.'];
+ const answer={selected:ablation?null:'A',confidence:'LOW',explanationSentences:texts.map((text,i)=>({text,factIds:[factIds[i%factIds.length]]})),caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.'};
  return{ok:true,json:async()=>({model:request.model,stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]})};
 }};
 (async()=>{
