@@ -6484,7 +6484,7 @@ function buildServer(
           cached: review.cached === true
         };
         // Current request diagnostics are separate from the immutable model artifact.
-        return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: JSON.stringify({ review, invocationTiming }) }], structuredContent: { review, invocationTiming } };
+        return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: `Rookie ${review.status}. Exact model response and request timings are in structuredContent; saved review history is preserved.` }], structuredContent: { review, invocationTiming } };
       } catch {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review could not be stored or requested. No customer recommendation was changed." }] };
       }
