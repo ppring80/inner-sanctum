@@ -13,7 +13,7 @@ function validateClaims(answer, packet) {
   });
   if (!hasFloor && positiveFloorClaim) errors.push("unsupported_floor_comparison");
   if (!hasFloor && /\b(?:shrink|raise|lower|reduce|increase)\s+(?:his|her|their|the)\s+floor\b/i.test(text)) errors.push("unsupported_floor_change");
-  if (!facts.some(f => f.field === "projection" && Number.isFinite(f.value?.ceiling)) && /\b(?:less|more|greater|higher|lacks?|missing)\s+(?:the\s+)?(?:upside|ceiling)\b/i.test(text)) errors.push("unsupported_ceiling_comparison");
+  if (!facts.some(f => f.field === "projection" && Number.isFinite(f.value?.ceiling)) && /\b(?:less|more|greater|higher|lower|highest|lowest|lacks?|missing)[\s\u2010-\u2015-]+(?:the\s+)?(?:upside|ceiling)\b/i.test(text)) errors.push("unsupported_ceiling_comparison");
   // These packets do not establish how provider projections were adjusted.
   if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
   if (/\b(?:is|fully|confirmed|clear|perfect|active and)\s+health(?:y)?\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
