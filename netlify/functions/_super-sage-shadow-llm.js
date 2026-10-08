@@ -51,6 +51,12 @@ function validateAnswer(answer, packet) {
   return [...new Set(errors)];
 }
 
+async function recoveryAllowed(store, decisionId, ownerHash, evidenceHash, day) {
+  const prior = await store.get(`llm/rookie-independent-v1/${decisionId}/${ownerHash}`, { type: "json" });
+  const budget = await store.get(`llm-budget/${day}`, { type: "json" });
+  return Boolean(prior && prior.status === "UNAVAILABLE" && prior.error === "model_request_failed" && prior.evidenceHash === evidenceHash && budget && budget.decisionId === decisionId);
+}
+
 async function executeReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date() }) {
   if (!/^[a-f0-9]{64}$/.test(decisionId) || !ownerHash) return { status: "UNAVAILABLE", error: "invalid_request" };
   const artifact = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
@@ -65,7 +71,14 @@ async function executeReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (!reserved || reserved.modified !== true) return { ...reservation, error: "review_already_reserved" };
   // Global one-call/day cap, atomically enforced across all callers. Failures
   // consume the reservation too; no automatic retries or billing surprises.
-  const budget = await store.setJSON(`llm-budget/${now.toISOString().slice(0, 10)}`, { decisionId, at: now.toISOString() }, { onlyIfNew: true });
+  const day = now.toISOString().slice(0, 10);
+  let budget = await store.setJSON(`llm-budget/${day}`, { decisionId, at: now.toISOString() }, { onlyIfNew: true });
+  if ((!budget || budget.modified !== true) && await recoveryAllowed(store, decisionId, ownerHash, artifact.frozenEvidence.evidenceHash, day)) {
+    // One explicit migration recovery for a failed v1 request only. Successful
+    // calls, different owners/packets and arbitrary second calls cannot use it.
+    budget = await store.setJSON(`llm-recovery/${day}`, { decisionId, evidenceHash: artifact.frozenEvidence.evidenceHash, at: now.toISOString() }, { onlyIfNew: true });
+    reservation.recoveryOf = "rookie-independent-v1";
+  }
   if (!budget || budget.modified !== true) {
     const blocked = { ...reservation, status: "UNAVAILABLE", error: "daily_model_call_limit" };
     await store.setJSON(key, blocked); return blocked;
@@ -112,7 +125,11 @@ async function runReview(args) {
   if (cached) return cached;
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   // Read-only cap check before queueing; the worker also enforces it atomically.
-  if (await store.get(`llm-budget/${now.toISOString().slice(0,10)}`, { type: "json" })) return { status: "UNAVAILABLE", error: "daily_model_call_limit", nextBudgetResetAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()+1)).toISOString() };
+  const day = now.toISOString().slice(0,10);
+  if (await store.get(`llm-budget/${day}`, { type: "json" })) {
+    const recovery = await recoveryAllowed(store, decisionId, ownerHash, artifact.frozenEvidence.evidenceHash, day);
+    if (!recovery || await store.get(`llm-recovery/${day}`, { type: "json" })) return { status: "UNAVAILABLE", error: "daily_model_call_limit", nextBudgetResetAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()+1)).toISOString() };
+  }
   const queueKey = `llm-queue/${VERSION}/${decisionId}/${ownerHash}`;
   const queued = { status: "QUEUED", version: VERSION, decisionId, capturedAt: now.toISOString(), rules: RULES };
   const previous = await store.get(queueKey, { type: "json" });
