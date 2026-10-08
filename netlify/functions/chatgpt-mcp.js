@@ -6463,7 +6463,7 @@ function buildServer(
     "run_shadow_llm_review",
     {
       title: "Run Independent Rookie LLM Review",
-      description: "Private reviewer action: asks an independent Anthropic model to decide from owned, frozen pregame evidence without Production's answer. Stores exact model output; at most one provider call globally per UTC day and one attempt per decision/version. Never changes the customer recommendation. Requires the reviewer deployment gate and an OAuth-linked league.",
+      description: "Private reviewer action: queues an independent Anthropic model review of owned, frozen pregame evidence without Production's answer. Call again to read progress or the exact saved response; at most one provider call globally per UTC day and one attempt per decision/version. Never changes the customer recommendation. Requires the reviewer deployment gate and an OAuth-linked league.",
       inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/) }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },

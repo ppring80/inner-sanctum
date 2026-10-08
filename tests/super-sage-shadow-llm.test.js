@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('assert');
-const { buildEvidence, validateAnswer, runReview, hash, VERSION, SYSTEM } = require('../netlify/functions/_super-sage-shadow-llm');
+const { buildEvidence, validateAnswer, executeReview: runReview, hash, VERSION, SYSTEM } = require('../netlify/functions/_super-sage-shadow-llm');
 const fixture = JSON.parse(JSON.stringify(require('./fixtures/super-sage-live-shadow-week5.json')));
 // Historical sanitized fixture omitted eligibility; supply explicit test settings.
 for (const slot of fixture.slots) slot.eligiblePositions = slot.slotLabel === 'RB-WR-TE' ? ['RB','WR','TE'] : [slot.slotLabel === 'DST' ? 'DEF' : slot.slotLabel];
