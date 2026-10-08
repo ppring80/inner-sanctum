@@ -12,7 +12,8 @@ for (const [b,s,k,t] of [[body+' ',signJob(body,apiKey),apiKey,now.getTime()],[b
  const store=makeStore(); let enqueues=0;
  const args={store, decisionId, ownerHash, apiKey, now, fetchImpl:async (url,options)=>{ enqueues++; assert.strictEqual(url,'https://theinnersanctum.xyz/.netlify/functions/super-sage-rookie-review-background'); assert.strictEqual(verifyJob(options.body, options.headers['x-rookie-signature'],apiKey,now.getTime()),true); assert.ok(!options.body.includes(apiKey)); assert.ok(!options.body.includes('standing')); return {status:202}; }};
  const results=await Promise.all([runReview(args),runReview(args)]); assert.strictEqual(enqueues,1); assert.ok(results.every(r=>r.status==='QUEUED'));
- const completed={status:'REVIEW_READY',rawText:'exact answer'};store.data.set(`llm/${VERSION}/${decisionId}/${ownerHash}`,completed);assert.deepStrictEqual(await runReview(args),completed);assert.strictEqual(enqueues,1);
+ const completed={status:'REVIEW_READY',rawText:'exact answer'};store.data.set(`llm/${VERSION}/${decisionId}/${ownerHash}`,completed);
+ const checked=await runReview(args);assert.strictEqual(checked.status,'INVALID');assert.strictEqual(checked.storedStatus,'REVIEW_READY');assert.deepStrictEqual(checked.validationErrors,['slots_missing']);assert.strictEqual(checked.rawText,completed.rawText);assert.strictEqual(store.data.get(`llm/${VERSION}/${decisionId}/${ownerHash}`),completed);assert.strictEqual(completed.status,'REVIEW_READY');assert.strictEqual(enqueues,1);
  const capped=makeStore();capped.data.set('llm-budget/2026-10-08',{});assert.strictEqual((await runReview({...args,store:capped})).error,'daily_model_call_limit');assert.strictEqual(enqueues,1);
  const failed=await runReview({...args,store:makeStore(),fetchImpl:async()=>({status:500})});assert.strictEqual(failed.error,'review_queue_failed');
  const original=Module._load;let executions=0,connections=0;
