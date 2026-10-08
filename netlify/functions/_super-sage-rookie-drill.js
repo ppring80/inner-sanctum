@@ -2,15 +2,16 @@
 const { hash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview, focusEvidence, validate } = require("./_super-sage-shadow-fast-review.js");
 const { revalidateCached } = require("./_super-sage-rookie-claim-checks.js");
-const VERSION = "rookie-haiku-drill-v4";
+const VERSION = "rookie-haiku-drill-v5-sentence-evidence";
 const CASES = [
+  { id: "injury", label: "Questionable receiver versus listed-active alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
-  { id: "injury", label: "Questionable receiver versus healthy alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },
   { id: "role-change", label: "Established role versus possible role expansion", targets: ["Blake Corum", "Saquon Barkley"] },
   { id: "missing-evidence", label: "Synthetic essential-evidence removal", targets: ["Chris Godwin Jr.", "Jakobi Meyers"], ablation: true }
 ];
 function buildCase(frozen, c) {
   const focused = focusEvidence(frozen, c.targets);
+  focused.packet.requireSentenceEvidence = true;
   focused.packet.evidenceMeaning = {
     projection: "Forecast point estimate, not scored points, floor or ceiling; adjustment for state changes is unknown unless explicitly supplied.",
     establishedRole: "Observed recent usage; retain the original opportunity unit, not a guaranteed future workload.",
