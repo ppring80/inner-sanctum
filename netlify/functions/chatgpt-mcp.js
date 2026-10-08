@@ -42,6 +42,8 @@
 //   the same production intelligence Draft Command Center's own
 //   sage-recommend.js reads, minus the pieces that need a live draft.
 
+const rookieModuleLoadStart = performance.now();
+
 const {
   createMcpHandler,
   McpServer
@@ -6473,8 +6475,16 @@ function buildServer(
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review requires an enabled private reviewer deployment and an authorized linked league." }] };
       }
       try {
+        const toolStart = performance.now();
         const review = await (mode === "full" ? runFullRookieReview : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
-        return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: JSON.stringify(review) }], structuredContent: { review } };
+        const invocationTiming = {
+          ...(authContext.rookieInvocationTiming || {}),
+          reviewCallMs: Math.round(performance.now() - toolStart),
+          handlerElapsedThroughReviewMs: Number.isFinite(authContext.rookieInvocationStart) ? Math.round(performance.now() - authContext.rookieInvocationStart) : null,
+          cached: review.cached === true
+        };
+        // Current request diagnostics are separate from the immutable model artifact.
+        return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: JSON.stringify({ review, invocationTiming }) }], structuredContent: { review, invocationTiming } };
       } catch {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review could not be stored or requested. No customer recommendation was changed." }] };
       }
@@ -7202,8 +7212,12 @@ exports._test = {
   addFaabDollarGuidance
 };
 
+const rookieModuleLoadMs = Math.round(performance.now() - rookieModuleLoadStart);
+
 exports.handler =
   async function handler(event) {
+    const invocationStart = performance.now();
+    const invocationTiming = { moduleLoadMs: rookieModuleLoadMs };
     try {
       connectLambda(
         event
@@ -7237,11 +7251,13 @@ exports.handler =
           event
         )
       ) {
+        const authStart = performance.now();
         const validation =
           await validateLeagueAccess(
             event
           );
 
+        invocationTiming.authorizationMs = Math.round(performance.now() - authStart);
         if (!validation.ok) {
           return oauthChallengeResponse(
             validation.error,
@@ -7253,6 +7269,7 @@ exports.handler =
           validation.authInfo;
 
         const route = getMcpRoute(event);
+        const analyticsStart = performance.now();
         await recordSageFunnelEvent({
           stage: "first_tool_call",
           subject: authContext.token,
@@ -7265,6 +7282,9 @@ exports.handler =
         }).catch(error => {
           console.error("SAGE funnel first_tool_call event failed:", error);
         });
+        invocationTiming.analyticsMs = Math.round(performance.now() - analyticsStart);
+        authContext.rookieInvocationTiming = invocationTiming;
+        authContext.rookieInvocationStart = invocationStart;
       }
 
       const headers =
