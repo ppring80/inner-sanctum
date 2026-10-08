@@ -50,8 +50,11 @@ function evidenceFacts(starter, challenger) {
   }
   return facts;
 }
+function confidenceWarnings(player) {
+  return (player?.uncertainty || []).filter(u => u.code === "LIMITED_SAGE_CONFIDENCE").map(u => `${player.name}: ${u.text || u.code}`);
+}
 function missingInformation(player) {
-  const missing = (player?.uncertainty || []).map(u => `${player.name}: ${u.text || u.code}`);
+  const missing = (player?.uncertainty || []).filter(u => u.code !== "LIMITED_SAGE_CONFIDENCE").map(u => `${player.name}: ${u.text || u.code}`);
   if (player?.availability?.availabilityVerified !== true) missing.push(`${player.name}: availability is unverified.`);
   if (player?.availability?.questionable || ["QUESTIONABLE", "DOUBTFUL", "UNVERIFIED"].includes(player?.availability?.effectiveStatus?.status)) missing.push(`${player.name}: availability remains uncertain.`);
   if (player?.availability?.conflict?.length) missing.push(`${player.name}: availability sources disagree.`);
@@ -64,8 +67,9 @@ function missingInformation(player) {
 }
 function confidenceFor(slot, call) {
   const uncertain = call.status === "NO_CALL" || call.status === "CONDITIONAL" || call.uncertaintyType !== "STABLE";
+  const evidenceLimited = (call.confidenceWarnings || []).length > 0;
   const productionLimited = ["LIMITED", "LOW"].includes(String(slot?.confidence?.label || "").toUpperCase());
-  return { label: uncertain || productionLimited ? "LOW" : "MODERATE" };
+  return { label: uncertain || productionLimited || evidenceLimited ? "LOW" : "MODERATE" };
 }
 function buildShadowSlot(slot) {
   const incumbent = slot?.starter || null, challenger = slot?.comparator || null;
@@ -89,8 +93,10 @@ function buildShadowSlot(slot) {
   } else if (missing.length) {
     call = { ...call, selected: null, status: "CONDITIONAL", uncertaintyType: "MISSING_INFORMATION", rationale: "Unresolved player evidence prevents a definitive independent call." };
   }
+  const warnings = [...confidenceWarnings(incumbent), ...confidenceWarnings(challenger)];
+  call.confidenceWarnings = warnings;
   const chosen = call.selected === challenger.name ? challenger : call.selected === incumbent.name ? incumbent : null;
-  return { ...packet, starter: chosen, comparator: chosen === challenger ? incumbent : challenger, decidedBy: "operator-shadow", decisionState: chosen ? "DECIDED" : "UNRESOLVED", hasValidatedEdge: false, confidence: confidenceFor(slot, call), shadow: { selected: call.selected, incumbent: incumbent.name, challenger: challenger.name, informationState: raw.informationState, missingInformation: raw.informationState === "COMPLETE" ? [] : missing, callStatus: call.status, movement: call.movement, threshold: call.threshold, uncertaintyType: call.uncertaintyType, rationale: call.rationale, evidenceUsed: call.evidenceUsed }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
+  return { ...packet, starter: chosen, comparator: chosen === challenger ? incumbent : challenger, decidedBy: "operator-shadow", decisionState: chosen ? "DECIDED" : "UNRESOLVED", hasValidatedEdge: false, confidence: confidenceFor(slot, call), shadow: { selected: call.selected, incumbent: incumbent.name, challenger: challenger.name, informationState: raw.informationState, confidenceWarnings: warnings, missingInformation: raw.informationState === "COMPLETE" ? [] : missing, callStatus: call.status, movement: call.movement, threshold: call.threshold, uncertaintyType: call.uncertaintyType, rationale: call.rationale, evidenceUsed: call.evidenceUsed }, shadowSource: "FROZEN_PRODUCTION_PACKET" };
 }
 function shadowSlot(slot) {
   const result = buildShadowSlot(slot);
