@@ -1,6 +1,7 @@
 "use strict";
 const { hash } = require("./_super-sage-shadow-llm.js");
-const { runFastReview, focusEvidence } = require("./_super-sage-shadow-fast-review.js");
+const { runFastReview, focusEvidence, validate } = require("./_super-sage-shadow-fast-review.js");
+const { revalidateCached } = require("./_super-sage-rookie-claim-checks.js");
 const VERSION = "rookie-haiku-drill-v3";
 const CASES = [
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
@@ -35,7 +36,7 @@ async function runNextDrill(args) {
     const cached = await args.store.get(key, { type: "json" });
     if (cached) {
       if (cached.status === "PENDING") return { ...cached, cached: true };
-      completed.push(cached); continue;
+      completed.push(revalidateCached(cached, cached.status === "REVIEW_READY" ? validate(cached.answer, buildCase(original.frozenEvidence, c).packet) : [])); continue;
     }
     const result = await runFastReview({ ...args, drill: { version: VERSION, caseId: c.id, build: frozen => buildCase(frozen, c) } });
     return { ...result, caseLabel: c.label, caseNumber: completed.length + 1, caseCount: CASES.length };

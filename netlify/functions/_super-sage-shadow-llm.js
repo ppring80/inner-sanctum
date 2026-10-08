@@ -1,6 +1,6 @@
 "use strict";
 const crypto = require("crypto");
-const { validateClaims } = require("./_super-sage-rookie-claim-checks.js");
+const { validateClaims, revalidateCached } = require("./_super-sage-rookie-claim-checks.js");
 const VERSION = "rookie-independent-v2";
 const hash = value => crypto.createHash("sha256").update(value).digest("hex");
 const RULES = Object.freeze({ customerVisible: false, productionAuthority: false, canChangeCustomerDecision: false, outcomeDataAllowed: false, automaticPromotionAllowed: false });
@@ -67,7 +67,7 @@ async function executeReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   const key = `llm/${VERSION}/${decisionId}/${ownerHash}`;
   const cached = await store.get(key, { type: "json" });
-  if (cached) return cached;
+  if (cached) return revalidateCached(cached, cached.status === "REVIEW_READY" ? validateAnswer(cached.answer, artifact.frozenEvidence.packet) : []);
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   const reservation = { status: "PENDING", type: "SUPER_SAGE_INDEPENDENT_LLM_REVIEW", version: VERSION, decisionId, evidenceHash: artifact.frozenEvidence.evidenceHash, capturedAt: now.toISOString(), rules: RULES };
   const reserved = await store.setJSON(key, reservation, { onlyIfNew: true });
@@ -125,7 +125,7 @@ async function runReview(args) {
   if (!artifact || artifact.ownerHash !== ownerHash || !artifact.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   const cached = await store.get(`llm/${VERSION}/${decisionId}/${ownerHash}`, { type: "json" });
-  if (cached) return cached;
+  if (cached) return revalidateCached(cached, cached.status === "REVIEW_READY" ? validateAnswer(cached.answer, artifact.frozenEvidence.packet) : []);
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   // Read-only cap check before queueing; the worker also enforces it atomically.
   const day = now.toISOString().slice(0,10);

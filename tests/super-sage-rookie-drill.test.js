@@ -23,6 +23,9 @@ const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,o
  const concurrent=await Promise.all([runNextDrill(args),runNextDrill(args)]);assert.strictEqual(calls,1);assert.ok(concurrent.some(r=>r.status==='PENDING'));assert.ok(concurrent.some(r=>r.status==='REVIEW_READY'));
  for(let i=1;i<4;i++){const r=await runNextDrill(args);assert.strictEqual(r.caseId,CASES[i].id);assert.strictEqual(r.status,'REVIEW_READY');assert.strictEqual(r.rules.productionAuthority,false);if(i===3)assert.strictEqual(r.answer.selected,null);}
  const done=await runNextDrill(args);assert.strictEqual(done.status,'DRILL_COMPLETE');assert.strictEqual(done.cases.length,4);assert.strictEqual(calls,4);assert.strictEqual((await runNextDrill(args)).cached,true);assert.strictEqual(calls,4);
+ const oldKey=`llm-drill/${VERSION}/close-call/${decisionId}/${ownerHash}`;
+ const stored=data.get(oldKey);stored.answer.explanation='He is active and healthy for week 5.';
+ const reassessed=await runNextDrill(args);assert.strictEqual(reassessed.cases[0].status,'INVALID');assert.strictEqual(reassessed.cases[0].storedStatus,'REVIEW_READY');assert.strictEqual(data.get(oldKey).status,'REVIEW_READY');assert.strictEqual(calls,4);
  assert.strictEqual([...data.keys()].filter(k=>k.startsWith(`llm-drill-budget/${VERSION}/`)).length,4);assert.ok(!data.has('llm-fast-budget/2026-10-08'));
  const denied=await runNextDrill({...args,ownerHash:hash('other')});assert.strictEqual(denied.error,'owned_frozen_evidence_unavailable');assert.strictEqual(calls,4);
  console.log('Rookie drill: four bounded independent cases, owned immutable evidence, explicit synthetic ablation, position eligibility, no double spend, cached completion, no authority. Provider mocked.');
