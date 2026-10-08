@@ -2,7 +2,7 @@
 const { hash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview, focusEvidence, validate } = require("./_super-sage-shadow-fast-review.js");
 const { revalidateCached } = require("./_super-sage-rookie-claim-checks.js");
-const VERSION = "rookie-sonnet-drill-v8-strict-grounding";
+const VERSION = "rookie-sonnet-drill-v9-nullable-repair";
 const CASES = [
   { id: "injury", label: "Questionable receiver versus listed-active alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
