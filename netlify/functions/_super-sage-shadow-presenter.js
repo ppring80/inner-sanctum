@@ -3,6 +3,20 @@
 // No rankings, player selection, provider access, or production authority.
 const sentence = text => /[.!?]$/.test(text) ? text : text + '.';
 const clean = value => typeof value === 'string' ? value.trim() : '';
+function resolutionFor(trace, selected, opponent) {
+  if (!selected) return '';
+  const basis=trace.decisionBasis;
+  if(basis?.kind==='ELIGIBILITY') return clean(trace.rationale);
+  if(basis?.kind==='STRUCTURAL_INVALIDATION') return `Verified evidence invalidated ${clean(trace.incumbent)}'s established case, so I moved to ${clean(selected)}.`;
+  if(basis?.kind==='MATERIAL_REASSESSMENT') return `The recorded state change required a fresh comparison; the verified evidence ${trace.threshold==='CROSSED'?'supported moving to '+clean(selected):'did not provide enough support to replace '+clean(selected)}.`;
+  if(basis?.kind==='INDEPENDENT_SUPPORT' && trace.threshold==='NOT_CROSSED') {
+    const opposing=basis.challengingGroups||[];
+    if(opposing.length===1&&opposing[0]==='projection'&&(basis.reinforcingGroups||[]).includes('standing')) return `${opponent}'s projection advantage is one opposing signal against ${clean(selected)}'s stronger standing. It lacks the additional independent support needed to change this close call.`;
+    return (basis.challengingGroups||[]).length ? `The evidence favoring ${opponent} does not have enough independent support to overturn ${clean(selected)}'s established case.` : `The recorded comparative evidence favors ${clean(selected)}; it supplies no independent advantage for ${opponent}.`;
+  }
+  if(basis?.kind==='INDEPENDENT_SUPPORT' && trace.threshold==='CROSSED') return `Multiple independent advantages support ${clean(selected)}, enough to overturn ${opponent}'s established case.`;
+  return clean(trace.rationale);
+}
 function presentShadowSlot(slot) {
   if (slot?.shadowSource !== 'FROZEN_PRODUCTION_PACKET' || slot.hasValidatedEdge !== false || !slot.shadow) throw new Error('Frozen private shadow slot required.');
   const trace = slot.shadow;
@@ -24,17 +38,21 @@ function presentShadowSlot(slot) {
   const perPlayerNeeds = [incumbent,challenger].filter(Boolean).map(name=>briefNeeds.find(text=>text.startsWith(name+':'))).filter(Boolean);
   const needsSummary = [...new Set([...perPlayerNeeds,...briefNeeds])].slice(0,3);
   if (!needsSummary.length && reviewNeeds.length) needsSummary.push('The recorded comparison or state-change evidence needs verification; see reviewNeeds.');
+  const opponent=selected===trace.incumbent?challenger:incumbent;
+  const resolution=resolutionFor(trace,selected,opponent);
+  const reconsider=isCall ? (trace.decisionBasis?.kind==='ELIGIBILITY' ? `I'd reassess if verified availability changes for ${incumbent} or ${challenger}.` : `I'd reassess if ${clean(selected)}'s availability changes, or new verified standing or role evidence strengthens ${opponent}'s case.`) : '';
   const oneSecond = [isCall ? `I'd start ${clean(selected)} over ${selected === trace.incumbent ? challenger : incumbent}.` : sentence(`No independent call: ${pair}`)];
   const threeSeconds = isCall
-    ? [supporting.length ? supporting.slice(0,2).map(e=>e.text).join(' ') : clean(trace.rationale), ...(opposing.length ? [`The case against that pick: ${opposing[0].text}`] : [])]
+    ? [supporting.length ? supporting.slice(0,3).map(e=>e.text).join(' ') : clean(trace.rationale), ...(opposing.length ? [`The case against that pick: ${opposing[0].text}`] : [])]
     : [`Needs verification: ${needsSummary.slice(0,2).map(sentence).join(' ')}`];
   const tenSeconds = [
     ...evidence.filter(e=>e.text.length<=160).slice(0,2).map(e=>e.text),
     ...needsSummary.map(text=>`Needs verification: ${sentence(text)}`),
-    ...(isCall && trace.uncertaintyType === 'CLOSE_CALL' ? ['This is a close call; the recorded evidence did not justify overturning the established choice.'] : []),
+    ...(isCall ? [resolution,reconsider] : []),
     ...confidenceWarnings.slice(0,1).map(text=>`Confidence warning: ${sentence(text)}`),
     `Confidence: ${String(slot.confidence?.label || 'LOW').toLowerCase()}.`,
   ];
-  return {version:1,type:'SUPER_SAGE_PRIVATE_SHADOW_PRESENTATION',selected:isCall?selected:null,callStatus:trace.callStatus,oneSecond,threeSeconds,tenSeconds,supportingEvidence:supporting,opposingEvidence:opposing,reviewNeeds,confidenceWarnings,evidence,authority:{customerVisible:false,productionAuthority:false,decisionImmutable:true,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
+  const explanation = [oneSecond[0],...threeSeconds,...(isCall?[resolution]:[]),...(confidenceWarnings.length?confidenceWarnings.map(sentence):[]),`Confidence: ${String(slot.confidence?.label || 'LOW').toLowerCase()}.`,...(isCall?[reconsider]:[])].filter(Boolean).join('\n\n');
+  return {version:2,type:'SUPER_SAGE_PRIVATE_SHADOW_PRESENTATION',selected:isCall?selected:null,callStatus:trace.callStatus,oneSecond,threeSeconds,tenSeconds,explanation,resolution,reconsider,supportingEvidence:supporting,opposingEvidence:opposing,reviewNeeds,confidenceWarnings,evidence,authority:{customerVisible:false,productionAuthority:false,decisionImmutable:true,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
 }
 module.exports = {presentShadowSlot};
