@@ -6466,7 +6466,7 @@ function buildServer(
     "run_shadow_llm_review",
     {
       title: "Run Rookie 10-Second Pair Benchmark",
-      description: "Private reviewer speed benchmark: compares Godwin versus Meyers from the authorized owner's frozen evidence, without Production's answer. Same Sonnet model, 10-second provider deadline, concise structured answer. Preserves exact output and measured provider/server timing. Default mode is focused; full mode preserves the background full-lineup review. One speed-benchmark call per UTC day; cached reads make no new provider call. Focused mode is one pair, never a full lineup or customer authority.",
+      description: "Private reviewer speed benchmark: compares Godwin versus Meyers from the authorized owner's frozen evidence, without Production's answer. Haiku 4.5 model speed comparison, 10-second provider deadline, concise structured answer. Preserves exact output and measured provider/server timing. Default mode is focused; full mode preserves the background full-lineup review. One speed-benchmark call per UTC day; cached reads make no new provider call. Focused mode is one pair, never a full lineup or customer authority.",
       inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["focused", "full"]).optional() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },
