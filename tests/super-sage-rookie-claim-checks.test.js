@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('assert');
 const {validateClaims,revalidateCached}=require('../netlify/functions/_super-sage-rookie-claim-checks');
-const {validate}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const {validate,formatGroundedAnswer}=require('../netlify/functions/_super-sage-shadow-fast-review');
 const packet={players:[{id:'A',name:'Chris Godwin Jr.',position:'WR',facts:[{field:'projection',factId:'A:projection',value:{points:8.2}},{field:'establishedRole',factId:'A:establishedRole',value:{description:'Established role: about 5 opportunities per game recently.'}}]},{id:'B',name:'Jakobi Meyers',position:'WR',facts:[{field:'projection',factId:'B:projection',value:{points:7.67}}]}]};
 const cases=[
  ['The projection spread plus matchup make Godwin the better floor play here.','unsupported_floor_comparison'],
@@ -47,3 +47,7 @@ assert.deepStrictEqual(validate(linked,grounded),[]);
 assert.ok(validate({...linked,sentenceFactIds:[['A:invented'],['A:projection']]},grounded).includes('invalid_sentence_evidence'));
 assert.ok(validate({...linked,sentenceFactIds:[['A:projection']]},grounded).includes('invalid_sentence_evidence'));
 assert.ok(validate({...linked,explanation:'Godwin has the better floor.\nThe projection is a forecast.'},grounded).includes('unsupported_floor_comparison'));
+const input={selected:'A',confidence:'MEDIUM',explanationSentences:[{text:'Start Godwin on the supplied projection comparison.',factIds:['A:projection','B:projection']},{text:'The projection is a forecast, not a guarantee.',factIds:['A:projection']}],caveat:safe.caveat,reconsider:safe.reconsider};
+const originalInput=JSON.stringify(input),formatted=formatGroundedAnswer(input);
+assert.strictEqual(formatted.explanation,linked.explanation);assert.strictEqual(formatted.selected,input.selected);assert.strictEqual(JSON.stringify(input),originalInput);assert.deepStrictEqual(validate(formatted,grounded),[]);
+assert.deepStrictEqual(formatted.explanationSentences,input.explanationSentences);

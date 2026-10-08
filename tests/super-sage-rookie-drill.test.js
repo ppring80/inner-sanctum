@@ -14,8 +14,9 @@ const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,o
  calls++;const request=JSON.parse(options.body),p=JSON.parse(request.messages[0].content);assert.strictEqual(request.model,'claude-haiku-4-5-20251001');
  const ablation=p.scope==='SYNTHETIC_EVIDENCE_ABLATION';
  const factIds=p.players.flatMap(p=>p.facts.slice(0,1).map(f=>f.factId));
- assert.ok(request.tools[0].input_schema.required.includes('sentenceFactIds'));
- const answer={selected:ablation?null:'A',confidence:'LOW',explanation:ablation?'No call: essential availability and role evidence is absent.\nA supported comparison needs more evidence.':'Start the supported candidate.\nFurther evidence could change the choice.',caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.',factIds,sentenceFactIds:[[factIds[0]],[factIds[1]]]};
+ assert.ok(request.tools[0].input_schema.required.includes('explanationSentences'));
+ const texts=ablation?['No call: essential availability and role evidence is absent.','A supported comparison needs more evidence.']:['Start the supported candidate.','Further evidence could change the choice.'];
+ const answer={selected:ablation?null:'A',confidence:'LOW',explanationSentences:texts.map((text,i)=>({text,factIds:[factIds[i]]})),caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.'};
  return{ok:true,json:async()=>({model:request.model,stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]})};
 }};
 (async()=>{
