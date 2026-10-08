@@ -110,6 +110,12 @@ function provisionalCall(raw={}){
    movement:inference.movement,
    threshold:inference.threshold,
    uncertaintyType:inference.uncertaintyType,
+   decisionBasis:{
+     kind:inference.independentEvidence.some(e=>e.effect==="INVALIDATES_PRIOR")?"STRUCTURAL_INVALIDATION":inference.independentEvidence.some(e=>e.effect==="REASSESS_PRIOR")?"MATERIAL_REASSESSMENT":"INDEPENDENT_SUPPORT",
+     reinforcingGroups:inference.independentEvidence.filter(e=>e.effect==="REINFORCES_PRIOR").map(e=>e.causalHint||e.text),
+     challengingGroups:inference.independentEvidence.filter(e=>e.effect==="CHALLENGES_PRIOR").map(e=>e.causalHint||e.text),
+     threshold:inference.threshold
+   },
    evidenceUsed:inference.independentEvidence.map(e=>({text:e.text,effect:e.effect,group:e.causalHint||e.text})),
    guardrails:{productionAuthority:false,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}
  };
