@@ -14,31 +14,13 @@ const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 // so 32 calls (one per team) covers the whole league, vs. ~1,700
 // calls doing it player-by-player.
 //
-// This still isn't cheap enough to call live on every chat message
-// (32 Tank01 calls would add several seconds of latency to every
-// single Sanctum response, and eat into the Pro plan's 1,000/day
-// budget fast). So this runs on a SCHEDULE instead — once a day is
-// the default below — and caches the result to Netlify Blobs.
-// chat.js's getLiveNFLContext() reads that cache (one fast Blobs
-// read) rather than hitting Tank01 directly for this data.
-//
-// SCHEDULING: this file's cron is set in netlify.toml, NOT inline
-// here, to match this being a classic Lambda-compatible handler
-// (connectLambda pattern) rather than the newer web-standard export
-// style Netlify's docs default to — inline `config.schedule` export
-// syntax assumes the newer (req) => {} signature, and mixing runtime
-// styles isn't worth the risk when the netlify.toml route works
-// identically for either. Add this to netlify.toml:
-//
-//   [functions."refresh-player-data"]
-//     schedule = "@daily"
-//
-// @daily runs at 00:00 UTC. Tank01 says rosters update hourly, so a
-// daily refresh means worst-case the data is up to ~24h stale (e.g.
-// a Tuesday practice-squad move might not show until the next day's
-// refresh) — acceptable for exp/injury context in a chat persona,
-// but if that staleness ever matters more, this can be changed to
-// "0 */6 * * *" (every 6 hours) without any other code changes.
+// Customer requests read the shared Netlify Blobs cache rather than
+// fetching 32 rosters from Tank01. The ten-minute recovery watchdog
+// coordinates an eight-hour baseline, after-practice checkpoints and
+// checks before actual cached kickoff times. Authorized manual recovery
+// uses the same handler and atomic daily roster reservation limit.
+// The watchdog schedule lives in netlify.toml; this handler has no
+// separate cron so overlapping triggers cannot spend the budget twice.
 //
 // 30-SECOND LIMIT: Scheduled functions have a hard 30s execution
 // cap. Based on the diagnostic timing in checklist #215 (~3-4s per
@@ -94,7 +76,8 @@ exports.handler = async (event) => {
   const budgetError = await requireTank01Budget(event, {
     job: "refresh-player-data",
     calls: 33,
-    priority: "injury"
+    priority: "injury",
+    maxJobCalls: require('./_availability-refresh-rhythm.js').dailyRuns(Date.now()) * 33
   });
   if (budgetError) return budgetError;
 

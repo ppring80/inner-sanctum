@@ -12,8 +12,7 @@
 # below fit within that ceiling; customer request paths remain cache-only.
 
 # PLAYER DATA REFRESH SCHEDULE (added — checklist #215)
-# Runs once daily Monday-Saturday. Sunday uses the game-day alias below
-# at four bounded checkpoints so late OUT/inactive announcements can land.
+# The existing watchdog coordinates baseline and critical-window updates.
 # loops all 32 NFL teams' rosters in parallel and caches each player's
 # exp (rookie/veteran status) and injury designation to Netlify Blobs,
 # which chat.js then reads on every Sanctum request instead of hitting
@@ -21,13 +20,14 @@
 # expensive). See refresh-player-data.js for the full rationale.
 #
 # Do not raise this cadence without revising and testing the shared budget.
-[functions."refresh-player-data"]
-  schedule = "0 13 * * 1-6"
+# Availability is now coordinated exclusively by recover-weekly-sage's
+# ten-minute cache checks: eight-hour baseline, 18:00 Eastern practice reports
+# Wed-Sat, and schedule-derived pregame checkpoints at T-75 and T-20 minutes.
+# There are no overlapping fixed roster cron jobs. All triggers share a job
+# reservation cap: four runs per UTC day, ten on Sunday (132/330 calls).
 
-# Sunday: four refreshes from morning through pregame. Each run reserves all
-# 33 possible calls (one team list plus 32 team rosters) before starting.
-[functions."refresh-player-data-game-day"]
-  schedule = "0 13,16,19,22 * * 0"
+# Each roster refresh reserves 33 possible calls before provider work.
+# The game-day alias remains available for authorized manual recovery.
 
 # One shared official reserve/activation check per hour; ZERO Tank01 calls.
 # Six official monthly feeds, with bounded pagination, freshness skip and atomic lease.
