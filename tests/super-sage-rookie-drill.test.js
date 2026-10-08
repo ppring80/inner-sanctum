@@ -25,7 +25,7 @@ const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,o
  assert.ok(VOICE.includes('receivers catch passes'));
  const ablation=buildCase(frozenEvidence,CASES[3]);assert.strictEqual(ablation.packet.scope,'SYNTHETIC_EVIDENCE_ABLATION');assert.ok(!JSON.stringify(ablation).includes('Godwin'));assert.strictEqual(ablation.packet.players[0].facts.length,1);assert.strictEqual(JSON.stringify(frozenEvidence),before);
  const pair=buildCase(frozenEvidence,CASES[2]);assert.deepStrictEqual(pair.packet.eligiblePositions,['RB']);
- const concurrent=await Promise.all([runNextDrill(args),runNextDrill(args)]);assert.strictEqual(calls,1);assert.ok(concurrent.some(r=>r.status==='PENDING'));assert.ok(concurrent.some(r=>r.status==='REVIEW_READY'));
+ const concurrent=await Promise.all([runNextDrill(args),runNextDrill(args)]);assert.strictEqual(calls,1);assert.ok(concurrent.some(r=>r.status==='PENDING'));assert.ok(concurrent.some(r=>r.status==='REVIEW_READY'));assert.strictEqual(concurrent.find(r=>r.status==='REVIEW_READY').modelDeadlineMs,20000);
  for(let i=1;i<4;i++){const r=await runNextDrill(args);assert.strictEqual(r.caseId,CASES[i].id);assert.strictEqual(r.status,'REVIEW_READY');assert.strictEqual(r.rules.productionAuthority,false);if(i===3)assert.strictEqual(r.answer.selected,null);}
  const done=await runNextDrill(args);assert.strictEqual(done.status,'DRILL_COMPLETE');assert.strictEqual(done.cases.length,4);assert.strictEqual(calls,4);assert.strictEqual((await runNextDrill(args)).cached,true);assert.strictEqual(calls,4);
  const oldKey=`llm-drill/${VERSION}/close-call/${decisionId}/${ownerHash}`;
