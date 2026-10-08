@@ -1,7 +1,7 @@
 "use strict";
 const { hash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview, focusEvidence } = require("./_super-sage-shadow-fast-review.js");
-const VERSION = "rookie-haiku-drill-v1";
+const VERSION = "rookie-haiku-drill-v2";
 const CASES = [
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
   { id: "injury", label: "Questionable receiver versus healthy alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },
@@ -10,6 +10,12 @@ const CASES = [
 ];
 function buildCase(frozen, c) {
   const focused = focusEvidence(frozen, c.targets);
+  focused.packet.evidenceMeaning = {
+    projection: "Forecast point estimate, not scored points, floor or ceiling; adjustment for state changes is unknown unless explicitly supplied.",
+    establishedRole: "Observed recent usage; retain the original opportunity unit, not a guaranteed future workload.",
+    standing: "Rank within position, not rank among bench players.",
+    stateChanges: "Distinguish verified event from unverified effect or redistribution. Reconsider using new evidence, not assumed revised projections."
+  };
   if (c.ablation) {
     // Explicit experimental removal, never fabricated real-world player facts.
     focused.packet.scope = "SYNTHETIC_EVIDENCE_ABLATION";
