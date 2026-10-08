@@ -1,5 +1,6 @@
 "use strict";
 const crypto = require("crypto");
+const { validateClaims } = require("./_super-sage-rookie-claim-checks.js");
 const VERSION = "rookie-independent-v2";
 const hash = value => crypto.createHash("sha256").update(value).digest("hex");
 const RULES = Object.freeze({ customerVisible: false, productionAuthority: false, canChangeCustomerDecision: false, outcomeDataAllowed: false, automaticPromotionAllowed: false });
@@ -46,6 +47,7 @@ function validateAnswer(answer, packet) {
     if (!Array.isArray(call.missingInformation) || !Array.isArray(call.reconsider) || ![call.missingInformation, call.reconsider].every(list => Array.isArray(list) && list.every(x => typeof x === "string"))) errors.push("invalid_conditions");
     if (call.playerId === null && !(call.missingInformation || []).length) errors.push("no_call_without_blocker");
     if (!Array.isArray(call.factIds) || !call.factIds.length || !call.factIds.every(id => facts.has(id))) errors.push("invalid_fact_citations");
+    errors.push(...validateClaims({ explanation: call.explanation, caveat: call.countercase, reconsider: Array.isArray(call.reconsider) ? call.reconsider.join(" ") : "" }, packet));
     if (call.playerId && (!Array.isArray(call.factIds) || !call.factIds.some(id => typeof id === "string" && id.startsWith(call.playerId + ":")))) errors.push("selected_player_not_cited");
   }
   if (seenSlots.size !== packet.slots.length || answer.slots.length !== packet.slots.length) errors.push("incomplete_slots");
