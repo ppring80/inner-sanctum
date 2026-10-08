@@ -62,7 +62,8 @@ const {
 
 // ONE Super SAGE decision authority (shared with the website).
 const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
-const { buildEvidence: buildRookieEvidence, runReview: runRookieReview, hash: rookieHash } = require("./_super-sage-shadow-llm.js");
+const { buildEvidence: buildRookieEvidence, hash: rookieHash, runReview: runFullRookieReview } = require("./_super-sage-shadow-llm.js");
+const { runFastReview: runRookieReview } = require("./_super-sage-shadow-fast-review.js");
 const {
   toCustomerAnswer,
   customerAnswerText,
@@ -6462,17 +6463,17 @@ function buildServer(
   server.registerTool(
     "run_shadow_llm_review",
     {
-      title: "Run Independent Rookie LLM Review",
-      description: "Private reviewer action: queues an independent Anthropic model review of owned, frozen pregame evidence without Production's answer. Call again to read progress or the exact saved response; at most one ordinary provider call globally per UTC day, plus one bounded recovery of a failed v1 request using the identical evidence packet; one attempt per decision/version. Never changes the customer recommendation. Requires the reviewer deployment gate and an OAuth-linked league.",
-      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/) }),
+      title: "Run Rookie 10-Second Pair Benchmark",
+      description: "Private reviewer speed benchmark: compares Godwin versus Meyers from the authorized owner's frozen evidence, without Production's answer. Same Sonnet model, 10-second provider deadline, concise structured answer. Preserves exact output and measured provider/server timing. Default mode is focused; full mode preserves the background full-lineup review. One speed-benchmark call per UTC day; cached reads make no new provider call. Focused mode is one pair, never a full lineup or customer authority.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["focused", "full"]).optional() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },
-    async ({ decisionId }) => {
+    async ({ decisionId, mode = "focused" }) => {
       if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext || !authContext.snapshotKey) {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review requires an enabled private reviewer deployment and an authorized linked league." }] };
       }
       try {
-        const review = await runRookieReview({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
+        const review = await (mode === "full" ? runFullRookieReview : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
         return { isError: review.status === "UNAVAILABLE" || review.status === "INVALID", content: [{ type: "text", text: JSON.stringify(review) }], structuredContent: { review } };
       } catch {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review could not be stored or requested. No customer recommendation was changed." }] };

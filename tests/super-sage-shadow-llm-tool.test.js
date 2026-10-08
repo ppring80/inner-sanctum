@@ -7,7 +7,7 @@ let paidCalls = 0;
 Module._load = function(request, parent, isMain) {
  if (request === '@modelcontextprotocol/server') return { createMcpHandler: () => {}, McpServer: class { constructor() { this.tools = {}; } registerTool(name, options, callback) { this.tools[name] = { options, callback }; } } };
  if (request === '@netlify/blobs') return { getStore: () => ({ marker: 'private-store' }) };
- if (request === './_super-sage-shadow-llm.js') return { hash, buildEvidence: () => { throw new Error('not invoked by review'); }, runReview: async args => { paidCalls++; assert.strictEqual(args.store.marker, 'private-store'); assert.strictEqual(args.ownerHash, hash('linked-owner')); return { status: 'REVIEW_READY', rawText: 'exact model reply' }; } };
+ if (request === './_super-sage-shadow-fast-review.js') return { runFastReview: async args => { paidCalls++; assert.strictEqual(args.store.marker, 'private-store'); assert.strictEqual(args.ownerHash, hash('linked-owner')); return { status: 'REVIEW_READY', rawText: 'exact model reply' }; } };
  return original.call(this, request, parent, isMain);
 };
 const { buildServer } = require('../netlify/functions/chatgpt-mcp')._test;
