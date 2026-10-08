@@ -41,3 +41,9 @@ const old={status:'REVIEW_READY',answer:{explanation:'He is active and healthy f
 const reassessed=revalidateCached(old,validateClaims(old.answer,packet));
 assert.strictEqual(reassessed.status,'INVALID');assert.strictEqual(reassessed.storedStatus,'REVIEW_READY');assert.strictEqual(reassessed.rawText,old.rawText);assert.strictEqual(old.status,'REVIEW_READY');
 assert.strictEqual(revalidateCached(old,[]),old);
+const grounded={...packet,requireSentenceEvidence:true};
+const linked={...safe,explanation:'Start Godwin on the supplied projection comparison.\nThe projection is a forecast, not a guarantee.',sentenceFactIds:[['A:projection','B:projection'],['A:projection']]};
+assert.deepStrictEqual(validate(linked,grounded),[]);
+assert.ok(validate({...linked,sentenceFactIds:[['A:invented'],['A:projection']]},grounded).includes('invalid_sentence_evidence'));
+assert.ok(validate({...linked,sentenceFactIds:[['A:projection']]},grounded).includes('invalid_sentence_evidence'));
+assert.ok(validate({...linked,explanation:'Godwin has the better floor.\nThe projection is a forecast.'},grounded).includes('unsupported_floor_comparison'));

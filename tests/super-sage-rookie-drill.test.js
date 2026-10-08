@@ -13,7 +13,9 @@ let calls=0;
 const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,options)=>{
  calls++;const request=JSON.parse(options.body),p=JSON.parse(request.messages[0].content);assert.strictEqual(request.model,'claude-haiku-4-5-20251001');
  const ablation=p.scope==='SYNTHETIC_EVIDENCE_ABLATION';
- const answer={selected:ablation?null:'A',confidence:'LOW',explanation:ablation?'No call: essential availability and role evidence is absent.':'Start the supported candidate; further evidence could change the choice.',caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.',factIds:p.players.flatMap(p=>p.facts.slice(0,1).map(f=>f.factId))};
+ const factIds=p.players.flatMap(p=>p.facts.slice(0,1).map(f=>f.factId));
+ assert.ok(request.tools[0].input_schema.required.includes('sentenceFactIds'));
+ const answer={selected:ablation?null:'A',confidence:'LOW',explanation:ablation?'No call: essential availability and role evidence is absent.\nA supported comparison needs more evidence.':'Start the supported candidate.\nFurther evidence could change the choice.',caveat:'Availability and role must be verified.',reconsider:'Verified evidence arrives.',factIds,sentenceFactIds:[[factIds[0]],[factIds[1]]]};
  return{ok:true,json:async()=>({model:request.model,stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]})};
 }};
 (async()=>{
@@ -25,7 +27,7 @@ const args={store,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(_url,o
  const done=await runNextDrill(args);assert.strictEqual(done.status,'DRILL_COMPLETE');assert.strictEqual(done.cases.length,4);assert.strictEqual(calls,4);assert.strictEqual((await runNextDrill(args)).cached,true);assert.strictEqual(calls,4);
  const oldKey=`llm-drill/${VERSION}/close-call/${decisionId}/${ownerHash}`;
  const stored=data.get(oldKey);stored.answer.explanation='He is active and healthy for week 5.';
- const reassessed=await runNextDrill(args);assert.strictEqual(reassessed.cases[0].status,'INVALID');assert.strictEqual(reassessed.cases[0].storedStatus,'REVIEW_READY');assert.strictEqual(data.get(oldKey).status,'REVIEW_READY');assert.strictEqual(calls,4);
+ const reassessed=await runNextDrill(args);const checked=reassessed.cases.find(c=>c.caseId==='close-call');assert.strictEqual(checked.status,'INVALID');assert.strictEqual(checked.storedStatus,'REVIEW_READY');assert.strictEqual(data.get(oldKey).status,'REVIEW_READY');assert.strictEqual(calls,4);
  assert.strictEqual([...data.keys()].filter(k=>k.startsWith(`llm-drill-budget/${VERSION}/`)).length,4);assert.ok(!data.has('llm-fast-budget/2026-10-08'));
  const denied=await runNextDrill({...args,ownerHash:hash('other')});assert.strictEqual(denied.error,'owned_frozen_evidence_unavailable');assert.strictEqual(calls,4);
  console.log('Rookie drill: four bounded independent cases, owned immutable evidence, explicit synthetic ablation, position eligibility, no double spend, cached completion, no authority. Provider mocked.');

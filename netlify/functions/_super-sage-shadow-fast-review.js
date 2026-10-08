@@ -8,6 +8,11 @@ const SYSTEM = `Independently choose one starter in this private frozen pair com
 const SCHEMA = { type: "object", additionalProperties: false, required: ["selected", "confidence", "explanation", "caveat", "reconsider", "factIds"], properties: {
   selected: { type: ["string", "null"], enum: ["A", "B", null] }, confidence: { type: "string", enum: ["LOW", "MEDIUM", "HIGH"] }, explanation: { type: "string", description: "60-80 words. Pick first, two decisive facts, main risk, why the tradeoff favors the pick. Use only supplied evidence." }, caveat: { type: "string", description: "At most 12 words: a supported risk or explicit unknown. Active is not proof of health; unknown QB quality is not unproven quality." }, reconsider: { type: "string", description: "At most 18 words: specific new pregame evidence that could reverse this choice. Do not promise a changed projection or automatic switch." }, factIds: { type: "array", items: { type: "string" } }
 } };
+const GROUNDED_SYSTEM = `${SYSTEM} For this evidence-linking test, write the explanation as 2-4 connected sentences, one sentence per newline. For each sentence return the supplied fact IDs that support its factual claims in sentenceFactIds at the same index. State your chosen starter in the first sentence. Cite recent usage as recent usage and status as listed status. Do not turn these into guaranteed work, scoring bounds or health clearance. Use the supplied evidence to make a qualified decision, not a blanket refusal because risks exist. Sentence links are public source attribution, not private reasoning. Do not repeat citations in spoken text.`;
+const GROUNDED_SCHEMA = { ...SCHEMA, required: [...SCHEMA.required, "sentenceFactIds"], properties: { ...SCHEMA.properties,
+  explanation: { type: "string", description: "2-4 connected sentences, separated by newlines, about 60-80 words total. Pick first; compare supported evidence; acknowledge risk and explain the lean." },
+  sentenceFactIds: { type: "array", minItems: 2, maxItems: 4, items: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } }, description: "Each entry cites the supplied facts supporting the corresponding explanation sentence. Do not infer facts absent from those sources." }
+} };
 function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
   const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
@@ -29,6 +34,16 @@ function validate(answer, packet) {
   if (!["explanation", "caveat", "reconsider"].every(k => typeof answer?.[k] === "string") || !answer?.explanation?.trim()) errors.push("invalid_explanation");
   if (answer?.selected === null && !answer?.caveat?.trim()) errors.push("no_call_without_blocker");
   if (!Array.isArray(answer?.factIds) || !answer.factIds.length || !answer.factIds.every(id => ids.has(id)) || (p && !answer.factIds.some(id => id.startsWith(p.id + ":")))) errors.push("invalid_fact_citations");
+  if (packet.requireSentenceEvidence) {
+    const sentences = typeof answer?.explanation === "string" ? answer.explanation.trim().split(/\n+/) : [];
+    const links = answer?.sentenceFactIds;
+    if (sentences.length < 2 || sentences.length > 4 || !Array.isArray(links) || links.length !== sentences.length || !links.every(list => Array.isArray(list) && list.length > 0 && list.length <= 4 && list.every(id => ids.has(id) && answer.factIds?.includes(id)))) errors.push("invalid_sentence_evidence");
+    else sentences.forEach((sentence, i) => {
+      const cited = new Set(links[i]);
+      const scoped = { players: packet.players.map(player => ({ ...player, facts: player.facts.filter(f => cited.has(f.factId)) })) };
+      errors.push(...validateClaims({ explanation: sentence }, scoped));
+    });
+  }
   return [...errors, ...validateClaims(answer, packet)];
 }
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null }) {
@@ -39,16 +54,18 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   let focused;
   try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence); } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
+  const system = focused.packet.requireSentenceEvidence ? GROUNDED_SYSTEM : SYSTEM;
+  const schema = focused.packet.requireSentenceEvidence ? GROUNDED_SCHEMA : SCHEMA;
   const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}`;
   const cached = await store.get(key, { type: "json" });
   if (cached) return { ...revalidateCached(cached, cached.status === "REVIEW_READY" ? validate(cached.answer, focused.packet) : []), cached: true };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model: MODEL, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: 10000, promptHash: hash(SYSTEM), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model: MODEL, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: 10000, promptHash: hash(system), rules: RULES };
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   if (!reservation?.modified) return { ...base, error: "review_already_reserved" };
   // This explicitly requested speed benchmark has its own one-call daily cap;
   // it never resets the full-review or migration-recovery budgets.
-  let budget = drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(SYSTEM) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
+  let budget = drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
   if (!drill && !budget?.modified) {
     const previous = await store.get(`llm-fast/rookie-fast-pair-v1/${decisionId}/${ownerHash}`, { type: "json" });
     const dayBudget = await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { type: "json" });
@@ -61,7 +78,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     // One explicitly requested post-guidance check, tied to the same owned packet.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v2/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v3" && previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash) {
-      budget = await store.setJSON(`llm-fast-voice-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(SYSTEM) }, { onlyIfNew: true });
+      budget = await store.setJSON(`llm-fast-voice-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true });
       base.voiceCheckOf = "rookie-fast-pair-v2";
     }
   }
@@ -69,7 +86,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     // One global explicitly requested latency experiment, without resetting history.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v3/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v4" && previous?.error === "ten_second_model_timeout" && previous.evidenceHash === focused.evidenceHash) {
-      budget = await store.setJSON(`llm-fast-latency-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(SYSTEM) }, { onlyIfNew: true });
+      budget = await store.setJSON(`llm-fast-latency-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true });
       base.latencyCheckOf = "rookie-fast-pair-v3";
     }
   }
@@ -77,15 +94,15 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     // One global requested response-delivery test after the completed v4 benchmark.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v4/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v5" && previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash) {
-      budget = await store.setJSON(`llm-fast-delivery-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(SYSTEM) }, { onlyIfNew: true });
+      budget = await store.setJSON(`llm-fast-delivery-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true });
       base.deliveryCheckOf = "rookie-fast-pair-v4";
     }
   }
   if (!drill && !budget?.modified) {
     // One global same-prompt/evidence model comparison, explicitly requested.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v5/${decisionId}/${ownerHash}`, { type: "json" });
-    if (previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash && previous.promptHash === hash(SYSTEM)) {
-      budget = await store.setJSON(`llm-fast-model-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(SYSTEM), model: MODEL }, { onlyIfNew: true });
+    if (previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash && previous.promptHash === hash(system)) {
+      budget = await store.setJSON(`llm-fast-model-check/${VERSION}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system), model: MODEL }, { onlyIfNew: true });
       base.modelCheckOf = "rookie-fast-pair-v5";
     }
   }
@@ -94,7 +111,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   else {
     const providerStart = clock();
     try {
-      const response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(10000), headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: MODEL, max_tokens: 400, system: SYSTEM, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: SCHEMA }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } }) });
+      const response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(10000), headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: MODEL, max_tokens: 400, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } }) });
       if (!response.ok) {
         const detail = await response.json().catch(() => ({}));
         const error = new Error(`provider_http_${response.status}`);
