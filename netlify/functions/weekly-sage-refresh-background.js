@@ -37,7 +37,8 @@ exports.handler = async event => {
     })
   };
   const started = Date.now();
-  let selected = job;
+  // Recompute the due checkpoint server-side; never trust a caller's deadline.
+  let selected = (await inspectJobs(getStore, request.season, request.targetWeek)).find(row=>row.job === job.job && row.week === job.week);
   while (selected && Date.now() - started < 12 * 60 * 1000) {
     const result = await runJob(selected, event, dependencies);
     if (result.status === 'failed' || result.status === 'waiting') return { statusCode: result.status === 'failed' ? 500 : 200 };

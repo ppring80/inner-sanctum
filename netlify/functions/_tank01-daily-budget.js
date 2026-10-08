@@ -47,6 +47,7 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
   const job = String(options && options.job || "unknown").trim();
   const requested = Number(options && options.calls);
   const priority = options && options.priority === "injury" ? "injury" : "normal";
+  const maxJobCalls = Number.isInteger(options?.maxJobCalls) && options.maxJobCalls > 0 ? options.maxJobCalls : Infinity;
   const now = dependencies.now || new Date();
   const limit = dependencies.limit || dailyLimit();
   const standardLimit = dependencies.normalLimit || normalLimit(limit);
@@ -72,6 +73,7 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     const state = localFallbackByDay.get(day) || { day, reserved: 0, normalReserved: 0, injuryReserved: 0, jobs: {} };
     const reserved = Number(state.reserved || 0);
     const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
+    if (Number(state.jobs?.[job] || 0) + requested > maxJobCalls) return {allowed:false,reason:"job-daily-limit",job,requested,reserved,limit,day};
     if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
       return { allowed: false, reason: "daily-limit", job, requested, reserved, remaining: Math.max(0, limit - reserved), limit, day };
     }
@@ -103,6 +105,7 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     // Ledgers written before priority pools existed are treated as normal
     // consumption. This is conservative and cannot expose the reserved pool.
     const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
+    if (Number(state.jobs?.[job] || 0) + requested > maxJobCalls) return {allowed:false,reason:"job-daily-limit",job,requested,reserved,limit,day};
 
     if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
       return {

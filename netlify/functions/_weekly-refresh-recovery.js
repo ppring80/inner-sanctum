@@ -5,6 +5,7 @@ const { resolveCurrentNFLWeek } = require('./_current-nfl-week.js');
 const STATE_STORE = 'weekly-sage-refresh-status';
 const LEASE_MS = 20 * 60 * 1000;
 const RETRY_MS = 30 * 60 * 1000;
+const { dailyRuns, criticalCheckpoint } = require('./_availability-refresh-rhythm.js');
 
 function jobsForWeek(season, targetWeek) {
   if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 18) return [];
@@ -23,12 +24,12 @@ function jobsForWeek(season, targetWeek) {
 const cacheKey = job => ['opportunity-intel','risers-fallers'].includes(job.store) ? 'latest' : job.store === 'player-data' ? 'playerData' : job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
 const stateKey = job => `${job.job}:${cacheKey(job)}${['opportunity-intel','risers-fallers'].includes(job.store) ? ':'+job.season+':'+job.week : ''}`;
 
-function completeCache(value, job) {
+function completeCache(value, job, now = Date.now()) {
   if (job.store === 'opportunity-intel') return Boolean(value && String(value.season) === job.season && Math.max(...(value.weeksRequested || [])) >= job.week && value.gamesFound > 0 && value.gamesFailed === 0 && Object.keys(value.records || {}).length > 0);
   if (job.store === 'risers-fallers') return Boolean(value && String(value.season) === job.season && Number(value.currentWeek) === job.week && Number(value.previousWeek) === job.week-1 && Object.keys(value.allDeltas || {}).length > 0);
   if (job.store === 'player-data') {
-    const age = value && Date.now()-Date.parse(value.updatedAt);
-    return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000);
+    const updated = value && Date.parse(value.updatedAt), age = now-updated;
+    return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000 && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
   }
   if (job.store === 'sage-newswire') {
     const age = value && Date.now()-Date.parse(value.updatedAt);
@@ -42,14 +43,18 @@ function completeCache(value, job) {
   return Array.isArray(value.population) && value.population.length > 0 && Array.isArray(value.failures) && value.failures.length === 0 && (job.store === 'rb-snapshot' || value.nextStep?.ready === true);
 }
 
-async function inspectJobs(getStore, season, week) {
+async function inspectJobs(getStore, season, week, now = Date.now()) {
   const state = getStore({ name: STATE_STORE });
+  const schedule = await getStore({name:'weekly-sage-schedule'}).get(`week:${season}:${week}:reg`,{type:'json'});
+  const matchingSchedule = schedule && String(schedule.season) === String(season) && Number(schedule.week ?? schedule.targetWeek) === week ? schedule : null;
+  const checkpoint = criticalCheckpoint(matchingSchedule, now);
   return Promise.all(jobsForWeek(season,week).map(async job => {
     const [cached,status] = await Promise.all([
       getStore({name:job.store}).get(cacheKey(job),{type:'json'}),
       state.get(stateKey(job),{type:'json'})
     ]);
-    return {...job,ready:completeCache(cached,job),status};
+    const policyJob = job.store === 'player-data' ? {...job,criticalCheckpoint:checkpoint,criticalDue:Boolean(checkpoint)} : job;
+    return {...policyJob,ready:completeCache(cached,policyJob,now),status:job.store === 'player-data' && status ? {...status,attemptLimit:dailyRuns(now)} : status};
   }));
 }
 
@@ -60,6 +65,8 @@ function canRetry(status, now = Date.now()) {
 }
 
 function nextJob(rows, now = Date.now()) {
+  const critical = rows.find(row=>row.store === 'player-data' && row.criticalDue && !row.ready && canRetry(row.status,now));
+  if (critical) return critical;
   for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
     if (pending.length) return pending.find(row => canRetry(row.status, now) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))) || null;
@@ -85,17 +92,18 @@ function verify(body, signature, now = Date.now()) {
 async function runJob(job, event, dependencies) {
   const { getStore, build, now = Date.now() } = dependencies;
   const cache = getStore({ name: job.store });
-  if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job)) return { status: 'ready', skipped: true };
+  if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job, now)) return { status: 'ready', skipped: true };
   const state = getStore({ name: STATE_STORE });
   const key = stateKey(job);
   const previous = await state.getWithMetadata(key, { type: 'json' });
-  if (!canRetry(previous && previous.data, now)) return { status: 'waiting', skipped: true };
+  const priorStatus = previous && (job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
+  if (!canRetry(priorStatus, now)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
-  const value = { status: 'running', day, attemptLimit: ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
+  const value = { status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {
-    if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job)) {
+    if (completeCache(await cache.get(cacheKey(job), { type: 'json' }), job, now)) {
       await state.setJSON(key, { ...value, status: 'ready', leaseUntil: 0 });
       return { status: 'ready', skipped: true };
     }
