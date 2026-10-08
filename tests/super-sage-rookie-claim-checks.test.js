@@ -13,6 +13,9 @@ const cases=[
  ['His higher volume floor leads here.','unsupported_floor_comparison'],
  ['The uncertainty could shrink his floor.','unsupported_floor_change'],
  ['Sutton offers less upside without a role bump.','unsupported_ceiling_comparison'],
+ ['Meyers is steadier but lower-ceiling given the projection gap.','unsupported_ceiling_comparison'],
+ ['Meyers has a lower ceiling given his projected points.','unsupported_ceiling_comparison'],
+ ['Meyers is lower\u2011ceiling.','unsupported_ceiling_comparison'],
  ['His projection assumes uncertain QB impact.','unsupported_projection_adjustment'],
  ['His projection of 5.29 reflects uncertainty about availability.','unsupported_projection_adjustment'],
  ['Sutton is healthy and consistent.','availability_overstated_as_health'],
@@ -27,6 +30,7 @@ for(const [explanation,error] of cases) assert.ok(validate({...safe,explanation}
 assert.deepStrictEqual(validateClaims({explanation:'Godwin would catch passes from a new quarterback.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'Godwin is projected to score 8.2 points.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'He is listed active. Projection adjustment for the quarterback change is unknown.'},packet),[]);
+assert.deepStrictEqual(validateClaims({explanation:'Meyers has lower projected points; no scoring bounds are supplied.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'If an updated projection improves, reconsider the comparison.'},packet),[]);
 const qb={players:[{name:'Drake Maye',position:'QB',facts:[]}]};assert.deepStrictEqual(validateClaims({explanation:'Maye will throw to his receivers.'},qb),[]);
 const tiers={players:[{facts:[{field:'standing',value:{tier:'FLEX'}}]},{facts:[{field:'standing',value:{tier:'SIT'}}]}]};
