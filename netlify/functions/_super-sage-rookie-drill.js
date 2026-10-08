@@ -1,7 +1,7 @@
 "use strict";
 const { hash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview, focusEvidence } = require("./_super-sage-shadow-fast-review.js");
-const VERSION = "rookie-haiku-drill-v2";
+const VERSION = "rookie-haiku-drill-v3";
 const CASES = [
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
   { id: "injury", label: "Questionable receiver versus healthy alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },

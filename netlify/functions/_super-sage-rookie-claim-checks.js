@@ -6,12 +6,19 @@ function validateClaims(answer, packet) {
   const text = [answer?.explanation, answer?.caveat, answer?.reconsider].filter(v => typeof v === "string").join("\n");
   const facts = (packet.players || []).flatMap(p => p.facts || []);
   const hasFloor = facts.some(f => f.field === "projection" && Number.isFinite(f.value?.floor));
-  const floorClaims = [...text.matchAll(/\b(?:better|safer|higher|stronger|best|highest)\s+(?:scoring\s+)?floor(?:\s+play)?\b/gi)];
+  const floorClaims = [...text.matchAll(/\b(?:better|safer|higher|stronger|best|highest)\s+(?:(?:scoring|volume)\s+)?floor(?:\s+play)?\b/gi)];
   const positiveFloorClaim = floorClaims.some(m => {
     const prefix = text.slice(Math.max(0, m.index - 80), m.index);
     return !/\b(?:not|cannot|can't|doesn't|does not)\s+(?:(?:establish|prove|support|mean|imply|guarantee|demonstrate)\s+)?(?:a\s+|the\s+)?$/i.test(prefix);
   });
   if (!hasFloor && positiveFloorClaim) errors.push("unsupported_floor_comparison");
+  if (!hasFloor && /\b(?:shrink|raise|lower|reduce|increase)\s+(?:his|her|their|the)\s+floor\b/i.test(text)) errors.push("unsupported_floor_change");
+  if (!facts.some(f => f.field === "projection" && Number.isFinite(f.value?.ceiling)) && /\b(?:less|more|greater|higher|lacks?|missing)\s+(?:the\s+)?(?:upside|ceiling)\b/i.test(text)) errors.push("unsupported_ceiling_comparison");
+  // These packets do not establish how provider projections were adjusted.
+  if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
+  if (/\b(?:is|fully|confirmed|clear|perfect)\s+health(?:y)?\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\btrade\b/i.test(text) && !facts.some(f => /\btrade\b/i.test(JSON.stringify(f.value)))) errors.push("unsupported_trade_event");
+  if (/\bboth\s+(?:players\s+)?(?:sit|are)\s+in\s+(?:the\s+)?flex\s+tier\b/i.test(text) && packet.players.some(p => p.facts?.find(f => f.field === "standing")?.value?.tier !== "FLEX")) errors.push("standing_tier_misrepresented");
   if (/\b(?:will|he'll|she'll)\s+(?:see|get|receive|have)\s+(?:more|at least\s+\d|\d)/i.test(text)) errors.push("guaranteed_future_workload");
   if (/\b(?:putting up|scoring|scores|scored|producing)\s+\d+(?:\.\d+)?\s+(?:fantasy\s+)?points\b/i.test(text) && !facts.some(f => f.field === "observedPoints")) errors.push("projection_presented_as_scored_points");
   if (text.split(/[.!?\n]/).some(s => /\bprojection(?:\s+edge)?\s+(?:narrows|improves|rises|increases|moves|shifts|falls|drops)\b/i.test(s) && !/\b(?:updated|revised|new|verified)\s+projection\b/i.test(s))) errors.push("unsupported_projection_change");
