@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('assert');
+const {hash}=require('../netlify/functions/_super-sage-shadow-llm');
+const {runFastReview,focusEvidence,SYSTEM}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const decisionId='a'.repeat(64),ownerHash=hash('owner'),now=new Date('2026-10-08T02:00:00Z');
+const packet={request:{week:5,scoring:'half'},players:[{name:'Chris Godwin Jr.',position:'WR',facts:[{field:'standing',factId:'P4:standing',value:{tier:'FLEX'}},{field:'availability',value:{unavailable:false}},{field:'projection',value:{points:8.2,fresh:true}}]},{name:'Jakobi Meyers',position:'WR',facts:[{field:'standing',factId:'P8:standing',value:{tier:'SIT'}},{field:'availability',value:{unavailable:false}},{field:'projection',value:{points:7.67,fresh:true}}]}]};
+const frozenEvidence={packet,evidenceHash:hash(JSON.stringify(packet))};const before=JSON.stringify(frozenEvidence);const focused=focusEvidence(frozenEvidence);assert.strictEqual(JSON.stringify(frozenEvidence),before);assert.deepStrictEqual(focused.packet.players.map(p=>p.id),['A','B']);assert.ok(!JSON.stringify(focused).includes('P4'));assert.ok(SYSTEM.includes('never a floor'));assert.ok(SYSTEM.includes('unknown quality'));
+const makeStore=()=>{const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence}]]);return{data,get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true};}};};
+const answer={selected:'B',confidence:'LOW',explanation:'Choose Meyers because the small projection gap does not settle the matchup tradeoff.',caveat:'Evidence is limited.',reconsider:'New verified role evidence.',factIds:['B:standing','A:projection']};
+(async()=>{
+ let calls=0,t=0;
+ const args={store:makeStore(),decisionId,ownerHash,apiKey:'synthetic-key',now,clock:()=>t+=100,fetchImpl:async(_url,o)=>{calls++;const request=JSON.parse(o.body);assert.strictEqual(request.model,'claude-sonnet-4-6');assert.strictEqual(request.max_tokens,400);assert.strictEqual(request.output_config.format.type,'json_schema');assert.ok(!o.signal.aborted);return{ok:true,json:async()=>({model:request.model,stop_reason:'end_turn',content:[{type:'text',text:JSON.stringify(answer)}]})};}};
+ const results=await Promise.all([runFastReview(args),runFastReview(args)]);assert.strictEqual(calls,1);const ready=results.find(r=>r.status==='REVIEW_READY');assert.strictEqual(ready.rawText,JSON.stringify(answer));assert.strictEqual(ready.answer.selected,'B');assert.strictEqual(ready.modelDeadlineMs,10000);assert.strictEqual(ready.rules.productionAuthority,false);assert.strictEqual((await runFastReview(args)).cached,true);assert.strictEqual(calls,1);
+ const denied=await runFastReview({...args,ownerHash:hash('other')});assert.strictEqual(denied.error,'owned_frozen_evidence_unavailable');
+ const capped=makeStore();capped.data.set('llm-fast-budget/2026-10-08',{});assert.strictEqual((await runFastReview({...args,store:capped})).error,'daily_speed_benchmark_limit');assert.strictEqual(calls,1);
+ const timeout=await runFastReview({...args,store:makeStore(),fetchImpl:async()=>{const e=new Error('timed out');e.name='TimeoutError';throw e;}});assert.strictEqual(timeout.error,'ten_second_model_timeout');assert.ok(!timeout.answer);
+ const malformed=await runFastReview({...args,store:makeStore(),fetchImpl:async()=>({ok:true,json:async()=>({stop_reason:'end_turn',content:[{type:'text',text:'not JSON'}]})})});assert.strictEqual(malformed.status,'INVALID');assert.strictEqual(malformed.rawText,'not JSON');
+ assert.ok(!args.store.data.has('llm-budget/2026-10-08'));assert.ok(!args.store.data.has('llm-recovery/2026-10-08'));
+ console.log('Fast benchmark tests passed: blind pair, same model, bounded output, structured JSON, latency measurement, atomic dedup, ownership, separate daily cap, timeout without fabricated answer. Provider mocked.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
