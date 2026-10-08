@@ -18,6 +18,8 @@ const cases=[
  ['Meyers is lower\u2011ceiling.','unsupported_ceiling_comparison'],
  ['His projection assumes uncertain QB impact.','unsupported_projection_adjustment'],
  ['His projection of 5.29 reflects uncertainty about availability.','unsupported_projection_adjustment'],
+ ["Those estimates don't account for the unverified impact of the hamstring or replacement QB.",'unsupported_projection_adjustment'],
+ ["Sutton's clean bill of health tips the tradeoff toward reliability.",'availability_overstated_as_health'],
  ['Sutton is healthy and consistent.','availability_overstated_as_health'],
  ['His clear health makes him the choice.','availability_overstated_as_health'],
  ['He is active and healthy for week 5.','availability_overstated_as_health'],
@@ -31,6 +33,7 @@ for(const [explanation,error] of cases) assert.ok(validate({...safe,explanation}
 assert.deepStrictEqual(validateClaims({explanation:'Godwin would catch passes from a new quarterback.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'Godwin is projected to score 8.2 points.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'He is listed active. Projection adjustment for the quarterback change is unknown.'},packet),[]);
+assert.deepStrictEqual(validateClaims({explanation:'Whether these projections account for the quarterback change is unknown.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'Meyers has lower projected points; no scoring bounds are supplied.'},packet),[]);
 assert.deepStrictEqual(validateClaims({explanation:'If an updated projection improves, reconsider the comparison.'},packet),[]);
 const qb={players:[{name:'Drake Maye',position:'QB',facts:[]}]};assert.deepStrictEqual(validateClaims({explanation:'Maye will throw to his receivers.'},qb),[]);
