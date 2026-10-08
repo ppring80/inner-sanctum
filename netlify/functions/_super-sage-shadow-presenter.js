@@ -11,6 +11,7 @@ function presentShadowSlot(slot) {
   const isCall = trace.callStatus === 'PROVISIONAL_CALL' && selected !== null;
   if ((trace.callStatus === 'PROVISIONAL_CALL' && !selected) || (selected && (!isCall || ![trace.incumbent, trace.challenger].includes(selected)))) throw new Error('Shadow presentation requires a consistent recorded selection.');
   const evidence = (trace.evidenceUsed || []).filter(e => clean(e.text)).map(e => ({text:e.text,effect:e.effect,group:e.group}));
+  const confidenceWarnings = [...new Set((trace.confidenceWarnings || []).map(clean).filter(Boolean))];
   const missing = [...new Set((trace.missingInformation || []).map(clean).filter(Boolean))];
   const pair = challenger && incumbent ? `${incumbent} vs ${challenger}` : incumbent || challenger || slot.slotLabel || 'this slot';
   const favorable = selected === trace.challenger ? ['CHALLENGES_PRIOR','INVALIDATES_PRIOR'] : ['REINFORCES_PRIOR'];
@@ -31,8 +32,9 @@ function presentShadowSlot(slot) {
     ...evidence.filter(e=>e.text.length<=160).slice(0,2).map(e=>e.text),
     ...needsSummary.map(text=>`Needs verification: ${sentence(text)}`),
     ...(isCall && trace.uncertaintyType === 'CLOSE_CALL' ? ['This is a close call; the recorded evidence did not justify overturning the established choice.'] : []),
+    ...confidenceWarnings.slice(0,1).map(text=>`Confidence warning: ${sentence(text)}`),
     `Confidence: ${String(slot.confidence?.label || 'LOW').toLowerCase()}.`,
   ];
-  return {version:1,type:'SUPER_SAGE_PRIVATE_SHADOW_PRESENTATION',selected:isCall?selected:null,callStatus:trace.callStatus,oneSecond,threeSeconds,tenSeconds,supportingEvidence:supporting,opposingEvidence:opposing,reviewNeeds,evidence,authority:{customerVisible:false,productionAuthority:false,decisionImmutable:true,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
+  return {version:1,type:'SUPER_SAGE_PRIVATE_SHADOW_PRESENTATION',selected:isCall?selected:null,callStatus:trace.callStatus,oneSecond,threeSeconds,tenSeconds,supportingEvidence:supporting,opposingEvidence:opposing,reviewNeeds,confidenceWarnings,evidence,authority:{customerVisible:false,productionAuthority:false,decisionImmutable:true,providerCallsAllowed:false,outcomeDataAllowed:false,automaticPromotionAllowed:false}};
 }
 module.exports = {presentShadowSlot};

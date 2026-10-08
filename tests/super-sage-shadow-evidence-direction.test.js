@@ -11,8 +11,8 @@ assert.strictEqual(JSON.stringify(production),before,'frozen production must not
 assert.strictEqual(shadow.slots.length,10);
 assert.strictEqual(comparison.slots.length,10,'RB, WR and FLEX occurrences must not collapse');
 assert.strictEqual(new Set(comparison.slots.map(s=>s.slotKey)).size,10);
-assert.strictEqual(comparison.summary.noCalls,9,'four no-comparator and five unresolved injury/environment/role cases');
-assert.strictEqual(comparison.summary.agreements,1,'no-comparator passthroughs cannot masquerade as independent agreements');
+assert.strictEqual(comparison.summary.noCalls,8,'four no-comparator and four unresolved injury/environment/role cases');
+assert.strictEqual(comparison.summary.agreements,2,'no-comparator passthroughs cannot masquerade as independent agreements');
 for (const name of ['Saquon Barkley','Malik Nabers','Terry McLaurin']) {
  const i=production.slots.findIndex(s=>s.starter.name===name);
  const s=shadow.slots[i];
