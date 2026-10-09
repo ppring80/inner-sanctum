@@ -2,6 +2,9 @@
 const assert=require('assert'),Module=require('module');let cache=null;const load=Module._load;
 Module._load=function(name,parent,isMain){if(name==='@netlify/blobs')return {connectLambda(){},getStore(){return {get:async()=>cache}}};return load.call(this,name,parent,isMain);};
 const newswire=require('../netlify/functions/sage-newswire');const {normalizeStories,mergeStories}=require('../netlify/functions/refresh-sage-newswire');const {editorialStories}=require('../netlify/functions/_newswire-editorial');const {parseFeed,articleMetadata}=require('../netlify/functions/_newswire-sources');Module._load=load;
+const realNow=Date.now;
+// Freeze the editorial fixture window; reports correctly expire after seven days.
+Date.now=()=>Date.parse('2026-10-08T18:00:00Z');
 (async()=>{
  const now=Date.parse('2026-09-30T06:00:00Z'),players={one:{longName:'Test Player',team:'SEA',pos:'WR'}};
  const stories=normalizeStories([
@@ -15,7 +18,8 @@ const newswire=require('../netlify/functions/sage-newswire');const {normalizeSto
  assert.equal(mergeStories(editorial,[{...editorial[0],sageImpact:'Generic'}])[0].sageImpact,editorial[0].sageImpact,'automatic reports cannot replace editorial interpretation');
  assert.equal(parseFeed('<rss><item><title><![CDATA[Test &amp; report]]></title><link>https://www.espn.com/nfl/story/1</link><pubDate>Tue, 29 Sep 2026 10:00:00 GMT</pubDate></item></rss>','ESPN')[0].title,'Test & report');
  assert.equal(articleMetadata('<script type="application/ld+json">{"@type":"NewsArticle","headline":"Test Player ruled out","datePublished":"2026-09-29T10:00:00Z"}</script>','https://www.nfl.com/news/test').publishedAt,'2026-09-29T10:00:00Z');
- cache={mode:'editorial-with-sources',updatedAt:new Date().toISOString(),stories};assert.equal((await newswire.handler({httpMethod:'GET'})).statusCode,200);
+ cache={mode:'editorial-with-sources',updatedAt:new Date(Date.now()).toISOString(),stories};assert.equal((await newswire.handler({httpMethod:'GET'})).statusCode,200);
+ assert(!editorialStories(Date.parse('2026-10-09T22:00:00Z')).some(s=>s.id==='zay-flowers-20261002'),'seven-day report expiry remains enforced');
  const live=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);
  assert(live.stories.some(s=>s.player==='Justin Jefferson'&&s.status==='OUT'),'manual reports appear immediately despite a fresh older automatic cache');
  assert(live.stories.some(s=>s.player==='Breece Hall'&&s.status==='OUT'),'shared roundup URL must retain each affected player');
@@ -27,6 +31,6 @@ const newswire=require('../netlify/functions/sage-newswire');const {normalizeSto
  assert(live.stories.some(s=>s.player==='Tyquan Thornton'&&/dislocated ankle/i.test(s.headline)),'Oct 4 Thornton injury must appear');
  assert(live.stories.filter(s=>s.featured).every(s=>Date.parse(s.publishedAt)>=Date.parse('2026-10-02')));
  assert.equal(mergeStories([{player:'One',sourceUrl:'same',headline:'One out'},{player:'Two',sourceUrl:'same',headline:'Two out'}],[]).length,2);
- cache={mode:'source-headlines',updatedAt:new Date().toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
+ cache={mode:'source-headlines',updatedAt:new Date(Date.now()).toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
  assert.equal((await newswire.handler({httpMethod:'POST'})).statusCode,405);console.log('Newswire source coverage, editorial preservation, relevance, publication dates and specific analysis passed.');
-})().catch(e=>{console.error(e);process.exitCode=1});
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{Date.now=realNow;});
