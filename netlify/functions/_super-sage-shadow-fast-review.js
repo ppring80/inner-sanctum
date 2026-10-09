@@ -80,9 +80,10 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     ? GROUNDED_SYSTEM.replace(/60-80/g, "90-120").replace("roughly 20-25 words per sentence", "with enough room to explain the backfield") + ` In this role-change case, explicitly explain the supplied backfield context as part of your three sentences. Cite backfieldContext and roleExpansion when supplied. Explain who is next on the team-published chart after skipping sourced unavailable backs, those backs' reported status, the next alternative's UNKNOWN status when applicable, and alternatives absent from the chart. A chart position is not health clearance or proof of future work. Connect the candidate's unresolved injury to the decision and say plainly when we do not know how the work would change. Do not omit this evidence just to meet the usual short word target. Independently choose either candidate or no call; no preferred choice is supplied. Before submitting, remove any floor comparison unless the cited evidence supplies scoring bounds.`
     : GROUNDED_SYSTEM) : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
-  const schema = grounded ? strictSchema(GROUNDED_SCHEMA) : SCHEMA;
+  const schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation
+    ? JSON.parse(JSON.stringify(GROUNDED_SCHEMA).replace(/60-80/g, "90-120")) : GROUNDED_SCHEMA) : SCHEMA;
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
-  const maxTokens = focused.packet.requireSentenceEvidence ? 550 : 400;
+  const maxTokens = focused.packet.requireBackfieldExplanation ? 750 : grounded ? 550 : 400;
   // Private grounded quality benchmark only; assess its full request time
   // separately from the under-ten-second release target.
   const deadlineMs = grounded ? 20000 : 10000;

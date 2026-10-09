@@ -3,6 +3,14 @@ const { hash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview, focusEvidence, validate } = require("./_super-sage-shadow-fast-review.js");
 const { revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const VERSION = "rookie-sonnet-drill-v13-human-voice";
+// One separately authorized post-PR-227 check. Never reset the curriculum or
+// replace its saved answer. Bound to the exact prior owned evidence/review.
+const POST_FIX = Object.freeze({
+  decisionId: "9cef5686687abf619a68aa518a6b2585e4d26f822b7805d6723825526b5d620e",
+  parentEvidenceHash: "c37383fc28f235b4b865c5fb8a629325e85b4f100fd049b67eacbdb25096536b",
+  requestId: "msg_011Cfr552iKtfK6JY2BSdEcd",
+  caseId: "role-change-postfix-227"
+});
 const CASES = [
   { id: "injury", label: "Questionable receiver versus listed-active alternative", targets: ["Terry McLaurin", "Courtland Sutton"] },
   { id: "close-call", label: "Close call and quarterback change", targets: ["Chris Godwin Jr.", "Jakobi Meyers"] },
@@ -43,6 +51,14 @@ async function runNextDrill(args) {
     const metadata = { caseLabel: c.label, caseNumber: CASES.indexOf(c) + 1, caseCount: CASES.length };
     if (cached) {
       if (cached.status === "PENDING") return { ...cached, ...metadata, cached: true };
+      if (args.caseId === "role-change" && args.decisionId === POST_FIX.decisionId &&
+          original.frozenEvidence.evidenceHash === POST_FIX.parentEvidenceHash &&
+          cached.requestId === POST_FIX.requestId && cached.status === "INVALID") {
+        const result = await runFastReview({ ...args, drill: { version: VERSION,
+          caseId: POST_FIX.caseId, build: frozen => buildCase(frozen, c) } });
+        return { ...result, ...metadata, caseId: c.id, experiment: POST_FIX.caseId,
+          priorReviewRequestId: cached.requestId, endToEndTargetMs: 15000 };
+      }
       const packet = buildCase(original.frozenEvidence, c).packet;
       const reviewed = withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, packet) : []), packet);
       if (args.caseId != null) return { ...reviewed, ...metadata, cached: true };
@@ -53,4 +69,4 @@ async function runNextDrill(args) {
   }
   return { status: "DRILL_COMPLETE", version: VERSION, cached: true, cases: completed, semanticReviewRequired: true };
 }
-module.exports = { VERSION, CASES, buildCase, runNextDrill };
+module.exports = { VERSION, CASES, POST_FIX, buildCase, runNextDrill };
