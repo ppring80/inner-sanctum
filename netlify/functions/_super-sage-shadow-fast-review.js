@@ -62,7 +62,15 @@ function validate(answer, packet) {
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
-  const original = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
+  const timing = {};
+  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}`;
+  let stage = clock();
+  const [original, cached] = await Promise.all([
+    store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" }),
+    store.get(key, { type: "json" })
+  ]);
+  timing.cacheReadMs = Math.round(clock() - stage);
+  stage = clock();
   if (!original || original.ownerHash !== ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   let focused;
@@ -75,15 +83,17 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   // Private grounded quality benchmark only; assess its full request time
   // separately from the under-ten-second release target.
   const deadlineMs = grounded ? 20000 : 10000;
-  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}`;
-  const cached = await store.get(key, { type: "json" });
-  if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true };
+  timing.evidencePreparationMs = Math.round(clock() - stage);
+  if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, promptHash: hash(system), rules: RULES };
+  stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
+  timing.reservationMs = Math.round(clock() - stage);
   if (!reservation?.modified) return { ...base, error: "review_already_reserved" };
   // This explicitly requested speed benchmark has its own one-call daily cap;
   // it never resets the full-review or migration-recovery budgets.
+  stage = clock();
   let budget = drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
   if (!drill && !budget?.modified) {
     const previous = await store.get(`llm-fast/rookie-fast-pair-v1/${decisionId}/${ownerHash}`, { type: "json" });
@@ -125,6 +135,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       base.modelCheckOf = "rookie-fast-pair-v5";
     }
   }
+  timing.budgetMs = Math.round(clock() - stage);
   let result;
   if (!budget?.modified) result = { ...base, status: "UNAVAILABLE", error: "daily_speed_benchmark_limit" };
   else {
@@ -150,6 +161,9 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     } catch (e) { result = { ...base, status: "UNAVAILABLE", error: e.name === "TimeoutError" || e.name === "AbortError" ? (grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
   }
   result = withClaimAssessment(result, focused.packet);
-  await store.setJSON(key, result); return result;
+  stage = clock();
+  await store.setJSON(key, result);
+  timing.persistMs = Math.round(clock() - stage);
+  return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
 module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
