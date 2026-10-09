@@ -6,7 +6,7 @@ function validateClaims(answer, packet) {
   const text = [answer?.explanation, answer?.caveat, answer?.reconsider].filter(v => typeof v === "string").join("\n");
   const facts = (packet.players || []).flatMap(p => p.facts || []);
   const hasFloor = facts.some(f => f.field === "projection" && Number.isFinite(f.value?.floor));
-  const floorClaims = [...text.matchAll(/\b(?:better|safer|higher|stronger|best|highest)\s+(?:(?:scoring|volume)\s+)?floor(?:\s+play)?\b/gi)];
+  const floorClaims = [...text.matchAll(/\b(?:better|safer|higher|stronger|best|highest|(?:more\s+)?(?:dependable|reliable|consistent))\s+(?:(?:scoring|volume)\s+)?floor(?:\s+play)?\b/gi)];
   const positiveFloorClaim = floorClaims.some(m => {
     const prefix = text.slice(Math.max(0, m.index - 80), m.index);
     return !/\b(?:not|cannot|can't|doesn't|does not)\s+(?:(?:establish|prove|support|mean|imply|guarantee|demonstrate)\s+)?(?:a\s+|the\s+)?$/i.test(prefix);
@@ -14,6 +14,8 @@ function validateClaims(answer, packet) {
   if (!hasFloor && positiveFloorClaim) errors.push("unsupported_floor_comparison");
   if (!hasFloor && /\b(?:shrink|raise|lower|reduce|increase)\s+(?:his|her|their|the)\s+floor\b/i.test(text)) errors.push("unsupported_floor_change");
   if (!facts.some(f => f.field === "projection" && Number.isFinite(f.value?.ceiling)) && /\b(?:less|more|greater|higher|lower|highest|lowest|lacks?|missing)[\s\u2010-\u2015-]+(?:the\s+)?(?:upside|ceiling)\b/i.test(text)) errors.push("unsupported_ceiling_comparison");
+  const cleanerProjectionClaims = [...text.matchAll(/\bcleaner\s+projection(?:\s+edge)?\b/gi)];
+  if (cleanerProjectionClaims.some(m => !/\b(?:not|cannot|can't|doesn't|does not)\s+(?:(?:establish|prove|support|mean|imply|guarantee|demonstrate)\s+)?(?:a\s+|the\s+)?$/i.test(text.slice(Math.max(0, m.index - 80), m.index))) && !facts.some(f => f.field === "projectionQuality" && f.value?.verified === true)) errors.push("unsupported_projection_quality");
   // These packets do not establish how provider projections were adjusted.
   if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
   if (/\b(?:projections?|estimates?|forecasts?)\s+(?:already\s+)?(?:don't|do not|doesn't|does not)\s+account for\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
