@@ -38,7 +38,7 @@ async function runNextDrill(args) {
     if (cached) {
       if (cached.status === "PENDING") return { ...cached, cached: true };
       const packet = buildCase(original.frozenEvidence, c).packet;
-      completed.push(withClaimAssessment(revalidateCached(cached, cached.status === "REVIEW_READY" ? validate(cached.answer, packet) : []), packet)); continue;
+      completed.push(withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, packet) : []), packet)); continue;
     }
     const result = await runFastReview({ ...args, drill: { version: VERSION, caseId: c.id, build: frozen => buildCase(frozen, c) } });
     return { ...result, caseLabel: c.label, caseNumber: completed.length + 1, caseCount: CASES.length };

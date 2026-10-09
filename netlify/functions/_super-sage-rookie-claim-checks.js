@@ -39,7 +39,10 @@ function validateClaims(answer, packet) {
   return [...new Set(errors)];
 }
 function revalidateCached(review, errors) {
-  if (review.status !== "REVIEW_READY" || !errors.length) return review;
+  // Requalify a cached format-only rejection under the current contract.
+  // Provider, factual and other failures cannot be cleared by this path.
+  if (review.status === "INVALID" && review.validationErrors?.length && review.validationErrors.every(e => e === "invalid_sentence_evidence") && !errors.length) return { ...review, storedStatus: review.status, status: "REVIEW_READY", validationErrors: [], revalidated: true };
+  if (!["REVIEW_READY", "INVALID"].includes(review.status) || !errors.length) return review;
   // Reassess the returned view; preserve the original stored answer and status.
   return { ...review, storedStatus: review.status, status: "INVALID", validationErrors: [...new Set([...(review.validationErrors || []), ...errors])], revalidated: true };
 }
@@ -57,6 +60,10 @@ function withClaimAssessment(review, packet) {
   const claims = segments.map(segment => {
     const scoped = Array.isArray(segment.factIds) ? { ...packet, players: (packet.players || []).map(p => ({ ...p, facts: (p.facts || []).filter(f => segment.factIds.includes(f.factId)) })) } : packet;
     const issues = [...new Set([...validateClaims({ explanation: segment.text }, scoped), ...validatePairVoice({ explanation: segment.text })])];
+    if (packet.requireSentenceEvidence && segment.field === 'explanation') {
+      const known = new Set((packet.players || []).flatMap(p => (p.facts || []).map(f => f.factId)));
+      if (!Array.isArray(segment.factIds) || !segment.factIds.length || segment.factIds.length > 6 || !segment.factIds.every(id => known.has(id) && answer.factIds?.includes(id))) issues.push('invalid_sentence_evidence');
+    }
     return { ...segment, issues, materiality: issues.length ? 'REQUIRES_REVIEW' : 'NOT_ESTABLISHED' };
   });
   return { ...review, claimAssessment: { recommendation: 'NOT_REVIEWED', semanticReviewRequired: true, claims, note: 'Targeted checks only. No detected issue is not proof of accuracy; an issue is not an automatic rejection of the choice.' } };

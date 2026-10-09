@@ -77,3 +77,19 @@ assert.strictEqual(assessment.claimAssessment.claims[1].materiality,'REQUIRES_RE
 assert.ok(assessment.claimAssessment.claims.find(c=>c.field==='caveat').issues.includes('report_like_customer_language'));
 assert.strictEqual(JSON.stringify(originalReview),originalBytes);
 assert.strictEqual(withClaimAssessment({status:'UNAVAILABLE'},packet).claimAssessment,undefined);
+
+// Three comparisons require two supplied facts each: six citations are legal.
+const comparisonPacket={requireSentenceEvidence:true,players:packet.players.map(p=>({...p,facts:[...p.facts,{field:'standing',factId:p.id+':standing',value:{positionRank:p.id==='A'?47:51}},{field:'matchup',factId:p.id+':matchup',value:{label:p.id==='A'?'Strong Positive':'Neutral'}}]}))};
+const sixIds=['A:matchup','B:matchup','A:projection','B:projection','A:standing','B:standing'];
+const acceptedComparison={...safe,explanation:"I'd start Chris Godwin Jr. over Jakobi Meyers because he has a better matchup, a higher projection (8.2 vs 7.67), and a slightly higher positional rank (47 vs 51).\nThe projected difference is small, so this is a qualified lean.",factIds:sixIds,sentenceFactIds:[sixIds,['A:projection','B:projection']]};
+assert.deepStrictEqual(validate(acceptedComparison,comparisonPacket),[]);
+const seventh=[...sixIds,'A:establishedRole'];
+const tooMany={...acceptedComparison,factIds:seventh,sentenceFactIds:[seventh,['A:projection','B:projection']],explanationSentences:[{text:acceptedComparison.explanation.split('\n')[0],factIds:seventh},{text:'The projected difference is small.',factIds:['A:projection','B:projection']}]};
+assert.ok(validate(tooMany,comparisonPacket).includes('invalid_sentence_evidence'));
+assert.ok(withClaimAssessment({status:'INVALID',answer:tooMany},comparisonPacket).claimAssessment.claims[0].issues.includes('invalid_sentence_evidence'));
+const formatOnly={status:'INVALID',answer:acceptedComparison,validationErrors:['invalid_sentence_evidence']};
+const storedFormatBytes=JSON.stringify(formatOnly);
+assert.strictEqual(revalidateCached(formatOnly,validate(acceptedComparison,comparisonPacket)).status,'REVIEW_READY');
+assert.strictEqual(JSON.stringify(formatOnly),storedFormatBytes);
+assert.strictEqual(revalidateCached({...formatOnly,validationErrors:['invalid_sentence_evidence','incomplete_model_response']},[]).status,'INVALID');
+assert.strictEqual(revalidateCached({...formatOnly,validationErrors:['availability_overstated_as_health']},[]).status,'INVALID');
