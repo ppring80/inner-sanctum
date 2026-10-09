@@ -4,6 +4,8 @@ const {validateClaims,revalidateCached}=require('../netlify/functions/_super-sag
 const {validate,formatGroundedAnswer,strictSchema}=require('../netlify/functions/_super-sage-shadow-fast-review');
 const packet={players:[{id:'A',name:'Chris Godwin Jr.',position:'WR',facts:[{field:'projection',factId:'A:projection',value:{points:8.2}},{field:'establishedRole',factId:'A:establishedRole',value:{description:'Established role: about 5 opportunities per game recently.'}}]},{id:'B',name:'Jakobi Meyers',position:'WR',facts:[{field:'projection',factId:'B:projection',value:{points:7.67}}]}]};
 const cases=[
+ ["Sutton has no reported state changes and recent moderate-volume opportunity, giving him a more dependable floor in a neutral matchup.",'unsupported_floor_comparison'],
+ ["He carries a small but cleaner projection edge once you account for risk.",'unsupported_projection_quality'],
  ['The projection spread plus matchup make Godwin the better floor play here.','unsupported_floor_comparison'],
  ["If he plays, he'll see more opportunities.",'guaranteed_future_workload'],
  ['Blake Corum is putting up 6.82 points in half-PPR.','projection_presented_as_scored_points'],
@@ -57,3 +59,7 @@ assert.strictEqual(formatted.explanation,linked.explanation);assert.strictEqual(
 assert.deepStrictEqual(formatted.explanationSentences,input.explanationSentences);
 const limited={type:'object',additionalProperties:false,properties:{sentences:{type:'array',minItems:3,maxItems:3,items:{type:'object',additionalProperties:false,properties:{factIds:{type:'array',minItems:1,maxItems:4,items:{type:'string'}}}}}}};
 const compatible=strictSchema(limited);assert.strictEqual(compatible.properties.sentences.minItems,1);assert.strictEqual(compatible.properties.sentences.maxItems,undefined);assert.strictEqual(compatible.properties.sentences.items.properties.factIds.maxItems,undefined);assert.strictEqual(limited.properties.sentences.maxItems,3);
+
+assert.deepStrictEqual(validateClaims({explanation:'Listed active does not establish a more dependable floor. Listed active does not establish a cleaner projection.'},packet),[]);
+const observedFailure={...safe,explanation:'Sutton has a more dependable floor.'};
+assert.strictEqual(revalidateCached({status:'REVIEW_READY',answer:observedFailure},validate(observedFailure,packet)).status,'INVALID');
