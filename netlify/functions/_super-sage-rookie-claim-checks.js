@@ -43,4 +43,22 @@ function revalidateCached(review, errors) {
   // Reassess the returned view; preserve the original stored answer and status.
   return { ...review, storedStatus: review.status, status: "INVALID", validationErrors: [...new Set([...(review.validationErrors || []), ...errors])], revalidated: true };
 }
-module.exports = { validateClaims, revalidateCached };
+// An invalid explanation does not by itself grade the recommendation.
+// Preserve exact output and errors; materiality and choice remain human reviews.
+function withClaimAssessment(review, packet) {
+  if (!review?.answer) return review;
+  const answer = review.answer;
+  const sentences = Array.isArray(answer.explanationSentences)
+    ? answer.explanationSentences.map(s => ({ text: s.text, factIds: s.factIds }))
+    : String(answer.explanation || '').split(/\n+/).filter(Boolean).map(text => ({ text }));
+  const segments = sentences.map((s, index) => ({ field: 'explanation', index, ...s }));
+  for (const field of ['caveat', 'reconsider']) if (typeof answer[field] === 'string') segments.push({ field, text: answer[field] });
+  const { validatePairVoice } = require('./_super-sage-shadow-voice.js');
+  const claims = segments.map(segment => {
+    const scoped = Array.isArray(segment.factIds) ? { ...packet, players: (packet.players || []).map(p => ({ ...p, facts: (p.facts || []).filter(f => segment.factIds.includes(f.factId)) })) } : packet;
+    const issues = [...new Set([...validateClaims({ explanation: segment.text }, scoped), ...validatePairVoice({ explanation: segment.text })])];
+    return { ...segment, issues, materiality: issues.length ? 'REQUIRES_REVIEW' : 'NOT_ESTABLISHED' };
+  });
+  return { ...review, claimAssessment: { recommendation: 'NOT_REVIEWED', semanticReviewRequired: true, claims, note: 'Targeted checks only. No detected issue is not proof of accuracy; an issue is not an automatic rejection of the choice.' } };
+}
+module.exports = { validateClaims, revalidateCached, withClaimAssessment };
