@@ -1,7 +1,7 @@
 "use strict";
 const { playerKey, matchingTransaction } = require("./_injury-transactions");
 const { resolveCurrentNFLWeek } = require("./_current-nfl-week");
-// Read existing caches only. Depth order is a reported rank, never a workload forecast.
+// Existing cache depth is derived from provider array position, not a verified role rank.
 function backfieldEvidence(row, cache, availability, season, week, now = new Date()) {
   const time = new Date(now).getTime(), generated = Date.parse(cache?.generatedAt);
   if (row.position !== "RB" || cache?.source !== "Tank01" || !Number.isFinite(generated) ||
@@ -29,12 +29,12 @@ function backfieldEvidence(row, cache, availability, season, week, now = new Dat
     // An activation clears a reserve designation, not a subsequent injury report.
     const useTransaction = transaction && !(transaction.status === "ACTIVE" && ["QUESTIONABLE","DOUBTFUL","OUT"].includes(rosterStatus));
     const status = useTransaction ? transaction.status : rosterStatus;
-    return { name:p.longName, playerID:p.playerID || null, depth:p.depth,
+    return { name:p.longName, playerID:p.playerID || null, sourceOrder:p.depth,
       availability:{status:String(status).toUpperCase(), source:(useTransaction ? transaction.source : null) || (roster ? "cached Tank01 roster" : null),
         sourceUrl:(useTransaction ? transaction.sourceUrl : null) || null, reportedAt:(useTransaction ? transaction.reportedAt : null) || (roster ? availability.updatedAt : null)} };
   });
-  return {team:row.team, source:cache.source, generatedAt:cache.generatedAt, candidateDepth:candidates[0].depth,
+  return {team:row.team, source:cache.source, generatedAt:cache.generatedAt, candidateSourceOrder:candidates[0].depth, roleOrderVerified:false,
     players, redistributionVerified:false,
-    note:"Reported depth order identifies backfield alternatives; it does not establish snap shares, health clearance, or who receives an absent teammate's work."};
+    note:"Cache order is derived from provider array position, not verified starter/backup roles. Use backfield identities and sourced statuses only; do not infer role order, snap shares, health clearance, or who receives an absent teammate's work."};
 }
 module.exports = {backfieldEvidence};
