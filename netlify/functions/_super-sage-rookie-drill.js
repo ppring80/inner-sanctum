@@ -12,6 +12,7 @@ const CASES = [
 function buildCase(frozen, c) {
   const focused = focusEvidence(frozen, c.targets);
   focused.packet.requireSentenceEvidence = true;
+  if (c.id === "role-change") focused.packet.requireBackfieldExplanation = true;
   focused.packet.evidenceMeaning = {
     projection: "Forecast point estimate, not scored points, floor or ceiling; adjustment for state changes is unknown unless explicitly supplied.",
     establishedRole: "Observed recent usage; retain the original opportunity unit, not a guaranteed future workload.",
