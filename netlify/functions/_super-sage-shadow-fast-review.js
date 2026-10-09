@@ -26,7 +26,7 @@ function strictSchema(value) {
   return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "maxItems").map(([key, item]) => [key, key === "minItems" ? Math.min(item, 1) : strictSchema(item)]));
 }
 function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
-  const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "roleExpansion", "stateChanges", "uncertainty"]);
+  const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "backfieldContext", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
     const p = frozen.packet.players.find(p => p.name === name);
     if (!p || !["QB", "RB", "WR", "TE"].includes(p.position)) throw new Error("focused_pair_unavailable");

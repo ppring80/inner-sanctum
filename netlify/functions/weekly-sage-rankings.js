@@ -614,8 +614,11 @@ exports.handler = async function (event) {
   reconcileRankedRecommendations(positions, scoring);
   // Shared read-time context: one cached status change reaches every weekly
   // consumer, without rebuilding provider statistics or inventing workload.
+  const depthCache = await getStore({name:"current-nfl-facts"}).get("latest",{type:"json"}).catch(()=>null);
   const roleEvidence = [...require('./_reserve-transactions').TRANSACTIONS.filter(t=>Number(season)===t.season&&targetWeek>=t.fromWeek&&(!t.activationWeek||targetWeek<t.activationWeek)&&!require('./_injury-transactions').matchingTransaction(t,season,targetWeek,centralAvailability.transactions)),...(centralAvailability.transactions||[])];
   for(const row of positions.RB||[]) {
+    const backfield = require("./_backfield-evidence").backfieldEvidence(row,depthCache,centralAvailability,season,targetWeek);
+    if(backfield) row.backfieldContext = backfield;
     const context=require('./_injury-transactions').roleContext(row,centralAvailability.players,roleEvidence,season,targetWeek,centralAvailability.updatedAt);
     if(context){row.roleContext=context;row.sageTake=`${context.note} ${row.sageTake||''}`;}
   }

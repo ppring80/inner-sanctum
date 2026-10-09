@@ -76,7 +76,7 @@ async function test(name, fn) { await fn(); passed += 1; console.log('  ok - ' +
     assert.strictEqual(plain.roleExpansion.validated, false);
     const withRoleChange = observedEvidenceFor(o, { name: 'Alpha', position: 'RB', verifiedRoleChange: { type: 'ROLE_CHANGE' } });
     assert.strictEqual(withRoleChange.roleExpansion.claimed, false);
-    assert.match(withRoleChange.roleExpansion.note, /no validated evidence forecasts its size/);
+    assert.match(withRoleChange.roleExpansion.note, /redistribution and any workload increase remain unverified/);
     const promoted = observedEvidenceFor(o, { name: 'Alpha', position: 'RB', promotedExpansion: [{ id: 'some-promoted-signal' }] });
     assert.strictEqual(promoted.roleExpansion.claimed, true);
   });

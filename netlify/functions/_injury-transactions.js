@@ -61,6 +61,6 @@ function roleContext(row, players, transactions, season, week, updatedAt) {
   unavailable.delete(playerKey(row.name));
   if(!unavailable.size)return null;
   const absences=[...unavailable.values()];
-  return {status:'REASSESS',absences,projectionRecalculated:false,rankRecalculated:false,note:`Backfield role change: ${absences.map(r=>`${r.name} (${r.status})`).join(', ')} unavailable. ${row.name}'s prior workload and weekly rank may understate the changed opportunity. Increased work is possible; the share is not verified. Do not use the old rank alone to recommend dropping this player.`};
+  return {status:'REASSESS',absences,projectionRecalculated:false,rankRecalculated:false,note:`Backfield role change: ${absences.map(r=>`${r.name} (${r.status})`).join(', ')} unavailable. ${row.name}'s prior workload and weekly rank need reassessment. The absence alone does not establish increased work; the share is not verified. Do not use the old rank alone to recommend dropping this player.`};
 }
 module.exports={STORE,VERIFIED,playerKey,parseTransactions,mergeTransactions,matchingTransaction,roleContext};
