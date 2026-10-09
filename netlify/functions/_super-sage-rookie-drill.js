@@ -28,20 +28,27 @@ function buildCase(frozen, c) {
 }
 async function runNextDrill(args) {
   if (!/^[a-f0-9]{64}$/.test(args.decisionId || "") || !/^[a-f0-9]{64}$/.test(args.ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
-  const original = await args.store.get(`evidence/${args.decisionId}/${args.ownerHash}`, { type: "json" });
+  const selected = args.caseId == null ? CASES : CASES.filter(c => c.id === args.caseId);
+  if (!selected.length) return { status: "UNAVAILABLE", error: "invalid_case" };
+  const [original, saved] = await Promise.all([
+    args.store.get(`evidence/${args.decisionId}/${args.ownerHash}`, { type: "json" }),
+    Promise.all(selected.map(c => args.store.get(`llm-drill/${VERSION}/${c.id}/${args.decisionId}/${args.ownerHash}`, { type: "json" })))
+  ]);
   if (!original || original.ownerHash !== args.ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   const completed = [];
-  for (const c of CASES) {
-    const key = `llm-drill/${VERSION}/${c.id}/${args.decisionId}/${args.ownerHash}`;
-    const cached = await args.store.get(key, { type: "json" });
+  for (const [index, c] of selected.entries()) {
+    const cached = saved[index];
+    const metadata = { caseLabel: c.label, caseNumber: CASES.indexOf(c) + 1, caseCount: CASES.length };
     if (cached) {
-      if (cached.status === "PENDING") return { ...cached, cached: true };
+      if (cached.status === "PENDING") return { ...cached, ...metadata, cached: true };
       const packet = buildCase(original.frozenEvidence, c).packet;
-      completed.push(withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, packet) : []), packet)); continue;
+      const reviewed = withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, packet) : []), packet);
+      if (args.caseId != null) return { ...reviewed, ...metadata, cached: true };
+      completed.push(reviewed); continue;
     }
     const result = await runFastReview({ ...args, drill: { version: VERSION, caseId: c.id, build: frozen => buildCase(frozen, c) } });
-    return { ...result, caseLabel: c.label, caseNumber: completed.length + 1, caseCount: CASES.length };
+    return { ...result, ...metadata };
   }
   return { status: "DRILL_COMPLETE", version: VERSION, cached: true, cases: completed, semanticReviewRequired: true };
 }

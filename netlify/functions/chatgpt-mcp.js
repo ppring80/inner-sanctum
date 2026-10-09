@@ -6466,18 +6466,19 @@ function buildServer(
   server.registerTool(
     "run_shadow_llm_review",
     {
-      title: "Run Rookie Four-Case Haiku Drill",
-      description: "Private reviewer Haiku drill: each invocation runs the next of four fixed cases from owned frozen evidence, including one explicitly synthetic missing-evidence test. At most four provider calls globally for this curriculum, one per case, with no retries. Ten-second provider deadline; full tool latency measured separately. After all cases, returns saved results without new model calls. Default mode is drill; focused preserves the prior pair benchmark, full preserves background Sonnet lineup review. Never changes customer decisions.",
-      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["drill", "focused", "full"]).optional() }),
+      title: "Run Rookie Private Evidence Drill",
+      description: "Private reviewer evidence drill: each invocation runs the next of four fixed cases from owned frozen evidence, including one explicitly synthetic missing-evidence test. At most four provider calls globally for this curriculum, one per case, with no retries. Grounded quality drill has a twenty-second provider deadline; full tool latency is measured separately against the under-ten-second target. After all cases, returns saved results without new model calls. Optional caseId selects one fixed case directly without running earlier cases or changing budget limits. Default mode is drill; focused preserves the prior pair benchmark, full preserves background Sonnet lineup review. Never changes customer decisions.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["drill", "focused", "full"]).optional(), caseId: z.enum(["injury", "close-call", "role-change", "missing-evidence"]).optional() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },
-    async ({ decisionId, mode = "drill" }) => {
+    async ({ decisionId, mode = "drill", caseId }) => {
+      if (caseId != null && mode !== "drill") return { isError: true, content: [{ type: "text", text: "caseId requires drill mode. No model review was requested." }] };
       if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext || !authContext.snapshotKey) {
         return { isError: true, content: [{ type: "text", text: "Independent Rookie review requires an enabled private reviewer deployment and an authorized linked league." }] };
       }
       try {
         const toolStart = performance.now();
-        const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY });
+        const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY, caseId });
         const invocationTiming = {
           ...(authContext.rookieInvocationTiming || {}),
           reviewCallMs: Math.round(performance.now() - toolStart),
