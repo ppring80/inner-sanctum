@@ -336,3 +336,8 @@
 # game has not kicked off. Never overwrites; never throws; not on any customer path.
 [functions."super-sage-pregame-ledger-snapshot"]
   schedule = "30 11,14,16,19,23 * * *"
+
+# Public team-published role evidence: hourly retry, six-hour success dedup.
+# One PHI depth-chart read per collection; zero Tank01 or LLM calls.
+[functions."refresh-team-backfield-roles"]
+  schedule = "25 * * * *"
