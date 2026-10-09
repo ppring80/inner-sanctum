@@ -63,3 +63,17 @@ const compatible=strictSchema(limited);assert.strictEqual(compatible.properties.
 assert.deepStrictEqual(validateClaims({explanation:'Listed active does not establish a more dependable floor. Listed active does not establish a cleaner projection.'},packet),[]);
 const observedFailure={...safe,explanation:'Sutton has a more dependable floor.'};
 assert.strictEqual(revalidateCached({status:'REVIEW_READY',answer:observedFailure},validate(observedFailure,packet)).status,'INVALID');
+
+const {withClaimAssessment}=require('../netlify/functions/_super-sage-rookie-claim-checks');
+const originalReview={status:'INVALID',answer:{selected:'A',explanationSentences:[{text:"I'd start Godwin because he has the higher supplied projection.",factIds:['A:projection','B:projection']},{text:'He has a clean bill of health.',factIds:['A:projection']}],caveat:'The quarterback effect is unvalidated.',reconsider:'Check the latest injury report.'},validationErrors:['availability_overstated_as_health']};
+const originalBytes=JSON.stringify(originalReview);
+const assessment=withClaimAssessment(originalReview,packet);
+assert.strictEqual(assessment.status,'INVALID');
+assert.strictEqual(assessment.answer.selected,'A');
+assert.strictEqual(assessment.claimAssessment.recommendation,'NOT_REVIEWED');
+assert.deepStrictEqual(assessment.claimAssessment.claims[0].issues,[]);
+assert.ok(assessment.claimAssessment.claims[1].issues.includes('availability_overstated_as_health'));
+assert.strictEqual(assessment.claimAssessment.claims[1].materiality,'REQUIRES_REVIEW');
+assert.ok(assessment.claimAssessment.claims.find(c=>c.field==='caveat').issues.includes('report_like_customer_language'));
+assert.strictEqual(JSON.stringify(originalReview),originalBytes);
+assert.strictEqual(withClaimAssessment({status:'UNAVAILABLE'},packet).claimAssessment,undefined);
