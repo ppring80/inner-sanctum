@@ -10,9 +10,9 @@ const row={name:'Saquon Barkley',position:'RB',team:'PHI',playerID:'1',rank:8,re
 const cache={source:'Tank01',generatedAt:'2026-10-09T00:00:00Z',teams:{PHI:{RB:[{longName:row.name,playerID:'1',depth:1},{longName:'Will Shipley',playerID:'2',depth:2},{longName:'Tank Bigsby',playerID:'3',depth:3}]}}};
 const availability={fresh:true,updatedAt:'2026-10-09T00:01:00Z',players:{'1':{longName:row.name,team:'PHI',pos:'RB',injury:{designation:'QUESTIONABLE'}},'2':{longName:'Will Shipley',team:'PHI',pos:'RB'},'3':{longName:'Tank Bigsby',team:'PHI',pos:'RB',injury:{designation:'IR'}}},transactions:[]};
 const evidence=backfieldEvidence(row,cache,availability,2026,5,now);
-assert.equal(evidence.candidateDepth,1);assert.equal(evidence.players[1].name,'Will Shipley');assert.equal(evidence.players[1].depth,2);
+assert.equal(evidence.candidateSourceOrder,1);assert.equal(evidence.players[1].name,'Will Shipley');assert.equal(evidence.players[1].sourceOrder,2);
 assert.equal(evidence.players[1].availability.status,'UNKNOWN','missing injury is not active/healthy clearance');
-assert.equal(evidence.players[2].availability.status,'IR');assert.equal(evidence.redistributionVerified,false);
+assert.equal(evidence.players[2].availability.status,'IR');assert.equal(evidence.redistributionVerified,false);assert.equal(evidence.roleOrderVerified,false);assert(!('depth' in evidence.players[1]));
 assert.equal(evidence.players[2].availability.reportedAt,availability.updatedAt);
 for(const changed of [{...cache,generatedAt:'2026-10-07T00:00:00Z'},{...cache,generatedAt:'2026-10-10T00:00:00Z'},{...cache,source:'unverified'},null]) assert.equal(backfieldEvidence(row,changed,availability,2026,5,now),null);
 assert.equal(backfieldEvidence(row,cache,availability,2026,4,now),null,'no current depth in historical week');
