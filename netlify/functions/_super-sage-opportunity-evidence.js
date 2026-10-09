@@ -165,7 +165,7 @@ function observedEvidenceFor(opportunity, { name, position, promotedExpansion = 
     note: promotedExpansion.length
       ? "Role expansion supported by promoted, verified forward evidence."
       : verifiedRoleChange
-        ? "A verified role change makes expansion possible, but no validated evidence forecasts its size."
+        ? "A verified role change requires reassessment; redistribution and any workload increase remain unverified."
         : "No validated evidence of role expansion."
   };
   if (!record) {

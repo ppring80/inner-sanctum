@@ -157,6 +157,7 @@ function buildEvidencePacket(candidate, request) {
     position: upper(candidate.position || (row && row.position)),
     team: (row && row.team) || candidate.team || null,
     matched: Boolean(row),
+    backfieldContext: row?.backfieldContext || null,
     availability: { rosterStatus: rosterStatus || null, injuryStatus: injuryStatus || null,
       // Evidence pass-through for presentation (no decision reads these).
       injuryDescription: (row && row.injuryDescription) || (candidate.inactiveRow && (candidate.inactiveRow.reason || candidate.inactiveRow.sageTake)) || null,
@@ -809,6 +810,7 @@ function publicPacket(p) {
     observedOpportunity: p.observedOpportunity, expectedOpportunity: p.expectedOpportunity,
     stateChanges: p.stateChanges, forwardSignals: p.forwardSignals, matchup: p.matchup,
     projection: p.projection, uncertainty: p.uncertainty,
+    backfieldContext: p.backfieldContext,
     baselineValidity: p.baselineValidity, establishedRole: p.establishedRole, roleExpansion: p.roleExpansion
   } : null;
 }

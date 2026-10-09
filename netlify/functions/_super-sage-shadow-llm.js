@@ -17,7 +17,7 @@ function buildEvidence(record) {
   if (!pool.size || pool.size > 40 || !(record.slots || []).length || record.slots.length > 20) throw new Error("evidence_bounds");
   const players = [...pool.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, p], i) => ({
     playerId: `P${i + 1}`, name: p.name, position: p.position,
-    facts: ["standing", "matchup", "projection", "availability", "observedOpportunity", "expectedOpportunity", "establishedRole", "stateChanges", "forwardSignals", "roleExpansion", "uncertainty"].filter(key => p[key] != null).map(key => ({ factId: `P${i + 1}:${key}`, field: key, value: p[key] }))
+    facts: ["standing", "matchup", "projection", "availability", "observedOpportunity", "expectedOpportunity", "establishedRole", "backfieldContext", "stateChanges", "forwardSignals", "roleExpansion", "uncertainty"].filter(key => p[key] != null).map(key => ({ factId: `P${i + 1}:${key}`, field: key, value: p[key] }))
   }));
   if (record.slots.some(s => !Array.isArray(s.eligiblePositions) || !s.eligiblePositions.length)) throw new Error("slot_eligibility_missing");
   const packet = { version: VERSION, request: record.request, players, slots: record.slots.map((s, i) => ({ slotId: `S${i + 1}`, slotLabel: s.slotLabel, eligiblePositions: [...s.eligiblePositions].sort(), candidateIds: players.filter(p => s.eligiblePositions.includes(p.position)).map(p => p.playerId) })) };
