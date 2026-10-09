@@ -1,7 +1,7 @@
 'use strict';
 // Verified editorial reports are independent of automated source discovery.
 // Collection must never overwrite these reports with generic headlines.
-const VERIFIED_AT='2026-10-09T23:20:00.000Z';
+const VERIFIED_AT='2026-10-09T23:14:00.000Z';
 const STORIES=[
 {"id": "jayden-daniels-week5-20261009", "player": "Jayden Daniels", "team": "WSH", "position": "QB", "status": "Starting", "statusTone": "monitor", "headline": "Jayden Daniels: will start against the Giants.", "summary": "Jayden Daniels returns from an elbow injury; Dan Quinn confirmed the start.", "sageImpact": "Daniels is available to evaluate as your quarterback again. Compare his current projection and matchup with your alternative, while checking for any rushing or contact limitations.", "sourceLabel": "NFL.com · Team-confirmed quarterback update", "sourceUrl": "https://www.nfl.com/news/commanders-jayden-daniels-elbow-start-giants-week-5", "publishedAt": "2026-10-09T16:40:00Z", "supersedesBefore": "2026-10-09T00:00:00Z", "featured": true},
 {"id": "lamar-jackson-week5-20261009", "player": "Lamar Jackson", "team": "BAL", "position": "QB", "status": "OUT", "statusTone": "breaking", "headline": "Lamar Jackson: out; Huntley will start.", "summary": "Lamar Jackson is ruled out with an ankle injury; Tyler Huntley starts.", "sageImpact": "Bench Jackson. Tyler Huntley will start; compare Huntley using his own projection and matchup rather than transferring Jackson’s expected production.", "sourceLabel": "NFL.com · Team-confirmed quarterback update", "sourceUrl": "https://www.nfl.com/news/ravens-qb-lamar-jackson-ankle-out-falcons-tyler-huntley-start", "publishedAt": "2026-10-09T17:31:00Z", "supersedesBefore": "2026-10-09T00:00:00Z", "featured": true},
