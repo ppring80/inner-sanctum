@@ -57,7 +57,8 @@ function validate(answer, packet) {
       errors.push(...validateClaims({ explanation: sentence }, scoped));
     });
   }
-  return [...errors, ...validateClaims(answer, packet)];
+  if (packet.requireBackfieldExplanation) errors.push(...require("./_super-sage-rookie-backfield-checks.js").validateBackfieldCoverage(answer, packet));
+  return [...new Set([...errors, ...validateClaims(answer, packet)])];
 }
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null }) {
   const start = clock();
@@ -75,7 +76,9 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   let focused;
   try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence); } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
-  const system = focused.packet.requireSentenceEvidence ? GROUNDED_SYSTEM : SYSTEM;
+  const system = focused.packet.requireSentenceEvidence ? (focused.packet.requireBackfieldExplanation
+    ? GROUNDED_SYSTEM.replace(/60-80/g, "90-120").replace("roughly 20-25 words per sentence", "with enough room to explain the backfield") + ` In this role-change case, explicitly explain the supplied backfield context as part of your three sentences. Cite backfieldContext and roleExpansion when supplied. Explain who is next on the team-published chart after skipping sourced unavailable backs, those backs' reported status, the next alternative's UNKNOWN status when applicable, and alternatives absent from the chart. A chart position is not health clearance or proof of future work. Connect the candidate's unresolved injury to the decision and say plainly when we do not know how the work would change. Do not omit this evidence just to meet the usual short word target. Independently choose either candidate or no call; no preferred choice is supplied. Before submitting, remove any floor comparison unless the cited evidence supplies scoring bounds.`
+    : GROUNDED_SYSTEM) : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
   const schema = grounded ? strictSchema(GROUNDED_SCHEMA) : SCHEMA;
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
