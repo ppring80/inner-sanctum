@@ -50,9 +50,25 @@ assert.ok(validate({ ...answer, factIds: answer.factIds.filter(id => id !== 'B:o
 assert.ok(validate({ ...answer, explanation: answer.explanation.replace("Shipley's chart status is UNKNOWN despite an ACTIVE listing", 'he could play more') }, packet).includes('missing_candidate_health_uncertainty'));
 assert.equal(JSON.stringify(packet), bytes);
 assert.equal(VERSION, 'rookie-fast-pair-v6-haiku');
-assert.equal(ROLE_SCHEMA.properties.explanationSentences.maxItems, 4);
+assert.equal(ROLE_SCHEMA.properties.explanationSentences.maxItems, 3);
 assert.ok(ROLE_SYSTEM.includes("next listed alternative's reported status"));
 assert.ok(ROLE_SYSTEM.includes('injury or questionable status'));
 assert.ok(!/60-80|90-120|three connected sentences|20-25/.test(ROLE_SYSTEM), 'role prompt has one consistent length contract');
 assert.ok(!/Will Shipley|Blake Corum|Barkley|Bigsby/.test(ROLE_SYSTEM), 'no player-specific preferred answer');
+assert.ok(ROLE_SCHEMA.required.includes('statusSentence'));
+const structuredInput = { ...input, statusSentence: {
+ text: 'Shipley is listed ACTIVE, but his own chart status is UNKNOWN.',
+ factIds: ['B:availability', 'B:backfieldContext']
+}, explanationSentences: [
+ { ...input.explanationSentences[0], text: "I'd lean Shipley because Barkley is OUT and Bigsby is on IR, leaving Shipley first among remaining backs on the team chart." },
+ input.explanationSentences[1], input.explanationSentences[2]
+] };
+const originalStructured = JSON.stringify(structuredInput);
+const formattedStructured = formatGroundedAnswer(structuredInput);
+assert.equal(formattedStructured.explanation.split('\n')[1], structuredInput.statusSentence.text, 'health sentence retained verbatim after the pick');
+assert.equal(JSON.stringify(structuredInput), originalStructured, 'model input never rewritten');
+const explicitStatusPacket = { ...packet, requireCandidateStatusSentence: true };
+assert.deepEqual(validate(formattedStructured, explicitStatusPacket), []);
+assert.ok(validate({ ...formattedStructured, statusSentence: undefined }, explicitStatusPacket).includes('missing_status_sentence'));
+assert.ok(validate({ ...formattedStructured, explanation: formattedStructured.explanation + ' word'.repeat(161) }, explicitStatusPacket).includes('role_explanation_too_long'));
 console.log('Rookie grounded content: observed unit, named role attribution, plain status language, both usage baselines and own health uncertainty; either supported choice accepted. No provider calls or namespace changes.');
