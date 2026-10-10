@@ -6437,11 +6437,12 @@ function buildServer(
         try {
           const savedReadStart = performance.now();
           const store = getStore({ name: "super-sage-shadow-lab" });
-          const [artifact, savedRookieReview] = await Promise.all([
+          const [artifact, savedRookieReview, diagnosticRookieReview] = await Promise.all([
             store.get("decision/" + decisionId, { type: "json" }),
             authContext?.snapshotKey
               ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey) })
-              : Promise.resolve(null)
+              : Promise.resolve(null),
+            authContext?.snapshotKey ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey), kind: 'stream-diagnostic' }) : Promise.resolve(null)
           ]);
           if (authContext) authContext.rookieReviewCompletedAt = performance.now();
           if (!artifact || artifact.type !== "SUPER_SAGE_PRIVATE_SHADOW_LAB" || artifact.productionDecisionId !== decisionId) {
@@ -6451,6 +6452,7 @@ function buildServer(
             ...artifact,
             ...(savedRookieReview ? {
               savedRookieReview,
+              diagnosticRookieReview,
               invocationTiming: { ...(authContext.rookieInvocationTiming || {}), savedReadMs: Math.round(performance.now() - savedReadStart) }
             } : {}),
             rules: {
@@ -6508,7 +6510,7 @@ function buildServer(
       }
       try {
         const toolStart = performance.now();
-        const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY, caseId });
+        const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : (caseId === "role-change" && decisionId === "9a359bec613bc68739c34debff140201dc0e6d44cb7de7ad71b1c34b80228d99" ? require("./_rookie-stream-diagnostic").queueDiagnostic : runRookieReview))({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY, caseId });
         authContext.rookieReviewCompletedAt = performance.now();
         const invocationTiming = {
           ...(authContext.rookieInvocationTiming || {}),
