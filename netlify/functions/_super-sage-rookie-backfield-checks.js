@@ -7,7 +7,7 @@ function validateBackfieldCoverage(answer, packet) {
   const observed = (packet.players || []).map(player => ({ player, fact: player.facts.find(f => f.field === 'observedOpportunity') }));
   if (observed.length === 2 && observed.every(({ fact }) => Number.isFinite(fact?.value?.avgLast3)) &&
       (!observed.every(({ player, fact }) => mentions(player.name) && cited.has(fact.factId)) ||
-       !/opportunities/i.test(text) || !/recent|last (?:three|3)|last[- ]three/i.test(text))) {
+       !/\bopportunit(?:y|ies)\b/i.test(text) || !/recent|last (?:three|3)|last[- ]three/i.test(text))) {
     errors.push('missing_observed_usage_comparison');
   }
   for (const player of packet.players || []) {
