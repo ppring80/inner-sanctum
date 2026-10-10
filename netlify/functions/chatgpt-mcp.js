@@ -66,6 +66,8 @@ const {
 const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
 const { buildEvidence: buildRookieEvidence, hash: rookieHash, runReview: runFullRookieReview } = require("./_super-sage-shadow-llm.js");
 const { runFastReview: runRookieReview } = require("./_super-sage-shadow-fast-review.js");
+const { readSavedReview } = require("./_rookie-saved-review.js");
+const { finishRookieResponse } = require("./_rookie-response-timing.js");
 const { runNextDrill } = require("./_super-sage-rookie-drill.js");
 const {
   toCustomerAnswer,
@@ -6460,9 +6462,26 @@ function buildServer(
       }
     );
 
+  // Separate saved-artifact reader: no generation fallback or history writes.
+  server.registerTool(
+    "get_saved_rookie_review",
+    {
+      title: "Read Saved Rookie Review",
+      description: "Private read-only retrieval of an already saved owned Rookie model review. Never invokes a provider, queues work, reserves a budget, refreshes data or writes history. A missing review returns unavailable. Includes current response-path timing separately from the exact saved review.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), kind: z.enum(["post232-role-change", "focused-role-change", "full"]).optional() }),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+    },
+    async ({ decisionId, kind }) => {
+      if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext?.snapshotKey) return { isError: true, content: [{ type: "text", text: "Saved Rookie review requires the enabled private deployment and an authorized linked league." }] };
+      const started = performance.now();
+      const saved = await readSavedReview({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), kind });
+      authContext.rookieReviewCompletedAt = performance.now();
+      return { content: [{ type: "text", text: saved.available ? "Saved Rookie review retrieved. No provider call was made." : "No owned saved review available. No provider call was made." }], structuredContent: { ...saved, invocationTiming: { ...(authContext.rookieInvocationTiming || {}), savedReadMs: Math.round(performance.now() - started) } } };
+    }
+  );
+
   // Explicit private model invocation; discovery is stable, execution gated.
-  // Unlike the peephole, this action writes a research artifact and spends
-  // one bounded provider call. It never runs as part of a customer lineup.
+  // This action can spend one bounded provider call and write an artifact.
   server.registerTool(
     "run_shadow_llm_review",
     {
@@ -6479,6 +6498,7 @@ function buildServer(
       try {
         const toolStart = performance.now();
         const review = await (mode === "full" ? runFullRookieReview : mode === "drill" ? runNextDrill : runRookieReview)({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash: rookieHash(authContext.snapshotKey), apiKey: process.env.ANTHROPIC_API_KEY, caseId });
+        authContext.rookieReviewCompletedAt = performance.now();
         const invocationTiming = {
           ...(authContext.rookieInvocationTiming || {}),
           reviewCallMs: Math.round(performance.now() - toolStart),
@@ -7220,6 +7240,9 @@ exports.handler =
   async function handler(event) {
     const invocationStart = performance.now();
     const invocationTiming = { moduleLoadMs: rookieModuleLoadMs };
+    const diagnosticRoute = getMcpRoute(event);
+    const rookieDiagnostic = diagnosticRoute.method === "tools/call" && ["run_shadow_llm_review", "get_saved_rookie_review"].includes(diagnosticRoute.name);
+    const diagnosticRequestId = rookieDiagnostic ? crypto.randomUUID() : null;
     try {
       connectLambda(
         event
@@ -7378,11 +7401,13 @@ exports.handler =
             )
         );
 
+      const mcpStart = performance.now();
       const response =
         await mcpHandler.fetch(
           request
         );
 
+      const mcpEnd = performance.now();
       const responseHeaders = {};
 
       response.headers.forEach(
@@ -7413,8 +7438,16 @@ exports.handler =
       ] =
         "WWW-Authenticate";
 
-      const body =
-        await response.text();
+      const responseReadStart = performance.now();
+      let body = await response.text();
+      if (rookieDiagnostic && authContext && process.env.SUPER_SAGE_REVIEWER_PEEPHOLE === "true") {
+        const completed = performance.now();
+        const timing = { requestId: diagnosticRequestId, handlerTotalMs: Math.round(completed - invocationStart), mcpFetchMs: Math.round(mcpEnd - mcpStart), responseReadMs: Math.round(completed - responseReadStart), postReviewMs: Number.isFinite(authContext.rookieReviewCompletedAt) ? Math.round(completed - authContext.rookieReviewCompletedAt) : null, moduleLoadMs: rookieModuleLoadMs, authorizationMs: invocationTiming.authorizationMs, analyticsMs: invocationTiming.analyticsMs, scope: "HANDLER_THROUGH_RESPONSE_READ", excludes: "network_delivery_and_client_dispatch" };
+        const decorated = finishRookieResponse({ body, headers: responseHeaders, timing });
+        body = decorated.body;
+        Object.assign(responseHeaders, decorated.headers);
+        console.log("rookie_response_timing", JSON.stringify({ ...timing, tool: diagnosticRoute.name, responseBytes: Buffer.byteLength(body, "utf8"), handlerReturnMs: Math.round(performance.now() - invocationStart) }));
+      }
 
       return {
         statusCode:
