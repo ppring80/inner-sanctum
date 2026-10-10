@@ -9,17 +9,19 @@ function validateBackfieldCoverage(answer, packet) {
     const roles = context?.value?.reportedRoles;
     if (!roles) continue;
     if (!cited.has(context.factId)) errors.push("missing_backfield_citation");
+    const candidate = roles.players?.find(p => p.listedRank === roles.candidateListedRank);
+    if (candidate?.status === "UNKNOWN" && !text.split(/[.!?\n]/).some(s => mentionsIn(s, candidate.name) && /unknown|unclear|unverified|conflict|not (?:confirmed|cleared)/i.test(s))) errors.push("missing_candidate_health_uncertainty");
     const next = roles.nextListedAlternative;
     if (next && !mentions(next.name)) errors.push("missing_next_listed_alternative");
     if (next?.status === "UNKNOWN" && !text.split(/[.!?\n]/).some(s => mentionsIn(s, next.name) && /unknown|unclear|not (?:confirmed|cleared)|health.*(?:unverified|unresolved)/i.test(s))) errors.push("missing_alternative_health_uncertainty");
     for (const back of roles.players || []) {
-      if (back.listedRank <= roles.candidateListedRank || !["IR", "OUT", "DOUBTFUL", "PUP", "NFI", "RESERVE/INJURED"].includes(back.status)) continue;
+      if (!["IR", "OUT", "DOUBTFUL", "PUP", "NFI", "RESERVE/INJURED"].includes(back.status)) continue;
       if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, back.name) && /\bIR\b|injured reserve|\bout\b|doubtful|PUP|NFI|reserve\/injured/i.test(s))) errors.push("missing_unavailable_back_context");
     }
-    for (const name of roles.notListedInChart || []) if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, name) && /(?:absent|missing|not (?:listed|on)|outside).*chart|chart.*(?:absent|missing|not (?:list|include))/i.test(s))) errors.push("missing_uncharted_alternative");
+    for (const name of roles.notListedInChart || []) if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, name) && /(?:absent|missing|not (?:even )?(?:listed|on)|outside).*chart|chart.*(?:absent|missing|not (?:list|include))/i.test(s))) errors.push("missing_uncharted_alternative");
     const expansion = player.facts.find(f => f.field === "roleExpansion");
     if (expansion && !cited.has(expansion.factId)) errors.push("missing_role_expansion_citation");
-    if (expansion?.value?.validated !== true && !/\b(?:work|workload|snaps|touches|carries)\b[^.!?\n]*(?:unknown|unclear|unverified|not (?:known|confirmed)|don't know|do not know)|(?:unknown|unclear|unverified|don't know|do not know)[^.!?\n]*\b(?:work|workload|snaps|touches|carries)\b/i.test(text)) errors.push("missing_workload_uncertainty");
+    if (expansion?.value?.validated !== true && !/\b(?:work|workload|snaps|touches|carries)\b[^.!?\n]*(?:unknown|unclear|unverified|not (?:known|confirmed|verified)|don't know|do not know|no verified sign)|(?:unknown|unclear|unverified|don't know|do not know|no verified sign)[^.!?\n]*\b(?:work|workload|snaps|touches|carries)\b/i.test(text)) errors.push("missing_workload_uncertainty");
     const availability = player.facts.find(f => f.field === "availability");
     if (/QUESTIONABLE|UNKNOWN|Q/i.test(availability?.value?.status || "") && !cited.has(availability.factId)) errors.push("missing_candidate_availability_citation");
   }

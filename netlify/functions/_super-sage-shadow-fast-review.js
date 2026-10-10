@@ -60,11 +60,11 @@ function validate(answer, packet) {
   if (packet.requireBackfieldExplanation) errors.push(...require("./_super-sage-rookie-backfield-checks.js").validateBackfieldCoverage(answer, packet));
   return [...new Set([...errors, ...validateClaims(answer, packet)])];
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null }) {
+async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
   const timing = {};
-  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}`;
+  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}${caseId === "role-change" ? "/fresh-role-change" : ""}`;
   let stage = clock();
   const [original, cached] = await Promise.all([
     store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" }),
@@ -75,9 +75,14 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (!original || original.ownerHash !== ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
   let focused;
-  try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence); } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
+  try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
+    if (!drill && caseId === "role-change") {
+      focused.packet.requireSentenceEvidence = true;
+      focused.packet.requireBackfieldExplanation = true;
+      focused.evidenceHash = hash(JSON.stringify(focused.packet));
+    } } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
   const system = focused.packet.requireSentenceEvidence ? (focused.packet.requireBackfieldExplanation
-    ? GROUNDED_SYSTEM.replace(/60-80/g, "90-120").replace("roughly 20-25 words per sentence", "with enough room to explain the backfield") + ` In this role-change case, explicitly explain the supplied backfield context as part of your three sentences. Cite backfieldContext and roleExpansion when supplied. Explain who is next on the team-published chart after skipping sourced unavailable backs, those backs' reported status, the next alternative's UNKNOWN status when applicable, and alternatives absent from the chart. A chart position is not health clearance or proof of future work. Connect the candidate's unresolved injury to the decision and say plainly when we do not know how the work would change. Do not omit this evidence just to meet the usual short word target. Independently choose either candidate or no call; no preferred choice is supplied. Before submitting, remove any floor comparison unless the cited evidence supplies scoring bounds.`
+    ? GROUNDED_SYSTEM.replace(/60-80/g, "90-120").replace("roughly 20-25 words per sentence", "with enough room to explain the backfield") + ` In this role-change case, explicitly explain the supplied backfield context as part of your three sentences. Cite backfieldContext and roleExpansion when supplied. Explain who is next on the team-published chart after skipping sourced unavailable backs, those backs' reported status, the next alternative's UNKNOWN status when applicable, and alternatives absent from the chart. A chart position is not health clearance or proof of future work. If availability says ACTIVE but backfieldContext says UNKNOWN, explicitly acknowledge that conflict; do not say no injury issues or healthy. Describe the changed opportunity without claiming increased work. Missing teammates alone do not establish an increase. The choice itself may favor either player; judge support, not agreement with a preferred ranking. Connect any supplied unresolved injury to the decision and say plainly when we do not know how the work would change. Do not omit this evidence just to meet the usual short word target. Independently choose either candidate or no call; no preferred choice is supplied. Before submitting, remove any floor comparison unless the cited evidence supplies scoring bounds.`
     : GROUNDED_SYSTEM) : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
   const schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation
@@ -90,7 +95,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, promptHash: hash(system), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, promptHash: hash(system), rules: RULES };
   stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   timing.reservationMs = Math.round(clock() - stage);

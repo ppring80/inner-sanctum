@@ -1,0 +1,37 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {hash}=require('../netlify/functions/_super-sage-shadow-llm');
+const {runFastReview,validate}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const {validateClaims}=require('../netlify/functions/_super-sage-rookie-claim-checks');
+const {validateBackfieldCoverage}=require('../netlify/functions/_super-sage-rookie-backfield-checks');
+const decisionId=hash('fresh'),ownerHash=hash('owner');
+const packet={request:{},players:[{name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}}]},{name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}},{field:'backfieldContext',value:{reportedRoles:{candidateListedRank:3,players:[{name:'Saquon Barkley',listedRank:1,status:'OUT'},{name:'Tank Bigsby',listedRank:2,status:'IR'},{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}],notListedInChart:['Dameon Pierce']}}},{field:'roleExpansion',value:{validated:false}}]}]};
+const frozen={packet,evidenceHash:hash(JSON.stringify(packet))};
+const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:frozen}]]);
+const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true}}};
+let calls=0;
+const args={decisionId,ownerHash,store,apiKey:'mock',caseId:'role-change',now:new Date('2026-10-10T00:00:00Z'),fetchImpl:async(_url,o)=>{
+ calls++;const req=JSON.parse(o.body),p=JSON.parse(req.messages[0].content);
+ assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.tools[0].strict,true);assert.equal(req.tool_choice.name,'submit_decision');assert(req.system.includes('acknowledge that conflict'));assert(!req.system.includes('Start Shipley'));
+ assert.deepEqual(p.players.map(x=>x.name),['Blake Corum','Will Shipley']);
+ return{ok:true,json:async()=>({id:'mock-review',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{selected:'B',confidence:'LOW',explanationSentences:[{text:"I lean Shipley, but his ACTIVE listing conflicts with UNKNOWN chart status.",factIds:['B:availability','B:backfieldContext']},{text:'Barkley is OUT and Bigsby is on IR; Pierce is not even listed on the chart.',factIds:['B:backfieldContext']},{text:'No verified sign establishes how his workload changes.',factIds:['B:roleExpansion']}],caveat:'Workload unknown.',reconsider:'If new evidence confirms health and workload.'}}]})};
+}};
+(async()=>{
+ await Promise.all([runFastReview(args),runFastReview(args)]);assert.equal(calls,1);
+ const cached=await runFastReview(args);assert.equal(cached.cached,true);assert.equal(cached.answer.selected,'B');assert.equal(cached.status,'REVIEW_READY');assert.equal(calls,1);
+ const focused=JSON.parse(JSON.stringify(frozen));
+ const {focusEvidence}=require('../netlify/functions/_super-sage-shadow-fast-review');
+ const comparison=focusEvidence(focused,['Blake Corum','Will Shipley']).packet;comparison.requireSentenceEvidence=true;comparison.requireBackfieldExplanation=true;
+ const alternative={...cached.answer,selected:'A',factIds:[...cached.answer.factIds,'A:availability']};assert.deepEqual(validate(alternative,comparison),[],'coverage checks do not dictate the choice');
+ assert.equal(JSON.stringify(frozen),JSON.stringify({packet,evidenceHash:hash(JSON.stringify(packet))}));
+ const blocked=await runFastReview({...args,decisionId:hash('other')});assert.equal(blocked.error,'owned_frozen_evidence_unavailable');
+ const other=hash('other');data.set(`evidence/${other}/${ownerHash}`,{ownerHash,frozenEvidence:frozen});
+ const cap=await runFastReview({...args,decisionId:other});assert.equal(cap.error,'daily_speed_benchmark_limit');assert.equal(calls,1);
+ const p={players:[{name:'Will Shipley',facts:packet.players[1].facts.map(f=>({...f,factId:'B:'+f.field}))}]};
+ assert(validateClaims({explanation:"Shipley is listed active with no injury issues."},p).includes('availability_overstated_as_health'));
+ assert(validateClaims({explanation:'Shipley is in line for more work.'},p).includes('unverified_workload_increase'));
+ assert(!validateClaims({reconsider:'If Shipley is confirmed healthy before kickoff.'},p).includes('availability_overstated_as_health'));
+ assert(validateClaims({explanation:'His projection already reflects the matchup.'},p).includes('unsupported_projection_adjustment'));
+ assert(validateBackfieldCoverage({explanation:'Shipley has UNKNOWN chart status. Pierce is not even listed on the chart. No verified sign tells us how workload changes.',factIds:['B:backfieldContext','B:roleExpansion']},p).includes('missing_unavailable_back_context'));
+ console.log('PASS fresh role pair: independent choice, forced Sonnet schema, status conflict, atomic daily cap, caching, exact evidence, claim checks. Provider mocked.');
+})().catch(e=>{console.error(e);process.exitCode=1});
