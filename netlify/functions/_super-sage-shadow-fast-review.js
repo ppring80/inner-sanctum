@@ -31,6 +31,13 @@ const POST238 = Object.freeze({
   maxRequestBytes: 25000,
   maxOutputTokens: 750
 });
+// Explicitly approved Oct 9 after the first strict-schema request timed out.
+// Same prompt/schema/evidence and deadline; one separately recorded call only.
+const POST238_WARM = Object.freeze({
+  ...POST238,
+  caseId: 'fresh-role-post238-warm',
+  priorCapturedAt: '2026-10-10T04:01:04.446Z'
+});
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -128,8 +135,13 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       original.frozenEvidence.evidenceHash === POST238.parentEvidenceHash) {
     const prior = await store.get(`llm-drill/${VERSION}/${POST236.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
     if (prior?.requestId === POST238.requestId && prior.status === 'INVALID' && prior.parentEvidenceHash === POST238.parentEvidenceHash) {
+      const firstAttempt = await store.get(`llm-drill/${VERSION}/${POST238.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
+      const warmCheck = firstAttempt?.status === 'UNAVAILABLE' && firstAttempt.error === 'twenty_second_quality_timeout' &&
+        firstAttempt.capturedAt === POST238_WARM.priorCapturedAt && firstAttempt.promptHash === POST238_WARM.promptHash &&
+        firstAttempt.parentEvidenceHash === POST238_WARM.parentEvidenceHash;
+      const experiment = warmCheck ? POST238_WARM.caseId : POST238.caseId;
       const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
-        drill: { version: VERSION, caseId: POST238.caseId, build: frozen => {
+        drill: { version: VERSION, caseId: experiment, build: frozen => {
           const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
           pair.packet.requireSentenceEvidence = true;
           pair.packet.requireBackfieldExplanation = true;
@@ -137,7 +149,8 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
           pair.evidenceHash = hash(JSON.stringify(pair.packet));
           return pair;
         } } });
-      return { ...result, experiment: POST238.caseId, priorReviewRequestId: POST238.requestId };
+      return { ...result, experiment, priorReviewRequestId: POST238.requestId,
+        ...(warmCheck ? { warmSchemaCheck: true, priorQualificationCapturedAt: firstAttempt.capturedAt } : {}) };
     }
   }
   if (!drill && caseId === 'role-change' && decisionId === POST236.decisionId &&
@@ -197,7 +210,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST236.maxRequestBytes)) {
     return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   }
-  if (drill?.caseId === POST238.caseId && (hash(system) !== POST238.promptHash ||
+  if ([POST238.caseId, POST238_WARM.caseId].includes(drill?.caseId) && (hash(system) !== POST238.promptHash ||
       maxTokens > POST238.maxOutputTokens ||
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST238.maxRequestBytes)) {
     return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
@@ -285,4 +298,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
