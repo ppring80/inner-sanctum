@@ -27,10 +27,14 @@ function validateClaims(answer, packet) {
     const context = player.facts?.find(f => f.field === "backfieldContext")?.value;
     const chart = context?.reportedRoles;
     const candidate = chart?.players?.find(p => p.listedRank === chart.candidateListedRank);
-    if (!candidate) continue;
     const surname = String(player.name || "").split(/\s+/).pop();
+    const mentionsPlayer = sentence => sentence.toLowerCase().includes(surname.toLowerCase());
+    if (context?.roleOrderVerified === false && currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /(?:sits?|is|listed|ranks?)\s+(?:first|second|third|atop)|(?:lead|starting|backup)\s+(?:back|role)|(?:first|second|third)\s+(?:on|in)\s+(?:the|a)\s+(?:depth|backfield)/i.test(s) && !/not verified|unverified|cannot infer|can't infer|does not establish/i.test(s))) errors.push("unverified_backfield_role_order");
+    const sourcedRoleChange = player.facts.some(f => f.field === "stateChanges" && (Array.isArray(f.value) ? f.value : [f.value]).some(change => change?.type === "ROLE_CHANGE" && change.verified === true));
+    if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /\b(?:expect|project|anticipate|will|likely|could|may|might)\b[^.!?\n]*\b\d+(?:\.\d+)?\s+(?:touches|carries|targets|snaps)\b/i.test(s)) && !player.facts.some(f => f.field === "expectedOpportunity" && (Array.isArray(f.value) ? f.value : [f.value]).some(v => v?.validated === true))) errors.push("unsupported_numeric_workload_forecast");
+    if (!candidate) continue;
     if (currentText.split(/[.!?\n]/).some(s => candidate.status === "UNKNOWN" && s.toLowerCase().includes(surname.toLowerCase()) && /no injury (?:issues|concerns)|healthy|health cleared/i.test(s))) errors.push("availability_overstated_as_health");
-    if (currentText.split(/[.!?\n]/).some(s => s.toLowerCase().includes(surname.toLowerCase()) && /in line for more work|puts? .* (?:more work|increased workload)/i.test(s) && !/does not|doesn't|not establish/i.test(s))) errors.push("unverified_workload_increase");
+    if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /in line for more work|puts? .* (?:more work|increased workload)/i.test(s) && !/does not|doesn't|not establish/i.test(s) && !(/\b(?:I expect|I project|I anticipate|likely|could|may|might)\b/i.test(s) && sourcedRoleChange))) errors.push("unverified_workload_increase");
   }
   if (/\btrade\b/i.test(text) && !facts.some(f => /\btrade\b/i.test(JSON.stringify(f.value)))) errors.push("unsupported_trade_event");
   if (/\bboth\s+(?:players\s+)?(?:sit|are)\s+in\s+(?:the\s+)?flex\s+tier\b/i.test(text) && packet.players.some(p => p.facts?.find(f => f.field === "standing")?.value?.tier !== "FLEX")) errors.push("standing_tier_misrepresented");
