@@ -202,7 +202,81 @@ function validate(answer, packet) {
   if (packet.requireBackfieldExplanation) errors.push(...require("./_super-sage-rookie-backfield-checks.js").validateBackfieldCoverage(answer, packet));
   return [...new Set([...errors, ...validateClaims(answer, packet)])];
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null }) {
+// ── Provider call with phase timing (diagnostics only; no prompt/schema change)
+// Buffered transport (default, unchanged request): Anthropic returns headers only
+// once generation is complete, so headersMs approximates the whole provider wait
+// and bodyMs the body read. Streaming transport (explicit diagnostic option):
+// messageStartMs marks when the provider began the message (after queueing,
+// prompt processing and any schema compilation); firstOutputMs and completeMs
+// bracket generation. Records only safe metadata: timings, HTTP status, the
+// provider request ID and token usage. Never credentials or evidence content.
+function safeId(id) {
+  return typeof id === "string" && /^[A-Za-z0-9_-]{6,120}$/.test(id) ? id : null;
+}
+function safeRequestId(headers) {
+  return safeId(headers && typeof headers.get === "function" ? headers.get("request-id") : null);
+}
+function requestFingerprint(requestBody) {
+  const bytes = v => Buffer.byteLength(typeof v === "string" ? v : JSON.stringify(v), "utf8");
+  return { model: requestBody.model, maxTokens: requestBody.max_tokens, strict: requestBody.tools?.[0]?.strict === true,
+    systemBytes: bytes(requestBody.system), schemaBytes: bytes(requestBody.tools?.[0]?.input_schema), evidenceBytes: bytes(requestBody.messages?.[0]?.content || ""),
+    requestBytes: bytes(requestBody), systemHash: hash(requestBody.system), evidenceHash: hash(requestBody.messages?.[0]?.content || ""), schemaHash: hash(JSON.stringify(requestBody.tools?.[0]?.input_schema)) };
+}
+async function callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock, transport = "buffered" }) {
+  const t0 = clock(), ms = () => Math.round(clock() - t0);
+  const phases = { transport, deadlineMs, phase: "awaiting_headers", headersMs: null, bodyMs: null, messageStartMs: null, firstOutputMs: null, completeMs: null, httpStatus: null, requestId: null, usage: null };
+  const fail = (error) => { error.providerPhases = { ...phases, abortedAtMs: ms() }; return error; };
+  const signal = AbortSignal.timeout(deadlineMs);
+  let response;
+  try {
+    response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal, headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify(transport === "stream" ? { ...requestBody, stream: true } : requestBody) });
+  } catch (e) { throw fail(e); }
+  phases.headersMs = ms(); phases.httpStatus = response.status; phases.requestId = safeRequestId(response.headers);
+  if (!response.ok) {
+    phases.phase = "error_body";
+    const detail = await response.json().catch(() => ({}));
+    const error = new Error(`provider_http_${response.status}`);
+    error.providerErrorType = typeof detail.error?.type === "string" ? detail.error.type.slice(0,80) : null;
+    error.providerErrorMessage = typeof detail.error?.message === "string" ? detail.error.message.split(apiKey).join("[redacted]").slice(0,600) : null;
+    throw fail(error);
+  }
+  phases.phase = transport === "stream" ? "awaiting_message_start" : "reading_body";
+  try {
+    if (transport !== "stream") {
+      const body = await response.json();
+      phases.bodyMs = ms() - phases.headersMs; phases.completeMs = ms(); phases.phase = "complete";
+      phases.requestId = phases.requestId || safeId(body.id); phases.usage = body.usage || null;
+      return { body, phases };
+    }
+    // Server-sent events: assemble the same message shape the buffered path returns.
+    const message = { id: null, model: requestBody.model, content: [], stop_reason: null, usage: {} };
+    let partial = "", toolName = null, buffer = "";
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    const handle = (event) => {
+      if (event.type === "message_start") { phases.messageStartMs = ms(); phases.phase = "generating"; message.id = event.message?.id || null; message.model = event.message?.model || message.model; message.usage = { ...(event.message?.usage || {}) }; phases.requestId = phases.requestId || safeId(message.id); phases.usage = { ...message.usage }; }
+      else if (event.type === "content_block_start" && event.content_block?.type === "tool_use") toolName = event.content_block.name;
+      else if (event.type === "content_block_delta" && event.delta?.type === "input_json_delta") { if (phases.firstOutputMs === null) phases.firstOutputMs = ms(); partial += event.delta.partial_json || ""; }
+      else if (event.type === "message_delta") { message.stop_reason = event.delta?.stop_reason || message.stop_reason; message.usage = { ...message.usage, ...(event.usage || {}) }; phases.usage = { ...message.usage }; }
+      else if (event.type === "error") { const error = new Error(`provider_stream_${String(event.error?.type || "error").slice(0,60)}`); throw error; }
+    };
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let cut;
+      while ((cut = buffer.indexOf("\n\n")) >= 0) {
+        const chunk = buffer.slice(0, cut); buffer = buffer.slice(cut + 2);
+        const data = chunk.split("\n").filter(l => l.startsWith("data:")).map(l => l.slice(5).trim()).join("");
+        if (data) handle(JSON.parse(data));
+      }
+    }
+    if (toolName) { let input; try { input = JSON.parse(partial); } catch { input = null; } message.content = input === null ? [] : [{ type: "tool_use", name: toolName, input }]; }
+    phases.completeMs = ms(); phases.bodyMs = phases.completeMs - phases.headersMs; phases.phase = "complete"; phases.usage = message.usage;
+    return { body: message, phases };
+  } catch (e) { throw fail(e); }
+}
+async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered" }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
   const timing = {};
@@ -221,7 +295,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     const prior = await store.get(`llm-drill/${VERSION}/${POST238_WARM.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
     if (prior?.requestId === POST241.requestId && prior.status === 'INVALID' &&
         prior.parentEvidenceHash === POST241.parentEvidenceHash && prior.promptHash === POST238_WARM.promptHash) {
-      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock, transport,
         drill: { version: VERSION, caseId: POST241.caseId, build: frozen => {
           const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
           pair.packet.requireSentenceEvidence = true;
@@ -242,7 +316,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
         firstAttempt.capturedAt === POST238_WARM.priorCapturedAt && firstAttempt.promptHash === POST238_WARM.promptHash &&
         firstAttempt.parentEvidenceHash === POST238_WARM.parentEvidenceHash;
       const experiment = warmCheck ? POST238_WARM.caseId : POST238.caseId;
-      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock, transport,
         drill: { version: VERSION, caseId: experiment, build: frozen => {
           const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
           pair.packet.requireSentenceEvidence = true;
@@ -259,7 +333,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       original.frozenEvidence.evidenceHash === POST236.parentEvidenceHash) {
     const prior = await store.get(`llm-drill/${VERSION}/${POST232.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
     if (prior?.requestId === POST236.requestId && prior.status === 'INVALID' && prior.parentEvidenceHash === POST236.parentEvidenceHash) {
-      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock, transport,
         drill: { version: VERSION, caseId: POST236.caseId, build: frozen => {
           const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
           pair.packet.requireSentenceEvidence = true;
@@ -274,7 +348,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (!drill && caseId === "role-change" && decisionId === POST232.decisionId &&
       original.frozenEvidence.evidenceHash === POST232.parentEvidenceHash &&
       cached?.requestId === POST232.requestId && cached.status === "INVALID") {
-    const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+    const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock, transport,
       drill: { version: VERSION, caseId: POST232.caseId, build: frozen => {
         const pair = focusEvidence(frozen, ["Blake Corum", "Will Shipley"]);
         pair.packet.requireSentenceEvidence = true;
@@ -380,16 +454,13 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (!budget?.modified) result = { ...base, status: "UNAVAILABLE", error: "daily_speed_benchmark_limit" };
   else {
     const providerStart = clock();
+    let providerPhases = null, outgoing = null;
     try {
-      const response = await fetchImpl("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(deadlineMs), headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema, ...(grounded ? { strict: true } : {}) }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } }) });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        const error = new Error(`provider_http_${response.status}`);
-        error.providerErrorType = typeof detail.error?.type === "string" ? detail.error.type.slice(0,80) : null;
-        error.providerErrorMessage = typeof detail.error?.message === "string" ? detail.error.message.split(apiKey).join("[redacted]").slice(0,600) : null;
-        throw error;
-      }
-      const body = await response.json();
+      const requestBody = { model, max_tokens: maxTokens, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema, ...(grounded ? { strict: true } : {}) }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } };
+      outgoing = requestFingerprint(requestBody);
+      const call = await callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock, transport });
+      providerPhases = call.phases;
+      const body = call.body;
       const calls = (body.content || []).filter(c => c.type === "tool_use" && c.name === "submit_decision");
       const rawText = calls.length === 1 ? JSON.stringify(calls[0].input) : (body.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
       let answer = null, validationErrors;
@@ -397,8 +468,8 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > deadlineMs) validationErrors.push("model_deadline_exceeded");
-      result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || model, requestId: body.id, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
-    } catch (e) { result = { ...base, status: "UNAVAILABLE", error: e.name === "TimeoutError" || e.name === "AbortError" ? (grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
+      result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || model, requestId: body.id || providerPhases.requestId || null, providerPhases, outgoing, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
+    } catch (e) { providerPhases = e.providerPhases || providerPhases; result = { ...base, status: "UNAVAILABLE", providerPhases, outgoing, requestId: providerPhases?.requestId || null, error: e.name === "TimeoutError" || e.name === "AbortError" ? (grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
   }
   result = withClaimAssessment(result, focused.packet);
   stage = clock();
@@ -406,4 +477,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, presentBackfieldSource, requiredDisclosures };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
