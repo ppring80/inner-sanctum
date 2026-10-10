@@ -15,5 +15,5 @@ for(const pos of ['QB','RB','WR','TE','K','DEF']){
 assert.match(ctx.injuryPillHtml('bye'),/BYE/);assert.match(ctx.injuryPillHtml('bye'),/Bye week/);
 const concern=html.match(/var withConcern =[^]*?var biggestConcern/)[0];
 assert(concern.includes("['out', 'doubtful', 'questionable'].indexOf(p.injury) !== -1"));
-assert(html.includes("p.availabilityStatus === 'BYE' ? 'bye' : null"));
+assert(html.includes("p.availabilityStatus === 'BYE' ? injuryPillHtml('bye') : ''"));
 console.log('Bye/non-injury inactivity separated from injury badges and concern selection across all six positions.');
