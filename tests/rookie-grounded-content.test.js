@@ -51,6 +51,8 @@ assert.ok(validate({ ...answer, explanation: answer.explanation.replace("Shipley
 assert.equal(JSON.stringify(packet), bytes);
 assert.equal(VERSION, 'rookie-fast-pair-v6-haiku');
 assert.equal(ROLE_SCHEMA.properties.explanationSentences.maxItems, 4);
+assert.ok(ROLE_SYSTEM.includes("next listed alternative's reported status"));
+assert.ok(ROLE_SYSTEM.includes('injury or questionable status')); 
 assert.ok(!/60-80|90-120|three connected sentences|20-25/.test(ROLE_SYSTEM), 'role prompt has one consistent length contract');
 assert.ok(!/Will Shipley|Blake Corum|Barkley|Bigsby/.test(ROLE_SYSTEM), 'no player-specific preferred answer');
 console.log('Rookie grounded content: observed unit, named role attribution, plain status language, both usage baselines and own health uncertainty; either supported choice accepted. No provider calls or namespace changes.');
