@@ -11,6 +11,17 @@ const POST232 = Object.freeze({
   maxRequestBytes: 25000,
   maxOutputTokens: 750
 });
+// One fresh qualification under the user's continuing under-$10 authorization.
+// This adds a single atomic allowance; existing budgets/history are untouched.
+const POST236 = Object.freeze({
+  decisionId: POST232.decisionId,
+  parentEvidenceHash: POST232.parentEvidenceHash,
+  requestId: 'msg_011Cfsikbr2uorD8th6LoqYT',
+  caseId: 'fresh-role-post236',
+  promptHash: '2a2fab27d864937b8481f7cdca402ee64a5083ac6778daa7f382aa0b338ac229',
+  maxRequestBytes: 25000,
+  maxOutputTokens: 750
+});
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -93,6 +104,21 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   stage = clock();
   if (!original || original.ownerHash !== ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  if (!drill && caseId === 'role-change' && decisionId === POST236.decisionId &&
+      original.frozenEvidence.evidenceHash === POST236.parentEvidenceHash) {
+    const prior = await store.get(`llm-drill/${VERSION}/${POST232.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
+    if (prior?.requestId === POST236.requestId && prior.status === 'INVALID' && prior.parentEvidenceHash === POST236.parentEvidenceHash) {
+      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+        drill: { version: VERSION, caseId: POST236.caseId, build: frozen => {
+          const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
+          pair.packet.requireSentenceEvidence = true;
+          pair.packet.requireBackfieldExplanation = true;
+          pair.evidenceHash = hash(JSON.stringify(pair.packet));
+          return pair;
+        } } });
+      return { ...result, experiment: POST236.caseId, priorReviewRequestId: POST236.requestId };
+    }
+  }
   if (!drill && caseId === "role-change" && decisionId === POST232.decisionId &&
       original.frozenEvidence.evidenceHash === POST232.parentEvidenceHash &&
       cached?.requestId === POST232.requestId && cached.status === "INVALID") {
@@ -126,6 +152,11 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (drill?.caseId === POST232.caseId && (maxTokens > POST232.maxOutputTokens ||
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), "utf8") > POST232.maxRequestBytes)) {
     return { status: "UNAVAILABLE", error: "authorized_experiment_cost_bound" };
+  }
+  if (drill?.caseId === POST236.caseId && (hash(system) !== POST236.promptHash ||
+      maxTokens > POST236.maxOutputTokens ||
+      Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST236.maxRequestBytes)) {
+    return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   }
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
@@ -210,4 +241,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
+module.exports = { VERSION, POST232, POST236, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
