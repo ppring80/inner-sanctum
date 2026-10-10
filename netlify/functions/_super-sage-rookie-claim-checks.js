@@ -1,4 +1,23 @@
 "use strict";
+// Associate a role assertion with its named subject, rather than every player
+// mentioned in the same sentence. This remains a targeted check, not a parser.
+function namedClauses(sentence, player, players) {
+  const surname = name => String(name || '').replace(/\s+(?:Jr\.?|Sr\.?|II|III|IV)$/i, '').split(/\s+/).pop();
+  const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const name = surname(player.name);
+  if (!name) return [];
+  const matches = [...sentence.matchAll(new RegExp(`\\b${escape(name)}\\b`, 'gi'))];
+  const backfieldNames = players.flatMap(p => {
+    const context = p.facts?.find(f => f.field === 'backfieldContext')?.value;
+    return [...(context?.players || []), ...(context?.reportedRoles?.players || [])].map(back => back.name);
+  });
+  const others = [...new Set([...players.map(p => p.name), ...backfieldNames].map(surname).filter(n => n && n.toLowerCase() !== name.toLowerCase()))];
+  return matches.map(match => {
+    const rest = sentence.slice(match.index + match[0].length);
+    const next = others.length ? rest.search(new RegExp(`\\b(?:${others.map(escape).join('|')})\\b`, 'i')) : -1;
+    return sentence.slice(match.index, next < 0 ? sentence.length : match.index + match[0].length + next);
+  });
+}
 // Targeted claim checks, not a complete semantic verifier. Never rewrite output
 // or substitute a recommendation. Human qualification still applies.
 function validateClaims(answer, packet) {
@@ -29,7 +48,7 @@ function validateClaims(answer, packet) {
     const candidate = chart?.players?.find(p => p.listedRank === chart.candidateListedRank);
     const surname = String(player.name || "").split(/\s+/).pop();
     const mentionsPlayer = sentence => sentence.toLowerCase().includes(surname.toLowerCase());
-    if (context?.roleOrderVerified === false && currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /(?:sits?|is|listed|ranks?)\s+(?:first|second|third|atop)|(?:lead|starting|backup)\s+(?:back|role)|(?:first|second|third)\s+(?:on|in)\s+(?:the|a)\s+(?:depth|backfield)/i.test(s) && !/not verified|unverified|cannot infer|can't infer|does not establish/i.test(s))) errors.push("unverified_backfield_role_order");
+    if (context?.roleOrderVerified === false && currentText.split(/[.!?\n]/).some(s => namedClauses(s, player, packet.players || []).some(clause => /(?:sits?|is|listed|ranks?)\s+(?:the\s+)?(?:first|second|third|atop)|(?:lead|starting|backup)\s+(?:back|role)|(?:first|second|third)\s+(?:on|in)\s+(?:the|a)\s+(?:depth|backfield)/i.test(clause) && !/not verified|unverified|cannot infer|can't infer|does not establish/i.test(clause)))) errors.push("unverified_backfield_role_order");
     const sourcedRoleChange = player.facts.some(f => f.field === "stateChanges" && (Array.isArray(f.value) ? f.value : [f.value]).some(change => change?.type === "ROLE_CHANGE" && change.verified === true));
     if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /\b(?:expect|project|anticipate|will|likely|could|may|might)\b[^.!?\n]*\b\d+(?:\.\d+)?\s+(?:touches|carries|targets|snaps)\b/i.test(s)) && !player.facts.some(f => f.field === "expectedOpportunity" && (Array.isArray(f.value) ? f.value : [f.value]).some(v => v?.validated === true))) errors.push("unsupported_numeric_workload_forecast");
     if (!candidate) continue;
@@ -41,8 +60,8 @@ function validateClaims(answer, packet) {
   if (/\b(?:will|he'll|she'll)\s+(?:see|get|receive|have)\s+(?:more|at least\s+\d|\d)/i.test(text)) errors.push("guaranteed_future_workload");
   if (/\b(?:putting up|scoring|scores|scored|producing)\s+\d+(?:\.\d+)?\s+(?:fantasy\s+)?points\b/i.test(text) && !facts.some(f => f.field === "observedPoints")) errors.push("projection_presented_as_scored_points");
   if (text.split(/[.!?\n]/).some(s => /\bprojection(?:\s+edge)?\s+(?:narrows|improves|rises|increases|moves|shifts|falls|drops)\b/i.test(s) && !/\b(?:updated|revised|new|verified)\s+projection\b/i.test(s))) errors.push("unsupported_projection_change");
-  const observedOpportunities = facts.some(f => f.field === "establishedRole" && /opportunities per game/i.test(f.value?.description || ""));
-  if (observedOpportunities && /\b\d+(?:\.\d+)?\s+(?:targets|catches|carries)\s+per game\b/i.test(text) && !facts.some(f => ["observedTargets", "observedCarries", "observedReceptions"].includes(f.field))) errors.push("observed_opportunity_unit_changed");
+  const observedOpportunities = facts.some(f => f.field === "observedOpportunity" || (f.field === "establishedRole" && /opportunities per game/i.test(f.value?.description || "")));
+  if (observedOpportunities && /\b\d+(?:\.\d+)?\s+(?:targets|catches|carries|touches)\s+per game\b/i.test(text) && !facts.some(f => ["observedTargets", "observedCarries", "observedReceptions", "observedTouches"].includes(f.field))) errors.push("observed_opportunity_unit_changed");
   const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const p of packet.players || []) {
     if (p.position === "QB") continue;

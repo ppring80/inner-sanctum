@@ -4,6 +4,12 @@ function validateBackfieldCoverage(answer, packet) {
   const errors = [], text = String(answer?.explanation || "");
   const cited = new Set(answer?.factIds || []);
   const mentions = name => text.toLowerCase().includes(String(name).split(/\s+/).pop().toLowerCase());
+  const observed = (packet.players || []).map(player => ({ player, fact: player.facts.find(f => f.field === 'observedOpportunity') }));
+  if (observed.length === 2 && observed.every(({ fact }) => Number.isFinite(fact?.value?.avgLast3)) &&
+      (!observed.every(({ player, fact }) => mentions(player.name) && cited.has(fact.factId)) ||
+       !/opportunities/i.test(text) || !/recent|last (?:three|3)|last[- ]three/i.test(text))) {
+    errors.push('missing_observed_usage_comparison');
+  }
   for (const player of packet.players || []) {
     const context = player.facts.find(f => f.field === "backfieldContext");
     const roles = context?.value?.reportedRoles;
@@ -29,16 +35,20 @@ function validateBackfieldCoverage(answer, packet) {
 }
 function candidateUncertainty(text, name, roles) {
   const lower = text.toLowerCase(), surname = String(name).split(/\s+/).pop().toLowerCase();
-  const start = lower.indexOf(surname);
-  if (start < 0) return false;
-  let end = text.length;
-  for (const other of [...(roles.players || []).map(p => p.name), ...(roles.notListedInChart || [])]) {
-    if (other === name) continue;
-    const index = lower.indexOf(String(other).split(/\s+/).pop().toLowerCase(), start + surname.length);
-    if (index >= 0) end = Math.min(end, index);
+  if (!surname) return false;
+  let start = lower.indexOf(surname);
+  while (start >= 0) {
+    let end = text.length;
+    for (const other of [...(roles.players || []).map(p => p.name), ...(roles.notListedInChart || [])]) {
+      if (other === name) continue;
+      const index = lower.indexOf(String(other).split(/\s+/).pop().toLowerCase(), start + surname.length);
+      if (index >= 0) end = Math.min(end, index);
+    }
+    const clause = text.slice(start, end);
+    if (/unknown|unclear|unverified|not (?:confirmed|cleared)|conflict/i.test(clause) && /health|status|availability|chart|ACTIVE|listed/i.test(clause)) return true;
+    start = lower.indexOf(surname, start + surname.length);
   }
-  const clause = text.slice(start, end);
-  return /unknown|unclear|unverified|not (?:confirmed|cleared)|conflict/i.test(clause) && /health|status|availability|chart|ACTIVE|listed/i.test(clause);
+  return false;
 }
 function mentionsIn(text, name) { return text.toLowerCase().includes(String(name).split(/\s+/).pop().toLowerCase()); }
 module.exports = { validateBackfieldCoverage };

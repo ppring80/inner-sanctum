@@ -12,7 +12,7 @@ const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&
 let calls=0;
 const args={decisionId,ownerHash,store,apiKey:'mock',caseId:'role-change',now:new Date('2026-10-10T00:00:00Z'),fetchImpl:async(_url,o)=>{
  calls++;const req=JSON.parse(o.body),p=JSON.parse(req.messages[0].content);
- assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.tools[0].strict,true);assert.equal(req.tool_choice.name,'submit_decision');assert(req.system.includes('acknowledge that conflict'));assert(!req.system.includes('Start Shipley'));
+ assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.tools[0].strict,true);assert.equal(req.tool_choice.name,'submit_decision');assert(/acknowledge.*UNKNOWN.*conflict.*ACTIVE listing/.test(req.system));assert(!req.system.includes('Start Shipley'));
  assert.deepEqual(p.players.map(x=>x.name),['Blake Corum','Will Shipley']);
  return{ok:true,json:async()=>({id:'mock-review',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{selected:'B',confidence:'LOW',explanationSentences:[{text:"I lean Shipley, but his ACTIVE listing conflicts with UNKNOWN chart status.",factIds:['B:availability','B:backfieldContext']},{text:'Barkley is OUT and Bigsby is on IR; Pierce is not even listed on the chart.',factIds:['B:backfieldContext']},{text:'No verified sign establishes how his workload changes.',factIds:['B:roleExpansion']}],caveat:'Workload unknown.',reconsider:'If new evidence confirms health and workload.'}}]})};
 }};

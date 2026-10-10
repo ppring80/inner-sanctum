@@ -9,7 +9,7 @@ const packet = { requireSentenceEvidence: true, players: [
 ] };
 const answer = { selected: 'A', confidence: 'LOW', explanation: "I'd start Receiver A because he has a slight edge in projected points.\nReceiver B is close enough that this is a cautious lean.\nCheck for new information before kickoff because these are forecasts, not guarantees.", caveat: 'The projected difference is small.', reconsider: 'A new projection favoring Receiver B could change my choice.', factIds: ['A:projection', 'B:projection'], sentenceFactIds: [['A:projection', 'B:projection'], ['A:projection', 'B:projection'], ['A:projection', 'B:projection']] };
 assert.deepStrictEqual(validate(answer, packet), []);
-const phrases = ['effect is unvalidated', 'verified role-change flag', 'redistribution is unverified', 'moderate-volume role', 'Strong Positive matchup', 'essential fields are absent', 'concrete blocker'];
+const phrases = ['effect is unvalidated', 'verified role-change flag', 'redistribution is unverified', 'both are sourced as unavailable', 'moderate-volume role', 'Strong Positive matchup', 'essential fields are absent', 'concrete blocker'];
 for (const field of ['explanation', 'caveat', 'reconsider']) for (const phrase of phrases) {
   const report = { ...answer, [field]: phrase };
   assert.ok(validatePairVoice(report).includes('report_like_customer_language'));
