@@ -5,8 +5,8 @@ const { POST241, POST238_WARM, ROLE_SYSTEM, VERSION } = require('../netlify/func
 const hash = llm.hash;
 assert.equal(hash(ROLE_SYSTEM), POST241.promptHash);
 const packet = {request:{},players:[
- {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
- {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
+ {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
+ {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
 ]};
 llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : hash(value);
 delete require.cache[require.resolve('../netlify/functions/_super-sage-shadow-fast-review')];
@@ -25,6 +25,8 @@ const args={store,ownerHash,decisionId,caseId:'role-change',apiKey:'mock',fetchI
  assert.deepEqual(req.tools[0].input_schema.properties.statusSentence.properties.playerId.enum,['B']);
  assert.equal(focused.players[0].facts.find(f=>f.field==='backfieldContext').value.sourceType,'PROVIDER_ROSTER_UNORDERED');
  assert.equal(focused.requiredDisclosures.find(d=>d.type==='statusConflict').name,'Will Shipley');
+ assert.match(focused.requiredDisclosures.find(d=>d.type==='statusConflict').detail,/UNKNOWN.*ACTIVE/);
+ assert.ok(!o.body.includes('listing undefined'));
  assert.ok(!o.body.includes(POST241.requestId));
  return{ok:true,json:async()=>({id:'post241-result',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{selected:'B',confidence:'MEDIUM',statusSentence:{playerId:'B',text:'Shipley has UNKNOWN chart status despite ACTIVE availability.',factIds:['B:availability','B:backfieldContext']},explanationSentences:[{text:"I'd start Shipley, but his health is unknown.",factIds:['B:availability','B:backfieldContext']},{text:'Corum has no verified Rams depth order.',factIds:['A:backfieldContext']}],caveat:'Health is not confirmed.',reconsider:'Confirmed new pregame role reports.'}}]})};
 }};
