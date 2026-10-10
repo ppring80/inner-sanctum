@@ -38,6 +38,14 @@ const POST238_WARM = Object.freeze({
   caseId: 'fresh-role-post238-warm',
   priorCapturedAt: '2026-10-10T04:01:04.446Z'
 });
+// Explicit Oct 9 approval to qualify merged #241 once; no retry or reset.
+const POST241 = Object.freeze({
+  decisionId: POST232.decisionId, parentEvidenceHash: POST232.parentEvidenceHash,
+  requestId: 'msg_011Cfsv5satJJmh4XHnYEpeA', caseId: 'fresh-role-post241',
+  promptHash: 'ec5af3a1536573a9ce11c973f0d34fe3c5ee7633b59d8386555e1d70a423b003',
+  schemaHash: 'e82fe1ffd7f4eae220b705f07c834989a8b58b39b5f5c9ccd372b53392a443d4',
+  maxRequestBytes: 25000, maxOutputTokens: 750
+});
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -208,6 +216,23 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   stage = clock();
   if (!original || original.ownerHash !== ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  if (!drill && caseId === 'role-change' && decisionId === POST241.decisionId &&
+      original.frozenEvidence.evidenceHash === POST241.parentEvidenceHash) {
+    const prior = await store.get(`llm-drill/${VERSION}/${POST238_WARM.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
+    if (prior?.requestId === POST241.requestId && prior.status === 'INVALID' &&
+        prior.parentEvidenceHash === POST241.parentEvidenceHash && prior.promptHash === POST238_WARM.promptHash) {
+      const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+        drill: { version: VERSION, caseId: POST241.caseId, build: frozen => {
+          const pair = focusEvidence(frozen, ['Blake Corum', 'Will Shipley']);
+          pair.packet.requireSentenceEvidence = true;
+          pair.packet.requireBackfieldExplanation = true;
+          pair.packet.requireCandidateStatusSentence = true;
+          pair.evidenceHash = hash(JSON.stringify(pair.packet));
+          return pair;
+        } } });
+      return { ...result, experiment: POST241.caseId, priorReviewRequestId: POST241.requestId };
+    }
+  }
   if (!drill && caseId === 'role-change' && decisionId === POST238.decisionId &&
       original.frozenEvidence.evidenceHash === POST238.parentEvidenceHash) {
     const prior = await store.get(`llm-drill/${VERSION}/${POST236.caseId}/${decisionId}/${ownerHash}`, { type: 'json' });
@@ -290,6 +315,12 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if ([POST238.caseId, POST238_WARM.caseId].includes(drill?.caseId) && (hash(system) !== POST238.promptHash ||
       maxTokens > POST238.maxOutputTokens ||
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST238.maxRequestBytes)) {
+    return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
+  }
+  if (drill?.caseId === POST241.caseId && (hash(system) !== POST241.promptHash ||
+      hash(JSON.stringify(schema)) !== POST241.schemaHash ||
+      maxTokens > POST241.maxOutputTokens || deadlineMs !== 20000 ||
+      Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST241.maxRequestBytes)) {
     return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   }
   timing.evidencePreparationMs = Math.round(clock() - stage);
@@ -375,4 +406,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, presentBackfieldSource, requiredDisclosures };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, presentBackfieldSource, requiredDisclosures };
