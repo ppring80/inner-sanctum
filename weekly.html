@@ -2412,7 +2412,8 @@ function renderTable() {
                   '">' +
                     p.pos +
                   '</span>' +
-                  injuryPillHtml(p.injury || (p.availabilityStatus === 'BYE' ? 'bye' : null)) +
+                  injuryPillHtml(p.injury) +
+                  (p.availabilityStatus === 'BYE' ? injuryPillHtml('bye') : '') +
                 '</div>' +
               '</td>' +
 
