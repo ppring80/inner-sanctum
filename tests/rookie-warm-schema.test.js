@@ -3,7 +3,11 @@ const assert = require('node:assert/strict');
 const llm = require('../netlify/functions/_super-sage-shadow-llm');
 const { POST236, POST238, POST238_WARM, VERSION, ROLE_SYSTEM } = require('../netlify/functions/_super-sage-shadow-fast-review');
 const realHash = llm.hash;
-assert.equal(realHash(ROLE_SYSTEM), POST238.promptHash);
+// Recorded warm-retry allowance is unchanged and stays bound to its Oct 9
+// prompt; the revised role prompt must not be able to spend it.
+assert.equal(POST238_WARM.promptHash, '89ee7bb70b68f7c080c4116e762a7260c74496f4f074093386fe470d6ace3baa');
+assert.equal(POST238_WARM.priorCapturedAt, '2026-10-10T04:01:04.446Z');
+assert.notEqual(realHash(ROLE_SYSTEM), POST238.promptHash);
 assert.equal(VERSION, 'rookie-fast-pair-v6-haiku');
 const packet = { request: {}, players: ['Blake Corum', 'Will Shipley'].map(name => ({ name, position: 'RB', facts: [{ field: 'availability', value: { status: 'UNKNOWN' } }] })) };
 llm.hash = value => value === JSON.stringify(packet) ? POST238.parentEvidenceHash : realHash(value);
@@ -36,21 +40,9 @@ const args = { store, decisionId, ownerHash, caseId: 'role-change', apiKey: 'moc
  ], statusSentence: { text: 'The reported status is unknown.', factIds: ['A:availability'] }, caveat: 'Reported status unknown.', reconsider: 'A new status report.' } }] }) };
 } };
 (async () => {
- data.set(firstKey, { ...firstAttempt, capturedAt: 'different-attempt' });
- const unmatched = await runFastReview(args);
- assert.equal(unmatched.cached, true); assert.equal(calls, 0, 'another timeout cannot unlock this allowance');
- data.set(firstKey, firstAttempt);
- await Promise.all([runFastReview(args), runFastReview(args)]);
- assert.equal(calls, 1, 'only one atomic paid generation');
- const cached = await runFastReview(args);
- assert.equal(cached.cached, true); assert.equal(cached.requestId, 'fresh-qualification');
- assert.equal(cached.experiment, POST238_WARM.caseId); assert.equal(calls, 1);
- assert.equal(JSON.stringify([...data].slice(0, 5)), before, 'old evidence, review and daily budget unchanged');
- assert.equal((await runFastReview({ ...args, ownerHash: realHash('someone else') })).error, 'owned_frozen_evidence_unavailable');
- const budgetKey = `llm-drill-budget/${VERSION}/${POST238_WARM.caseId}`;
- assert.ok(data.has(budgetKey));
- data.delete(`llm-drill/${VERSION}/${POST238_WARM.caseId}/${decisionId}/${ownerHash}`);
- const blocked = await runFastReview(args);
- assert.equal(blocked.error, 'daily_speed_benchmark_limit'); assert.equal(calls, 1, 'spent allowance cannot retry');
- console.log('Post238 warm-schema follow-up: exact owner/evidence/prior/prompt, one atomic call, bounded request/output, no retry or old budget/history reset. Provider mocked.');
+ const refused = await runFastReview(args);
+ assert.equal(refused.error, 'authorized_qualification_bound', JSON.stringify(refused).slice(0, 200));
+ assert.equal(calls, 0, 'no paid call: the warm allowance is bound to the recorded prompt');
+ assert.equal(JSON.stringify([...data]), before, 'evidence, prior review, first attempt and budgets unchanged');
+ console.log('Warm-schema allowance history preserved: bound to its recorded prompt; refuses the revised prompt with no call and no state change. Provider mocked.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => { llm.hash = realHash; });
