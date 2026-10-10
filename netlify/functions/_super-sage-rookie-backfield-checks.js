@@ -10,7 +10,7 @@ function validateBackfieldCoverage(answer, packet) {
     if (!roles) continue;
     if (!cited.has(context.factId)) errors.push("missing_backfield_citation");
     const candidate = roles.players?.find(p => p.listedRank === roles.candidateListedRank);
-    if (candidate?.status === "UNKNOWN" && !text.split(/[.!?\n]/).some(s => mentionsIn(s, candidate.name) && /unknown|unclear|unverified|conflict|not (?:confirmed|cleared)/i.test(s))) errors.push("missing_candidate_health_uncertainty");
+    if (candidate?.status === "UNKNOWN" && !text.split(/[.!?\n]/).some(s => candidateUncertainty(s, candidate.name, roles))) errors.push("missing_candidate_health_uncertainty");
     const next = roles.nextListedAlternative;
     if (next && !mentions(next.name)) errors.push("missing_next_listed_alternative");
     if (next?.status === "UNKNOWN" && !text.split(/[.!?\n]/).some(s => mentionsIn(s, next.name) && /unknown|unclear|not (?:confirmed|cleared)|health.*(?:unverified|unresolved)/i.test(s))) errors.push("missing_alternative_health_uncertainty");
@@ -26,6 +26,19 @@ function validateBackfieldCoverage(answer, packet) {
     if (/QUESTIONABLE|UNKNOWN|Q/i.test(availability?.value?.status || "") && !cited.has(availability.factId)) errors.push("missing_candidate_availability_citation");
   }
   return [...new Set(errors)];
+}
+function candidateUncertainty(text, name, roles) {
+  const lower = text.toLowerCase(), surname = String(name).split(/\s+/).pop().toLowerCase();
+  const start = lower.indexOf(surname);
+  if (start < 0) return false;
+  let end = text.length;
+  for (const other of [...(roles.players || []).map(p => p.name), ...(roles.notListedInChart || [])]) {
+    if (other === name) continue;
+    const index = lower.indexOf(String(other).split(/\s+/).pop().toLowerCase(), start + surname.length);
+    if (index >= 0) end = Math.min(end, index);
+  }
+  const clause = text.slice(start, end);
+  return /unknown|unclear|unverified|not (?:confirmed|cleared)|conflict/i.test(clause) && /health|status|availability|chart|ACTIVE|listed/i.test(clause);
 }
 function mentionsIn(text, name) { return text.toLowerCase().includes(String(name).split(/\s+/).pop().toLowerCase()); }
 module.exports = { validateBackfieldCoverage };
