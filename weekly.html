@@ -259,6 +259,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Lora',Georgia,serif;font
 .injury-pill.healthy{background:rgba(46,125,50,0.1);color:var(--green)}
 .injury-pill.questionable{background:rgba(200,120,10,0.12);color:var(--amber)}
 .injury-pill.doubtful{background:rgba(138,32,32,0.1);color:var(--red)}
+.injury-pill.bye{background:var(--bg2);color:var(--muted)}
 .injury-pill.out{background:rgba(138,32,32,0.18);color:var(--red);font-weight:700}
 .cell-verdict{max-width:340px;font-size:13px;line-height:1.55;transition:opacity 0.15s}
 .cell-verdict.fading{opacity:0.15}
@@ -1531,7 +1532,9 @@ function flattenRankings(rankings) {
         pos: entry.position || pos,
         team: entry.team || entry.currentTeam || '—',
         opp: entry.opponent || '—',
-        injury: rawStatus === 'DOUBTFUL' ? 'doubtful' : 'out',
+        injury: ['QUESTIONABLE', 'DOUBTFUL', 'OUT', 'IR', 'INJURED RESERVE', 'RESERVE/INJURED', 'PUP', 'RESERVE/PUP', 'NFI', 'RESERVE/NFI'].indexOf(rawStatus) !== -1
+          ? (rawStatus === 'QUESTIONABLE' ? 'questionable' : rawStatus === 'DOUBTFUL' ? 'doubtful' : 'out')
+          : null,
         call: 'sit',
         sageScore: null,
         rankingScore: null,
@@ -1682,7 +1685,8 @@ function injuryLabel(code) {
     healthy:'Healthy',
     questionable:'Questionable',
     doubtful:'Doubtful',
-    out:'Out'
+    out:'Out',
+    bye:'Bye week'
   }[code] || code;
 }
 
@@ -1692,7 +1696,8 @@ function injuryPillHtml(code) {
   var shortLabel = {
     questionable: 'Q',
     doubtful: 'D',
-    out: 'OUT'
+    out: 'OUT',
+    bye: 'BYE'
   }[normalized] || String(code).toUpperCase();
   return '<span class="injury-pill ' + normalized + '" title="' +
     injuryLabel(normalized) + '">' + shortLabel + '</span>';
@@ -2407,7 +2412,7 @@ function renderTable() {
                   '">' +
                     p.pos +
                   '</span>' +
-                  injuryPillHtml(p.injury) +
+                  injuryPillHtml(p.injury || (p.availabilityStatus === 'BYE' ? 'bye' : null)) +
                 '</div>' +
               '</td>' +
 
@@ -2553,8 +2558,7 @@ function renderWeekSnapshot() {
         // field) -- null must mean "nothing to report," not "always a
         // concern," unlike the previous MOCK_RANKINGS rows which
         // always had a real (even if 'healthy') value here.
-        return p.injury &&
-          p.injury !== 'healthy';
+        return ['out', 'doubtful', 'questionable'].indexOf(p.injury) !== -1;
       }
     );
 
