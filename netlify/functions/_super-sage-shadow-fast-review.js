@@ -1,6 +1,16 @@
 "use strict";
 const { hash, RULES } = require("./_super-sage-shadow-llm.js");
 const VERSION = "rookie-fast-pair-v6-haiku";
+// Explicitly authorized Oct 9 after the user raised the continuation ceiling
+// to $10. One global call, bound to the original owned packet and saved review.
+const POST232 = Object.freeze({
+  decisionId: "9a359bec613bc68739c34debff140201dc0e6d44cb7de7ad71b1c34b80228d99",
+  parentEvidenceHash: "99db49a7e98f3228b476521fad3e18cbe194f7ee8da66721d366c245c55aefa9",
+  requestId: "msg_011CfsboYsU13XnJ4LJxLcnF",
+  caseId: "fresh-role-post232",
+  maxRequestBytes: 25000,
+  maxOutputTokens: 750
+});
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -74,6 +84,19 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   stage = clock();
   if (!original || original.ownerHash !== ownerHash || !original.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(original.frozenEvidence.packet)) !== original.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  if (!drill && caseId === "role-change" && decisionId === POST232.decisionId &&
+      original.frozenEvidence.evidenceHash === POST232.parentEvidenceHash &&
+      cached?.requestId === POST232.requestId && cached.status === "INVALID") {
+    const result = await runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl, now, clock,
+      drill: { version: VERSION, caseId: POST232.caseId, build: frozen => {
+        const pair = focusEvidence(frozen, ["Blake Corum", "Will Shipley"]);
+        pair.packet.requireSentenceEvidence = true;
+        pair.packet.requireBackfieldExplanation = true;
+        pair.evidenceHash = hash(JSON.stringify(pair.packet));
+        return pair;
+      } } });
+    return { ...result, experiment: POST232.caseId, priorReviewRequestId: POST232.requestId };
+  }
   let focused;
   try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
     if (!drill && caseId === "role-change") {
@@ -92,6 +115,10 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   // Private grounded quality benchmark only; assess its full request time
   // separately from the under-ten-second release target.
   const deadlineMs = grounded ? 20000 : 10000;
+  if (drill?.caseId === POST232.caseId && (maxTokens > POST232.maxOutputTokens ||
+      Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), "utf8") > POST232.maxRequestBytes)) {
+    return { status: "UNAVAILABLE", error: "authorized_experiment_cost_bound" };
+  }
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
@@ -175,4 +202,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
+module.exports = { VERSION, POST232, SYSTEM, SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
