@@ -5,8 +5,8 @@ const { POST241, POST238_WARM, ROLE_SYSTEM, VERSION } = require('../netlify/func
 const hash = llm.hash;
 assert.equal(hash(ROLE_SYSTEM), POST241.promptHash);
 const packet = {request:{},players:[
- {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
- {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{status:'ACTIVE'}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
+ {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
+ {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
 ]};
 llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : hash(value);
 delete require.cache[require.resolve('../netlify/functions/_super-sage-shadow-fast-review')];
