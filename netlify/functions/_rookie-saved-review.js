@@ -9,6 +9,7 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
   const keys = {
     'post232-role-change': `llm-drill/rookie-fast-pair-v6-haiku/fresh-role-post232/${decisionId}/${ownerHash}`,
     'focused-role-change': `llm-fast/rookie-fast-pair-v6-haiku/${decisionId}/${ownerHash}/fresh-role-change`,
+    'stream-diagnostic': `llm-drill/rookie-fast-pair-v6-haiku/role-stream-diagnostic-post244/${decisionId}/${ownerHash}`,
     full: `llm/rookie-independent-v2/${decisionId}/${ownerHash}`
   };
   if (!Object.hasOwn(keys, kind)) return { available: false, readOnly: true, error: 'invalid_review_kind' };

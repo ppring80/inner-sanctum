@@ -46,6 +46,7 @@ const POST241 = Object.freeze({
   schemaHash: 'e82fe1ffd7f4eae220b705f07c834989a8b58b39b5f5c9ccd372b53392a443d4',
   maxRequestBytes: 25000, maxOutputTokens: 750
 });
+const STREAM_DIAGNOSTIC = Object.freeze({ ...POST241, caseId: 'role-stream-diagnostic-post244', deadlineMs: 90000 });
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -376,7 +377,8 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   const maxTokens = focused.packet.requireBackfieldExplanation ? 750 : grounded ? 550 : 400;
   // Private grounded quality benchmark only; assess its full request time
   // separately from the under-ten-second release target.
-  const deadlineMs = grounded ? 20000 : 10000;
+  const diagnostic = drill?.caseId === STREAM_DIAGNOSTIC.caseId;
+  const deadlineMs = diagnostic ? STREAM_DIAGNOSTIC.deadlineMs : grounded ? 20000 : 10000;
   if (drill?.caseId === POST232.caseId && (maxTokens > POST232.maxOutputTokens ||
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), "utf8") > POST232.maxRequestBytes)) {
     return { status: "UNAVAILABLE", error: "authorized_experiment_cost_bound" };
@@ -397,10 +399,11 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST241.maxRequestBytes)) {
     return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   }
+  if (diagnostic && (transport !== 'stream' || hash(system) !== STREAM_DIAGNOSTIC.promptHash || hash(JSON.stringify(schema)) !== STREAM_DIAGNOSTIC.schemaHash || maxTokens > STREAM_DIAGNOSTIC.maxOutputTokens || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > STREAM_DIAGNOSTIC.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_diagnostic_bound' };
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, promptHash: hash(system), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), rules: RULES };
   stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   timing.reservationMs = Math.round(clock() - stage);
@@ -457,7 +460,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     let providerPhases = null, outgoing = null;
     try {
       const requestBody = { model, max_tokens: maxTokens, system, messages: [{ role: "user", content: JSON.stringify(focused.packet) }], tools: [{ name: "submit_decision", description: "Return your evidence-grounded decision; this tool performs no external action.", input_schema: schema, ...(grounded ? { strict: true } : {}) }], tool_choice: { type: "tool", name: "submit_decision", disable_parallel_tool_use: true } };
-      outgoing = requestFingerprint(requestBody);
+      outgoing = requestFingerprint(transport === "stream" ? { ...requestBody, stream: true } : requestBody);
       const call = await callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock, transport });
       providerPhases = call.phases;
       const body = call.body;
@@ -469,7 +472,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > deadlineMs) validationErrors.push("model_deadline_exceeded");
       result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || model, requestId: body.id || providerPhases.requestId || null, providerPhases, outgoing, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
-    } catch (e) { providerPhases = e.providerPhases || providerPhases; result = { ...base, status: "UNAVAILABLE", providerPhases, outgoing, requestId: providerPhases?.requestId || null, error: e.name === "TimeoutError" || e.name === "AbortError" ? (grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
+    } catch (e) { providerPhases = e.providerPhases || providerPhases; result = { ...base, status: "UNAVAILABLE", providerPhases, outgoing, requestId: providerPhases?.requestId || null, error: e.name === "TimeoutError" || e.name === "AbortError" ? (diagnostic ? "ninety_second_diagnostic_timeout" : grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
   }
   result = withClaimAssessment(result, focused.packet);
   stage = clock();
@@ -477,4 +480,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
