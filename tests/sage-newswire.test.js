@@ -31,6 +31,12 @@ Date.now=()=>Date.parse('2026-10-08T18:00:00Z');
  assert(live.stories.some(s=>s.player==='Tyquan Thornton'&&/dislocated ankle/i.test(s.headline)),'Oct 4 Thornton injury must appear');
  assert(live.stories.filter(s=>s.featured).every(s=>Date.parse(s.publishedAt)>=Date.parse('2026-10-02')));
  assert.equal(mergeStories([{player:'One',sourceUrl:'same',headline:'One out'},{player:'Two',sourceUrl:'same',headline:'Two out'}],[]).length,2);
+ const current=editorialStories(Date.parse('2026-10-10T21:30:00Z'));
+ for(const [player,status] of [['Saquon Barkley','OUT'],['Lamar Jackson','OUT'],['Jayden Daniels','Starting'],['Justin Jefferson','Questionable'],['DJ Moore','Questionable'],['Josh Palmer','OUT'],['Tank Bigsby','IR'],['Dallas Goedert','Cleared']]){
+  const cards=current.filter(s=>s.player===player);assert.equal(cards.length,1,player+' has one current editorial card');assert.equal(cards[0].status,status);
+ }
+ const merged=mergeStories(current,[{id:'old-dj',player:'DJ Moore',publishedAt:'2026-10-05T01:51:00Z',sourceUrl:'old',headline:'Old injury watch'},{id:'unrelated',player:'Other Player',publishedAt:'2026-10-05T01:51:00Z',sourceUrl:'other',headline:'Other report'}]);
+ assert(!merged.some(s=>s.id==='old-dj'),'superseded cached report removed');assert(merged.some(s=>s.id==='unrelated'),'unrelated reporting retained');
  cache={mode:'source-headlines',updatedAt:new Date(Date.now()).toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
  assert.equal((await newswire.handler({httpMethod:'POST'})).statusCode,405);console.log('Newswire source coverage, editorial preservation, relevance, publication dates and specific analysis passed.');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{Date.now=realNow;});

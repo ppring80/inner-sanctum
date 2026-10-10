@@ -21,7 +21,7 @@ function normalizeStories(items,players={},now=Date.now()){
  }
  return stories.slice(0,12);
 }
-function mergeStories(editorial,automatic){const seen=new Set();return [...editorial,...automatic].filter(s=>{if(seen.has(s.player+'|'+s.sourceUrl)||seen.has(s.player+'|'+s.headline))return false;seen.add(s.player+'|'+s.sourceUrl);seen.add(s.player+'|'+s.headline);return true;});}
+function mergeStories(editorial,automatic){const seen=new Set();return [...editorial,...automatic].filter(s=>!editorial.some(update=>update.player===s.player&&update.id!==s.id&&update.supersedesBefore&&Date.parse(s.publishedAt)<Date.parse(update.supersedesBefore))).filter(s=>{if(seen.has(s.player+'|'+s.sourceUrl)||seen.has(s.player+'|'+s.headline))return false;seen.add(s.player+'|'+s.sourceUrl);seen.add(s.player+'|'+s.headline);return true;});}
 exports.handler=async event=>{
  const denied=requireTank01RefreshAuthorization(event);if(denied)return denied;connectLambda(event);
  try{const store=getStore({name:'sage-newswire'}),previous=await store.get('latest',{type:'json'});const players=(await getStore({name:'player-data'}).get('playerData',{type:'json'}))?.players||{};
