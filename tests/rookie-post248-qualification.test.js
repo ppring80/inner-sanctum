@@ -5,7 +5,7 @@ const packet = {request:{},players:[
  {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
  {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
 ]};
-assert.equal(hash(ROLE_SYSTEM), POST248.promptHash);
+assert.notEqual(hash(ROLE_SYSTEM), POST248.promptHash, "final voice prompt cannot reuse the old allowance");
 // Simulate the recorded historical prompt only for transport/history regression.
 llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : value === ROLE_SYSTEM ? POST248.promptHash : hash(value);
 delete require.cache[require.resolve('../netlify/functions/_super-sage-shadow-fast-review')];

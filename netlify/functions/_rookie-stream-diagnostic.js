@@ -1,6 +1,6 @@
 'use strict';
 const {hash,signJob}=require('./_super-sage-shadow-llm');
-const {VERSION,POST241,STREAM_DIAGNOSTIC,POST246,POST248,ROLE_SYSTEM,focusEvidence,runFastReview}=require('./_super-sage-shadow-fast-review');
+const {VERSION,POST241,STREAM_DIAGNOSTIC,POST246,POST248,FINAL_VOICE,ROLE_SYSTEM,focusEvidence,runFastReview}=require('./_super-sage-shadow-fast-review');
 const reviewKey=(decisionId,ownerHash)=>`llm-drill/${VERSION}/${STREAM_DIAGNOSTIC.caseId}/${decisionId}/${ownerHash}`;
 async function authorized({store,decisionId,ownerHash}) {
  if(decisionId!==POST241.decisionId||!/^[a-f0-9]{64}$/.test(ownerHash||''))return false;
@@ -11,6 +11,7 @@ async function authorized({store,decisionId,ownerHash}) {
  return Boolean(evidence?.ownerHash===ownerHash&&evidence.frozenEvidence?.evidenceHash===POST241.parentEvidenceHash&&hash(JSON.stringify(evidence.frozenEvidence.packet))===POST241.parentEvidenceHash&&prior?.status==='UNAVAILABLE'&&prior.error==='twenty_second_quality_timeout'&&prior.parentEvidenceHash===POST241.parentEvidenceHash&&prior.promptHash===POST241.promptHash);
 }
 async function queueDiagnostic(args) {
+ if(hash(ROLE_SYSTEM)===FINAL_VOICE.promptHash)return require("./_rookie-final-voice-qualification").executeQualification(args);
  if(hash(ROLE_SYSTEM)===POST248.promptHash)return require("./_rookie-post248-qualification").queueQualification(args);
  if(hash(ROLE_SYSTEM)===POST246.promptHash)return require("./_rookie-post246-qualification").queueQualification(args);
  const {store,decisionId,ownerHash,apiKey,fetchImpl=fetch,now=new Date()}=args;
