@@ -6416,7 +6416,7 @@ function buildServer(
       {
         title: "Get Super SAGE Private Shadow Decision",
         description:
-          "Internal read-only reviewer tool. Reads a previously persisted Rookie shadow scorecard by immutable production decision ID. It never recalculates a decision, reads outcomes, changes rankings, or changes the customer answer.",
+          "Internal read-only reviewer tool. Reads a previously persisted Rookie shadow scorecard by immutable production decision ID, including an existing saved model review when authorized owned frozen evidence is available. Never invokes a provider, queues work, spends budget, refreshes data or writes history. It never recalculates a decision, reads outcomes, changes rankings, or changes the customer answer.",
         inputSchema: z.object({
           decisionId: z.string().min(32).max(128)
         }),
@@ -6435,13 +6435,24 @@ function buildServer(
           return { isError: true, content: [{ type: "text", text: "Private Rookie review is not enabled on this deployment." }], structuredContent: { ...base, error: "reviewer_peephole_disabled" } };
         }
         try {
+          const savedReadStart = performance.now();
           const store = getStore({ name: "super-sage-shadow-lab" });
-          const artifact = await store.get("decision/" + decisionId, { type: "json" });
+          const [artifact, savedRookieReview] = await Promise.all([
+            store.get("decision/" + decisionId, { type: "json" }),
+            authContext?.snapshotKey
+              ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey) })
+              : Promise.resolve(null)
+          ]);
+          if (authContext) authContext.rookieReviewCompletedAt = performance.now();
           if (!artifact || artifact.type !== "SUPER_SAGE_PRIVATE_SHADOW_LAB" || artifact.productionDecisionId !== decisionId) {
             return { content: [{ type: "text", text: "No private Rookie shadow scorecard exists for that decision ID." }], structuredContent: base };
           }
           const safe = {
             ...artifact,
+            ...(savedRookieReview ? {
+              savedRookieReview,
+              invocationTiming: { ...(authContext.rookieInvocationTiming || {}), savedReadMs: Math.round(performance.now() - savedReadStart) }
+            } : {}),
             rules: {
               ...(artifact.rules || {}),
               customerVisible: false,
@@ -7241,7 +7252,7 @@ exports.handler =
     const invocationStart = performance.now();
     const invocationTiming = { moduleLoadMs: rookieModuleLoadMs };
     const diagnosticRoute = getMcpRoute(event);
-    const rookieDiagnostic = diagnosticRoute.method === "tools/call" && ["run_shadow_llm_review", "get_saved_rookie_review"].includes(diagnosticRoute.name);
+    const rookieDiagnostic = diagnosticRoute.method === "tools/call" && ["run_shadow_llm_review", "get_saved_rookie_review", "get_shadow_decision"].includes(diagnosticRoute.name);
     const diagnosticRequestId = rookieDiagnostic ? crypto.randomUUID() : null;
     try {
       connectLambda(
