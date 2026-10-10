@@ -5,9 +5,9 @@ const packet = {request:{},players:[
  {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
  {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
 ]};
-assert.equal(hash(ROLE_SYSTEM), POST246.promptHash);
+assert.notEqual(hash(ROLE_SYSTEM), POST246.promptHash, "changed prompt cannot reuse the spent qualification");
 // Simulate the recorded historical prompt only for transport/history regression.
-llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : hash(value);
+llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : value === ROLE_SYSTEM ? POST246.promptHash : hash(value);
 delete require.cache[require.resolve('../netlify/functions/_super-sage-shadow-fast-review')];
 const {runFastReview} = require('../netlify/functions/_super-sage-shadow-fast-review');
 const ownerHash=hash('owner'),decisionId=POST241.decisionId;
@@ -23,7 +23,7 @@ let queuedCalls=0,providerCalls=0;const ownerArgs={store,ownerHash,decisionId,ap
 const queueArgs={...ownerArgs,fetchImpl:async(url,o)=>{queuedCalls++;assert.equal(url,'https://theinnersanctum.xyz/.netlify/functions/super-sage-rookie-review-background');assert(llm.verifyJob(o.body,o.headers['x-rookie-signature'],'mock'));assert.equal(JSON.parse(o.body).mode,POST246.caseId);return{status:202};}};
 const payload={selected:'B',confidence:'MEDIUM',statusSentence:{playerId:'B',text:'Shipley has UNKNOWN chart status despite ACTIVE availability.',factIds:['B:availability','B:backfieldContext']},explanationSentences:[{text:"I'd start Shipley, but his health is unknown.",factIds:['B:availability','B:backfieldContext']},{text:'Corum has no verified Rams depth order.',factIds:['A:backfieldContext']}],caveat:'Health is not confirmed.',reconsider:'New pregame role reports.'};
 const events=[{type:'message_start',message:{id:'msg_diagnostic1',model:'claude-sonnet-4-6',usage:{input_tokens:4500}}},{type:'content_block_start',index:0,content_block:{type:'tool_use',name:'submit_decision'}},{type:'content_block_delta',index:0,delta:{type:'input_json_delta',partial_json:JSON.stringify(payload)}},{type:'message_delta',delta:{stop_reason:'tool_use'},usage:{output_tokens:450}},{type:'message_stop'}];
-const workerArgs={...ownerArgs,fetchImpl:async(_url,o)=>{providerCalls++;const body=JSON.parse(o.body);assert.equal(body.stream,true);assert.equal(hash(body.system),POST246.promptHash);assert.equal(hash(JSON.stringify(body.tools[0].input_schema)),POST241.schemaHash);assert.equal(body.max_tokens,750);let i=0;return{ok:true,status:200,headers:{get:()=> 'req_diagnostic1'},body:{getReader:()=>({read:async()=> i<events.length?{done:false,value:new TextEncoder().encode('data: '+JSON.stringify(events[i++])+'\n\n')}:{done:true}})}};}};
+const workerArgs={...ownerArgs,fetchImpl:async(_url,o)=>{providerCalls++;const body=JSON.parse(o.body);assert.equal(body.stream,true);assert.equal(llm.hash(body.system),POST246.promptHash);assert.equal(hash(JSON.stringify(body.tools[0].input_schema)),POST241.schemaHash);assert.equal(body.max_tokens,750);let i=0;return{ok:true,status:200,headers:{get:()=> 'req_diagnostic1'},body:{getReader:()=>({read:async()=> i<events.length?{done:false,value:new TextEncoder().encode('data: '+JSON.stringify(events[i++])+'\n\n')}:{done:true}})}};}};
 (async()=>{
  const queued=await Promise.all([queueDiagnostic(queueArgs),queueDiagnostic(queueArgs)]);assert.equal(queuedCalls,1);assert.equal(queued[0].status,'QUEUED');assert.equal(providerCalls,0);
  const completed=await Promise.all([executeDiagnostic(workerArgs),executeDiagnostic(workerArgs)]);assert.equal(providerCalls,1);
