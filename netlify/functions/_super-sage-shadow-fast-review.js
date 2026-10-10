@@ -51,6 +51,10 @@ const STREAM_DIAGNOSTIC = Object.freeze({ ...POST241, caseId: 'role-stream-diagn
 const POST246 = Object.freeze({ ...POST241, caseId: 'role-qualification-post246',
   promptHash: '565fbebee17d9da1a960bc0b716d83534f9ad2ff9356956453c12bf90dc334a7',
   priorRequestId: 'msg_011Cft2NHw1J2wWDPMrXm8HG', deadlineMs: 20000 });
+// One requested qualification of merged #248, preserving all earlier pins.
+const POST248 = Object.freeze({ ...POST246, caseId: 'role-qualification-post248',
+  promptHash: 'd498472ba7ba9e26191af83d52bf50f66087ed0c88605dcc45757127aede5af5',
+  priorRequestId: 'msg_011Cft4TNBc7wHdjx1zxBKBS' });
 const MODEL = "claude-haiku-4-5-20251001";
 const { validateClaims, revalidateCached, withClaimAssessment } = require("./_super-sage-rookie-claim-checks.js");
 const { PAIR_VOICE, HUMAN_PAIR_STYLE, validatePairVoice } = require("./_super-sage-shadow-voice.js");
@@ -405,6 +409,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   }
   if (diagnostic && (transport !== 'stream' || hash(system) !== STREAM_DIAGNOSTIC.promptHash || hash(JSON.stringify(schema)) !== STREAM_DIAGNOSTIC.schemaHash || maxTokens > STREAM_DIAGNOSTIC.maxOutputTokens || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > STREAM_DIAGNOSTIC.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_diagnostic_bound' };
   if (drill?.caseId === POST246.caseId && (transport !== 'stream' || hash(system) !== POST246.promptHash || hash(JSON.stringify(schema)) !== POST246.schemaHash || maxTokens > POST246.maxOutputTokens || deadlineMs !== POST246.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST246.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
+  if (drill?.caseId === POST248.caseId && (transport !== 'stream' || hash(system) !== POST248.promptHash || hash(JSON.stringify(schema)) !== POST248.schemaHash || maxTokens > POST248.maxOutputTokens || deadlineMs !== POST248.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST248.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
@@ -485,4 +490,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };

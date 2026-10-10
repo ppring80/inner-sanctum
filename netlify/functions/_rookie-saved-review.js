@@ -13,10 +13,11 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
     full: `llm/rookie-independent-v2/${decisionId}/${ownerHash}`
   };
   if (!Object.hasOwn(keys, kind)) return { available: false, readOnly: true, error: 'invalid_review_kind' };
-  const [evidence, priorReview, qualification] = await Promise.all([
+  const [evidence, priorReview, qualification, latestQualification] = await Promise.all([
     store.get(`evidence/${decisionId}/${ownerHash}`, { type: 'json' }),
     store.get(keys[kind], { type: 'json' }),
-    kind === 'stream-diagnostic' ? store.get(`llm-drill/rookie-fast-pair-v6-haiku/role-qualification-post246/${decisionId}/${ownerHash}`, { type: 'json' }) : null
+    kind === 'stream-diagnostic' ? store.get(`llm-drill/rookie-fast-pair-v6-haiku/role-qualification-post246/${decisionId}/${ownerHash}`, { type: 'json' }) : null,
+    kind === 'stream-diagnostic' ? store.get(`llm-drill/rookie-fast-pair-v6-haiku/role-qualification-post248/${decisionId}/${ownerHash}`, { type: 'json' }) : null
   ]);
   if (!evidence || evidence.ownerHash !== ownerHash || !evidence.frozenEvidence) {
     return { available: false, readOnly: true, error: 'owned_frozen_evidence_unavailable' };
@@ -24,7 +25,7 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
   if (hash(JSON.stringify(evidence.frozenEvidence.packet)) !== evidence.frozenEvidence.evidenceHash) {
     return { available: false, readOnly: true, error: 'evidence_integrity_failure' };
   }
-  const review = qualification || priorReview;
+  const review = latestQualification || qualification || priorReview;
   return { available: Boolean(review), readOnly: true, decisionId, kind, review: review || null };
 }
 module.exports = { readSavedReview };
