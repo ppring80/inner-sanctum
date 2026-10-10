@@ -3,7 +3,14 @@
 function finishRookieResponse({ body, headers, timing }) {
   let updated = body;
   const add = value => {
-    if (value?.result?.structuredContent) value.result.structuredContent.responseTiming = { ...timing };
+    if (value?.result?.structuredContent) {
+      value.result.structuredContent.responseTiming = { ...timing };
+      // The existing reader's declared artifact map also carries diagnostics,
+      // so clients with its older output schema can still receive timings.
+      if (value.result.structuredContent.artifact) {
+        value.result.structuredContent.artifact.responseTiming = { ...timing };
+      }
+    }
     return JSON.stringify(value);
   };
   try {
