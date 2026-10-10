@@ -28,6 +28,10 @@ const old=buildEvidence(buildLineupDecisionRecord(args)),snapshot=JSON.stringify
 row.backfieldContext=evidence;
 const record=buildLineupDecisionRecord(args);assert.deepEqual(record.slots[0].starter.backfieldContext,evidence);
 const frozen=buildEvidence(record);const focused=focusEvidence(frozen,[row.name,other.name]);
-assert.deepEqual(focused.packet.players[0].facts.find(f=>f.field==='backfieldContext').value,evidence);
+assert.deepEqual(frozen.packet.players.find(p=>p.name===row.name).facts.find(f=>f.field==='backfieldContext').value,evidence);
+{ const v=focused.packet.players[0].facts.find(f=>f.field==='backfieldContext').value;
+  assert.equal(v.sourceType,'PROVIDER_ROSTER_UNORDERED');assert.equal(v.roleOrderVerified,false);
+  assert.doesNotMatch(JSON.stringify(v),/sourceOrder/);
+  assert.deepEqual(v.teammates.map(t=>t.name),evidence.players.filter(p=>p.name!==row.name).map(p=>p.name).sort()); }
 assert.equal(JSON.stringify(old),snapshot,'previous frozen packets remain unchanged');assert.notEqual(frozen.evidenceHash,old.evidenceHash);
 console.log('PASS: cached depth provenance, identity, freshness, unknown health, activation, persisted decision and frozen/focused evidence; no provider calls.');

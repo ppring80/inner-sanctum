@@ -31,6 +31,23 @@ function validateBackfieldCoverage(answer, packet) {
     const availability = player.facts.find(f => f.field === "availability");
     if (/QUESTIONABLE|UNKNOWN|Q/i.test(availability?.value?.status || "") && !cited.has(availability.factId)) errors.push("missing_candidate_availability_citation");
   }
+  // Unverified provider roster: no sentence about this player and a listed
+  // teammate may assert an order, and none may call that roster a chart.
+  for (const player of packet.players || []) {
+    const v = player.facts.find(f => f.field === "backfieldContext")?.value;
+    if (v?.sourceType !== "PROVIDER_ROSTER_UNORDERED") continue;
+    const names = (v.teammates || []).map(t => t.name);
+    for (const sentence of text.split(/[.!?\n]/)) {
+      if (!mentionsIn(sentence, player.name)) continue;
+      const withTeammate = names.some(n => mentionsIn(sentence, n));
+      // Saying the order is unknown is the honest statement, not an order claim.
+      const deniesOrder = /\b(?:no|not|without|unverified|unknown|don't know|do not know)\b[^.]*\b(?:order|depth|chart|roles?|lead)\b/i.test(sentence);
+      const strongOrder = /\b(?:ahead of|behind|backup|back-up|lead back|starter|starting|No\.? ?\d|top of|atop)\b/i.test(sentence);
+      const weakOrder = /\b(?:first|second|third|depth)\b/i.test(sentence);
+      if (withTeammate && (strongOrder || (weakOrder && !deniesOrder))) errors.push("unverified_backfield_role_order");
+      if (/\bchart\b/i.test(sentence) && !/\b(?:no|not|without|isn't|is not)\b[^.]*\b(?:chart|order)\b/i.test(sentence) && !(packet.players || []).some(o => o !== player && mentionsIn(sentence, o.name))) errors.push("provider_roster_called_chart");
+    }
+  }
   return [...new Set(errors)];
 }
 function candidateUncertainty(text, name, roles) {

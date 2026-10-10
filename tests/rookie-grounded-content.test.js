@@ -51,7 +51,10 @@ assert.ok(validate({ ...answer, explanation: answer.explanation.replace("Shipley
 assert.equal(JSON.stringify(packet), bytes);
 assert.equal(VERSION, 'rookie-fast-pair-v6-haiku');
 assert.equal(ROLE_SCHEMA.properties.explanationSentences.maxItems, 3);
-assert.ok(ROLE_SYSTEM.includes("next listed alternative's reported status"));
+assert.ok(ROLE_SYSTEM.includes('requiredDisclosures'));
+{ const { requiredDisclosures } = require('../netlify/functions/_super-sage-shadow-fast-review');
+  const d = requiredDisclosures([{ id: 'B', name: 'X Back', facts: [{ field: 'backfieldContext', factId: 'B:backfieldContext', value: { sourceType: 'TEAM_PUBLISHED_CHART', chartTeam: 'PHI', reportedRoles: { candidateListedRank: 2, players: [{ name: 'Y Back', listedRank: 1, status: 'OUT' }, { name: 'X Back', listedRank: 2, status: 'ACTIVE' }, { name: 'Z Back', listedRank: 3, status: 'QUESTIONABLE' }], nextListedAlternative: { name: 'Z Back', status: 'QUESTIONABLE' } } } }] }]);
+  assert.ok(d.some(x => x.type === 'nextListedAlternative' && x.name === 'Z Back' && x.status === 'QUESTIONABLE')); }
 assert.ok(ROLE_SYSTEM.includes('injury or questionable status'));
 assert.ok(!/60-80|90-120|three connected sentences|20-25/.test(ROLE_SYSTEM), 'role prompt has one consistent length contract');
 assert.ok(!/Will Shipley|Blake Corum|Barkley|Bigsby/.test(ROLE_SYSTEM), 'no player-specific preferred answer');
