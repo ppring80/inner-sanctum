@@ -618,6 +618,8 @@ exports.handler = async function (event) {
   const teamRoles = await getStore({name:"team-backfield-roles"}).get("latest",{type:"json"}).catch(()=>null);
   const roleEvidence = [...require('./_reserve-transactions').TRANSACTIONS.filter(t=>Number(season)===t.season&&targetWeek>=t.fromWeek&&(!t.activationWeek||targetWeek<t.activationWeek)&&!require('./_injury-transactions').matchingTransaction(t,season,targetWeek,centralAvailability.transactions)),...(centralAvailability.transactions||[])];
   for(const row of positions.RB||[]) {
+    const reportedRole = require("./_reported-role-evidence").reportedRoleEvidence(row,centralAvailability.newswireStories,season,targetWeek);
+    if(reportedRole) row.reportedRole = reportedRole;
     const backfield = require("./_backfield-evidence").backfieldEvidence(row,depthCache,centralAvailability,season,targetWeek);
     if(backfield) row.backfieldContext = require("./_team-backfield-roles").reportedRoles(backfield,row,teamRoles);
     const context=require('./_injury-transactions').roleContext(row,centralAvailability.players,roleEvidence,season,targetWeek,centralAvailability.updatedAt);
