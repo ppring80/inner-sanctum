@@ -40,8 +40,12 @@ function validateClaims(answer, packet) {
   if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:already\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
   if (/\b(?:projections?|estimates?|forecasts?)\s+(?:already\s+)?(?:don't|do not|doesn't|does not)\s+account for\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
   if (/\b(?:is|fully|confirmed|clear|perfect|active and)\s+health(?:y)?\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
-  if (/\bhealthier\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\bhealthier\b(?!\s+(?:recent\s+)?(?:usage\s+|workload\s+|opportunity\s+)?baseline\b)/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
   if (/\bclean bill of health\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\btwo(?:\s+[A-Za-z]+){0,3}\s+starters\b/i.test(currentText) && (packet.players || []).some(p => {
+    const roles = p.facts?.find(f => f.field === 'backfieldContext')?.value?.reportedRoles;
+    return (roles?.players || []).filter(b => ['OUT', 'IR'].includes(b.status)).length >= 2;
+  })) errors.push('unsupported_backfield_starter_claim');
   for (const player of packet.players || []) {
     const context = player.facts?.find(f => f.field === "backfieldContext")?.value;
     const chart = context?.reportedRoles;

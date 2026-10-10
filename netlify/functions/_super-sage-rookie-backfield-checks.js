@@ -24,7 +24,7 @@ function validateBackfieldCoverage(answer, packet) {
       if (!["IR", "OUT", "DOUBTFUL", "PUP", "NFI", "RESERVE/INJURED"].includes(back.status)) continue;
       if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, back.name) && /\bIR\b|injured reserve|\bout\b|doubtful|PUP|NFI|reserve\/injured/i.test(s))) errors.push("missing_unavailable_back_context");
     }
-    for (const name of roles.notListedInChart || []) if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, name) && /(?:absent|missing|not (?:even )?(?:listed|on)|outside).*chart|chart.*(?:absent|missing|not (?:list|include))/i.test(s))) errors.push("missing_uncharted_alternative");
+    for (const name of roles.notListedInChart || []) if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, name) && /(?:absent|missing|not (?:even )?(?:listed|on)|outside|(?:don['’]t|do not|doesn['’]t|does not) (?:appear|feature)).*chart|chart.*(?:absent|missing|not (?:list|include))/i.test(s))) errors.push("missing_uncharted_alternative");
     const expansion = player.facts.find(f => f.field === "roleExpansion");
     if (expansion && !cited.has(expansion.factId)) errors.push("missing_role_expansion_citation");
     if (expansion?.value?.validated !== true && !/\b(?:work|workload|snaps|touches|carries)\b[^.!?\n]*(?:unknown|unclear|unverified|not (?:known|confirmed|verified)|don't know|do not know|no verified sign)|(?:unknown|unclear|unverified|don't know|do not know|no verified sign)[^.!?\n]*\b(?:work|workload|snaps|touches|carries)\b/i.test(text)) errors.push("missing_workload_uncertainty");
