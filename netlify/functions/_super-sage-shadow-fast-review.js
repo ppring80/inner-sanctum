@@ -91,6 +91,27 @@ function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) 
   if (serialized.length > 14000) throw new Error("focused_evidence_size_limit");
   return { packet, evidenceHash: hash(serialized) };
 }
+function statusSubjects(packet) {
+  return (packet.players || []).flatMap(player => {
+    const context = player.facts.find(f => f.field === 'backfieldContext');
+    const roles = context?.value?.reportedRoles;
+    const candidate = roles?.players?.find(p => p.listedRank === roles.candidateListedRank);
+    if (candidate?.status !== 'UNKNOWN') return [];
+    const availability = player.facts.find(f => f.field === 'availability');
+    return [{ playerId: player.id, name: candidate.name, chartStatus: candidate.status,
+      availabilityStatus: availability?.value?.status, factIds: [context.factId, availability?.factId].filter(Boolean) }];
+  });
+}
+function boundRoleSchema(packet) {
+  const schema = JSON.parse(JSON.stringify(ROLE_SCHEMA));
+  const subjects = statusSubjects(packet);
+  if (subjects.length === 1) {
+    schema.properties.statusSentence.required.push('playerId');
+    schema.properties.statusSentence.properties.playerId = { type: 'string', enum: [subjects[0].playerId] };
+    schema.properties.statusSentence.properties.text.description += ' Evidence-bound subject: ' + JSON.stringify(subjects[0]) + '. Never substitute the other player or call a provider roster a team-published chart.';
+  }
+  return schema;
+}
 function validate(answer, packet) {
   const errors = [], p = packet.players.find(p => p.id === answer?.selected), ids = new Set(packet.players.flatMap(p => p.facts.map(f => f.factId)));
   if (!answer || !(answer.selected === null || p)) errors.push("invalid_selection");
@@ -112,6 +133,11 @@ function validate(answer, packet) {
   }
   if (packet.requireCandidateStatusSentence) {
     if (!answer?.statusSentence?.text?.trim() || !Array.isArray(answer.statusSentence.factIds) || !answer.statusSentence.factIds.length) errors.push('missing_status_sentence');
+    const subjects = statusSubjects(packet);
+    if (subjects.length === 1) {
+      const subject = subjects[0], status = answer?.statusSentence;
+      if (status?.playerId !== subject.playerId || !subject.factIds.every(id => status?.factIds?.includes(id)) || !String(status?.text || '').toLowerCase().includes(subject.name.split(/\s+/).pop().toLowerCase()) || !/\bUNKNOWN\b/i.test(status?.text || '') || (subject.availabilityStatus === 'ACTIVE' && !/\bACTIVE\b/i.test(status?.text || ''))) errors.push('wrong_status_subject');
+    }
     if (typeof answer?.explanation === 'string' && answer.explanation.trim().split(/\s+/).length > 160) errors.push('role_explanation_too_long');
   }
   if (packet.requireBackfieldExplanation) errors.push(...require("./_super-sage-rookie-backfield-checks.js").validateBackfieldCoverage(answer, packet));
@@ -195,7 +221,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     ? (focused.packet.requireBackfieldExplanation ? ROLE_SYSTEM : GROUNDED_SYSTEM)
     : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
-  const schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? ROLE_SCHEMA : GROUNDED_SCHEMA) : SCHEMA;
+  const schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
   const maxTokens = focused.packet.requireBackfieldExplanation ? 750 : grounded ? 550 : 400;
   // Private grounded quality benchmark only; assess its full request time
@@ -298,4 +324,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema };
+module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema };

@@ -57,6 +57,7 @@ assert.ok(!/60-80|90-120|three connected sentences|20-25/.test(ROLE_SYSTEM), 'ro
 assert.ok(!/Will Shipley|Blake Corum|Barkley|Bigsby/.test(ROLE_SYSTEM), 'no player-specific preferred answer');
 assert.ok(ROLE_SCHEMA.required.includes('statusSentence'));
 const structuredInput = { ...input, statusSentence: {
+ playerId: 'B',
  text: 'Shipley is listed ACTIVE, but his own chart status is UNKNOWN.',
  factIds: ['B:availability', 'B:backfieldContext']
 }, explanationSentences: [
@@ -72,3 +73,13 @@ assert.deepEqual(validate(formattedStructured, explicitStatusPacket), []);
 assert.ok(validate({ ...formattedStructured, statusSentence: undefined }, explicitStatusPacket).includes('missing_status_sentence'));
 assert.ok(validate({ ...formattedStructured, explanation: formattedStructured.explanation + ' word'.repeat(161) }, explicitStatusPacket).includes('role_explanation_too_long'));
 console.log('Rookie grounded content: observed unit, named role attribution, plain status language, both usage baselines and own health uncertainty; either supported choice accepted. No provider calls or namespace changes.');
+
+const { boundRoleSchema } = require('../netlify/functions/_super-sage-shadow-fast-review');
+assert.deepEqual(boundRoleSchema(packet).properties.statusSentence.properties.playerId.enum, ['B']);
+assert.ok(validate({ ...formattedStructured, statusSentence: { ...formattedStructured.statusSentence, playerId: 'A' } }, explicitStatusPacket).includes('wrong_status_subject'));
+assert.ok(validate({ ...formattedStructured, statusSentence: { playerId: 'B', text: 'Corum has UNKNOWN chart status despite ACTIVE availability.', factIds: ['A:backfieldContext'] } }, explicitStatusPacket).includes('wrong_status_subject'));
+assert.ok(!validate({ ...answer, explanation: answer.explanation.replace('10 opportunities per game', 'a recent opportunity average of 10 per game') }, packet).includes('missing_observed_usage_comparison'));
+
+assert.ok(validateClaims({ explanation: "Corum's team-chart status is UNKNOWN per the cached roster." }, packet).includes('unsupported_team_chart_claim'));
+assert.ok(validateClaims({ explanation: 'Corum has Kyren Williams ahead of him.' }, packet).includes('unverified_backfield_role_order'));
+assert.ok(!validateClaims({ explanation: "Corum's cached roster status is UNKNOWN; we have no confirmed depth-chart order." }, packet).includes('unsupported_team_chart_claim'));
