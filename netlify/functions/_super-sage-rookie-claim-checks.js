@@ -4,6 +4,7 @@
 function validateClaims(answer, packet) {
   const errors = [];
   const text = [answer?.explanation, answer?.caveat, answer?.reconsider].filter(v => typeof v === "string").join("\n");
+  const currentText = [answer?.explanation, answer?.caveat].filter(v => typeof v === "string").join("\n");
   const facts = (packet.players || []).flatMap(p => p.facts || []);
   const hasFloor = facts.some(f => f.field === "projection" && Number.isFinite(f.value?.floor));
   const floorClaims = [...text.matchAll(/\b(?:better|safer|higher|stronger|best|highest|(?:more\s+)?(?:dependable|reliable|consistent))\s+(?:(?:scoring|volume)\s+)?floor(?:\s+play)?\b/gi)];
@@ -17,11 +18,20 @@ function validateClaims(answer, packet) {
   const cleanerProjectionClaims = [...text.matchAll(/\bcleaner\s+projection(?:\s+edge)?\b/gi)];
   if (cleanerProjectionClaims.some(m => !/\b(?:not|cannot|can't|doesn't|does not)\s+(?:(?:establish|prove|support|mean|imply|guarantee|demonstrate)\s+)?(?:a\s+|the\s+)?$/i.test(text.slice(Math.max(0, m.index - 80), m.index))) && !facts.some(f => f.field === "projectionQuality" && f.value?.verified === true)) errors.push("unsupported_projection_quality");
   // These packets do not establish how provider projections were adjusted.
-  if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
+  if (/\bprojection\s+(?:of\s+\d+(?:\.\d+)?\s+)?(?:already\s+)?(?:assumes|reflects|accounts for|incorporates|includes|factors in)\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
   if (/\b(?:projections?|estimates?|forecasts?)\s+(?:already\s+)?(?:don't|do not|doesn't|does not)\s+account for\b/i.test(text) && !facts.some(f => f.field === "projectionAdjustment" && f.value?.verified === true)) errors.push("unsupported_projection_adjustment");
-  if (/\b(?:is|fully|confirmed|clear|perfect|active and)\s+health(?:y)?\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
-  if (/\bhealthier\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
-  if (/\bclean bill of health\b/i.test(text) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\b(?:is|fully|confirmed|clear|perfect|active and)\s+health(?:y)?\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\bhealthier\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  if (/\bclean bill of health\b/i.test(currentText) && !facts.some(f => f.field === "healthConfirmation" && f.value?.verified === true)) errors.push("availability_overstated_as_health");
+  for (const player of packet.players || []) {
+    const context = player.facts?.find(f => f.field === "backfieldContext")?.value;
+    const chart = context?.reportedRoles;
+    const candidate = chart?.players?.find(p => p.listedRank === chart.candidateListedRank);
+    if (!candidate) continue;
+    const surname = String(player.name || "").split(/\s+/).pop();
+    if (currentText.split(/[.!?\n]/).some(s => candidate.status === "UNKNOWN" && s.toLowerCase().includes(surname.toLowerCase()) && /no injury (?:issues|concerns)|healthy|health cleared/i.test(s))) errors.push("availability_overstated_as_health");
+    if (currentText.split(/[.!?\n]/).some(s => s.toLowerCase().includes(surname.toLowerCase()) && /in line for more work|puts? .* (?:more work|increased workload)/i.test(s) && !/does not|doesn't|not establish/i.test(s))) errors.push("unverified_workload_increase");
+  }
   if (/\btrade\b/i.test(text) && !facts.some(f => /\btrade\b/i.test(JSON.stringify(f.value)))) errors.push("unsupported_trade_event");
   if (/\bboth\s+(?:players\s+)?(?:sit|are)\s+in\s+(?:the\s+)?flex\s+tier\b/i.test(text) && packet.players.some(p => p.facts?.find(f => f.field === "standing")?.value?.tier !== "FLEX")) errors.push("standing_tier_misrepresented");
   if (/\b(?:will|he'll|she'll)\s+(?:see|get|receive|have)\s+(?:more|at least\s+\d|\d)/i.test(text)) errors.push("guaranteed_future_workload");
@@ -59,7 +69,7 @@ function withClaimAssessment(review, packet) {
   const { validatePairVoice } = require('./_super-sage-shadow-voice.js');
   const claims = segments.map(segment => {
     const scoped = Array.isArray(segment.factIds) ? { ...packet, players: (packet.players || []).map(p => ({ ...p, facts: (p.facts || []).filter(f => segment.factIds.includes(f.factId)) })) } : packet;
-    const issues = [...new Set([...validateClaims({ explanation: segment.text }, scoped), ...validatePairVoice({ explanation: segment.text })])];
+    const issues = [...new Set([...validateClaims({ [segment.field]: segment.text }, scoped), ...validatePairVoice({ explanation: segment.text })])];
     if (packet.requireSentenceEvidence && segment.field === 'explanation') {
       const known = new Set((packet.players || []).flatMap(p => (p.facts || []).map(f => f.factId)));
       if (!Array.isArray(segment.factIds) || !segment.factIds.length || segment.factIds.length > 6 || !segment.factIds.every(id => known.has(id) && answer.factIds?.includes(id))) issues.push('invalid_sentence_evidence');
