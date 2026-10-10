@@ -3,12 +3,13 @@ const assert = require('node:assert/strict');
 const llm = require('../netlify/functions/_super-sage-shadow-llm');
 const { POST241, POST238_WARM, ROLE_SYSTEM, VERSION } = require('../netlify/functions/_super-sage-shadow-fast-review');
 const hash = llm.hash;
-assert.equal(hash(ROLE_SYSTEM), POST241.promptHash);
+assert.notEqual(hash(ROLE_SYSTEM), POST241.promptHash, "revised advice must not reuse the historical allowance");
 const packet = {request:{},players:[
  {name:'Blake Corum',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'LAR',roleOrderVerified:false,players:[{name:'Kyren Williams',sourceOrder:1},{name:'Blake Corum',sourceOrder:2}]}}]},
  {name:'Will Shipley',position:'RB',facts:[{field:'availability',value:{effectiveStatus:{status:'ACTIVE'},unavailable:false}},{field:'backfieldContext',value:{team:'PHI',reportedRoles:{candidateListedRank:3,players:[{name:'Will Shipley',listedRank:3,status:'UNKNOWN'}]}}}]}
 ]};
-llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : hash(value);
+// Simulate the recorded historical prompt only for this allowance regression.
+llm.hash = value => value === JSON.stringify(packet) ? POST241.parentEvidenceHash : value === ROLE_SYSTEM ? POST241.promptHash : hash(value);
 delete require.cache[require.resolve('../netlify/functions/_super-sage-shadow-fast-review')];
 const {runFastReview} = require('../netlify/functions/_super-sage-shadow-fast-review');
 const ownerHash=hash('owner'),decisionId=POST241.decisionId;
@@ -21,7 +22,7 @@ const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&
 let calls=0;
 const args={store,ownerHash,decisionId,caseId:'role-change',apiKey:'mock',fetchImpl:async(_url,o)=>{
  calls++;const req=JSON.parse(o.body),focused=JSON.parse(req.messages[0].content);
- assert.equal(hash(req.system),POST241.promptHash);assert.equal(hash(JSON.stringify(req.tools[0].input_schema)),POST241.schemaHash);assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.max_tokens,750);
+ assert.equal(llm.hash(req.system),POST241.promptHash);assert.equal(hash(JSON.stringify(req.tools[0].input_schema)),POST241.schemaHash);assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.max_tokens,750);
  assert.deepEqual(req.tools[0].input_schema.properties.statusSentence.properties.playerId.enum,['B']);
  assert.equal(focused.players[0].facts.find(f=>f.field==='backfieldContext').value.sourceType,'PROVIDER_ROSTER_UNORDERED');
  assert.equal(focused.requiredDisclosures.find(d=>d.type==='statusConflict').name,'Will Shipley');
