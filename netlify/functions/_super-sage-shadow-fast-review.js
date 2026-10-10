@@ -121,7 +121,7 @@ function requiredDisclosures(players) {
       const team = context.value.chartTeam;
       const candidate = roles.players?.find(p => p.listedRank === roles.candidateListedRank);
       if (candidate?.status === "UNKNOWN") out.push({ type: "statusConflict", playerId: player.id, name: candidate.name, team,
-        detail: `team-published chart status UNKNOWN${(availability?.value?.effectiveStatus?.status || availability?.value?.status) ? `; separate availability listing ${availability.value.status}` : ""}; not health confirmation`, factIds: [context.factId, availability?.factId].filter(Boolean) });
+        detail: `team-published chart status UNKNOWN${(availability?.value?.effectiveStatus?.status || availability?.value?.status) ? `; separate availability listing ${availability.value.effectiveStatus?.status || availability.value.status}` : ""}; not health confirmation`, factIds: [context.factId, availability?.factId].filter(Boolean) });
       const ahead = (roles.players || []).filter(p => p.listedRank < roles.candidateListedRank).map(p => ({ name: p.name, listedRank: p.listedRank, status: p.status }));
       if (ahead.length) out.push({ type: "chartAhead", playerId: player.id, team, backs: ahead, factIds: [context.factId] });
       if ((roles.notListedInChart || []).length) out.push({ type: "absentFromChart", playerId: player.id, team, names: roles.notListedInChart, factIds: [context.factId] });

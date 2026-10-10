@@ -25,6 +25,8 @@ const args={store,ownerHash,decisionId,caseId:'role-change',apiKey:'mock',fetchI
  assert.deepEqual(req.tools[0].input_schema.properties.statusSentence.properties.playerId.enum,['B']);
  assert.equal(focused.players[0].facts.find(f=>f.field==='backfieldContext').value.sourceType,'PROVIDER_ROSTER_UNORDERED');
  assert.equal(focused.requiredDisclosures.find(d=>d.type==='statusConflict').name,'Will Shipley');
+ assert.match(focused.requiredDisclosures.find(d=>d.type==='statusConflict').detail,/UNKNOWN.*ACTIVE/);
+ assert.ok(!o.body.includes('listing undefined'));
  assert.ok(!o.body.includes(POST241.requestId));
  return{ok:true,json:async()=>({id:'post241-result',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{selected:'B',confidence:'MEDIUM',statusSentence:{playerId:'B',text:'Shipley has UNKNOWN chart status despite ACTIVE availability.',factIds:['B:availability','B:backfieldContext']},explanationSentences:[{text:"I'd start Shipley, but his health is unknown.",factIds:['B:availability','B:backfieldContext']},{text:'Corum has no verified Rams depth order.',factIds:['A:backfieldContext']}],caveat:'Health is not confirmed.',reconsider:'Confirmed new pregame role reports.'}}]})};
 }};
