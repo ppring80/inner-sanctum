@@ -1,0 +1,27 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {hash}=require('../netlify/functions/_super-sage-shadow-llm');
+const {focusEvidence,runFastReview}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const packet={request:{scoring:'half'},players:[{playerId:'P1',name:'Back A',position:'RB',facts:[]},{playerId:'P2',name:'Receiver B',position:'WR',facts:[]}],slots:[{slotId:'S1',slotLabel:'FLEX',eligiblePositions:['RB','WR','TE'],candidateIds:['P1','P2']},{slotId:'S2',slotLabel:'RB',eligiblePositions:['RB'],candidateIds:['P1']}]};
+const frozen={packet,evidenceHash:hash(JSON.stringify(packet))},before=JSON.stringify(frozen);
+assert.throws(()=>focusEvidence(frozen,['Back A','Receiver B']),/position_mismatch/);
+const pair=focusEvidence(frozen,['Back A','Receiver B'],packet.slots[0]);
+assert.deepEqual(pair.packet.eligiblePositions,['RB','WR','TE']);assert.equal(pair.packet.slotId,'S1');assert.equal(JSON.stringify(frozen),before);
+assert.throws(()=>focusEvidence(frozen,['Back A','Receiver B'],packet.slots[1]),/slot_ineligible/);
+assert.throws(()=>focusEvidence(frozen,['Back A','Back A'],packet.slots[0]),/invalid_pair/);
+assert.throws(()=>focusEvidence(frozen,['Back A','Unknown'],packet.slots[0]),/unavailable/);
+const decisionId=hash('decision'),ownerHash=hash('owner'),data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:frozen}],['llm-fast-budget/2026-10-11',{spent:true}]]);let calls=0;
+const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return {modified:false};data.set(k,v);return {modified:true};}};
+const args={store,decisionId,ownerHash,now:new Date('2026-10-11T05:00:00Z'),apiKey:'mock',selection:{players:['Back A','Receiver B'],slotId:'S1'},fetchImpl:async()=>{calls++;throw Error('must not call');}};
+(async()=>{
+assert.equal((await runFastReview({...args,selection:{...args.selection,slotId:'S9'}})).error,'focused_pair_slot_unavailable');
+assert.equal((await runFastReview({...args,ownerHash:hash('other')})).error,'owned_frozen_evidence_unavailable');
+assert.equal((await runFastReview({...args,caseId:'role-change'})).error,'invalid_pair_selection');
+assert.equal((await runFastReview(args)).error,'daily_speed_benchmark_limit');assert.equal(calls,0);
+assert(![...data.keys()].some(k=>/repair|voice-check|model-check|drill-budget/.test(k)));
+assert.equal((await runFastReview(args)).error,'daily_speed_benchmark_limit');
+const fresh={...args,now:new Date('2026-10-12T05:00:00Z'),selection:{players:['Receiver B','Back A'],slotId:'S1'},fetchImpl:async(_url,o)=>{calls++;const body=JSON.parse(o.body),sent=JSON.parse(body.messages[0].content);assert.equal(body.model,'claude-sonnet-4-6');assert.equal(sent.slotId,'S1');assert.deepEqual(sent.eligiblePositions,['RB','WR','TE']);assert.deepEqual(sent.players.map(p=>p.name),['Receiver B','Back A']);assert.equal(body.max_tokens,550);throw Error('mock transport failure');}};
+await Promise.all([runFastReview(fresh),runFastReview(fresh)]);assert.equal(calls,1);await runFastReview(fresh);assert.equal(calls,1,'saved failed attempt cannot retry');
+assert.equal(JSON.stringify(frozen),before);
+console.log('Private selector: frozen exact names, recorded slot/candidate eligibility, mixed-position guard preserved, owner/hash, daily cap, no retry/exception/provider call.');
+})().catch(e=>{console.error(e);process.exitCode=1});

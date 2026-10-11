@@ -147,16 +147,23 @@ function requiredDisclosures(players) {
   }
   return out;
 }
-function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
+function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"], selectedSlot = null) {
+  if (!Array.isArray(targets) || targets.length !== 2 || targets.some(n => typeof n !== "string" || !n.trim()) || targets[0] === targets[1]) throw new Error("invalid_pair_selection");
   const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "observedOpportunity", "backfieldContext", "reportedRole", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
-    const p = frozen.packet.players.find(p => p.name === name);
+    const matches = frozen.packet.players.filter(p => p.name === name);
+    if (matches.length !== 1) throw new Error("focused_pair_unavailable");
+    const p = matches[0];
     if (!p || !["QB", "RB", "WR", "TE"].includes(p.position)) throw new Error("focused_pair_unavailable");
     return { id: i ? "B" : "A", name: p.name, position: p.position, facts: p.facts.filter(f => fields.has(f.field)).map(f => ({ ...f, factId: `${i ? "B" : "A"}:${f.field}` })) };
   });
-  if (players[0].position !== players[1].position) throw new Error("focused_pair_position_mismatch");
+  if (selectedSlot) {
+    if (!Array.isArray(selectedSlot.eligiblePositions) || players.some(p => !selectedSlot.eligiblePositions.includes(p.position))) throw new Error("focused_pair_slot_ineligible");
+    const originals = targets.map(name => frozen.packet.players.find(p => p.name === name));
+    if (!Array.isArray(selectedSlot.candidateIds) || originals.some(p => !selectedSlot.candidateIds.includes(p.playerId))) throw new Error("focused_pair_slot_ineligible");
+  } else if (players[0].position !== players[1].position) throw new Error("focused_pair_position_mismatch");
   players.forEach(presentBackfieldSource);
-  const packet = { scope: "FROZEN_PAIR_BENCHMARK", request: frozen.packet.request, eligiblePositions: [players[0].position], players };
+  const packet = { scope: "FROZEN_PAIR_BENCHMARK", request: frozen.packet.request, eligiblePositions: selectedSlot ? [...selectedSlot.eligiblePositions] : [players[0].position], players, ...(selectedSlot ? { slotId: selectedSlot.slotId, slotLabel: selectedSlot.slotLabel } : {}) };
   const disclosures = requiredDisclosures(players);
   if (disclosures.length) packet.requiredDisclosures = disclosures;
   const serialized = JSON.stringify(packet);
@@ -289,11 +296,13 @@ async function callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock,
     return { body: message, phases };
   } catch (e) { throw fail(e); }
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered" }) {
+async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
+  if (selection && (drill || caseId || !Array.isArray(selection.players) || selection.players.length !== 2 || typeof selection.slotId !== "string")) return { status: "UNAVAILABLE", error: "invalid_pair_selection" };
+  const selectionSuffix = selection ? `/selected/${hash(JSON.stringify(selection))}` : "";
   const timing = {};
-  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}${caseId === "role-change" ? "/fresh-role-change" : ""}`;
+  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}${caseId === "role-change" ? "/fresh-role-change" : ""}${selectionSuffix}`;
   let stage = clock();
   const [original, cached] = await Promise.all([
     store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" }),
@@ -373,7 +382,15 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     return { ...result, experiment: POST232.caseId, priorReviewRequestId: POST232.requestId };
   }
   let focused;
-  try { focused = drill ? drill.build(original.frozenEvidence) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
+  try {
+    const slots = selection ? original.frozenEvidence.packet.slots.filter(s => s.slotId === selection.slotId) : [];
+    if (selection && slots.length !== 1) throw new Error("focused_pair_slot_unavailable");
+    focused = drill ? drill.build(original.frozenEvidence) : selection ? focusEvidence(original.frozenEvidence, selection.players, slots[0]) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
+    if (selection) {
+      focused.packet.requireSentenceEvidence = true;
+      if (statusSubjects(focused.packet).length === 1) { focused.packet.requireBackfieldExplanation = true; focused.packet.requireCandidateStatusSentence = true; }
+      focused.evidenceHash = hash(JSON.stringify(focused.packet));
+    }
     if (!drill && caseId === "role-change") {
       focused.packet.requireSentenceEvidence = true;
       focused.packet.requireBackfieldExplanation = true;
@@ -427,7 +444,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   // it never resets the full-review or migration-recovery budgets.
   stage = clock();
   let budget = drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
-  if (!drill && !budget?.modified) {
+  if (!drill && !selection && !budget?.modified) {
     const previous = await store.get(`llm-fast/rookie-fast-pair-v1/${decisionId}/${ownerHash}`, { type: "json" });
     const dayBudget = await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { type: "json" });
     if (previous?.error === "provider_http_400" && previous.evidenceHash === focused.evidenceHash && dayBudget?.decisionId === decisionId) {
@@ -435,7 +452,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       base.repairOf = "rookie-fast-pair-v1";
     }
   }
-  if (!drill && !budget?.modified) {
+  if (!drill && !selection && !budget?.modified) {
     // One explicitly requested post-guidance check, tied to the same owned packet.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v2/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v3" && previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash) {
@@ -443,7 +460,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       base.voiceCheckOf = "rookie-fast-pair-v2";
     }
   }
-  if (!drill && !budget?.modified) {
+  if (!drill && !selection && !budget?.modified) {
     // One global explicitly requested latency experiment, without resetting history.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v3/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v4" && previous?.error === "ten_second_model_timeout" && previous.evidenceHash === focused.evidenceHash) {
@@ -451,7 +468,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       base.latencyCheckOf = "rookie-fast-pair-v3";
     }
   }
-  if (!drill && !budget?.modified) {
+  if (!drill && !selection && !budget?.modified) {
     // One global requested response-delivery test after the completed v4 benchmark.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v4/${decisionId}/${ownerHash}`, { type: "json" });
     if (VERSION === "rookie-fast-pair-v5" && previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash) {
@@ -459,7 +476,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       base.deliveryCheckOf = "rookie-fast-pair-v4";
     }
   }
-  if (!drill && !budget?.modified) {
+  if (!drill && !selection && !budget?.modified) {
     // One global same-prompt/evidence model comparison, explicitly requested.
     const previous = await store.get(`llm-fast/rookie-fast-pair-v5/${decisionId}/${ownerHash}`, { type: "json" });
     if (previous?.status === "REVIEW_READY" && previous.evidenceHash === focused.evidenceHash && previous.promptHash === hash(system)) {
