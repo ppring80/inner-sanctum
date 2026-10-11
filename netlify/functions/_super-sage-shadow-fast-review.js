@@ -148,7 +148,7 @@ function requiredDisclosures(players) {
   return out;
 }
 function focusEvidence(frozen, targets = ["Chris Godwin Jr.", "Jakobi Meyers"]) {
-  const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "observedOpportunity", "backfieldContext", "roleExpansion", "stateChanges", "uncertainty"]);
+  const fields = new Set(["standing", "projection", "matchup", "availability", "establishedRole", "observedOpportunity", "backfieldContext", "reportedRole", "roleExpansion", "stateChanges", "uncertainty"]);
   const players = targets.map((name, i) => {
     const p = frozen.packet.players.find(p => p.name === name);
     if (!p || !["QB", "RB", "WR", "TE"].includes(p.position)) throw new Error("focused_pair_unavailable");
