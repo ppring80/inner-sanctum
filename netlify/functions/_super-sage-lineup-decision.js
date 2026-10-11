@@ -189,9 +189,9 @@ function observedRoleEvidence(candidate, row, legacyOpp, signals, stateChanges, 
   const promotedExpansion = signals.filter((s) => s.decisionActive && s.direction === "up");
   const verifiedRoleChange = stateChanges.find((c) => c.type === "ROLE_CHANGE") || null;
   if (request.opportunity) {
-    return observedEvidenceFor(request.opportunity, { name: candidate.name, position: candidate.position || (row && row.position), promotedExpansion, verifiedRoleChange });
+    return observedEvidenceFor(request.opportunity, { name: candidate.name, position: candidate.position || (row && row.position), promotedExpansion, verifiedRoleChange, team: row?.team || candidate.team, season:request.season, week:request.week });
   }
-  const base = observedEvidenceFor(null, { name: candidate.name, position: candidate.position, promotedExpansion, verifiedRoleChange });
+  const base = observedEvidenceFor(null, { name: candidate.name, position: candidate.position, promotedExpansion, verifiedRoleChange, team: row?.team || candidate.team, season:request.season, week:request.week });
   if (!legacyOpp) return base;
   return {
     ...base,
