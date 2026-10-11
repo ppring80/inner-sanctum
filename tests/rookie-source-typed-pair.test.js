@@ -119,3 +119,6 @@ assert.equal(presented.providerRosterStatus, 'IR');
 assert.equal(presented.statusSource, 'Official transaction');
 assert.equal(presented.statusSourceUrl, 'https://example.test/transaction');
 assert.equal(presented.statusReportedAt, '2026-10-08T10:00:00Z');
+
+assert(!ROLE_SYSTEM.includes("unordered provider roster"));
+assert(ROLE_SYSTEM.includes("Corum\'s place in the Rams backfield is not confirmed"));
