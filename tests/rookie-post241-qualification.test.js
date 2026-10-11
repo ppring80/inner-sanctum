@@ -20,7 +20,7 @@ const initial=[[`evidence/${decisionId}/${ownerHash}`,evidence],[priorKey,prior]
 const data=new Map(initial),before=JSON.stringify(initial);
 const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true}}};
 let calls=0;
-const args={store,ownerHash,decisionId,caseId:'role-change',apiKey:'mock',fetchImpl:async(_url,o)=>{
+const args={store,ownerHash,decisionId,now:new Date('2026-10-10T21:00:00Z'),caseId:'role-change',apiKey:'mock',fetchImpl:async(_url,o)=>{
  calls++;const req=JSON.parse(o.body),focused=JSON.parse(req.messages[0].content);
  assert.equal(llm.hash(req.system),POST241.promptHash);assert.equal(hash(JSON.stringify(req.tools[0].input_schema)),POST241.schemaHash);assert.equal(req.model,'claude-sonnet-4-6');assert.equal(req.max_tokens,750);
  assert.deepEqual(req.tools[0].input_schema.properties.statusSentence.properties.playerId.enum,['B']);
