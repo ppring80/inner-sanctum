@@ -592,7 +592,7 @@ function decideLineup({ rankings, candidates, slots, scoring, season, week, regi
   const setAsideSoFar = new Set();
   expandSlots(slots).forEach((slot) => {
     const decision = slot.eligiblePositions.length === 1 ? decideFixedSlot(slot, pool) : decideFlexSlot(slot, pool, request);
-    if (!decision) { unfilled.push({ slotLabel: slot.slotLabel, eligiblePositions: slot.eligiblePositions }); return; }
+    if (!decision) { unfilled.push({ slotLabel: slot.slotLabel, eligiblePositions: slot.eligiblePositions, reason: "No eligible player with usable Weekly SAGE evidence is available for this slot." }); return; }
     if (decision.starter) pool = pool.filter((p) => p !== decision.starter);
     records.push({
       slotLabel: slot.slotLabel,
