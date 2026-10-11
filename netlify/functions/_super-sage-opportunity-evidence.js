@@ -155,7 +155,7 @@ const volumeLabel = (record) => {
  * Evidence for one player. `promotedExpansion` is supplied by the decision
  * layer from registry-promoted signals; nothing in observed data sets it.
  */
-function observedEvidenceFor(opportunity, { name, position, promotedExpansion = [], verifiedRoleChange = null }) {
+function observedEvidenceFor(opportunity, { name, position, promotedExpansion = [], verifiedRoleChange = null, team = null, season = null, week = null }) {
   const key = `${normalizeName(name)}|${String(position || "").toUpperCase()}`;
   const record = opportunity && opportunity.status === "AVAILABLE" ? opportunity.records[key] : null;
   const roleExpansion = {
@@ -180,8 +180,14 @@ function observedEvidenceFor(opportunity, { name, position, promotedExpansion = 
   const sample = signalValue(record, "sampleSize");
   const level = volumeLabel(record);
   const games = record.persistence && num(record.persistence.gamesSampled);
+  const recentGames = [...(record._rawGames || [])].sort((a,b) => Number(a.week)-Number(b.week)).slice(-3).map(g => ({gameID:g.gameID,week:Number(g.week),carries:num(g.carries),targets:num(g.targets),opportunities:num(g.opportunities)}));
+  const sampleContext = require("./_super-sage-usage-context").usageContext({name,team,position:String(position || "").toUpperCase(),season,week,games:recentGames,cutoff:opportunity.provenance?.decisionCutoff || opportunity.provenance?.computedAt});
   const observedOpportunity = {
     label: "observed",
+    recentGames,
+    sampleContext,
+    sampleRepresentativeness: sampleContext.length ? "REASSESS" : "NOT_ASSESSED",
+    interpretation: "Sample count and recent volume do not establish normal participation, player talent, or expected future workload. Context does not establish causation or an adjusted average.",
     lastGame: num(opp.lastGame),
     avgLast3: num(opp.avgLast3),
     avgLast5: num(opp.avgLast5),
