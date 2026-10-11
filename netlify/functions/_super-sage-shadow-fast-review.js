@@ -296,15 +296,15 @@ async function callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock,
     return { body: message, phases };
   } catch (e) { throw fail(e); }
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null }) {
+async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
   if (selection && (drill || caseId || !Array.isArray(selection.players) || selection.players.length !== 2 || typeof selection.slotId !== "string")) return { status: "UNAVAILABLE", error: "invalid_pair_selection" };
   const selectionSuffix = selection ? `/selected/${hash(JSON.stringify(selection))}` : "";
   const timing = {};
-  const key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}${caseId === "role-change" ? "/fresh-role-change" : ""}${selectionSuffix}`;
+  let key = drill ? `llm-drill/${drill.version}/${drill.caseId}/${decisionId}/${ownerHash}` : `llm-fast/${VERSION}/${decisionId}/${ownerHash}${caseId === "role-change" ? "/fresh-role-change" : ""}${selectionSuffix}`;
   let stage = clock();
-  const [original, cached] = await Promise.all([
+  let [original, cached] = await Promise.all([
     store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" }),
     store.get(key, { type: "json" })
   ]);
@@ -387,6 +387,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     if (selection && slots.length !== 1) throw new Error("focused_pair_slot_unavailable");
     focused = drill ? drill.build(original.frozenEvidence) : selection ? focusEvidence(original.frozenEvidence, selection.players, slots[0]) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
     if (selection) {
+      focused = await require("./_super-sage-usage-replay").supplementUsageReplay(focused,{parentEvidenceHash:original.frozenEvidence.evidenceHash,capturedAt:original.capturedAt,loadSnapshot:loadUsageSnapshot});
       focused.packet.requireSentenceEvidence = true;
       if (statusSubjects(focused.packet).length === 1) { focused.packet.requireBackfieldExplanation = true; focused.packet.requireCandidateStatusSentence = true; }
       focused.evidenceHash = hash(JSON.stringify(focused.packet));
@@ -432,10 +433,18 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (drill?.caseId === POST246.caseId && (transport !== 'stream' || hash(system) !== POST246.promptHash || hash(JSON.stringify(schema)) !== POST246.schemaHash || maxTokens > POST246.maxOutputTokens || deadlineMs !== POST246.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST246.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (drill?.caseId === POST248.caseId && (transport !== 'stream' || hash(system) !== POST248.promptHash || hash(JSON.stringify(schema)) !== POST248.schemaHash || maxTokens > POST248.maxOutputTokens || deadlineMs !== POST248.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST248.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (drill?.caseId === FINAL_VOICE.caseId && (transport !== 'stream' || hash(system) !== FINAL_VOICE.promptHash || hash(JSON.stringify(schema)) !== FINAL_VOICE.schemaHash || maxTokens > FINAL_VOICE.maxOutputTokens || deadlineMs !== FINAL_VOICE.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > FINAL_VOICE.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
+  if (selection) {
+    key += `/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(schema))}))}`;
+    cached = await store.get(key,{type:"json"});
+  }
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), ...(focused.packet.replay ? {replay:focused.packet.replay,customerEligible:false} : {}), rules: RULES };
+  if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
+  // A denied daily budget is not a provider attempt or a review reservation.
+  // The atomic budget acquisition below remains the concurrency authority.
+  if (selection && await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`,{type:"json"})) return {...base,status:"UNAVAILABLE",error:"daily_speed_benchmark_limit",nextBudgetResetAt:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toISOString()};
   stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   timing.reservationMs = Math.round(clock() - stage);
