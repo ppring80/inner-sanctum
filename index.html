@@ -55,6 +55,20 @@ body{background:var(--bg);color:var(--text);font-family:'Lora',Georgia,serif;fon
 .hero-stat-num{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:600;color:var(--gold-lt);display:block}
 .hero-stat-lbl{font-size:11px;letter-spacing:3px;color:rgba(240,230,204,0.5);text-transform:uppercase;font-family:'JetBrains Mono',monospace}
 
+/* Compact founding offer, visible before the long homepage tour */
+.hero-join{max-width:600px;margin:0 auto 26px;padding:16px 20px;background:rgba(201,168,76,.09);border:1px solid rgba(201,168,76,.48);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left}
+.hero-join-copy{color:#f0e6cc;font-size:14px;line-height:1.45}
+.hero-join-copy strong{display:block;font-family:'Cinzel',serif;letter-spacing:.7px;color:var(--gold-lt);font-size:13px}
+.hero-join-copy span{display:block;color:rgba(240,230,204,.72);font-size:12px;margin-top:4px}
+.hero-join-link{display:inline-block;flex-shrink:0;background:var(--gold-lt);color:#160f06;text-decoration:none;border-radius:6px;padding:11px 17px;font-family:'Cinzel',serif;font-size:12px;font-weight:700;letter-spacing:.5px;text-align:center}
+.hero-join-link:hover,.hero-join-link:focus-visible{background:#e2be62;outline:2px solid #f0e6cc;outline-offset:2px}
+@media(max-width:600px){
+  .hero-join{padding:14px;gap:11px;flex-direction:column;text-align:center;margin-bottom:18px}
+  .hero-join-link{width:100%;padding:11px 14px}
+  .hero{padding-top:34px}
+  .hero-sub{margin-bottom:20px}
+}
+
 /* ── SECTIONS ── */
 .section{padding:80px 40px}
 .section-alt{background:var(--bg2)}
@@ -246,6 +260,14 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
   <h1>Dominate Your Draft.<br><span>Win Your League.</span></h1>
   <div class="hero-kicker">Draft Smarter. Talk Trash Harder.</div>
   <p class="hero-sub">AI-powered fantasy football intelligence built around your league — draft strategy, rankings, lineup decisions, player analysis and more, on The Inner Sanctum and inside ChatGPT.</p>
+  <div class="hero-join">
+    <div class="hero-join-copy">
+      <strong>Founding membership · $7.99/mo</strong>
+      Get more from your fantasy season.
+      <span>First 100 members · $9.99/mo thereafter · Cancel anytime</span>
+    </div>
+    <a href="/join" class="hero-join-link" aria-label="Become a founding member for $7.99 per month">Become a Member →</a>
+  </div>
   <div class="hero-btns">
     <a href="/sanctum" class="btn-hero-primary">Try It Free</a>
     <a href="/sage" class="btn-hero-secondary">See SAGE Weekly Rankings</a>
@@ -647,12 +669,12 @@ src="https://www.facebook.com/tr?id=1748852649483750&ev=PageView&noscript=1"
         <div class="price-period">First 100 members only · $9.99/mo after</div>
         <div class="price-features">
           <div class="price-feature">Everything in Apprentice</div>
-          <div class="price-feature">The Analyst persona</div>
-          <div class="price-feature">Sleeper league connection</div>
-          <div class="price-feature">Auction War Room</div>
-          <div class="price-feature">Oracle Tier List</div>
-          <div class="price-feature">Draft Command Center</div>
-          <div class="price-feature">Weekly Rankings (all three voices)</div>
+          <div class="price-feature">The Analyst: a data-focused perspective</div>
+          <div class="price-feature">Connect your Sleeper league</div>
+          <div class="price-feature">Auction War Room: track bids and budget</div>
+          <div class="price-feature">Oracle tiers: compare player values</div>
+          <div class="price-feature">Draft Command Center: plan each pick</div>
+          <div class="price-feature">Weekly rankings: make start/sit calls with three perspectives</div>
           <div class="price-feature">Priority support</div>
           <div class="price-feature">Locked-in founding price forever</div>
         </div>
