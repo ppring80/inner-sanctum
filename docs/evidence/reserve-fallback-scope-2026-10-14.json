@@ -1,0 +1,42 @@
+{
+  "scope": "Per-player reserve safety; IR/PUP/NFI restrictions, explicit exits and team-scoped departures. Unrelated source failures do not block supported evidence.",
+  "reportedAt": "2026-10-14T04:28:33.070017+00:00",
+  "baseline": {
+    "checkedAt": "2026-10-10T08:50:17.079Z",
+    "records": 74,
+    "fileSha256": "6e84d0b64071f29eb8a7cd310a67660632616c3f544ae38bb0c13807ec77aa8c",
+    "immutable": true
+  },
+  "qualification": {
+    "suitesPassed": 307,
+    "suitesTotal": 307,
+    "wholeLeagueAnnouncementCoveragePassed": false,
+    "productionEnabled": false,
+    "customerReadGateDefault": "OFF"
+  },
+  "collection": {
+    "rosterFirst": true,
+    "maxRequests": 360,
+    "deadlineMinutes": 12,
+    "minimumRequestIntervalMilliseconds": 1000,
+    "writes": "Independent observations and immutable attempt records; qualified history preserved"
+  },
+  "customerReads": {
+    "scope": "Matching team, name and position; current requested week only",
+    "restrictions": "Preserve verified reserve evidence, retain gaps and unknown placement dates",
+    "exits": "Explicit, identity-verified, fresh and conflict-free; never infer health",
+    "departures": "Apply only to the departed team, without assuming availability with a new team",
+    "gates": [
+      "OFFICIAL_CLUB_COLLECTION_ENABLED",
+      "OFFICIAL_CLUB_CUSTOMER_READS_ENABLED"
+    ]
+  },
+  "liveLimitations": [
+    "Washington 20-card index did not reach the October 1 boundary",
+    "Indianapolis live network access rejected by environment policy; San Francisco not reached",
+    "Full league-wide announcement coverage is not established"
+  ],
+  "statisticalReliabilityClaim": null,
+  "tank01Calls": 0,
+  "anthropicCalls": 0
+}

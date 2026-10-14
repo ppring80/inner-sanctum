@@ -1,0 +1,723 @@
+{
+  "scope": "Replay of 83 current official Eagles sources; no production writes",
+  "team": "PHI",
+  "coveragePassed": true,
+  "historyComplete": false,
+  "discovery": {
+    "since": "2026-10-01",
+    "chronological": true,
+    "boundaryReached": true,
+    "seenUrls": [
+      "https://www.philadelphiaeagles.com/news/eagles-sign-t-xavier-truss-and-dt-zion-wilson-to-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/spadaro-britain-covey-continues-to-embrace-contact",
+      "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-knows-our-job-is-to-get-up-and-keep-fighting",
+      "https://www.philadelphiaeagles.com/news/spadaro-6-observations-from-a-hard-fought-loss-to-the-jaguars-in-london",
+      "https://www.philadelphiaeagles.com/news/game-recap-eagles-at-jaguars-2026-nfl-week-6-nfl-international-game-london-jalen-hurts-trevor-lawrence",
+      "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-inactives-2026-nfl-week-6-london-international-game-saquon-barkley-lane-johnson",
+      "https://www.philadelphiaeagles.com/news/game-preview-at-jaguars-6-storylines-to-follow-jordan-mailata-jalen-hurts-trevor-lawrence-travis-hunter-2026-nfl-week-6-london-international-game",
+      "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-jaguars-2026-nfl-week-5-london-international-game-cooper-dejean-trevor-lawrence-travis-hunter",
+      "https://www.philadelphiaeagles.com/news/eagles-elevate-zach-ertz-john-ojukwu-jaguars-in-london-2026-nfl-week-5-international-game",
+      "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-visa-tim-gushue-shawnee-high-school",
+      "https://www.philadelphiaeagles.com/news/the-road-to-the-eagles-began-in-england-for-joshua-weru-london-jaguars-2026-nfl-week-5",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-jake-majors-and-carson-steele",
+      "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-injury-report-2026-nfl-week-5-london-international-game-saquon-barkley-devonta-smith",
+      "https://www.philadelphiaeagles.com/news/jeffrey-lurie-announces-670-000-in-funding-for-london-based-autism-research",
+      "https://www.philadelphiaeagles.com/news/by-the-numbers-eagles-at-jaguars-2026-nfl-week-5-london-international-game-devonta-smith-trevor-lawrence",
+      "https://www.philadelphiaeagles.com/news/this-scottish-classroom-fell-in-love-with-the-eagles-from-across-the-pond",
+      "https://www.philadelphiaeagles.com/news/spadaro-jalen-hurts-and-the-eagles-offense-embrace-next-man-up-mentality",
+      "https://www.philadelphiaeagles.com/news/spadaro-cam-jurgens-trade-provides-a-unique-win-now-win-later-situation",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-dameon-pierce-to-the-active-roster-erik-ezukanma-to-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/eagles-agree-to-trade-cam-jurgens-to-the-ravens",
+      "https://www.philadelphiaeagles.com/news/astronaut-christina-koch-eagles-weekend-was-out-of-this-world",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-james-brockermeyer-to-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/eagles-name-paylocity-as-new-hr-and-payroll-provider",
+      "https://www.philadelphiaeagles.com/news/eagles-place-rb-tank-bigsby-on-injured-reserve-release-lb-anfernee-orji-from-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/lane-johnson-announces-his-retirement",
+      "https://www.philadelphiaeagles.com/news/darius-cooper-is-doing-it-the-right-way-on-and-off-the-field",
+      "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-is-no-stranger-to-adversity-2026-nfl-week-5-jaguars-london",
+      "https://www.philadelphiaeagles.com/news/nick-sirianni-reacts-to-sunday-24-20-loss-to-the-rams-2026-nfl-week-4",
+      "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-recap-october-4-2026-nfl-week-4-regular-season-jalen-hurts-matthew-stafford",
+      "https://www.philadelphiaeagles.com/news/rams-vs-eagles-inactives-week-4-2026-zack-baun-devonta-smith",
+      "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-preview-6-storylines-to-follow-2026-week-4-nfl-regular-season-jalen-hurts-saquon-barkley-matthew-stafford",
+      "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-rams-vs-eagles-2026-nfl-week-4-aaron-donald-matthew-stafford",
+      "https://www.philadelphiaeagles.com/news/eagles-elevate-josiah-deguara-zach-ertz-for-rams-2026-nfl-week-4",
+      "https://www.philadelphiaeagles.com/news/makai-lemon-is-ready-to-face-his-hometown-team",
+      "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-humberto-ayala-millville-high-school",
+      "https://www.philadelphiaeagles.com/news/rams-vs-eagles-injury-report-2026-nfl-week-4-devonta-smith-puka-nacua",
+      "https://www.philadelphiaeagles.com/news/spadaro-offense-knows-rams-defense-presents-a-ton-of-talent",
+      "https://www.philadelphiaeagles.com/news/rams-vs-eagles-by-the-numbers-2026-nfl-week-4-jalen-hurts-saquon-barkley",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-lb-anfernee-orji-to-practice-squad",
+      "https://www.philadelphiaeagles.com/news/spadaro-vic-fangio-knows-a-tough-assignment-awaits-vs-rams-on-sunday-2026-nfl-week-4-matthew-stafford-puka-nacua",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-dt-gabe-hall-to-the-practice-squad-2026-nfl-week-3-rams",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-db-kenny-moore-ii-to-the-active-roster",
+      "https://www.philadelphiaeagles.com/news/eagles-quiz-week-4-nfl-can-you-name-these-former-eagles-who-played-for-the-rams",
+      "https://www.philadelphiaeagles.com/news/spadaro-how-can-eagles-get-back-on-winning-track-2026-week-3-monday-night-football",
+      "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-recap-september-28-2026-nfl-week-3-regular-season-monday-night-football",
+      "https://www.philadelphiaeagles.com/news/eagles-at-bears-inactives-week-3-2026-nfl-regular-season-monday-night-football-caleb-williams",
+      "https://www.philadelphiaeagles.com/news/eagles-elevate-chance-campbell-zach-ertz-for-monday-night-football-chicago-bears-2026-nfl-regular-season-week-3",
+      "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-preview-6-storylines-to-follow-2026-week-3-nfl-regular-season-monday-night-football-jalen-hurts-caleb-williams",
+      "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-bears-2026-nfl-week-3-monday-night-football",
+      "https://www.philadelphiaeagles.com/news/eagles-at-bears-injury-report-2026-nfl-week-3-monday-night-football-caleb-williams-saquon-barkley",
+      "https://www.philadelphiaeagles.com/news/55-years-later-veterans-stadium-is-memorable-for-one-reason",
+      "https://www.philadelphiaeagles.com/news/kenny-moore-ii-i-m-going-to-give-you-all-i-got",
+      "https://www.philadelphiaeagles.com/news/zach-ertz-eagles-tight-end-its-special-to-be-back-2026-nfl-week-3-monday-night-football",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-shaun-wade-to-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-aleem-medley-benjamin-franklin",
+      "https://www.philadelphiaeagles.com/news/caleb-williams-or-not-the-eagles-defense-wont-change-its-preparation",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-kenny-moore-to-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/jalen-hurts-eagles-do-what-it-takes-to-win",
+      "https://www.philadelphiaeagles.com/news/eagles-release-gabe-hall-from-the-practice-squad",
+      "https://www.philadelphiaeagles.com/news/eagles-sign-zach-ertz-super-bowl-lii-champion-three-time-pro-bowl-tight-end",
+      "https://www.philadelphiaeagles.com/news/aaa-official-review-darius-cooper-game-winning-touchdown-eagles-at-titans",
+      "https://www.philadelphiaeagles.com/news/spadaro-the-eagles-wide-receivers-they-are-delivering-devonta-smith-dontayvion-wicks-darius-cooper",
+      "https://www.philadelphiaeagles.com/news/jalen-hurts-was-composed-when-it-mattered-most",
+      "https://www.philadelphiaeagles.com/news/eagles-6-takeaways-from-an-incredible-come-from-behind-win-over-the-titans-jalen-hurts-devonta-smith-2026-nfl-week-2",
+      "https://www.philadelphiaeagles.com/news/eagles-at-titans-game-recap-september-20-2026-nfl-week-2-regular-season",
+      "https://www.philadelphiaeagles.com/news/eagles-at-titans-inactives-week-2-2026-nfl-regular-season",
+      "https://www.philadelphiaeagles.com/news/eagles-game-preview-at-titans-6-storylines-to-follow-2026-week-2-nfl-regular-season",
+      "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-titans-2026-week-2",
+      "https://www.philadelphiaeagles.com/news/eagles-elevate-maximus-pulley-for-game-at-titans",
+      "https://www.philadelphiaeagles.com/news/get-to-know-jonathan-jones-dancing-with-the-stars-edition",
+      "https://www.philadelphiaeagles.com/news/eagles-at-titans-injury-report-jalen-carter-cooper-dejean-2026-nfl-week-2-regular-season",
+      "https://www.philadelphiaeagles.com/news/can-you-name-the-eagles-offense-from-the-last-time-we-faced-the-titans",
+      "https://www.philadelphiaeagles.com/news/spadaro-defense-looks-to-carry-the-energy-the-vibe-into-sunday-s-clash-with-the-titans",
+      "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-don-richardson-west-catholic",
+      "https://www.philadelphiaeagles.com/news/dallas-goedert-does-it-all-and-does-it-well-for-the-eagles",
+      "https://www.philadelphiaeagles.com/news/the-eagles-are-not-the-only-philadelphia-football-team-playing-on-sunday-special-olympics-flag-football",
+      "https://www.philadelphiaeagles.com/news/zack-baun-named-nfc-defensive-player-of-the-week-2026-week-1-commanders",
+      "https://www.philadelphiaeagles.com/news/spadaro-without-landon-dickerson-the-eagles-offensive-line-will-lean-on-youth",
+      "https://www.philadelphiaeagles.com/news/roster-moves-eagles-sign-britain-covey-place-landon-dickerson-on-injured-reserve",
+      "https://www.philadelphiaeagles.com/news/aaa-official-review-a-jalen-hurts-appreciation-post-2026-week-1-commanders"
+    ],
+    "overlapAnchorSeen": false,
+    "unresolved": [],
+    "corroborated": [
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-inactives-2026-nfl-week-6-london-international-game-saquon-barkley-lane-johnson",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Barkley didn't practice all week and will be inactive, while Bigsby was placed on Injured reserve.",
+        "articleDate": "2026-10-11",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-06",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-sign-jake-majors-and-carson-steele",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Steele joins Dameon Pierce as the two running backs signed to the active roster this week after injuries to Saquon Barkley and Tank Bigsby - the latter of whom was placed on Injured Reserve.",
+        "articleDate": "2026-10-09",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-06",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-injury-report-2026-nfl-week-5-london-international-game-saquon-barkley-devonta-smith",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Running back Tank Bigsby was also put on injured reserve after suffering an injury later in the game.",
+        "articleDate": "2026-10-09",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-06",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-sign-dameon-pierce-to-the-active-roster-erik-ezukanma-to-the-practice-squad",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "One day after the Eagles placed running back Tank Bigsby on Injured Reserve, the team filled his spot on the 53-man roster with another running back \u2013 Dameon Pierce from the practice squad.",
+        "articleDate": "2026-10-07",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-06",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-agree-to-trade-cam-jurgens-to-the-ravens",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Following the season-opening win over Washington, Jurgens moved from center over to left guard after Landon Dickerson was placed on Injured Reserve.",
+        "articleDate": "2026-10-07",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+          "name": "Landon Dickerson",
+          "team": "PHI",
+          "position": "G",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-09-15",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Signed WR Britain Covey to the active roster from the practice squad. Signed TE Josiah Deguara to the practice squad. Placed G Landon Dickerson on Injured Reserve.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/eagles-place-rb-tank-bigsby-on-injured-reserve-release-lb-anfernee-orji-from-the-practice-squad",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "The Eagles announced on Tuesday that the team has placed running back Tank Bigsby on Injured Reserve.",
+        "articleDate": "2026-10-06",
+        "matchedEvent": {
+          "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+          "observedAt": "2026-10-14T03:07:30.404Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-06",
+          "publishedAt": null,
+          "source": "Eagles official transaction history",
+          "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+          "customerEligible": false
+        },
+        "createsEvent": false
+      }
+    ],
+    "excluded": [
+      {
+        "sourceUrl": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-inactives-week-4-2026-zack-baun-devonta-smith",
+        "reason": "EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "On the offensive side, Rams tight end Terrance Ferguson was placed on Injured Reserve on Friday with an ankle injury.",
+        "articleDate": "2026-10-04",
+        "classification": "EXPLICIT_OPPONENT_CONTEXT",
+        "createsEvent": false
+      }
+    ],
+    "quarantined": [
+      {
+        "reason": "EAGLES_TABLE_SUBJECT_UNVERIFIED",
+        "text": "Signed C Zeke Correll and WR Brandon Hayes. Placed CB Tariq Castro-Fields on Injured Reserve. Waived WR Johnny Wilson with an injury designation.",
+        "names": [
+          "Tariq Castro-Fields"
+        ],
+        "reportedAt": "2026-08-21",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "status": null,
+        "createsEvent": false,
+        "customerEligible": false
+      },
+      {
+        "reason": "EAGLES_TABLE_SUBJECT_UNVERIFIED",
+        "text": "Signed DT David Blay, RB Ja'Quinden Jackson, and OLB Tarron Jackson. Placed RB Elijah Mitchell on Injured Reserve. Waived G Jaeden Roberts and TE Dae'Quan Wright.",
+        "names": [
+          "Elijah Mitchell"
+        ],
+        "reportedAt": "2026-08-10",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "status": null,
+        "createsEvent": false,
+        "customerEligible": false
+      }
+    ]
+  },
+  "events": [
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+      "name": "Tank Bigsby",
+      "team": "PHI",
+      "position": "RB",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-06",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+      "name": "Landon Dickerson",
+      "team": "PHI",
+      "position": "G",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-15",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Signed WR Britain Covey to the active roster from the practice squad. Signed TE Josiah Deguara to the practice squad. Placed G Landon Dickerson on Injured Reserve.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/eli-stowers/",
+      "name": "Eli Stowers",
+      "team": "PHI",
+      "position": "TE",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-12",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Elevated WR Britain Covey from the practice squad for Sunday's game against the Washington Commanders. Placed TE Eli Stowers on Injured Reserve.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jakorian-bennett/",
+      "name": "Jakorian Bennett",
+      "team": "PHI",
+      "position": "CB",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-08-30",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/grant-calcaterra/",
+      "name": "Grant Calcaterra",
+      "team": "PHI",
+      "position": "TE",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-08-30",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tucker-large/",
+      "name": "Tucker Large",
+      "team": "PHI",
+      "position": "S",
+      "section": "Reserve/Non-Football Injury",
+      "status": "NFI",
+      "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+      "observedAt": "2026-10-14T03:07:30.404Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-05-05",
+      "publishedAt": null,
+      "source": "Eagles official transaction history",
+      "sourceText": "Signed LB Isiah King. Waived S Tucker Large with an injury designation and placed him on the Reserve/Non-Football Injury list.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    }
+  ],
+  "diagnostics": [],
+  "conflicts": [],
+  "sourceManifest": [
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-t-xavier-truss-and-dt-zion-wilson-to-the-practice-squad",
+      "sha256": "f76703e942a315f89c5dc4d0dbed2f5a308798f8a45980db118629e14257acdf"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-britain-covey-continues-to-embrace-contact",
+      "sha256": "469fd73dc2dc0b357c7c296867ab6ccbcfb697a51acad78820c042123c8caf28"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-knows-our-job-is-to-get-up-and-keep-fighting",
+      "sha256": "c6b2654063a94ab76044da31c76dcc754ad19f690f15c1619884c6a14438f880"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-6-observations-from-a-hard-fought-loss-to-the-jaguars-in-london",
+      "sha256": "394e51dbb15f28cc101de88f3bdde057754fac5b2a4cddaff5376e7ee624038b"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/game-recap-eagles-at-jaguars-2026-nfl-week-6-nfl-international-game-london-jalen-hurts-trevor-lawrence",
+      "sha256": "1290063fafd3893b9830631692f29e35f1e6e488906be78ffe23959f91500414"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-inactives-2026-nfl-week-6-london-international-game-saquon-barkley-lane-johnson",
+      "sha256": "deb808d4d85c5cc4413729d3964da3bce851a6672eeb54f5e78d2b13ddb71354"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/game-preview-at-jaguars-6-storylines-to-follow-jordan-mailata-jalen-hurts-trevor-lawrence-travis-hunter-2026-nfl-week-6-london-international-game",
+      "sha256": "25fbe429506695e831e075b6edef444e8cf9c97ad33bd84632e5c824637a66fc"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-jaguars-2026-nfl-week-5-london-international-game-cooper-dejean-trevor-lawrence-travis-hunter",
+      "sha256": "61bc5e7d7381c20038ef7a25c13a8a1079620ce8ea25c144dd08df5e5454763e"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-zach-ertz-john-ojukwu-jaguars-in-london-2026-nfl-week-5-international-game",
+      "sha256": "8ba50dca4e9744f2976959b063afc88de45d3df76b5f35dfd06689c3e25fe5ec"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-visa-tim-gushue-shawnee-high-school",
+      "sha256": "0968ae5c5d8a832ce273d58548d66a78b67dc3fd51957feed20a6891ef900379"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/the-road-to-the-eagles-began-in-england-for-joshua-weru-london-jaguars-2026-nfl-week-5",
+      "sha256": "a52dc423127cd088018ab7c8423b1714c907f79702638d2fff42323920bb2caa"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-jake-majors-and-carson-steele",
+      "sha256": "a74612de533e7a61f251b46b62a3b8baab0ae445643aba4b1764e36c997bfee0"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-injury-report-2026-nfl-week-5-london-international-game-saquon-barkley-devonta-smith",
+      "sha256": "2bf654c8a5a3b7cbdeb6e7afe03bf8b8994ff9c19ee4bd3f10ae00ff63eb85b3"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/jeffrey-lurie-announces-670-000-in-funding-for-london-based-autism-research",
+      "sha256": "a5f9d0b0668703e346085491ac927d77baf621e0c4aac2310649c2c369c25851"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/by-the-numbers-eagles-at-jaguars-2026-nfl-week-5-london-international-game-devonta-smith-trevor-lawrence",
+      "sha256": "6aaffb37f1d4cfb91d762e481ff8eacf5062cfe1dffe1b47fd4f63db9b2bfc96"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/this-scottish-classroom-fell-in-love-with-the-eagles-from-across-the-pond",
+      "sha256": "dd36ac81fc6294e5c25d2ea0dae3ddee7eb072a0ce81b7430c841edc8455323e"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-jalen-hurts-and-the-eagles-offense-embrace-next-man-up-mentality",
+      "sha256": "d77c3911aa41492adf1ce3cb042a8c43b12b5b24f6e8972553aa630dc4bdd613"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-cam-jurgens-trade-provides-a-unique-win-now-win-later-situation",
+      "sha256": "41f223673a3c8168df40c9edd7126993a1215311c40d008c337ff7bae448b1a4"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-dameon-pierce-to-the-active-roster-erik-ezukanma-to-the-practice-squad",
+      "sha256": "9e370007e9a0b10a69777b0cb454d9a57e5427a3a5c5c461eee189b18ea2f2cf"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-agree-to-trade-cam-jurgens-to-the-ravens",
+      "sha256": "8b6ca19fbb446ecc5bd1079ce3018b2ff02b07a2db9afb51254af92f5a3ef247"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/astronaut-christina-koch-eagles-weekend-was-out-of-this-world",
+      "sha256": "a64ca478577511bbcbd199c0a1ed42f0aa7983c84b893b3dd1d03b725e5e2c44"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-james-brockermeyer-to-the-practice-squad",
+      "sha256": "00717903d3874c675c5d2e4a9bf4946326baddf4a3f82fba61ca6f926641fb51"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-name-paylocity-as-new-hr-and-payroll-provider",
+      "sha256": "997ecb6d52d81c8078284d8e0ccb2c1201b222e5d8f946537d75561db3811f1b"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-place-rb-tank-bigsby-on-injured-reserve-release-lb-anfernee-orji-from-the-practice-squad",
+      "sha256": "1903318e3ec82e06c18aa2563a1dc94512eb693084ba8f3d5810897e91297411"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/lane-johnson-announces-his-retirement",
+      "sha256": "5dfb7dbfa5d52fd6d623d9492fcdcb58c0c607d14800ad86da7675074df1a914"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/darius-cooper-is-doing-it-the-right-way-on-and-off-the-field",
+      "sha256": "bbf240c89de96640d53f63df759cb3b12ad7db7340a9faf41bcc50514aabf093"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-is-no-stranger-to-adversity-2026-nfl-week-5-jaguars-london",
+      "sha256": "2082015c6f9b33926335f55391eb66fbc016421d0f4ac9daa533a8c9814caeea"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/nick-sirianni-reacts-to-sunday-24-20-loss-to-the-rams-2026-nfl-week-4",
+      "sha256": "e621c8c953a6668220cdc68d88bb791cc59c849b7a78c988220ff352188183b9"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-recap-october-4-2026-nfl-week-4-regular-season-jalen-hurts-matthew-stafford",
+      "sha256": "bd626ee15a16e8d933913e37dd1de96def4c66f9d5a422b286b345e9668f5a24"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-inactives-week-4-2026-zack-baun-devonta-smith",
+      "sha256": "35fc4b2fafabe80cf026f5133b483fe809d28d080611f0d83dbf2dd0aa746233"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-preview-6-storylines-to-follow-2026-week-4-nfl-regular-season-jalen-hurts-saquon-barkley-matthew-stafford",
+      "sha256": "f65aa2730c42d8c582280ce5c918e009e4c1adfa4f6bf358bf352178247ced97"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-rams-vs-eagles-2026-nfl-week-4-aaron-donald-matthew-stafford",
+      "sha256": "3628bb0d7a856bb8dd3aef3166dc4a1e2b839192c96bc0de56b29db5b7e84633"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-josiah-deguara-zach-ertz-for-rams-2026-nfl-week-4",
+      "sha256": "09c76068be8574e7a04d897a2695cbb7075cdf131b62123838e1055774be9d63"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/makai-lemon-is-ready-to-face-his-hometown-team",
+      "sha256": "af01185d543078db8529c1211da6947ca02c4a8c0609cbefb53b613901352b2c"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-humberto-ayala-millville-high-school",
+      "sha256": "683900532a17b8ea71017d9baebaaa49b422ee714650ff98f9f803e83f1da1ed"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-injury-report-2026-nfl-week-4-devonta-smith-puka-nacua",
+      "sha256": "79b41cfd4d0a3b90b5e0b425dfbb690c9c6f09e95df537fc0fa9c4954a20a336"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-offense-knows-rams-defense-presents-a-ton-of-talent",
+      "sha256": "0a94d6c3a0055c8adbe1acc774d24a94a033e3c38ccecc0de28078142cdfddff"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-by-the-numbers-2026-nfl-week-4-jalen-hurts-saquon-barkley",
+      "sha256": "7cbad70be944f866f9e1cc89a1843b8ab6729165bed9e651cd444392167e3871"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-lb-anfernee-orji-to-practice-squad",
+      "sha256": "fa334be6e53906070b01abc73534fecd5030bd587d19bbe4887dd84a7f2662a8"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-vic-fangio-knows-a-tough-assignment-awaits-vs-rams-on-sunday-2026-nfl-week-4-matthew-stafford-puka-nacua",
+      "sha256": "fc1a513064b177e1086f8a5f1618bca79794eaf98554d0b19d4e3f9d9d169fdf"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-dt-gabe-hall-to-the-practice-squad-2026-nfl-week-3-rams",
+      "sha256": "e143fa51332afd384654b8f79a1ddfa98093ff0c2afb54437837acd77cd471a6"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-db-kenny-moore-ii-to-the-active-roster",
+      "sha256": "499115ec8c065c6f558fcaf7e31df2cdb9ad11e1c1ca497a9504c377cf892554"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-quiz-week-4-nfl-can-you-name-these-former-eagles-who-played-for-the-rams",
+      "sha256": "152546f0ac00a343e54e9d466a04ef5ceafd7cf09fda63896fab50ac3cbe75f9"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-how-can-eagles-get-back-on-winning-track-2026-week-3-monday-night-football",
+      "sha256": "7ee2a6f06b0a5b69b90769743d06a4b73204c2345b8130e9cf75c3b2d9056a91"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-recap-september-28-2026-nfl-week-3-regular-season-monday-night-football",
+      "sha256": "5da177903f511a38b9040a8aa181e67e488c3191ad51c1e77003baa95ccf3327"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-inactives-week-3-2026-nfl-regular-season-monday-night-football-caleb-williams",
+      "sha256": "c866aa120d6bef2f1f5de213df5dfb0272340fa02ccc1b31027ed62c2bcdf61f"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-chance-campbell-zach-ertz-for-monday-night-football-chicago-bears-2026-nfl-regular-season-week-3",
+      "sha256": "944e9b61246306fc922d174006d0bb79d96b305c471aa9c158a344c25829696f"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-preview-6-storylines-to-follow-2026-week-3-nfl-regular-season-monday-night-football-jalen-hurts-caleb-williams",
+      "sha256": "eef1e51e6b2277e14d9164de10c4b57066f3a6984ce23eb53503980db5638de9"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-bears-2026-nfl-week-3-monday-night-football",
+      "sha256": "64cb882e7eeece1be74252088a2d3403abb744a98073ddd35d6bfb5cb592858c"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-injury-report-2026-nfl-week-3-monday-night-football-caleb-williams-saquon-barkley",
+      "sha256": "86c22700925412a50908d36f9dc03bfc75d6e49d98414218abfc779fe6b1f2d6"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/55-years-later-veterans-stadium-is-memorable-for-one-reason",
+      "sha256": "3a4f29462f9e5944ff508c9cdee9b343e63803e9b0b78080e69fe8effd6cd93b"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/kenny-moore-ii-i-m-going-to-give-you-all-i-got",
+      "sha256": "590bff3e1cc8b0ef6c0af2add893522d587ada8dbfbc47d695b2da8a1485684a"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/zach-ertz-eagles-tight-end-its-special-to-be-back-2026-nfl-week-3-monday-night-football",
+      "sha256": "69fdfa53aa06a2a76c06a837d0a0308d67156ba048cf73cbeef7d9480004730e"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-shaun-wade-to-the-practice-squad",
+      "sha256": "4f65bd954ac8622bedf50deb64f243e5df192272f5bd688c16596685472ac75b"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-aleem-medley-benjamin-franklin",
+      "sha256": "67e0e85d03fd1ef5a16f2b26f33837abb35c83b41939588d00e929f8fea941d1"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/caleb-williams-or-not-the-eagles-defense-wont-change-its-preparation",
+      "sha256": "c8a71a73ebdb81b837ce5f86086a33348d14be92c461c790010baf6f6a6c4f40"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-kenny-moore-to-the-practice-squad",
+      "sha256": "b4eb9174a43037339bd1ca4d43265e10ad33ac45f1262d9a7b8ce613de9fdb46"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/jalen-hurts-eagles-do-what-it-takes-to-win",
+      "sha256": "def90f363b921ed9b2bb6fb4104a96d3316ae1c0c96795a85c25ff64b1f50b32"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-release-gabe-hall-from-the-practice-squad",
+      "sha256": "32233c328caefb0bca7c4d5658008e380827d72febbcd1694a15dc480926dbff"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-sign-zach-ertz-super-bowl-lii-champion-three-time-pro-bowl-tight-end",
+      "sha256": "a340074d5c132de5b53388bea3cda3df1df3d25910d39eb663d2c904d2abf213"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/aaa-official-review-darius-cooper-game-winning-touchdown-eagles-at-titans",
+      "sha256": "df20dbba289b937c5707bd697875759c2c265ee161b97fe58b77e760cac7e25b"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-the-eagles-wide-receivers-they-are-delivering-devonta-smith-dontayvion-wicks-darius-cooper",
+      "sha256": "ec00584cc77b5bf42fa2799a3d0c66fc85e214345d454d02293563076672bc51"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/jalen-hurts-was-composed-when-it-mattered-most",
+      "sha256": "f450b0c1ee10b4b092948b011f41d4523fdc46c0d93b33834c0e890394ca942f"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-6-takeaways-from-an-incredible-come-from-behind-win-over-the-titans-jalen-hurts-devonta-smith-2026-nfl-week-2",
+      "sha256": "ac5668f306f94f4277b8cdd72b18f5398967e46d0447a1400b7cc0d475e8560d"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-game-recap-september-20-2026-nfl-week-2-regular-season",
+      "sha256": "7648340204e115af7f869e4c665820a33ef05549630b4c46119ad37206a58ba9"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-inactives-week-2-2026-nfl-regular-season",
+      "sha256": "39d2dd6823cb676a9f207e29e993d29135f503adbb97ee88427d0202aec77240"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-game-preview-at-titans-6-storylines-to-follow-2026-week-2-nfl-regular-season",
+      "sha256": "cf8db0625e5c9c1bace309447561cbf108e98783710a8eb4b9e4cf8a1203499a"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-titans-2026-week-2",
+      "sha256": "36b181848b1b8a2957017bc1ff524d6785cc919a9d1a560f7f87085ea59d99d5"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-maximus-pulley-for-game-at-titans",
+      "sha256": "9993072e061013e6eaf89925d2cc6651f9ba3bfc408917bee5bce4036923ffab"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/get-to-know-jonathan-jones-dancing-with-the-stars-edition",
+      "sha256": "56c5e1c6025d2351bed614553e8f07e6d339cecdbd2bb9629dd0083087129f7c"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-injury-report-jalen-carter-cooper-dejean-2026-nfl-week-2-regular-season",
+      "sha256": "0fe4168a89baa62ce169205e3c4856fb09c1844f7f15dfd7717c638f7f769ba3"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/can-you-name-the-eagles-offense-from-the-last-time-we-faced-the-titans",
+      "sha256": "0c99aabade40e9f4d58f275071fab6062ce1d55629f206a11ba0d6474d7c4fd1"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-defense-looks-to-carry-the-energy-the-vibe-into-sunday-s-clash-with-the-titans",
+      "sha256": "02c149560885a82e7a89b59a468d12858ca74f650966a7dbd153f914fb8b9bea"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-don-richardson-west-catholic",
+      "sha256": "9215a046a9ca95e2870439861af8b00ee349b091f23d05eb5c4b8dd5738e3a8f"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/dallas-goedert-does-it-all-and-does-it-well-for-the-eagles",
+      "sha256": "3adb7ef9cca384ebafa5fff397538f8f7a8f27e8c3e3d51bd7bd28579aa937ff"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/the-eagles-are-not-the-only-philadelphia-football-team-playing-on-sunday-special-olympics-flag-football",
+      "sha256": "7e5015e8fb6fb78fd6a7b5550353e58151b1c1de7e4d1f0fdd4b60e9e36a2469"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/zack-baun-named-nfc-defensive-player-of-the-week-2026-week-1-commanders",
+      "sha256": "0c50d25ba6b604a9d4a6713ee9524c904e8f1ca203c1faf70c8150c316601f26"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/spadaro-without-landon-dickerson-the-eagles-offensive-line-will-lean-on-youth",
+      "sha256": "4120ba64c2e9591a2818699a25ad0bb3ae37a373c9ae8531d1406813865cf442"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/roster-moves-eagles-sign-britain-covey-place-landon-dickerson-on-injured-reserve",
+      "sha256": "985b0d48f58d8edd1c45173f7c92ecb21331032a4849be948ad7ad440647f536"
+    },
+    {
+      "url": "https://www.philadelphiaeagles.com/news/aaa-official-review-a-jalen-hurts-appreciation-post-2026-week-1-commanders",
+      "sha256": "59edcfe38fd649d7e7d3262250071a43a0ea2e9c98f76e02dc1d522605b1ed12"
+    }
+  ],
+  "limitations": [
+    "Eagles-only bootstrap qualification; recurring live overlap not yet qualified.",
+    "Unmatched historical subjects retained without status promotion.",
+    "Roster membership and reserve exits do not establish health or workload."
+  ],
+  "productionEnabled": false
+}

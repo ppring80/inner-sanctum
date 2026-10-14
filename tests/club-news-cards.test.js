@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict'),{cardsFromProfile}=require('../netlify/functions/_club-news-cards');
+const eagles=fs.readFileSync(__dirname+'/fixtures/eagles-news-card-contract.html','utf8');
+const profile={team:'PHI',sourceUrl:'https://www.philadelphiaeagles.com/news/all',linkType:'latest-stories',count:80,moduleContract:{Selection:'latest-stories',Type:'stories',Count:80,Skip:0}};
+assert.equal(cardsFromProfile(eagles,profile).length,80);
+assert.throws(()=>cardsFromProfile(eagles.replace('1:80','2:80'),profile));
+assert.throws(()=>cardsFromProfile(eagles.replace('"Skip":0','"Skip":4'),profile));
+const chargers=fs.readFileSync(__dirname+'/fixtures/chargers-headline-card-contract.html','utf8');const paired={team:'LAC',sourceUrl:'https://www.chargers.com/news/transactions',linkType:'articles-transactions',count:60,featuredCount:4,moduleContract:{Selection:'articles-transactions',Type:'stories',Count:60,Skip:4}};
+assert.equal(cardsFromProfile(chargers,paired).length,64);
+assert.throws(()=>cardsFromProfile(chargers.replace(/<a class="d3-o-media-object[^>]*>[\s\S]*?<\/a>/,''),paired));
+assert.throws(()=>cardsFromProfile(eagles,{...profile,team:'DAL'}));
+console.log('PASS: shared exact contract, complete positions, featured prefix retained, mutation/source mismatches fail.');

@@ -41,7 +41,14 @@ const draftHtml = fs.readFileSync(path.join(__dirname, '../draft.html'), 'utf8')
 
 function extractMainScript(html) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  return scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const engine = scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const gate = scripts.find(script => script.includes('function isPreviewBlocked()'));
+  assert.ok(gate, 'Real preview guard script must be present');
+  // Load the actual action guards; navigation/OAuth startup is outside these
+  // direct engine tests and remains covered by the preview-gate suite.
+  const startup = gate.indexOf('(function initGate()');
+  assert.ok(startup > 0, 'Gate startup boundary must be present');
+  return gate.slice(0, startup) + '\n' + engine;
 }
 const mainScript = extractMainScript(draftHtml);
 
@@ -277,7 +284,7 @@ test('5. DRAFTED counts derive as zero after Reset', () => {
   assert.strictEqual(sandbox.draftState.draftLog.length, 0, 'DRAFTED count is derived directly from draftLog.length');
 });
 
-test('6. My Team contains only configured keepers after Reset', () => {
+test('6. My Team contains no former keepers after Reset', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
@@ -288,8 +295,8 @@ test('6. My Team contains only configured keepers after Reset', () => {
   sandbox.clearDrafted();
   sandbox.renderMyRoster();
   const html = sandbox.document.getElementById('rosterPanel').innerHTML;
-  assert.ok(html.includes('Kept Guy'), 'the keeper must still be present');
-  assert.ok(html.includes('My Team — 1 Player'), 'only the keeper remains -- the 2 live picks are gone');
+  assert.ok(!html.includes('Kept Guy'), 'the reset clears former keeper ownership');
+  assert.strictEqual(sandbox.draftState.keepers.length, 0, 'keepers and live picks are both cleared');
 });
 
 test('7. drafted ordinary players become available again after Reset', () => {
@@ -303,15 +310,17 @@ test('7. drafted ordinary players become available again after Reset', () => {
   assert.ok(sandbox.buildAvailablePlayersSortedByAdp().some((p) => p.name === 'WR Player 0'), 'must be available again');
 });
 
-test('8. keeper players remain unavailable after Reset', () => {
+test('8. former keeper players become available after Reset', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-02', player: 'Kept Guy', pos: 'WR', round: 1 }];
   seedPool(sandbox, { WR: 10 });
+  sandbox.adpByPos.WR.push({name:'Kept Guy',pos:'WR',team:'XXX',adp:11,key:sandbox.playerKey('Kept Guy','WR')});
+  assert.ok(!sandbox.buildAvailablePlayersSortedByAdp().some(p => p.name === 'Kept Guy'));
   sandbox.logDraftPick('WR Player 1', 'WR');
   sandbox.clearDrafted();
-  assert.ok(!sandbox.buildAvailablePlayersSortedByAdp().some((p) => p.name === 'Kept Guy'), 'keeper stays excluded from availability');
+  assert.ok(sandbox.buildAvailablePlayersSortedByAdp().some((p) => p.name === 'Kept Guy'), 'former keeper returns to availability');
 });
 
 test('9. Setup survives Reset unchanged', () => {
@@ -328,7 +337,7 @@ test('9. Setup survives Reset unchanged', () => {
   assert.strictEqual(sandbox.draftState.numRounds, 14);
 });
 
-test('10. keeper round assignments survive Reset unchanged', () => {
+test('10. keeper round assignments clear with Reset', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 14, 'team-14');
@@ -339,21 +348,19 @@ test('10. keeper round assignments survive Reset unchanged', () => {
   seedPool(sandbox, { WR: 10 });
   sandbox.logDraftPick('WR Player 0', 'WR');
   sandbox.clearDrafted();
-  assert.strictEqual(sandbox.draftState.keepers.length, 2);
-  assert.strictEqual(sandbox.draftState.keepers[0].round, 4);
-  assert.strictEqual(sandbox.draftState.keepers[1].round, 14);
+  assert.strictEqual(sandbox.draftState.keepers.length, 0);
+  assert.strictEqual(sandbox.draftState.nextKeeperId, 1);
 });
 
-test('11. Reset with a keeper occupying Pick 1 correctly advances to the first SELECTABLE pick, not a blind Pick 1', () => {
+test('11. Reset clears a keeper occupying Pick 1 and restores the first normal pick', () => {
   const sandbox = makeSandbox();
   runScript(sandbox);
   setupLeague(sandbox, 10, 'team-01');
   sandbox.draftState.keepers = [{ id: 1, teamId: 'team-01', player: 'Kept Guy', pos: 'WR', round: 1 }]; // occupies pick 1
   seedPool(sandbox, { WR: 10 });
   sandbox.clearDrafted();
-  assert.notStrictEqual(sandbox.nextPickNumber(), 1, 'pick 1 is a keeper slot -- must not be offered as selectable');
-  assert.strictEqual(sandbox.nextPickNumber(), 2, 'pick 2 (team-02) is the true first selectable pick');
-  assert.strictEqual(sandbox.teamOnClock(2), 'team-02');
+  assert.strictEqual(sandbox.nextPickNumber(), 1, 'the former keeper slot is selectable again');
+  assert.strictEqual(sandbox.teamOnClock(1), 'team-01');
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -367,6 +374,7 @@ test('12/13/15/16/17. Mock: start -> automated picks -> user pick -> Reset stops
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   const liveObjectRef = sandbox.draftState;
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 3, 'sanity: automation ran before the users turn');
   const myPick = sandbox.buildAvailablePlayersSortedByAdp()[0];
   sandbox.logDraftPick(myPick.name, myPick.pos);
@@ -386,10 +394,12 @@ test('14. no queued automation callback can make a post-reset pick (logic-level:
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   const generationDuringOldBatch = sandbox.mockAutomationGeneration;
   sandbox.clearDrafted();
   // A brand-new mock session, started quickly, must claim a NEW generation.
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.notStrictEqual(sandbox.mockAutomationGeneration, generationDuringOldBatch, 'a new batch must never reuse an old generation number');
 });
 
@@ -399,6 +409,7 @@ test('18. live localStorage contains the reset live state, NOT mock selections',
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox._storageData[sandbox.DRAFT_SAVE_KEY], undefined, 'sanity: mock never wrote the live key while active');
   sandbox.clearDrafted();
   const saved = JSON.parse(sandbox._storageData[sandbox.DRAFT_SAVE_KEY]);
@@ -411,6 +422,7 @@ test('19. browser reload/load simulation restores the clean reset state', () => 
   setupLeague(sandbox, 4, 'team-04');
   seedPool(sandbox, { QB: 10, RB: 20, WR: 20, TE: 10, K: 10, DEF: 10 });
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   sandbox.clearDrafted();
   const reloaded = sandbox.readSavedDraftState();
   assert.strictEqual(reloaded.draftLog.length, 0);
@@ -457,14 +469,13 @@ test('FLAGSHIP: full Reset acceptance -- 14-team snake, Slot 14, Pickens R4 + Jo
   assert.strictEqual(sandbox.draftState.numRounds, 14);
   assert.strictEqual(sandbox.draftState.draftType, 'snake');
 
-  // Keepers remain.
-  assert.strictEqual(sandbox.draftState.keepers.length, 2);
+  // Reset clears former keepers along with live picks.
+  assert.strictEqual(sandbox.draftState.keepers.length, 0);
 
-  // My Team = exactly the 2 keepers.
+  // Former keepers no longer appear in My Team.
   sandbox.renderMyRoster();
   const rosterHtml = sandbox.document.getElementById('rosterPanel').innerHTML;
-  assert.ok(rosterHtml.includes('My Team — 2 Players'));
-  assert.ok(rosterHtml.includes('George Pickens') && rosterHtml.includes('Quentin Johnston'));
+  assert.ok(!rosterHtml.includes('George Pickens') && !rosterHtml.includes('Quentin Johnston'));
 
   // DRAFTED (0).
   assert.strictEqual(sandbox.draftState.draftLog.length, 0);
@@ -478,9 +489,9 @@ test('FLAGSHIP: full Reset acceptance -- 14-team snake, Slot 14, Pickens R4 + Jo
   assert.strictEqual(sandbox.nextPickNumber(), 1);
   assert.strictEqual(sandbox.teamOnClock(1), 'team-01');
 
-  // The keeper engine still skips team-14's keeper rounds later, unchanged.
+  // Former keeper rounds no longer consume picks.
   const keeperSlots = sandbox.buildKeeperPickNumberSet();
-  assert.ok(keeperSlots[43] && keeperSlots[183]);
+  assert.ok(!keeperSlots[43] && !keeperSlots[183]);
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -502,6 +513,7 @@ async function runAsyncTests() {
   // between them, so a step() callback is guaranteed to still be
   // pending shortly after the first pick.
   sandbox.startMockDraft();
+  sandbox.confirmStartMockDraft();
   assert.strictEqual(sandbox.draftState.draftLog.length, 1, 'sanity: the first automated pick happens synchronously');
   assert.strictEqual(sandbox.mockAutomationRunning, true, 'sanity: a batch is genuinely still in-flight (next step is pending)');
 

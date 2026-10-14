@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {indexCards,publication}=require('../netlify/functions/_chargers-announcement-discovery');
+const saved=fs.readFileSync(path.join(__dirname,'fixtures/chargers-headline-card-contract.html'),'utf8');
+const cards=indexCards(saved);assert.equal(cards.length,64);assert.ok(cards[0].url.endsWith('activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026'));assert.ok(cards[3].url.includes('david-njoku'));assert.ok(cards[4].url.includes('hayden-rucci'));
+assert.throws(()=>indexCards(saved.replace('"Skip":4','"Skip":0')),/contract/);
+assert.throws(()=>indexCards(saved.replace(/<a class="d3-o-media-object[^>]*>[\s\S]*?<\/a>/,'')),/featured/);
+assert.throws(()=>indexCards(saved.replace('1:60','2:60')),/missing, duplicated/);
+assert.throws(()=>publication('<script type="application/ld+json">{"@type":"NewsArticle","datePublished":"bad"}</script>'),/publication/);
+console.log('PASS: real Chargers four-featured-plus-60 list, preserved first four announcements, skip/count changes, omitted cards, order and publication metadata.');

@@ -1,0 +1,84 @@
+{
+  "team": "LAC",
+  "deployed": false,
+  "customerEligible": false,
+  "discovery": {
+    "indexUrl": "https://www.chargers.com/news/all-news",
+    "observedAt": "2026-10-13T02:20:12.593Z",
+    "requests": 81,
+    "listedCards": 80,
+    "allDatesVerified": true,
+    "chronological": true,
+    "boundaryReached": true,
+    "oldestPublishedAt": "2026-09-14T22:02:28.089Z",
+    "indexHash": "647d45de888fca444919b5415e8452ea251245d55aaaec504fb5775a7d2bd89b"
+  },
+  "stateReconciled": false,
+  "historicalPlacements": [
+    {
+      "name": "Tyler Biadasz",
+      "reportedAt": "2026-08-23",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/team/transactions/2026"
+    },
+    {
+      "name": "KeAndre Lambert-Smith",
+      "reportedAt": "2026-09-15",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/team/transactions/2026"
+    },
+    {
+      "name": "Denzel Perryman",
+      "reportedAt": "2026-09-01",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/team/transactions/2026"
+    },
+    {
+      "name": "Isaiah World",
+      "reportedAt": "2026-08-30",
+      "status": "NFI",
+      "sourceUrl": "https://www.chargers.com/team/transactions/2026"
+    }
+  ],
+  "unresolved": [
+    "Slater: retrospective placement in Oct 3 article versus Oct 9 league placement; roster still active.",
+    "Matlock and Taylor: Oct 3 explicit activation versus roster still IR; no corroborating league exit retrieved.",
+    "Lance and Penning: Oct 3 club announcement versus Oct 10 league placement; roster still active.",
+    "Perryman: Aug 31 publication versus Sep 1 transaction-table date."
+  ],
+  "limitations": [
+    "Publication dates are not automatically effective transaction dates.",
+    "Transaction category omits Slater update; full news index required.",
+    "Historical plain-name rows are recorded for audit, not promoted through the profile-link bootstrap adapter.",
+    "Discovery bootstrap has no prior-run overlap anchor."
+  ],
+  "leagueCrossCheck": {
+    "observedAt": "2026-10-13T02:32:00.606049+00:00",
+    "sources": [
+      {
+        "url": "https://www.nfl.com/transactions/league/reserve-list/2026/10",
+        "matches": [
+          "Chargers Chargers Chargers Chargers 10/10 Trey Lance Reserve/Injured",
+          "Chargers Chargers Chargers Chargers 10/10 Trevor Penning Reserve/Injured",
+          "Chargers Chargers Chargers Chargers 10/09 Rashawn Slater Reserve/Injured"
+        ],
+        "bytes": 221873,
+        "hasNext": true
+      },
+      {
+        "url": "https://www.nfl.com/transactions/league/other/2026/10",
+        "matches": [],
+        "bytes": 178655,
+        "hasNext": false
+      },
+      {
+        "url": "https://www.nfl.com/transactions/league/signings/2026/10",
+        "matches": [],
+        "bytes": 203310,
+        "hasNext": true
+      }
+    ],
+    "conclusion": "League page 1 independently confirms Slater IR October 9 and Lance/Penning IR October 10. This does not resolve the October 3 club publication-date conflict. No Matlock/Taylor exit was found in the inspected pages; paginated source coverage is incomplete, so absence is not evidence of no activation.",
+    "coveragePassed": false
+  }
+}

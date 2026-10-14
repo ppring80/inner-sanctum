@@ -1,0 +1,138 @@
+{
+  "scope": "Live official announcement/table date reconciliation, followed by saved-roster replay; saved roster observations are not a new live collection",
+  "events": [
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/scott-matlock/",
+      "name": "Scott Matlock",
+      "team": "LAC",
+      "position": "FB/DL",
+      "section": "Reserve/Injured; Designated for Return",
+      "status": "ACTIVE",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:17:21.035Z",
+      "kind": "RESERVE_EXIT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "activated fullback/defensive lineman Scott Matlock and guard/tackle Branson Taylor from Reserve/Injured; Designated for Return. In corresponding moves, the Bolts ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/branson-taylor/",
+      "name": "Branson Taylor",
+      "team": "LAC",
+      "position": "G",
+      "section": "Reserve/Injured; Designated for Return",
+      "status": "ACTIVE",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:17:21.035Z",
+      "kind": "RESERVE_EXIT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "activated fullback/defensive lineman Scott Matlock and guard/tackle Branson Taylor from Reserve/Injured; Designated for Return. In corresponding moves, the Bolts ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trey-lance/",
+      "name": "Trey Lance",
+      "team": "LAC",
+      "position": "QB",
+      "section": "Active",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:17:21.035Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trevor-penning/",
+      "name": "Trevor Penning",
+      "team": "LAC",
+      "position": "OL",
+      "section": "Active",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:17:21.035Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/rashawn-slater/",
+      "name": "Rashawn Slater",
+      "team": "LAC",
+      "position": "T",
+      "section": "Active",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:17:21.035Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-09",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "sourceText": "signed wide receiver Theo Wease to the active roster, filling the spot vacated by tackle Rashawn Slater being placed on Reserve/Injured. In addition, the Bolts ",
+      "identityVerified": true,
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026"
+    }
+  ],
+  "unresolved": [],
+  "coveragePassed": false,
+  "remainingConflicts": [
+    {
+      "name": "Scott Matlock",
+      "status": "ACTIVE",
+      "conflicts": [
+        "ROSTER_TRANSACTION_CONFLICT"
+      ]
+    },
+    {
+      "name": "Branson Taylor",
+      "status": "ACTIVE",
+      "conflicts": [
+        "ROSTER_TRANSACTION_CONFLICT"
+      ]
+    },
+    {
+      "name": "Trey Lance",
+      "status": "IR",
+      "conflicts": [
+        "ACTIVE_LISTING_DOES_NOT_CLEAR_RESERVE_OR_DEPARTURE"
+      ]
+    },
+    {
+      "name": "Trevor Penning",
+      "status": "IR",
+      "conflicts": [
+        "ACTIVE_LISTING_DOES_NOT_CLEAR_RESERVE_OR_DEPARTURE"
+      ]
+    },
+    {
+      "name": "Rashawn Slater",
+      "status": "IR",
+      "conflicts": [
+        "ACTIVE_LISTING_DOES_NOT_CLEAR_RESERVE_OR_DEPARTURE"
+      ]
+    }
+  ],
+  "productionEnabled": false
+}

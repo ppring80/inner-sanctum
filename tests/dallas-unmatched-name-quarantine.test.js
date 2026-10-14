@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict'),{reconcileDallasReferences}=require('../netlify/functions/_dallas-reference-reconciliation');
+const claim={sourceText:"Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",reportedAt:'2026-10-04',sourceUrl:'https://www.dallascowboys.com/news/updates-october-2026'};
+const snapshot={team:'DAL',rows:[{name:'Jalen Thompson'},{name:'P.J. Locke'}]};
+const event={name:'P.J. Locke',team:'DAL',kind:'RESERVE_PLACEMENT',status:'IR',reportedAt:'2026-09-26',identityVerified:true,sourceUrl:'https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured'};
+const r=reconcileDallasReferences([claim],[event],snapshot);assert.equal(r.unresolved.length,0);assert.equal(r.quarantined[0].name,'Jalen Williams');assert.equal(r.quarantined[0].status,null);assert.equal(r.quarantined[0].customerEligible,false);assert.equal(r.corroborated[0].matchedEvents[0].name,'P.J. Locke');assert.ok(!r.corroborated[0].matchedEvents.some(e=>e.name==='Jalen Thompson'));
+assert.equal(reconcileDallasReferences([claim],[],snapshot).unresolved.length,1);
+assert.equal(reconcileDallasReferences([claim],[event],{...snapshot,rows:[...snapshot.rows,{name:'Jalen Williams'}]}).unresolved.length,1);
+assert.equal(reconcileDallasReferences([{...claim,sourceUrl:'https://example.com/'}],[event],snapshot).unresolved.length,1);
+assert.equal(reconcileDallasReferences([claim],[{...event,identityVerified:false}],snapshot).unresolved.length,1);
+console.log('PASS: unmatched name isolated without alias/status promotion; known co-subject must be verified and roster matches still block.');

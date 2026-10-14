@@ -1,0 +1,1582 @@
+{
+  "scope": "Replay of fresh official Dallas news pages, articles and roster; no production writes",
+  "pages": 4,
+  "articles": 80,
+  "coveragePassed": false,
+  "discovery": {
+    "since": "2026-10-01",
+    "pages": 4,
+    "chronological": true,
+    "boundaryReached": true,
+    "seenUrls": [
+      "https://www.dallascowboys.com/news/tape-talk-where-cowboys-defense-can-improve-limiting-explosive-plays",
+      "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-packers-x0191",
+      "https://www.dallascowboys.com/news/cowboys-have-a-specific-ir-issue-that-threatens-2026",
+      "https://www.dallascowboys.com/news/christian-parker-moving-from-sidelines-to-coaches-booth-to-call-cowboys-defense",
+      "https://www.dallascowboys.com/news/mailbag-defensive-changes-with-the-hiring-of-pettine",
+      "https://www.dallascowboys.com/news/demarvion-overshown-hopeful-he-can-return-sunday-vs-packers",
+      "https://www.dallascowboys.com/news/updates-october-2026",
+      "https://www.dallascowboys.com/news/cowboys-add-mike-pettine-to-defensive-coaching-staff",
+      "https://www.dallascowboys.com/news/just-8-hall-of-famers-with-cowboys-connections",
+      "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-will-absolutely-make-changes-adjustments",
+      "https://www.dallascowboys.com/news/hall-of-famer-mike-ditka-passes-away",
+      "https://www.dallascowboys.com/news/missed-opportunities-prove-costly-for-daron-bland-cowboys-defense",
+      "https://www.dallascowboys.com/news/pickens-the-lone-bright-spot-in-loss",
+      "https://www.dallascowboys.com/news/spagnola-pointing-out-an-offensive-performance",
+      "https://www.dallascowboys.com/news/pic-6-defensive-struggles-continue-injury-roundup-and-more-from-week-5",
+      "https://www.dallascowboys.com/news/eatman-where-to-start-with-this-blame-game",
+      "https://www.dallascowboys.com/news/brian-schottenheimer-disappointed-plans-to-evaluate-everything-after-loss-to-bucs",
+      "https://www.dallascowboys.com/news/jerry-jones-extraordinarily-disappointed-by-cowboys-week-5-loss-to-buccaneers",
+      "https://www.dallascowboys.com/news/dak-prescott-on-cowboys-loss-to-bucs-we-were-supposed-to-win",
+      "https://www.dallascowboys.com/news/don-t-forget-these-5-key-drops-on-both-sides",
+      "https://www.dallascowboys.com/news/game-recap-cowboys-fall-to-winless-bucs-24-16",
+      "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-bucs",
+      "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+      "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-buccaneers",
+      "https://www.dallascowboys.com/news/trivia-thursday-cowboys-have-never-played-on-this-day",
+      "https://www.dallascowboys.com/news/mailbag-will-cowboys-play-down-to-opponent",
+      "https://www.dallascowboys.com/news/quinnen-williams-on-quick-turnaround-for-cowboys-vs-buccaneers-i-m-not-tired",
+      "https://www.dallascowboys.com/news/impact-offseason-2026",
+      "https://www.dallascowboys.com/news/mick-shots-how-s-about-somethings-kinda-good",
+      "https://www.dallascowboys.com/news/jerry-jones-on-tyler-smith-s-status-cb-room-another-potential-trade-and-more",
+      "https://www.dallascowboys.com/news/cowboys-bucs-how-to-watch-listen-stream-in-week-5",
+      "https://www.dallascowboys.com/news/mailbag-should-the-cowboys-blitz-more",
+      "https://www.dallascowboys.com/news/joey-porter-jr-quickly-gaining-confidence-comfort-in-cowboys-defense",
+      "https://www.dallascowboys.com/news/dak-prescott-promises-cowboys-will-be-100-percent-for-tnf-vs-buccaneers",
+      "https://www.dallascowboys.com/news/zero-100-turpin-becomes-the-first-in-62-years",
+      "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "https://www.dallascowboys.com/news/mailbag-why-is-the-offense-better-when-trailing",
+      "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-bucs-x2532",
+      "https://www.dallascowboys.com/news/tyler-smith-leaves-door-open-for-return-vs-bucs-on-thursday-i-think-it-s-possible",
+      "https://www.dallascowboys.com/news/cowboys-open-practice-window-for-all-pro-tyler-smith",
+      "https://www.dallascowboys.com/news/tape-talk-film-review-from-cowboys-34-30-win-over-texans",
+      "https://www.dallascowboys.com/news/spagnola-how-crazy-was-bagging-this-victory",
+      "https://www.dallascowboys.com/news/pic-6-news-and-notes-from-cowboys-week-4-win-over-texans",
+      "https://www.dallascowboys.com/news/dak-prescott-on-ceedee-lamb-s-performance-cowboys-response-vs-texans",
+      "https://www.dallascowboys.com/news/eatman-big-brother-gets-the-last-laugh-again",
+      "https://www.dallascowboys.com/news/don-t-forget-these-5-converting-big-4th-downs",
+      "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-find-a-way-to-finish-vs-texans-i-wanted-this-game",
+      "https://www.dallascowboys.com/news/ceedee-lamb-powers-cowboys-to-win-over-texans-with-emotional-career-best-day",
+      "https://www.dallascowboys.com/news/joey-porter-jr-s-impact-is-immediate",
+      "https://www.dallascowboys.com/news/game-recap-cowboys-thrill-with-34-30-win",
+      "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-texans",
+      "https://www.dallascowboys.com/news/updates-september-2026",
+      "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-texans-x1761",
+      "https://www.dallascowboys.com/news/just-8-things-to-know-about-joey-porter-jr",
+      "https://www.dallascowboys.com/news/caleb-downs-on-joey-porter-jr-trade-early-impact-with-jaishawn-barham",
+      "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+      "https://www.dallascowboys.com/news/cowboys-texans-how-to-watch-listen-stream-in-week-4",
+      "https://www.dallascowboys.com/news/here-we-goooo-texans-present-a-big-test-for-cowboys-offensive-tackles",
+      "https://www.dallascowboys.com/news/jerry-jones-brian-schottenheimer-update-joey-porter-jr-s-status-vs-texans",
+      "https://www.dallascowboys.com/news/mailbag-is-a-rivalry-building-with-the-texans",
+      "https://www.dallascowboys.com/news/joey-porter-s-explains-goal-in-dallas-to-bet-on-myself",
+      "https://www.dallascowboys.com/news/joey-porter-jr-on-his-journey-to-the-cowboys-what-s-next-as-texans-approach",
+      "https://www.dallascowboys.com/news/cowboys-players-coaches-react-to-joey-porter-jr-trade",
+      "https://www.dallascowboys.com/news/science-lab-joey-porter-jr-trade-to-cowboys-the-great-the-good-the-hmm",
+      "https://www.dallascowboys.com/news/mailbag-is-porter-trade-an-all-in-move",
+      "https://www.dallascowboys.com/news/cowboys-agree-to-terms-on-trade-for-steelers-cb-joey-porter-jr",
+      "https://www.dallascowboys.com/news/jaishawn-barham-breaks-silence-demands-more-from-himself-and-cowboys",
+      "https://www.dallascowboys.com/news/kenny-clark-on-cowboys-defense-s-performance-vs-ravens-plan-to-improve-vs-texans",
+      "https://www.dallascowboys.com/news/mick-shots-it-s-not-over-until-it-s-really-over",
+      "https://www.dallascowboys.com/news/zero-to-100-key-stats-on-pickens-barham-more",
+      "https://www.dallascowboys.com/news/mailbag-why-the-out-of-bounds-kicks-for-aubrey",
+      "https://www.dallascowboys.com/news/brian-schottenheimer-takes-responsibility-for-loss-to-ravens-i-deserve-the-criticism",
+      "https://www.dallascowboys.com/news/cowboys-injury-roundup-key-dallas-defenders-to-miss-multiple-weeks",
+      "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-texans-x9036",
+      "https://www.dallascowboys.com/news/tape-talk-what-stood-out-on-film-from-cowboys-ravens-in-rio-de-janeiro",
+      "https://www.dallascowboys.com/news/jerry-jones-says-there-s-conversations-going-on-for-potential-additions-to-cowboys-roster",
+      "https://www.dallascowboys.com/news/mailbag-how-can-the-pass-rush-get-better",
+      "https://www.dallascowboys.com/news/stephen-jones-on-cowboys-disappointing-loss-to-ravens-in-brazil",
+      "https://www.dallascowboys.com/news/cowboys-reveal-unfortunate-timeline-for-jalen-thompson-injury",
+      "https://www.dallascowboys.com/news/spagnola-the-second-never-should-have-mattered"
+    ],
+    "overlapAnchorSeen": false,
+    "unresolved": [
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+        "customerEligible": false,
+        "reason": "DATED_DALLAS_UPDATE_REQUIRES_QUALIFIED_EXTRACTION"
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+        "customerEligible": false,
+        "reason": "DATED_DALLAS_UPDATE_REQUIRES_QUALIFIED_EXTRACTION"
+      }
+    ],
+    "corroborated": [
+      {
+        "sourceUrl": "https://www.dallascowboys.com/news/jerry-jones-on-tyler-smith-s-status-cb-room-another-potential-trade-and-more",
+        "reason": "DALLAS_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Smith has been limited in practice each of the last two days as he tries out his thumb for the first time since he was placed on injured reserve before the season started.",
+        "articleDate": "2026-10-07",
+        "matchedEvents": [
+          {
+            "profileUrl": "https://www.dallascowboys.com/team/players-roster/tyler-smith/",
+            "name": "Tyler Smith",
+            "team": "DAL",
+            "position": "G",
+            "section": "Active",
+            "status": "ACTIVE",
+            "sourceUrl": "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+            "observedAt": "2026-10-14T02:45:10.794Z",
+            "kind": "RESERVE_EXIT",
+            "reportedAt": "2026-10-08",
+            "publishedAt": "2026-10-08T18:27:39.729Z",
+            "source": "Dallas Cowboys official activation announcement",
+            "sourceText": "Tyler Smith officially activated from IR for Cowboys vs. Buccaneers",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "health": "UNKNOWN"
+          }
+        ],
+        "classification": "HISTORICAL_RESERVE_CONTEXT_WITH_CONFIRMED_EXIT",
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.dallascowboys.com/news/tyler-smith-leaves-door-open-for-return-vs-bucs-on-thursday-i-think-it-s-possible",
+        "reason": "DALLAS_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "Earlier in the day, the Cowboys officially opened his 21-day return to practice window after Smith was placed on injured reserve before the season began with a thumb injury that required surgery.",
+        "articleDate": "2026-10-05",
+        "matchedEvents": [
+          {
+            "profileUrl": "https://www.dallascowboys.com/team/players-roster/tyler-smith/",
+            "name": "Tyler Smith",
+            "team": "DAL",
+            "position": "G",
+            "section": "Active",
+            "status": "ACTIVE",
+            "sourceUrl": "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+            "observedAt": "2026-10-14T02:45:10.794Z",
+            "kind": "RESERVE_EXIT",
+            "reportedAt": "2026-10-08",
+            "publishedAt": "2026-10-08T18:27:39.729Z",
+            "source": "Dallas Cowboys official activation announcement",
+            "sourceText": "Tyler Smith officially activated from IR for Cowboys vs. Buccaneers",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "health": "UNKNOWN"
+          }
+        ],
+        "classification": "HISTORICAL_RESERVE_CONTEXT_WITH_CONFIRMED_EXIT",
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+        "reason": "DALLAS_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "No versatile safety P.J. Locke (torn plantar fascia), having been placed on injured reserve last week, meaning out for at least the mandatory four weeks.",
+        "articleDate": "2026-10-02",
+        "matchedEvents": [
+          {
+            "profileUrl": "https://www.dallascowboys.com/team/players-roster/p-j-locke/",
+            "name": "P.J. Locke",
+            "team": "DAL",
+            "position": "S",
+            "section": "Reserve/Designated to Return",
+            "status": "IR",
+            "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+            "observedAt": "2026-10-14T02:45:10.794Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-09-26",
+            "publishedAt": null,
+            "source": "Dallas Cowboys embedded transaction history",
+            "sourceText": "Placed S P.J. Locke on injured reserve.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          }
+        ],
+        "classification": "EXISTING_PLACEMENT_REFERENCE",
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+        "reason": "DALLAS_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "No veteran safety Jalen Thompson, already having been placed on IR-Return after suffering a severe hamstring injury 27 snaps into the Rio game.",
+        "articleDate": "2026-10-02",
+        "matchedEvents": [
+          {
+            "profileUrl": "https://www.dallascowboys.com/team/players-roster/jalen-thompson/",
+            "name": "Jalen Thompson",
+            "team": "DAL",
+            "position": "S",
+            "section": "Reserve/Designated to Return",
+            "status": "IR",
+            "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+            "observedAt": "2026-10-14T02:45:10.794Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-09-30",
+            "publishedAt": null,
+            "source": "Dallas Cowboys embedded transaction history",
+            "sourceText": "Placed S Jalen Thompson and DT Jonathan Bullard on injured reserve.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          }
+        ],
+        "classification": "EXISTING_PLACEMENT_REFERENCE",
+        "createsEvent": false
+      }
+    ],
+    "excluded": [
+      {
+        "sourceUrl": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-packers-x0191",
+        "reason": "DALLAS_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION",
+        "sourceText": "The week before, linebacker Edgerrin Cooper was also placed on season-ending injured reserve with an Achilles injury.",
+        "articleDate": "2026-10-13",
+        "classification": "EXPLICIT_OPPONENT_CONTEXT",
+        "createsEvent": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:03 p.m. \u2013 After suffering a fractured forearm in Week 1, Malik Hooker was not placed on IR-to return, with the hopes he could return before the four-week window.",
+        "customerEligible": false,
+        "reason": "DATED_DALLAS_UPDATE_REQUIRES_QUALIFIED_EXTRACTION",
+        "classification": "EXPLICIT_NEGATION",
+        "createsEvent": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:03 p.m. \u2013 After suffering a fractured forearm in Week 1, Malik Hooker was not placed on IR-to return, with the hopes he could return before the four-week window.",
+        "customerEligible": false,
+        "reason": "DATED_DALLAS_UPDATE_REQUIRES_QUALIFIED_EXTRACTION",
+        "classification": "EXPLICIT_NEGATION",
+        "createsEvent": false
+      }
+    ],
+    "datedUpdates": [
+      {
+        "reportedAt": "2026-10-12",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "3:43 p.m. - The cornerback room has certainly been affected by a recent string of illnesses. On Monday, cornerback DaRon Bland was among the latest who was sick, forcing him to miss Monday's practice.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-12",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Bland wasn't the only cornerback out as Caelen Carson was also absent from practice due to an illness.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-12",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "While the Cowboys haven't gotten into the specifics, it's believed to be a smilier illness that kept Joey Porter Jr. out of last Thursday's game with the Bucs.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-12",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Last week, other players such as Jonathan Mingo and Quinnen Williams were also sick leading up to the game but were able to play. The Cowboys are off Tuesday and have practice Wednesday, Thursday and Friday before leaving for Green Bay on Saturday.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-12",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "-------------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:45 p.m. -- In a wildly unexpected turn of events, Joey Porter Jr. has been ruled out by the Cowboys against the Buccaneers.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The evening was to serve as Porter's home opener with the Cowboys, but an illness struck the young cornerback and he will not take the field in Week 5.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Other inactives include DeMarvion Overshown, Cobie Durant and Drew Shelton \u2014 each of them nursing a hamstring injury \u2014 as well as Camden Brown, Ajani Cornelius and James Houston.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Porter will have plenty of time to recover in the mini-bye week that follows Thursday Night Football, to be ready for the visit to Lambeau Field to take on the Green Bay Packers.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "1:30 p.m. -- With Tyler Smith being activated, the Cowboys' corresponding move to make room for him on the roster was waiving RB Emari Demercado. Demercado played in two games for Dallas this season, picking up 15 yards on five carries.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The Cowboys also elevated DBs Reddy Steward and Juanyeh Thomas for Thursday night's game against the Tampa Bay Buccaneers. It's the second week in a row the pair have been elevated with Dallas dealing with multiple injuries in the secondary.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-08",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Thursday night's elevation marks the third for Steward, his final elevation before the Cowboys need to sign him to the active roster if he's to play again.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-07",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "2:00 p.m. -- The Cowboys have officially listed All-Pro guard Tyler Smith (thumb) as questionable to play on Thursday night against the Buccaneers.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-07",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Smith, who had his 21-day return to practice window opened on Monday, was limited in Monday and Tuesday's practice but was a full participant in Wednesday's walkthrough.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-07",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "WR Jonathan Mingo (illness) is also questionable for Dallas, and the team ruled out CB Cobie Durant (hamstring), LB DeMarvion Overshown (hamstring) and OL Drew Shelton (hamstring).",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-07",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "For the full injury report on both sides, click here.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "3:13 p.m. -- Cowboys LB DeMarvion Overshown is unlikely to play on Thursday against the Buccaneers, as coach Brian Schottenheimer said it was a 'long shot' that he returned this week.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Overshown was once again listed as DNP on Tuesday's injury report. Across the board, Dallas' injury designations for each player remained the same from Monday's walkthrough to Tuesday's light practice. All-Pro guard Tyler Smith was once again limited.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "For Tampa Bay, starting LB Josiah Trotter (knee) went from limited on Monday to not participating in practice on Tuesday.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "For the full injury report on both sides of the line, click here.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5 p.m. \u2014 Tyler Smith was back at practice, as a limited participant, for the first time since suffering a thumb injury that required surgery ahead of the regular season.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The All-Pro left guard saw his 21-day practice window activated on Monday, and with a short week to ramp up if he's to be made available against the Buccaneers on Thursday night.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "DeMarvion Overshown and Cobie Durant both continue to battle hamstring injuries that held them out of practice once again, and both are likely to be ruled out in Week 5.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-05",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Drew Shelton joins them in rehabbing a hamstring injury, and the rookie offensive lineman was also sidelined from Monday's walkthrough.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:21 p.m. \u2013 What a difference a week makes. This time, down in the goal line, the Cowboys didn't go away from Javonte Williams. In fact, they fed him the ball over and over as he scored three touchdowns.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The 3-TD game is the most since by a Cowboys running back on the ground since Tony Pollard had three against Chicago in 2022.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Ironically, while the Cowboys have received criticism for not giving Wiliams the ball more near the goal line, he's still scored seven touchdowns in the first four games. The last time a Cowboys player found the end zone seven times over four games was Emmitt Smith, in his record-breaking season of 1995, when he had 25 rushing touchdowns.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Overall, Williams rushed for 62 yards and also had five catches for 21 yards.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "----------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:14 p.m. \u2013 Dak Prescott not only added another game-winning drive and fourth-quarter comeback, but he moved into a tie on the Cowboys' all-time leaderboard in wins.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "With the victory, Prescott is now tied with Roger Staubach for 85 career regular-season wins, which is second in franchise history behind Troy Aikman (95).",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Prescott had his first 300-yard game of the season with 335 yards, including 254 in the second half, the most in a half since a 2020 game against Cleveland.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:08 p.m. \u2013 Quinnen Williams provided a big play for the Cowboys in the fourth quarter, recording a sack on Houston's C.J. Stroud.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "It was Williams' first sack of the season, giving him 42.5 career sacks since he joined the league in 2019, the seventh-most by a defensive tackle in that span.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Williams also registered two tackles for loss, his first multi-TFL game since joining the Cowboys in a mid-season trade last year.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "-------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:03 p.m. \u2013 After suffering a fractured forearm in Week 1, Malik Hooker was not placed on IR-to return, with the hopes he could return before the four-week window.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Not only did he play against Houston in Week 4, but he led the Cowboys in both tackles with seven, and had the only two pass deflections by the Cowboys on Sunday. His two PBUs were both critical, including the last one, which was credited to Hooker for knocking down Houston's Hail Mary attempt on the final play of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "----------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "4:58 p.m. \u2013 Veteran pass-rusher Rashan Gary registered his first sack since joining the Cowboys in the offseason.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Gary was the most active he's been all season, including the second-quarter sack on Stroud when he and Kenny Clark flushed the Texans QB out of the pocket and Gary finished the play with a force out of bounds.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Gary's second was the first for the Cowboys since the Week 1 game against the Giants, and the first of two on Sunday as Quinnen Williams had another in the fourth quarter.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "10:30 a.m. -- Joey Porter Jr. will officially make his debut for the Cowboys against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The former second-round pick was acquired by the Cowboys earlier in the week via trade with the Steelers and, after passing his physical and being a full participant in practices, is cleared to take the field at Reliant Stadium.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "It will likely be on a pitch count, however, although that is to-be-determined based upon the flow of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Cowboys' inactives for Week 4 include DeMarvion Overshown, Cobie Durant, Caelen Carson, Emari Demercado, James Houston, Ajani Cornelius and Camden Brown.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "2:20 p.m. -- With injuries in the secondary, the Cowboys have elevated DBs Reddy Steward and Juanyeh Thomas from the practice squad to the active roster for Sunday's game against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Dallas will potentially get some help back in Houston, as both S Malik Hooker (forearm) and CB Shavon Revel (knee/ankle) practiced in full on Friday and do not have a game status designation.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Additionally, new Cowboys CB Joey Porter Jr., who had been listed with a back injury in Pittsburgh before getting traded, was not on the injury report all week and will also be available for Dallas. Cowboys COO/co-owner Stephen Jones said on 105.3 The Fan Friday that Porter \"is going to get snaps\" against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "3 p.m. - Help is on the way for the Cowboys safety unit, and it is much-needed, given how ravaged that room has been by injury through the first three weeks of the 2026 season.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Malik Hooker was not given a game designation on Friday after returning to practice this week following a fractured forearm suffered in Week 1.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The veteran safety missed the last two games due to the injury, and returns to help a safety unit missing Jalen Thompson and P.J. Locke.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Shavon Revel appears to have dodged a bullet after suffering a hyperextended right knee in Brazil, limited in practice this week before returning to full participation on Friday and, also not having a game designation, appears to be a go for the trip to Houston.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "11:19 a.m. - For the third straight game, DeMarvion Overshown will not play for the Cowboys due to a hamstring injury.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "While he's been rehabbing during practice, Overshown \"will not be back for Houston\" as announced by head coach Brian Schottenheimer during Friday's press conference.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Overshown suffered the injury in the second half against the Giants in Week 1. Since then, he's been replaced at inside linebacker by rookie Jaishawn Barham, who continues to develop into his own.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Once Overshown returns to action, which could be as early as next Thursday vs. Tampa Bay, it'll be interesting to see how the Cowboys use their inside backers with Barham, Overshown and Dee Winters.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "--------------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "11:14 a.m. - There is a chance the Cowboys could get more secondary relief than just Joey Porter Jr. In his press conference on Friday, Brian Schottenheimer gave some encouraging news on both cornerback Shavon Revel and safety Malik Hooker.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"Revel will start with (Director of Rehab, athletic trainer Britt Brown) today and see how he does with that and try to get him going into practice,\" Schotty said. \"We'll see how that goes.\"",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Revel has a knee and ankle injury that occurred late in the fourth quarter against the Ravens in Rio.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"(Hooker) is trending towards playing and Cobie Durant is doing a good job with his rehab but he still has a ways to go.\"",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker suffered a fractured forearm against the Giants in Week 1 and has missed the last two games. Durant has a hamstring injury that forced him to miss last week's game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The Cowboys are likely trying to monitor these injuries for not only Sunday's game in Houston, but the following short-week against the Bucs on OCt. 8 - just four days after the Texans game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "--------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Noon \u2014 A lot of regrets were forced into the Cowboys' luggage as they returned home from Rio with a 34-31 loss to account for.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The loss, in and of itself, hurt, but the fashion in which it occurred made things so much worse in the hearts and minds of the coaching staff and team \u2014 mistakes made in all three phases of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "For his part, defensive coordinator Christian Parker explains he learned a major lesson after calling man coverage with only a few seconds remaining, which allowed Lamar Jackson to connect with Zay Flowers for a 26-yard reception that set up the game-winning field goal with only one second left to play.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"Oh, for sure. You know, I had a original call in mind, but overthought the situation, relative to what their mindset was going to be going over time, trying to get some quick Hail Mary, all those things,\" Parker said. \"So, I definitely would make a different call if that the situation came up again.\"",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:21 p.m. \u2013 What a difference a week makes. This time, down in the goal line, the Cowboys didn't go away from Javonte Williams. In fact, they fed him the ball over and over as he scored three touchdowns.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The 3-TD game is the most since by a Cowboys running back on the ground since Tony Pollard had three against Chicago in 2022.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Ironically, while the Cowboys have received criticism for not giving Wiliams the ball more near the goal line, he's still scored seven touchdowns in the first four games. The last time a Cowboys player found the end zone seven times over four games was Emmitt Smith, in his record-breaking season of 1995, when he had 25 rushing touchdowns.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Overall, Williams rushed for 62 yards and also had five catches for 21 yards.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "----------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:14 p.m. \u2013 Dak Prescott not only added another game-winning drive and fourth-quarter comeback, but he moved into a tie on the Cowboys' all-time leaderboard in wins.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "With the victory, Prescott is now tied with Roger Staubach for 85 career regular-season wins, which is second in franchise history behind Troy Aikman (95).",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Prescott had his first 300-yard game of the season with 335 yards, including 254 in the second half, the most in a half since a 2020 game against Cleveland.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:08 p.m. \u2013 Quinnen Williams provided a big play for the Cowboys in the fourth quarter, recording a sack on Houston's C.J. Stroud.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "It was Williams' first sack of the season, giving him 42.5 career sacks since he joined the league in 2019, the seventh-most by a defensive tackle in that span.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Williams also registered two tackles for loss, his first multi-TFL game since joining the Cowboys in a mid-season trade last year.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "-------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "5:03 p.m. \u2013 After suffering a fractured forearm in Week 1, Malik Hooker was not placed on IR-to return, with the hopes he could return before the four-week window.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Not only did he play against Houston in Week 4, but he led the Cowboys in both tackles with seven, and had the only two pass deflections by the Cowboys on Sunday. His two PBUs were both critical, including the last one, which was credited to Hooker for knocking down Houston's Hail Mary attempt on the final play of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "----------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "4:58 p.m. \u2013 Veteran pass-rusher Rashan Gary registered his first sack since joining the Cowboys in the offseason.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Gary was the most active he's been all season, including the second-quarter sack on Stroud when he and Kenny Clark flushed the Texans QB out of the pocket and Gary finished the play with a force out of bounds.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Gary's second was the first for the Cowboys since the Week 1 game against the Giants, and the first of two on Sunday as Quinnen Williams had another in the fourth quarter.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "10:30 a.m. -- Joey Porter Jr. will officially make his debut for the Cowboys against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The former second-round pick was acquired by the Cowboys earlier in the week via trade with the Steelers and, after passing his physical and being a full participant in practices, is cleared to take the field at Reliant Stadium.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "It will likely be on a pitch count, however, although that is to-be-determined based upon the flow of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-04",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Cowboys' inactives for Week 4 include DeMarvion Overshown, Cobie Durant, Caelen Carson, Emari Demercado, James Houston, Ajani Cornelius and Camden Brown.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "2:20 p.m. -- With injuries in the secondary, the Cowboys have elevated DBs Reddy Steward and Juanyeh Thomas from the practice squad to the active roster for Sunday's game against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Dallas will potentially get some help back in Houston, as both S Malik Hooker (forearm) and CB Shavon Revel (knee/ankle) practiced in full on Friday and do not have a game status designation.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-03",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Additionally, new Cowboys CB Joey Porter Jr., who had been listed with a back injury in Pittsburgh before getting traded, was not on the injury report all week and will also be available for Dallas. Cowboys COO/co-owner Stephen Jones said on 105.3 The Fan Friday that Porter \"is going to get snaps\" against the Texans.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "3 p.m. - Help is on the way for the Cowboys safety unit, and it is much-needed, given how ravaged that room has been by injury through the first three weeks of the 2026 season.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Malik Hooker was not given a game designation on Friday after returning to practice this week following a fractured forearm suffered in Week 1.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The veteran safety missed the last two games due to the injury, and returns to help a safety unit missing Jalen Thompson and P.J. Locke.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Shavon Revel appears to have dodged a bullet after suffering a hyperextended right knee in Brazil, limited in practice this week before returning to full participation on Friday and, also not having a game designation, appears to be a go for the trip to Houston.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "11:19 a.m. - For the third straight game, DeMarvion Overshown will not play for the Cowboys due to a hamstring injury.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "While he's been rehabbing during practice, Overshown \"will not be back for Houston\" as announced by head coach Brian Schottenheimer during Friday's press conference.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Overshown suffered the injury in the second half against the Giants in Week 1. Since then, he's been replaced at inside linebacker by rookie Jaishawn Barham, who continues to develop into his own.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Once Overshown returns to action, which could be as early as next Thursday vs. Tampa Bay, it'll be interesting to see how the Cowboys use their inside backers with Barham, Overshown and Dee Winters.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "--------------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "11:14 a.m. - There is a chance the Cowboys could get more secondary relief than just Joey Porter Jr. In his press conference on Friday, Brian Schottenheimer gave some encouraging news on both cornerback Shavon Revel and safety Malik Hooker.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"Revel will start with (Director of Rehab, athletic trainer Britt Brown) today and see how he does with that and try to get him going into practice,\" Schotty said. \"We'll see how that goes.\"",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Revel has a knee and ankle injury that occurred late in the fourth quarter against the Ravens in Rio.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"(Hooker) is trending towards playing and Cobie Durant is doing a good job with his rehab but he still has a ways to go.\"",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Hooker suffered a fractured forearm against the Giants in Week 1 and has missed the last two games. Durant has a hamstring injury that forced him to miss last week's game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The Cowboys are likely trying to monitor these injuries for not only Sunday's game in Houston, but the following short-week against the Bucs on OCt. 8 - just four days after the Texans game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-02",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "--------------",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "Noon \u2014 A lot of regrets were forced into the Cowboys' luggage as they returned home from Rio with a 34-31 loss to account for.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "The loss, in and of itself, hurt, but the fashion in which it occurred made things so much worse in the hearts and minds of the coaching staff and team \u2014 mistakes made in all three phases of the game.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "For his part, defensive coordinator Christian Parker explains he learned a major lesson after calling man coverage with only a few seconds remaining, which allowed Lamar Jackson to connect with Zay Flowers for a 26-yard reception that set up the game-winning field goal with only one second left to play.",
+        "customerEligible": false
+      },
+      {
+        "reportedAt": "2026-10-01",
+        "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+        "observedAt": "2026-10-14T02:45:10.794Z",
+        "sourceText": "\"Oh, for sure. You know, I had a original call in mind, but overthought the situation, relative to what their mindset was going to be going over time, trying to get some quick Hail Mary, all those things,\" Parker said. \"So, I definitely would make a different call if that the situation came up again.\"",
+        "customerEligible": false
+      }
+    ]
+  },
+  "events": [
+    {
+      "profileUrl": "https://www.dallascowboys.com/team/players-roster/tyler-smith/",
+      "name": "Tyler Smith",
+      "team": "DAL",
+      "position": "G",
+      "section": "Active",
+      "status": "ACTIVE",
+      "sourceUrl": "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+      "observedAt": "2026-10-14T02:45:10.794Z",
+      "kind": "RESERVE_EXIT",
+      "reportedAt": "2026-10-08",
+      "publishedAt": "2026-10-08T18:27:39.729Z",
+      "source": "Dallas Cowboys official activation announcement",
+      "sourceText": "Tyler Smith officially activated from IR for Cowboys vs. Buccaneers",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "health": "UNKNOWN"
+    },
+    {
+      "profileUrl": "https://www.dallascowboys.com/team/players-roster/jalen-thompson/",
+      "name": "Jalen Thompson",
+      "team": "DAL",
+      "position": "S",
+      "section": "Reserve/Designated to Return",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "observedAt": "2026-10-14T02:45:10.794Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-30",
+      "publishedAt": null,
+      "source": "Dallas Cowboys embedded transaction history",
+      "sourceText": "Placed S Jalen Thompson and DT Jonathan Bullard on injured reserve.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.dallascowboys.com/team/players-roster/jonathan-bullard/",
+      "name": "Jonathan Bullard",
+      "team": "DAL",
+      "position": "DT",
+      "section": "Reserve/Designated to Return",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "observedAt": "2026-10-14T02:45:10.794Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-30",
+      "publishedAt": null,
+      "source": "Dallas Cowboys embedded transaction history",
+      "sourceText": "Placed S Jalen Thompson and DT Jonathan Bullard on injured reserve.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.dallascowboys.com/team/players-roster/p-j-locke/",
+      "name": "P.J. Locke",
+      "team": "DAL",
+      "position": "S",
+      "section": "Reserve/Designated to Return",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "observedAt": "2026-10-14T02:45:10.794Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-26",
+      "publishedAt": null,
+      "source": "Dallas Cowboys embedded transaction history",
+      "sourceText": "Placed S P.J. Locke on injured reserve.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    },
+    {
+      "profileUrl": "https://www.dallascowboys.com/team/players-roster/malik-davis/",
+      "name": "Malik Davis",
+      "team": "DAL",
+      "position": "RB",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "observedAt": "2026-10-14T02:45:10.794Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-09-12",
+      "publishedAt": null,
+      "source": "Dallas Cowboys embedded transaction history",
+      "sourceText": "Moved RB Malik Davis to injured reserve",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    }
+  ],
+  "diagnostics": [],
+  "conflicts": [],
+  "sourceManifest": [
+    {
+      "url": "https://www.dallascowboys.com/news/tape-talk-where-cowboys-defense-can-improve-limiting-explosive-plays",
+      "sha256": "e132126976e1656259ef0dd7736fc9586512b3dd8b206a0df30e2f87fbca7e75"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-packers-x0191",
+      "sha256": "74feed6eb6518bd32d84c4efbb53e127f4c2d21ade86411d5cc4b51137da5152"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-have-a-specific-ir-issue-that-threatens-2026",
+      "sha256": "f7a70574f85d1a279056fa6c253ccf2b16680e3b516a3ce17f25dc4c5feff2b6"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/christian-parker-moving-from-sidelines-to-coaches-booth-to-call-cowboys-defense",
+      "sha256": "8937c63baa12752de85cc03ce17fd20c614c18c9525ac7b59811b1615a226812"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-defensive-changes-with-the-hiring-of-pettine",
+      "sha256": "3838cd2f348ae5cbf749d1fd68d720735069ba741dfa0d9e5e66c4ade4c73551"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/demarvion-overshown-hopeful-he-can-return-sunday-vs-packers",
+      "sha256": "4ea5f1248812269fdc735416802f98c313f7f70fe63f257f4dbef6b5c988f329"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/updates-october-2026",
+      "sha256": "5686c5b58c63dfe965b93ab7f095ff67b71cda9cb76185a35e5df6a51054862f"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-add-mike-pettine-to-defensive-coaching-staff",
+      "sha256": "7ef00f565737748b29adac9c4c21c61d78a767f5b260a5edef44ee98793662c1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-hall-of-famers-with-cowboys-connections",
+      "sha256": "ade1cb96cbb18853b9921cc4b502dc31f5b7cd23e8d029116a954d3901cb9a77"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-will-absolutely-make-changes-adjustments",
+      "sha256": "947c786abbe79bb49645fabfb6fd68d9aa3318c2275e74724effc07666f96113"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/hall-of-famer-mike-ditka-passes-away",
+      "sha256": "c5c525efde2eb9ff185603b42ced7e8d0aee703ce70cec18cd27e41e798e43f1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/missed-opportunities-prove-costly-for-daron-bland-cowboys-defense",
+      "sha256": "52522303e558ea5d2b1f76ac223b49b9c3c9e7ae1693902aa5dbad99ceebe50d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pickens-the-lone-bright-spot-in-loss",
+      "sha256": "a546147d2b98bb9bbbb6af46856d4430cc62e2d703029235a5126024f3ae1ca8"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-pointing-out-an-offensive-performance",
+      "sha256": "7c99006a8cca82fb431324d85bce597f956ec6fdd358c8a25534d843427db215"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-defensive-struggles-continue-injury-roundup-and-more-from-week-5",
+      "sha256": "44afb77f045e59ad134a446a34850098be4d5e3b3821d82ef7e4ce8b943f0695"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-where-to-start-with-this-blame-game",
+      "sha256": "93e37277fb864b3607ef0799d68e3e802b51941aaffff0d6c925b718320af56f"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-disappointed-plans-to-evaluate-everything-after-loss-to-bucs",
+      "sha256": "139a4ffa66a8b04a880c6a095247c1e0896bba4663a48c6dfaeb869f59c7017e"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-extraordinarily-disappointed-by-cowboys-week-5-loss-to-buccaneers",
+      "sha256": "7f383b0b30cad3ab2cba1c22380629ffbd17692c692214a189894543c8f55a30"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-on-cowboys-loss-to-bucs-we-were-supposed-to-win",
+      "sha256": "2c16405fe2d47e7d4293ddfe0d1a7882f08efb835d077370d987be23f3811501"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-key-drops-on-both-sides",
+      "sha256": "f6ea0df882f22d766aa8f67a886f897f306e908c9b04374d94aaea2e0df49e15"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-fall-to-winless-bucs-24-16",
+      "sha256": "c4bc4368065f9f8ecefed302396b41ad057a1c652f646e08ffb17bb833d45e63"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-bucs",
+      "sha256": "f809914810907fa0249dc8e52c101bfc75eca909568f91b29ecbce619282e858"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+      "sha256": "99ddc9c4726d3f987862c687ebd4468f26a06abca14e18422884e220e02047fc"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-buccaneers",
+      "sha256": "f217b27c9b0be625e6c2936896e6594c999ef35f66211288668126086a8abd24"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/trivia-thursday-cowboys-have-never-played-on-this-day",
+      "sha256": "1f57137ce00cf56166daed68402e08846f5d536d9fb0e24dcb97d9b900d939b4"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-will-cowboys-play-down-to-opponent",
+      "sha256": "445dc343f60550e4ff3c3bb56336d7eb81419d804f7fa4e5e2115373e168e824"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/quinnen-williams-on-quick-turnaround-for-cowboys-vs-buccaneers-i-m-not-tired",
+      "sha256": "af153c4c9a670ebd749e11ed3505c58b1a6022fe01abd4d52eb62f11d6eabd89"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/impact-offseason-2026",
+      "sha256": "ff401720270bfd9fb64e2c0d9416cb433924fb144c07a0ebc4a7c46b3afd2081"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mick-shots-how-s-about-somethings-kinda-good",
+      "sha256": "987c0bff1f4f80473b1e0893a35c61244c17b39b7d1a80806e9ab34202b738c0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-on-tyler-smith-s-status-cb-room-another-potential-trade-and-more",
+      "sha256": "36dbd8bf8d6278a1a2ce4f9ec0be551b98044cdda7521c819ce6f00ab18b43b7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-bucs-how-to-watch-listen-stream-in-week-5",
+      "sha256": "1ef5e10d39ff8da675bd74da99c6d33613580a6739995ef9a5379b302a54414e"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-should-the-cowboys-blitz-more",
+      "sha256": "2c2485d6aa7feba9231850f0f18b70168f7060938138c48efefb3517e28ed666"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-quickly-gaining-confidence-comfort-in-cowboys-defense",
+      "sha256": "1eb6dd6d958eae5e8eb4009b8192aaa21f8c9603e212b2306abaccf520b42e0a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-promises-cowboys-will-be-100-percent-for-tnf-vs-buccaneers",
+      "sha256": "6ee1c62fc16cad173c65cf33eb97386995b90763a18e7edbeecfd5f59db2c948"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/zero-100-turpin-becomes-the-first-in-62-years",
+      "sha256": "3b7aed31fa406b0e49fc2ec5401c84f86e3ac8d6785f824aa484682edd42ad35"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "sha256": "fcc27d9d3d08830c3eb3ac0ae5efa20ea1391f90eff8021a1f21ba846954d147"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-why-is-the-offense-better-when-trailing",
+      "sha256": "3c8e1926063a2fda23ea81f6926424ecbc913c081beb4c6c5c09e5962ed498d9"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-bucs-x2532",
+      "sha256": "9b6ed626261c43d5d03a9d519671ec24bc2a772a72b15d0e8e692e87037685f3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tyler-smith-leaves-door-open-for-return-vs-bucs-on-thursday-i-think-it-s-possible",
+      "sha256": "cc363e77d76052ed8bfeb1a8c2be0ba0c4b60586e0f9970c7b8661a93715792c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-open-practice-window-for-all-pro-tyler-smith",
+      "sha256": "2d0180c377d5d50560352ee51fcf3c21543a641c0272ead8c4ce5d440ae2bd26"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tape-talk-film-review-from-cowboys-34-30-win-over-texans",
+      "sha256": "fee1c668ecf73847e0d790b7217f9273d63c003800c8f5733cf1374ac2953a3c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-how-crazy-was-bagging-this-victory",
+      "sha256": "7f1668d5005551ddee7ef7c7bf8b01fd2f3759adf20be19abadc779a0669643a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-news-and-notes-from-cowboys-week-4-win-over-texans",
+      "sha256": "9fdba2db5424f6617b12d0355cab8bf8377e13dd9c311b6eba51cc5cedcd3a65"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-on-ceedee-lamb-s-performance-cowboys-response-vs-texans",
+      "sha256": "b17d9a36fb64d70ef098fd7dc103feb227a93eaa627663052af7774b7f239b13"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-big-brother-gets-the-last-laugh-again",
+      "sha256": "43640b21375c7fdbc1ef587f52b76ea298b705d08e60b6f9640d990500397319"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-converting-big-4th-downs",
+      "sha256": "94d3e46f5ac7e373f6f86b3c9b7ff7993946698da74601a9c5e2efb2ccfc0325"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-find-a-way-to-finish-vs-texans-i-wanted-this-game",
+      "sha256": "3a6253de4f7bbd41a3488debe642274171479633270904a20ce873459ea33a73"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/ceedee-lamb-powers-cowboys-to-win-over-texans-with-emotional-career-best-day",
+      "sha256": "9470e74dcb73c169ed123307f98ae7f82774a263ea0765ceabb7c02895cdedb2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-s-impact-is-immediate",
+      "sha256": "a588cba96cdd002ae03a68368044b0131ea4e1a79a7c0a49b0ed17bc5c939a9f"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-thrill-with-34-30-win",
+      "sha256": "d564e95d912ebb7705a7827ebd77463bb409d6dca539fbdfbd805882631c35d3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-texans",
+      "sha256": "8ae3a21fdd4df75fe4ad87d1068fed465ad1c04bede52c16b4929b19e7e170ad"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/updates-september-2026",
+      "sha256": "9edf111dee9fb2d347eba9f50fd2ad71beda590043d3865f2558a77bf26f871d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-texans-x1761",
+      "sha256": "51af0121afa04e3cf81b680d87e8d2cc2e4888e35a62df252f43b56bb5c8dde9"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-things-to-know-about-joey-porter-jr",
+      "sha256": "e7fedfc556ff06d83129113b5e3fbf2eef58458159afe18d0b98c73ebaafa2a3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/caleb-downs-on-joey-porter-jr-trade-early-impact-with-jaishawn-barham",
+      "sha256": "9b33f8ee8a2c42dd77d4ebc30bda3ecd089cd315aa02e10cef2ca160b9ab4328"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+      "sha256": "63a930d9164407ad5caf31b811ce942ee756820c26bafcdd1fdd32d440d7489c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-texans-how-to-watch-listen-stream-in-week-4",
+      "sha256": "6ef8f8f6eaaf29e8ea1034ce9b47ab9e6b1b0c192584334369398c2750a82839"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/here-we-goooo-texans-present-a-big-test-for-cowboys-offensive-tackles",
+      "sha256": "9b3760c721bb63471eaf571baa6fe013cdb3810985e9615f7377aee17a99048b"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-brian-schottenheimer-update-joey-porter-jr-s-status-vs-texans",
+      "sha256": "f306440c72c6991631aeafcc84f9c9ef9dbe126bd6ae6fcc285435f5879d9aff"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-is-a-rivalry-building-with-the-texans",
+      "sha256": "e37f6031a65fe35d7209bac0dde0c0912b84b14c0d5751e1db3085726ffa8f4d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-s-explains-goal-in-dallas-to-bet-on-myself",
+      "sha256": "44bd0530d4e6e41ec0e3120fa40f754ac0bea06d9ccb9ec26fd4ca0a14dcb728"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-on-his-journey-to-the-cowboys-what-s-next-as-texans-approach",
+      "sha256": "d809cead57aff49ea49a705a3e0cf6fee53405697b08ddc8d9ef7abff52e0a86"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-players-coaches-react-to-joey-porter-jr-trade",
+      "sha256": "ec55cd7fbb6bd3fe60b15820cc4a251125cb4d5ef80787f1ac15ac65caa88e01"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/science-lab-joey-porter-jr-trade-to-cowboys-the-great-the-good-the-hmm",
+      "sha256": "88590e85582e8cae02322c42ef9fff4ac5fa1bf1ce732ad569f5ac39100fd84c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-is-porter-trade-an-all-in-move",
+      "sha256": "40baf00c2ce34a9a4981353d5aaba67d65641b7e1d4a4575bd4f8da42366ca1c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-agree-to-terms-on-trade-for-steelers-cb-joey-porter-jr",
+      "sha256": "4ed61d9a69031016a36ba08aa431908ad8e8028937dd8914d2ebf0322cbeb797"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jaishawn-barham-breaks-silence-demands-more-from-himself-and-cowboys",
+      "sha256": "9cb971a3f70fac2bef08e473704692112e6461d1d3a43d545cabba31ef3a1e39"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/kenny-clark-on-cowboys-defense-s-performance-vs-ravens-plan-to-improve-vs-texans",
+      "sha256": "142c502d2f60504ce8366f8709363164b938cc0677ae806880eea6062c97ad6d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mick-shots-it-s-not-over-until-it-s-really-over",
+      "sha256": "a52040e64fcaeac008d36874d64ec45e6916f946e70cf29d54936e17d6552dbb"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/zero-to-100-key-stats-on-pickens-barham-more",
+      "sha256": "56c96a1d73f647402de1e5ac4e80e78fc60ac21c5c148e392e1c1c758c9742b7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-why-the-out-of-bounds-kicks-for-aubrey",
+      "sha256": "d08edceaf744efa296d89bcdb81eb43bfe215ee870d30ff2a57354bf4a03fc00"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-takes-responsibility-for-loss-to-ravens-i-deserve-the-criticism",
+      "sha256": "d8ad2346ead384281520a4335f82bec7a91a05f3cece3e1b7e0faef1eb8eb967"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-injury-roundup-key-dallas-defenders-to-miss-multiple-weeks",
+      "sha256": "8ec9bb2c3fd8faf305b0a168b3d8dfcbeb267f0bea70f95e0e1d29bb7de5cd98"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-texans-x9036",
+      "sha256": "9188197133cf9dee74b3d63a46c17adf4d4eb867066e34180707ee117a510aa2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tape-talk-what-stood-out-on-film-from-cowboys-ravens-in-rio-de-janeiro",
+      "sha256": "5678216ced6e2d14fe7bbdbaaf14707922ddbb3bb4b8d97c4c0318cb123f0125"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-says-there-s-conversations-going-on-for-potential-additions-to-cowboys-roster",
+      "sha256": "ac2501bdf2a0ef46a8f9c4a1cbad86b82259e676ab1d7b0d6a7da65cd6676ff1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-how-can-the-pass-rush-get-better",
+      "sha256": "8db541b539f6181dcc52df02480d4d898746d29cce52454c815779b85c6e72cb"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/stephen-jones-on-cowboys-disappointing-loss-to-ravens-in-brazil",
+      "sha256": "abfc7362eb2842fe66f62496090dbdaf1163a0bcc54073342e2f6c257370dc34"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-reveal-unfortunate-timeline-for-jalen-thompson-injury",
+      "sha256": "9a4c98ab89ed66c5b4a60c50d8ab17ab3a3afd0b46b8ae914b0d19f1a1879d68"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-the-second-never-should-have-mattered",
+      "sha256": "985c27871adaf36743e869a7440e7d02000c8409228e71be25082994ff78d984"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-cowboys-news-and-notes-from-a-tough-loss-in-rio-de-janeiro",
+      "sha256": "29e4603522cb3f758a27c0b2efa7657e3cee13accc7c28e091680bec11943912"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/javonte-williams-cowboys-find-success-in-run-game-now-need-to-get-back-on-track",
+      "sha256": "bc163afface154337fd28e92c9d67988d56999a1e0c9f4153a9d61e8ec9a5e49"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-this-game-ended-like-it-started-not-running",
+      "sha256": "0ad16e23436d0e89b71f4e87ed303970aee8f86bf00f052878d843a51c874661"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-frustrated-by-loss-to-ravens-we-ve-got-to-put-the-game-away",
+      "sha256": "71d8fb8071868ebc2609a544b66585ea541646a4cb915de619c09770298b4b1d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-on-cowboys-narrow-loss-to-ravens-in-rio-this-one-stings",
+      "sha256": "8457f2a4532af623fc249a964cc3a8244c12fe2740f172848ca49f2e258773b4"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-penalties-kickoffs-more",
+      "sha256": "2df37fe9e1986961807d31f23135416db9110ed7dc69b58d75bd7af73f98ea9a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-lose-in-rio-34-31",
+      "sha256": "b68fe1d4a6bc09cf6d75cd4cd93974d0f4153c79a2dd8d1b1e62495a69c2574d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-ravens-in-rio",
+      "sha256": "3071063ce3481e1958753f8da753a32114d6d471e9d3d02454d44b44dd94fd42"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-conduct-walk-around-at-maracana-stadium-get-a-feel-for-field-conditions",
+      "sha256": "07bfdef76249106d19ce9887aac235dbbe7813902e4f4258fc26d8fbfce3862f"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-ravens-in-rio",
+      "sha256": "ef49e6ca8e06e9407dceee9a6f3a45029497b60f21dbe40b804eec589cea27a3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-cowboys-want-to-be-the-aggressors-vs-ravens-in-rio",
+      "sha256": "c68f86ba7a395f2a843eac5cbb0226a173bf2e09c5c98f0e27baccf61fd7ab79"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-top-8-graded-players-for-both-cowboys-ravens",
+      "sha256": "e0729298dd40e22a5d08eb8d292b456757e91e20ae3d65b1906ba471cc1162ab"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-s-message-to-cowboys-in-rio-it-s-a-business-trip",
+      "sha256": "28ee60b8588733766632d3b9536111b826f73d1a9465eb82950a54a9e9aabdb0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-high-time-to-get-going-in-brazil",
+      "sha256": "aa6809b6d06fbb28f3b5233ff2c4fa02a82184fce4c4922183f6a3eec0b81e7d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-ravens-how-to-watch-listen-stream-in-week-3",
+      "sha256": "1524d6991be92df6554bf3d60bc5ac89cb3bb0c167eb95b4c9de3951a14d4c1c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/here-we-goooo-another-tall-task-awaits-the-cowboys-defense",
+      "sha256": "cd78b3ac4a98d8f59506c4661e120140c959fc15639b55c165df89b96ac32672"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-will-there-ever-be-an-international-team",
+      "sha256": "41e70e48d57dbdb730713aa0076dcb5feafeb662b993e22376d659022fd5c79c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/trivia-thursday-cowboys-history-with-international-games",
+      "sha256": "6a9a4a15f3f6b2cca7ddc87ff7d3edefadeed9c0bb38fa8aa43b6434db915b46"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/quinnen-williams-on-keys-to-playing-internationally-improving-stopping-the-run",
+      "sha256": "8bafb3d2d05fbe5feaf3e64d193fcaa218efec7b6cc62a892f35bce518685ca5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brandon-aubrey-has-a-familiar-plan-to-kick-in-brazil",
+      "sha256": "072da44f9e57516ec26ea23be62a35abcfb2fd13d493e4ab513e4e0e4dc5862b"
+    }
+  ],
+  "productionEnabled": false
+}

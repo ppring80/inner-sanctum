@@ -1,0 +1,1902 @@
+{
+  "scope": "Private current-availability contract replay; not a fresh production collection.",
+  "productionEnabled": false,
+  "report": {
+    "team": "PHI",
+    "season": 2026,
+    "asOf": "2026-10-13T03:09:27.530Z",
+    "collectionHealthy": true,
+    "discoveryComplete": false,
+    "coveragePassed": false,
+    "historyComplete": false,
+    "players": [
+      {
+        "name": "Tank Bigsby",
+        "team": "PHI",
+        "position": "RB",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-10-06",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "name": "Tank Bigsby",
+            "team": "PHI",
+            "position": "RB",
+            "status": "IR",
+            "season": 2026,
+            "reportedAt": "2026-10-06",
+            "source": "NFL official transactions",
+            "sourceUrl": "https://www.nfl.com/transactions/league/reserve-list/2026/10",
+            "reason": "Reserve/Injured transaction reported 2026-10-06."
+          },
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+            "name": "Tank Bigsby",
+            "team": "PHI",
+            "position": "RB",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-10-06",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Landon Dickerson",
+        "team": "PHI",
+        "position": "G",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-09-15",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+            "name": "Landon Dickerson",
+            "team": "PHI",
+            "position": "G",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-09-15",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Signed WR Britain Covey to the active roster from the practice squad. Signed TE Josiah Deguara to the practice squad. Placed G Landon Dickerson on Injured Reserve.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Eli Stowers",
+        "team": "PHI",
+        "position": "TE",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-09-12",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/eli-stowers/",
+            "name": "Eli Stowers",
+            "team": "PHI",
+            "position": "TE",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-09-12",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Elevated WR Britain Covey from the practice squad for Sunday's game against the Washington Commanders. Placed TE Eli Stowers on Injured Reserve.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/eli-stowers/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Jakorian Bennett",
+        "team": "PHI",
+        "position": "CB",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-08-30",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jakorian-bennett/",
+            "name": "Jakorian Bennett",
+            "team": "PHI",
+            "position": "CB",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-08-30",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jakorian-bennett/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Grant Calcaterra",
+        "team": "PHI",
+        "position": "TE",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-08-30",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/grant-calcaterra/",
+            "name": "Grant Calcaterra",
+            "team": "PHI",
+            "position": "TE",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-08-30",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/grant-calcaterra/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Tucker Large",
+        "team": "PHI",
+        "position": "S",
+        "status": "NFI",
+        "lastVerifiedStatus": "NFI",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-05-05",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tucker-large/",
+            "name": "Tucker Large",
+            "team": "PHI",
+            "position": "S",
+            "section": "Reserve/Non-Football Injury",
+            "status": "NFI",
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+            "observedAt": "2026-10-13T02:50:42.044Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-05-05",
+            "publishedAt": null,
+            "source": "Eagles official transaction history",
+            "sourceText": "Signed LB Isiah King. Waived S Tucker Large with an injury designation and placed him on the Reserve/Non-Football Injury list.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tucker-large/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Non-Football Injury",
+            "status": "NFI"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Andre' Sam",
+        "team": "PHI",
+        "position": "S",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "DATED_OFFICIAL_EVENT",
+        "placementDate": "2026-08-31",
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andre-sam/",
+            "name": "Andre' Sam",
+            "team": "PHI",
+            "position": "S",
+            "section": "Reserve/Injured",
+            "status": "IR",
+            "sourceUrl": "https://www.nfl.com/transactions/league/reserve-list/2026/8?after=AAAH6gAAAAgAAAAfAAAAAAAOgt4=",
+            "observedAt": "2026-10-13T02:53:39.793Z",
+            "kind": "RESERVE_PLACEMENT",
+            "reportedAt": "2026-08-31",
+            "publishedAt": null,
+            "source": "NFL official historical transactions",
+            "sourceText": "Reserve/Injured transaction.",
+            "identityVerified": true,
+            "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+            "customerEligible": false
+          },
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andre-sam/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Saquon Barkley",
+        "team": "PHI",
+        "position": "RB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/saquon-barkley/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Zack Baun",
+        "team": "PHI",
+        "position": "LB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/zack-baun/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Markel Bell",
+        "team": "PHI",
+        "position": "T",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/markel-bell/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Hollywood Brown",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/hollywood-brown/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jihaad Campbell",
+        "team": "PHI",
+        "position": "LB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jihaad-campbell/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jalen Carter",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalen-carter/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Michael Carter II",
+        "team": "PHI",
+        "position": "DB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/michael-carter-ii/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Darius Cooper",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/darius-cooper/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Britain Covey",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/britain-covey/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jordan Davis",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jordan-davis/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Cooper DeJean",
+        "team": "PHI",
+        "position": "DB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cooper-dejean/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Arnold Ebiketie",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/arnold-ebiketie/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jake Elliott",
+        "team": "PHI",
+        "position": "K",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jake-elliott/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "A.J. Epenesa",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/a-j-epenesa/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Marcus Epps",
+        "team": "PHI",
+        "position": "S",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/marcus-epps/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Dallas Goedert",
+        "team": "PHI",
+        "position": "TE",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dallas-goedert/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jonathan Greenard",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jonathan-greenard/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jalyx Hunt",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalyx-hunt/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jalen Hurts",
+        "team": "PHI",
+        "position": "QB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalen-hurts/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "E.J. Jenkins",
+        "team": "PHI",
+        "position": "TE",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/ej-jenkins/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Lane Johnson",
+        "team": "PHI",
+        "position": "T",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/lane-johnson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Fred Johnson",
+        "team": "PHI",
+        "position": "T",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/fred-johnson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jonathan Jones",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jonathan-jones/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Drew Kendall",
+        "team": "PHI",
+        "position": "C/G",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/drew-kendall/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Willie Lampkin",
+        "team": "PHI",
+        "position": "C/G",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/willie-lampkin/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Makai Lemon",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/makai-lemon/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jordan Mailata",
+        "team": "PHI",
+        "position": "T",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jordan-mailata/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jake Majors",
+        "team": "PHI",
+        "position": "C/G",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jake-majors/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Braden Mann",
+        "team": "PHI",
+        "position": "P",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/braden-mann/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Tanner McKee",
+        "team": "PHI",
+        "position": "QB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tanner-mckee/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Mac McWilliams",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/mac-mcwilliams/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Quinyon Mitchell",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/quinyon-mitchell/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Smael Mondon Jr.",
+        "team": "PHI",
+        "position": "LB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/smael-mondon/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Elijah Moore",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/elijah-moore/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Kenny Moore II",
+        "team": "PHI",
+        "position": "DB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kenny-moore/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Micah Morris",
+        "team": "PHI",
+        "position": "G",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/micah-morris/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Andrew Mukuba",
+        "team": "PHI",
+        "position": "S",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andrew-mukuba/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Johnny Mundt",
+        "team": "PHI",
+        "position": "TE",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/johnny-mundt/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Moro Ojomo",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/moro-ojomo/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Cole Payton",
+        "team": "PHI",
+        "position": "QB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cole-payton/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Dameon Pierce",
+        "team": "PHI",
+        "position": "RB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dameon-pierce/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Kelee Ringo",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kelee-ringo/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Ty Robinson",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/ty-robinson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Will Shipley",
+        "team": "PHI",
+        "position": "RB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/will-shipley/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "DeVonta Smith",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/devonta-smith/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Nolan Smith Jr.",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/nolan-smith/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Carson Steele",
+        "team": "PHI",
+        "position": "RB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/carson-steele/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Tyler Steen",
+        "team": "PHI",
+        "position": "G",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tyler-steen/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jeremiah Trotter Jr.",
+        "team": "PHI",
+        "position": "LB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jeremiah-trotter-jr/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Rocco Underwood",
+        "team": "PHI",
+        "position": "LS",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/rocco-underwood/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Dontayvion Wicks",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dontayvion-wicks/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Riq Woolen",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/riq-woolen/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Byron Young",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/byron-young/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Active",
+            "status": "ACTIVE_ROSTER"
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Johnny Wilson",
+        "team": "PHI",
+        "position": "WR",
+        "status": "IR",
+        "lastVerifiedStatus": "IR",
+        "basis": "OFFICIAL_ROSTER_OBSERVATION",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/johnny-wilson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Reserve/Injured",
+            "status": "IR"
+          }
+        ],
+        "availability": "RESERVE_RESTRICTED"
+      },
+      {
+        "name": "Kiran Amegadjie",
+        "team": "PHI",
+        "position": "OL",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kiran-amegadjie/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Jaydon Blue",
+        "team": "PHI",
+        "position": "RB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jaydon-blue/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "James Brockermeyer",
+        "team": "PHI",
+        "position": "OL",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/james-brockermeyer/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Josiah Deguara",
+        "team": "PHI",
+        "position": "TE",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/josiah-deguara/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Zach Ertz",
+        "team": "PHI",
+        "position": "TE",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/zach-ertz/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Erik Ezukanma",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/erik-ezukanma/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Xavier Gipson",
+        "team": "PHI",
+        "position": "WR",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/xavier-gipson/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Gabe Hall",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/gabe-hall/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Keyshawn James-Newby",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/keyshawn-james-newby/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "John Ojukwu",
+        "team": "PHI",
+        "position": "T",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/john-ojukwu/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Mason Reiger",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/mason-reiger/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Shaun Wade",
+        "team": "PHI",
+        "position": "CB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/shaun-wade/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Joshua Weru",
+        "team": "PHI",
+        "position": "OLB",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/joshua-weru/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Cole Wisniewski",
+        "team": "PHI",
+        "position": "S",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cole-wisniewski/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      },
+      {
+        "name": "Uar Bernard",
+        "team": "PHI",
+        "position": "DT",
+        "status": "UNKNOWN",
+        "lastVerifiedStatus": null,
+        "basis": "UNKNOWN",
+        "placementDate": null,
+        "observedAt": "2026-10-13T02:48:00.035Z",
+        "health": "UNKNOWN",
+        "customerEligible": false,
+        "conflicts": [],
+        "provenance": [
+          {
+            "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+            "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/uar-bernard/",
+            "observedAt": "2026-10-13T02:48:00.035Z",
+            "section": "Practice Squad/Injured",
+            "status": null
+          }
+        ],
+        "availability": "UNKNOWN"
+      }
+    ],
+    "diagnostics": [],
+    "productionEnabled": false
+  }
+}

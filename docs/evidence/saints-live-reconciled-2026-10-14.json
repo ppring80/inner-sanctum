@@ -1,0 +1,161 @@
+{
+  "chronological": true,
+  "boundary": true,
+  "unresolved": [],
+  "corroborated": [
+    {
+      "sourceUrl": "https://www.neworleanssaints.com/news/key-ingredients-to-victory-saints-vs-falcons-2026-nfl-week-4",
+      "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_ALERT_FORMAT",
+      "sourceText": "Running the ball will help, too, but that task is made more difficult by the absence of running back Travis Etienne Jr. , who was placed on injured reserve this week.",
+      "articleDate": "2026-10-04",
+      "matchedEvents": [
+        {
+          "name": "Travis Etienne Jr.",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/travis-etienne/",
+          "team": "NO",
+          "position": "RB",
+          "kind": "RESERVE_PLACEMENT",
+          "status": "IR",
+          "publishedAt": "2026-10-01T21:05:56.519Z",
+          "reportedAt": "2026-10-01",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "sourceUrl": "https://www.neworleanssaints.com/news/ulysses-bentley-iv-david-ojabo-saints-roster-moves-transaction-alert-october-1-2026",
+          "source": "New Orleans Saints official transaction",
+          "sourceText": "placed running back Travis Etienne Jr. on Injured Reserve.",
+          "identityVerified": true,
+          "identityBasis": "EXPLICIT_CLUB_PLAYER_PROFILE_AND_POSITION"
+        }
+      ],
+      "createsEvent": false
+    },
+    {
+      "sourceUrl": "https://www.neworleanssaints.com/news/new-orleans-saints-running-back-depth-being-tested-early",
+      "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_ALERT_FORMAT",
+      "sourceText": "Prized unrestricted free agent signee Travis Etienne Jr. was placed on injured reserve Thursday.",
+      "articleDate": "2026-10-01",
+      "matchedEvents": [
+        {
+          "name": "Travis Etienne Jr.",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/travis-etienne/",
+          "team": "NO",
+          "position": "RB",
+          "kind": "RESERVE_PLACEMENT",
+          "status": "IR",
+          "publishedAt": "2026-10-01T21:05:56.519Z",
+          "reportedAt": "2026-10-01",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "sourceUrl": "https://www.neworleanssaints.com/news/ulysses-bentley-iv-david-ojabo-saints-roster-moves-transaction-alert-october-1-2026",
+          "source": "New Orleans Saints official transaction",
+          "sourceText": "placed running back Travis Etienne Jr. on Injured Reserve.",
+          "identityVerified": true,
+          "identityBasis": "EXPLICIT_CLUB_PLAYER_PROFILE_AND_POSITION"
+        }
+      ],
+      "createsEvent": false
+    },
+    {
+      "sourceUrl": "https://www.neworleanssaints.com/news/new-orleans-saints-running-back-depth-being-tested-early",
+      "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_ALERT_FORMAT",
+      "sourceText": "Ty Chandler opened the season on injured reserve and Devin Neal and Audric Estime, who played meaningful snaps last season, both were released with injury settlements and both signed with the Vikings practice squad Wednesday.",
+      "articleDate": "2026-10-01",
+      "matchedEvents": [
+        {
+          "name": "Ty Chandler",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/ty-chandler/",
+          "position": "RB",
+          "team": "NO",
+          "season": 2026,
+          "kind": "RESERVE_PLACEMENT",
+          "status": "IR",
+          "reportedAt": "2026-08-25",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "publishedAt": null,
+          "sourceUrl": "https://www.neworleanssaints.com/team/transactions/2026",
+          "source": "New Orleans Saints official transactions",
+          "sourceText": "Placed TE Moliki Matavao and RB Ty Chandler on Injured Reserve.",
+          "identityVerified": true
+        },
+        {
+          "name": "Devin Neal",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/devin-neal/",
+          "position": "RB",
+          "team": "NO",
+          "season": 2026,
+          "kind": "DEPARTURE",
+          "status": "DEPARTED",
+          "reportedAt": "2026-09-03",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "publishedAt": null,
+          "sourceUrl": "https://www.neworleanssaints.com/team/transactions/2026",
+          "source": "New Orleans Saints official transactions",
+          "sourceText": "Reached injury settlements with RB Devin Neal and EDGE Mike Heldman .",
+          "identityVerified": true
+        },
+        {
+          "name": "Audric Estime",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/audric-estime/",
+          "position": "RB",
+          "team": "NO",
+          "season": 2026,
+          "kind": "DEPARTURE",
+          "status": "DEPARTED",
+          "reportedAt": "2026-09-22",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "publishedAt": null,
+          "sourceUrl": "https://www.neworleanssaints.com/team/transactions/2026",
+          "source": "New Orleans Saints official transactions",
+          "sourceText": "Reached an injury settlement with RB Audric Estime and LS Scott Daly teminated practice squad contract (signed to Chicago active roster).",
+          "identityVerified": true
+        }
+      ],
+      "createsEvent": false
+    }
+  ],
+  "events": 23,
+  "coveragePassed": false,
+  "diagnostics": [],
+  "conflicts": [
+    {
+      "name": "Jayden Price",
+      "team": "NO",
+      "position": "CB",
+      "status": "DEPARTED",
+      "lastVerifiedStatus": "DEPARTED",
+      "basis": "DATED_OFFICIAL_EVENT",
+      "placementDate": null,
+      "observedAt": "2026-10-14T01:53:09.219Z",
+      "health": "UNKNOWN",
+      "customerEligible": false,
+      "conflicts": [
+        "ACTIVE_LISTING_DOES_NOT_CLEAR_RESERVE_OR_DEPARTURE"
+      ],
+      "provenance": [
+        {
+          "name": "Jayden Price",
+          "position": "CB",
+          "team": "NO",
+          "kind": "DEPARTURE",
+          "status": "DEPARTED",
+          "publishedAt": "2026-10-13T21:37:35.11Z",
+          "reportedAt": "2026-10-13",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "sourceUrl": "https://www.neworleanssaints.com/news/decamerion-richardson-saints-roster-moves-transaction-alert-october-13-2026",
+          "source": "New Orleans Saints official transaction",
+          "sourceText": "waived CB Jayden Price and WR Brock Rechsteiner  and",
+          "identityVerified": true,
+          "identityBasis": "EXPLICIT_TEAM_AUTHORED_NAME_AND_POSITION"
+        },
+        {
+          "sourceUrl": "https://www.neworleanssaints.com/team/players-roster/",
+          "profileUrl": "https://www.neworleanssaints.com/team/players-roster/jayden-price/",
+          "observedAt": "2026-10-14T01:53:09.219Z",
+          "section": "Active",
+          "status": "ACTIVE_ROSTER"
+        }
+      ],
+      "availability": "UNRESOLVED"
+    }
+  ],
+  "scope": "Replay of 83 official pages collected October 14 UTC; no new network requests",
+  "productionEnabled": false
+}

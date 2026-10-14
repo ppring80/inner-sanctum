@@ -1,0 +1,99 @@
+{
+  "scope": "SAINTS_DISCOVERY_AND_RESERVE_STATE_RECONCILIATION_ONLY",
+  "customerEligible": false,
+  "deployed": false,
+  "discovery": {
+    "since": "2026-10-01",
+    "observedAt": "2026-10-13T01:29:58.322Z",
+    "indexHash": "bfff695e0f73cc9fa8e00b3d5398c65ef253435d2338132bbeb5312971dadb59",
+    "articles": 80,
+    "requests": 81,
+    "allDatesVerified": true,
+    "chronological": true,
+    "boundaryReached": true,
+    "oldestPublishedAt": "2026-09-27T18:55:30.676Z"
+  },
+  "roster": {
+    "sourceUrl": "https://www.neworleanssaints.com/team/players-roster/",
+    "observedAt": "2026-10-13T01:56:51.499Z",
+    "htmlSha256": "b467a46e299d7ad109bb197246766d50531114c8507203ec3dde6223217a1651"
+  },
+  "reconciliation": {
+    "team": "NO",
+    "stateReconciled": true,
+    "matches": [
+      {
+        "name": "Jaylan Ford",
+        "status": "ACTIVE"
+      },
+      {
+        "name": "Lorenzo Styles Jr.",
+        "status": "ACTIVE"
+      },
+      {
+        "name": "Kelvin Banks Jr.",
+        "status": "IR"
+      },
+      {
+        "name": "Bryan Bresee",
+        "status": "IR"
+      },
+      {
+        "name": "Ty Chandler",
+        "status": "IR"
+      },
+      {
+        "name": "Travis Etienne Jr.",
+        "status": "IR"
+      },
+      {
+        "name": "David Long Jr.",
+        "status": "IR"
+      },
+      {
+        "name": "Moliki Matavao",
+        "status": "IR"
+      },
+      {
+        "name": "Dillon Radunz",
+        "status": "IR"
+      },
+      {
+        "name": "Zach Wood",
+        "status": "IR"
+      },
+      {
+        "name": "Rejzohn Wright",
+        "status": "IR"
+      },
+      {
+        "name": "Jordyn Tyson",
+        "status": "IR"
+      },
+      {
+        "name": "Nick Saldiveri",
+        "status": "PUP"
+      },
+      {
+        "name": "Mason Tipton",
+        "status": "PUP"
+      }
+    ],
+    "gaps": [],
+    "customerEligible": false
+  },
+  "historicalBootstrap": {
+    "sourceUrl": "https://www.neworleanssaints.com/team/transactions/2026",
+    "htmlSha256": "f5fe2b437bf3a94254b6ca86b07ac5173e67b4e6e0498541d578aac0e8f98d40",
+    "events": 11,
+    "notOnTeamTableButEstablishedInExistingEvidence": [
+      "Kelvin Banks Jr.",
+      "Travis Etienne Jr."
+    ]
+  },
+  "limitations": [
+    "Only Saints checked; not 32-team qualification.",
+    "Only explicit IR/PUP/NFI reserve state and dated moves checked; active roster is not proof of health.",
+    "No production persistence, scoring, or customer flow changes."
+  ]
+}

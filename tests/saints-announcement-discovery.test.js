@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {INDEX,indexCards,discoverSaints}=require('../netlify/functions/_saints-announcement-discovery');
+const index=cards=>'<script type="application/json">'+JSON.stringify({Name:'EditorialList',Module:{SectionTitle:'LATEST HEADLINES',Type:'stories',Skip:0,Count:cards.length}})+'</script>'+cards.map((name,i)=>`<a href="/news/${name}" data-link_type="LATEST HEADLINES" data-link_position="${i+1}:${cards.length}" title="${name}">x</a>`).join('');
+const doc=date=>'<script type="application/ld+json">'+JSON.stringify({'@type':'NewsArticle',datePublished:date})+'</script>';
+const saved=require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/saints-headline-card-contract.html'),'utf8');
+const realCards=indexCards(saved);assert.equal(realCards.length,80);assert.ok(realCards.some(c=>c.url.endsWith('ulysses-bentley-iv-david-ojabo-saints-roster-moves-transaction-alert-october-1-2026')));
+assert.throws(()=>indexCards(index(['one','one'])),/missing, duplicated/);
+assert.throws(()=>indexCards(index(['one']).replace('1:1','2:1')),/missing, duplicated/);
+(async()=>{
+ const html=index(['neutral-title','roster-moves','old']);let now=0;
+ const pages={[INDEX]:html,[new URL('/news/neutral-title',INDEX).href]:doc('2026-10-12T10:00:00Z'),[new URL('/news/roster-moves',INDEX).href]:doc('2026-10-10T10:00:00Z'),[new URL('/news/old',INDEX).href]:doc('2026-10-01T10:00:00Z')};
+ const args={since:'2026-10-08',observedAt:'2026-10-12T12:00:00Z',clock:()=>now,sleep:async ms=>{now+=ms;},fetchImpl:async url=>({ok:true,text:async()=>pages[url]})};
+ let r=await discoverSaints(args);assert.equal(r.complete,true);assert.equal(r.requests,4);assert.equal(r.targets.length,2);assert.equal(r.targets[0].title,'neutral-title');assert.equal(now,3000);
+ r=await discoverSaints({...args,maxRequests:3});assert.equal(r.complete,false);assert.equal(r.requests,3);
+ pages[new URL('/news/old',INDEX).href]=doc('2026-10-11T10:00:00Z');r=await discoverSaints(args);assert.equal(r.complete,false);assert.equal(r.chronological,false);
+ pages[new URL('/news/old',INDEX).href]='no date';r=await discoverSaints(args);assert.equal(r.complete,false);assert.equal(r.errors.length,1);
+ pages[new URL('/news/old',INDEX).href]=doc('2026-10-09T10:00:00Z');r=await discoverSaints(args);assert.equal(r.complete,false);assert.equal(r.boundaryReached,false);
+ console.log('PASS: all headline dates, neutral titles retained, exact card enumeration, throttling, budget truncation, ordering, missing dates and collection boundary.');
+})().catch(e=>{console.error(e);process.exitCode=1});

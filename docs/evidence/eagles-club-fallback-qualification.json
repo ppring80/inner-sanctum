@@ -1,0 +1,2185 @@
+{
+  "snapshot": {
+    "team": "PHI",
+    "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+    "observedAt": "2026-10-13T02:48:00.035Z",
+    "rows": [
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/saquon-barkley/",
+        "name": "Saquon Barkley",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/zack-baun/",
+        "name": "Zack Baun",
+        "team": "PHI",
+        "position": "LB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/markel-bell/",
+        "name": "Markel Bell",
+        "team": "PHI",
+        "position": "T",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/hollywood-brown/",
+        "name": "Hollywood Brown",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jihaad-campbell/",
+        "name": "Jihaad Campbell",
+        "team": "PHI",
+        "position": "LB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalen-carter/",
+        "name": "Jalen Carter",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/michael-carter-ii/",
+        "name": "Michael Carter II",
+        "team": "PHI",
+        "position": "DB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/darius-cooper/",
+        "name": "Darius Cooper",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/britain-covey/",
+        "name": "Britain Covey",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jordan-davis/",
+        "name": "Jordan Davis",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cooper-dejean/",
+        "name": "Cooper DeJean",
+        "team": "PHI",
+        "position": "DB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/arnold-ebiketie/",
+        "name": "Arnold Ebiketie",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jake-elliott/",
+        "name": "Jake Elliott",
+        "team": "PHI",
+        "position": "K",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/a-j-epenesa/",
+        "name": "A.J. Epenesa",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/marcus-epps/",
+        "name": "Marcus Epps",
+        "team": "PHI",
+        "position": "S",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dallas-goedert/",
+        "name": "Dallas Goedert",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jonathan-greenard/",
+        "name": "Jonathan Greenard",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalyx-hunt/",
+        "name": "Jalyx Hunt",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jalen-hurts/",
+        "name": "Jalen Hurts",
+        "team": "PHI",
+        "position": "QB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/ej-jenkins/",
+        "name": "E.J. Jenkins",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/lane-johnson/",
+        "name": "Lane Johnson",
+        "team": "PHI",
+        "position": "T",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/fred-johnson/",
+        "name": "Fred Johnson",
+        "team": "PHI",
+        "position": "T",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jonathan-jones/",
+        "name": "Jonathan Jones",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/drew-kendall/",
+        "name": "Drew Kendall",
+        "team": "PHI",
+        "position": "C/G",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/willie-lampkin/",
+        "name": "Willie Lampkin",
+        "team": "PHI",
+        "position": "C/G",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/makai-lemon/",
+        "name": "Makai Lemon",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jordan-mailata/",
+        "name": "Jordan Mailata",
+        "team": "PHI",
+        "position": "T",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jake-majors/",
+        "name": "Jake Majors",
+        "team": "PHI",
+        "position": "C/G",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/braden-mann/",
+        "name": "Braden Mann",
+        "team": "PHI",
+        "position": "P",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tanner-mckee/",
+        "name": "Tanner McKee",
+        "team": "PHI",
+        "position": "QB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/mac-mcwilliams/",
+        "name": "Mac McWilliams",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/quinyon-mitchell/",
+        "name": "Quinyon Mitchell",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/smael-mondon/",
+        "name": "Smael Mondon Jr.",
+        "team": "PHI",
+        "position": "LB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/elijah-moore/",
+        "name": "Elijah Moore",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kenny-moore/",
+        "name": "Kenny Moore II",
+        "team": "PHI",
+        "position": "DB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/micah-morris/",
+        "name": "Micah Morris",
+        "team": "PHI",
+        "position": "G",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andrew-mukuba/",
+        "name": "Andrew Mukuba",
+        "team": "PHI",
+        "position": "S",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/johnny-mundt/",
+        "name": "Johnny Mundt",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/moro-ojomo/",
+        "name": "Moro Ojomo",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cole-payton/",
+        "name": "Cole Payton",
+        "team": "PHI",
+        "position": "QB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dameon-pierce/",
+        "name": "Dameon Pierce",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kelee-ringo/",
+        "name": "Kelee Ringo",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/ty-robinson/",
+        "name": "Ty Robinson",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/will-shipley/",
+        "name": "Will Shipley",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/devonta-smith/",
+        "name": "DeVonta Smith",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/nolan-smith/",
+        "name": "Nolan Smith Jr.",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/carson-steele/",
+        "name": "Carson Steele",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tyler-steen/",
+        "name": "Tyler Steen",
+        "team": "PHI",
+        "position": "G",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jeremiah-trotter-jr/",
+        "name": "Jeremiah Trotter Jr.",
+        "team": "PHI",
+        "position": "LB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/rocco-underwood/",
+        "name": "Rocco Underwood",
+        "team": "PHI",
+        "position": "LS",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/dontayvion-wicks/",
+        "name": "Dontayvion Wicks",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/riq-woolen/",
+        "name": "Riq Woolen",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/byron-young/",
+        "name": "Byron Young",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Active",
+        "status": "ACTIVE_ROSTER",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jakorian-bennett/",
+        "name": "Jakorian Bennett",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+        "name": "Tank Bigsby",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/grant-calcaterra/",
+        "name": "Grant Calcaterra",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+        "name": "Landon Dickerson",
+        "team": "PHI",
+        "position": "G",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andre-sam/",
+        "name": "Andre' Sam",
+        "team": "PHI",
+        "position": "S",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/eli-stowers/",
+        "name": "Eli Stowers",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/johnny-wilson/",
+        "name": "Johnny Wilson",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tucker-large/",
+        "name": "Tucker Large",
+        "team": "PHI",
+        "position": "S",
+        "section": "Reserve/Non-Football Injury",
+        "status": "NFI",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/kiran-amegadjie/",
+        "name": "Kiran Amegadjie",
+        "team": "PHI",
+        "position": "OL",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jaydon-blue/",
+        "name": "Jaydon Blue",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/james-brockermeyer/",
+        "name": "James Brockermeyer",
+        "team": "PHI",
+        "position": "OL",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/josiah-deguara/",
+        "name": "Josiah Deguara",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/zach-ertz/",
+        "name": "Zach Ertz",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/erik-ezukanma/",
+        "name": "Erik Ezukanma",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/xavier-gipson/",
+        "name": "Xavier Gipson",
+        "team": "PHI",
+        "position": "WR",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/gabe-hall/",
+        "name": "Gabe Hall",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/keyshawn-james-newby/",
+        "name": "Keyshawn James-Newby",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/john-ojukwu/",
+        "name": "John Ojukwu",
+        "team": "PHI",
+        "position": "T",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/mason-reiger/",
+        "name": "Mason Reiger",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/shaun-wade/",
+        "name": "Shaun Wade",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/joshua-weru/",
+        "name": "Joshua Weru",
+        "team": "PHI",
+        "position": "OLB",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/cole-wisniewski/",
+        "name": "Cole Wisniewski",
+        "team": "PHI",
+        "position": "S",
+        "section": "Practice Squad",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/uar-bernard/",
+        "name": "Uar Bernard",
+        "team": "PHI",
+        "position": "DT",
+        "section": "Practice Squad/Injured",
+        "status": null,
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/players-roster/",
+        "observedAt": "2026-10-13T02:48:00.035Z"
+      }
+    ]
+  },
+  "bootstrap": {
+    "events": [
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tank-bigsby/",
+        "name": "Tank Bigsby",
+        "team": "PHI",
+        "position": "RB",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-10-06",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Placed RB Tank Bigsby on Injured Reserve. Released LB Anfernee Orji from the Practice Squad.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/landon-dickerson/",
+        "name": "Landon Dickerson",
+        "team": "PHI",
+        "position": "G",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-09-15",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Signed WR Britain Covey to the active roster from the practice squad. Signed TE Josiah Deguara to the practice squad. Placed G Landon Dickerson on Injured Reserve.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/eli-stowers/",
+        "name": "Eli Stowers",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-09-12",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Elevated WR Britain Covey from the practice squad for Sunday's game against the Washington Commanders. Placed TE Eli Stowers on Injured Reserve.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/jakorian-bennett/",
+        "name": "Jakorian Bennett",
+        "team": "PHI",
+        "position": "CB",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-08-30",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/grant-calcaterra/",
+        "name": "Grant Calcaterra",
+        "team": "PHI",
+        "position": "TE",
+        "section": "Reserve/Injured",
+        "status": "IR",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-08-30",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Placed CB Jakorian Bennett and TE Grant Calcaterra on Injured Reserve/Designated for Return.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      },
+      {
+        "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/tucker-large/",
+        "name": "Tucker Large",
+        "team": "PHI",
+        "position": "S",
+        "section": "Reserve/Non-Football Injury",
+        "status": "NFI",
+        "sourceUrl": "https://www.philadelphiaeagles.com/team/transactions/2026",
+        "observedAt": "2026-10-13T02:50:42.044Z",
+        "kind": "RESERVE_PLACEMENT",
+        "reportedAt": "2026-05-05",
+        "publishedAt": null,
+        "source": "Eagles official transaction history",
+        "sourceText": "Signed LB Isiah King. Waived S Tucker Large with an injury designation and placed him on the Reserve/Non-Football Injury list.",
+        "identityVerified": true,
+        "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+        "customerEligible": false
+      }
+    ],
+    "unresolved": [
+      {
+        "reason": "EAGLES_TABLE_SUBJECT_UNVERIFIED",
+        "text": "Signed C Zeke Correll and WR Brandon Hayes. Placed CB Tariq Castro-Fields on Injured Reserve. Waived WR Johnny Wilson with an injury designation."
+      },
+      {
+        "reason": "EAGLES_TABLE_SUBJECT_UNVERIFIED",
+        "text": "Signed DT David Blay, RB Ja'Quinden Jackson, and OLB Tarron Jackson. Placed RB Elijah Mitchell on Injured Reserve. Waived G Jaeden Roberts and TE Dae'Quan Wright."
+      }
+    ],
+    "complete": false,
+    "customerEligible": false
+  },
+  "reconciliation": {
+    "team": "PHI",
+    "stateReconciled": false,
+    "matches": [
+      {
+        "name": "Jakorian Bennett",
+        "status": "IR"
+      },
+      {
+        "name": "Tank Bigsby",
+        "status": "IR"
+      },
+      {
+        "name": "Grant Calcaterra",
+        "status": "IR"
+      },
+      {
+        "name": "Landon Dickerson",
+        "status": "IR"
+      },
+      {
+        "name": "Andre' Sam",
+        "status": "IR"
+      },
+      {
+        "name": "Eli Stowers",
+        "status": "IR"
+      },
+      {
+        "name": "Tucker Large",
+        "status": "NFI"
+      }
+    ],
+    "gaps": [
+      {
+        "name": "Johnny Wilson",
+        "reason": "RESERVE_WITHOUT_EVENT",
+        "rosterStatus": "IR"
+      }
+    ],
+    "customerEligible": false
+  },
+  "discovery": {
+    "team": "PHI",
+    "indexUrl": "https://www.philadelphiaeagles.com/news/all",
+    "since": "2026-10-01",
+    "observedAt": "2026-10-13T02:47:45.189Z",
+    "requests": 81,
+    "articles": [
+      {
+        "position": 1,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-knows-our-job-is-to-get-up-and-keep-fighting",
+        "title": "Spadaro: Nick Sirianni knows ",
+        "publishedAt": "2026-10-12T21:00:00Z",
+        "headline": "Spadaro: Nick Sirianni knows 'our job is to get up and keep fighting'",
+        "description": "The head coach is working to find solutions as preparation for an explosive Panthers team begins.",
+        "authorName": "Dave Spadaro",
+        "hash": "08accdc27820b6cc8cefd4403a03df437a2dac8794ffc1b3830fcf8debda3736"
+      },
+      {
+        "position": 2,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-6-observations-from-a-hard-fought-loss-to-the-jaguars-in-london",
+        "title": "Spadaro: 6 observations from a hard-fought loss to the Jaguars in London",
+        "publishedAt": "2026-10-11T19:00:00Z",
+        "headline": "Spadaro: 6 observations from a hard-fought loss to the Jaguars in London",
+        "description": "There are several valuable lessons that will benefit the Eagles later in the season.",
+        "authorName": "Dave Spadaro",
+        "hash": "aa13d74233ec3864866a580100073bc308c7bbaadba927d346a6956406d4b3b4"
+      },
+      {
+        "position": 3,
+        "url": "https://www.philadelphiaeagles.com/news/game-recap-eagles-at-jaguars-2026-nfl-week-6-nfl-international-game-london-jalen-hurts-trevor-lawrence",
+        "title": "Game Recap: Jaguars 19, Eagles 17",
+        "publishedAt": "2026-10-11T18:52:00Z",
+        "headline": "Game Recap: Jaguars 19, Eagles 17",
+        "description": "The Eagles fall short in London on a walk-off field goal by Cam Little and the Jaguars. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "5b040918c3f53e910aef1c772aef719b817a72f22e378844dbb25c3a0018c1ff"
+      },
+      {
+        "position": 4,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-inactives-2026-nfl-week-6-london-international-game-saquon-barkley-lane-johnson",
+        "title": "Eagles at Jaguars Inactives",
+        "publishedAt": "2026-10-11T12:05:36.243Z",
+        "headline": "Eagles at Jaguars Inactives",
+        "description": "Listed as questionable on Friday, OLB Jonathan Greenard is inactive against the Jaguars.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "9dc087898cb081fb3cba9467d491549fce4ac226077e25dbdfe14e516dccb720"
+      },
+      {
+        "position": 5,
+        "url": "https://www.philadelphiaeagles.com/news/game-preview-at-jaguars-6-storylines-to-follow-jordan-mailata-jalen-hurts-trevor-lawrence-travis-hunter-2026-nfl-week-6-london-international-game",
+        "title": "Game Preview at Jaguars: 6 storylines to follow",
+        "publishedAt": "2026-10-11T04:02:00Z",
+        "headline": "Game Preview at Jaguars: 6 storylines to follow",
+        "description": "The Eagles are in London for Sunday's game against the Jacksonville Jaguars. Head Coach Nick Sirianni is eager to see his team react after an emotional week.",
+        "authorName": "Dave Spadaro",
+        "hash": "23db0d46055631a8dba73efff0b58ee539da73ade860b97c30eb340ecd4052ba"
+      },
+      {
+        "position": 6,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-jaguars-2026-nfl-week-5-london-international-game-cooper-dejean-trevor-lawrence-travis-hunter",
+        "title": "How to watch, stream, and listen | Eagles at Jaguars",
+        "publishedAt": "2026-10-11T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Eagles at Jaguars",
+        "description": "See how to watch and listen to the Eagles’ Week 5 matchup against the Jacksonville Jaguars on Sunday, October 11th at 9:30 AM EST.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "5789d8051d926dc57d432eebceb1cb1c0152c59cbfecf15f4c66b4bd1ffdf232"
+      },
+      {
+        "position": 7,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-zach-ertz-john-ojukwu-jaguars-in-london-2026-nfl-week-5-international-game",
+        "title": "Eagles elevate Zach Ertz, John Ojukwu for Sunday",
+        "publishedAt": "2026-10-10T20:00:00Z",
+        "headline": "Eagles elevate Zach Ertz, John Ojukwu for Sunday's game at Jaguars in London",
+        "description": "The tight end is eight catches away from setting the franchise's all-time career record.",
+        "authorName": "Chris McPherson",
+        "hash": "3b339b804d486b725b638eb6b3946a15bc50885c8ab4f0dcbd7c2a6a334fe18b"
+      },
+      {
+        "position": 8,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-visa-tim-gushue-shawnee-high-school",
+        "title": "Eagles Tackle Football Coach of the Week: Tim Gushue, Shawnee High School",
+        "publishedAt": "2026-10-10T10:00:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Tim Gushue, Shawnee High School",
+        "description": "For 48 years, Gushue has set the standard for high school coaching in South Jersey. He more than deserves to be named Eagles Tackle Football Coach of the Week, presented by Visa.",
+        "authorName": "Mike Greger",
+        "hash": "a2949c727160659e0974b10038c2629fbff6c0a772efe9f753fa1378a690778d"
+      },
+      {
+        "position": 9,
+        "url": "https://www.philadelphiaeagles.com/news/the-road-to-the-eagles-began-in-england-for-joshua-weru-london-jaguars-2026-nfl-week-5",
+        "title": "The road to the Eagles began in England for Joshua Weru ",
+        "publishedAt": "2026-10-09T22:00:00Z",
+        "headline": "The road to the Eagles began in England for Joshua Weru ",
+        "description": "Ahead of the Eagles playing the Jaguars in London, OLB Joshua Weru reflects on playing rugby in England, as well as British sporting culture. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "046ea7538ea39947f1f9436df488978b73dca362c914c8214cbdd4a1b5e8de2d"
+      },
+      {
+        "position": 10,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-jake-majors-and-carson-steele",
+        "title": "Eagles sign C Jake Majors and RB Carson Steele",
+        "publishedAt": "2026-10-09T20:30:00Z",
+        "headline": "Eagles sign C Jake Majors and RB Carson Steele",
+        "description": "QB Andy Dalton was released in a corresponding move while DT Uar Bernard was added to the Practice Squad injured list.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "6e18fadaa9d95938876b681c0a384914ca13da6b2a91a96131095b110aee49ae"
+      },
+      {
+        "position": 11,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-injury-report-2026-nfl-week-5-london-international-game-saquon-barkley-devonta-smith",
+        "title": "Eagles at Jaguars Injury Report",
+        "publishedAt": "2026-10-09T19:55:00Z",
+        "headline": "Eagles at Jaguars Injury Report",
+        "description": "TE Dallas Goedert and LB Zack Baun are set to return to action on Sunday. ",
+        "authorName": "Chris McPherson",
+        "hash": "5dc082c03448732aec3f5bcdb098af34c8ae421be125b9aa308bc0ad40c69bcf"
+      },
+      {
+        "position": 12,
+        "url": "https://www.philadelphiaeagles.com/news/jeffrey-lurie-announces-670-000-in-funding-for-london-based-autism-research",
+        "title": "Jeffrey Lurie announces $670,000 in funding for London-based autism research",
+        "publishedAt": "2026-10-09T16:00:00Z",
+        "headline": "Jeffrey Lurie announces $670,000 in funding for London-based autism research",
+        "description": "The investment will be awarded to proposals that establish a proven and results-driven approach to autism research, services, and programs in London",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "1d635ab9f879c31a9c2e3fe80b850415cc41301d1843c3235b7e934042fe79ab"
+      },
+      {
+        "position": 13,
+        "url": "https://www.philadelphiaeagles.com/news/by-the-numbers-eagles-at-jaguars-2026-nfl-week-5-london-international-game-devonta-smith-trevor-lawrence",
+        "title": "By the Numbers: Eagles at Jaguars",
+        "publishedAt": "2026-10-08T20:00:00Z",
+        "headline": "By the Numbers: Eagles at Jaguars",
+        "description": "The Eagles have never lost outside of the United States, while the Jaguars are the NFL's winningest team in London.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "fec6a4263976d1c5260961eb48c9b28bdc51c84951b77d648d0c30b8ee09d82e"
+      },
+      {
+        "position": 14,
+        "url": "https://www.philadelphiaeagles.com/news/this-scottish-classroom-fell-in-love-with-the-eagles-from-across-the-pond",
+        "title": "This Scottish classroom fell in love with the Eagles from across the pond ",
+        "publishedAt": "2026-10-08T19:00:14.37Z",
+        "headline": "This Scottish classroom fell in love with the Eagles from across the pond ",
+        "description": "One teacher’s passion for the Eagles has turned primary school students from Glasgow into fans. With the Eagles traveling to London, she finally gets to watch the Eagles play in-person. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "7a91ff18e2597e964eae77cf8a1363a2b510f3ad9262e5624d372fccc800af05"
+      },
+      {
+        "position": 15,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-jalen-hurts-and-the-eagles-offense-embrace-next-man-up-mentality",
+        "title": "Spadaro: Jalen Hurts and the Eagles",
+        "publishedAt": "2026-10-08T15:45:00Z",
+        "headline": "Spadaro: Jalen Hurts and the Eagles’ offense embrace ‘next-man-up' mentality",
+        "description": "With multiple starters on offense out with injuries, Jalen Hurts opens up about what steps the offense is taking to prepare for London.",
+        "authorName": "Dave Spadaro",
+        "hash": "d093dc0f6674761beea9569bdcd18c31467752a4ed889193c77a6d53be72392c"
+      },
+      {
+        "position": 16,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-cam-jurgens-trade-provides-a-unique-win-now-win-later-situation",
+        "title": "Spadaro: Cam Jurgens trade provides a unique win now, win later situation",
+        "publishedAt": "2026-10-07T23:45:00Z",
+        "headline": "Spadaro: Cam Jurgens trade provides a unique win now, win later situation",
+        "description": "The Eagles will have a new-look offensive line that can grow together and draft assets to build for the future.",
+        "authorName": "Dave Spadaro",
+        "hash": "c73a113708318b430d9268e53d6174fb30778efa13ecab2c0c0f8e1c4d787b67"
+      },
+      {
+        "position": 17,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-dameon-pierce-to-the-active-roster-erik-ezukanma-to-the-practice-squad",
+        "title": "Eagles sign RB Dameon Pierce to the active roster",
+        "publishedAt": "2026-10-07T21:52:26.286Z",
+        "headline": "Eagles sign RB Dameon Pierce to the active roster",
+        "description": "The team also brought back wide receiver Erik Ezukanma to the practice squad.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "02f9b9a7aade449943e3b462fdc017e11c8b1c129f4b1f53c15a63827bb5cb45"
+      },
+      {
+        "position": 18,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-agree-to-trade-cam-jurgens-to-the-ravens",
+        "title": "Eagles agree to trade Cam Jurgens to the Ravens",
+        "publishedAt": "2026-10-07T17:03:57.772Z",
+        "headline": "Eagles agree to trade Cam Jurgens to the Ravens",
+        "description": "The Eagles will acquire a 2027 fifth-round pick and a 2028 second-round pick in exchange for the Pro Bowl center and a 2027 seventh-round pick, pending a physical.",
+        "authorName": "Chris McPherson",
+        "hash": "ca7f55795c8f484e4cf9f9ab60549e38107f5842cfabc13bd07d019bb87badca"
+      },
+      {
+        "position": 19,
+        "url": "https://www.philadelphiaeagles.com/news/astronaut-christina-koch-eagles-weekend-was-out-of-this-world",
+        "title": "Astronaut Christina Koch",
+        "publishedAt": "2026-10-07T15:00:00Z",
+        "headline": "Astronaut Christina Koch’s Eagles weekend was out of this world ",
+        "description": "The record-setting astronaut (and Eagles fan) reflected on being the Honorary Captain for Sunday’s game, as well as sharing a special moment with an Eagles Cheerleader. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "c35f78261fc8718f387941afc7ad5af75b41ff44eda630cdb0b09e253a3ef5de"
+      },
+      {
+        "position": 20,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-james-brockermeyer-to-the-practice-squad",
+        "title": "Eagles sign OL James Brockermeyer to the practice squad",
+        "publishedAt": "2026-10-07T14:45:00Z",
+        "headline": "Eagles sign OL James Brockermeyer to the practice squad",
+        "description": "A first-team All-American at the University of Miami, the Eagles add more depth to the offensive line.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "8a4aeb372d52f5d07de2fd243d31d8fd5bc18fdde69ac379c6bd7d3c674ade7d"
+      },
+      {
+        "position": 21,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-name-paylocity-as-new-hr-and-payroll-provider",
+        "title": "Eagles name Paylocity as new HR and payroll provider",
+        "publishedAt": "2026-10-07T14:00:00Z",
+        "headline": "Eagles name Paylocity as new HR and payroll provider",
+        "description": "New partnership brings Paylocity into the Eagles’ family of proud partners.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "8e51bb2e3c272d1267981a0a1cbf5694c2322eed1ad84c3dcff122aee0144539"
+      },
+      {
+        "position": 22,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-place-rb-tank-bigsby-on-injured-reserve-release-lb-anfernee-orji-from-the-practice-squad",
+        "title": "Eagles place RB Tank Bigsby on Injured Reserve, release LB Anfernee Orji from the practice squad ",
+        "publishedAt": "2026-10-06T23:45:00Z",
+        "headline": "Eagles place RB Tank Bigsby on Injured Reserve, release LB Anfernee Orji from the practice squad ",
+        "description": "Tank Bigsby exited the game against the Rams on Sunday with an undisclosed injury.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "554b52fbe5f766dd4444a21edf8c7dad8f856dface606b1f0af8735b785d9ed8"
+      },
+      {
+        "position": 23,
+        "url": "https://www.philadelphiaeagles.com/news/lane-johnson-announces-his-retirement",
+        "title": "Lane Johnson announces his retirement",
+        "publishedAt": "2026-10-06T19:58:12.127Z",
+        "headline": "Lane Johnson announces his retirement",
+        "description": "The team's first-round pick in 2013 redefined the right tackle position and helped the Eagles win two Super Bowl Championships.",
+        "authorName": "Dave Spadaro",
+        "hash": "7fa7d42a7c934b30023f42b645ab717e3e821b3d169598235f05c45ad2e5064f"
+      },
+      {
+        "position": 24,
+        "url": "https://www.philadelphiaeagles.com/news/darius-cooper-is-doing-it-the-right-way-on-and-off-the-field",
+        "title": "Spadaro: Darius Cooper is doing it the right way, on and off the field",
+        "publishedAt": "2026-10-06T16:00:00Z",
+        "headline": "Spadaro: Darius Cooper is doing it the right way, on and off the field",
+        "description": "The 2025 Eagles Community Offensive Player of the Year is no ordinary second-year player, having gone from zero-star high school recruit to key player on offense and special teams.",
+        "authorName": "Dave Spadaro",
+        "hash": "6577997711e8e388f325ed35918359a15f274ac2638bd0cea8e55bb5bb708a22"
+      },
+      {
+        "position": 25,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-is-no-stranger-to-adversity-2026-nfl-week-5-jaguars-london",
+        "title": "Spadaro: Nick Sirianni is no stranger to adversity",
+        "publishedAt": "2026-10-05T22:00:00Z",
+        "headline": "Spadaro: Nick Sirianni is no stranger to adversity",
+        "description": "That gives the head coach plenty to draw on as the Eagles look to rebound in London against the Jaguars.",
+        "authorName": "Dave Spadaro",
+        "hash": "a819cfab0aa1e65fc989beda0c4596b2a903838f82693aa0aa2d69874c742edc"
+      },
+      {
+        "position": 26,
+        "url": "https://www.philadelphiaeagles.com/news/nick-sirianni-reacts-to-sunday-24-20-loss-to-the-rams-2026-nfl-week-4",
+        "title": "Spadaro: Nick Sirianni reacts to Sunday",
+        "publishedAt": "2026-10-04T21:48:50.132Z",
+        "headline": "Spadaro: Nick Sirianni reacts to Sunday’s 24-20 loss to the Rams",
+        "description": "The head coach detailed the key moments of the second half that resulted in the Eagles falling to 2-2 on the season.",
+        "authorName": "Dave Spadaro",
+        "hash": "3afe06e5f4b4206765853e2fe773eaf9c02b4e5f4ca97765cb51d2be9a5c3266"
+      },
+      {
+        "position": 27,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-recap-october-4-2026-nfl-week-4-regular-season-jalen-hurts-matthew-stafford",
+        "title": "Game Recap: Rams 24, Eagles 20",
+        "publishedAt": "2026-10-04T21:36:00Z",
+        "headline": "Game Recap: Rams 24, Eagles 20",
+        "description": "The Rams come back from a 10-point deficit to defeat the Eagles at Lincoln Financial Field.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "d800ded0a01fea3061b6d09edbf22a82796ea01a384995ca74af030fc9766639"
+      },
+      {
+        "position": 28,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-inactives-week-4-2026-zack-baun-devonta-smith",
+        "title": "Rams vs. Eagles Inactives",
+        "publishedAt": "2026-10-04T15:47:00Z",
+        "headline": "Rams vs. Eagles Inactives",
+        "description": "Eagles list eight players, including tackle Lane Johnson, as inactive against the Rams.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "e8d5d54a03d0ea33d860bf1f7113bf7a8dfce157bb8edd6c7241fd872704dde3"
+      },
+      {
+        "position": 29,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-preview-6-storylines-to-follow-2026-week-4-nfl-regular-season-jalen-hurts-saquon-barkley-matthew-stafford",
+        "title": "Game Preview vs. Rams: 6 storylines to follow",
+        "publishedAt": "2026-10-04T05:00:00Z",
+        "headline": "Game Preview vs. Rams: 6 storylines to follow",
+        "description": "Get ready for the latest chapter in one of the budding rivalries in the NFL between two teams with high aspirations.",
+        "authorName": "Dave Spadaro",
+        "hash": "594bf8df75fac6378e23080eb9205287e7b03ae962793c260c13d715b5b332ad"
+      },
+      {
+        "position": 30,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-rams-vs-eagles-2026-nfl-week-4-aaron-donald-matthew-stafford",
+        "title": "How to watch, stream, and listen | Rams vs. Eagles ",
+        "publishedAt": "2026-10-04T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Rams vs. Eagles ",
+        "description": "See how to watch and listen to the Eagles’ Week 4 matchup against the Los Angeles Rams on Sunday, October 4th at 1:00 PM. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "05e74b4c52d0ca03668836af520d8c95b79f8102b31c686f6c14bbaaffbc7a49"
+      },
+      {
+        "position": 31,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-josiah-deguara-zach-ertz-for-rams-2026-nfl-week-4",
+        "title": "Eagles elevate Josiah Deguara, Zach Ertz for Sunday",
+        "publishedAt": "2026-10-03T21:00:00Z",
+        "headline": "Eagles elevate Josiah Deguara, Zach Ertz for Sunday's game",
+        "description": "Ertz is eligible to play in his first home game since rejoining the Eagles.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "e9c28b65c8afb14ef8c7e8dee664a8a52dbc94bf840f182296053861746e4391"
+      },
+      {
+        "position": 32,
+        "url": "https://www.philadelphiaeagles.com/news/makai-lemon-is-ready-to-face-his-hometown-team",
+        "title": "Makai Lemon is ready to face his hometown team ",
+        "publishedAt": "2026-10-03T14:00:49.722Z",
+        "headline": "Makai Lemon is ready to face his hometown team ",
+        "description": "With DeVonta Smith officially ruled out against the Rams, rookie Makai Lemon’s role in the offense is expected to grow.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "9e351eeb315b9f916eed827edcd5ba8c35710570b664037bc70c589c476f652b"
+      },
+      {
+        "position": 33,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-humberto-ayala-millville-high-school",
+        "title": "Eagles Tackle Football Coach of the Week: Humberto Ayala, Millville High School",
+        "publishedAt": "2026-10-03T09:00:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Humberto Ayala, Millville High School",
+        "description": "Millville’s championship-winning coach measures success by preparing players for life after high school.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "3b3192ddeec4f3d5f1cd24317acd25d5b53ad7fa56bd8c0c4a021df11b17418e"
+      },
+      {
+        "position": 34,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-injury-report-2026-nfl-week-4-devonta-smith-puka-nacua",
+        "title": "Rams vs. Eagles Injury Report",
+        "publishedAt": "2026-10-02T20:09:00Z",
+        "headline": "Rams vs. Eagles Injury Report",
+        "description": "The Rams will not have defensive tackle Aaron Donald on Sunday. Get the latest on Eagles linebacker Zack Baun and wide receiver DeVonta Smith.",
+        "authorName": "Chris McPherson",
+        "hash": "c43668714a3810b06fe1841dc1ccfbbce23ff04186406e06dff9622de25a1d93"
+      },
+      {
+        "position": 35,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-offense-knows-rams-defense-presents-a-ton-of-talent",
+        "title": "Spadaro: Offense knows Rams defense presents a ",
+        "publishedAt": "2026-10-02T20:00:00Z",
+        "headline": "Spadaro: Offense knows Rams defense presents a 'ton of talent'",
+        "description": "The offense has flashed in each of the first three games, but now the unit strives for consistency.",
+        "authorName": "Dave Spadaro",
+        "hash": "ccec5f6189c9723c6b55008f52c990cde695f9a4a280363ee92ee81883906a79"
+      },
+      {
+        "position": 36,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-by-the-numbers-2026-nfl-week-4-jalen-hurts-saquon-barkley",
+        "title": "Rams vs. Eagles By the Numbers",
+        "publishedAt": "2026-10-01T20:45:00Z",
+        "headline": "Rams vs. Eagles By the Numbers",
+        "description": "Can Nick Sirianni and the Eagles extend their win streak against the Rams?",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "4c08d64f463cf9c7b5affdf40a86e5cfd5e54e59e6a174f2d5c793bf08bd193b"
+      },
+      {
+        "position": 37,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-lb-anfernee-orji-to-practice-squad",
+        "title": "Eagles sign LB Anfernee Orji to practice squad ",
+        "publishedAt": "2026-10-01T15:30:53.8Z",
+        "headline": "Eagles sign LB Anfernee Orji to practice squad ",
+        "description": "The former Commodore recorded 248 tackles and three sacks though four years at Vanderbilt. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "4945a4f9abdff0c87cfb3dfe372617872f955519938d6453e9eef132650f1e74"
+      },
+      {
+        "position": 38,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-vic-fangio-knows-a-tough-assignment-awaits-vs-rams-on-sunday-2026-nfl-week-4-matthew-stafford-puka-nacua",
+        "title": "Spadaro: Vic Fangio knows a ",
+        "publishedAt": "2026-10-01T14:45:00Z",
+        "headline": "Spadaro: Vic Fangio knows a 'tough assignment' awaits vs. Rams on Sunday",
+        "description": "From the players to the personnel groupings, the veteran coordinator scouts the Los Angeles offense.",
+        "authorName": "Dave Spadaro",
+        "hash": "c8e0432ac2272301bcda13311c3939689f8ccad9752c1172bd8657c40c125f5f"
+      },
+      {
+        "position": 39,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-dt-gabe-hall-to-the-practice-squad-2026-nfl-week-3-rams",
+        "title": "Eagles sign DT Gabe Hall to the practice squad ",
+        "publishedAt": "2026-09-30T21:38:19.501Z",
+        "headline": "Eagles sign DT Gabe Hall to the practice squad ",
+        "description": "The 25-year-old defensive tackle returns, continuing his third season with the Eagles. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "2fc7b9ea0f0c59dbc7cabb84491e698838b0f55a34c83d7c87bef01300701825"
+      },
+      {
+        "position": 40,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-db-kenny-moore-ii-to-the-active-roster",
+        "title": "Eagles sign DB Kenny Moore II to the active roster ",
+        "publishedAt": "2026-09-29T20:25:19.527Z",
+        "headline": "Eagles sign DB Kenny Moore II to the active roster ",
+        "description": "The former Pro Bowl defensive back signed to the practice squad last week.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "67ab086b3298746690cc22620969c3ee4f76ba6667af58989fe98ddd30538224"
+      },
+      {
+        "position": 41,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-quiz-week-4-nfl-can-you-name-these-former-eagles-who-played-for-the-rams",
+        "title": "Can you name these former Eagles who played for the Rams?",
+        "publishedAt": "2026-09-29T19:01:54.765Z",
+        "headline": "Can you name these former Eagles who played for the Rams?",
+        "description": "Over 120 players have played for both the Rams and Eagles. Can you name these five?",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "3284f3aadc6b13ebbd9b477e632d24851e76ef572a74a5b62f0b6d0e038887b4"
+      },
+      {
+        "position": 42,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-how-can-eagles-get-back-on-winning-track-2026-week-3-monday-night-football",
+        "title": "Spadaro: How can Eagles get back on winning track?",
+        "publishedAt": "2026-09-29T04:54:12.697Z",
+        "headline": "Spadaro: How can Eagles get back on winning track?",
+        "description": "The Eagles returned to Philadelphia early Tuesday morning, hungry to learn from the tough night in Chicago.",
+        "authorName": "Dave Spadaro",
+        "hash": "60c7fdd4abaa9d91f13ca609ae8da877b0bc422857095c99e6612457d56525da"
+      },
+      {
+        "position": 43,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-recap-september-28-2026-nfl-week-3-regular-season-monday-night-football",
+        "title": "Game Recap: Bears 27, Eagles 7",
+        "publishedAt": "2026-09-29T04:50:00Z",
+        "headline": "Game Recap: Bears 27, Eagles 7",
+        "description": "Philadelphia struggled to get its offense going at Soldier Field.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "c4a000821155064c71ac9d41e7b861ada39afbac6078c90d576a276b1a3c5086"
+      },
+      {
+        "position": 44,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-inactives-week-3-2026-nfl-regular-season-monday-night-football-caleb-williams",
+        "title": "Eagles at Bears Inactives",
+        "publishedAt": "2026-09-28T22:47:07.022Z",
+        "headline": "Eagles at Bears Inactives",
+        "description": "Edge rusher Jonathan Greenard is available for his Eagles debut, while tight end Zach Ertz is set to make his return.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "f09b330478903468c3148d7809d69c35fee60803e4867012441434558ed036ec"
+      },
+      {
+        "position": 45,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-chance-campbell-zach-ertz-for-monday-night-football-chicago-bears-2026-nfl-regular-season-week-3",
+        "title": "Eagles elevate Chance Campbell, Zach Ertz for Monday Night Football",
+        "publishedAt": "2026-09-28T20:08:41.162Z",
+        "headline": "Eagles elevate Chance Campbell, Zach Ertz for Monday Night Football",
+        "description": "The tight end signed to the practice squad on Tuesday and is on track to make his season debut in Chicago.",
+        "authorName": "Chris McPherson",
+        "hash": "a94614df2548a114b7616f023f254c7789b2f2e2d441abea22e716d878435d06"
+      },
+      {
+        "position": 46,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-game-preview-6-storylines-to-follow-2026-week-3-nfl-regular-season-monday-night-football-jalen-hurts-caleb-williams",
+        "title": "Spadaro: Game Preview at Bears, 6 storylines to follow ",
+        "publishedAt": "2026-09-28T11:45:00Z",
+        "headline": "Spadaro: Game Preview at Bears, 6 storylines to follow ",
+        "description": "All eyes will be on the Eagles' run defense for Monday Night Football.  ",
+        "authorName": "Dave Spadaro",
+        "hash": "acb7c55af777f94e86aee0c711178676cb7f730eee587a3a18187e6773c718c7"
+      },
+      {
+        "position": 47,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-bears-2026-nfl-week-3-monday-night-football",
+        "title": "How to watch, stream, and listen | Eagles at Bears ",
+        "publishedAt": "2026-09-28T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Eagles at Bears ",
+        "description": "See how to watch and listen to the Eagles’ Week 3 matchup against the Chicago Bears on Monday, September 28th at 8:15 PM EST. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "17b2dd165b7bb654f54ec02a9903c302b6dfbd1f84d9889abf38360d4a4a2dad"
+      },
+      {
+        "position": 48,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-bears-injury-report-2026-nfl-week-3-monday-night-football-caleb-williams-saquon-barkley",
+        "title": "Eagles at Bears Injury Report",
+        "publishedAt": "2026-09-27T19:53:00Z",
+        "headline": "Eagles at Bears Injury Report",
+        "description": "Quarterback Tyson Bagent has cleared concussion protocol and is available for Monday night's game. Who will start at quarterback for the Bears?",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "382a31684253d7ad64963cfff92b9c9ebc0564ef561894235aaac9baa620c3de"
+      },
+      {
+        "position": 49,
+        "url": "https://www.philadelphiaeagles.com/news/55-years-later-veterans-stadium-is-memorable-for-one-reason",
+        "title": "55 years later, Veterans Stadium is memorable for one reason",
+        "publishedAt": "2026-09-26T04:00:00Z",
+        "headline": "55 years later, Veterans Stadium is memorable for one reason",
+        "description": "As Bird Gang Spirits and Fireball are releasing commemorative bottles and Two Robbers is creating limited-edition cans this fall to celebrate the anniversary of Veterans Stadium, it’s the fans who filled the building – win or lose, rain or shine – that left an indelible mark on the players and their opponents.",
+        "authorName": "Jim Gehman",
+        "hash": "5c3bed3b23e0fcb91760a7e403cf9f8b0b7152e71281ed94aade7110a2581133"
+      },
+      {
+        "position": 50,
+        "url": "https://www.philadelphiaeagles.com/news/kenny-moore-ii-i-m-going-to-give-you-all-i-got",
+        "title": "Kenny Moore II: ",
+        "publishedAt": "2026-09-25T14:58:08.001Z",
+        "headline": "Kenny Moore II: ‘I'm going to give you all I got’ ",
+        "description": "The Pro Bowl defensive back opens up about signing to the Eagles’ practice squad.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "b167889c6c622693c844bbe79d2070da673b1bf86eaea59293a6c16c8a36ef9b"
+      },
+      {
+        "position": 51,
+        "url": "https://www.philadelphiaeagles.com/news/zach-ertz-eagles-tight-end-its-special-to-be-back-2026-nfl-week-3-monday-night-football",
+        "title": "Zach Ertz: ",
+        "publishedAt": "2026-09-25T13:30:00Z",
+        "headline": "Zach Ertz: 'It's special to be back'",
+        "description": "The tight end practiced for the first time on Thursday since returning to Philadelphia.",
+        "authorName": "Chris McPherson",
+        "hash": "f17c5d2e68178d326792abea8b5ea49ff6ae154e761df29a34503fd63d846882"
+      },
+      {
+        "position": 52,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-shaun-wade-to-the-practice-squad",
+        "title": "Eagles sign Shaun Wade to the practice squad",
+        "publishedAt": "2026-09-24T20:20:00Z",
+        "headline": "Eagles sign Shaun Wade to the practice squad",
+        "description": "Wade originally signed with the Eagles in June and spent Training Camp with the team.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "d6b309b9dbf7dcfdd55d167b79f69427808709267678d768ac8c2db6565cb12f"
+      },
+      {
+        "position": 53,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-aleem-medley-benjamin-franklin",
+        "title": "Eagles Tackle Football Coach of the Week: Aleem Medley, Benjamin Franklin",
+        "publishedAt": "2026-09-24T18:30:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Aleem Medley, Benjamin Franklin",
+        "description": "Once a star quarterback for the school, Medley returned to his alma mater to coach up the next generation of student-athletes in more than just football.",
+        "authorName": "Jim Gehman",
+        "hash": "dc82cb2e407ac71606edf3653aab1a4205c1c3b4c713cf393bff0862dfc4dcd1"
+      },
+      {
+        "position": 54,
+        "url": "https://www.philadelphiaeagles.com/news/caleb-williams-or-not-the-eagles-defense-wont-change-its-preparation",
+        "title": "Caleb Williams or not, the Eagles",
+        "publishedAt": "2026-09-24T02:00:00Z",
+        "headline": "Caleb Williams or not, the Eagles’ defense won’t change its preparation ",
+        "description": "Defensive Coordinator Vic Fangio discusses the threat of the Bears’ rushing attack as the Eagles look to bounce back from last season’s matchup.   ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "2b2b9e81a87526c6ffe834aaaa01f678a86b7d933b940a150c71e1daa8e567ce"
+      },
+      {
+        "position": 55,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-kenny-moore-to-the-practice-squad",
+        "title": "Eagles sign DB Kenny Moore II to the practice squad",
+        "publishedAt": "2026-09-23T21:16:17.886Z",
+        "headline": "Eagles sign DB Kenny Moore II to the practice squad",
+        "description": "The former Pro Bowl cornerback brings over 130 games of NFL experience with the Colts as he enters his 10th NFL season.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "b5baee168300c9826221e5bf621eff84f891faae01e035f07c52a01cf1d6eb19"
+      },
+      {
+        "position": 56,
+        "url": "https://www.philadelphiaeagles.com/news/jalen-hurts-eagles-do-what-it-takes-to-win",
+        "title": "Spadaro: Jalen Hurts, Eagles do what it takes to win",
+        "publishedAt": "2026-09-23T14:00:00Z",
+        "headline": "Spadaro: Jalen Hurts, Eagles do what it takes to win",
+        "description": "New scheme, injuries to key personnel, adversity – the offense has overcome it all in this 2-0 start with room for growth.",
+        "authorName": "Dave Spadaro",
+        "hash": "410b353c73cc28175bd0ba77e530130d28514b79c83dadb8fdcd6b4dc8e20247"
+      },
+      {
+        "position": 57,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-release-gabe-hall-from-the-practice-squad",
+        "title": "Eagles release DT Gabe Hall from the practice squad",
+        "publishedAt": "2026-09-22T20:11:29.536Z",
+        "headline": "Eagles release DT Gabe Hall from the practice squad",
+        "description": "The third-year defensive tackle first signed with the Eagles in 2024.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "6de7c396912e3608648018817e9a3ee1506280e5d62d9d0ca9c186e328af72c7"
+      },
+      {
+        "position": 58,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-zach-ertz-super-bowl-lii-champion-three-time-pro-bowl-tight-end",
+        "title": "Eagles sign Zach Ertz",
+        "publishedAt": "2026-09-22T17:10:47.661Z",
+        "headline": "Eagles sign Zach Ertz",
+        "description": "The three-time Pro Bowl tight end and Super Bowl Champion returns to Philadelphia.",
+        "authorName": "Chris McPherson",
+        "hash": "9819dba7a35e11e5037f0ab94b34ea2800c21bd3e8b2e0780aeb34f3db84a95d"
+      },
+      {
+        "position": 59,
+        "url": "https://www.philadelphiaeagles.com/news/aaa-official-review-darius-cooper-game-winning-touchdown-eagles-at-titans",
+        "title": "AAA Official Review: Darius Cooper",
+        "publishedAt": "2026-09-21T21:00:00Z",
+        "headline": "AAA Official Review: Darius Cooper’s game-winning touchdown  ",
+        "description": "Driven by AAA, the Official Review goes inside the play and the mind of Darius Cooper as the wide receiver’s first career touchdown resulted in the game-winning points. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "35ad12c58995a0edf2eaf6208f858d06997ff161fde88c246b8dede6df524ed3"
+      },
+      {
+        "position": 60,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-the-eagles-wide-receivers-they-are-delivering-devonta-smith-dontayvion-wicks-darius-cooper",
+        "title": "Spadaro: The wide receivers? They are delivering ",
+        "publishedAt": "2026-09-21T19:00:00Z",
+        "headline": "Spadaro: The wide receivers? They are delivering ",
+        "description": "DeVonta Smith leads the way, but the Eagles' big-play passing attack is getting contributions from the entire group. ",
+        "authorName": "Dave Spadaro",
+        "hash": "c24db6378776406d45536593ad5468312ad27157857c5b6c99bbf25276fa1388"
+      },
+      {
+        "position": 61,
+        "url": "https://www.philadelphiaeagles.com/news/jalen-hurts-was-composed-when-it-mattered-most",
+        "title": "Jalen Hurts was composed when it mattered most",
+        "publishedAt": "2026-09-21T00:15:00Z",
+        "headline": "Jalen Hurts was composed when it mattered most",
+        "description": "With less than two minutes remaining, Jalen Hurts led the Eagles’ offense down the field for the game-winning touchdown on the road against the Titans. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "58e2763bcf69d7d1dbf81251a984a31b1ff93e438b27bf74e1ca0071bb69b26a"
+      },
+      {
+        "position": 62,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-6-takeaways-from-an-incredible-come-from-behind-win-over-the-titans-jalen-hurts-devonta-smith-2026-nfl-week-2",
+        "title": "Spadaro: 6 takeaways from an incredible, come-from-behind win over the Titans",
+        "publishedAt": "2026-09-20T22:30:00Z",
+        "headline": "Spadaro: 6 takeaways from an incredible, come-from-behind win over the Titans",
+        "description": "Jalen Hurts and the Eagles' offense were perfect on the final drive and there were key contributions from both defense and special teams as well.",
+        "authorName": "Dave Spadaro",
+        "hash": "1add9ad8b97abc5faf719cb900e05e431b26f775ecbaefba6817ff078f338e37"
+      },
+      {
+        "position": 63,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-game-recap-september-20-2026-nfl-week-2-regular-season",
+        "title": "Game Recap: Eagles 24, Titans 20",
+        "publishedAt": "2026-09-20T21:10:00Z",
+        "headline": "Game Recap: Eagles 24, Titans 20",
+        "description": "The Eagles escape Nashville after a game-winning, two-minute-drill drive by Jalen Hurts and the offense. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "6f694ff2cecf6fb89bc8b2a7e8f68c9eff3318b02004ca6347d4a78f29a1af8b"
+      },
+      {
+        "position": 64,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-inactives-week-2-2026-nfl-regular-season",
+        "title": "Eagles at Titans Inactives",
+        "publishedAt": "2026-09-20T15:30:00Z",
+        "headline": "Eagles at Titans Inactives",
+        "description": "S Andrew Mukuba is active against the Titans.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "19e2d150a528939c1ff4c7458544547cf622fc78be33571c0be9505f5f2432e7"
+      },
+      {
+        "position": 65,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-game-preview-at-titans-6-storylines-to-follow-2026-week-2-nfl-regular-season",
+        "title": "Spadaro: Game Preview at Titans, 6 storylines to follow ",
+        "publishedAt": "2026-09-20T12:00:00Z",
+        "headline": "Spadaro: Game Preview at Titans, 6 storylines to follow ",
+        "description": "The goal is to go on the road for the first time in this 2026 regular season and come out with a win. The Titans are hungry, looking to avoid an 0-2 start at home. Something has to give. ",
+        "authorName": "Dave Spadaro",
+        "hash": "88cc24d63155e2c162b4574336d90725566520c6d714067ecb9b823299674ff5"
+      },
+      {
+        "position": 66,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-titans-2026-week-2",
+        "title": "How to watch, stream, and listen | Eagles at Titans ",
+        "publishedAt": "2026-09-20T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Eagles at Titans ",
+        "description": "See how to watch and listen to the Eagles’ Week 2 matchup against the Tennessee Titans on Sunday, September 20th at 1:00 PM. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "90a892fb9db8be1e42c93524f8436938f6617bb685e24195e062ec95d9bc7477"
+      },
+      {
+        "position": 67,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-maximus-pulley-for-game-at-titans",
+        "title": "Eagles elevate S Maximus Pulley for Sunday",
+        "publishedAt": "2026-09-19T20:00:00Z",
+        "headline": "Eagles elevate S Maximus Pulley for Sunday's game at Titans",
+        "description": "The rookie free agent is on track to make his NFL debut.",
+        "authorName": "Chris McPherson",
+        "hash": "479fb5285b072645f98eeea4ab0d6156a48b072dc0c4aa87cd2cecde335b5048"
+      },
+      {
+        "position": 68,
+        "url": "https://www.philadelphiaeagles.com/news/get-to-know-jonathan-jones-dancing-with-the-stars-edition",
+        "title": "Get to know Jonathan Jones: &#34;Dancing with the Stars&#34; edition ",
+        "publishedAt": "2026-09-19T09:00:00Z",
+        "headline": "Get to know Jonathan Jones: “Dancing with the Stars” edition ",
+        "description": "The Eagles cornerback watched his former teammate, Danny Amendola, reach the finals of the competition. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "04ad0206ed019577dc7e6d9d4a636aba39328668b1462646940714c8bb64798f"
+      },
+      {
+        "position": 69,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-titans-injury-report-jalen-carter-cooper-dejean-2026-nfl-week-2-regular-season",
+        "title": "Eagles at Titans Injury Report",
+        "publishedAt": "2026-09-18T20:12:00Z",
+        "headline": "Eagles at Titans Injury Report",
+        "description": "Cooper DeJean and Jalen Carter are both good to go for Sunday's game in Tennessee against the Titans.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "5f7f5ff28c541cd4217961c1830079ec135568be1d7ac64adfe9a74af7e7b680"
+      },
+      {
+        "position": 70,
+        "url": "https://www.philadelphiaeagles.com/news/can-you-name-the-eagles-offense-from-the-last-time-we-faced-the-titans",
+        "title": "Can you name the Eagles offense from the last time we faced the Titans?",
+        "publishedAt": "2026-09-17T19:00:05.434Z",
+        "headline": "Can you name the Eagles offense from the last time we faced the Titans?",
+        "description": "The Eagles defeated the Titans 35-10 on December 4, 2022.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "2ebb8f9f07ecdec44d69f5edbf7580277eca3877e9c2db51c55357b94a9e202b"
+      },
+      {
+        "position": 71,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-defense-looks-to-carry-the-energy-the-vibe-into-sunday-s-clash-with-the-titans",
+        "title": "Spadaro: Defense looks to carry the energy, the vibe into Sunday",
+        "publishedAt": "2026-09-17T15:00:00Z",
+        "headline": "Spadaro: Defense looks to carry the energy, the vibe into Sunday’s clash with the Titans",
+        "description": "The players were encouraged by the performance against Washington, but are motivated to be even better this Sunday.",
+        "authorName": "Dave Spadaro",
+        "hash": "3ab35741112b52d9aab66a5d69d446416d2c9794a2c667a286174ccca31eb835"
+      },
+      {
+        "position": 72,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-don-richardson-west-catholic",
+        "title": "Eagles Tackle Football Coach of the Week: Don Richardson, West Catholic",
+        "publishedAt": "2026-09-17T13:30:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Don Richardson, West Catholic",
+        "description": "After waiting nearly two decades for the opportunity to run a program, Richardson is not wasting it.",
+        "authorName": "Jim Gehman",
+        "hash": "ae31663838a9cc508b427935a49333f1a0ded1f701b3f6b046867027d2a2e087"
+      },
+      {
+        "position": 73,
+        "url": "https://www.philadelphiaeagles.com/news/dallas-goedert-does-it-all-and-does-it-well-for-the-eagles",
+        "title": "Spadaro: Dallas Goedert does it all and does it well for the Eagles",
+        "publishedAt": "2026-09-16T23:00:00Z",
+        "headline": "Spadaro: Dallas Goedert does it all and does it well for the Eagles",
+        "description": "The Eagles have been at the forefront of the ever-evolving tight end position throughout the years.",
+        "authorName": "Dave Spadaro",
+        "hash": "8db67682f5fb85f8283b2f8eac86f7dc6aa424748971bd4d14b24e6741b83b7d"
+      },
+      {
+        "position": 74,
+        "url": "https://www.philadelphiaeagles.com/news/the-eagles-are-not-the-only-philadelphia-football-team-playing-on-sunday-special-olympics-flag-football",
+        "title": "The Eagles are not the only Philadelphia football team playing on Sunday ",
+        "publishedAt": "2026-09-16T20:55:01.748Z",
+        "headline": "The Eagles are not the only Philadelphia football team playing on Sunday ",
+        "description": "Will Shipley became Coach Shipley as he helped Special Olympics Philadelphia prepare for their matchup against Special Olympics Tennessee at Nissan Stadium. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "dca8d65506b28eeb578edc6f100ab72228cb6e49e9d021618c842a4fb6b53360"
+      },
+      {
+        "position": 75,
+        "url": "https://www.philadelphiaeagles.com/news/zack-baun-named-nfc-defensive-player-of-the-week-2026-week-1-commanders",
+        "title": "Zack Baun named NFC Defensive Player of the Week",
+        "publishedAt": "2026-09-16T17:00:00Z",
+        "headline": "Zack Baun named NFC Defensive Player of the Week",
+        "description": "The linebacker led the way for the Eagles with 12 tackles and graded out as one of the league's best defensive players.",
+        "authorName": "Chris McPherson",
+        "hash": "c9078d037a4a840c7f53ceaf111f14d1f7db15bb8daf46351c1a8a0beab8d5ca"
+      },
+      {
+        "position": 76,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-without-landon-dickerson-the-eagles-offensive-line-will-lean-on-youth",
+        "title": "Spadaro: Without Landon Dickerson, the Eagles",
+        "publishedAt": "2026-09-15T21:05:00Z",
+        "headline": "Spadaro: Without Landon Dickerson, the Eagles’ offensive line will lean on youth ",
+        "description": "Offensive Coordinator Sean Mannion discussed the interior offensive line following Landon Dickerson’s placement on Injured Reserve.",
+        "authorName": "Dave Spadaro",
+        "hash": "5909d6ebc21a06afc3751ce9d42dd47d974967bc8adaebdcde3f673ffd5bd557"
+      },
+      {
+        "position": 77,
+        "url": "https://www.philadelphiaeagles.com/news/roster-moves-eagles-sign-britain-covey-place-landon-dickerson-on-injured-reserve",
+        "title": "Roster Moves: Eagles sign WR Britain Covey, place G Landon Dickerson on Injured Reserve",
+        "publishedAt": "2026-09-15T20:44:12.643Z",
+        "headline": "Roster Moves: Eagles sign WR Britain Covey, place G Landon Dickerson on Injured Reserve",
+        "description": "The Eagles also signed tight end Josiah Deguara to the practice squad.",
+        "authorName": "Chris McPherson",
+        "hash": "0ca2360f79e49e94ab909a14457fab35609abc2b5e3c02354e0b5d1b301018cf"
+      },
+      {
+        "position": 78,
+        "url": "https://www.philadelphiaeagles.com/news/aaa-official-review-a-jalen-hurts-appreciation-post-2026-week-1-commanders",
+        "title": "AAA Official Review: A Jalen Hurts appreciation post",
+        "publishedAt": "2026-09-14T19:30:00Z",
+        "headline": "AAA Official Review: A Jalen Hurts appreciation post",
+        "description": "Driven by AAA, the Official Review presents the aspects of Sunday's win that you might have missed, from the quarterback's outstanding performance to the lockdown coverage by the starting outside cornerbacks.",
+        "authorName": "Dave Spadaro",
+        "hash": "07c499d4b5c44f8404ce7a2c5d003b7ee006294b3524a0ca6e5a321b1f98ab51"
+      },
+      {
+        "position": 79,
+        "url": "https://www.philadelphiaeagles.com/news/10th-annual-eagles-autism-challenge-set-for-saturday-may-8",
+        "title": "10th Annual Eagles Autism Challenge set for Saturday, May 8",
+        "publishedAt": "2026-09-14T18:11:49.976Z",
+        "headline": "10th Annual Eagles Autism Challenge set for Saturday, May 8",
+        "description": "To celebrate the signature event’s 2027 kickoff and 10-year milestone, Five Below will match the first $75,000 in donations as part of the year’s first matching gift drive",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "9ec0d1bc34317411637451a9deb3b7c7e9c1f3d4823f2904decce4f80d07212a"
+      },
+      {
+        "position": 80,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-10-observations-from-a-thrilling-season-opening-win-over-the-commanders",
+        "title": "Spadaro: 10 observations from a thrilling season-opening win over the Commanders ",
+        "publishedAt": "2026-09-14T01:20:35.544Z",
+        "headline": "Spadaro: 10 observations from a thrilling season-opening win over the Commanders ",
+        "description": "The offense capitalized on explosive plays, the defense kept Jayden Daniels in check for a large majority of the game, and special teams helped pave the way to the Eagles' 1-0 start. ",
+        "authorName": "Dave Spadaro",
+        "hash": "903b4edb255bbd8a34f51c72d2387fec505a35379552b8782799e7876ffe3e24"
+      }
+    ],
+    "targets": [
+      {
+        "position": 1,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-knows-our-job-is-to-get-up-and-keep-fighting",
+        "title": "Spadaro: Nick Sirianni knows ",
+        "publishedAt": "2026-10-12T21:00:00Z",
+        "headline": "Spadaro: Nick Sirianni knows 'our job is to get up and keep fighting'",
+        "description": "The head coach is working to find solutions as preparation for an explosive Panthers team begins.",
+        "authorName": "Dave Spadaro",
+        "hash": "08accdc27820b6cc8cefd4403a03df437a2dac8794ffc1b3830fcf8debda3736"
+      },
+      {
+        "position": 2,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-6-observations-from-a-hard-fought-loss-to-the-jaguars-in-london",
+        "title": "Spadaro: 6 observations from a hard-fought loss to the Jaguars in London",
+        "publishedAt": "2026-10-11T19:00:00Z",
+        "headline": "Spadaro: 6 observations from a hard-fought loss to the Jaguars in London",
+        "description": "There are several valuable lessons that will benefit the Eagles later in the season.",
+        "authorName": "Dave Spadaro",
+        "hash": "aa13d74233ec3864866a580100073bc308c7bbaadba927d346a6956406d4b3b4"
+      },
+      {
+        "position": 3,
+        "url": "https://www.philadelphiaeagles.com/news/game-recap-eagles-at-jaguars-2026-nfl-week-6-nfl-international-game-london-jalen-hurts-trevor-lawrence",
+        "title": "Game Recap: Jaguars 19, Eagles 17",
+        "publishedAt": "2026-10-11T18:52:00Z",
+        "headline": "Game Recap: Jaguars 19, Eagles 17",
+        "description": "The Eagles fall short in London on a walk-off field goal by Cam Little and the Jaguars. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "5b040918c3f53e910aef1c772aef719b817a72f22e378844dbb25c3a0018c1ff"
+      },
+      {
+        "position": 4,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-inactives-2026-nfl-week-6-london-international-game-saquon-barkley-lane-johnson",
+        "title": "Eagles at Jaguars Inactives",
+        "publishedAt": "2026-10-11T12:05:36.243Z",
+        "headline": "Eagles at Jaguars Inactives",
+        "description": "Listed as questionable on Friday, OLB Jonathan Greenard is inactive against the Jaguars.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "9dc087898cb081fb3cba9467d491549fce4ac226077e25dbdfe14e516dccb720"
+      },
+      {
+        "position": 5,
+        "url": "https://www.philadelphiaeagles.com/news/game-preview-at-jaguars-6-storylines-to-follow-jordan-mailata-jalen-hurts-trevor-lawrence-travis-hunter-2026-nfl-week-6-london-international-game",
+        "title": "Game Preview at Jaguars: 6 storylines to follow",
+        "publishedAt": "2026-10-11T04:02:00Z",
+        "headline": "Game Preview at Jaguars: 6 storylines to follow",
+        "description": "The Eagles are in London for Sunday's game against the Jacksonville Jaguars. Head Coach Nick Sirianni is eager to see his team react after an emotional week.",
+        "authorName": "Dave Spadaro",
+        "hash": "23db0d46055631a8dba73efff0b58ee539da73ade860b97c30eb340ecd4052ba"
+      },
+      {
+        "position": 6,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-eagles-at-jaguars-2026-nfl-week-5-london-international-game-cooper-dejean-trevor-lawrence-travis-hunter",
+        "title": "How to watch, stream, and listen | Eagles at Jaguars",
+        "publishedAt": "2026-10-11T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Eagles at Jaguars",
+        "description": "See how to watch and listen to the Eagles’ Week 5 matchup against the Jacksonville Jaguars on Sunday, October 11th at 9:30 AM EST.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "5789d8051d926dc57d432eebceb1cb1c0152c59cbfecf15f4c66b4bd1ffdf232"
+      },
+      {
+        "position": 7,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-zach-ertz-john-ojukwu-jaguars-in-london-2026-nfl-week-5-international-game",
+        "title": "Eagles elevate Zach Ertz, John Ojukwu for Sunday",
+        "publishedAt": "2026-10-10T20:00:00Z",
+        "headline": "Eagles elevate Zach Ertz, John Ojukwu for Sunday's game at Jaguars in London",
+        "description": "The tight end is eight catches away from setting the franchise's all-time career record.",
+        "authorName": "Chris McPherson",
+        "hash": "3b339b804d486b725b638eb6b3946a15bc50885c8ab4f0dcbd7c2a6a334fe18b"
+      },
+      {
+        "position": 8,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-visa-tim-gushue-shawnee-high-school",
+        "title": "Eagles Tackle Football Coach of the Week: Tim Gushue, Shawnee High School",
+        "publishedAt": "2026-10-10T10:00:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Tim Gushue, Shawnee High School",
+        "description": "For 48 years, Gushue has set the standard for high school coaching in South Jersey. He more than deserves to be named Eagles Tackle Football Coach of the Week, presented by Visa.",
+        "authorName": "Mike Greger",
+        "hash": "a2949c727160659e0974b10038c2629fbff6c0a772efe9f753fa1378a690778d"
+      },
+      {
+        "position": 9,
+        "url": "https://www.philadelphiaeagles.com/news/the-road-to-the-eagles-began-in-england-for-joshua-weru-london-jaguars-2026-nfl-week-5",
+        "title": "The road to the Eagles began in England for Joshua Weru ",
+        "publishedAt": "2026-10-09T22:00:00Z",
+        "headline": "The road to the Eagles began in England for Joshua Weru ",
+        "description": "Ahead of the Eagles playing the Jaguars in London, OLB Joshua Weru reflects on playing rugby in England, as well as British sporting culture. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "046ea7538ea39947f1f9436df488978b73dca362c914c8214cbdd4a1b5e8de2d"
+      },
+      {
+        "position": 10,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-jake-majors-and-carson-steele",
+        "title": "Eagles sign C Jake Majors and RB Carson Steele",
+        "publishedAt": "2026-10-09T20:30:00Z",
+        "headline": "Eagles sign C Jake Majors and RB Carson Steele",
+        "description": "QB Andy Dalton was released in a corresponding move while DT Uar Bernard was added to the Practice Squad injured list.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "6e18fadaa9d95938876b681c0a384914ca13da6b2a91a96131095b110aee49ae"
+      },
+      {
+        "position": 11,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-at-jaguars-injury-report-2026-nfl-week-5-london-international-game-saquon-barkley-devonta-smith",
+        "title": "Eagles at Jaguars Injury Report",
+        "publishedAt": "2026-10-09T19:55:00Z",
+        "headline": "Eagles at Jaguars Injury Report",
+        "description": "TE Dallas Goedert and LB Zack Baun are set to return to action on Sunday. ",
+        "authorName": "Chris McPherson",
+        "hash": "5dc082c03448732aec3f5bcdb098af34c8ae421be125b9aa308bc0ad40c69bcf"
+      },
+      {
+        "position": 12,
+        "url": "https://www.philadelphiaeagles.com/news/jeffrey-lurie-announces-670-000-in-funding-for-london-based-autism-research",
+        "title": "Jeffrey Lurie announces $670,000 in funding for London-based autism research",
+        "publishedAt": "2026-10-09T16:00:00Z",
+        "headline": "Jeffrey Lurie announces $670,000 in funding for London-based autism research",
+        "description": "The investment will be awarded to proposals that establish a proven and results-driven approach to autism research, services, and programs in London",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "1d635ab9f879c31a9c2e3fe80b850415cc41301d1843c3235b7e934042fe79ab"
+      },
+      {
+        "position": 13,
+        "url": "https://www.philadelphiaeagles.com/news/by-the-numbers-eagles-at-jaguars-2026-nfl-week-5-london-international-game-devonta-smith-trevor-lawrence",
+        "title": "By the Numbers: Eagles at Jaguars",
+        "publishedAt": "2026-10-08T20:00:00Z",
+        "headline": "By the Numbers: Eagles at Jaguars",
+        "description": "The Eagles have never lost outside of the United States, while the Jaguars are the NFL's winningest team in London.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "fec6a4263976d1c5260961eb48c9b28bdc51c84951b77d648d0c30b8ee09d82e"
+      },
+      {
+        "position": 14,
+        "url": "https://www.philadelphiaeagles.com/news/this-scottish-classroom-fell-in-love-with-the-eagles-from-across-the-pond",
+        "title": "This Scottish classroom fell in love with the Eagles from across the pond ",
+        "publishedAt": "2026-10-08T19:00:14.37Z",
+        "headline": "This Scottish classroom fell in love with the Eagles from across the pond ",
+        "description": "One teacher’s passion for the Eagles has turned primary school students from Glasgow into fans. With the Eagles traveling to London, she finally gets to watch the Eagles play in-person. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "7a91ff18e2597e964eae77cf8a1363a2b510f3ad9262e5624d372fccc800af05"
+      },
+      {
+        "position": 15,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-jalen-hurts-and-the-eagles-offense-embrace-next-man-up-mentality",
+        "title": "Spadaro: Jalen Hurts and the Eagles",
+        "publishedAt": "2026-10-08T15:45:00Z",
+        "headline": "Spadaro: Jalen Hurts and the Eagles’ offense embrace ‘next-man-up' mentality",
+        "description": "With multiple starters on offense out with injuries, Jalen Hurts opens up about what steps the offense is taking to prepare for London.",
+        "authorName": "Dave Spadaro",
+        "hash": "d093dc0f6674761beea9569bdcd18c31467752a4ed889193c77a6d53be72392c"
+      },
+      {
+        "position": 16,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-cam-jurgens-trade-provides-a-unique-win-now-win-later-situation",
+        "title": "Spadaro: Cam Jurgens trade provides a unique win now, win later situation",
+        "publishedAt": "2026-10-07T23:45:00Z",
+        "headline": "Spadaro: Cam Jurgens trade provides a unique win now, win later situation",
+        "description": "The Eagles will have a new-look offensive line that can grow together and draft assets to build for the future.",
+        "authorName": "Dave Spadaro",
+        "hash": "c73a113708318b430d9268e53d6174fb30778efa13ecab2c0c0f8e1c4d787b67"
+      },
+      {
+        "position": 17,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-dameon-pierce-to-the-active-roster-erik-ezukanma-to-the-practice-squad",
+        "title": "Eagles sign RB Dameon Pierce to the active roster",
+        "publishedAt": "2026-10-07T21:52:26.286Z",
+        "headline": "Eagles sign RB Dameon Pierce to the active roster",
+        "description": "The team also brought back wide receiver Erik Ezukanma to the practice squad.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "02f9b9a7aade449943e3b462fdc017e11c8b1c129f4b1f53c15a63827bb5cb45"
+      },
+      {
+        "position": 18,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-agree-to-trade-cam-jurgens-to-the-ravens",
+        "title": "Eagles agree to trade Cam Jurgens to the Ravens",
+        "publishedAt": "2026-10-07T17:03:57.772Z",
+        "headline": "Eagles agree to trade Cam Jurgens to the Ravens",
+        "description": "The Eagles will acquire a 2027 fifth-round pick and a 2028 second-round pick in exchange for the Pro Bowl center and a 2027 seventh-round pick, pending a physical.",
+        "authorName": "Chris McPherson",
+        "hash": "ca7f55795c8f484e4cf9f9ab60549e38107f5842cfabc13bd07d019bb87badca"
+      },
+      {
+        "position": 19,
+        "url": "https://www.philadelphiaeagles.com/news/astronaut-christina-koch-eagles-weekend-was-out-of-this-world",
+        "title": "Astronaut Christina Koch",
+        "publishedAt": "2026-10-07T15:00:00Z",
+        "headline": "Astronaut Christina Koch’s Eagles weekend was out of this world ",
+        "description": "The record-setting astronaut (and Eagles fan) reflected on being the Honorary Captain for Sunday’s game, as well as sharing a special moment with an Eagles Cheerleader. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "c35f78261fc8718f387941afc7ad5af75b41ff44eda630cdb0b09e253a3ef5de"
+      },
+      {
+        "position": 20,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-james-brockermeyer-to-the-practice-squad",
+        "title": "Eagles sign OL James Brockermeyer to the practice squad",
+        "publishedAt": "2026-10-07T14:45:00Z",
+        "headline": "Eagles sign OL James Brockermeyer to the practice squad",
+        "description": "A first-team All-American at the University of Miami, the Eagles add more depth to the offensive line.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "8a4aeb372d52f5d07de2fd243d31d8fd5bc18fdde69ac379c6bd7d3c674ade7d"
+      },
+      {
+        "position": 21,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-name-paylocity-as-new-hr-and-payroll-provider",
+        "title": "Eagles name Paylocity as new HR and payroll provider",
+        "publishedAt": "2026-10-07T14:00:00Z",
+        "headline": "Eagles name Paylocity as new HR and payroll provider",
+        "description": "New partnership brings Paylocity into the Eagles’ family of proud partners.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "8e51bb2e3c272d1267981a0a1cbf5694c2322eed1ad84c3dcff122aee0144539"
+      },
+      {
+        "position": 22,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-place-rb-tank-bigsby-on-injured-reserve-release-lb-anfernee-orji-from-the-practice-squad",
+        "title": "Eagles place RB Tank Bigsby on Injured Reserve, release LB Anfernee Orji from the practice squad ",
+        "publishedAt": "2026-10-06T23:45:00Z",
+        "headline": "Eagles place RB Tank Bigsby on Injured Reserve, release LB Anfernee Orji from the practice squad ",
+        "description": "Tank Bigsby exited the game against the Rams on Sunday with an undisclosed injury.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "554b52fbe5f766dd4444a21edf8c7dad8f856dface606b1f0af8735b785d9ed8"
+      },
+      {
+        "position": 23,
+        "url": "https://www.philadelphiaeagles.com/news/lane-johnson-announces-his-retirement",
+        "title": "Lane Johnson announces his retirement",
+        "publishedAt": "2026-10-06T19:58:12.127Z",
+        "headline": "Lane Johnson announces his retirement",
+        "description": "The team's first-round pick in 2013 redefined the right tackle position and helped the Eagles win two Super Bowl Championships.",
+        "authorName": "Dave Spadaro",
+        "hash": "7fa7d42a7c934b30023f42b645ab717e3e821b3d169598235f05c45ad2e5064f"
+      },
+      {
+        "position": 24,
+        "url": "https://www.philadelphiaeagles.com/news/darius-cooper-is-doing-it-the-right-way-on-and-off-the-field",
+        "title": "Spadaro: Darius Cooper is doing it the right way, on and off the field",
+        "publishedAt": "2026-10-06T16:00:00Z",
+        "headline": "Spadaro: Darius Cooper is doing it the right way, on and off the field",
+        "description": "The 2025 Eagles Community Offensive Player of the Year is no ordinary second-year player, having gone from zero-star high school recruit to key player on offense and special teams.",
+        "authorName": "Dave Spadaro",
+        "hash": "6577997711e8e388f325ed35918359a15f274ac2638bd0cea8e55bb5bb708a22"
+      },
+      {
+        "position": 25,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-nick-sirianni-is-no-stranger-to-adversity-2026-nfl-week-5-jaguars-london",
+        "title": "Spadaro: Nick Sirianni is no stranger to adversity",
+        "publishedAt": "2026-10-05T22:00:00Z",
+        "headline": "Spadaro: Nick Sirianni is no stranger to adversity",
+        "description": "That gives the head coach plenty to draw on as the Eagles look to rebound in London against the Jaguars.",
+        "authorName": "Dave Spadaro",
+        "hash": "a819cfab0aa1e65fc989beda0c4596b2a903838f82693aa0aa2d69874c742edc"
+      },
+      {
+        "position": 26,
+        "url": "https://www.philadelphiaeagles.com/news/nick-sirianni-reacts-to-sunday-24-20-loss-to-the-rams-2026-nfl-week-4",
+        "title": "Spadaro: Nick Sirianni reacts to Sunday",
+        "publishedAt": "2026-10-04T21:48:50.132Z",
+        "headline": "Spadaro: Nick Sirianni reacts to Sunday’s 24-20 loss to the Rams",
+        "description": "The head coach detailed the key moments of the second half that resulted in the Eagles falling to 2-2 on the season.",
+        "authorName": "Dave Spadaro",
+        "hash": "3afe06e5f4b4206765853e2fe773eaf9c02b4e5f4ca97765cb51d2be9a5c3266"
+      },
+      {
+        "position": 27,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-recap-october-4-2026-nfl-week-4-regular-season-jalen-hurts-matthew-stafford",
+        "title": "Game Recap: Rams 24, Eagles 20",
+        "publishedAt": "2026-10-04T21:36:00Z",
+        "headline": "Game Recap: Rams 24, Eagles 20",
+        "description": "The Rams come back from a 10-point deficit to defeat the Eagles at Lincoln Financial Field.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "d800ded0a01fea3061b6d09edbf22a82796ea01a384995ca74af030fc9766639"
+      },
+      {
+        "position": 28,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-inactives-week-4-2026-zack-baun-devonta-smith",
+        "title": "Rams vs. Eagles Inactives",
+        "publishedAt": "2026-10-04T15:47:00Z",
+        "headline": "Rams vs. Eagles Inactives",
+        "description": "Eagles list eight players, including tackle Lane Johnson, as inactive against the Rams.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "e8d5d54a03d0ea33d860bf1f7113bf7a8dfce157bb8edd6c7241fd872704dde3"
+      },
+      {
+        "position": 29,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-game-preview-6-storylines-to-follow-2026-week-4-nfl-regular-season-jalen-hurts-saquon-barkley-matthew-stafford",
+        "title": "Game Preview vs. Rams: 6 storylines to follow",
+        "publishedAt": "2026-10-04T05:00:00Z",
+        "headline": "Game Preview vs. Rams: 6 storylines to follow",
+        "description": "Get ready for the latest chapter in one of the budding rivalries in the NFL between two teams with high aspirations.",
+        "authorName": "Dave Spadaro",
+        "hash": "594bf8df75fac6378e23080eb9205287e7b03ae962793c260c13d715b5b332ad"
+      },
+      {
+        "position": 30,
+        "url": "https://www.philadelphiaeagles.com/news/how-to-watch-stream-and-listen-rams-vs-eagles-2026-nfl-week-4-aaron-donald-matthew-stafford",
+        "title": "How to watch, stream, and listen | Rams vs. Eagles ",
+        "publishedAt": "2026-10-04T04:00:00Z",
+        "headline": "How to watch, stream, and listen | Rams vs. Eagles ",
+        "description": "See how to watch and listen to the Eagles’ Week 4 matchup against the Los Angeles Rams on Sunday, October 4th at 1:00 PM. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "05e74b4c52d0ca03668836af520d8c95b79f8102b31c686f6c14bbaaffbc7a49"
+      },
+      {
+        "position": 31,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-elevate-josiah-deguara-zach-ertz-for-rams-2026-nfl-week-4",
+        "title": "Eagles elevate Josiah Deguara, Zach Ertz for Sunday",
+        "publishedAt": "2026-10-03T21:00:00Z",
+        "headline": "Eagles elevate Josiah Deguara, Zach Ertz for Sunday's game",
+        "description": "Ertz is eligible to play in his first home game since rejoining the Eagles.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "e9c28b65c8afb14ef8c7e8dee664a8a52dbc94bf840f182296053861746e4391"
+      },
+      {
+        "position": 32,
+        "url": "https://www.philadelphiaeagles.com/news/makai-lemon-is-ready-to-face-his-hometown-team",
+        "title": "Makai Lemon is ready to face his hometown team ",
+        "publishedAt": "2026-10-03T14:00:49.722Z",
+        "headline": "Makai Lemon is ready to face his hometown team ",
+        "description": "With DeVonta Smith officially ruled out against the Rams, rookie Makai Lemon’s role in the offense is expected to grow.  ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "9e351eeb315b9f916eed827edcd5ba8c35710570b664037bc70c589c476f652b"
+      },
+      {
+        "position": 33,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-tackle-football-coach-of-the-week-humberto-ayala-millville-high-school",
+        "title": "Eagles Tackle Football Coach of the Week: Humberto Ayala, Millville High School",
+        "publishedAt": "2026-10-03T09:00:00Z",
+        "headline": "Eagles Tackle Football Coach of the Week: Humberto Ayala, Millville High School",
+        "description": "Millville’s championship-winning coach measures success by preparing players for life after high school.",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "3b3192ddeec4f3d5f1cd24317acd25d5b53ad7fa56bd8c0c4a021df11b17418e"
+      },
+      {
+        "position": 34,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-injury-report-2026-nfl-week-4-devonta-smith-puka-nacua",
+        "title": "Rams vs. Eagles Injury Report",
+        "publishedAt": "2026-10-02T20:09:00Z",
+        "headline": "Rams vs. Eagles Injury Report",
+        "description": "The Rams will not have defensive tackle Aaron Donald on Sunday. Get the latest on Eagles linebacker Zack Baun and wide receiver DeVonta Smith.",
+        "authorName": "Chris McPherson",
+        "hash": "c43668714a3810b06fe1841dc1ccfbbce23ff04186406e06dff9622de25a1d93"
+      },
+      {
+        "position": 35,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-offense-knows-rams-defense-presents-a-ton-of-talent",
+        "title": "Spadaro: Offense knows Rams defense presents a ",
+        "publishedAt": "2026-10-02T20:00:00Z",
+        "headline": "Spadaro: Offense knows Rams defense presents a 'ton of talent'",
+        "description": "The offense has flashed in each of the first three games, but now the unit strives for consistency.",
+        "authorName": "Dave Spadaro",
+        "hash": "ccec5f6189c9723c6b55008f52c990cde695f9a4a280363ee92ee81883906a79"
+      },
+      {
+        "position": 36,
+        "url": "https://www.philadelphiaeagles.com/news/rams-vs-eagles-by-the-numbers-2026-nfl-week-4-jalen-hurts-saquon-barkley",
+        "title": "Rams vs. Eagles By the Numbers",
+        "publishedAt": "2026-10-01T20:45:00Z",
+        "headline": "Rams vs. Eagles By the Numbers",
+        "description": "Can Nick Sirianni and the Eagles extend their win streak against the Rams?",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "4c08d64f463cf9c7b5affdf40a86e5cfd5e54e59e6a174f2d5c793bf08bd193b"
+      },
+      {
+        "position": 37,
+        "url": "https://www.philadelphiaeagles.com/news/eagles-sign-lb-anfernee-orji-to-practice-squad",
+        "title": "Eagles sign LB Anfernee Orji to practice squad ",
+        "publishedAt": "2026-10-01T15:30:53.8Z",
+        "headline": "Eagles sign LB Anfernee Orji to practice squad ",
+        "description": "The former Commodore recorded 248 tackles and three sacks though four years at Vanderbilt. ",
+        "authorName": "PhiladelphiaEagles.com",
+        "hash": "4945a4f9abdff0c87cfb3dfe372617872f955519938d6453e9eef132650f1e74"
+      },
+      {
+        "position": 38,
+        "url": "https://www.philadelphiaeagles.com/news/spadaro-vic-fangio-knows-a-tough-assignment-awaits-vs-rams-on-sunday-2026-nfl-week-4-matthew-stafford-puka-nacua",
+        "title": "Spadaro: Vic Fangio knows a ",
+        "publishedAt": "2026-10-01T14:45:00Z",
+        "headline": "Spadaro: Vic Fangio knows a 'tough assignment' awaits vs. Rams on Sunday",
+        "description": "From the players to the personnel groupings, the veteran coordinator scouts the Los Angeles offense.",
+        "authorName": "Dave Spadaro",
+        "hash": "c8e0432ac2272301bcda13311c3939689f8ccad9752c1172bd8657c40c125f5f"
+      }
+    ],
+    "errors": [],
+    "complete": true,
+    "indexHash": "a43ce146166e9d433858621003a50880ae099d8b47a8b931a8cf81420c23d2c9",
+    "listedCards": 80,
+    "allDatesVerified": true,
+    "chronological": true,
+    "oldestPublishedAt": "2026-09-14T01:20:35.544Z",
+    "boundaryReached": true,
+    "overlapAnchorSeen": false
+  },
+  "deployed": false,
+  "customerEligible": false,
+  "limitations": [
+    "Bigsby club announcement published October 6 versus league transaction October 7; dates remain separate.",
+    "No prior successful discovery overlap anchor exists at bootstrap.",
+    "Discovery and placement bootstrap are separate qualification components, not an operational all-article event collector.",
+    "Wilson remains without a verified dated 2026 IR reversion; current roster confirms status but not placement date.",
+    "Sam historical state uses official league evidence; club-only historical coverage remains unproven."
+  ],
+  "historicalLeagueEvents": [
+    {
+      "profileUrl": "https://www.philadelphiaeagles.com/team/players-roster/andre-sam/",
+      "name": "Andre' Sam",
+      "team": "PHI",
+      "position": "S",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.nfl.com/transactions/league/reserve-list/2026/8?after=AAAH6gAAAAgAAAAfAAAAAAAOgt4=",
+      "observedAt": "2026-10-13T02:53:39.793Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-08-31",
+      "publishedAt": null,
+      "source": "NFL official historical transactions",
+      "sourceText": "Reserve/Injured transaction.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER",
+      "customerEligible": false
+    }
+  ],
+  "historicalLeagueEvidence": {
+    "sourceUrl": "https://www.nfl.com/transactions/league/reserve-list/2026/8?after=AAAH6gAAAAgAAAAfAAAAAAAOgt4=",
+    "hash": "d707334250ede6804307cd453fb3c00670b41de37eb728e76876433f3bed274d",
+    "wilsonProbe": [
+      {
+        "url": "https://www.nfl.com/transactions/league/reserve-list/2026/8?after=AAAH6gAAAAgAAAAfAAAAAAAOhE4=",
+        "page": 3,
+        "digest": "3bd856319eca3fa3bcaba6752c9df3bdbc6e6b20835733fe9a32ca71ab0ec49d",
+        "first": [
+          "Chargers Chargers Chargers Chargers 08/31 Dalevon Campbell Reserve/Injured"
+        ],
+        "matches": []
+      }
+    ],
+    "rejectedEvidence": {
+      "sourceUrl": "https://www.nfl.com/news/nfl-news-roundup-latest-league-updates-from-friday-aug-22",
+      "publishedAt": "2025-08-22T14:07:42.308Z",
+      "reason": "Wrong season; cannot establish a 2026 reserve placement."
+    },
+    "paginationLimitation": "Further August next-page requests repeated the same table; traversal stopped without retries."
+  }
+}

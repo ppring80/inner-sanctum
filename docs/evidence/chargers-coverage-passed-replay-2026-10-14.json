@@ -1,0 +1,675 @@
+{
+  "scope": "Replay of 83 fresh official sources fetched in this session; no production writes",
+  "team": "LAC",
+  "coveragePassed": true,
+  "historyComplete": false,
+  "discovery": {
+    "since": "2026-10-01",
+    "chronological": true,
+    "boundaryReached": true,
+    "seenUrls": [
+      "https://www.chargers.com/news/depth-chart-2026-season",
+      "https://www.chargers.com/news/nfhs-referee-crew-of-the-month-september",
+      "https://www.chargers.com/news/nfl-power-rankings-2026",
+      "https://www.chargers.com/news/injury-updates-jim-harbaugh-justin-herbert-chiefs",
+      "https://www.chargers.com/news/2026-nfl-trade-deadline",
+      "https://www.chargers.com/news/mike-mcdaniel-jim-harbaugh-chiefs-week-6",
+      "https://www.chargers.com/news/nfl-betting-odds-chiefs-game-picks-week-6-2026",
+      "https://www.chargers.com/news/resumen-broncos-fecha-5-2026",
+      "https://www.chargers.com/news/jim-harbaugh-fourth-down-takeaway-broncos-week-5",
+      "https://www.chargers.com/news/game-recap-broncos-week-5-2026",
+      "https://www.chargers.com/news/broncos-week-5-inactives-ladd-mcconkey",
+      "https://www.chargers.com/news/injuries-broncos-game-preview-week-5",
+      "https://www.chargers.com/news/2026-week-5-broncos-where-to-watch-listen-livestream",
+      "https://www.chargers.com/news/injury-report-mcconkey-johnston-alt-week-5-broncos",
+      "https://www.chargers.com/news/previa-fecha-5-broncos-2026",
+      "https://www.chargers.com/news/rashawn-slater-injury-update",
+      "https://www.chargers.com/news/players-to-watch-broncos-week-5-preview",
+      "https://www.chargers.com/news/nfl-betting-odds-broncos-game-picks-week-5-2026",
+      "https://www.chargers.com/news/rookie-offensive-linemen-depth-chart",
+      "https://www.chargers.com/news/pup-program-blitz-2026",
+      "https://www.chargers.com/news/offensive-line-broncos-week-5-2026",
+      "https://www.chargers.com/news/2027-early-nfl-mock-draft",
+      "https://www.chargers.com/news/injury-updates-rashawn-slater-joe-alt-ladd-mcconkey",
+      "https://www.chargers.com/news/mike-mcdaniel-jim-harbaugh-broncos-week-5",
+      "https://www.chargers.com/news/resumen-fecha-4-seahawks-2026",
+      "https://www.chargers.com/news/seahawks-takeaways-week-4-justin-herbert",
+      "https://www.chargers.com/news/game-recap-seahawks-week-4-2026",
+      "https://www.chargers.com/news/seahawks-week-4-inactives-derwin-james",
+      "https://www.chargers.com/news/seahawks-game-preview-week-4-2026",
+      "https://www.chargers.com/news/2026-week-4-seahawks-where-to-watch-listen-livestream",
+      "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "https://www.chargers.com/news/elevate-patrick-herbert-and-caleb-murphy-2026",
+      "https://www.chargers.com/news/seahawks-injury-report-week-4",
+      "https://www.chargers.com/news/previa-fecha-4-seahawks-2026",
+      "https://www.chargers.com/news/players-to-watch-preview-seahawks-nfl-week-4",
+      "https://www.chargers.com/news/nfl-betting-odds-seahawks-game-picks-week-4-2026",
+      "https://www.chargers.com/news/genesis-smith-interceptions-depth-chart",
+      "https://www.chargers.com/news/seahawks-preview-justin-herbert-week-4-fantasy",
+      "https://www.chargers.com/news/draft-picks-2027-nfl",
+      "https://www.chargers.com/news/jim-harbaugh-mike-mcdaniel-seahawks-week-4",
+      "https://www.chargers.com/news/seahawks-week-4-fantasy-2026",
+      "https://www.chargers.com/news/resumen-fecha-3-bills-2026",
+      "https://www.chargers.com/news/bills-takeaways-week-3-defense-jim-harbaugh-justin-herbert",
+      "https://www.chargers.com/news/bills-game-recap-week-3-2026",
+      "https://www.chargers.com/news/2026-week-6-chiefs-where-to-watch-listen-livestream",
+      "https://www.chargers.com/news/genesis-smith-interception-week-3-josh-allen",
+      "https://www.chargers.com/news/bills-game-preview-week-3-2026",
+      "https://www.chargers.com/news/bills-week-3-inactives-2026",
+      "https://www.chargers.com/news/2026-week-3-bills-where-to-watch-listen-livestream",
+      "https://www.chargers.com/news/place-trey-pipkins-iii-injured-reserve-sign-dj-uiagalelei-active-roster-2026",
+      "https://www.chargers.com/news/bills-injury-report-week-3-ladd-mcconkey-fantasy",
+      "https://www.chargers.com/news/previa-fecha-3-bills-2026",
+      "https://www.chargers.com/news/players-to-watch-bills-week-3-preview",
+      "https://www.chargers.com/news/nfl-betting-odds-bills-game-picks-week-3-2026",
+      "https://www.chargers.com/news/justin-herbert-leadership-mike-mcdaniel-bills-week-3",
+      "https://www.chargers.com/news/defense-josh-allen-fantasy-week-3-2026",
+      "https://www.chargers.com/news/david-njoku-injured-reserve-sign-marquez-valdes-scantling-active-roster-2026",
+      "https://www.chargers.com/news/mazda-announce-multi-year-partnership-2026",
+      "https://www.chargers.com/news/bills-preview-josh-allen-justin-herbert-2026",
+      "https://www.chargers.com/news/hayden-rucci-signing-depth-chart-roster-2026",
+      "https://www.chargers.com/news/sign-hayden-rucci-2026",
+      "https://www.chargers.com/news/social-club-day-one-jodie-vella-gregory-2026",
+      "https://www.chargers.com/news/charlie-kolar-david-njoku-injured-reserve-fantasy",
+      "https://www.chargers.com/news/bills-week-3-fantasy-2026",
+      "https://www.chargers.com/news/resumen-raiders-fecha-2-2026",
+      "https://www.chargers.com/news/raiders-recap-week-2-2026",
+      "https://www.chargers.com/news/game-recap-raiders-week-2",
+      "https://www.chargers.com/news/raiders-inactives-ladd-mcconkey-fantasy-week-2",
+      "https://www.chargers.com/news/raiders-game-preview-week-2-2026",
+      "https://www.chargers.com/news/2026-week-2-raiders-where-to-watch-listen-livestream",
+      "https://www.chargers.com/news/elevate-isas-waxter-2026",
+      "https://www.chargers.com/news/raiders-injury-report-ladd-mcconkey-fantasy",
+      "https://www.chargers.com/news/previa-fecha-2-raiders-2026",
+      "https://www.chargers.com/news/players-to-watch-raiders-week-2-2026",
+      "https://www.chargers.com/news/nfl-betting-odds-raiders-game-picks-week-2-2026",
+      "https://www.chargers.com/news/latino-youth-honors-jessica-manriquez-derek-gonzalez",
+      "https://www.chargers.com/news/ladd-mcconkey-quentin-johnston-wide-receiver-depth-chart-2026",
+      "https://www.chargers.com/news/daiyan-henley-captain-contract-depth-chart",
+      "https://www.chargers.com/news/raiders-fantasy-week-2-mailbag",
+      "https://www.chargers.com/news/keandre-lambert-smith-injured-reserve-sign-gary-jennings-2026"
+    ],
+    "overlapAnchorSeen": false,
+    "unresolved": [],
+    "corroborated": [
+      {
+        "sourceUrl": "https://www.chargers.com/news/broncos-week-5-inactives-ladd-mcconkey",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "Trevor Penning (concussion) was also ruled out but was placed on Injured Reserve on Saturday.",
+        "articleDate": "2026-10-11",
+        "event": {
+          "profileUrl": "https://www.chargers.com/team/players-roster/trevor-penning/",
+          "name": "Trevor Penning",
+          "team": "LAC",
+          "position": "OL",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+          "observedAt": "2026-10-14T02:22:16.630Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-10",
+          "modifiedAt": "2026-10-10T20:09:25.346Z",
+          "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+          "publishedAt": "2026-10-03T20:10:00Z",
+          "source": "Chargers Communications official announcement",
+          "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.chargers.com/news/broncos-week-5-inactives-ladd-mcconkey",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "Rashawn Slater (ankle) was also put on Injured Reserve.",
+        "articleDate": "2026-10-11",
+        "event": {
+          "profileUrl": "https://www.chargers.com/team/players-roster/rashawn-slater/",
+          "name": "Rashawn Slater",
+          "team": "LAC",
+          "position": "T",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+          "observedAt": "2026-10-14T02:22:16.630Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-09",
+          "publishedAt": "2026-10-03T20:10:00Z",
+          "modifiedAt": "2026-10-10T20:09:25.346Z",
+          "sourceText": "signed wide receiver Theo Wease to the active roster, filling the spot vacated by tackle Rashawn Slater being placed on Reserve/Injured. In addition, the Bolts ",
+          "identityVerified": true,
+          "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026"
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.chargers.com/news/broncos-week-5-inactives-ladd-mcconkey",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "Trey Lance (groin), who was doubtful to play, was also put on Injured Reserve.",
+        "articleDate": "2026-10-11",
+        "event": {
+          "profileUrl": "https://www.chargers.com/team/players-roster/trey-lance/",
+          "name": "Trey Lance",
+          "team": "LAC",
+          "position": "QB",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+          "observedAt": "2026-10-14T02:22:16.630Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-10",
+          "modifiedAt": "2026-10-10T20:09:25.346Z",
+          "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+          "publishedAt": "2026-10-03T20:10:00Z",
+          "source": "Chargers Communications official announcement",
+          "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+          "identityVerified": true,
+          "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+        },
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.chargers.com/news/injury-report-mcconkey-johnston-alt-week-5-broncos",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "Rashawn Slater (ankle) was put on Injured Reserve on Friday.",
+        "articleDate": "2026-10-09",
+        "event": {
+          "profileUrl": "https://www.chargers.com/team/players-roster/rashawn-slater/",
+          "name": "Rashawn Slater",
+          "team": "LAC",
+          "position": "T",
+          "section": "Reserve/Injured",
+          "status": "IR",
+          "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+          "observedAt": "2026-10-14T02:22:16.630Z",
+          "kind": "RESERVE_PLACEMENT",
+          "reportedAt": "2026-10-09",
+          "publishedAt": "2026-10-03T20:10:00Z",
+          "modifiedAt": "2026-10-10T20:09:25.346Z",
+          "sourceText": "signed wide receiver Theo Wease to the active roster, filling the spot vacated by tackle Rashawn Slater being placed on Reserve/Injured. In addition, the Bolts ",
+          "identityVerified": true,
+          "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026"
+        },
+        "createsEvent": false
+      }
+    ],
+    "hypothetical": [
+      {
+        "sourceUrl": "https://www.chargers.com/news/injury-updates-rashawn-slater-joe-alt-ladd-mcconkey",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "If either player is placed on Injured Reserve, they would have to miss at least the next four games.",
+        "articleDate": "2026-10-05",
+        "createsEvent": false
+      },
+      {
+        "sourceUrl": "https://www.chargers.com/news/injury-updates-rashawn-slater-joe-alt-ladd-mcconkey",
+        "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_CHARGERS_FORMAT",
+        "sourceText": "With four games in the books, that means any players the Chargers put on Injured Reserve before Week 1 are now eligible to come off that list.",
+        "articleDate": "2026-10-05",
+        "classification": "GENERAL_ELIGIBILITY_RULE_NOT_ACTIVATION",
+        "createsEvent": false
+      }
+    ]
+  },
+  "events": [
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/scott-matlock/",
+      "name": "Scott Matlock",
+      "team": "LAC",
+      "position": "FB/DL",
+      "section": "Active",
+      "status": "ACTIVE",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "RESERVE_EXIT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "activated fullback/defensive lineman Scott Matlock and guard/tackle Branson Taylor from Reserve/Injured; Designated for Return. In corresponding moves, the Bolts ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/branson-taylor/",
+      "name": "Branson Taylor",
+      "team": "LAC",
+      "position": "G",
+      "section": "Active",
+      "status": "ACTIVE",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "RESERVE_EXIT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "activated fullback/defensive lineman Scott Matlock and guard/tackle Branson Taylor from Reserve/Injured; Designated for Return. In corresponding moves, the Bolts ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trey-lance/",
+      "name": "Trey Lance",
+      "team": "LAC",
+      "position": "QB",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trevor-penning/",
+      "name": "Trevor Penning",
+      "team": "LAC",
+      "position": "OL",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-10",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "placed quarterback Trey Lance and offensive lineman Trevor Penning on Reserve/Injured. The team also ",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/rashawn-slater/",
+      "name": "Rashawn Slater",
+      "team": "LAC",
+      "position": "T",
+      "section": "Reserve/Injured",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "RESERVE_PLACEMENT",
+      "reportedAt": "2026-10-09",
+      "publishedAt": "2026-10-03T20:10:00Z",
+      "modifiedAt": "2026-10-10T20:09:25.346Z",
+      "sourceText": "signed wide receiver Theo Wease to the active roster, filling the spot vacated by tackle Rashawn Slater being placed on Reserve/Injured. In addition, the Bolts ",
+      "identityVerified": true,
+      "effectiveDateSourceUrl": "https://www.chargers.com/team/transactions/2026"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/patrick-herbert/",
+      "name": "Patrick Herbert",
+      "team": "LAC",
+      "position": "TE",
+      "section": "Practice Squad",
+      "status": null,
+      "sourceUrl": "https://www.chargers.com/news/elevate-patrick-herbert-and-caleb-murphy-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "NON_RESERVE",
+      "reportedAt": "2026-10-03",
+      "modifiedAt": "2026-10-03T19:59:03.845Z",
+      "effectiveDateSourceUrl": null,
+      "publishedAt": "2026-10-03T20:00:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "elevated tight end Patrick Herbert and outside linebacker Caleb Murphy from the practice squad for Sunday's game.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/caleb-murphy/",
+      "name": "Caleb Murphy",
+      "team": "LAC",
+      "position": "OLB",
+      "section": "Practice Squad",
+      "status": null,
+      "sourceUrl": "https://www.chargers.com/news/elevate-patrick-herbert-and-caleb-murphy-2026",
+      "observedAt": "2026-10-14T02:22:16.630Z",
+      "kind": "NON_RESERVE",
+      "reportedAt": "2026-10-03",
+      "modifiedAt": "2026-10-03T19:59:03.845Z",
+      "effectiveDateSourceUrl": null,
+      "publishedAt": "2026-10-03T20:00:00Z",
+      "source": "Chargers Communications official announcement",
+      "sourceText": "elevated tight end Patrick Herbert and outside linebacker Caleb Murphy from the practice squad for Sunday's game.",
+      "identityVerified": true,
+      "identityBasis": "EXACT_UNIQUE_NAME_ON_OFFICIAL_ROSTER"
+    }
+  ],
+  "sourceManifest": [
+    {
+      "url": "https://www.chargers.com/news/depth-chart-2026-season",
+      "sha256": "38552cf9056a9a3e9aa2accb800d2a6ca28bce16a549cf3630e0f76ed70ccf8a"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfhs-referee-crew-of-the-month-september",
+      "sha256": "c01f7c3543ee3d0f401b88b2eed0067c403ca82a81a5b5f1569f8cf9bcfd6e74"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-power-rankings-2026",
+      "sha256": "663eb6042f752f5e51b011942698c8c992ae160fc9240c07f501ae6a7ef5e7ff"
+    },
+    {
+      "url": "https://www.chargers.com/news/injury-updates-jim-harbaugh-justin-herbert-chiefs",
+      "sha256": "7d0b1c11eae7498821b733b372147d4bb9c77822e8d7616827ddb02ed3ff3255"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-nfl-trade-deadline",
+      "sha256": "5ec526610611b78654b1ce40c3bc12cba349f552b362ef90b483ded5fdb59c23"
+    },
+    {
+      "url": "https://www.chargers.com/news/mike-mcdaniel-jim-harbaugh-chiefs-week-6",
+      "sha256": "476c1398ebec3aaf4062addf91b36c6fd36e8b22cf0b2d1affc2641cc3057f1a"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-betting-odds-chiefs-game-picks-week-6-2026",
+      "sha256": "9e9f6b88e2118266d56a25bc00470ab53c32b0e31560e8a8ca72bb69f573c404"
+    },
+    {
+      "url": "https://www.chargers.com/news/resumen-broncos-fecha-5-2026",
+      "sha256": "fe7a2008745ab58af5c871d7fb62c2cb7c29f7e79bbe4b62b93ba9b2ee6e30c2"
+    },
+    {
+      "url": "https://www.chargers.com/news/jim-harbaugh-fourth-down-takeaway-broncos-week-5",
+      "sha256": "eeb179835b041d21d1e0affc3662d5322b96b382ca676a8a1cfe1debde170909"
+    },
+    {
+      "url": "https://www.chargers.com/news/game-recap-broncos-week-5-2026",
+      "sha256": "64434be9ab082ac4bcca96282320aa1a7dd9eed51aec49f65f98b873a8cf21af"
+    },
+    {
+      "url": "https://www.chargers.com/news/broncos-week-5-inactives-ladd-mcconkey",
+      "sha256": "6e75f9a3ebfc49fcc86e40a4a640ce235b109d6c4184d2790170f99135879100"
+    },
+    {
+      "url": "https://www.chargers.com/news/injuries-broncos-game-preview-week-5",
+      "sha256": "1cddcff3d025ea40a7ec136e40d64b264179c732225655085acb016d8d3a7448"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-week-5-broncos-where-to-watch-listen-livestream",
+      "sha256": "81cde3fdac13acc3ef10f72a310a0fe341c052031c4459e85548de3ff2e1d05d"
+    },
+    {
+      "url": "https://www.chargers.com/news/injury-report-mcconkey-johnston-alt-week-5-broncos",
+      "sha256": "d45af1aae08caf6147c19252a91cce894c4fa2da7699782e88fc97c4046138ab"
+    },
+    {
+      "url": "https://www.chargers.com/news/previa-fecha-5-broncos-2026",
+      "sha256": "0eff49526fe4bfbf4bdf251bd2ab8acf737bc2abf89f1795d4da4f109f43568b"
+    },
+    {
+      "url": "https://www.chargers.com/news/rashawn-slater-injury-update",
+      "sha256": "18ce6ce4131ed5a8adb24321a45fd5d0357095916c3f3cc1bd09dba6770e15d6"
+    },
+    {
+      "url": "https://www.chargers.com/news/players-to-watch-broncos-week-5-preview",
+      "sha256": "7e1e4c639d708be5f1833d942b2a775bd9fcb343ae333e6cfe76279400cb592c"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-betting-odds-broncos-game-picks-week-5-2026",
+      "sha256": "bc243581f5874af470e11d2dd8cd08c9fb79cfa6621db114e9a4f26dbf270a5e"
+    },
+    {
+      "url": "https://www.chargers.com/news/rookie-offensive-linemen-depth-chart",
+      "sha256": "b707913ca046e1c21d184a8ba5012acc464b5b9363ccb48612c332d4a8ea997b"
+    },
+    {
+      "url": "https://www.chargers.com/news/pup-program-blitz-2026",
+      "sha256": "24c9a4c8eaf14d392162eee6e9366652a28b0856381ee489828ba63c4d071e3d"
+    },
+    {
+      "url": "https://www.chargers.com/news/offensive-line-broncos-week-5-2026",
+      "sha256": "1b581a34c0ffe14cb8caafc42d2f4b375189032032f0a507c4d5a98163aafc95"
+    },
+    {
+      "url": "https://www.chargers.com/news/2027-early-nfl-mock-draft",
+      "sha256": "56543920a946bfffbdc196c5e421bee777807498c36e0ffd02b163357d126f39"
+    },
+    {
+      "url": "https://www.chargers.com/news/injury-updates-rashawn-slater-joe-alt-ladd-mcconkey",
+      "sha256": "f42cbe3b3c29186301b6f31663b8597c346f969f96b20783a705ec513fa001b9"
+    },
+    {
+      "url": "https://www.chargers.com/news/mike-mcdaniel-jim-harbaugh-broncos-week-5",
+      "sha256": "a0c352f9b870581e140b4cb302831d1c7a8d39fbecc0de3d52f13bfa786baddf"
+    },
+    {
+      "url": "https://www.chargers.com/news/resumen-fecha-4-seahawks-2026",
+      "sha256": "43ef75554efcedb4054cd97146845a150c1b0c4dab1cd494dfd691f6a2cfb056"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-takeaways-week-4-justin-herbert",
+      "sha256": "7867156c24fe5a81957940684befcba574a19c902300e24795d4c6c897207769"
+    },
+    {
+      "url": "https://www.chargers.com/news/game-recap-seahawks-week-4-2026",
+      "sha256": "48ef513e63dcac8423dcd3b7839edd3604a498bd1c80051ed4ffc698f0c09f21"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-week-4-inactives-derwin-james",
+      "sha256": "a76ff11fbe3bf451f28aecb00f16e48221082396b232c540745a45bce80021d8"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-game-preview-week-4-2026",
+      "sha256": "da7a3dec29d439f5acb42258c857de3614099b52a23136cad7a87b5aab8fd1fe"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-week-4-seahawks-where-to-watch-listen-livestream",
+      "sha256": "efb8a27fea0bf880d4bd112951ebb7719409f1431b01a2ccc7c474cd4a64f4de"
+    },
+    {
+      "url": "https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026",
+      "sha256": "53040bfbb647420692dcceee6d5c18d3c320d0ab7136c30bb7884e679e46cc34"
+    },
+    {
+      "url": "https://www.chargers.com/news/elevate-patrick-herbert-and-caleb-murphy-2026",
+      "sha256": "e80bc8b3c714bbf08f38a64ec6f2ff43d3353bf49d1513efd93eb75788956171"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-injury-report-week-4",
+      "sha256": "4d56954585c2b85fac792e7c2ccface7a0d0408770c414ea21e15a118df39cd1"
+    },
+    {
+      "url": "https://www.chargers.com/news/previa-fecha-4-seahawks-2026",
+      "sha256": "9f0001a956fede5e42aee254f5761c6c4bd92a6678f36534a92174744658c6d1"
+    },
+    {
+      "url": "https://www.chargers.com/news/players-to-watch-preview-seahawks-nfl-week-4",
+      "sha256": "a9daea1ab91aec1252837fd36bf9ab2b81bf7ca0f2c7ecf09fdb9aa1e59895cf"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-betting-odds-seahawks-game-picks-week-4-2026",
+      "sha256": "3fa481c7742d23dc2b98005a3bf1d68379c46b4770b4727600b2c473117d98a4"
+    },
+    {
+      "url": "https://www.chargers.com/news/genesis-smith-interceptions-depth-chart",
+      "sha256": "2062ff3c3f6ca20c4b9985342ddbd40bfb7af04ce54c1dd6fa173511fce90b20"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-preview-justin-herbert-week-4-fantasy",
+      "sha256": "af754b720e93188033a75cd8c807634b79ab5900248b559180482315c603f1c3"
+    },
+    {
+      "url": "https://www.chargers.com/news/draft-picks-2027-nfl",
+      "sha256": "9acfb7a1769381774cd2ac533a18a8f6e36a74103f3a80bce2f104b9819dc858"
+    },
+    {
+      "url": "https://www.chargers.com/news/jim-harbaugh-mike-mcdaniel-seahawks-week-4",
+      "sha256": "8aacd36275109cb2f41514fc7e54f465863324841863b9bc452759dc41d61a4d"
+    },
+    {
+      "url": "https://www.chargers.com/news/seahawks-week-4-fantasy-2026",
+      "sha256": "9e1fe447c649d70091c44ca3e5f4570d76ecead763675233f0d03b04c8b169e7"
+    },
+    {
+      "url": "https://www.chargers.com/news/resumen-fecha-3-bills-2026",
+      "sha256": "39227b57e2dbf97544bd8827020e10dc57999df96bdd8a4b892dc57171f4a343"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-takeaways-week-3-defense-jim-harbaugh-justin-herbert",
+      "sha256": "d7f0ff0c6a1bdbb581c6b59b3458ebdd0b8e0882680491835f0973cb36b46a8b"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-game-recap-week-3-2026",
+      "sha256": "4008ca25ec211001cc09db7e1040ba17cc103eef9b144830f60ac64166eab3f6"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-week-6-chiefs-where-to-watch-listen-livestream",
+      "sha256": "b69ce5c5c8d2dfd69a8b2ce4551c20b72c12dd36f6b2d6791cbf02e9a9e688ba"
+    },
+    {
+      "url": "https://www.chargers.com/news/genesis-smith-interception-week-3-josh-allen",
+      "sha256": "aab2e0897c37f152793d20004e6480a9a57c3a55984dae958fa8e30f13fa6e63"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-game-preview-week-3-2026",
+      "sha256": "5d09ccb7d7db200aa8073a00bd8dea69035f33652ef04be1061d45a19203cdf2"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-week-3-inactives-2026",
+      "sha256": "e4d489577876ab0b88222abcfc96b1609acb1791c7a0bc3248bbe92f757b7081"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-week-3-bills-where-to-watch-listen-livestream",
+      "sha256": "ffccee53d5e6356d72cdd99b158514ce0779358b2ef55d2eb06c634a6f227ae7"
+    },
+    {
+      "url": "https://www.chargers.com/news/place-trey-pipkins-iii-injured-reserve-sign-dj-uiagalelei-active-roster-2026",
+      "sha256": "4cc103a0adc6818d4e13edf693d74763654b8079295e1b6a5c770b47a1bf8375"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-injury-report-week-3-ladd-mcconkey-fantasy",
+      "sha256": "cc356ed7a33baddcdd78d30e7414f13c9ffe173c739c9a4b8c10f37280897798"
+    },
+    {
+      "url": "https://www.chargers.com/news/previa-fecha-3-bills-2026",
+      "sha256": "53396f1be36d62410c3be61a96df998b66f02f1c3530c8d7300b2b8126693b57"
+    },
+    {
+      "url": "https://www.chargers.com/news/players-to-watch-bills-week-3-preview",
+      "sha256": "9dfb999fcd91c427d344999dda6b02858b352b683b0c80be715d9ca647df5f1f"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-betting-odds-bills-game-picks-week-3-2026",
+      "sha256": "be319120dc27ca62d16604fc6c133aabfad94c08364c06247772654864231a5d"
+    },
+    {
+      "url": "https://www.chargers.com/news/justin-herbert-leadership-mike-mcdaniel-bills-week-3",
+      "sha256": "76115f64b5c53ae17c9d92eb2d933d48d60b424ecad8365de026d3c72de85c7e"
+    },
+    {
+      "url": "https://www.chargers.com/news/defense-josh-allen-fantasy-week-3-2026",
+      "sha256": "9717ce5a852a09aa7007575701ae6f478222d78e41c9d89e68544783933ce766"
+    },
+    {
+      "url": "https://www.chargers.com/news/david-njoku-injured-reserve-sign-marquez-valdes-scantling-active-roster-2026",
+      "sha256": "637b4f96e1bf7b40e8adaeb9427743f380864fdc090db86e8e71f09186387782"
+    },
+    {
+      "url": "https://www.chargers.com/news/mazda-announce-multi-year-partnership-2026",
+      "sha256": "32d41aa1c806c4d919ed8d98ffbf55dbb62eafbad4b83ae19e6bbf3ed553b554"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-preview-josh-allen-justin-herbert-2026",
+      "sha256": "048a99f0ba5ea32be1b4e5eb430965456f39b09c6eff7eea4e6a16833040aaea"
+    },
+    {
+      "url": "https://www.chargers.com/news/hayden-rucci-signing-depth-chart-roster-2026",
+      "sha256": "77a5b114d7b7d4b1b0682b8568e994cfc6607ee5850e8de03a0aa5a1a065da66"
+    },
+    {
+      "url": "https://www.chargers.com/news/sign-hayden-rucci-2026",
+      "sha256": "47749f87e6d74df804e0da2665c9832a3dc2ae52c821b90f84943c279f1a5bbb"
+    },
+    {
+      "url": "https://www.chargers.com/news/social-club-day-one-jodie-vella-gregory-2026",
+      "sha256": "1b29a13d0d23a067e37553718e8e01cccf126ea330f57f0ac74b1337f7d5b6b0"
+    },
+    {
+      "url": "https://www.chargers.com/news/charlie-kolar-david-njoku-injured-reserve-fantasy",
+      "sha256": "b365b74731f9d80924c81244293755a39717e302f484349287dc17a79788e09f"
+    },
+    {
+      "url": "https://www.chargers.com/news/bills-week-3-fantasy-2026",
+      "sha256": "312136d5462e662c1fa189b0f09044db47539017022cac2303cca4418d01dc00"
+    },
+    {
+      "url": "https://www.chargers.com/news/resumen-raiders-fecha-2-2026",
+      "sha256": "ebac2ee4ad4d4c3fd13bb253cc2cd112dc18e769e23de58087a22dc485e9e411"
+    },
+    {
+      "url": "https://www.chargers.com/news/raiders-recap-week-2-2026",
+      "sha256": "0c08f5025be2cf08bc2d9a73e6caf583409b8579457bfa0e5b088df84ab9c40b"
+    },
+    {
+      "url": "https://www.chargers.com/news/game-recap-raiders-week-2",
+      "sha256": "592a729bd3f4c34eb7026176e8da453fb23ab2d18b9dbdf24cef13f62b81005d"
+    },
+    {
+      "url": "https://www.chargers.com/news/raiders-inactives-ladd-mcconkey-fantasy-week-2",
+      "sha256": "9cc559ca93d56719633158e9269f3d978e5028cf095a49091dd24b3119bcbb77"
+    },
+    {
+      "url": "https://www.chargers.com/news/raiders-game-preview-week-2-2026",
+      "sha256": "2ea9e6e645f8e453438e4a0ff745a030d11c33ca07f18196aea5aa9791ec866e"
+    },
+    {
+      "url": "https://www.chargers.com/news/2026-week-2-raiders-where-to-watch-listen-livestream",
+      "sha256": "ea012c04086ebd94ac776ed80e81779b93a325ad9c3a8d7c136e4850d38151d2"
+    },
+    {
+      "url": "https://www.chargers.com/news/elevate-isas-waxter-2026",
+      "sha256": "46d5e540a89cbe93f8d30bc29a1f25944505acd14e54bca55c145071699e6906"
+    },
+    {
+      "url": "https://www.chargers.com/news/raiders-injury-report-ladd-mcconkey-fantasy",
+      "sha256": "6228077329a86aa190273750afd2cae89f840d324f61e58eba551d0b3f143fcd"
+    },
+    {
+      "url": "https://www.chargers.com/news/previa-fecha-2-raiders-2026",
+      "sha256": "31c4a318a28149018f9fb311f9ec2883a1b4167050443bd9e056ee636ea417b6"
+    },
+    {
+      "url": "https://www.chargers.com/news/players-to-watch-raiders-week-2-2026",
+      "sha256": "3312da08d29e0ed390986d20f00703020710039223b133f0394c41736116eee0"
+    },
+    {
+      "url": "https://www.chargers.com/news/nfl-betting-odds-raiders-game-picks-week-2-2026",
+      "sha256": "bb306b909368b1655d54b6dfa559def528fc3a71654ba22787ab30926dd02d4f"
+    },
+    {
+      "url": "https://www.chargers.com/news/latino-youth-honors-jessica-manriquez-derek-gonzalez",
+      "sha256": "05fcb968a0c1c94fb4c3ff82cf14aa82ad003f19707ad93bf7c029c1163fd9d0"
+    },
+    {
+      "url": "https://www.chargers.com/news/ladd-mcconkey-quentin-johnston-wide-receiver-depth-chart-2026",
+      "sha256": "776e24b77ad2f075075c7cfdf716ca53206bcf59c55fc078d9d057f2cf287405"
+    },
+    {
+      "url": "https://www.chargers.com/news/daiyan-henley-captain-contract-depth-chart",
+      "sha256": "42ff73fbf5430b9fdd54597d81f5a25a8cddd3972c0aac02266825e50ac2afd5"
+    },
+    {
+      "url": "https://www.chargers.com/news/raiders-fantasy-week-2-mailbag",
+      "sha256": "4219b9d0774f06a54a550d9e9aa1ad7b12025d4a3c3ce4f8dbf4d95b43e6c31e"
+    },
+    {
+      "url": "https://www.chargers.com/news/keandre-lambert-smith-injured-reserve-sign-gary-jennings-2026",
+      "sha256": "40c408f7ba2cdd393ee81c3a364a1613569585d35d9604989bc02db89a3abe69"
+    }
+  ],
+  "limitations": [
+    "Chargers only; not league-wide qualification.",
+    "Bootstrap run; recurring overlap enforced in code but not yet live-qualified.",
+    "Reserve exit is not proof of health."
+  ],
+  "productionEnabled": false
+}

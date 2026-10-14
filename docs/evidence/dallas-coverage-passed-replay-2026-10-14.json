@@ -1,0 +1,41 @@
+{
+  "scope": "Replay of current Dallas collection and immutable previously verified official history; no production writes",
+  "coveragePassed": true,
+  "historyComplete": false,
+  "discoveryComplete": true,
+  "pages": 4,
+  "articles": 80,
+  "events": 7,
+  "quarantined": [
+    {
+      "reportedAt": "2026-10-04",
+      "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+      "observedAt": "2026-10-14T02:59:00.337Z",
+      "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+      "customerEligible": false,
+      "reason": "NAME_NOT_IN_OFFICIAL_TEAM_ROSTER",
+      "name": "Jalen Williams",
+      "status": null,
+      "createsEvent": false
+    },
+    {
+      "reportedAt": "2026-10-04",
+      "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+      "observedAt": "2026-10-14T02:59:00.337Z",
+      "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+      "customerEligible": false,
+      "reason": "NAME_NOT_IN_OFFICIAL_TEAM_ROSTER",
+      "name": "Jalen Williams",
+      "status": null,
+      "createsEvent": false
+    }
+  ],
+  "unresolved": [],
+  "conflicts": [],
+  "limitations": [
+    "Unmatched Jalen Williams claim retained; no alias to Jalen Thompson and no status applied.",
+    "Bootstrap qualification; recurring live overlap still to qualify.",
+    "Dallas only; not league-wide qualification or production activation."
+  ],
+  "productionEnabled": false
+}

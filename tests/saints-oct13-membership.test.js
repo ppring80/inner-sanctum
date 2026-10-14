@@ -1,0 +1,15 @@
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict');
+const {extractSaintsEvents}=require('../netlify/functions/_saints-announcement-events');
+const {deriveStates}=require('../netlify/functions/_club-availability-reconciliation');
+const {reconcileReferences}=require('../netlify/functions/_saints-reference-reconciliation');
+const html=fs.readFileSync(__dirname+'/fixtures/saints-alert-2026-10-13.html','utf8');
+const r=extractSaintsEvents(html,{sourceUrl:'https://www.neworleanssaints.com/news/decamerion-richardson-saints-roster-moves-transaction-alert-october-13-2026',observedAt:'2026-10-14T02:00:00Z'});
+assert.deepEqual(r.unresolved,[]);const rich=r.events.find(e=>e.name==='Decamerion Richardson');assert.equal(rich.kind,'MEMBERSHIP_ENTRY');assert.equal(rich.status,'ACTIVE');
+for(const name of ['Cal Adomitis','Jayden Price','Brock Rechsteiner'])assert.equal(r.events.find(e=>e.name===name).status,'DEPARTED');
+assert.ok(!r.events.some(e=>e.name==='Ulysses Bentley'||e.name==='Trey Palmer'));
+const states=deriveStates([{...rich,status:'DEPARTED',kind:'DEPARTURE',reportedAt:'2026-10-10'}],r.events,{team:'NO',asOf:'2026-10-14T02:00:00Z'});assert.equal(states.states.find(e=>e.name===rich.name).status,'ACTIVE');
+const claim={sourceText:'Running the ball will help, too, but that task is made more difficult by the absence of running back Travis Etienne Jr. , who was placed on injured reserve this week.',articleDate:'2026-10-04'};
+const event={...rich,name:'Travis Etienne Jr.',kind:'RESERVE_PLACEMENT',status:'IR',reportedAt:'2026-10-01'};
+assert.equal(reconcileReferences([claim],[event]).corroborated.length,1);assert.equal(reconcileReferences([claim],[{...event,reportedAt:'2026-09-25'}]).unresolved.length,1);
+console.log('PASS: re-signing, separate terminations, reserve parenthetical and bounded weekly corroboration.');

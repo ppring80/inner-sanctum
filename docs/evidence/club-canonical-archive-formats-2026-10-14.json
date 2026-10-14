@@ -1,0 +1,510 @@
+{
+  "scope": "Read-only page-format inventory; not discovery completeness or freshness qualification",
+  "observedAt": "2026-10-14T03:22:56.255Z",
+  "teams": [
+    "ARI",
+    "BAL",
+    "MIA",
+    "SF",
+    "NYG",
+    "TB",
+    "WSH",
+    "JAX",
+    "CIN",
+    "BUF",
+    "DET",
+    "GB",
+    "LAR",
+    "ATL",
+    "NYJ",
+    "CHI",
+    "NE",
+    "DEN",
+    "KC",
+    "IND"
+  ],
+  "sources": [
+    {
+      "team": "ARI",
+      "kind": "news",
+      "url": "https://www.azcardinals.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.azcardinals.com/news/",
+      "sha256": "14b752257fe90fc89bd62dac46442808e525da4d4740697960199495535318ef",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.azcardinals.com/news/index",
+          "label": "News"
+        }
+      ]
+    },
+    {
+      "team": "BAL",
+      "kind": "news",
+      "url": "https://www.baltimoreravens.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.baltimoreravens.com/news/",
+      "sha256": "8e28cdccb3248e199dd33effbc00484f104f91e6567dd081106243d6f870920f",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.baltimoreravens.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news/",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "MIA",
+      "kind": "news",
+      "url": "https://www.miamidolphins.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.miamidolphins.com/news/",
+      "sha256": "68744688ae05bdfa4ef38730a565e034bdf1ae3c429eb50266aab505f216e658",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.miamidolphins.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.miamidolphins.com/news/latest-news",
+          "label": "/news/latest-news + More Latest News"
+        }
+      ]
+    },
+    {
+      "team": "SF",
+      "kind": "news",
+      "url": "https://www.49ers.com/news/latest-headlines/",
+      "status": "200",
+      "responseUrl": "https://www.49ers.com/news/latest-headlines/",
+      "sha256": "82f3649bf828824bbd7e1e9c8016af85d0561f1f4446e176530f4f47b817da2b",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "Latest Headlines",
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 0,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.49ers.com/news/",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "NYG",
+      "kind": "news",
+      "url": "https://www.giants.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.giants.com/news/",
+      "sha256": "447c9c83784d7d39d63d7fbe5aaea3900b93f3f9edbd9e30151af4350f2c398c",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": null,
+          "selection": "news-index-feed",
+          "category": null,
+          "count": 40,
+          "skip": 4,
+          "view": "Text + Thumb"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.giants.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.giants.com/news/week-6-tracker-latest-news-notes-roster-moves-new-orleans-saints-nfl",
+          "label": "Week 6 Tracker: Latest news, notes &amp; roster moves"
+        },
+        {
+          "url": "https://www.giants.com/news/week-5-tracker-latest-news-notes-roster-moves-washington-commanders",
+          "label": "Week 5 Tracker: Latest news, notes &amp; roster moves"
+        }
+      ]
+    },
+    {
+      "team": "TB",
+      "kind": "news",
+      "url": "https://www.buccaneers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.buccaneers.com/news/",
+      "sha256": "c9058af65d51a7f574732be82ce4817669e15285586bece74e88432d6d7433ab",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.buccaneers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.buccaneers.com/news/all-content",
+          "label": "Latest"
+        }
+      ]
+    },
+    {
+      "team": "WSH",
+      "kind": "news",
+      "url": "https://www.commanders.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.commanders.com/news/",
+      "sha256": "1f75f941ce641031b98bd18f54da5a5ae09b7eacd3bdab0083adec61c5275387",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.commanders.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-archive",
+          "label": "More Articles"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "JAX",
+      "kind": "news",
+      "url": "https://www.jaguars.com/news",
+      "status": "301",
+      "responseUrl": "https://www.jaguars.com/news",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "coveragePassed": false,
+      "error": "SOURCE_HTTP_301"
+    },
+    {
+      "team": "CIN",
+      "kind": "news",
+      "url": "https://www.bengals.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.bengals.com/news/",
+      "sha256": "7241d316c16351075cd42d329f4d62ecba41fc75851903f3b3e12fd3892eecd0",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.bengals.com/news/index",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "BUF",
+      "kind": "news",
+      "url": "https://www.buffalobills.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.buffalobills.com/news/",
+      "sha256": "85113475263373d1905af77f0210f496c04072fcb500ddef0a7cf204ea65021f",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "More News",
+          "selection": null,
+          "category": null,
+          "count": 60,
+          "skip": 4,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.buffalobills.com/news/index",
+          "label": "News"
+        },
+        {
+          "url": "https://www.buffalobills.com/news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "DET",
+      "kind": "news",
+      "url": "https://www.detroitlions.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.detroitlions.com/news/",
+      "sha256": "358d22d3f3d79289e0f7ee2225fd48eafbe32706d8d12f50caed2a73910ce0a7",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.detroitlions.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.detroitlions.com/news/all-news",
+          "label": "/news/all-news + More Latest News"
+        }
+      ]
+    },
+    {
+      "team": "GB",
+      "kind": "news",
+      "url": "https://www.packers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.packers.com/news/",
+      "sha256": "7526fc5fe6f7a329d28187465cbe050c2fd3379e8f8285973fc159c6d624764e",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.packers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.packers.com/news/all-news",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "LAR",
+      "kind": "news",
+      "url": "https://www.therams.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.therams.com/news/",
+      "sha256": "6500b6f251b81730eeec2a477d7777e95af03cf13b4c51e4ef4b17f29a2a070c",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.therams.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.therams.com/news/all-news",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "ATL",
+      "kind": "news",
+      "url": "https://www.atlantafalcons.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.atlantafalcons.com/news/",
+      "sha256": "6a1f801ceee3e6283079b3fe6c40b8eaa43c987fa3381b9a568e422a7e602e7c",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.atlantafalcons.com/news/index",
+          "label": "Latest"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/all",
+          "label": "/news/all + More"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/falcons-news-now-top-headlines-falcons-sunday-night-football-baltimore-ravens",
+          "label": "Falcons News Now: Top headlines for Falcons Sunday Night Football matchup with the Baltimore Ravens"
+        }
+      ]
+    },
+    {
+      "team": "NYJ",
+      "kind": "news",
+      "url": "https://www.newyorkjets.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.newyorkjets.com/news/",
+      "sha256": "49b5ebdb9d661c4e4072e615937ccf7ccdda47f3cdf3c00be212b3bccedbfd74",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.newyorkjets.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.newyorkjets.com/news/all-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "BAL",
+      "kind": "news",
+      "url": "https://www.baltimoreravens.com/news/all-news",
+      "status": "200",
+      "responseUrl": "https://www.baltimoreravens.com/news/all-news",
+      "sha256": "541d77fd1874306b41e885f3fb36e631936c7e28ad7ae7232072ac06838acf95",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": null,
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 0,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.baltimoreravens.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news/",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "CHI",
+      "kind": "news",
+      "url": "https://www.chicagobears.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.chicagobears.com/news/",
+      "sha256": "d981af8920fc13b3f14d3e109f838050827f5479634b7db98204c11bd3d2c41b",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "All Headlines",
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 10,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.chicagobears.com/news/index",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "NE",
+      "kind": "news",
+      "url": "https://www.patriots.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.patriots.com/news/",
+      "sha256": "b94cb3518b85eab5a67df43d70533d77a3e289241bd00c30a445968082ca58e6",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.patriots.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.patriots.com/news/three-to-watch-mvp-showdown-between-drake-maye-and-baker-mayfield-headlines-clash-of-division-leaders",
+          "label": "Three to Watch: MVP Showdown Between Drake Maye and Baker Mayfield Headlines Clash of Division Leaders"
+        },
+        {
+          "url": "https://www.patriots.com/news/report-ja-whaun-bentley-latest-to-receive-extension",
+          "label": "Report: Ja"
+        },
+        {
+          "url": "https://www.patriots.com/news/archive",
+          "label": "News Archive"
+        },
+        {
+          "url": "https://www.patriots.com/news/",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "DEN",
+      "kind": "news",
+      "url": "https://www.denverbroncos.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.denverbroncos.com/news/",
+      "sha256": "e0a7b5aa43cfd79338a31a3191295572658fba7801df25f673406c1bf2c4c2e3",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.denverbroncos.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.denverbroncos.com/news/all",
+          "label": "/news/all + All News"
+        }
+      ]
+    },
+    {
+      "team": "KC",
+      "kind": "news",
+      "url": "https://www.chiefs.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.chiefs.com/news/",
+      "sha256": "661304eb632f23990be324de22892b5183e685a5c6c71bb4b49b5a3784c9bb4b",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": null,
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 4,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.chiefs.com/news/index",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.chiefs.com/news/",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "IND",
+      "kind": "news",
+      "url": "https://www.colts.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.colts.com/news/",
+      "sha256": "00777d7e04a5597c82e63d616ecf108cd95391cad3c5712a843b0d901df17f6d",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.colts.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.colts.com/news/all",
+          "label": "All News"
+        }
+      ]
+    }
+  ],
+  "coveragePassed": false,
+  "productionEnabled": false
+}

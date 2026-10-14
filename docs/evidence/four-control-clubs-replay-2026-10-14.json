@@ -1,0 +1,33 @@
+{
+  "scope": "Final code replay against this session saved official sources; not new live collections",
+  "controls": [
+    {
+      "team": "NO",
+      "coveragePassed": true,
+      "unresolved": 0,
+      "conflicts": 0
+    },
+    {
+      "team": "LAC",
+      "coveragePassed": true,
+      "unresolved": 0,
+      "conflicts": 0
+    },
+    {
+      "team": "DAL",
+      "coveragePassed": true,
+      "unresolved": 0,
+      "conflicts": 0
+    },
+    {
+      "team": "PHI",
+      "coveragePassed": true,
+      "unresolved": 0,
+      "conflicts": 0
+    }
+  ],
+  "leagueWideCoveragePassed": false,
+  "qualifiedAdapters": 4,
+  "requiredAdapters": 32,
+  "productionEnabled": false
+}

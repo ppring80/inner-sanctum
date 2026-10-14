@@ -1,0 +1,164 @@
+{
+  "scope": "Validated card parsing only; dates/extraction/coverage not qualified",
+  "profiles": [
+    {
+      "team": "BUF",
+      "sourceUrl": "https://www.buffalobills.com/news/",
+      "linkType": "More News",
+      "count": 60,
+      "featuredCount": 4,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 60,
+        "Skip": 4,
+        "Selection": null,
+        "SectionTitle": "More News",
+        "Category": null
+      },
+      "parsedCards": 64,
+      "coveragePassed": false
+    },
+    {
+      "team": "DET",
+      "sourceUrl": "https://www.detroitlions.com/news/all-news",
+      "linkType": "news-all-news",
+      "count": 80,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 80,
+        "Skip": 0,
+        "Selection": "news-all-news",
+        "SectionTitle": "All News",
+        "Category": null
+      },
+      "parsedCards": 80,
+      "coveragePassed": false
+    },
+    {
+      "team": "CLE",
+      "sourceUrl": "https://www.clevelandbrowns.com/news/all",
+      "linkType": "",
+      "count": 80,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 80,
+        "Skip": 0,
+        "Selection": null,
+        "SectionTitle": null,
+        "Category": null
+      },
+      "parsedCards": 80,
+      "coveragePassed": false
+    },
+    {
+      "team": "LAR",
+      "sourceUrl": "https://www.therams.com/news/all-news",
+      "linkType": "latest-stories",
+      "count": 60,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 60,
+        "Skip": 0,
+        "Selection": "latest-stories",
+        "SectionTitle": "",
+        "Category": null
+      },
+      "parsedCards": 60,
+      "coveragePassed": false
+    },
+    {
+      "team": "WSH",
+      "sourceUrl": "https://www.commanders.com/news/latest-archive",
+      "linkType": "homepage-centerpiece",
+      "count": 20,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 20,
+        "Skip": 0,
+        "Selection": "homepage-centerpiece",
+        "SectionTitle": "News Archive",
+        "Category": null
+      },
+      "parsedCards": 20,
+      "coveragePassed": false
+    },
+    {
+      "team": "DEN",
+      "sourceUrl": "https://www.denverbroncos.com/news/all",
+      "linkType": "",
+      "count": 80,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 80,
+        "Skip": 0,
+        "Selection": null,
+        "SectionTitle": "",
+        "Category": null
+      },
+      "parsedCards": 80,
+      "coveragePassed": false
+    },
+    {
+      "team": "IND",
+      "sourceUrl": "https://www.colts.com/news/all",
+      "linkType": "latest-stories",
+      "count": 60,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 60,
+        "Skip": 0,
+        "Selection": "latest-stories",
+        "SectionTitle": null,
+        "Category": null
+      },
+      "parsedCards": 60,
+      "coveragePassed": false
+    },
+    {
+      "team": "SF",
+      "sourceUrl": "https://www.49ers.com/news/latest-headlines/",
+      "linkType": "Latest Headlines",
+      "count": 80,
+      "featuredCount": 0,
+      "moduleContract": {
+        "Type": "stories",
+        "Count": 80,
+        "Skip": 0,
+        "Selection": null,
+        "SectionTitle": "Latest Headlines",
+        "Category": null
+      },
+      "parsedCards": 80,
+      "coveragePassed": false
+    }
+  ],
+  "failures": [
+    {
+      "team": "CHI",
+      "sourceUrl": "https://www.chicagobears.com/news/",
+      "error": "Featured article prefix contract changed."
+    },
+    {
+      "team": "LV",
+      "sourceUrl": "https://www.raiders.com/news/",
+      "error": "Featured article prefix contract changed."
+    }
+  ],
+  "teamsWithParsedCandidates": [
+    "BUF",
+    "DET",
+    "CLE",
+    "LAR",
+    "WSH",
+    "DEN",
+    "IND",
+    "SF"
+  ],
+  "productionEnabled": false
+}

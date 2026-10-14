@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {bootstrapDallas}=require('../netlify/functions/_dallas-reserve-bootstrap');
+const report=require('../docs/evidence/dallas-club-fallback-state-reconciliation.json');
+const html=fs.readFileSync(path.join(__dirname,'fixtures/dallas-embedded-transaction-table.html'),'utf8');
+const rows=[...new Map(report.events.map(e=>[e.name,{name:e.name,team:'DAL',position:e.position}])).values()];rows.push({name:'DJ Rogers',team:'DAL',position:'TE'});
+const opts={sourceUrl:'https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured',season:2026,observedAt:'2026-10-13T03:00:00Z',snapshot:{team:'DAL',rows}};
+const r=bootstrapDallas(html,opts),find=n=>r.events.find(e=>e.name===n);
+assert.equal(find('Malik Davis').reportedAt,'2026-09-12');assert.equal(find('Kelvin Gilliam').reportedAt,'2026-08-25');assert.equal(find('Marist Liufau').reportedAt,'2026-08-30');assert.equal(find('Devin Moore').reportedAt,'2026-08-30');assert.equal(find('Princeton Fant').reportedAt,'2026-08-06');
+assert.ok(!find('DJ Rogers'));assert.ok(r.events.every(e=>e.publishedAt===null&&e.identityVerified===true));
+const bad=bootstrapDallas(html.replace('LB Marist Liufau, CB Devin Moore','LB Unknown Person, CB Devin Moore'),opts);
+assert.ok(!bad.events.some(e=>e.name==='Devin Moore'));assert.ok(bad.unresolved.some(e=>e.reason==='DALLAS_TABLE_SUBJECT_UNVERIFIED'));
+console.log('PASS: Dallas dated history binds each player; waived/injured is not IR, paired unknown subjects block promotion, publication times stay unknown.');

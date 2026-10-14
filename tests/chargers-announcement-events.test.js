@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {extractChargersEvents}=require('../netlify/functions/_chargers-announcement-events');
+const html=fs.readFileSync(path.join(__dirname,'fixtures/chargers-activation-lead.html'),'utf8');
+const roster=require('./fixtures/chargers-lead-identities.json');
+const opts={sourceUrl:'https://www.chargers.com/news/activate-scott-matlock-branson-taylor-sign-theo-wease-active-roster-2026',observedAt:'2026-10-13T02:30:00Z',roster};
+const ambiguous=extractChargersEvents(html,opts);assert.equal(ambiguous.events.length,0);assert.equal(ambiguous.unresolved[0].reason,'MODIFIED_ANNOUNCEMENT_REQUIRES_EFFECTIVE_EVENT_DATE');
+const sameDay=html.replace(/"dateModified":"[^"]+"/,'"dateModified":"2026-10-03T21:00:00Z"');
+const r=extractChargersEvents(sameDay,opts);
+assert.deepEqual(r.events.filter(e=>e.kind==='RESERVE_EXIT').map(e=>e.name),['Scott Matlock','Branson Taylor']);
+assert.deepEqual(r.events.filter(e=>e.status==='IR').map(e=>e.name),['Trey Lance','Trevor Penning']);
+assert.ok(!r.events.some(e=>e.name==='Rashawn Slater'));
+assert.ok(r.unresolved.some(e=>e.reason==='RETROSPECTIVE_PLACEMENT_REFERENCE_REQUIRES_EVENT_DATE'));
+assert.equal(r.subjectsComplete,false);assert.equal(r.customerEligible,false);
+assert.ok(r.events.every(e=>e.reportedAt==='2026-10-03'));
+const absent=extractChargersEvents(sameDay,{...opts,roster:{team:'LAC',rows:roster.rows.filter(p=>p.name!=='Scott Matlock')}});
+assert.ok(absent.unresolved.some(e=>e.reason==='PLAYER_NOT_IN_OFFICIAL_ROSTER'));
+console.log('PASS: Chargers real activation lead preserves subjects, dates, unresolved retrospective Slater reference and identity failure.');

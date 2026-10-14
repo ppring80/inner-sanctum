@@ -34,7 +34,14 @@ const draftHtml = fs.readFileSync(path.join(__dirname, '../draft.html'), 'utf8')
 
 function extractMainScript(html) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  return scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const engine = scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const gate = scripts.find(script => script.includes('function isPreviewBlocked()'));
+  assert.ok(gate, 'Real preview guard script must be present');
+  // Load the actual action guards; navigation/OAuth startup is outside these
+  // direct engine tests and remains covered by the preview-gate suite.
+  const startup = gate.indexOf('(function initGate()');
+  assert.ok(startup > 0, 'Gate startup boundary must be present');
+  return gate.slice(0, startup) + '\n' + engine;
 }
 const mainScript = extractMainScript(draftHtml);
 
@@ -936,7 +943,7 @@ test('middle slots do not show back-to-back messaging', () => {
 
   const html = renderClockAndGetText(sandbox);
   assert.ok(!html.includes('Back-to-back'), 'a middle slot never has a genuine adjacent double-turn');
-  assert.ok(html.includes("YOU'RE ON THE CLOCK — PICK 7"), 'normal single-turn copy is used instead');
+  assert.ok(html.includes("YOU'RE ON THE CLOCK — ROUND 1 · PICK 7"), 'normal single-turn copy is used instead');
 });
 
 test('a keeper occupying the users second wraparound slot correctly suppresses false back-to-back messaging', () => {
@@ -952,7 +959,7 @@ test('a keeper occupying the users second wraparound slot correctly suppresses f
 
   const html = renderClockAndGetText(sandbox);
   assert.ok(!html.includes('Back-to-back'), 'a keeper-consumed wraparound slot must not be presented as a real back-to-back pair');
-  assert.ok(html.includes("YOU'RE ON THE CLOCK — PICK 14"), 'normal single-turn copy is used instead');
+  assert.ok(html.includes("YOU'RE ON THE CLOCK — ROUND 1 · PICK 14"), 'normal single-turn copy is used instead');
 });
 
 test('back-to-back UI derivation does not change logDraftPick() progression semantics', () => {
