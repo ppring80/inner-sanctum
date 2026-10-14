@@ -18,8 +18,9 @@ exports.handler = async event => {
     let clubAvailability;
     try {
       const clubStore=getStore({name:clubModule.STORE});
-      const [latest,clubHealth]=await Promise.all([clubStore.get('latest',{type:'json'}),clubStore.get('health',{type:'json'})]);
+      const [latest,clubHealth,observations]=await Promise.all([clubStore.get('latest',{type:'json'}),clubStore.get('health',{type:'json'}),clubStore.get('observations',{type:'json'})]);
       clubAvailability=clubModule.summarize(latest,clubHealth,{enabled:process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true',customerReadsEnabled:process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true'});
+      clubAvailability.observations=require('./_club-observation-status').observationStatus(observations);
     } catch (_) {
       clubAvailability={enabled:process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true',customerReadsEnabled:false,fresh:false,coveragePassed:false,error:'Official club coverage status unavailable.'};
     }
