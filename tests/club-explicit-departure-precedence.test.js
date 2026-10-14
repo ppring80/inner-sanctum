@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {currentClubAvailability}=require('../netlify/functions/_current-club-availability');
+const sourceUrl='https://www.neworleanssaints.com/team/players-roster/';
+const snapshot={team:'NO',sourceUrl,observedAt:'2026-10-14T02:00:00Z',rows:[{name:'Jayden Price',team:'NO',position:'CB',profileUrl:sourceUrl+'jayden-price/',section:'Active',status:'ACTIVE_ROSTER'}]};
+const departure={name:'Jayden Price',team:'NO',position:'CB',kind:'DEPARTURE',status:'DEPARTED',identityVerified:true,reportedAt:'2026-10-13',publishedAt:'2026-10-13T20:00:00Z',sourceUrl:'https://www.neworleanssaints.com/news/roster-moves'};
+const run=events=>currentClubAvailability({team:'NO',season:2026,asOf:snapshot.observedAt,snapshot,events,discoveryComplete:true});
+const r=run([departure]);assert.equal(r.coveragePassed,true);assert.equal(r.players[0].status,'DEPARTED');assert.equal(r.players[0].health,'UNKNOWN');assert.equal(r.players[0].customerEligible,false);assert.ok(r.players[0].rosterDiscrepancy);assert.equal(r.players[0].provenance.length,2);
+assert.equal(run([{...departure,kind:'RESERVE_PLACEMENT',status:'IR'}]).coveragePassed,false);
+assert.equal(run([departure,{...departure,kind:'MEMBERSHIP_ENTRY',status:'ACTIVE'}]).coveragePassed,false);
+assert.equal(run([{...departure,identityVerified:false}]).coveragePassed,false);
+assert.equal(run([departure,{...departure,kind:'MEMBERSHIP_ENTRY',status:'ACTIVE',reportedAt:'2026-10-14',publishedAt:snapshot.observedAt}]).players[0].status,'ACTIVE');
+console.log('PASS: explicit departure controls membership, retained roster discrepancy, no health inference, same-day conflicts and later re-signing.');

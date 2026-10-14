@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),{reserveClaims}=require('../netlify/functions/_club-reserve-claims');
+const body=text=>'<div class="nfl-c-body-part--text"><p>'+text+'</p></div>';
+const meta={sourceUrl:'https://www.buffalobills.com/news/official-move',publishedAt:'2026-10-01T01:00:00Z'};
+assert.equal(reserveClaims(body('The Bills placed Jordan Hancock on Injured Reserve.'),meta).length,1);
+assert.equal(reserveClaims(body('They have not activated him from IR.'),meta).length,1,'Negation is not accidentally accepted as activation');
+assert.equal(reserveClaims(body('He might be placed on IR.'),meta).length,1,'Conditional placement stays unresolved');
+assert.equal(reserveClaims(body('They waived him with an injury settlement.'),meta).length,1);
+assert.equal(reserveClaims(body('The practice window opened. He is eligible to return.'),meta).length,0);
+assert.equal(reserveClaims('<html>no recognized body</html>',{...meta,headline:'Placed on IR'}).length,1);
+assert.equal(reserveClaims('<nav>They placed a player on IR.</nav>'+body('A game recap without a reserve action.'),meta).length,0,'Navigation is not article evidence');
+assert.ok(reserveClaims(body('They activated him from IR.'),meta).every(claim=>!claim.status&&!claim.reportedAt&&!claim.identityVerified));
+console.log('PASS: unsupported reserve/departure claims remain visible and block promotion without inventing events.');

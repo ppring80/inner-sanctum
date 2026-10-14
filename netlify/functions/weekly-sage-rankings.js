@@ -287,6 +287,8 @@ async function loadCentralAvailability() {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
     const transactionCache = await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
+    const clubCustomerReadsEnabled=process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true'&&process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true';
+    const clubReserveEvidence=clubCustomerReadsEnabled?await getStore({name:require('./_club-availability-run').STORE}).get('observations',{type:'json'}).catch(()=>null):null;
     const newswireCache = await getStore({name:'sage-newswire'}).get('latest',{type:'json'}).catch(()=>null);
     const editorialNewswire = require('./_newswire-editorial').editorialStories();
     const newswireStories = [...editorialNewswire,...(Array.isArray(newswireCache?.stories)?newswireCache.stories:[])];
@@ -315,6 +317,8 @@ async function loadCentralAvailability() {
       byName,
       transactions: require('./_injury-transactions').mergeTransactions(transactionCache,[]).records,
       transactionsCheckedAt: transactionCache?.checkedAt || null,
+      clubCustomerReadsEnabled,
+      clubReserveEvidence,
       newswireStories
     };
   } catch (error) {
@@ -349,13 +353,22 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
       const injury = player && player.injury && typeof player.injury === "object"
         ? player.injury
         : null;
-      const transaction = require('./_injury-transactions').matchingTransaction(row,season,week,availability.transactions);
-      const reserve = transaction ? (transaction.status==='ACTIVE'?null:transaction) : require("./_reserve-transactions.js").reserveTransaction(row,season,week);
+      let transaction = require('./_injury-transactions').matchingTransaction(row,season,week,availability.transactions);
+      const clubDecision=require('./_club-weekly-reserve').weeklyReserveDecision({player:row,season,week,report:availability.clubReserveEvidence?.teams?.[row.team],baseline:transaction,enabled:availability.clubCustomerReadsEnabled===true});
+      if(clubDecision.action==='EXPLICIT_RESERVE_EXIT'){
+        transaction={...row,status:'ACTIVE',season,reportedAt:clubDecision.reportedAt,source:clubDecision.source,sourceUrl:clubDecision.sourceUrl,reason:clubDecision.reason};
+        // In-memory only: downstream backfield reads see the same explicit exit.
+        // The preserved NFL cache and frozen review packets are never written.
+        availability.transactions=(availability.transactions||[]).filter(record=>!(record.team===row.team&&require('./_injury-transactions').playerKey(record.name)===require('./_injury-transactions').playerKey(row.name)));
+        availability.transactions.push(transaction);
+      }
+      const ordinaryReserve = transaction ? (transaction.status==='ACTIVE'?null:transaction) : require("./_reserve-transactions.js").reserveTransaction(row,season,week);
+      const reserve = clubDecision.action==='KEEP_RESERVE_RESTRICTION'?clubDecision:clubDecision.action==='EXPLICIT_DEPARTURE'?{...clubDecision,status:'INACTIVE'}:ordinaryReserve;
       const reported = [(injury && injury.designation), player?.rosterStatus]
         .map(normalizeAvailabilityStatus).filter(Boolean).filter(status=>transaction?.status!=='ACTIVE'||!['IR','INJURED RESERVE','RESERVE/INJURED','PUP','RESERVE/PUP','NFI','RESERVE/NFI'].includes(status));
       const status = reserve ? reserve.status : reported.find(value => HARD_UNAVAILABLE.has(value)) ||
         (player?.active === false ? "INACTIVE" : reported[0]);
-      const verified = compatible(player) && availability.fresh === true;
+      const verified = compatible(player) && availability.fresh === true && !clubDecision.gap;
       const description = reserve ? reserve.reason : injury && injury.description ? String(injury.description) : null;
 
       if (!status) {
@@ -379,7 +392,7 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
         normalizePlayerName(item.name) === normalizePlayerName(row.name)
       );
       if (!alreadyInactive) {
-        const reason = description
+        const reason = clubDecision.action==='EXPLICIT_DEPARTURE'?description:description
           ? `Current injury report: ${status} — ${description}.`
           : `Current injury report: ${status}.`;
         inactiveRows.push({

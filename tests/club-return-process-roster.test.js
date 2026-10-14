@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {rosterSnapshot,deriveStates,reconcileRoster}=require('../netlify/functions/_club-availability-reconciliation');
+const observedAt='2026-10-13T02:45:00Z',sourceUrl='https://www.dallascowboys.com/team/players-roster/';
+const section=(title,name)=>`<h4 class="nfl-o-roster__title"><span class="nfl-o-roster__title-status">${title}</span></h4><table><tr><th>Player</th><th>Pos</th></tr><tr><td><a href="/team/players-roster/${name.toLowerCase().replace(/ /g,'-')}/" title="${name}">${name}</a></td><td>S</td></tr></table>`;
+const snapshot=rosterSnapshot(section('Active','Active Player')+section('Reserve/Designated to Return','Reserve Player'),{team:'DAL',sourceUrl,observedAt});
+assert.equal(snapshot.rows[1].status,'RESERVE_RETURN_PROCESS');
+const derive=records=>deriveStates(records,[],{team:'DAL',asOf:observedAt});
+assert.equal(reconcileRoster(derive([]),snapshot).stateReconciled,false);
+const record={name:'Reserve Player',team:'DAL',status:'IR',reportedAt:'2026-09-30'};
+assert.equal(reconcileRoster(derive([record]),snapshot).stateReconciled,true);
+assert.equal(reconcileRoster(derive([{...record,status:'ACTIVE'}]),snapshot).stateReconciled,false);
+assert.equal(reconcileRoster(derive([{...record,status:'PUP'}]),snapshot).stateReconciled,true);
+console.log('PASS: designated-return section is never ignored, never an activation and needs established reserve evidence.');

@@ -1,0 +1,23 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {discover,article,validateCoverage,collectClub}=require('../netlify/functions/_official-club-collection');
+const {clubs}=require('../netlify/functions/_official-club-transactions');
+const club=clubs.find(c=>c.team==='PHI');
+const html='<a href="/news/roster-moves" title="Roster moves" data-id="1">story</a><a href="https://example.com/news/roster-moves" data-id="2">bad</a><a href="/news/" title="News">nav</a>';
+assert.deepEqual(discover(html,club.origin+'/news/',club.team).map(l=>l.url),[club.origin+'/news/roster-moves']);
+assert.equal(validateCoverage([]).complete,false);
+const proof={team:'PHI',discoveryContractVerified:true,boundaryReached:true,overlapAnchorSeen:true,identityComplete:true,subjectsComplete:true,stateReconciled:true,errors:[],unresolved:[]};
+assert.equal(validateCoverage([proof],['PHI']).complete,true);
+for(const key of ['discoveryContractVerified','boundaryReached','overlapAnchorSeen','identityComplete','subjectsComplete','stateReconciled'])assert.equal(validateCoverage([{...proof,[key]:false}],['PHI']).complete,false,key);
+assert.equal(validateCoverage([{...proof,errors:[{}]}],['PHI']).complete,false);
+assert.equal(validateCoverage([proof,proof],['PHI']).complete,false);
+assert.throws(()=>article('<article>Placed Tank Bigsby on IR</article>',club.origin+'/news/move','PHI',new Date().toISOString(),[]),/publication/);
+const real=require('node:fs').readFileSync(require('node:path').join(__dirname,'fixtures/saints-official-transaction-lead.html'),'utf8');
+const result=article(real,'https://www.neworleanssaints.com/news/ulysses-bentley-iv-david-ojabo-saints-roster-moves-transaction-alert-october-1-2026','NO','2026-10-12T21:00:00Z',[{name:'Travis Etienne Jr.',team:'NO',position:'RB'}]);
+assert.equal(result.publishedAt,'2026-10-01T21:05:56.519Z');assert.equal(result.evidence.length,1);assert.equal(result.evidence[0].status,'IR');assert.equal(result.evidence[0].name,'Travis Etienne Jr.');
+assert.throws(()=>article(real,'https://www.neworleanssaints.com/news/move','NO','2026-09-30T00:00:00Z',[]),/cutoff/);
+(async()=>{
+ let count=0;const result=await collectClub(club,{since:'2026-10-08',minIntervalMs:0,maxRequests:2,fetchImpl:async()=>{count++;return {ok:false,status:503};}});
+ assert.equal(count,2);assert.equal(result.coverage.complete,false);assert.equal(result.errors.length,2);assert.equal(result.evidence.length,0);
+ console.log('PASS: official discovery, navigation exclusion, bounded HTTP failure, every coverage gate, missing/duplicate clubs, no success from empty sources.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,41 @@
+{
+  "scope": "Fresh official roster cross-check of five already dated moves; not full discovery qualification",
+  "observedAt": "2026-10-14T02:18:40.458Z",
+  "rosterSourceUrl": "https://www.chargers.com/team/players-roster/",
+  "rosterSha256": "f43f84732c49743732c81c0daad1b3919d4634115c64c12c836c00f444ed8749",
+  "players": [
+    {
+      "name": "Scott Matlock",
+      "status": "ACTIVE",
+      "health": "UNKNOWN",
+      "conflicts": []
+    },
+    {
+      "name": "Branson Taylor",
+      "status": "ACTIVE",
+      "health": "UNKNOWN",
+      "conflicts": []
+    },
+    {
+      "name": "Trey Lance",
+      "status": "IR",
+      "health": "UNKNOWN",
+      "conflicts": []
+    },
+    {
+      "name": "Trevor Penning",
+      "status": "IR",
+      "health": "UNKNOWN",
+      "conflicts": []
+    },
+    {
+      "name": "Rashawn Slater",
+      "status": "IR",
+      "health": "UNKNOWN",
+      "conflicts": []
+    }
+  ],
+  "unresolved": [],
+  "coveragePassed": false,
+  "productionEnabled": false
+}

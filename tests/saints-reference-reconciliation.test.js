@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {reconcileReferences}=require('../netlify/functions/_saints-reference-reconciliation');
+const claim={sourceText:'Travis Etienne Jr. was placed on injured reserve Thursday.',articleDate:'2026-10-01'};
+const event={name:'Travis Etienne Jr.',team:'NO',kind:'RESERVE_PLACEMENT',status:'IR',reportedAt:'2026-10-01',identityVerified:true,sourceUrl:'https://www.neworleanssaints.com/team/transactions/2026'};
+assert.equal(reconcileReferences([claim],[event]).corroborated[0].createsEvent,false);
+for(const change of [{sourceUrl:'https://example.com/'},{reportedAt:'2026-09-01'},{team:'MIN'},{identityVerified:false},{reportedAt:'2026-10-02'},{status:'ACTIVE'},{name:'Another Player'}])assert.equal(reconcileReferences([claim],[{...event,...change}]).unresolved.length,1);
+const departure={sourceText:'Devin Neal and Audric Estime, who played meaningful snaps last season, both were released with injury settlements and both signed with the Vikings practice squad Wednesday.',articleDate:'2026-10-01'};
+const exits=['Devin Neal','Audric Estime'].map(name=>({...event,name,kind:'DEPARTURE',status:'DEPARTED',reportedAt:'2026-09-22'}));
+assert.equal(reconcileReferences([departure],exits).corroborated.length,1);
+assert.equal(reconcileReferences([{...departure,sourceText:'Ty Chandler opened the season on injured reserve and '+departure.sourceText}],exits).unresolved.length,1);
+assert.equal(reconcileReferences([{...claim,sourceText:'Prized unrestricted free agent signee '+claim.sourceText}],[event]).corroborated.length,1);
+assert.equal(reconcileReferences([departure],exits.slice(0,1)).unresolved.length,1);
+assert.equal(reconcileReferences([{...claim,sourceText:'An unnamed player was placed on injured reserve.'}],[event]).unresolved.length,1);
+console.log('PASS: references require every subject and verified dated event; no events created.');
+
+const combined={...departure,sourceText:'Ty Chandler opened the season on injured reserve and '+departure.sourceText};
+const chandler={...event,name:'Ty Chandler',reportedAt:'2026-08-25'};
+assert.equal(reconcileReferences([combined],[...exits,chandler]).corroborated.length,1);
+assert.equal(reconcileReferences([combined],[...exits,{...chandler,identityVerified:false}]).unresolved.length,1);

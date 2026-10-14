@@ -1,0 +1,860 @@
+{
+  "team": "DAL",
+  "deployed": false,
+  "customerEligible": false,
+  "indexUrl": "https://www.dallascowboys.com/news/all-news/",
+  "scope": "Five-page read-only discovery qualification; event extraction and roster reconciliation not qualified.",
+  "pages": 5,
+  "articles": 100,
+  "allDatesVerified": true,
+  "chronological": true,
+  "oldestPublishedAt": "2026-09-23T21:54:53.601Z",
+  "since": "2026-10-01",
+  "boundaryReached": true,
+  "overlapAnchorSeen": false,
+  "stateReconciled": false,
+  "pagesEvidence": [
+    {
+      "page": 1,
+      "skip": 0,
+      "urls": [
+        "https://www.dallascowboys.com/news/demarvion-overshown-hopeful-he-can-return-sunday-vs-packers",
+        "https://www.dallascowboys.com/news/updates-october-2026",
+        "https://www.dallascowboys.com/news/cowboys-add-mike-pettine-to-defensive-coaching-staff",
+        "https://www.dallascowboys.com/news/just-8-hall-of-famers-with-cowboys-connections",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-will-absolutely-make-changes-adjustments",
+        "https://www.dallascowboys.com/news/hall-of-famer-mike-ditka-passes-away",
+        "https://www.dallascowboys.com/news/missed-opportunities-prove-costly-for-daron-bland-cowboys-defense",
+        "https://www.dallascowboys.com/news/pickens-the-lone-bright-spot-in-loss",
+        "https://www.dallascowboys.com/news/spagnola-pointing-out-an-offensive-performance",
+        "https://www.dallascowboys.com/news/pic-6-defensive-struggles-continue-injury-roundup-and-more-from-week-5",
+        "https://www.dallascowboys.com/news/eatman-where-to-start-with-this-blame-game",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-disappointed-plans-to-evaluate-everything-after-loss-to-bucs",
+        "https://www.dallascowboys.com/news/jerry-jones-extraordinarily-disappointed-by-cowboys-week-5-loss-to-buccaneers",
+        "https://www.dallascowboys.com/news/dak-prescott-on-cowboys-loss-to-bucs-we-were-supposed-to-win",
+        "https://www.dallascowboys.com/news/don-t-forget-these-5-key-drops-on-both-sides",
+        "https://www.dallascowboys.com/news/game-recap-cowboys-fall-to-winless-bucs-24-16",
+        "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-bucs",
+        "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+        "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-buccaneers",
+        "https://www.dallascowboys.com/news/trivia-thursday-cowboys-have-never-played-on-this-day"
+      ],
+      "hash": "9f2462efece069da815cb4ea605aea5d018aa87c4dec2826b04697e25e72f1ae"
+    },
+    {
+      "page": 2,
+      "skip": 20,
+      "urls": [
+        "https://www.dallascowboys.com/news/mailbag-will-cowboys-play-down-to-opponent",
+        "https://www.dallascowboys.com/news/quinnen-williams-on-quick-turnaround-for-cowboys-vs-buccaneers-i-m-not-tired",
+        "https://www.dallascowboys.com/news/impact-offseason-2026",
+        "https://www.dallascowboys.com/news/mick-shots-how-s-about-somethings-kinda-good",
+        "https://www.dallascowboys.com/news/jerry-jones-on-tyler-smith-s-status-cb-room-another-potential-trade-and-more",
+        "https://www.dallascowboys.com/news/cowboys-bucs-how-to-watch-listen-stream-in-week-5",
+        "https://www.dallascowboys.com/news/mailbag-should-the-cowboys-blitz-more",
+        "https://www.dallascowboys.com/news/joey-porter-jr-quickly-gaining-confidence-comfort-in-cowboys-defense",
+        "https://www.dallascowboys.com/news/dak-prescott-promises-cowboys-will-be-100-percent-for-tnf-vs-buccaneers",
+        "https://www.dallascowboys.com/news/zero-100-turpin-becomes-the-first-in-62-years",
+        "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+        "https://www.dallascowboys.com/news/mailbag-why-is-the-offense-better-when-trailing",
+        "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-bucs-x2532",
+        "https://www.dallascowboys.com/news/tyler-smith-leaves-door-open-for-return-vs-bucs-on-thursday-i-think-it-s-possible",
+        "https://www.dallascowboys.com/news/cowboys-open-practice-window-for-all-pro-tyler-smith",
+        "https://www.dallascowboys.com/news/tape-talk-film-review-from-cowboys-34-30-win-over-texans",
+        "https://www.dallascowboys.com/news/spagnola-how-crazy-was-bagging-this-victory",
+        "https://www.dallascowboys.com/news/pic-6-news-and-notes-from-cowboys-week-4-win-over-texans",
+        "https://www.dallascowboys.com/news/dak-prescott-on-ceedee-lamb-s-performance-cowboys-response-vs-texans",
+        "https://www.dallascowboys.com/news/eatman-big-brother-gets-the-last-laugh-again"
+      ],
+      "hash": "206744a960acd80596a128bbfe6d08f90e25017d3ab92ec27bba141754ddee99"
+    },
+    {
+      "page": 3,
+      "skip": 40,
+      "urls": [
+        "https://www.dallascowboys.com/news/don-t-forget-these-5-converting-big-4th-downs",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-find-a-way-to-finish-vs-texans-i-wanted-this-game",
+        "https://www.dallascowboys.com/news/ceedee-lamb-powers-cowboys-to-win-over-texans-with-emotional-career-best-day",
+        "https://www.dallascowboys.com/news/joey-porter-jr-s-impact-is-immediate",
+        "https://www.dallascowboys.com/news/game-recap-cowboys-thrill-with-34-30-win",
+        "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-texans",
+        "https://www.dallascowboys.com/news/updates-september-2026",
+        "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-texans-x1761",
+        "https://www.dallascowboys.com/news/just-8-things-to-know-about-joey-porter-jr",
+        "https://www.dallascowboys.com/news/caleb-downs-on-joey-porter-jr-trade-early-impact-with-jaishawn-barham",
+        "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+        "https://www.dallascowboys.com/news/cowboys-texans-how-to-watch-listen-stream-in-week-4",
+        "https://www.dallascowboys.com/news/here-we-goooo-texans-present-a-big-test-for-cowboys-offensive-tackles",
+        "https://www.dallascowboys.com/news/jerry-jones-brian-schottenheimer-update-joey-porter-jr-s-status-vs-texans",
+        "https://www.dallascowboys.com/news/mailbag-is-a-rivalry-building-with-the-texans",
+        "https://www.dallascowboys.com/news/joey-porter-s-explains-goal-in-dallas-to-bet-on-myself",
+        "https://www.dallascowboys.com/news/joey-porter-jr-on-his-journey-to-the-cowboys-what-s-next-as-texans-approach",
+        "https://www.dallascowboys.com/news/cowboys-players-coaches-react-to-joey-porter-jr-trade",
+        "https://www.dallascowboys.com/news/science-lab-joey-porter-jr-trade-to-cowboys-the-great-the-good-the-hmm",
+        "https://www.dallascowboys.com/news/mailbag-is-porter-trade-an-all-in-move"
+      ],
+      "hash": "9daebc4cf9ba03148e8e11001783f47b707cce1d6be409b0037540b6388065bc"
+    },
+    {
+      "page": 4,
+      "skip": 60,
+      "urls": [
+        "https://www.dallascowboys.com/news/cowboys-agree-to-terms-on-trade-for-steelers-cb-joey-porter-jr",
+        "https://www.dallascowboys.com/news/jaishawn-barham-breaks-silence-demands-more-from-himself-and-cowboys",
+        "https://www.dallascowboys.com/news/kenny-clark-on-cowboys-defense-s-performance-vs-ravens-plan-to-improve-vs-texans",
+        "https://www.dallascowboys.com/news/mick-shots-it-s-not-over-until-it-s-really-over",
+        "https://www.dallascowboys.com/news/zero-to-100-key-stats-on-pickens-barham-more",
+        "https://www.dallascowboys.com/news/mailbag-why-the-out-of-bounds-kicks-for-aubrey",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-takes-responsibility-for-loss-to-ravens-i-deserve-the-criticism",
+        "https://www.dallascowboys.com/news/cowboys-injury-roundup-key-dallas-defenders-to-miss-multiple-weeks",
+        "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-texans-x9036",
+        "https://www.dallascowboys.com/news/tape-talk-what-stood-out-on-film-from-cowboys-ravens-in-rio-de-janeiro",
+        "https://www.dallascowboys.com/news/jerry-jones-says-there-s-conversations-going-on-for-potential-additions-to-cowboys-roster",
+        "https://www.dallascowboys.com/news/mailbag-how-can-the-pass-rush-get-better",
+        "https://www.dallascowboys.com/news/stephen-jones-on-cowboys-disappointing-loss-to-ravens-in-brazil",
+        "https://www.dallascowboys.com/news/cowboys-reveal-unfortunate-timeline-for-jalen-thompson-injury",
+        "https://www.dallascowboys.com/news/spagnola-the-second-never-should-have-mattered",
+        "https://www.dallascowboys.com/news/pic-6-cowboys-news-and-notes-from-a-tough-loss-in-rio-de-janeiro",
+        "https://www.dallascowboys.com/news/javonte-williams-cowboys-find-success-in-run-game-now-need-to-get-back-on-track",
+        "https://www.dallascowboys.com/news/eatman-this-game-ended-like-it-started-not-running",
+        "https://www.dallascowboys.com/news/dak-prescott-frustrated-by-loss-to-ravens-we-ve-got-to-put-the-game-away",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-on-cowboys-narrow-loss-to-ravens-in-rio-this-one-stings"
+      ],
+      "hash": "51cee437964b8b73d1c7df88022acd868f4e56962d16ad1d92e4e196965facdd"
+    },
+    {
+      "page": 5,
+      "skip": 80,
+      "urls": [
+        "https://www.dallascowboys.com/news/don-t-forget-these-5-penalties-kickoffs-more",
+        "https://www.dallascowboys.com/news/game-recap-cowboys-lose-in-rio-34-31",
+        "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-ravens-in-rio",
+        "https://www.dallascowboys.com/news/cowboys-conduct-walk-around-at-maracana-stadium-get-a-feel-for-field-conditions",
+        "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-ravens-in-rio",
+        "https://www.dallascowboys.com/news/dak-prescott-cowboys-want-to-be-the-aggressors-vs-ravens-in-rio",
+        "https://www.dallascowboys.com/news/just-8-top-8-graded-players-for-both-cowboys-ravens",
+        "https://www.dallascowboys.com/news/brian-schottenheimer-s-message-to-cowboys-in-rio-it-s-a-business-trip",
+        "https://www.dallascowboys.com/news/spagnola-high-time-to-get-going-in-brazil",
+        "https://www.dallascowboys.com/news/cowboys-ravens-how-to-watch-listen-stream-in-week-3",
+        "https://www.dallascowboys.com/news/here-we-goooo-another-tall-task-awaits-the-cowboys-defense",
+        "https://www.dallascowboys.com/news/mailbag-will-there-ever-be-an-international-team",
+        "https://www.dallascowboys.com/news/trivia-thursday-cowboys-history-with-international-games",
+        "https://www.dallascowboys.com/news/quinnen-williams-on-keys-to-playing-internationally-improving-stopping-the-run",
+        "https://www.dallascowboys.com/news/brandon-aubrey-has-a-familiar-plan-to-kick-in-brazil",
+        "https://www.dallascowboys.com/news/past-present-former-cowboys-cb-10-year-vet-still-on-ravens",
+        "https://www.dallascowboys.com/news/science-lab-what-s-halting-the-cowboys-rushing-attack",
+        "https://www.dallascowboys.com/news/mailbag-could-defense-designate-a-qb-spy",
+        "https://www.dallascowboys.com/news/cowboys-stars-super-excited-to-make-nfl-history-in-brazil",
+        "https://www.dallascowboys.com/news/george-pickens-looking-to-get-the-mission-done-vs-ravens-in-rio"
+      ],
+      "hash": "4da297680ea8efb28e5878ec5bcd29da462b7be16dc50e0da1982d4023c5401d"
+    }
+  ],
+  "articlesEvidence": [
+    {
+      "url": "https://www.dallascowboys.com/news/demarvion-overshown-hopeful-he-can-return-sunday-vs-packers",
+      "publishedAt": "2026-10-12T22:53:01.077Z",
+      "headline": "DeMarvion Overshown hopeful he can return Sunday vs. Packers",
+      "description": "Cowboys LB DeMarvion Overshown is hopeful he can return on Sunday night against the Packers after missing the last four games with a hamstring injury. Additionally, he discussed' Dallas' \"heart-to-heart\" defensive meeting on Monday and more. ",
+      "hash": "6a6f11ff64408897f692db1cebd142f6b1fd0bd12d2883d76f3b244e0ac2bbfc"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/updates-october-2026",
+      "publishedAt": "2026-10-12T20:45:00Z",
+      "headline": "Updates: DaRon Bland misses Monday's practice ",
+      "description": "Don\u2019t miss any of the action with our daily updates: news, notes and more throughout the Cowboys' regular season and offseason.",
+      "hash": "f2bcca0b2fb0f32d5a04e6be4f5fbae97ba4c7f19535f14b3c4655197aa364a4"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-add-mike-pettine-to-defensive-coaching-staff",
+      "publishedAt": "2026-10-12T20:40:11.437Z",
+      "headline": "Cowboys add Mike Pettine to defensive coaching staff",
+      "description": "One of the most respected NFL defensive minds has come out of retirement to help Christian Parker guide the Cowboys defense.",
+      "hash": "778202a5de34067a50336ebfc3ed40164b3068cd9b0befc478a836336fc709db"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-hall-of-famers-with-cowboys-connections",
+      "publishedAt": "2026-10-11T16:26:10.833Z",
+      "headline": "Just 8: Hall of Famers with Cowboys connections",
+      "description": "While the Cowboys are well-represented in the Pro Football Hall of Fame, but not all of them built their legacies solely in Dallas. With the passing of Mike Ditka, we've featured 8 Hall of Famers with Cowboys connections. ",
+      "hash": "d912a1680c510b260fd5f9756c9b8d0bc1181a54036048a3142d187bffc3891c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-will-absolutely-make-changes-adjustments",
+      "publishedAt": "2026-10-09T21:55:12.595Z",
+      "headline": "Brian Schottenheimer: Cowboys will 'absolutely' make changes, adjustments",
+      "description": "With so many points of concern following the 'disappointing' loss to the Bucs, the Cowboys head coach isn't taking anything off of the table as he tries to right the ship before it's too late.",
+      "hash": "ccc3152c0f91445244d5d3418ee206ec798ef7b8f5ad1d398815ccdcca72fad1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/hall-of-famer-mike-ditka-passes-away",
+      "publishedAt": "2026-10-09T17:36:56.489Z",
+      "headline": "Hall of Famer Mike Ditka passes away",
+      "description": "Though best remembered as a Bears legend, Mike Ditka\u2019s toughness, leadership and championship pedigree played a pivotal role in helping the Cowboys become a Super Bowl winner and lasting NFL powerhouse.",
+      "hash": "b7b7d7c8fa9e4d99bede2c9fd6ee5134367f0b1d78f69c0c2e6651f2efa0e33a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/missed-opportunities-prove-costly-for-daron-bland-cowboys-defense",
+      "publishedAt": "2026-10-09T17:30:57.591Z",
+      "headline": "Missed opportunities prove costly for DaRon Bland, Cowboys defense",
+      "description": "Cowboys DB DaRon Bland and Dallas' defense had opportunities against the Buccaneers, but couldn't execute in some situations which proved costly in a 24-16 loss to Tampa Bay on Thursday night. ",
+      "hash": "de6f0f02c52a92bfbca319cfb53942362b749d374d12e44eefbe5b62066aae7d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pickens-the-lone-bright-spot-in-loss",
+      "publishedAt": "2026-10-09T16:29:14.222Z",
+      "headline": "George Pickens the lone bright spot in loss",
+      "description": "In a forgettable game full of disappointment, George Pickens at least provided one sliver of silver lining with a season-high performance against the Buccaneers.",
+      "hash": "6d97eea04b2fa1169d399b2ba801b4392c54958944b322ba0af5af4a96ecb5f2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-pointing-out-an-offensive-performance",
+      "publishedAt": "2026-10-09T15:44:07.98Z",
+      "headline": "Spagnola: Pointing out an offensive performance",
+      "description": "Don't think the frustrating loss to the Buccaneers is all on the defense, as the Cowboys offense was unable to handle Tampa Bay\u2019s pressure all night, which led to disastrous results.",
+      "hash": "9616b69c966fbee96f0c6c3fee0364750edb6b4b106cc2b9a5e3c2ed299569dc"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-defensive-struggles-continue-injury-roundup-and-more-from-week-5",
+      "publishedAt": "2026-10-09T13:18:44.827Z",
+      "headline": "Pic 6: Defensive struggles continue, injury roundup and more from Week 5",
+      "description": "From continued struggles defensively to more injuries before and after kickoff, a summary of news and notes from the Cowboys' Week 5 loss to the Buccaneers in this week's Pic 6. ",
+      "hash": "06db16ab9ff7e3c9e625cc9145179428f9118c5d9589c59c68fbd5ae8c4437f7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-where-to-start-with-this-blame-game",
+      "publishedAt": "2026-10-09T06:06:01.366Z",
+      "headline": "Eatman: Where to start with this blame-game? ",
+      "description": "There's just too much blame to go around for a game like this. The offense, the defense and the special teams had the wrong kind of balance. ",
+      "hash": "49debf3d84641142fbdca6d3fbed9f3e9e2c045080b2ed81e4e8f60e3a3ba184"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-disappointed-plans-to-evaluate-everything-after-loss-to-bucs",
+      "publishedAt": "2026-10-09T06:01:02.952Z",
+      "headline": "Brian Schottenheimer 'disappointed', plans to evaluate 'everything' after loss to Bucs",
+      "description": "Nothing about what happened in the Cowboys' loss to the Buccaneers makes sense for Brian Schottenheimer, who will force the team to do some soul searching going into Week 6.",
+      "hash": "9adb09937924341a1d499ab93ad76554f8ff0bd8c3eaf71ce33b09d66fdf4474"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-extraordinarily-disappointed-by-cowboys-week-5-loss-to-buccaneers",
+      "publishedAt": "2026-10-09T05:41:54.108Z",
+      "headline": "Jerry Jones 'extraordinarily disappointed' by Cowboys' Week 5 loss to Buccaneers",
+      "description": "Cowboys owner/GM Jerry Jones said he was \"extraordinarily disappointed\" by Dallas' 24-16 loss to the Tampa Bay Buccaneers on Thursday night, and was especially surprised by the Cowboys' struggles to stop the run. ",
+      "hash": "bbd2fd3e10dd4a1a4c4829fb9927854d0fc1f16fe6a436ddb885bfec39a7a2f0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-on-cowboys-loss-to-bucs-we-were-supposed-to-win",
+      "publishedAt": "2026-10-09T05:35:06.35Z",
+      "headline": "Dak Prescott on Cowboys loss to Bucs: 'We were supposed to win'",
+      "description": "Little about the matchup conjured images of what ultimately happened to the Cowboys when they got a wake-up call from the Bucs, and Dak Prescott says the Cowboys have to be better.",
+      "hash": "5d13120309bdc8f48dafca889e9caf99543c0f6597295e05282b48bf9f526ab2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-key-drops-on-both-sides",
+      "publishedAt": "2026-10-09T04:12:23.365Z",
+      "headline": "Don\u2019t Forget These 5: Key drops on both sides ",
+      "description": "Plays that might get forgotten include DaRon Bland, who had a tough night in coverage and missed out on a chance to redeem himself with a pick-6 in the fourth quarter. ",
+      "hash": "7bc5addbd410b0ca49b2c746cb88098aa805d6889deeeb3cb88b4b3d09481286"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-fall-to-winless-bucs-24-16",
+      "publishedAt": "2026-10-09T03:44:29.189Z",
+      "headline": "Game Recap: Cowboys fall to winless Bucs, 24-16",
+      "description": "The Cowboys were never able to figure out Tampa Bay\u2019s game plan in their Thursday night matchup, losing to the previously winless Buccaneers, 24-16.",
+      "hash": "a60a12fd02868bcad89bd76dfa3a98303a618023371170d9554c2c3d7ed2e9b6"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-bucs",
+      "publishedAt": "2026-10-09T00:20:25.018Z",
+      "headline": "Starlights: Big play tracker for Cowboys-Bucs",
+      "description": "The Dallas Cowboys are hosting the Tampa Bay Buccaneers on a short week after a gutsy win in Houston, hoping for a big win on Thursday Night Football that, for once, doesn't go down to the wire. ",
+      "hash": "65e17b9bb260642c9a96246934da8ffabb2ee2be5f8ef4b5ecefa8631ca5df73"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers",
+      "publishedAt": "2026-10-08T18:27:39.729Z",
+      "headline": "Tyler Smith officially activated from IR for Cowboys vs. Buccaneers",
+      "description": "After four weeks of rehabilitation on his thumb, Tyler Smith returned to practice this week and is officially a full go for Thursday Night Football against the Buccaneers.",
+      "hash": "5175ee2cb83faa656cb83d25a8708a4e70693d87240c719804d6f83335983414"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-buccaneers",
+      "publishedAt": "2026-10-08T14:17:10.22Z",
+      "headline": "Gut Feeling: Staff predictions for Cowboys-Buccaneers",
+      "description": "With little time to enjoy their comeback win over the Texans, the Cowboys will mount up quickly to host a desperate Buccaneers team ready to leave it all on the field. \n",
+      "hash": "1b7edfeeebb9bec265d21391792ee9c7808498499479ae9a5d1073cc8e6401a6"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/trivia-thursday-cowboys-have-never-played-on-this-day",
+      "publishedAt": "2026-10-08T14:16:40.881Z",
+      "headline": "Trivia Thursday: Cowboys have never played on this day? ",
+      "description": "This week's trivia questions centered on the team's history of Thursday night games, including a meeting with the Bucs. ",
+      "hash": "7d942a1d9bfa85560426396b010f956cd636e02aa56a4d5bf39e0ea3e13273a3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-will-cowboys-play-down-to-opponent",
+      "publishedAt": "2026-10-08T14:00:50.568Z",
+      "headline": "Mailbag: Will Cowboys play down to opponent?",
+      "description": "Do the Cowboys have a tendency to play down to their opponent? Coming off two intense road games, including a lengthy trip to Brazil, and with Tampa Bay being desperate at 0-4, are you concerned about Dallas being ready for what looks like an easy win on paper?",
+      "hash": "15a0ece684d007c6c9a545c1d4b4d5a65a205e2cd5c7219464298cf2cc5d58db"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/quinnen-williams-on-quick-turnaround-for-cowboys-vs-buccaneers-i-m-not-tired",
+      "publishedAt": "2026-10-07T17:04:29.734Z",
+      "headline": "Quinnen Williams on quick turnaround for Cowboys vs. Buccaneers: 'I'm not tired'",
+      "description": "Despite having to play their third game in 11 days, Cowboys DT Quinnen Williams says he's not tired and is looking forward to the primetime stage on Thursday night against Tampa Bay, where he hopes the defense can continue showing improvement. ",
+      "hash": "6ebb7e71114906783a3b63663e26f8c015bbe6060cca8c6cbf27433a81f56ba5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/impact-offseason-2026",
+      "publishedAt": "2026-10-07T17:00:00Z",
+      "headline": "Impact: Packers lose 2 defensive stars for year",
+      "description": "In the Dallas Cowboys' Impact blog, a look at how some of the biggest headlines from across the NFL affect the Cowboys.\u00a0",
+      "hash": "b476acd37b2c6fc7c51a44f7630c2c0952f1db0deecc6fa74e17b478dfb2a5d0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mick-shots-how-s-about-somethings-kinda-good",
+      "publishedAt": "2026-10-07T17:00:00Z",
+      "headline": "Mick Shots: How\u2019s about somethings kinda good",
+      "description": "There is some good news in this week\u2019s Mick Shots, including a thumbs up on Tyler Smith, a healthier cornerback group, wise words from Kenny Clark and more!",
+      "hash": "54ea838f58c0f8e00e2701c222ca1ca006daff5398eed0595e145a542e077ed8"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-on-tyler-smith-s-status-cb-room-another-potential-trade-and-more",
+      "publishedAt": "2026-10-07T15:07:44.235Z",
+      "headline": "Jerry Jones on Tyler Smith's status, CB room, another potential trade and more",
+      "description": "Speaking on 105.3 The Fan, Cowboys owner/GM Jerry Jones updated Tyler Smith's status for Thursday, his thoughts on the CB room, and said he's \"never shut down\" on a potential trade before the deadline.",
+      "hash": "6e4010d896dab6e439263a8ce498f634e82e1202ce3d318bae788f2f3a1ee404"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-bucs-how-to-watch-listen-stream-in-week-5",
+      "publishedAt": "2026-10-07T15:03:36.761Z",
+      "headline": "Cowboys-Bucs: How to Watch, Listen, Stream in Week 5",
+      "description": "For the second game in a row, and on a short week, the Cowboys must guard against taking a winless team for granted, because the Buccaneers plan on leaving it all on the field in Week 5.",
+      "hash": "368c05044fb11f5735fc161c2afe10cae7c8907b225db647810f1438ef0551a0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-should-the-cowboys-blitz-more",
+      "publishedAt": "2026-10-07T14:59:38.902Z",
+      "headline": "Mailbag: Should the Cowboys blitz more?",
+      "description": "Why haven't we seen more blitz packages with Christian Parker's defense? Don't you think this would help since the Cowboys are lacking a consistent pass rush?",
+      "hash": "a06d0111f6a4407b26ce0a19623a9385e4d54a8826646d6e64d01f2b942e072a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-quickly-gaining-confidence-comfort-in-cowboys-defense",
+      "publishedAt": "2026-10-06T21:44:46.091Z",
+      "headline": "Joey Porter Jr. quickly gaining confidence, comfort in Cowboys defense",
+      "description": "Cowboys CB Joey Porter Jr. hasn't been in Dallas long, but is quickly gaining comfort and confidence in the Cowboys defense as he prepares for a bigger workload and his first game at AT&T Stadium.",
+      "hash": "83080fb63e2503d5ae430ffe3091559eb9a9d644d0cef2f07c6c3732ec7fbc46"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-promises-cowboys-will-be-100-percent-for-tnf-vs-buccaneers",
+      "publishedAt": "2026-10-06T21:27:11.147Z",
+      "headline": "Dak Prescott promises Cowboys will be '100' percent for TNF vs. Buccaneers",
+      "description": "From the narrow loss in Brazil to the narrow win in Houston to, now, getting ready to host the Buccaneers four days later \u2014 Dak Prescott says the Cowboys will be ready, and without excuses.",
+      "hash": "65b269f3ad5f3c3d581cc86d0c5a7c53f9036e280cc74fe642bba6007dbf84ba"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/zero-100-turpin-becomes-the-first-in-62-years",
+      "publishedAt": "2026-10-06T18:13:10.312Z",
+      "headline": "Zero-100: Turpin becomes the first in 62 years\u00a0",
+      "description": "Let\u2019s look at 10 key numbers for the Cowboys and their upcoming matchup, along with some other trends that are telling the story so far on this young season.\u00a0",
+      "hash": "052efc4360b74216e996da321dd17edf6f5e44c7b65378427659a764ee4cb0e2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "publishedAt": "2026-10-06T15:23:00Z",
+      "headline": "Transactions: Cowboys waive offensive lineman",
+      "description": "Check out the most recent roster moves by the Cowboys, including opening the 21-day practice window for Tyler Smith. ",
+      "hash": "f6d4994aadeb898c2f120994049ae9777e335a0195b984f2ce5253ba8210fb1c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-why-is-the-offense-better-when-trailing",
+      "publishedAt": "2026-10-06T14:00:34.044Z",
+      "headline": "Mailbag: Why is the offense better when trailing?",
+      "description": "The offense seems to find another gear once Dallas is trailing. Is this a matter of the players needing that extra sense of urgency? Does the play-calling become more aggressive when they\u2019re behind? Or is there something else going on? Why can\u2019t they play with that same urgency all the time?",
+      "hash": "2f308c62badb1c6c97704fbe7877edcde0e308ba1bd4c64151619381b0109ad2"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-bucs-x2532",
+      "publishedAt": "2026-10-05T23:23:38.18Z",
+      "headline": "Big Picture: 10 Storylines for Cowboys & Bucs",
+      "description": "Here are some key storylines for both the Bucs and Cowboys as they head into Thursday's game at AT&T Stadium. ",
+      "hash": "00bca1cf051897b9f3158532a681e209bbb1197bdc7b779bbd2fb9b68098126a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tyler-smith-leaves-door-open-for-return-vs-bucs-on-thursday-i-think-it-s-possible",
+      "publishedAt": "2026-10-05T22:49:18.649Z",
+      "headline": "Tyler Smith leaves door open for return vs. Bucs on Thursday: 'I think it's possible'",
+      "description": "Cowboys All-Pro guard Tyler Smith is hoping to make his season debut on Thursday night against the Buccaneers after returning to practice, saying he thinks 'it's possible' on Monday.\u00a0",
+      "hash": "9d6bb3fa01d2a42ab2d0c41b7c82e842cea943e0f573b6ad2f3e4b78f3c4e40a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-open-practice-window-for-all-pro-tyler-smith",
+      "publishedAt": "2026-10-05T20:11:34.386Z",
+      "headline": "Cowboys open practice window for All-Pro Tyler Smith",
+      "description": "The injury to his thumb required surgery to repair ahead of the season, but the Cowboys are officially one major step closer to getting their All-Pro guard back on the field.",
+      "hash": "039b6bfb3d4b460fa4c5306037fc3e94b460cb5ba784ed5fcb7601dd7ebfb3ea"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tape-talk-film-review-from-cowboys-34-30-win-over-texans",
+      "publishedAt": "2026-10-05T19:05:13.98Z",
+      "headline": "Tape Talk: Film review from Cowboys' 34-30 win over Texans",
+      "description": "After a 34-30 win over the Texans in Week 4, a look back at some of the film from Dallas' win, inclduing the Cowboys' stopping the run, CeeDee Lamb's big day, and Joey Porter Jr.'s debut. ",
+      "hash": "2d13c4d37f00cd8f63d3af6ef1c6e09c487325f353f3461b7af979c96946ba21"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-how-crazy-was-bagging-this-victory",
+      "publishedAt": "2026-10-05T13:45:00Z",
+      "headline": "Spagnola: How crazy was bagging this victory",
+      "description": "The Cowboys seemingly had several crazy things happen in their much-needed win over the Texans, including several standout individual performances on offense and more improvement on defense.",
+      "hash": "084e663c200c26314ec6a9e42a0bb187ef5105886bcf387991eae702c91ad0b3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-news-and-notes-from-cowboys-week-4-win-over-texans",
+      "publishedAt": "2026-10-05T13:31:21.579Z",
+      "headline": "Pic 6: News and notes from Cowboys' Week 4 win over Texans",
+      "description": "From George Pickens and CeeDee Lamb continuing to open up opportunities for one another to a unique plane ride back for one Cowboys defenders, there was plenty to take away in news and notes from Dallas' 34-30 win over the Texans on Sunday. ",
+      "hash": "804c40f91f30a7dc3587d7fb3628d29680974ba80be4cf383e0b3115226113eb"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-on-ceedee-lamb-s-performance-cowboys-response-vs-texans",
+      "publishedAt": "2026-10-04T23:01:03.199Z",
+      "headline": "Dak Prescott on CeeDee Lamb's performance, Cowboys' response vs. Texans",
+      "description": "After saying that he and the offense have \"got to put the game away\" a week ago, Cowboys QB Dak Prescott did just that against the Texans on Sunday. ",
+      "hash": "58a29470db5cec479a962d977ced9e847707116e7ecf46a3555c8c45a11075c5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-big-brother-gets-the-last-laugh-again",
+      "publishedAt": "2026-10-04T22:45:44.207Z",
+      "headline": "Eatman: Big brother gets the last laugh again ",
+      "description": "If you\u2019re going to be America\u2019s Team, you for sure are going to be Texas\u2019 team. The Cowboys have always been that, and while it was close, they made sure Sunday was no exception. ",
+      "hash": "dc908c14913a0c576766d134d030ab6a732791d4a2deb168989bc89df0c46976"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-converting-big-4th-downs",
+      "publishedAt": "2026-10-04T22:13:56.961Z",
+      "headline": "Don\u2019t Forget These 5: Converting big 4th downs ",
+      "description": "Plays that might get forgotten include multiple fourth-down conversions in the second half, including Jake Ferguson\u2019s series-extending catch. ",
+      "hash": "6b4b530072c6fdd379fe2141ee2cf05475b5f8074a7ba50b09e4c837b9e121d4"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-cowboys-find-a-way-to-finish-vs-texans-i-wanted-this-game",
+      "publishedAt": "2026-10-04T22:08:34.362Z",
+      "headline": "Brian Schottenheimer, Cowboys find a way to finish vs. Texans: 'I wanted this game'",
+      "description": "A week after a heartbreaking loss in Rio de Janeiro, the Cowboys had an opportunity to do something they hadn't done the week before: \"Find a way to finish. And they did, resulting in a 34-30 win over the Texans. ",
+      "hash": "d3a3605cff3d0eb042909d71f51ad3787f2f4f9648e474d29f47ca02db2ddd00"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/ceedee-lamb-powers-cowboys-to-win-over-texans-with-emotional-career-best-day",
+      "publishedAt": "2026-10-04T21:57:43.278Z",
+      "headline": "CeeDee Lamb powers Cowboys to win over Texans with emotional, career-best day ",
+      "description": "When CeeDee Lamb took the field against the Texans in Houston, it marked hist first time playing in his home stadium, and he lifted the Cowboys to a win with a lights-out performance.",
+      "hash": "837cca777bfe42d2e35e81fb1541c86e540df020ba2a69a92b4f30eb21fc9f5a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-s-impact-is-immediate",
+      "publishedAt": "2026-10-04T21:45:57.492Z",
+      "headline": "Joey Porter Jr.'s impact is immediate",
+      "description": "Thrown into the action less than a week after the trade, Joey Porter Jr. delivered exactly the kind of shutdown presence the Cowboys were seeking.",
+      "hash": "dcf33f01ea0824cf7be39af84360bd34d2609755aa02635c00e7b4e4bcef4c91"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-thrill-with-34-30-win",
+      "publishedAt": "2026-10-04T20:38:03.994Z",
+      "headline": "Game Recap: Cowboys thrill with 34-30 win",
+      "description": "The Cowboys find their footing in the second half and come from behind for a thrilling last-second 34-30 victory over the Texans.",
+      "hash": "a10da5cb21f2900f95ef8f576d85ff628ae683224ab08307aa74ed4b4b12f7f5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-texans",
+      "publishedAt": "2026-10-04T17:21:05.683Z",
+      "headline": "Starlights: Big play tracker for Cowboys-Texans",
+      "description": "In the eighth clash in the Battle for Texas, when the Cowboys take on the Texans and, this time, Dallas knows it's an absolute must-win for both sides.",
+      "hash": "9942b682c229d110a9855a62bf7853761e0fd2da8c473b3020ff1715b7ba1efc"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/updates-september-2026",
+      "publishedAt": "2026-10-04T15:30:00Z",
+      "headline": "Updates: Javonte\u2019s 3 TDs is Emmitt-like milestone",
+      "description": "Don\u2019t miss any of the action with our daily updates: news, notes and more throughout the Cowboys' regular season and offseason.",
+      "hash": "6f6ea6a68198ca9bc8b306d3fa5da1bec9540c99c4ea1d3293cc0e7c90027171"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-texans-x1761",
+      "publishedAt": "2026-10-02T22:48:43.375Z",
+      "headline": "Gut Feeling: Staff predictions for Cowboys-Texans",
+      "description": "The Cowboys make the short trip to Houston on Sunday to play the Texans. Who will come out on top? Check out the predictions from the DallasCowboys.com staff. ",
+      "hash": "9d37bdb3de554d5a41f0662b6f7788c5086a2a845a1cc74bf0ae52b3bef3d50f"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-things-to-know-about-joey-porter-jr",
+      "publishedAt": "2026-10-02T20:50:38.62Z",
+      "headline": "Just 8: Things to know about Joey Porter Jr.",
+      "description": "The Cowboys might have the very best WR room in the NFL. We know who's at the top of the list but check the entire depth chart - top to bottom.",
+      "hash": "c55a758143eb8f702a632539f29efa69ceb1d7692ee94ef992fe02030fb8758d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/caleb-downs-on-joey-porter-jr-trade-early-impact-with-jaishawn-barham",
+      "publishedAt": "2026-10-02T19:10:53.088Z",
+      "headline": "Caleb Downs on Joey Porter Jr. trade, early impact with Jaishawn Barham",
+      "description": "Cowboys DB Caleb Downs discussed Dallas' trade for CB Joey Porter Jr. and how he'll help the defense, and also talked about the early impact he and fellow rookie Jaishawn Barham have had.",
+      "hash": "758da67691d75dd07777148996af8eca891ecc544c9fdb58c5cfc8230535d468"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-acquiring-new-pal-joey-just-in-time",
+      "publishedAt": "2026-10-02T17:30:00Z",
+      "headline": "Spagnola: Acquiring new pal Joey just in time",
+      "description": "My, how things can change in a matter of days. A beat-up Cowboys secondary gets a big boost for now and in the future with the acquisition of Joey Porter Jr.",
+      "hash": "80f674d124a295d3cb1d49e7f7cf1336c6a798631f1d492a9902b08e4cf91b4c"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-texans-how-to-watch-listen-stream-in-week-4",
+      "publishedAt": "2026-10-02T17:28:51.477Z",
+      "headline": "Cowboys-Texans: How to Watch, Listen, Stream in Week 4",
+      "description": "This time around, the Governor\u2019s Cup features a version of the Dallas Cowboys and Houston Texans that both need a win, and to send a statement to each other and the league.",
+      "hash": "51585e566628917631970e711c1737904edc892e1bf18bef8229897834f999c8"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/here-we-goooo-texans-present-a-big-test-for-cowboys-offensive-tackles",
+      "publishedAt": "2026-10-02T17:15:15.32Z",
+      "headline": "Here We Goooo: Texans present a big test for Cowboys offensive tackles",
+      "description": "The Cowboys' offensive tackle will have their hands full on Sunday with the Texans pass rush. In this week's Here We Goooo, a look at how they stack up against each other and more areas of the game to watch in Week 4. ",
+      "hash": "82a60135c3c4be5066d30ab5e8de3aed3094c576975f4b29864be3404b5e6cbb"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-brian-schottenheimer-update-joey-porter-jr-s-status-vs-texans",
+      "publishedAt": "2026-10-02T16:53:31.023Z",
+      "headline": "Jerry Jones, Brian Schottenheimer update Joey Porter Jr.'s status vs. Texans",
+      "description": "Cowboys owner/GM Jerry Jones and coach Brian Schottenheimer updated new CB Joey Porter Jr.'s status for Sunday's Week 4 game against the Houston Texans. ",
+      "hash": "92ab4c133a4c3fd52d8844da25f9362480f9638510c17f812ef1b974a82e8b34"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-is-a-rivalry-building-with-the-texans",
+      "publishedAt": "2026-10-02T13:23:10.581Z",
+      "headline": "Mailbag: Is a rivalry building with the Texans?",
+      "description": "Living in Dallas, I want to hate the Houston Texans, but I don\u2019t really have feelings for them one way or the other. Do you think we\u2019ll ever see a true in-state rivalry between the two teams? Could the NFL use the odd 17th game to have the Cowboys play the Texans every year? ",
+      "hash": "fc850ee3286206db42a6ffe4d8b31837566aec16e4a2b5d5501806cb321acd85"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-s-explains-goal-in-dallas-to-bet-on-myself",
+      "publishedAt": "2026-10-01T22:51:51.459Z",
+      "headline": "Joey Porter's explains goal in Dallas: 'To bet on myself' ",
+      "description": "In Joey Porter's Instagram announcement for the trade, he played the song \"The Gambler,\" a fitting choice considering his goal this year is to \"bet on himself.\" \n",
+      "hash": "9222dcde51e7b41796f4acc97234595d61ca36898a9f222a234cc1c1f2945edc"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/joey-porter-jr-on-his-journey-to-the-cowboys-what-s-next-as-texans-approach",
+      "publishedAt": "2026-10-01T21:50:44.688Z",
+      "headline": "Joey Porter Jr. on his journey to the Cowboys, what's next as Texans approach",
+      "description": "Only three seasons ago, Joey Porter Jr. was the second-round pick of the Steelers, and now he's in a Cowboys uniform \u2014 all smiles \u2014 discussing what comes next for him in Dallas.",
+      "hash": "49fa5e2887734cc612c7d36aac2922099dd1afc207f4ca6044c4db2088796a25"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-players-coaches-react-to-joey-porter-jr-trade",
+      "publishedAt": "2026-10-01T21:44:41.907Z",
+      "headline": "Cowboys players, coaches react to Joey Porter Jr. trade",
+      "description": "Hear from Cowboys coach Brian Schottenheimer, QB Dak Prescott and more players and coaches on their reaction to the Joey Porter Jr. trade and how he fits in with Dallas. ",
+      "hash": "bf2cf92c1b50367238d033d7555b8b3a347487c10a04901544a40a70d8a62447"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/science-lab-joey-porter-jr-trade-to-cowboys-the-great-the-good-the-hmm",
+      "publishedAt": "2026-10-01T17:08:33.99Z",
+      "headline": "Science Lab: Joey Porter Jr. trade to Cowboys \u2014 the Great, the Good, the Hmm...",
+      "description": "Welcome to \"The Science Lab\", a place where football facts and in-depth analysis always triumph over feelings.",
+      "hash": "cf0a267b7cdf165c1927ecca37eaf6a94202b14941c9b25f76ac6c95ee90beab"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-is-porter-trade-an-all-in-move",
+      "publishedAt": "2026-10-01T12:57:12.337Z",
+      "headline": "Mailbag: Is Joey Porter trade an 'all-in' move?",
+      "description": "Wow! I heard about the trade late last night and couldn\u2019t believe the Cowboys pulled the trigger on getting Joey Porter Jr. What do you think of this move, and would you consider this to finally be the all-in move from Jerry we\u2019ve been waiting for? ",
+      "hash": "95b4d74e79d4e45e89c28f3c4db673382d53d996f8b43bb93f2d0f2956c32664"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-agree-to-terms-on-trade-for-steelers-cb-joey-porter-jr",
+      "publishedAt": "2026-10-01T04:00:26.228Z",
+      "headline": "Cowboys trading for Steelers CB Joey Porter Jr. ",
+      "description": "The Cowboys are trading for Pittsburgh Steelers CB Joey Porter Jr., giving Dallas a boost in their secondary on the outside.\u00a0",
+      "hash": "419d6e288da6104f47f31cedd5b4f0d62a1803f1b8ccc5f0cef5bb2142c44825"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jaishawn-barham-breaks-silence-demands-more-from-himself-and-cowboys",
+      "publishedAt": "2026-09-30T23:39:07.864Z",
+      "headline": "Jaishawn Barham breaks silence, demands more from himself and Cowboys",
+      "description": "Needing to right the ship sooner than later, the Cowboys are seeing one of their top rookies \u2014 Jaishawn Barham \u2014 grab the wheel. ",
+      "hash": "a2ef8846c89cbd4995fa90d70c0b78880854b1b745dbde47a01d89797fecffc0"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/kenny-clark-on-cowboys-defense-s-performance-vs-ravens-plan-to-improve-vs-texans",
+      "publishedAt": "2026-09-30T23:23:47.234Z",
+      "headline": "Kenny Clark on Cowboys defense's performance vs. Ravens, plan to improve vs. Texans",
+      "description": "Cowboys defensive tackle Kenny Clark discussed Dallas' defensive performance against the Ravens last Sunday, and how he and his teammates need to bounce back against a hungry Texans team this weekend.",
+      "hash": "e237191313db9c81c64908047f82c747319f24189705408978faf3471cfbad81"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mick-shots-it-s-not-over-until-it-s-really-over",
+      "publishedAt": "2026-09-30T16:45:00Z",
+      "headline": "Mick Shots: It\u2019s not over until it\u2019s really over",
+      "description": "Most of the NFC owns either a 2-1 or 1-2 record, so there\u2019s no reason to panic about the Cowboys yet. Plus, that last second, rained in during practice, Malik Hooker improving and more.",
+      "hash": "3242201df60807314c95897d4bc9356e86f158297daf1195198dc0c13862a671"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/zero-to-100-key-stats-on-pickens-barham-more",
+      "publishedAt": "2026-09-30T16:36:39.468Z",
+      "headline": "Zero to 100: Key stats on Pickens, Barham & more ",
+      "description": "Let\u2019s look at 10 key numbers for the Cowboys as they turn page this week to Houston. There's some interesting facts and figures regarding the performances of players such as George Pickens and Jaishawn Barham. ",
+      "hash": "8ab90c9810dc5d9efce2d3a8bdc4be15c4092c60e52ff8fdb04633ebe378ae00"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-why-the-out-of-bounds-kicks-for-aubrey",
+      "publishedAt": "2026-09-30T14:00:35.351Z",
+      "headline": "Mailbag: Why the out-of-bounds kicks for Aubrey?",
+      "description": "I think Brandon Aubrey is the best kicker in the NFL, but what's the deal with his kickoffs this season? It seems he has kicked off out of bounds a lot over the first three games. Are the coaches specifically asking him to keep it near the sidelines? Is he just mis-hitting the ball? We can't keep giving teams the ball at the 40-yard line. What\u2019s the fix? ",
+      "hash": "55a5a0310f4ee57bbfa7a639fc6d5ebdcb0439e3a27aa82443359363c49835e1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-takes-responsibility-for-loss-to-ravens-i-deserve-the-criticism",
+      "publishedAt": "2026-09-29T23:30:08.217Z",
+      "headline": "Brian Schottenheimer takes responsibility for loss to Ravens: 'I deserve the criticism'",
+      "description": "Cowboys coach Brian Schottenheimer took responsibility for Dallas' 34-31 loss to the Ravens last Sunday, and walked through the entire end of game sequence in the final 28 seconds of the game.",
+      "hash": "5cfdca3042f3016e8a8ba159be810cab5d06d8781bc9b071d83ee7e3da809d42"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-injury-roundup-key-dallas-defenders-to-miss-multiple-weeks",
+      "publishedAt": "2026-09-29T23:29:02.783Z",
+      "headline": "Cowboys Injury Roundup: Key Dallas defenders to miss multiple weeks",
+      "description": "The injury bug has taken another huge bite out of the Cowboys' defense, sending several other key players to the sideline for multiple games.",
+      "hash": "d3faf62ee8224df8b4abd69698a2334669dcd156763826f1462cea5f92ab9152"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/big-picture-10-storylines-for-cowboys-texans-x9036",
+      "publishedAt": "2026-09-29T22:47:52.049Z",
+      "headline": "Big Picture: 10 Storylines for Cowboys & Texans",
+      "description": "The Cowboys and Texans are both entering Sunday's game in Houston on the wrong end of a last-second loss. The records might be different, the desperation level to win this in-state matchup is high for both sides. ",
+      "hash": "5c38924dbdca55e08d4bc49fe260d17edac64bd1af4057aead3067fed43ae3a7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/tape-talk-what-stood-out-on-film-from-cowboys-ravens-in-rio-de-janeiro",
+      "publishedAt": "2026-09-29T18:09:10.617Z",
+      "headline": "Tape Talk: What stood out on film from Cowboys-Ravens in Rio de Janeiro",
+      "description": "What happened on some of the crucial plays for the Cowboys against the Ravens in Rio? We take a look at it in this week's edition of Tape Talk. ",
+      "hash": "248c8419b9161d94b5e1cf73861486afa2c1190e6dcc204674f89f7b0af1f6a1"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/jerry-jones-says-there-s-conversations-going-on-for-potential-additions-to-cowboys-roster",
+      "publishedAt": "2026-09-29T14:20:49.789Z",
+      "headline": "Jerry Jones says 'there's conversations going on' for potential additions to Cowboys roster",
+      "description": "Speaking on 105.3 The Fan Tuesday, Cowboys owner/GM Jerry Jones says there are \"conversations going on\" for potential additions to the Cowboys roster. ",
+      "hash": "b8cfe40ad8e503aeaff2a99d7c0f2b387ca8823499095c46a27a512c70f6770e"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-how-can-the-pass-rush-get-better",
+      "publishedAt": "2026-09-29T14:06:48.535Z",
+      "headline": "Mailbag: How can the pass rush get better? ",
+      "description": "Through three games, the Dallas defense only has two sacks, and none in the last two games. They seem to generate pressure but can\u2019t finish the job. Are you concerned, or do you believe it gets better?",
+      "hash": "5bb64fef781560eff632530c0008b6426dceda6479724c4554850eaf9979e6c5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/stephen-jones-on-cowboys-disappointing-loss-to-ravens-in-brazil",
+      "publishedAt": "2026-09-28T18:26:28.38Z",
+      "headline": "Stephen Jones on Cowboys' 'disappointing' loss to Ravens in Brazil",
+      "description": "Cowboys COO/co-owner Stephen Jones shared his thoughts on Dallas' \"disappointing\" loss to the Ravens in Brazil, talked about why the Cowboys could potentially add in the secondary and more. ",
+      "hash": "ac001f125a521e6739716a92ee4d8b30eb56d93365a58b35a68d2ceac751986b"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-reveal-unfortunate-timeline-for-jalen-thompson-injury",
+      "publishedAt": "2026-09-28T18:01:07.117Z",
+      "headline": "Cowboys reveal unfortunate timeline for Jalen Thompson injury",
+      "description": "The injury bug continues to ravage the Cowboys safety corps in 2026, this time keeping Jalen Thompson off the field for several games.",
+      "hash": "b565ce088212ded065bde906f6b752f8aabd7584806b181982879ad19a034d7a"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-the-second-never-should-have-mattered",
+      "publishedAt": "2026-09-28T18:00:00Z",
+      "headline": "Spagnola: The second never should have mattered",
+      "description": "The Cowboys' loss to the Ravens should never have come down to that final second, as mistakes on offense, defense and special teams all led to missed opportunities beforehand.",
+      "hash": "6c3dc6d28b2ba0fabe02a681424dec9fc01e74b31623abe18c00f9e1f8f00dea"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/pic-6-cowboys-news-and-notes-from-a-tough-loss-in-rio-de-janeiro",
+      "publishedAt": "2026-09-28T14:20:50.726Z",
+      "headline": "Pic 6: Cowboys news and notes from a tough loss in Rio de Janeiro",
+      "description": "A look back at some news and notes from the Cowboys' tough 34-31 loss to the Ravens in Rio de Janeiro, including how special teams played a role in the outcome and more injuries Dallas will need to monitor on defense. ",
+      "hash": "675142e56a2f1fa9eeb78b3677dd0f03572ee7ce94e350a61d561286df88edb7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/javonte-williams-cowboys-find-success-in-run-game-now-need-to-get-back-on-track",
+      "publishedAt": "2026-09-28T03:46:21.71Z",
+      "headline": "Javonte Williams, Cowboys find success in run game, now need to 'get back on track'",
+      "description": "Javonte Williams and the Cowboys offense were able to finally find a spark in the run game. Still, he knows they need to do more in order to \"get back on track\"",
+      "hash": "24783b0debaf44083cdde1d441b999acff2992a260d3968b706c40afb7515e51"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/eatman-this-game-ended-like-it-started-not-running",
+      "publishedAt": "2026-09-28T02:01:20.37Z",
+      "headline": "Eatman: This game ended like it started \u2013 not running ",
+      "description": "It\u2019s rare that NFL games start and finish the same way. Sadly, the Cowboys\u2019 first and last drives \u2013 both in the same end zone \u2013 resulted in field goals when they opted to pass instead of run. ",
+      "hash": "fac5bd5df6aabf4f1cc50bc4353f8aea9b350e02811126cb2c0a374e97aa9464"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-frustrated-by-loss-to-ravens-we-ve-got-to-put-the-game-away",
+      "publishedAt": "2026-09-28T01:30:44.567Z",
+      "headline": "Dak Prescott frustrated by loss to Ravens: 'We've got to put the game away'",
+      "description": "Cowboys QB Dak Prescott used the words \"frustrated\" and \"embarrassed\" to describe his feelings after Dallas' 34-31 loss to the Ravens in Rio, and said the offense got in their own way on multiple occasions Sunday night. ",
+      "hash": "1a8cb39ee2e192c3de46ed33780a2ddbb55b1c89baa59b30e4d8e41479947436"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-on-cowboys-narrow-loss-to-ravens-in-rio-this-one-stings",
+      "publishedAt": "2026-09-28T01:12:11.791Z",
+      "headline": "Brian Schottenheimer on Cowboys narrow loss to Ravens in Rio: 'This one stings'",
+      "description": "On multiple occasions, the Dallas Cowboys looked like the better team when they faced the Baltimore Ravens, but self-inflicted wounds were ultimately their undoing.",
+      "hash": "a3bc8f63d1b4d6b25d89535458259c611ee7a1f6b519a81fda7d07c7153d5332"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/don-t-forget-these-5-penalties-kickoffs-more",
+      "publishedAt": "2026-09-28T00:45:16.717Z",
+      "headline": "Don\u2019t Forget These 5: Penalties, kickoffs & more ",
+      "description": "Plays that might get forgotten include several missed chances down in the red zone, along with some unfortunate decisions on kickoffs.",
+      "hash": "797da525798ce83a213352b85d115e98e56a33ffa45b6e9d75e1e8d659ad2fda"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/game-recap-cowboys-lose-in-rio-34-31",
+      "publishedAt": "2026-09-28T00:19:43.996Z",
+      "headline": "Game Recap: Cowboys lose in Rio, 34-31",
+      "description": "In a game that gave Rio fans all they could ask for, the Cowboys rallied to tie the score late, only to see the Ravens come away with an improbable last-second win, 34-31.",
+      "hash": "1b25cbd3f4f286bdb2256131df5a254fb5c1fcbe1064882590878de3677da59e"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/starlights-big-play-tracker-for-cowboys-ravens-in-rio",
+      "publishedAt": "2026-09-27T20:38:10.765Z",
+      "headline": "Starlights: Big play tracker for Cowboys-Ravens in Rio",
+      "description": "History is being made as the NFL fields its first-ever game in Rio de Janeiro, and the Dallas Cowboys are working to take the win over the Baltimore Ravens. ",
+      "hash": "4f07e79b108d449c923ca5c37cff0118bdb91eead88df8fe07b5f9f9df8798ec"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-conduct-walk-around-at-maracana-stadium-get-a-feel-for-field-conditions",
+      "publishedAt": "2026-09-26T17:13:59.004Z",
+      "headline": "Cowboys conduct walk-around at Maracan\u00e3 Stadium, get a feel for field conditions",
+      "description": "On Saturday, the Cowboys conducted a team walk-around at Maracan\u00e3 Stadium in Rio de Janeiro, getting a feel for the stadium environment as well as the playing field, which has been a big topic of discussion throughout the week.",
+      "hash": "b381baaff81178bfcd243e341a75f7b992274443c0f9b7a786fa7a6e08bb33f7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/gut-feeling-staff-predictions-for-cowboys-ravens-in-rio",
+      "publishedAt": "2026-09-25T22:33:43.715Z",
+      "headline": "Gut Feeling: Staff predictions for Cowboys-Ravens in Rio",
+      "description": "The Cowboys and Ravens meet in Rio with a win and a loss each. Who will return home with a pivotal second win of the season? Our staff make their predictions on this week\u2019s Gut Feeling.",
+      "hash": "3a6db0572f0c94ad6544eeccfbc3a15405a02c8e6e83c9989f5710420614d927"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/dak-prescott-cowboys-want-to-be-the-aggressors-vs-ravens-in-rio",
+      "publishedAt": "2026-09-25T20:41:34.919Z",
+      "headline": "Dak Prescott, Cowboys want to \u2018be the aggressors\u2019 vs. Ravens in Rio",
+      "description": "Heading into the first international game of his career, Cowboys QB Dak Prescott talked about the opportunity to play in Brazil, and why it's important Dallas is \"the aggressors\" against the Ravens on Sunday. ",
+      "hash": "42c1d0db7d3745d6e3a6db03f56b8a33c6fed38906a6db480b3318143e352ba5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/just-8-top-8-graded-players-for-both-cowboys-ravens",
+      "publishedAt": "2026-09-25T19:41:46.198Z",
+      "headline": "Just 8: Top 8 graded-players for both Cowboys & Ravens ",
+      "description": "But after two weeks into the season, who is actually playing the best for each team? The results might surprise. Here are the top 8 graded players (according to PFF) for both the Cowboys and Ravens.\u00a0",
+      "hash": "028764874d1dc4a4e9d46bbf6c8685f18ec8ed9635b8f61005a833b2e87b7310"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brian-schottenheimer-s-message-to-cowboys-in-rio-it-s-a-business-trip",
+      "publishedAt": "2026-09-25T19:09:59.904Z",
+      "headline": "Brian Schottenheimer's message to Cowboys in Rio: 'It's a business trip'",
+      "description": "Rio is one of the most beautiful places in the world, but as the Dallas Cowboys prepare to take on the Baltimore Ravens in Brazil, the message from Brian Schottenheimer is crystal-clear.",
+      "hash": "c83cd33dca79eb50c3ee1128411956cf66da88130d04e7f395cdbd2991417bf8"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/spagnola-high-time-to-get-going-in-brazil",
+      "publishedAt": "2026-09-25T18:30:00Z",
+      "headline": "Spagnola: High time to get going in Brazil",
+      "description": "There have been no problems so far during the trip to Brazil, but indeed there are some big problems facing Dallas on Sunday in the form of the Ravens. Here are some areas the Cowboys will need to improve upon to get the win.",
+      "hash": "b2cc5c86bd56d602a6e40dee3d6ac0c5a2d9f274fd23569ab2c2004f937ff394"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-ravens-how-to-watch-listen-stream-in-week-3",
+      "publishedAt": "2026-09-25T16:02:21.565Z",
+      "headline": "Cowboys-Ravens: How to Watch, Listen, Stream in Week 3",
+      "description": "The first-ever NFL game to be played in Brazil will feature the Dallas Cowboys working to take down the Baltimore Ravens and former league MVP Lamar Jackson.",
+      "hash": "32a054c7370af5fea3d4c84158a41997d39b449657c279f73f27287184398284"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/here-we-goooo-another-tall-task-awaits-the-cowboys-defense",
+      "publishedAt": "2026-09-25T14:43:53.616Z",
+      "headline": "Here We Goooo: Another tall task awaits the Cowboys defense",
+      "description": "On their business trip to Brazil, a tall task awaits the Cowboys defense once again in Lamar Jackson, Derrick Henry and the Ravens offense. In this week\u2019s Here We Goooo, we discuss where Dallas can find some advantages.",
+      "hash": "857367381349859bdac22764a29b18859109eebc012115cb6a78cd462abb4946"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-will-there-ever-be-an-international-team",
+      "publishedAt": "2026-09-25T14:00:22.068Z",
+      "headline": "Mailbag: Will there ever be an international team?",
+      "description": "What are your thoughts on these international games? Seems good for the league but maybe bad for the players. And do you think the NFL will ever have a team based outside the US? Where would the most logical place be?",
+      "hash": "749119f6d4810bd03100da2709b5b057965dd6e2152faf9dd08d06cc3d222494"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/trivia-thursday-cowboys-history-with-international-games",
+      "publishedAt": "2026-09-24T22:27:47.8Z",
+      "headline": "Trivia Thursday: Cowboys history with international games ",
+      "description": "The Cowboys are headed to Brazil for just their second international regular-season game but they've been overseas before. Check out some trivia questions regarding the international games. ",
+      "hash": "3ebbef81e86d691a4644627f4440e61824d9e5b31d7e767e7c2e403f52aa08b3"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/quinnen-williams-on-keys-to-playing-internationally-improving-stopping-the-run",
+      "publishedAt": "2026-09-24T20:24:36.26Z",
+      "headline": "Quinnen Williams on keys to playing internationally, improving stopping the run",
+      "description": "Cowboys defensive tackle Quinnen Williams is no stranger to international stages, having played in three games across the pond in his career. He talked about what goes in to international games and how Dallas can improve at stopping the run.",
+      "hash": "c74195323c38b59270ad7b729ddaa0911693419e6585bf9817e0defbd5bb6dba"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/brandon-aubrey-has-a-familiar-plan-to-kick-in-brazil",
+      "publishedAt": "2026-09-24T19:01:18.424Z",
+      "headline": "Brandon Aubrey has a familiar plan to kick in Brazil",
+      "description": "Being an NFL kicker means paying attention to even the smallest details and, as Brandon Aubrey and the Cowboys head to Brazil, that means sticking to his usual plan.",
+      "hash": "f1f67953d59a44ec0b94c278a24104b688ee895b59abf5344d2374ef0181e842"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/past-present-former-cowboys-cb-10-year-vet-still-on-ravens",
+      "publishedAt": "2026-09-24T18:50:55.617Z",
+      "headline": "Past/Present: Former Cowboys CB, 10-year vet still on Ravens\u00a0\u00a0",
+      "description": "Sunday's matchup with the Ravens will include a former Cowboys draft pick is now in his 10th pro season. ",
+      "hash": "93f7bcec7258d9c23742bf7e24e441e0d22cdfe59506abfc52b263a1562a85f7"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/science-lab-what-s-halting-the-cowboys-rushing-attack",
+      "publishedAt": "2026-09-24T16:58:29.034Z",
+      "headline": "Science Lab: What's halting the Cowboys rushing attack?",
+      "description": "Welcome to \"The Science Lab\", a place where football facts and in-depth analysis always triumph over feelings.",
+      "hash": "6b22bba51324775d16ff5be387e7e580f7ba25ffb8e0097187b9a96201635d70"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/mailbag-could-defense-designate-a-qb-spy",
+      "publishedAt": "2026-09-24T14:00:13.06Z",
+      "headline": "Mailbag: Could defense designate a QB spy?",
+      "description": "After seeing quarterbacks Jaxson Dart and Jayden Daniels run on the Cowboys and knowing the team is about to face Lamar Jackson, I\u2019ve wondered why a player isn\u2019t assigned the sole responsibility of monitoring and engaging running quarterbacks? I remember my days as a soccer player where a player is assigned the responsibility of shadowing a dangerous opposing player. Would that not work?",
+      "hash": "4db880e5fcd2cfca6ce66b43f42020ce31bf6427f1edc81822b5fd2af627c9f5"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/cowboys-stars-super-excited-to-make-nfl-history-in-brazil",
+      "publishedAt": "2026-09-23T23:54:39.989Z",
+      "headline": "Cowboys stars 'super excited' to make NFL history in Brazil",
+      "description": "George Pickens, Jake Ferguson and other star Cowboys players can't wait to take care of business in Brazil, knowing they'll also make NFL history in the process.",
+      "hash": "48f81cd442700f3ee323533724c6ed249209cad979350e2d3d1971a868efb26d"
+    },
+    {
+      "url": "https://www.dallascowboys.com/news/george-pickens-looking-to-get-the-mission-done-vs-ravens-in-rio",
+      "publishedAt": "2026-09-23T21:54:53.601Z",
+      "headline": "George Pickens looking to 'get the mission done' vs. Ravens in Rio",
+      "description": "Cowboys WR George Pickens is looking to 'get the mission done' against the Ravens in Rio de Janeiro on Sunday, and discussed his start to the season with and without the ball in his hands. ",
+      "hash": "ec479591231ed15d429a3608e63c24b6d8d074ec6f580bef1a19fa536ddc91b4"
+    }
+  ],
+  "limitations": [
+    "Monthly Updates articles need embedded-date extraction; publication date is not each entry date.",
+    "No prior-run overlap anchor at bootstrap.",
+    "No transaction freshness or player state promoted."
+  ]
+}

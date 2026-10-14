@@ -1,0 +1,106 @@
+{
+  "scope": "Read-only page-format inventory; not discovery completeness or freshness qualification",
+  "observedAt": "2026-10-14T03:20:21.907Z",
+  "teams": [
+    "TEN"
+  ],
+  "sources": [
+    {
+      "team": "TEN",
+      "kind": "news",
+      "url": "https://www.tennesseetitans.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.tennesseetitans.com/news/",
+      "sha256": "1df39eb99b4f34ebbbe34d264a37bbe0631297e5ace0f6e776089466ade04d14",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.tennesseetitans.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.tennesseetitans.com/news/titans-news",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "TEN",
+      "kind": "roster",
+      "url": "https://www.tennesseetitans.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.tennesseetitans.com/team/players-roster/",
+      "sha256": "4a7f95b8a49d0b3faac7062fd98d89c003c178d65cb679b30f8d16c9d94b5549",
+      "coveragePassed": false,
+      "players": 79,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Kendell Brooks",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Milo Eifler",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaylen Harrell",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaren Kanak",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Tanoh Kpassagnon",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Fernando Carmona Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Dorian Mausi",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Jackson Slater",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Joshua Williams",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "TEN",
+      "kind": "transactions",
+      "url": "https://www.tennesseetitans.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.tennesseetitans.com/team/transactions/2026",
+      "sha256": "f37a7d02f9300976063b4db0217b21a46a4f93f6fea326fda4a89c2d9f0967a9",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 58
+    }
+  ],
+  "coveragePassed": false,
+  "productionEnabled": false
+}

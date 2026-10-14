@@ -1,0 +1,52 @@
+{
+  "scope": "Current Dallas news/roster replay plus previously verified official August 30 history; no production writes",
+  "coveragePassed": true,
+  "discoveryComplete": true,
+  "unresolved": [],
+  "quarantined": [
+    {
+      "reportedAt": "2026-10-04",
+      "sourceUrl": "https://www.dallascowboys.com/news/updates-october-2026",
+      "observedAt": "2026-10-14T02:56:21.194Z",
+      "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+      "customerEligible": false,
+      "reason": "NAME_NOT_IN_OFFICIAL_TEAM_ROSTER",
+      "name": "Jalen Williams",
+      "status": null,
+      "createsEvent": false
+    },
+    {
+      "reportedAt": "2026-10-04",
+      "sourceUrl": "https://www.dallascowboys.com/news/updates-september-2026",
+      "observedAt": "2026-10-14T02:56:21.194Z",
+      "sourceText": "Hooker's return was more than needed for a safety group that also has Jalen Williams and P.J. Locke already on IR.",
+      "customerEligible": false,
+      "reason": "NAME_NOT_IN_OFFICIAL_TEAM_ROSTER",
+      "name": "Jalen Williams",
+      "status": null,
+      "createsEvent": false
+    }
+  ],
+  "requiredHistoricalInputs": [
+    {
+      "name": "Marist Liufau",
+      "reportedAt": "2026-08-30",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "sourceText": "Placed LB Marist Liufau, CB Devin Moore on Reserve/Injured (Designated for Return)"
+    },
+    {
+      "name": "Devin Moore",
+      "reportedAt": "2026-08-30",
+      "status": "IR",
+      "sourceUrl": "https://www.dallascowboys.com/news/transactions-guard-signed-snowden-waived-injured",
+      "sourceText": "Placed LB Marist Liufau, CB Devin Moore on Reserve/Injured (Designated for Return)"
+    }
+  ],
+  "limitations": [
+    "Unmatched Jalen Williams claim is retained and never mapped to Jalen Thompson.",
+    "Operational bootstrap must supply these verified historical records before Dallas can qualify.",
+    "No league-wide or production qualification."
+  ],
+  "productionEnabled": false
+}

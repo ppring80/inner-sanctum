@@ -14,7 +14,16 @@ exports.handler = async event => {
     const [injuries,health]=await Promise.all([injuryStore.get('latest',{type:'json'}),injuryStore.get('health',{type:'json'})]);
     const age=Date.now()-Date.parse(injuries?.checkedAt||'');
     const injuryTransactions={checkedAt:injuries?.checkedAt||null,fresh:Number.isFinite(age)&&age>=0&&age<2*3600000,records:injuries?.records?.length||0,lastChanges:injuries?.lastChanges||[],health};
-    return { statusCode: ready ? 200 : 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ season, week, ready, jobs, injuryTransactions }) };
+    const clubModule=require('./_club-availability-run');
+    let clubAvailability;
+    try {
+      const clubStore=getStore({name:clubModule.STORE});
+      const [latest,clubHealth]=await Promise.all([clubStore.get('latest',{type:'json'}),clubStore.get('health',{type:'json'})]);
+      clubAvailability=clubModule.summarize(latest,clubHealth,{enabled:process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true',customerReadsEnabled:process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true'});
+    } catch (_) {
+      clubAvailability={enabled:process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true',customerReadsEnabled:false,fresh:false,coveragePassed:false,error:'Official club coverage status unavailable.'};
+    }
+    return { statusCode: ready ? 200 : 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ season, week, ready, jobs, injuryTransactions,clubAvailability }) };
   } catch (_) {
     return { statusCode: 503, body: JSON.stringify({ ready: false, error: 'Weekly cache status could not be checked.' }) };
   }

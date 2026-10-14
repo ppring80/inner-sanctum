@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict');
+const {extractDallasEvents}=require('../netlify/functions/_dallas-announcement-events');
+const html=fs.readFileSync(__dirname+'/fixtures/dallas-activation-2026-10-08.html','utf8');
+const snapshot={team:'DAL',rows:[{name:'Tyler Smith',team:'DAL',position:'G',profileUrl:'https://www.dallascowboys.com/team/players-roster/tyler-smith/'}]};
+const opts={sourceUrl:'https://www.dallascowboys.com/news/tyler-smith-officially-activated-from-ir-for-cowboys-vs-buccaneers',season:2026,observedAt:'2026-10-14T03:00:00Z',snapshot};
+const r=extractDallasEvents(html,opts);assert.deepEqual(r.unresolved,[]);assert.equal(r.events[0].reportedAt,'2026-10-08');assert.equal(r.events[0].kind,'RESERVE_EXIT');assert.equal(r.events[0].health,'UNKNOWN');
+assert.equal(extractDallasEvents(html,{...opts,snapshot:{team:'DAL',rows:[]}}).events.length,0);
+assert.equal(extractDallasEvents(html,{...opts,snapshot:{team:'DAL',rows:[...snapshot.rows,...snapshot.rows]}}).events.length,0);
+assert.throws(()=>extractDallasEvents(html,{...opts,observedAt:'2026-10-01T00:00:00Z'}));
+const changed=html.replace(/"dateModified":"[^"]+"/,'"dateModified":"2026-10-10T00:00:00Z"');assert.ok(extractDallasEvents(changed,opts).unresolved.some(e=>e.reason==='DALLAS_ACTIVATION_EFFECTIVE_DATE_AMBIGUOUS'));
+console.log('PASS: official activation, unique identity, no health inference, cutoff and edited-date ambiguity.');

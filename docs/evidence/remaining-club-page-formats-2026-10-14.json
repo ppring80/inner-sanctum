@@ -1,0 +1,2708 @@
+{
+  "scope": "Read-only page-format inventory; not discovery completeness or freshness qualification",
+  "observedAt": "2026-10-14T03:13:51.853Z",
+  "teams": [
+    "NYJ",
+    "NE",
+    "HOU",
+    "SF",
+    "LAR",
+    "TB",
+    "MIA",
+    "BUF",
+    "CAR",
+    "CHI",
+    "CIN",
+    "PIT",
+    "CLE",
+    "ATL",
+    "LV",
+    "ARI",
+    "WSH",
+    "NYG",
+    "MIN",
+    "GB",
+    "DET",
+    "JAX",
+    "BAL",
+    "TEN",
+    "DEN",
+    "KC",
+    "IND",
+    "SEA"
+  ],
+  "sources": [
+    {
+      "team": "NYJ",
+      "kind": "transactions",
+      "url": "https://www.newyorkjets.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.newyorkjets.com/team/transactions/2026",
+      "sha256": "0354d5d461a0871fd18caff3a3a143ace6605129f0ebe00d8b18c00645b7e83c",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 63
+    },
+    {
+      "team": "NYJ",
+      "kind": "news",
+      "url": "https://www.newyorkjets.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.newyorkjets.com/news/",
+      "sha256": "ad45584531c36d0111a61fce7f0fa3d56e27322c7926c4c31441d978b9f453bd",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.newyorkjets.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.newyorkjets.com/news/all-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "NE",
+      "kind": "transactions",
+      "url": "https://www.patriots.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.patriots.com/team/transactions/2026",
+      "sha256": "477f885a8e288d8d2ec9b79d04bc403477ca799abb254439df16f7d5abd5b99b",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 72
+    },
+    {
+      "team": "HOU",
+      "kind": "transactions",
+      "url": "https://www.houstontexans.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.houstontexans.com/team/transactions/2026",
+      "sha256": "e5613da4d046111312065850a4feae46d4d2d0b0d416f284e2e30c7bfebc9e06",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 63
+    },
+    {
+      "team": "SF",
+      "kind": "news",
+      "url": "https://www.49ers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.49ers.com/news/",
+      "sha256": "88ce61e09970b9a69772f56b3040e12aadf72333092b1ac24d65c150b54273c7",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.49ers.com/news/",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.49ers.com/news/latest-headlines/index/",
+          "label": "/news/latest-headlines/index/ + More News"
+        }
+      ]
+    },
+    {
+      "team": "LAR",
+      "kind": "roster",
+      "url": "https://www.therams.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.therams.com/team/players-roster/",
+      "sha256": "c5797e6ad8f513b40192bd39f631b83942aefaa1e5a8595cd3308fba9b51b507",
+      "coveragePassed": false,
+      "players": 75,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Matthew Caldwell",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Justin Dedich",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Myles Garrett",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ronnie Rivers",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Keir Thomas",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Keagen Trost",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Eddie Walls III",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "TB",
+      "kind": "roster",
+      "url": "https://www.buccaneers.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.buccaneers.com/team/players-roster/",
+      "sha256": "a2fab2fb3bfd15ad7b54c61d5827aea429c76930cfb8f2dab23ae07ce95b4e21",
+      "coveragePassed": false,
+      "players": 74,
+      "sections": [
+        "Active",
+        "Reserve/Designated to Return",
+        "Reserve/Injured",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "David Sills V",
+          "status": "RESERVE_RETURN_PROCESS",
+          "section": "Reserve/Designated to Return"
+        },
+        {
+          "name": "Josh Hayes",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mohamed Kamara",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jalen McMillan",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "MIA",
+      "kind": "news",
+      "url": "https://www.miamidolphins.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.miamidolphins.com/news/",
+      "sha256": "6b9618ba99a57f8644d4baca220c4942b7f60d2f717cb285ff75c6f7f50413b4",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.miamidolphins.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.miamidolphins.com/news/latest-news",
+          "label": "/news/latest-news + More Latest News"
+        }
+      ]
+    },
+    {
+      "team": "HOU",
+      "kind": "roster",
+      "url": "https://www.houstontexans.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.houstontexans.com/team/players-roster/",
+      "sha256": "e2f134a26df6cf1b4d872c1d09948ea6a0e8c9753bb015dbb0ef1bdd7d700f5b",
+      "coveragePassed": false,
+      "players": 84,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "British Brooks",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Solomon Byrd",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mario Edwards Jr. ",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ali Gaye",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Sam Hagen",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jayden Higgins",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Dylan Horton",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jake Hummel",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Graham Mertz",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "K.C. Ossai",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Braden Smith",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaylin Smith",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Henry To'oTo'o",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Tank Dell",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Ja'Marcus Ingram",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "E.J. Speed",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "LAR",
+      "kind": "transactions",
+      "url": "https://www.therams.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.therams.com/team/transactions/2026",
+      "sha256": "c63a746fc71873527f90031f9a0d5e598d88563175d206e4fb8edfff34e88069",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 55
+    },
+    {
+      "team": "LAR",
+      "kind": "news",
+      "url": "https://www.therams.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.therams.com/news/",
+      "sha256": "e429fb6d245baff506577355372a7613798637b04772c7d91a99c5e918c8147c",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.therams.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.therams.com/news/all-news",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "BUF",
+      "kind": "transactions",
+      "url": "https://www.buffalobills.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.buffalobills.com/team/transactions/2026",
+      "sha256": "4102fc9eae8efb26dcdefd637b533d8ae4a15080193b021ccb42584386d723e1",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 45
+    },
+    {
+      "team": "CAR",
+      "kind": "roster",
+      "url": "https://www.panthers.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.panthers.com/team/players-roster/",
+      "sha256": "6b4c64e99ffe1af7042622acdacb38e11c7a7bfa9c80478ca116c57f83bfe8c6",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Non-Football Illness",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Chris Brazzell II",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jonathon Brooks",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Brady Christensen",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Trevor Etienne",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaycee Horn",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cam Jackson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mike Jackson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Xavier Legette",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Bam Martin-Scott",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nic Scourton",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Taylor Moton",
+          "status": null,
+          "section": "Reserve/Non-Football Illness"
+        },
+        {
+          "name": "Ikem Ekwonu",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Tershawn Wharton",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "CHI",
+      "kind": "transactions",
+      "url": "https://www.chicagobears.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.chicagobears.com/team/transactions/2026",
+      "sha256": "d7e59a58fc9d6353c84dee7cb3f2dbb3029257d22ca35460480f190e39e99720",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 108
+    },
+    {
+      "team": "MIA",
+      "kind": "transactions",
+      "url": "https://www.miamidolphins.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.miamidolphins.com/team/transactions/2026",
+      "sha256": "da4e3f94a5961123a5b9f50ea7bd9af70543a18490de41b3a2842102119a330e",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 115
+    },
+    {
+      "team": "CIN",
+      "kind": "transactions",
+      "url": "https://www.bengals.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.bengals.com/team/transactions/2026",
+      "sha256": "1d4e2cc50a9a7da9bd5eaf0f4eaaf9670474b7095aa3621dcd5ffcaeda21845d",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 38
+    },
+    {
+      "team": "PIT",
+      "kind": "news",
+      "url": "https://www.steelers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.steelers.com/news/",
+      "sha256": "7a387fda28edb86978777dd97b152c4e547c56b7b5e92abede2ec98deac665f6",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.steelers.com/news/archive/labriola-on/",
+          "label": "Labriola On"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/asked-and-answered/",
+          "label": "Asked and Answered"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/press-releases/",
+          "label": "Press Releases"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/game-recap/",
+          "label": "Xtra Points Game Recap"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/opponents-on-steelers/",
+          "label": "Opponents On"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/press-conference-reaction/",
+          "label": "Press Conference Reaction"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/",
+          "label": "https://www.steelers.com/news/archive/ + See More"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/community/",
+          "label": "Community"
+        }
+      ]
+    },
+    {
+      "team": "CLE",
+      "kind": "roster",
+      "url": "https://www.clevelandbrowns.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.clevelandbrowns.com/team/players-roster/",
+      "sha256": "18eabfa2f6132fb585d48f08d71640dcdced85a50abed06ad2c6732398820ef4",
+      "coveragePassed": false,
+      "players": 79,
+      "sections": [
+        "Active",
+        "Reserve/Designated to Return",
+        "Reserve/Injured",
+        "Reserve/Non-Football Illness",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Kalia Davis",
+          "status": "RESERVE_RETURN_PROCESS",
+          "section": "Reserve/Designated to Return"
+        },
+        {
+          "name": "Dillon Gabriel",
+          "status": "RESERVE_RETURN_PROCESS",
+          "section": "Reserve/Designated to Return"
+        },
+        {
+          "name": "Damarri Mathis",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Dylan Sampson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Raheim Sanders",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Alex Wright",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Joe Royer",
+          "status": null,
+          "section": "Reserve/Non-Football Illness"
+        },
+        {
+          "name": "Jeremiah Owusu-Koramoah",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "ATL",
+      "kind": "transactions",
+      "url": "https://www.atlantafalcons.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.atlantafalcons.com/team/transactions/2026",
+      "sha256": "654ffd0ff76e769471dccd0527d9aebe1ddc1aba0ed7ff24a0cad1db73f40586",
+      "coveragePassed": false,
+      "tables": 7,
+      "datedRows": 53
+    },
+    {
+      "team": "LV",
+      "kind": "roster",
+      "url": "https://www.raiders.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.raiders.com/team/players-roster/",
+      "sha256": "3db99bdc8bc328662f70d47a050bf8db746351254c571857ef3c15217d7fa0b9",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Chigozie Anusiem",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jack Bech",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Chris Collier",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Keyron Crawford",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Brennan Jackson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Justin Pickett",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Corey Rucker",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Carter Runyon",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Dont'e Thornton Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "BUF",
+      "kind": "roster",
+      "url": "https://www.buffalobills.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.buffalobills.com/team/players-roster/",
+      "sha256": "3284d6021f8040248a7b9b71c1bebe19ab38a0f3a695a99ecf9c9ca141a1a804",
+      "coveragePassed": false,
+      "players": 73,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Non-Football Injury",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Zane Durant",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jordan Hancock",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Dorian Strong",
+          "status": "NFI",
+          "section": "Reserve/Non-Football Injury"
+        },
+        {
+          "name": "Tyrell Shavers",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "ARI",
+      "kind": "roster",
+      "url": "https://www.azcardinals.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.azcardinals.com/team/players-roster/",
+      "sha256": "5d43fde0837b0fea46f7ded714b6ae4ccb1251b106ae7a91846435c0b5bb48f9",
+      "coveragePassed": false,
+      "players": 81,
+      "sections": [
+        "Active",
+        "Active/Physically Unable to Perform",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Isaiah Adams",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Trey Benson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Chase Bisontis",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Joey Blount",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kitan Crawford",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jameson Geers",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Paris Johnson Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Will Johnson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Hunter Long",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kaleb Proctor",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Zach Carter",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "James Conner",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "MIA",
+      "kind": "roster",
+      "url": "https://www.miamidolphins.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.miamidolphins.com/team/players-roster/",
+      "sha256": "7281929766ae4ea6f8af78a9d3b5bcd2ce80ef84b0795dc3e179d5ba052f8865",
+      "coveragePassed": false,
+      "players": 77,
+      "sections": [
+        "Active",
+        "Active/Physically Unable to Perform",
+        "Reserve/Injured",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "De'Von Achane",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ronnie Harrison Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Rene Konga",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kyle Louis",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Trey Moore",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cole Turner",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "CLE",
+      "kind": "news",
+      "url": "https://www.clevelandbrowns.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.clevelandbrowns.com/news/",
+      "sha256": "06827de8223c4e4abd2c810929ff67bbd685969ca5d2afaa7aefe6f77a418ee4",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.clevelandbrowns.com/news/all",
+          "label": "/news/all + All News"
+        }
+      ]
+    },
+    {
+      "team": "ARI",
+      "kind": "transactions",
+      "url": "https://www.azcardinals.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.azcardinals.com/team/transactions/2026",
+      "sha256": "f1a85e0d74d8250adb2f8f916ccd9f096e59ec4f8ba2de73ab78e11e8008a159",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 76
+    },
+    {
+      "team": "CLE",
+      "kind": "transactions",
+      "url": "https://www.clevelandbrowns.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.clevelandbrowns.com/team/transactions/2026",
+      "sha256": "98c9cf05bc9eb8c0d0e5f531bf71ed36d6fb762e90772539b774b6cc16d88d9a",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 99
+    },
+    {
+      "team": "CIN",
+      "kind": "roster",
+      "url": "https://www.bengals.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.bengals.com/team/players-roster/",
+      "sha256": "7b6cf0f01c8bb76cec65de6d7d3493b5edeb90c929bf351369e4c1c5a8f20244",
+      "coveragePassed": false,
+      "players": 74,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Swayze Bozeman",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jalen Davis",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Andrei Iosivas",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Brian Parker II",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ja'Sir Taylor",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "PIT",
+      "kind": "transactions",
+      "url": "https://www.steelers.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.steelers.com/team/transactions/2026",
+      "sha256": "dadd9adee4e3594a308d2cea9b8256d49006eebb882583526dabe2d21156bdd5",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 100
+    },
+    {
+      "team": "BUF",
+      "kind": "news",
+      "url": "https://www.buffalobills.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.buffalobills.com/news/",
+      "sha256": "dd819aec1ac45ec71b88cce87f685466a767375addbf54597d2214609b686261",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "More News",
+          "selection": null,
+          "category": null,
+          "count": 60,
+          "skip": 4,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.buffalobills.com/news/index",
+          "label": "News"
+        },
+        {
+          "url": "https://www.buffalobills.com/news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "SF",
+      "kind": "roster",
+      "url": "https://www.49ers.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.49ers.com/team/players-roster/",
+      "sha256": "3d31c49eb2fde81bd3a1ff7b855d69235da39c4273c6c90521c14c809c3b8bb0",
+      "coveragePassed": false,
+      "players": 88,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Alfred Collins",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Andrew Farmer II",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Darrick Forrest",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nate Hobbs",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mikail Kamara",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Christian Kirk",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nick Martin",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Sam Okuayinonu",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ricky Pearsall",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Austen Pleasants",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Demarcus Robinson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "De'Zhaun Stribling",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jake Tonges",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Brett Toth",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "C.J. West",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nick Zakelj",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Isaac Guerendo",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "PIT",
+      "kind": "roster",
+      "url": "https://www.steelers.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.steelers.com/team/players-roster/",
+      "sha256": "ad2dc320c3b21f2754b5b3b4fd53ab480835326b0d08b317fff435c148e995a3",
+      "coveragePassed": false,
+      "players": 78,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jack Driscoll",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Gennings Dunker",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "DeShon Elliott",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Derrick Harmon",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Logan Lee",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Michael Pittman Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Donte Kent",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "WSH",
+      "kind": "roster",
+      "url": "https://www.commanders.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.commanders.com/team/players-roster/",
+      "sha256": "d9858335e9050d9df3b5872daa1dc7d573bef344abb235148f09075e81dfbf13",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Retired",
+        "Practice Squad",
+        "DEV"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Trey Amos",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Leo Chenal",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaylin Lane",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jordan Magee",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jeremy McNichols",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jer'Zhan Newton",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Laremy Tunsil",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nick Bellore",
+          "status": null,
+          "section": "Reserve/Retired"
+        },
+        {
+          "name": "DJ Davidson",
+          "status": null,
+          "section": "Reserve/Retired"
+        },
+        {
+          "name": "Ahkello Witherspoon",
+          "status": null,
+          "section": "Reserve/Retired"
+        }
+      ]
+    },
+    {
+      "team": "NYG",
+      "kind": "transactions",
+      "url": "https://www.giants.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.giants.com/team/transactions/2026",
+      "sha256": "69ac108b45156e25dffee382f51d78b780b3f0425f0918ce4851a3ae2f289a22",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 153
+    },
+    {
+      "team": "CAR",
+      "kind": "transactions",
+      "url": "https://www.panthers.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.panthers.com/team/transactions/2026",
+      "sha256": "04d6e53281d03fd4a0b75a047e8e63a861b0aea574e35e3db44b4efc86fe6dfe",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 87
+    },
+    {
+      "team": "WSH",
+      "kind": "news",
+      "url": "https://www.commanders.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.commanders.com/news/",
+      "sha256": "ed0731a37d7e33ea4e91ac8621732db6cd3c73460df47c0fa05c70bf9af82819",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.commanders.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-archive",
+          "label": "More Articles"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "MIN",
+      "kind": "roster",
+      "url": "https://www.vikings.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.vikings.com/team/players-roster/",
+      "sha256": "dd27395f2405dffe3215a57213735ad1b43f4dfded767c52b59dcc7837665cb6",
+      "coveragePassed": false,
+      "players": 76,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Practice Squad",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jamal Adams",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Tyler Batty",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Donovan Jackson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jordan Mason",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Josh Oliver",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nick Samac",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "WSH",
+      "kind": "transactions",
+      "url": "https://www.commanders.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.commanders.com/team/transactions/2026",
+      "sha256": "21b2b59444dd0cb2a7c9a5c9b45c56ac0cc83c864f9056605d53993ce7e72cff",
+      "coveragePassed": false,
+      "tables": 8,
+      "datedRows": 29
+    },
+    {
+      "team": "NYG",
+      "kind": "news",
+      "url": "https://www.giants.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.giants.com/news/",
+      "sha256": "2ffb53a7d5569fdd62233ce1dea6e38699691a076b272ad5db4285f27dc61502",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": null,
+          "selection": "news-index-feed",
+          "category": null,
+          "count": 40,
+          "skip": 4,
+          "view": "Text + Thumb"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.giants.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.giants.com/news/week-6-tracker-latest-news-notes-roster-moves-new-orleans-saints-nfl",
+          "label": "Week 6 Tracker: Latest news, notes &amp; roster moves"
+        },
+        {
+          "url": "https://www.giants.com/news/week-5-tracker-latest-news-notes-roster-moves-washington-commanders",
+          "label": "Week 5 Tracker: Latest news, notes &amp; roster moves"
+        }
+      ]
+    },
+    {
+      "team": "GB",
+      "kind": "roster",
+      "url": "https://www.packers.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.packers.com/team/players-roster/",
+      "sha256": "23a1d156889c3c73a2cbbb13e7031d5734d97a673cfa505a7929db03e0fd9d88",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Commissioner Exempt",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Zach Bako-Bewele",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Warren Brinson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Chris Brooks",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Edgerrin Cooper",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jayden Reed",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Collin Oliver",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Savion Williams",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Luke Musgrave",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Micah Parsons",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Jordon Riley",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "ATL",
+      "kind": "news",
+      "url": "https://www.atlantafalcons.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.atlantafalcons.com/news/",
+      "sha256": "6042960ea933374e0e9f901c66cfa4af75f678128db7ccf11598fc9a780ff077",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.atlantafalcons.com/news/index",
+          "label": "Latest"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/all",
+          "label": "/news/all + More"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/falcons-news-now-top-headlines-falcons-sunday-night-football-baltimore-ravens",
+          "label": "Falcons News Now: Top headlines for Falcons Sunday Night Football matchup with the Baltimore Ravens"
+        }
+      ]
+    },
+    {
+      "team": "CIN",
+      "kind": "news",
+      "url": "https://www.bengals.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.bengals.com/news/",
+      "sha256": "e960c4690ce94ba3bdfd367bca9bbbf34890af9599aa6fedf83e06f406460790",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.bengals.com/news/index",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "TB",
+      "kind": "transactions",
+      "url": "https://www.buccaneers.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.buccaneers.com/team/transactions/2026",
+      "sha256": "152d29d8bc7a7e64f72a2ad17f61f3949ad8de1a5e5f6d58434e8ca6a728a7d8",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 50
+    },
+    {
+      "team": "MIN",
+      "kind": "news",
+      "url": "https://www.vikings.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.vikings.com/news/",
+      "sha256": "4c5f7e8032c202c20f29a717363d9a4fad6a07a44f2434ab54ca06a98a08dcad",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.vikings.com/news/all-news",
+          "label": "/news/all-news + More"
+        }
+      ]
+    },
+    {
+      "team": "CAR",
+      "kind": "news",
+      "url": "https://www.panthers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.panthers.com/news/",
+      "sha256": "5a2ebbd7d1fb6b8f65296f39223f8ab2510d49e5e07878942b83c8740aadcf76",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    },
+    {
+      "team": "MIN",
+      "kind": "transactions",
+      "url": "https://www.vikings.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.vikings.com/team/transactions/2026",
+      "sha256": "3bf86df7858697c616231278b1eaee327b54c18aec10765c5f70a3d93b04a5ad",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 65
+    },
+    {
+      "team": "CHI",
+      "kind": "roster",
+      "url": "https://www.chicagobears.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.chicagobears.com/team/players-roster/",
+      "sha256": "150b305db346c199376023c27098af41c4a3015dfa17292c2029a61cf3e98942",
+      "coveragePassed": false,
+      "players": 79,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Reserve/Suspended by Commissioner",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Brittain Brown",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Coby Bryant",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Tony Fields II",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Braxton Jones",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nikola Kalinic",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Hayden Large",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Nephi Sewell",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kyler Gordon",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Noah Sewell",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Montez Sweat",
+          "status": null,
+          "section": "Reserve/Suspended by Commissioner"
+        }
+      ]
+    },
+    {
+      "team": "DET",
+      "kind": "transactions",
+      "url": "https://www.detroitlions.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.detroitlions.com/team/transactions/2026",
+      "sha256": "1205767a42da4439157bbab98b084a252273bf253d7537c7efc732c8571f8acc",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 88
+    },
+    {
+      "team": "GB",
+      "kind": "news",
+      "url": "https://www.packers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.packers.com/news/",
+      "sha256": "384b4e96e70da95a6867bf91c8d20c412537a1bc64dd064ee545b616e7c92b5f",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.packers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.packers.com/news/all-news",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "JAX",
+      "kind": "news",
+      "url": "https://www.jaguars.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.jaguars.com/news/",
+      "sha256": "d603cfdd4552e0347ac260e6cff84ed5fa2e176aa2523d44b7e25315675a241c",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.jaguars.com/news/index",
+          "label": "News"
+        },
+        {
+          "url": "https://www.jaguars.com/news/latestnews",
+          "label": "https://www.jaguars.com/news/latestnews + View All News"
+        }
+      ]
+    },
+    {
+      "team": "TB",
+      "kind": "news",
+      "url": "https://www.buccaneers.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.buccaneers.com/news/",
+      "sha256": "01937834b634d415d061c6ad44b9f0c76e138dc2601c89f0c882667acf4d8a98",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.buccaneers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.buccaneers.com/news/all-content",
+          "label": "Latest"
+        }
+      ]
+    },
+    {
+      "team": "ARI",
+      "kind": "news",
+      "url": "https://www.azcardinals.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.azcardinals.com/news/",
+      "sha256": "503469de5503ec4c50ebea5bc1a498653ddf42082ab57251b5ca819fbccf31c4",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.azcardinals.com/news/index",
+          "label": "News"
+        }
+      ]
+    },
+    {
+      "team": "DET",
+      "kind": "news",
+      "url": "https://www.detroitlions.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.detroitlions.com/news/",
+      "sha256": "80875ef25541771ba570e132c0740a44e5d372c45de30c8c6ec26b0b179645d0",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.detroitlions.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.detroitlions.com/news/all-news",
+          "label": "/news/all-news + More Latest News"
+        }
+      ]
+    },
+    {
+      "team": "BAL",
+      "kind": "transactions",
+      "url": "https://www.baltimoreravens.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.baltimoreravens.com/team/transactions/2026",
+      "sha256": "c659400621e502d0f871da3a6444475e7646f26fa52f403e4281603550796f57",
+      "coveragePassed": false,
+      "tables": 8,
+      "datedRows": 52
+    },
+    {
+      "team": "TEN",
+      "kind": "news",
+      "url": "https://tennesseetitans.com/news/",
+      "status": "301",
+      "responseUrl": "https://tennesseetitans.com/news/",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "coveragePassed": false,
+      "error": "SOURCE_HTTP_301"
+    },
+    {
+      "team": "BAL",
+      "kind": "news",
+      "url": "https://www.baltimoreravens.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.baltimoreravens.com/news/",
+      "sha256": "6d29fba847658f22175fccdf0c80dceefc96fa992aceb301b454c5e2b5e01ce8",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.baltimoreravens.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news/",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "CHI",
+      "kind": "news",
+      "url": "https://www.chicagobears.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.chicagobears.com/news/",
+      "sha256": "2b8e70a744d64b37170fb79703febb161e1b85a6aa92b373a3c9f97874190edb",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "All Headlines",
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 10,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.chicagobears.com/news/index",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "GB",
+      "kind": "transactions",
+      "url": "https://www.packers.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.packers.com/team/transactions/2026",
+      "sha256": "9e5276066e82458c8cbcef61b94d285aef437a9f5e74e1f12799295ad8128784",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 61
+    },
+    {
+      "team": "NE",
+      "kind": "roster",
+      "url": "https://www.patriots.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.patriots.com/team/players-roster/",
+      "sha256": "4f547293dadbcb57cdf702223012cde41be9f0da1b3d49e8492006f4ebae30bd",
+      "coveragePassed": false,
+      "players": 83,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Bryce Baringer",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "A.J. Brown",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Marcus Bryant",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Reggie Gilliam",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Julian Hill",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mack Hollins",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Quintayvious Hutchins",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Khalil Jacobs",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Myles Montgomery",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mike Onwenu",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Dell Pettus",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Greg Van Roten",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jeremiah Webb",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Harold Landry III",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "DEN",
+      "kind": "roster",
+      "url": "https://www.denverbroncos.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.denverbroncos.com/team/players-roster/",
+      "sha256": "c909d609244f37afc6c37887bc6be881328378cb5e14added6382f440a3f4e99",
+      "coveragePassed": false,
+      "players": 79,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Commissioner Exempt"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Levelle Bailey",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Pat Bryant",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jonah Coleman",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Michael Deiter",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Matt Henningsen",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Frank Crum",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Caleb Lohner",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Nick Gargiulo",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "NE",
+      "kind": "news",
+      "url": "https://www.patriots.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.patriots.com/news/",
+      "sha256": "a1c21ecbd639379946013847ec499e017dd2cc69a0c4946016481d60eb1976ea",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.patriots.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.patriots.com/news/three-to-watch-mvp-showdown-between-drake-maye-and-baker-mayfield-headlines-clash-of-division-leaders",
+          "label": "Three to Watch: MVP Showdown Between Drake Maye and Baker Mayfield Headlines Clash of Division Leaders"
+        },
+        {
+          "url": "https://www.patriots.com/news/report-ja-whaun-bentley-latest-to-receive-extension",
+          "label": "Report: Ja"
+        },
+        {
+          "url": "https://www.patriots.com/news/archive",
+          "label": "News Archive"
+        },
+        {
+          "url": "https://www.patriots.com/news/",
+          "label": "Latest News"
+        }
+      ]
+    },
+    {
+      "team": "KC",
+      "kind": "news",
+      "url": "https://www.chiefs.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.chiefs.com/news/",
+      "sha256": "f9e1f43690a0b0ecca96cb1e3b326752f9150d7fa60c97fc7c1aea9ef7b5a759",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": null,
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 4,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": [
+        {
+          "url": "https://www.chiefs.com/news/index",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.chiefs.com/news/",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "DEN",
+      "kind": "news",
+      "url": "https://www.denverbroncos.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.denverbroncos.com/news/",
+      "sha256": "f493ef532ebf115ca9cba3303677cb594e43d1767c380f4ef4524ce06c711538",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.denverbroncos.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.denverbroncos.com/news/all",
+          "label": "/news/all + All News"
+        }
+      ]
+    },
+    {
+      "team": "DEN",
+      "kind": "transactions",
+      "url": "https://www.denverbroncos.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.denverbroncos.com/team/transactions/2026",
+      "sha256": "ebb59cedf5c4d9134d13e91aed4748ee198c57fd6bdfe6e4957e0fe00bb05952",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 46
+    },
+    {
+      "team": "TEN",
+      "kind": "roster",
+      "url": "https://tennesseetitans.com/team/players-roster/",
+      "status": "301",
+      "responseUrl": "https://tennesseetitans.com/team/players-roster/",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "coveragePassed": false,
+      "error": "SOURCE_HTTP_301"
+    },
+    {
+      "team": "ATL",
+      "kind": "roster",
+      "url": "https://www.atlantafalcons.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.atlantafalcons.com/team/players-roster/",
+      "sha256": "4d4fa7789d40227a0f0205ad40c8014fdf35da0b8d9c94ff2976fa89a1c752a1",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Reserve/Non-Football Injury",
+        "Reserve/Physically Unable to Perform",
+        "Reserve/Suspended by Commissioner",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "JD Bertrand",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Da'Shawn Hand",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Trey Sermon",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "A.J. Terrell Jr. ",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jalon Walker",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cameron Williams",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Beaux Collins",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Anterio Thompson",
+          "status": "NFI",
+          "section": "Reserve/Non-Football Injury"
+        },
+        {
+          "name": "DeAngelo Malone",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Storm Norton",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "James Pearce Jr.",
+          "status": null,
+          "section": "Reserve/Suspended by Commissioner"
+        }
+      ]
+    },
+    {
+      "team": "BAL",
+      "kind": "roster",
+      "url": "https://www.baltimoreravens.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.baltimoreravens.com/team/players-roster/",
+      "sha256": "d1a7da11e40bf8373b0d198f37888616c904236509eab09b39ef666266e0f9e5",
+      "coveragePassed": false,
+      "players": 77,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jovaughn Gwyn",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ja'Kobi Lane",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Danny Pinter",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ethan Pocic",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jahquez Robinson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Durham Smythe",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "T.J. Tampa Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Skylar Thompson",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Bilhal Kone",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Adam Randall",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "TEN",
+      "kind": "transactions",
+      "url": "https://tennesseetitans.com/team/transactions/2026",
+      "status": "301",
+      "responseUrl": "https://tennesseetitans.com/team/transactions/2026",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "coveragePassed": false,
+      "error": "SOURCE_HTTP_301"
+    },
+    {
+      "team": "KC",
+      "kind": "transactions",
+      "url": "https://www.chiefs.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.chiefs.com/team/transactions/2026",
+      "sha256": "b9c801684ff766c2fa02f5bab969c2ceb5bfd1281c0fc07b846ec5c21a5eeb72",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 41
+    },
+    {
+      "team": "LV",
+      "kind": "news",
+      "url": "https://www.raiders.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.raiders.com/news/",
+      "sha256": "323946b81500a36d5740daa760c3f157da1b0bfdea6747550121ed326289bcae",
+      "coveragePassed": false,
+      "storyModules": [
+        {
+          "sectionTitle": "More Recent News",
+          "selection": null,
+          "category": null,
+          "count": 80,
+          "skip": 9,
+          "view": "Card"
+        }
+      ],
+      "candidateIndexes": []
+    },
+    {
+      "team": "LV",
+      "kind": "transactions",
+      "url": "https://www.raiders.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.raiders.com/team/transactions/2026",
+      "sha256": "5b5a927edf76979b053c342b7e88045782e951f0ade894c8359dc653ad0e132d",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 52
+    },
+    {
+      "team": "JAX",
+      "kind": "roster",
+      "url": "https://www.jaguars.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.jaguars.com/team/players-roster/",
+      "sha256": "236c6b31b12f9bcb866d0f94182358f1c4d1834388b8a24a2c90327f6e572faf",
+      "coveragePassed": false,
+      "players": 78,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jared Bartlett",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Garrett DiGiorgio",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "B.J. Green II",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Anton Harrison",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Parker Hughes",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Sam Mustipher",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Caleb Ransaw",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Zach Durfee",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Patrick Mekari",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "IND",
+      "kind": "roster",
+      "url": "https://www.colts.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.colts.com/team/players-roster/",
+      "sha256": "5f30013d893d32a0ba58b0eebfc61a051a96c0c2df92f050c8bf0ef9d2c20cbc",
+      "coveragePassed": false,
+      "players": 77,
+      "sections": [
+        "Active",
+        "Reserve/Designated to Return",
+        "Reserve/Injured",
+        "Practice Squad",
+        "Practice Squad/International"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Will Mallory",
+          "status": "RESERVE_RETURN_PROCESS",
+          "section": "Reserve/Designated to Return"
+        },
+        {
+          "name": "Micheal Clemons",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Arden Key",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cameron Mitchell",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "D.J. Montgomery",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Alec Pierce",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Carson Towt",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        }
+      ]
+    },
+    {
+      "team": "JAX",
+      "kind": "transactions",
+      "url": "https://www.jaguars.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.jaguars.com/team/transactions/2026",
+      "sha256": "aecaa7e19ec4fb089fc5d044b4ca0accbc04e022494e5691d498a47853f97d14",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 146
+    },
+    {
+      "team": "NYG",
+      "kind": "roster",
+      "url": "https://www.giants.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.giants.com/team/players-roster/",
+      "sha256": "ec639c0994022c97d322db7d384664b990c5428a4a5e9ce7fb4780bafa33ffcf",
+      "coveragePassed": false,
+      "players": 81,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Paulson Adebo",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Calvin Austin III",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jarrick Bernard-Converse",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Braxton Berrios",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Brian Burns",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jaxson Dart",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Thaddeus Dixon",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Chauncey Golston",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Gunner Olszewski",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Roy Robertson-Harris",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Korie Black",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        }
+      ]
+    },
+    {
+      "team": "KC",
+      "kind": "roster",
+      "url": "https://www.chiefs.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.chiefs.com/team/players-roster/",
+      "sha256": "c2b51b6d12f9e2aa108edb85f9efbf4edc40c8005a003e37f86f89ce368030b1",
+      "coveragePassed": false,
+      "players": 77,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jeff Caldwell",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Ethan Downs",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "John Michael Gyllenborg",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jimmy Holiday",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cooper McDonald",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Tyquan Thornton",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Omarr Norman-Lott",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "DET",
+      "kind": "roster",
+      "url": "https://www.detroitlions.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.detroitlions.com/team/players-roster/",
+      "sha256": "b13131f19411c99ccc4955fdf946d76a15f7dfacf1dc636d5d19a7494d8a8a23",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Non-Football Injury",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Damone Clark",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kendrick Law",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Avonte Maddox",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Cade Mays",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Isiah Pacheco",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Payton Turner",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Giovanni Manu",
+          "status": "NFI",
+          "section": "Reserve/Non-Football Injury"
+        },
+        {
+          "name": "Brian Branch",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        },
+        {
+          "name": "Kerby Joseph",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "IND",
+      "kind": "transactions",
+      "url": "https://www.colts.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.colts.com/team/transactions/2026",
+      "sha256": "f6146a2aa0929d14095238fc9804957d65032119b1b5a968525d7ff5874fed0e",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 70
+    },
+    {
+      "team": "HOU",
+      "kind": "news",
+      "url": "https://www.houstontexans.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.houstontexans.com/news/",
+      "sha256": "d01a5ad4b14041664b17f81389383e216f21500b1307fe3c7bd1edd1dbb1f735",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    },
+    {
+      "team": "NYJ",
+      "kind": "roster",
+      "url": "https://www.newyorkjets.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.newyorkjets.com/team/players-roster/",
+      "sha256": "2062b1b2ff5f81e4cb03bc0495dd52e34a2630c4a6883aeaff009f5cc09e495d",
+      "coveragePassed": false,
+      "players": 79,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Injured; Designated for Return",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Tre Brown",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Omar Cooper Jr.",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Kingsley Jonathan",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Marcelino McCrary-Ball",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Braiden McGregor",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "David Onyemata",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Arian Smith",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Chip Trayanum",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Anez Cooper",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "VJ Payne",
+          "status": "IR",
+          "section": "Reserve/Injured; Designated for Return"
+        },
+        {
+          "name": "Tyler Baron",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "IND",
+      "kind": "news",
+      "url": "https://www.colts.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.colts.com/news/",
+      "sha256": "b7dba89143853ac8b2dc4f69db630c6bd511ed99b85fe974e3cee3df70dbe119",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [
+        {
+          "url": "https://www.colts.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.colts.com/news/all",
+          "label": "All News"
+        }
+      ]
+    },
+    {
+      "team": "SF",
+      "kind": "transactions",
+      "url": "https://www.49ers.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.49ers.com/team/transactions/2026",
+      "sha256": "93e1af418a5db526f965b7c46dcb06163848301b63b183b7135f356a4fe2fa6c",
+      "coveragePassed": false,
+      "tables": 9,
+      "datedRows": 65
+    },
+    {
+      "team": "SEA",
+      "kind": "roster",
+      "url": "https://www.seahawks.com/team/players-roster/",
+      "status": "200",
+      "responseUrl": "https://www.seahawks.com/team/players-roster/",
+      "sha256": "c5c0591599a648207513e37388a0f3065ae62abf97a0435c06b96110cb7e93fa",
+      "coveragePassed": false,
+      "players": 80,
+      "sections": [
+        "Active",
+        "Reserve/Injured",
+        "Reserve/Physically Unable to Perform",
+        "Practice Squad",
+        "Practice Squad/Injured",
+        "Commissioner Exempt"
+      ],
+      "reservePlayers": [
+        {
+          "name": "Jake Bobo",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Anthony Bradford",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Bud Clark",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Julian Neal",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Robbie Ouzts",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Jadarian Price",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Mason Richman",
+          "status": "IR",
+          "section": "Reserve/Injured"
+        },
+        {
+          "name": "Zach Charbonnet",
+          "status": "PUP",
+          "section": "Reserve/Physically Unable to Perform"
+        }
+      ]
+    },
+    {
+      "team": "SEA",
+      "kind": "news",
+      "url": "https://www.seahawks.com/news/",
+      "status": "200",
+      "responseUrl": "https://www.seahawks.com/news/",
+      "sha256": "1def2a97f5fc3c59200dd9d80d61e27aaa540e00657361dd76f100171ebddfe1",
+      "coveragePassed": false,
+      "storyModules": [],
+      "candidateIndexes": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    },
+    {
+      "team": "SEA",
+      "kind": "transactions",
+      "url": "https://www.seahawks.com/team/transactions/2026",
+      "status": "200",
+      "responseUrl": "https://www.seahawks.com/team/transactions/2026",
+      "sha256": "1a6e28c3ec9224e0fd724039b3143885620e994f60ac1eb1198d86070e7239b9",
+      "coveragePassed": false,
+      "tables": 10,
+      "datedRows": 74
+    }
+  ],
+  "coveragePassed": false,
+  "productionEnabled": false
+}

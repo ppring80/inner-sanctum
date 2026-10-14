@@ -1,0 +1,465 @@
+{
+  "scope": "Candidate shared layout families from observed official pages; no discovery qualification",
+  "rosterFormatsRecognized": 27,
+  "transactionFormatsRecognized": 27,
+  "inlineStoryListFamilies": [
+    {
+      "layout": {
+        "count": 60,
+        "skip": 4,
+        "view": "Card"
+      },
+      "teams": [
+        {
+          "team": "BUF",
+          "sectionTitle": "More News",
+          "selection": null,
+          "category": null
+        }
+      ]
+    },
+    {
+      "layout": {
+        "count": 40,
+        "skip": 4,
+        "view": "Text + Thumb"
+      },
+      "teams": [
+        {
+          "team": "NYG",
+          "sectionTitle": null,
+          "selection": "news-index-feed",
+          "category": null
+        }
+      ]
+    },
+    {
+      "layout": {
+        "count": 80,
+        "skip": 10,
+        "view": "Card"
+      },
+      "teams": [
+        {
+          "team": "CHI",
+          "sectionTitle": "All Headlines",
+          "selection": null,
+          "category": null
+        }
+      ]
+    },
+    {
+      "layout": {
+        "count": 80,
+        "skip": 4,
+        "view": "Card"
+      },
+      "teams": [
+        {
+          "team": "KC",
+          "sectionTitle": null,
+          "selection": null,
+          "category": null
+        }
+      ]
+    },
+    {
+      "layout": {
+        "count": 80,
+        "skip": 9,
+        "view": "Card"
+      },
+      "teams": [
+        {
+          "team": "LV",
+          "sectionTitle": "More Recent News",
+          "selection": null,
+          "category": null
+        }
+      ]
+    }
+  ],
+  "newsArchivesToInspect": [
+    {
+      "team": "NYJ",
+      "candidates": [
+        {
+          "url": "https://www.newyorkjets.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.newyorkjets.com/news/all-news",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "SF",
+      "candidates": [
+        {
+          "url": "https://www.49ers.com/news/",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.49ers.com/news/latest-headlines/index/",
+          "label": "/news/latest-headlines/index/ + More News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "MIA",
+      "candidates": [
+        {
+          "url": "https://www.miamidolphins.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.miamidolphins.com/news/latest-news",
+          "label": "/news/latest-news + More Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "LAR",
+      "candidates": [
+        {
+          "url": "https://www.therams.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.therams.com/news/all-news",
+          "label": "All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "PIT",
+      "candidates": [
+        {
+          "url": "https://www.steelers.com/news/archive/labriola-on/",
+          "label": "Labriola On"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/asked-and-answered/",
+          "label": "Asked and Answered"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/press-releases/",
+          "label": "Press Releases"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/game-recap/",
+          "label": "Xtra Points Game Recap"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/opponents-on-steelers/",
+          "label": "Opponents On"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/press-conference-reaction/",
+          "label": "Press Conference Reaction"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/",
+          "label": "https://www.steelers.com/news/archive/ + See More"
+        },
+        {
+          "url": "https://www.steelers.com/news/archive/community/",
+          "label": "Community"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "CLE",
+      "candidates": [
+        {
+          "url": "https://www.clevelandbrowns.com/news/all",
+          "label": "/news/all + All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "BUF",
+      "candidates": [
+        {
+          "url": "https://www.buffalobills.com/news/index",
+          "label": "News"
+        },
+        {
+          "url": "https://www.buffalobills.com/news",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "WSH",
+      "candidates": [
+        {
+          "url": "https://www.commanders.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-archive",
+          "label": "More Articles"
+        },
+        {
+          "url": "https://www.commanders.com/news/latest-news",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "NYG",
+      "candidates": [
+        {
+          "url": "https://www.giants.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.giants.com/news/week-6-tracker-latest-news-notes-roster-moves-new-orleans-saints-nfl",
+          "label": "Week 6 Tracker: Latest news, notes &amp; roster moves"
+        },
+        {
+          "url": "https://www.giants.com/news/week-5-tracker-latest-news-notes-roster-moves-washington-commanders",
+          "label": "Week 5 Tracker: Latest news, notes &amp; roster moves"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "ATL",
+      "candidates": [
+        {
+          "url": "https://www.atlantafalcons.com/news/index",
+          "label": "Latest"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/all",
+          "label": "/news/all + More"
+        },
+        {
+          "url": "https://www.atlantafalcons.com/news/falcons-news-now-top-headlines-falcons-sunday-night-football-baltimore-ravens",
+          "label": "Falcons News Now: Top headlines for Falcons Sunday Night Football matchup with the Baltimore Ravens"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "CIN",
+      "candidates": [
+        {
+          "url": "https://www.bengals.com/news/index",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "MIN",
+      "candidates": [
+        {
+          "url": "https://www.vikings.com/news/all-news",
+          "label": "/news/all-news + More"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "CAR",
+      "candidates": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    },
+    {
+      "team": "GB",
+      "candidates": [
+        {
+          "url": "https://www.packers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.packers.com/news/all-news",
+          "label": "All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "JAX",
+      "candidates": [
+        {
+          "url": "https://www.jaguars.com/news/index",
+          "label": "News"
+        },
+        {
+          "url": "https://www.jaguars.com/news/latestnews",
+          "label": "https://www.jaguars.com/news/latestnews + View All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "TB",
+      "candidates": [
+        {
+          "url": "https://www.buccaneers.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.buccaneers.com/news/all-content",
+          "label": "Latest"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "ARI",
+      "candidates": [
+        {
+          "url": "https://www.azcardinals.com/news/index",
+          "label": "News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "DET",
+      "candidates": [
+        {
+          "url": "https://www.detroitlions.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.detroitlions.com/news/all-news",
+          "label": "/news/all-news + More Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "TEN",
+      "candidates": [],
+      "error": "SOURCE_HTTP_301"
+    },
+    {
+      "team": "BAL",
+      "candidates": [
+        {
+          "url": "https://www.baltimoreravens.com/news/index",
+          "label": "NEWS"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news/",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.baltimoreravens.com/news/all-news",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "CHI",
+      "candidates": [
+        {
+          "url": "https://www.chicagobears.com/news/index",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "NE",
+      "candidates": [
+        {
+          "url": "https://www.patriots.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.patriots.com/news/three-to-watch-mvp-showdown-between-drake-maye-and-baker-mayfield-headlines-clash-of-division-leaders",
+          "label": "Three to Watch: MVP Showdown Between Drake Maye and Baker Mayfield Headlines Clash of Division Leaders"
+        },
+        {
+          "url": "https://www.patriots.com/news/report-ja-whaun-bentley-latest-to-receive-extension",
+          "label": "Report: Ja"
+        },
+        {
+          "url": "https://www.patriots.com/news/archive",
+          "label": "News Archive"
+        },
+        {
+          "url": "https://www.patriots.com/news/",
+          "label": "Latest News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "KC",
+      "candidates": [
+        {
+          "url": "https://www.chiefs.com/news/index",
+          "label": "All News"
+        },
+        {
+          "url": "https://www.chiefs.com/news/",
+          "label": "All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "DEN",
+      "candidates": [
+        {
+          "url": "https://www.denverbroncos.com/news/index",
+          "label": "Latest News"
+        },
+        {
+          "url": "https://www.denverbroncos.com/news/all",
+          "label": "/news/all + All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "LV",
+      "candidates": [],
+      "error": null
+    },
+    {
+      "team": "HOU",
+      "candidates": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    },
+    {
+      "team": "IND",
+      "candidates": [
+        {
+          "url": "https://www.colts.com/news/index",
+          "label": "News Home"
+        },
+        {
+          "url": "https://www.colts.com/news/all",
+          "label": "All News"
+        }
+      ],
+      "error": null
+    },
+    {
+      "team": "SEA",
+      "candidates": [],
+      "error": "NEWS_DISCOVERY_FORMAT_UNRECOGNIZED"
+    }
+  ],
+  "coveragePassed": false,
+  "productionEnabled": false
+}

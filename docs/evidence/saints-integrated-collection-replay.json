@@ -1,0 +1,20 @@
+{
+  "scope": "Replay of previously saved official pages; no new live collection",
+  "productionEnabled": false,
+  "sourceReads": 82,
+  "extractedEvents": 12,
+  "discoveryComplete": false,
+  "unresolved": [
+    {
+      "sourceUrl": "https://www.neworleanssaints.com/news/key-ingredients-to-victory-saints-vs-falcons-2026-nfl-week-4",
+      "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_ALERT_FORMAT",
+      "inspection": "Etienne's already announced IR placement is referenced in ordinary game analysis. This article must not create a second placement dated to its publication."
+    },
+    {
+      "sourceUrl": "https://www.neworleanssaints.com/news/new-orleans-saints-running-back-depth-being-tested-early",
+      "reason": "RESERVE_ACTION_OUTSIDE_QUALIFIED_ALERT_FORMAT",
+      "inspection": "The article references Etienne and older Chandler reserve status and reports Neal/Estime injury-settlement departures. Those departures are outside the qualified alert-lead extractor; their effective dates have not been established."
+    }
+  ],
+  "remainingIntegration": "Only Saints announcement discovery is connected to the operational adapter registry. The other 31 team adapters remain observation-only. Customer reads and the background worker remain disabled."
+}

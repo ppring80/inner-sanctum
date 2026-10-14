@@ -1,0 +1,75 @@
+{
+  "team": "LAC",
+  "rows": [
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trey-lance/",
+      "name": "Trey Lance",
+      "team": "LAC",
+      "position": "QB",
+      "section": "Active",
+      "status": "ACTIVE_ROSTER",
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/trevor-penning/",
+      "name": "Trevor Penning",
+      "team": "LAC",
+      "position": "OL",
+      "section": "Active",
+      "status": "ACTIVE_ROSTER",
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/rashawn-slater/",
+      "name": "Rashawn Slater",
+      "team": "LAC",
+      "position": "T",
+      "section": "Active",
+      "status": "ACTIVE_ROSTER",
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/scott-matlock/",
+      "name": "Scott Matlock",
+      "team": "LAC",
+      "position": "FB/DL",
+      "section": "Reserve/Injured; Designated for Return",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/branson-taylor/",
+      "name": "Branson Taylor",
+      "team": "LAC",
+      "position": "G",
+      "section": "Reserve/Injured; Designated for Return",
+      "status": "IR",
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/daniel-brunskill/",
+      "name": "Daniel Brunskill",
+      "team": "LAC",
+      "position": "OT",
+      "section": "Practice Squad",
+      "status": null,
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    },
+    {
+      "profileUrl": "https://www.chargers.com/team/players-roster/isas-waxter/",
+      "name": "Isas Waxter",
+      "team": "LAC",
+      "position": "CB",
+      "section": "Practice Squad",
+      "status": null,
+      "sourceUrl": "https://www.chargers.com/team/players-roster/",
+      "observedAt": "2026-10-13T02:17:06.109Z"
+    }
+  ]
+}

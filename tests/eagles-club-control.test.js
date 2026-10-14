@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {indexCards}=require('../netlify/functions/_eagles-announcement-discovery'),{bootstrapEagles}=require('../netlify/functions/_eagles-reserve-bootstrap');
+const read=n=>fs.readFileSync(path.join(__dirname,'fixtures',n),'utf8');
+const cards=indexCards(read('eagles-news-card-contract.html'));assert.equal(cards.length,80);assert.ok(cards.some(c=>c.url.includes('tank-bigsby-on-injured-reserve')));
+assert.throws(()=>indexCards(read('eagles-news-card-contract.html').replace('1:80','2:80')),/missing, duplicated/);
+const rows=['Jakorian Bennett','Grant Calcaterra','Landon Dickerson','Eli Stowers','Tucker Large',"Andre' Sam",'Johnny Wilson'].map(name=>({name,team:'PHI',position:'TEST'}));
+const opts={sourceUrl:'https://www.philadelphiaeagles.com/team/transactions/2026',season:2026,observedAt:'2026-10-13T03:00:00Z',snapshot:{team:'PHI',rows}};
+const r=bootstrapEagles(read('eagles-reserve-history.html'),opts);
+assert.equal(r.events.find(e=>e.name==='Tucker Large').status,'NFI');assert.equal(r.events.find(e=>e.name==='Tucker Large').reportedAt,'2026-05-05');
+assert.ok(r.events.some(e=>e.name==='Jakorian Bennett'));assert.ok(r.events.some(e=>e.name==='Grant Calcaterra'));
+assert.ok(!r.events.some(e=>['Johnny Wilson',"Andre' Sam"].includes(e.name)));
+const bad=bootstrapEagles(read('eagles-reserve-history.html').replace('CB Jakorian Bennett and TE Grant Calcaterra','CB Unknown Person and TE Grant Calcaterra'),opts);
+assert.ok(!bad.events.some(e=>e.name==='Grant Calcaterra'));assert.ok(bad.unresolved.length);
+console.log('PASS: Eagles real news contract and dated reserve subjects; limited pronoun binding, unresolved paired identity and no IR from waivers.');

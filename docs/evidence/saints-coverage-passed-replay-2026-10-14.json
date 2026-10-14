@@ -1,0 +1,26 @@
+{
+  "scope": "Replay of the 83 official Saints pages collected earlier this session; not a new live collection",
+  "coveragePassed": true,
+  "discoveryComplete": true,
+  "unresolved": [],
+  "events": 23,
+  "rosterDiscrepancies": [
+    {
+      "name": "Jayden Price",
+      "status": "DEPARTED",
+      "health": "UNKNOWN",
+      "discrepancy": {
+        "reason": "ACTIVE_ROSTER_LISTING_CONTRADICTS_EXPLICIT_DEPARTURE",
+        "transactionDate": "2026-10-13",
+        "rosterObservedAt": "2026-10-14T01:57:53.243Z",
+        "resolution": "DATED_DEPARTURE_CONTROLS_MEMBERSHIP"
+      }
+    }
+  ],
+  "limitations": [
+    "Saints only; other 31 operational adapters not qualified.",
+    "Saved-page replay; no production collection or cache writes.",
+    "Official roster discrepancy retained; roster publication/update time is not known."
+  ],
+  "productionEnabled": false
+}

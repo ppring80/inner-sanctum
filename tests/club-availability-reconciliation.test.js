@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {deriveStates,reconcileRoster,rosterSnapshot}=require('../netlify/functions/_club-availability-reconciliation');
+const {reserveBootstrap}=require('../netlify/functions/_club-reserve-bootstrap');
+const snapshot=require('./fixtures/saints-reserve-state-snapshot.json'),asOf='2026-10-13T02:00:00Z';
+const prev=[{name:'Travis Etienne',team:'NO',status:'IR',reportedAt:'2026-10-01'},{name:'Kelvin Banks Jr.',team:'NO',status:'IR',reportedAt:'2026-09-23'}];const original=JSON.stringify(prev);
+const bootstrap=reserveBootstrap(fs.readFileSync(path.join(__dirname,'fixtures/saints-historical-reserve-rows.html'),'utf8'),snapshot,{season:2026,sourceUrl:'https://www.neworleanssaints.com/team/transactions/2026',observedAt:asOf});
+const activation=name=>({name,team:'NO',kind:'RESERVE_EXIT',status:'ACTIVE',reportedAt:'2026-10-10',publishedAt:'2026-10-10T20:00:36.58Z',identityVerified:true});
+let derived=deriveStates(prev,[...bootstrap.events,activation('Jaylan Ford'),activation('Lorenzo Styles Jr.')],{team:'NO',asOf});
+let report=reconcileRoster(derived,snapshot);assert.equal(report.stateReconciled,true);assert.equal(report.matches.length,14);assert.equal(derived.states.find(p=>p.name==='Mason Tipton').status,'PUP');assert.equal(JSON.stringify(prev),original);
+report=reconcileRoster(deriveStates(prev,[],{team:'NO',asOf}),snapshot);assert.equal(report.stateReconciled,false);assert.ok(report.gaps.some(g=>g.reason==='RESERVE_WITHOUT_EVENT'));
+derived=deriveStates([{name:'Travis Etienne',team:'NO',status:'IR',reportedAt:'2026-10-10'}],[activation('Travis Etienne Jr.')],{team:'NO',asOf});assert.equal(derived.states[0].status,'CONFLICT');
+derived=deriveStates([{name:'Travis Etienne',team:'NO',status:'IR',reportedAt:'2026-10-01'}],[{...activation('Travis Etienne Jr.'),kind:'DEPARTURE',status:'DEPARTED'}],{team:'NO',asOf});assert.equal(derived.states[0].status,'DEPARTED');assert.equal(derived.states[0].health,'UNKNOWN');
+derived=deriveStates(prev,[{...activation('Jaylan Ford'),publishedAt:'bad'}],{team:'NO',asOf});assert.equal(derived.unresolved.length,1);
+derived=deriveStates(prev,[{...activation('Jaylan Ford'),publishedAt:'2026-10-14T00:00:00Z'}],{team:'NO',asOf});assert.equal(derived.unresolved.length,1);
+const missing={...snapshot,rows:snapshot.rows.filter(p=>p.name!=='Travis Etienne Jr.')};report=reconcileRoster(deriveStates(prev,[],{team:'NO',asOf}),missing);assert.ok(report.gaps.some(g=>g.reason==='EVENT_PLAYER_ABSENT_FROM_ROSTER_NOT_PROOF_OF_EXIT'));
+assert.throws(()=>rosterSnapshot('<html>missing</html>',{team:'NO',sourceUrl:snapshot.sourceUrl,observedAt:asOf}),/contract/);
+console.log('PASS: actual Saints reserve history, all 14 states reconciled, IR/PUP subject groups, suffix identity, immutable history, missing placement, same-day conflict, departure is not health, invalid/future events and no exit from roster absence.');

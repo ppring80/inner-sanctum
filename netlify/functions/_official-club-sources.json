@@ -1,0 +1,197 @@
+[
+  {
+    "team": "BAL",
+    "club": "Baltimore Ravens",
+    "origin": "https://www.baltimoreravens.com",
+    "transactionsUrl": "https://www.baltimoreravens.com/team/transactions/2026"
+  },
+  {
+    "team": "CIN",
+    "club": "Cincinnati Bengals",
+    "origin": "https://www.bengals.com",
+    "transactionsUrl": "https://www.bengals.com/team/transactions/2026"
+  },
+  {
+    "team": "CLE",
+    "club": "Cleveland Browns",
+    "origin": "https://www.clevelandbrowns.com",
+    "transactionsUrl": "https://www.clevelandbrowns.com/team/transactions/2026"
+  },
+  {
+    "team": "PIT",
+    "club": "Pittsburgh Steelers",
+    "origin": "https://www.steelers.com",
+    "transactionsUrl": "https://www.steelers.com/team/transactions/2026"
+  },
+  {
+    "team": "BUF",
+    "club": "Buffalo Bills",
+    "origin": "https://www.buffalobills.com",
+    "transactionsUrl": "https://www.buffalobills.com/team/transactions/2026"
+  },
+  {
+    "team": "MIA",
+    "club": "Miami Dolphins",
+    "origin": "https://www.miamidolphins.com",
+    "transactionsUrl": "https://www.miamidolphins.com/team/transactions/2026"
+  },
+  {
+    "team": "NE",
+    "club": "New England Patriots",
+    "origin": "https://www.patriots.com",
+    "transactionsUrl": "https://www.patriots.com/team/transactions/2026"
+  },
+  {
+    "team": "NYJ",
+    "club": "New York Jets",
+    "origin": "https://www.newyorkjets.com",
+    "transactionsUrl": "https://www.newyorkjets.com/team/transactions/2026"
+  },
+  {
+    "team": "HOU",
+    "club": "Houston Texans",
+    "origin": "https://www.houstontexans.com",
+    "transactionsUrl": "https://www.houstontexans.com/team/transactions/2026"
+  },
+  {
+    "team": "IND",
+    "club": "Indianapolis Colts",
+    "origin": "https://www.colts.com",
+    "transactionsUrl": "https://www.colts.com/team/transactions/2026"
+  },
+  {
+    "team": "JAX",
+    "club": "Jacksonville Jaguars",
+    "origin": "https://www.jaguars.com",
+    "transactionsUrl": "https://www.jaguars.com/team/transactions/2026"
+  },
+  {
+    "team": "TEN",
+    "club": "Tennessee Titans",
+    "origin": "https://www.tennesseetitans.com",
+    "transactionsUrl": "https://www.tennesseetitans.com/team/transactions/2026",
+    "aliases": [
+      "https://tennesseetitans.com"
+    ]
+  },
+  {
+    "team": "DEN",
+    "club": "Denver Broncos",
+    "origin": "https://www.denverbroncos.com",
+    "transactionsUrl": "https://www.denverbroncos.com/team/transactions/2026"
+  },
+  {
+    "team": "KC",
+    "club": "Kansas City Chiefs",
+    "origin": "https://www.chiefs.com",
+    "transactionsUrl": "https://www.chiefs.com/team/transactions/2026"
+  },
+  {
+    "team": "LAC",
+    "club": "Los Angeles Chargers",
+    "origin": "https://www.chargers.com",
+    "transactionsUrl": "https://www.chargers.com/team/transactions/2026"
+  },
+  {
+    "team": "LV",
+    "club": "Las Vegas Raiders",
+    "origin": "https://www.raiders.com",
+    "transactionsUrl": "https://www.raiders.com/team/transactions/2026"
+  },
+  {
+    "team": "CHI",
+    "club": "Chicago Bears",
+    "origin": "https://www.chicagobears.com",
+    "transactionsUrl": "https://www.chicagobears.com/team/transactions/2026"
+  },
+  {
+    "team": "DET",
+    "club": "Detroit Lions",
+    "origin": "https://www.detroitlions.com",
+    "transactionsUrl": "https://www.detroitlions.com/team/transactions/2026"
+  },
+  {
+    "team": "GB",
+    "club": "Green Bay Packers",
+    "origin": "https://www.packers.com",
+    "transactionsUrl": "https://www.packers.com/team/transactions/2026"
+  },
+  {
+    "team": "MIN",
+    "club": "Minnesota Vikings",
+    "origin": "https://www.vikings.com",
+    "transactionsUrl": "https://www.vikings.com/team/transactions/2026"
+  },
+  {
+    "team": "DAL",
+    "club": "Dallas Cowboys",
+    "origin": "https://www.dallascowboys.com",
+    "transactionsUrl": "https://www.dallascowboys.com/team/transactions/2026"
+  },
+  {
+    "team": "NYG",
+    "club": "New York Giants",
+    "origin": "https://www.giants.com",
+    "transactionsUrl": "https://www.giants.com/team/transactions/2026"
+  },
+  {
+    "team": "PHI",
+    "club": "Philadelphia Eagles",
+    "origin": "https://www.philadelphiaeagles.com",
+    "transactionsUrl": "https://www.philadelphiaeagles.com/team/transactions/2026"
+  },
+  {
+    "team": "WSH",
+    "club": "Washington Commanders",
+    "origin": "https://www.commanders.com",
+    "transactionsUrl": "https://www.commanders.com/team/transactions/2026"
+  },
+  {
+    "team": "ATL",
+    "club": "Atlanta Falcons",
+    "origin": "https://www.atlantafalcons.com",
+    "transactionsUrl": "https://www.atlantafalcons.com/team/transactions/2026"
+  },
+  {
+    "team": "CAR",
+    "club": "Carolina Panthers",
+    "origin": "https://www.panthers.com",
+    "transactionsUrl": "https://www.panthers.com/team/transactions/2026"
+  },
+  {
+    "team": "NO",
+    "club": "New Orleans Saints",
+    "origin": "https://www.neworleanssaints.com",
+    "transactionsUrl": "https://www.neworleanssaints.com/team/transactions/2026"
+  },
+  {
+    "team": "TB",
+    "club": "Tampa Bay Buccaneers",
+    "origin": "https://www.buccaneers.com",
+    "transactionsUrl": "https://www.buccaneers.com/team/transactions/2026"
+  },
+  {
+    "team": "ARI",
+    "club": "Arizona Cardinals",
+    "origin": "https://www.azcardinals.com",
+    "transactionsUrl": "https://www.azcardinals.com/team/transactions/2026"
+  },
+  {
+    "team": "LAR",
+    "club": "Los Angeles Rams",
+    "origin": "https://www.therams.com",
+    "transactionsUrl": "https://www.therams.com/team/transactions/2026"
+  },
+  {
+    "team": "SF",
+    "club": "San Francisco 49ers",
+    "origin": "https://www.49ers.com",
+    "transactionsUrl": "https://www.49ers.com/team/transactions/2026"
+  },
+  {
+    "team": "SEA",
+    "club": "Seattle Seahawks",
+    "origin": "https://www.seahawks.com",
+    "transactionsUrl": "https://www.seahawks.com/team/transactions/2026"
+  }
+]

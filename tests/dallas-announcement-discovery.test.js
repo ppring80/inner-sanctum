@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {indexModule,pageUrl,pageCards}=require('../netlify/functions/_dallas-announcement-discovery');
+const html=fs.readFileSync(path.join(__dirname,'fixtures/dallas-news-card-contract.html'),'utf8');
+const m=indexModule(html),before=JSON.stringify(m),cards=pageCards(html);
+assert.equal(cards.length,20);assert.ok(cards.some(u=>u.includes('tyler-smith-officially-activated')));
+const u=new URL(pageUrl(m,3)),sent=JSON.parse(u.searchParams.get('json'));
+assert.equal(sent.Module.Skip,40);assert.equal(sent.Module.View,'Text + Thumb async');assert.equal(JSON.stringify(m),before);
+assert.throws(()=>pageCards(html,{seen:cards}),/repeated/);
+assert.throws(()=>indexModule(html.replace('"Count":20','"Count":21')),/contract/);
+assert.throws(()=>pageUrl(m,6),/bounds/);
+console.log('PASS: Dallas observed lazy-load request, immutable offset, complete cards and duplicate-page rejection.');

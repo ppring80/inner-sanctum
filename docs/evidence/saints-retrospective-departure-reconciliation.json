@@ -1,0 +1,42 @@
+{
+  "scope": "Read-only live official-source reconciliation; no cache writes or production activation",
+  "observedAt": "2026-10-14T01:38:24.351893+00:00",
+  "sourceUrl": "https://www.neworleanssaints.com/team/transactions/2026",
+  "sourceSha256": "54a61a3b0bf3e32a4b65a93c818e470e41ae22a46c0bcb3ae261fbc4fdecf53b",
+  "datedRows": [
+    {
+      "reportedAt": "2026-09-22",
+      "sourceText": "Reached an injury settlement with RB Audric Estime and LS Scott Daly teminated practice squad contract (signed to Chicago active roster).",
+      "rawRowSha256": "446f5215ecdbff109d09385132f32913e9b3348d79ac06ec8479b9540186e7aa"
+    },
+    {
+      "reportedAt": "2026-09-03",
+      "sourceText": "Reached injury settlements with RB Devin Neal and EDGE Mike Heldman .",
+      "rawRowSha256": "b77bfd7427950fb76f7207f6903be174e478e76307c044402786efea7481cda9"
+    }
+  ],
+  "reconciliation": [
+    {
+      "player": "Devin Neal",
+      "kind": "DEPARTURE",
+      "reportedAt": "2026-09-03",
+      "position": "RB"
+    },
+    {
+      "player": "Audric Estime",
+      "kind": "DEPARTURE",
+      "reportedAt": "2026-09-22",
+      "position": "RB"
+    },
+    {
+      "player": "Travis Etienne Jr.",
+      "kind": "EXISTING_PLACEMENT_REFERENCE",
+      "reportedAt": "2026-10-01",
+      "corroborationFixture": "tests/fixtures/saints-alert-2026-10-01.html"
+    }
+  ],
+  "articleUrl": "https://www.neworleanssaints.com/news/new-orleans-saints-running-back-depth-being-tested-early",
+  "conclusion": "The October 1 analysis reports earlier September departures. Its publication must not become their transaction date. Etienne placement is already in the dated team alert.",
+  "remaining": "Operational matching of retrospective references against dated events remains required; coverage is not declared passed.",
+  "productionEnabled": false
+}

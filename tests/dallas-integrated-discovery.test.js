@@ -1,0 +1,9 @@
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict');
+const {collectDallas}=require('../netlify/functions/_dallas-availability-adapter');
+const {pageCards}=require('../netlify/functions/_dallas-announcement-discovery');
+const club=require('../netlify/functions/_official-club-sources.json').find(c=>c.team==='DAL');
+const index=fs.readFileSync(__dirname+'/fixtures/dallas-news-card-contract.html','utf8'),urls=pageCards(index);
+const roster='<h4 class="nfl-o-roster__title"><span class="nfl-o-roster__title-status">Active</span></h4><table><tr><th>Player</th><th>Pos</th></tr><tr><td><a href="/team/players-roster/test-player/" title="Test Player">Test Player</a></td><td>QB</td></tr></table>';
+function reader(claim=false){return async url=>{if(url.endsWith('/team/players-roster/'))return roster;if(url.endsWith('/news/all-news/'))return index;const i=urls.indexOf(url);assert.ok(i>=0);const day=String(12-i).padStart(2,'0'),published=i<12?`2026-10-${day}T12:00:00Z`:'2026-09-25T12:00:00Z';return `<script type="application/ld+json">${JSON.stringify({'@type':'NewsArticle',datePublished:published})}</script>${url.includes('/updates-')?'<div class="nfl-c-body-part--text"><h2>Oct. 11</h2></div>':''}<div class="nfl-c-body-part--text">${claim&&i===0?'A player was placed on injured reserve.':'Game analysis.'}</div>`;};}
+(async()=>{const opts={club,season:2026,asOf:'2026-10-14T02:00:00Z',previous:null};const r=await collectDallas({...opts,read:reader()});assert.equal(r.discoveryComplete,true);assert.equal(r.discovery.pages,1);assert.equal((await collectDallas({...opts,read:reader(true)})).discoveryComplete,false);assert.equal((await collectDallas({...opts,previous:{asOf:opts.asOf,discovery:{seenUrls:[]}},read:reader()})).discoveryComplete,false);console.log('PASS: Dallas bounded integration, boundary, unsupported claims and recurring overlap.');})().catch(e=>{console.error(e);process.exitCode=1});
