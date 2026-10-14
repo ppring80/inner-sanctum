@@ -19,6 +19,10 @@ async function main(){
  const identity=await fetch(identityUrl,{headers:{Authorization:'Bearer '+requestToken},signal:AbortSignal.timeout(15000)});
  if(!identity.ok)throw Error('GitHub workflow identity request failed.');
  const {value}=await identity.json();if(!value)throw Error('GitHub workflow identity token missing.');
+ // Supplement the primary collector without changing its freshness contract.
+ // Failure here must not suppress the existing NFL recovery path.
+ try{console.log(JSON.stringify({officialClubCollection:await require('./start-club-evidence-collection').startClubCollection({token:value})}));}
+ catch(error){console.error('Official club collection request failed: '+error.message);}
  console.log(JSON.stringify(await recover({token:value})));
 }
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});
