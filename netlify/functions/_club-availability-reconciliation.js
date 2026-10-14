@@ -12,7 +12,7 @@ function rosterSnapshot(html,{team,sourceUrl,observedAt}){
  for(const [,label,table]of sections){
   const section=clean(label),headers=[...table.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)].map(m=>clean(m[1]));
   const positionIndex=headers.indexOf('Pos');if(headers[0]!=='Player'||positionIndex<0)throw Error('Official roster columns changed.');
-  let status=/^Reserve\/Injured(?:; Designated for Return)?$/.test(section)?'IR':section==='Reserve/Physically Unable to Perform'?'PUP':section==='Reserve/Non-Football Injury'?'NFI':section==='Reserve/Designated to Return'?'RESERVE_RETURN_PROCESS':section==='Active'?'ACTIVE_ROSTER':null;
+  let status=/^Reserve\/Injured(?:; Designated for Return)?$/.test(section)?'IR':section==='Reserve/Physically Unable to Perform'?'PUP':['Reserve/Non-Football Injury','Reserve/Non-Football Illness'].includes(section)?'NFI':section==='Reserve/Designated to Return'?'RESERVE_RETURN_PROCESS':section==='Reserve/Suspended by Commissioner'?'SUSPENDED':section==='Reserve/Retired'?'RETIRED':section==='Active'?'ACTIVE_ROSTER':null;
   for(const [,tr]of table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)){
    const cells=[...tr.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>m[1]);if(!cells.length)continue;
    const profiles=[...cells[0].matchAll(/<a\b[^>]*href=(["'])(.*?)\1[^>]*title=(["'])(.*?)\3/gi)].map(m=>({profileUrl:officialUrl(new URL(m[2],sourceUrl).href,team),name:m[4].replace(/&#39;|&#x27;|&apos;/gi,"'")}));

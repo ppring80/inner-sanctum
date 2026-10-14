@@ -29,7 +29,7 @@ function currentClubAvailability({team,season,asOf,snapshot,previousRecords=[],e
   for(const p of snapshot.rows)officialUrl(p.profileUrl,team);
   rows=snapshot.rows;
   if(!rows.length)diagnostics.push({reason:'ROSTER_OBSERVATION_EMPTY'});
-  for(const p of rows)if(/^Reserve\//.test(p.section||'')&&!reserve.has(p.status)&&p.status!=='RESERVE_RETURN_PROCESS')diagnostics.push({name:p.name,reason:'UNSUPPORTED_RESERVE_SECTION'});
+  for(const p of rows)if(/^Reserve\//.test(p.section||'')&&!reserve.has(p.status)&&!['RESERVE_RETURN_PROCESS','SUSPENDED','RETIRED'].includes(p.status))diagnostics.push({name:p.name,reason:'UNSUPPORTED_RESERVE_SECTION'});
  }
  const players=[];
  const names=new Set([...derived.states.map(key),...rows.map(key)]);
@@ -41,6 +41,9 @@ function currentClubAvailability({team,season,asOf,snapshot,previousRecords=[],e
    record.provenance.push({sourceUrl:snapshot.sourceUrl,profileUrl:roster.profileUrl,observedAt:snapshot.observedAt,section:roster.section,status:roster.status});
    if(reserve.has(roster.status)){
     if(!transaction){record.status=roster.status;record.lastVerifiedStatus=roster.status;record.basis='OFFICIAL_ROSTER_OBSERVATION';}
+    else if(transaction.status!==roster.status)conflicts.push('ROSTER_TRANSACTION_CONFLICT');
+   }else if(['SUSPENDED','RETIRED'].includes(roster.status)){
+    if(!transaction){record.status=roster.status;record.basis='OFFICIAL_ROSTER_OBSERVATION';}
     else if(transaction.status!==roster.status)conflicts.push('ROSTER_TRANSACTION_CONFLICT');
    }else if(roster.status==='RESERVE_RETURN_PROCESS'){
     if(!transaction){record.status='RESERVE_UNSPECIFIED';record.basis='OFFICIAL_ROSTER_OBSERVATION';}
