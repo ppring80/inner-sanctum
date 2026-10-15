@@ -8,7 +8,7 @@ function makeStore(status='UNAVAILABLE',evidenceHash=frozenEvidence.evidenceHash
 const answer={slots:[{slotId:'S1',playerId:'P1',confidence:'LOW',explanation:'Alpha has the supplied START standing.',countercase:'No alternative has been supplied.',missingInformation:[],reconsider:['New eligible alternative.'],factIds:['P1:standing']}]};
 (async()=>{
  let calls=0;
- const args={store:makeStore(),decisionId,ownerHash,now,apiKey:'synthetic-key',fetchImpl:async()=>{calls++;return{ok:true,json:async()=>({model:'claude-sonnet-4-6',stop_reason:'end_turn',content:[{type:'text',text:JSON.stringify(answer)}]})};}};
+ const args={store:makeStore(),decisionId,ownerHash,now,apiKey:'synthetic-key',fetchImpl:async()=>{calls++;return{ok:true,json:async()=>({model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_lineup',input:answer}]})};}};
  const results=await Promise.all([executeReview(args),executeReview(args)]);assert.strictEqual(calls,1);assert.ok(results.some(r=>r.status==='REVIEW_READY'));assert.ok(args.store.data.has('llm-recovery/2026-10-08'));assert.strictEqual((await executeReview(args)).recoveryOf,'rookie-independent-v1');assert.strictEqual(calls,1);
  for(const store of [makeStore('REVIEW_READY'),makeStore('UNAVAILABLE','different-evidence')]){assert.strictEqual((await runReview({...args,store})).error,'daily_model_call_limit');assert.strictEqual(calls,1);}
  const otherBudget=makeStore();otherBudget.data.set('llm-budget/2026-10-08',{decisionId:'b'.repeat(64)});assert.strictEqual((await runReview({...args,store:otherBudget})).error,'daily_model_call_limit');

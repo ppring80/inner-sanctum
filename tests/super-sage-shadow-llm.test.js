@@ -29,7 +29,7 @@ const store = () => {
 };
 (async () => {
  let calls = 0;
- const mockFetch = async (_url, options) => { calls++; const input = JSON.parse(options.body); assert.strictEqual(input.model, 'claude-sonnet-4-6'); assert.ok(!input.messages[0].content.includes('explanation')); return { ok: true, async json() { return { id: 'synthetic-provider-id', model: input.model, stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 100 }, content: [{ type: 'text', text: JSON.stringify(answer) }] }; } }; };
+ const mockFetch = async (_url, options) => { calls++; const input = JSON.parse(options.body); assert.strictEqual(input.model, 'claude-sonnet-4-6'); assert.ok(!input.messages[0].content.includes('explanation')); return { ok: true, async json() { return { id: 'synthetic-provider-id', model: input.model, stop_reason: 'tool_use', usage: { input_tokens: 100, output_tokens: 100 }, content: [{ type: 'tool_use', name:'submit_lineup', input:answer }] }; } }; };
  const s = store(), args = { store: s, decisionId: simple.decisionId, ownerHash: hash('owner'), apiKey: 'synthetic-key', fetchImpl: mockFetch, now: new Date('2026-10-08T00:00:00Z') };
  const [a,b] = await Promise.all([runReview(args), runReview(args)]);
  assert.strictEqual(calls, 1); assert.ok([a.status,b.status].includes('REVIEW_READY'));
