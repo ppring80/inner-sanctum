@@ -27,10 +27,13 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
     return { available: false, readOnly: true, error: 'evidence_integrity_failure' };
   }
   const review = finalQualification || latestQualification || qualification || priorReview;
+  // Explicit full-review reads may inspect the original input after the same
+  // ownership/integrity gate. No owner key, credentials, recomputation or write.
+  const input = kind==='full' ? {frozenEvidence:evidence.frozenEvidence} : {};
   if(kind==='full') {
     const fullQualification=await store.get(require('./_rookie-full-post276').reviewKey(decisionId,ownerHash),{type:'json'});
-    if(fullQualification)return {available:true,readOnly:true,decisionId,kind,review:fullQualification,priorReview:priorReview||null};
+    if(fullQualification)return {available:true,readOnly:true,decisionId,kind,review:fullQualification,priorReview:priorReview||null,...input};
   }
-  return { available: Boolean(review), readOnly: true, decisionId, kind, review: review || null };
+  return { available: Boolean(review), readOnly: true, decisionId, kind, review: review || null,...input };
 }
 module.exports = { readSavedReview };

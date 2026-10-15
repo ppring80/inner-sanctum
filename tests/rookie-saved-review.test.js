@@ -18,6 +18,7 @@ const store = { get: async key => { reads.push(key); return records.get(key) || 
  const result = await readSavedReview({ store, decisionId, ownerHash });
  assert.strictEqual(result.available, true); assert.strictEqual(result.readOnly, true);
  assert.deepStrictEqual(result.review, review); assert.strictEqual(JSON.stringify(review), before);
+ assert.strictEqual(result.frozenEvidence,undefined,'ordinary review reads do not expand the response');
  assert.deepStrictEqual(reads.sort(), [evidenceKey, reviewKey].sort());
  reads = [];
  assert.strictEqual((await readSavedReview({ store, decisionId, ownerHash: 'b'.repeat(64) })).error, 'owned_frozen_evidence_unavailable');
@@ -31,6 +32,16 @@ const store = { get: async key => { reads.push(key); return records.get(key) || 
  for (const kind of ['focused-role-change', 'full']) {
   assert.strictEqual((await readSavedReview({ store, decisionId, ownerHash, kind })).available, false);
  }
+ const evidenceBefore=JSON.stringify(evidence);
+ const full=await readSavedReview({store,decisionId,ownerHash,kind:'full'});
+ assert.deepStrictEqual(full.frozenEvidence,evidence.frozenEvidence);
+ assert.strictEqual(hash(JSON.stringify(full.frozenEvidence.packet)),full.frozenEvidence.evidenceHash);
+ assert.ok(!Object.hasOwn(full,'ownerHash'));assert.ok(!JSON.stringify(full).includes(ownerHash));
+ records.set(evidenceKey,{...evidence,ownerHash:'b'.repeat(64)});
+ assert.strictEqual((await readSavedReview({store,decisionId,ownerHash,kind:'full'})).frozenEvidence,undefined);
+ records.set(evidenceKey,{...evidence,frozenEvidence:{...evidence.frozenEvidence,evidenceHash:'bad'}});
+ assert.strictEqual((await readSavedReview({store,decisionId,ownerHash,kind:'full'})).frozenEvidence,undefined);
+ records.set(evidenceKey,evidence);assert.strictEqual(JSON.stringify(evidence),evidenceBefore);
  reads = [];
  assert.strictEqual((await readSavedReview({ store, decisionId: 'invalid', ownerHash })).error, 'invalid_request');
  assert.strictEqual((await readSavedReview({ store, decisionId, ownerHash, kind: '__proto__' })).error, 'invalid_review_kind');
