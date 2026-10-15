@@ -51,10 +51,38 @@ It does not demonstrate a useful input-size reduction. The dictionary does
 reduce a separate synthetic repeated-metadata fixture with exact round-trip
 integrity; that result must not be represented as a live-input saving.
 
-The complete live Week 6 evidence bytes have not been recovered through the
-available saved-review reader. The latest live request used 19,085 input and
-2,224 output tokens, with 48.806 seconds from worker capture to completion.
-Those are measurements of the deployed full-review path, not this candidate.
+The complete live Week 6 input was subsequently recovered through the owned
+read-only reader added by PR #278. Its parent hash matches
+`d4c17ca05a2b09cf4598bd33c6c6349fe140afe48abf1f815f3aab6305595953`.
+The reconstructed current request matches all saved component fingerprints:
+system, evidence, schema and output-token ceiling.
+
+On that exact packet (16 players, 10 slots, 172 facts):
+
+| Local measurement | Current | Candidate |
+|---|---:|---:|
+| Complete request bytes | 67,247 | 64,298 |
+| Frozen evidence / dictionary evidence bytes | 50,244 | 46,448 |
+| Output-token ceiling | 3,300 | 1,800 |
+
+The request is 4.39% smaller. Two source dictionary entries are used; the
+candidate also adds 6,287 bytes of explicit player measurements. All original
+evidence round-trips exactly. Five alert references are required. No actual
+candidate output-token count or latency exists.
+
+The latest deployed full review used 19,085 input and 2,224 output tokens,
+with 48.806 seconds from worker capture to completion. Those measurements
+describe the deployed full-review path, not this candidate.
+
+Exact-input inspection also corrected an earlier diagnosis: Nabers' recorded
+games had 6, 7 and 20 targets with zero carries, so an 11-target average was
+supported. The deployed field-presence validator rejected it because the packet
+had no separate observedTargets field. The candidate can verify the component
+numbers from the complete three-game record. Do not characterize that specific
+claim as a model factual error. The saved same-matchup contradiction and
+duplicate-player contingency remain rejected by the candidate checks. A
+complete hypothetical two-slot swap passes legality checks; it is a test case,
+not new lineup advice.
 
 The candidate reduces required repeated output fields and uses a slot-count
 output ceiling. No live response exists for it. Neither its output size,
@@ -69,9 +97,11 @@ implied by this experiment.
 
 ## Next checkpoint
 
-Recover the owned live frozen input through an authorized read-only reader and
-measure the candidate's actual request before spending on generation. If the
-request remains large, document the tradeoff rather than remove evidence or
-add more wording rules. A paid comparison needs its own explicit authorization
-and separate history-preserving record. Keep all deployed paths unchanged
-until an isolated candidate qualifies and customer integration is authorized.
+The actual input is now measured. Review the modest 4.39% request saving and the
+untested output-structure reduction before authorizing any paid comparison.
+Do not remove evidence or promise a 15-second result from byte counts. A paid
+comparison needs its own explicit authorization and separate history-preserving
+record. Keep all deployed decision paths unchanged until an isolated candidate
+qualifies and customer integration is authorized. The raw private packet remains
+local, outside this repository; the script accepts an authorized saved response
+and prints measurement summaries only.
