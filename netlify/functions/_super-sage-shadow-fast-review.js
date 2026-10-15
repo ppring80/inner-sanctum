@@ -296,6 +296,24 @@ async function callProvider({ fetchImpl, apiKey, requestBody, deadlineMs, clock,
     return { body: message, phases };
   } catch (e) { throw fail(e); }
 }
+// Private selected-pair qualification: five atomic slots per UTC day.
+// The original daily key is slot one, so prior spend is never reset or erased.
+const SELECTED_PAIR_DAILY_LIMIT = 5;
+function selectedBudgetKeys(now) {
+  const first = `llm-fast-budget/${now.toISOString().slice(0,10)}`;
+  return Array.from({length: SELECTED_PAIR_DAILY_LIMIT}, (_, i) => i ? `${first}/selected-slot-${i + 1}` : first);
+}
+async function selectedBudgetFull(store, now) {
+  const slots = await Promise.all(selectedBudgetKeys(now).map(key => store.get(key, {type: "json"})));
+  return slots.every(Boolean);
+}
+async function reserveSelectedBudget(store, now, record) {
+  for (const key of selectedBudgetKeys(now)) {
+    const result = await store.setJSON(key, record, {onlyIfNew: true});
+    if (result?.modified) return {...result, key};
+  }
+  return {modified: false};
+}
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
@@ -444,15 +462,16 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
   // A denied daily budget is not a provider attempt or a review reservation.
   // The atomic budget acquisition below remains the concurrency authority.
-  if (selection && await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`,{type:"json"})) return {...base,status:"UNAVAILABLE",error:"daily_speed_benchmark_limit",nextBudgetResetAt:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toISOString()};
+  if (selection && await selectedBudgetFull(store, now)) return {...base,status:"UNAVAILABLE",error:"daily_speed_benchmark_limit",nextBudgetResetAt:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toISOString()};
   stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   timing.reservationMs = Math.round(clock() - stage);
   if (!reservation?.modified) return { ...base, error: "review_already_reserved" };
-  // This explicitly requested speed benchmark has its own one-call daily cap;
+  // Selected pairs have five daily slots; other focused benchmarks retain one.
+  // Request deduplication still prevents retries of identical reviews;
   // it never resets the full-review or migration-recovery budgets.
   stage = clock();
-  let budget = drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
+  let budget = selection ? await reserveSelectedBudget(store, now, {decisionId, version: VERSION, evidenceHash: focused.evidenceHash, promptHash: hash(system), reviewKey: key}) : drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
   if (!drill && !selection && !budget?.modified) {
     const previous = await store.get(`llm-fast/rookie-fast-pair-v1/${decisionId}/${ownerHash}`, { type: "json" });
     const dayBudget = await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { type: "json" });
@@ -521,4 +540,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };

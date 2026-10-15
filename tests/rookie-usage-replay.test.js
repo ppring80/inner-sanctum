@@ -25,6 +25,7 @@ const args={parentEvidenceHash:'a'.repeat(64),capturedAt:'2026-10-11T03:20:07Z',
  const oldKey=`llm-fast/rookie-fast-pair-v6-haiku/${decisionId}/${ownerHash}/selected/${hash(JSON.stringify(selection))}`;
  const oldReview={status:'REVIEW_READY',old:true};
  const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:frozen,capturedAt:args.capturedAt}],[oldKey,oldReview],['llm-fast-budget/2026-10-11',{spent:true}]]);
+ for(let slot=2;slot<=5;slot++)data.set(`llm-fast-budget/2026-10-11/selected-slot-${slot}`,{spent:true});
  const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return {modified:false};data.set(k,v);return {modified:true};}};
  let calls=0;
  const r=await runFastReview({store,decisionId,ownerHash,selection,now:new Date('2026-10-11T22:00:00Z'),apiKey:'mock',loadUsageSnapshot:async()=>snapshot,fetchImpl:async()=>{calls++;throw Error('not allowed');}});

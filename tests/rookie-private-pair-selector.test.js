@@ -12,6 +12,7 @@ assert.throws(()=>focusEvidence(frozen,['Back A','Back A'],packet.slots[0]),/inv
 assert.throws(()=>focusEvidence(frozen,['Back A','Unknown'],packet.slots[0]),/unavailable/);
 const decisionId=hash('decision'),ownerHash=hash('owner'),data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:frozen}],['llm-fast-budget/2026-10-11',{spent:true}]]);let calls=0;
 const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return {modified:false};data.set(k,v);return {modified:true};}};
+for(let slot=2;slot<=5;slot++)data.set(`llm-fast-budget/2026-10-11/selected-slot-${slot}`,{spent:true});
 const args={store,decisionId,ownerHash,now:new Date('2026-10-11T05:00:00Z'),apiKey:'mock',selection:{players:['Back A','Receiver B'],slotId:'S1'},fetchImpl:async()=>{calls++;throw Error('must not call');}};
 (async()=>{
 assert.equal((await runFastReview({...args,selection:{...args.selection,slotId:'S9'}})).error,'focused_pair_slot_unavailable');
