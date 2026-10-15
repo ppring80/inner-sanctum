@@ -16,14 +16,20 @@ async function collectEagles({club,read,previous,season,asOf}){
  const cards=discovery.indexCards(await read(discovery.INDEX)),articles=[];
  const since=previous?.asOf?new Date(Date.parse(previous.asOf)-48*3600000).toISOString().slice(0,10):`${season}-${asOf.slice(5,7)}-01`;
  for(const card of cards){
+  let sectionSubject=null;
   const html=await read(card.url),meta=discovery.publication(html);
   if(Date.parse(meta.publishedAt)>Date.parse(asOf))throw Error('Eagles publication after observation cutoff.');
   articles.push({...card,publishedAt:meta.publishedAt});
   if(meta.publishedAt.slice(0,10)<since)continue;
   for(const [,body]of html.matchAll(/<div\b[^>]*class=["'][^"']*nfl-c-body-part--text[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi)){
    const plain=body.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+   if(/^\s*<h[2-4]\b/i.test(body)){
+    const label=/^(DB|CB|S|FS|SS|TE|G|OL|C|T|RB|WR|QB|LB|DL|DE|DT)\s+(.+)$/.exec(plain);
+    const matches=label?snapshot.rows.filter(p=>canonicalNameKey(p.name)===canonicalNameKey(label[2])&&require('./_club-position-identity').compatiblePosition(p.position,label[1])):[];
+    sectionSubject=matches.length===1?matches[0].name:null;
+   }
    for(const text of plain.replace(/\b(?:Jr|Sr|[A-Z])\./g,m=>m.replace('.','__DOT__')).split(/(?<=[.!?])\s+/).map(s=>s.replace(/__DOT__/g,'.'))){
-    if(/\b(?:placed|put|activated|reinstated|reverted)\b[^!?]{0,220}\b(?:injured reserve|reserve\/injured|\bir\b|physically unable|non-football injury)\b/i.test(text))unresolved.push({sourceUrl:card.url,reason:'EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION',sourceText:text,articleDate:meta.publishedAt.slice(0,10)});
+    if(/\b(?:placed|put|activated|reinstated|reverted)\b[^!?]{0,220}\b(?:injured reserve|reserve\/injured|\bir\b|physically unable|non-football injury)\b/i.test(text))unresolved.push({sourceUrl:card.url,reason:'EAGLES_RESERVE_CLAIM_REQUIRES_QUALIFIED_EXTRACTION',sourceText:text,sectionSubject,articleDate:meta.publishedAt.slice(0,10)});
    }
   }
  }

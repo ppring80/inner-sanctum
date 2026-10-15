@@ -12,7 +12,21 @@ function reconcileEaglesReferences(claims,events){
   if(text==='One day after the Eagles placed running back Tank Bigsby on Injured Reserve, the team filled his spot on the 53-man roster with another running back – Dameon Pierce from the practice squad.'){name='Tank Bigsby';oneDay=true;}
   if(text==='The Eagles announced on Tuesday that the team has placed running back Tank Bigsby on Injured Reserve.'){name='Tank Bigsby';tuesday=true;}
   if(text==='Following the season-opening win over Washington, Jurgens moved from center over to left guard after Landon Dickerson was placed on Injured Reserve.')name='Landon Dickerson';
-  const matches=events.filter(e=>name&&e.name===name&&e.team==='PHI'&&e.identityVerified===true&&e.kind==='RESERVE_PLACEMENT'&&e.status==='IR'&&/^\d{4}-\d{2}-\d{2}$/.test(e.reportedAt||'')&&e.reportedAt<=claim.articleDate&&(!oneDay||Date.parse(claim.articleDate)-Date.parse(e.reportedAt)===86400000)&&(!tuesday||e.reportedAt===claim.articleDate&&new Date(e.reportedAt+'T00:00:00Z').getUTCDay()===2)&&(()=>{try{return !!officialUrl(e.sourceUrl,'PHI');}catch{return false;}})());
+  // Corroborate historical references only; section identity is supplied by
+  // an exact unique official-roster name and compatible position heading.
+  let referenceDate=null;
+  if(claim.sectionSubject&&/\bwas placed on Injured Reserve\b/.test(text)){
+   const subject=claim.sectionSubject,last=subject.split(' ').at(-1);
+   const explicit=text.startsWith(last+' was placed ')||text.startsWith(subject+' was placed ');
+   const pronoun=text.startsWith('He was placed ')||text.startsWith('However, the uber-athletic receiving weapon was placed ');
+   if(explicit||pronoun){
+    const date=/on ([A-Z][a-z]+) (\d{1,2})(?:st|nd|rd|th)?\b/.exec(text);
+    if(date){const month=['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(date[1])+1;
+     if(month)referenceDate=claim.articleDate.slice(0,4)+'-'+String(month).padStart(2,'0')+'-'+date[2].padStart(2,'0');}
+    name=subject;
+   }
+  }
+  const matches=events.filter(e=>name&&e.name===name&&e.team==='PHI'&&e.identityVerified===true&&e.kind==='RESERVE_PLACEMENT'&&e.status==='IR'&&/^\d{4}-\d{2}-\d{2}$/.test(e.reportedAt||'')&&e.reportedAt<=claim.articleDate&&(!referenceDate||e.reportedAt===referenceDate)&&(!oneDay||Date.parse(claim.articleDate)-Date.parse(e.reportedAt)===86400000)&&(!tuesday||e.reportedAt===claim.articleDate&&new Date(e.reportedAt+'T00:00:00Z').getUTCDay()===2)&&(()=>{try{return !!officialUrl(e.sourceUrl,'PHI');}catch{return false;}})());
   if(new Set(matches.map(e=>e.reportedAt)).size!==1){unresolved.push(claim);continue;}
   corroborated.push({...claim,matchedEvent:matches[0],createsEvent:false});
  }

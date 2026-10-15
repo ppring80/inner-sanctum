@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('fs');
+const {reconcileEaglesReferences}=require('../netlify/functions/_eagles-reference-reconciliation');
+const url='https://www.philadelphiaeagles.com/news/eagles-open-practice-window-for-four-players-landon-dickerson-eli-stowers-week-6-2026';
+const claim={sourceUrl:url,articleDate:'2026-10-14',sectionSubject:'Grant Calcaterra',sourceText:'He was placed on Injured Reserve on August 30th with a back injury.'};
+const event={team:'PHI',name:'Grant Calcaterra',identityVerified:true,kind:'RESERVE_PLACEMENT',status:'IR',reportedAt:'2026-08-30',sourceUrl:'https://www.philadelphiaeagles.com/team/transactions/2026'};
+assert.equal(reconcileEaglesReferences([claim],[event]).corroborated.length,1);
+for(const bad of [{...claim,sectionSubject:null},{...claim,sectionSubject:'Eli Stowers'},{...claim,sourceText:'He was placed on Injured Reserve on August 31st.'}])assert.equal(reconcileEaglesReferences([bad],[event]).unresolved.length,1);
+assert.equal(reconcileEaglesReferences([claim],[{...event,kind:'RESERVE_EXIT',status:'ACTIVE'}]).unresolved.length,1);
+assert.equal(reconcileEaglesReferences([claim],[event]).corroborated[0].createsEvent,false);
+const {collectEagles}=require('../netlify/functions/_eagles-availability-adapter');
+const names=['Jakorian Bennett','Grant Calcaterra','Landon Dickerson','Eli Stowers'];
+const roster='<h4 class="nfl-o-roster__title"><span class="nfl-o-roster__title-status">Reserve/Injured</span></h4><table><tr><th>Player</th><th>Pos</th></tr>'+names.map((name,i)=>`<tr><td><a href="/team/players-roster/${name.toLowerCase().replace(/ /g,'-')}/" title="${name}">${name}</a></td><td>${['CB','TE','G','TE'][i]}</td></tr>`).join('')+'</table><h4 class="nfl-o-roster__title"><span class="nfl-o-roster__title-status">Active</span></h4><table><tr><th>Player</th><th>Pos</th></tr><tr><td><a href="/team/players-roster/starter/" title="Starter">Starter</a></td><td>QB</td></tr></table>';
+const old='https://www.philadelphiaeagles.com/news/old';
+const index='<script type="application/json">'+JSON.stringify({Name:'EditorialList',Module:{SectionTitle:null,Selection:'latest-stories',Type:'stories',Skip:0,Count:2}})+'</script>'+[url,old].map((u,i)=>`<a href="${u}" data-link_type="latest-stories" data-link_position="${i+1}:2"></a>`).join('');
+collectEagles({club:{origin:'https://www.philadelphiaeagles.com'},season:2026,asOf:'2026-10-15T00:00:00Z',read:async u=>u.includes('players-roster')?roster:u.includes('transactions')?fs.readFileSync('tests/fixtures/eagles-reserve-history.html','utf8'):u.endsWith('/news/all')?index:u===url?fs.readFileSync('tests/fixtures/eagles-practice-window-2026-10-14.html','utf8'):'<script type="application/ld+json">{"@type":"NewsArticle","datePublished":"2026-09-27T00:00:00Z"}</script>'}).then(r=>{assert.equal(r.discovery.unresolved.length,0);assert.equal(r.discovery.corroborated.length,4);assert.equal(r.discoveryComplete,true);assert.ok(r.events.every(e=>e.kind==='RESERVE_PLACEMENT'));console.log('PASS: real practice-window article binds four historical references; no activation created; incorrect identity/date/exit rejected.');}).catch(e=>{console.error(e);process.exitCode=1});
