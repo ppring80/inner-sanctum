@@ -34,7 +34,7 @@ assert.ok(validatePairVoice({ explanation: 'Both are sourced as unavailable.' })
 assert.deepEqual(validatePairVoice({ explanation: 'Barkley is out and Bigsby is on injured reserve.' }), []);
 const input = { selected: 'B', confidence: 'MEDIUM', caveat: "We don't know how the work will be divided.", reconsider: 'Confirmed pregame reporting that Pierce leads the backfield could change my choice.', explanationSentences: [
  { text: "I'd lean Shipley: Barkley is OUT and Bigsby is on IR, leaving Shipley first on the remaining team chart, although Shipley's chart status is UNKNOWN despite an ACTIVE listing.", factIds: ['B:backfieldContext', 'B:availability'] },
- { text: 'Corum averaged 10 opportunities per game over his last three games against 6 for Shipley, so Corum has the stronger recent baseline.', factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
+ { text: 'Corum averaged 10 opportunities (carries plus targets) per game over his last three games against 6 for Shipley, so Corum has the stronger recent baseline.', factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
  { text: "I expect Shipley could get more work after those absences, but Pierce and Blue are not listed on the chart and we don't know how the work will be divided.", factIds: ['B:backfieldContext', 'B:stateChanges', 'B:roleExpansion'] },
  { text: "Corum has the better matchup, but Shipley's remaining chart position tips my lean toward him.", factIds: ['A:matchup', 'B:matchup', 'B:backfieldContext'] }
 ] };

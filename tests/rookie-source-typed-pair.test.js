@@ -68,7 +68,7 @@ test('the role prompt carries one disclosure contract, not a scattered checklist
 
 const answer = (selected, sentences, status) => {
   const input = { selected, confidence: 'MEDIUM', statusSentence: status, explanationSentences: sentences,
-    caveat: 'Neither backfield has a verified workload split for this week.', reconsider: 'Pick the other back if new reports show a clear lead role.' };
+    caveat: 'We do not know how either team will divide the work this week.', reconsider: 'Pick the other back if new reports show a clear lead role.' };
   const out = require('../netlify/functions/_super-sage-shadow-fast-review').formatGroundedAnswer(input);
   return out;
 };
@@ -78,7 +78,7 @@ const words = a => a.explanation.trim().split(/\s+/).length;
 
 test('a natural, complete Corum answer passes and fits the budget', () => {
   const a = answer('A', [
-    { text: "I'd start Corum because he has averaged 10 recent opportunities a game over the last three games to Shipley's 6, even though both had 7 last game.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
+    { text: "I'd start Corum because he has averaged 10 recent opportunities (carries plus targets) a game over the last three games to Shipley's 6, even though both had 7 last game.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
     CHART,
     { text: "There is no verified Rams depth order, so Corum's share could move, but his steadier recent involvement still makes him my lean.", factIds: ['A:backfieldContext', 'A:observedOpportunity'] }], STATUS);
   assert.deepEqual(validate(a, packet), []);
@@ -86,7 +86,7 @@ test('a natural, complete Corum answer passes and fits the budget', () => {
 });
 test('a natural, complete Shipley answer passes too (either player may be chosen)', () => {
   const a = answer('B', [
-    { text: "I'd start Shipley, even though Corum has averaged 10 recent opportunities a game over the last three games to his 6, because both had 7 last game.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
+    { text: "I'd start Shipley, even though Corum has averaged 10 recent opportunities (carries plus targets) a game over the last three games to his 6, because both had 7 last game.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
     CHART,
     { text: "There is no verified Rams depth order either, so I accept Shipley's health question for his chance at more Eagles work.", factIds: ['A:backfieldContext', 'B:roleExpansion'] }], STATUS);
   assert.deepEqual(validate(a, packet), []);
@@ -94,7 +94,7 @@ test('a natural, complete Shipley answer passes too (either player may be chosen
 });
 test('invented Rams order or a Rams "chart" is rejected; honest wording is not', () => {
   const base = s => answer('A', [
-    { text: "I'd start Corum because he has averaged 10 recent opportunities a game over the last three games to Shipley's 6.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
+    { text: "I'd start Corum because he has averaged 10 recent opportunities (carries plus targets) a game over the last three games to Shipley's 6.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
     CHART, { text: s, factIds: ['A:backfieldContext'] }], STATUS);
   for (const s of ['Kyren Williams is still ahead of Corum in the Rams backfield.', 'Corum sits behind Kyren Williams.', 'Corum is the backup to Kyren Williams.', 'The Rams chart lists Corum as UNKNOWN.', 'Kyren Williams is ahead of Corum, though the order is not verified.'])
     assert.ok(validate(base(s), packet).some(e => e === 'unverified_backfield_role_order' || e === 'provider_roster_called_chart'), s);
@@ -102,7 +102,7 @@ test('invented Rams order or a Rams "chart" is rejected; honest wording is not',
 });
 test('wrong status subject and missing absence are still rejected', () => {
   const wrong = answer('A', [
-    { text: "I'd start Corum because he has averaged 10 recent opportunities a game over the last three games to Shipley's 6.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
+    { text: "I'd start Corum because he has averaged 10 recent opportunities (carries plus targets) a game over the last three games to Shipley's 6.", factIds: ['A:observedOpportunity', 'B:observedOpportunity'] },
     { text: 'With Barkley out and Bigsby on injured reserve, Shipley is next; Pierce and Blue could also play and the work split is unknown.', factIds: ['B:backfieldContext', 'B:roleExpansion'] }],
     { playerId: 'B', text: "Corum's status is UNKNOWN despite an ACTIVE listing.", factIds: ['B:backfieldContext', 'B:availability'] });
   const errors = validate(wrong, packet);
