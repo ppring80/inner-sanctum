@@ -78,23 +78,27 @@ async function recoveryAllowed(store, decisionId, ownerHash, evidenceHash, day) 
   return Boolean(prior && prior.status === "UNAVAILABLE" && prior.error === "model_request_failed" && prior.evidenceHash === evidenceHash && budget && budget.decisionId === decisionId);
 }
 
-async function executeReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date() }) {
+async function executeReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), qualification = null }) {
   if (!/^[a-f0-9]{64}$/.test(decisionId) || !ownerHash) return { status: "UNAVAILABLE", error: "invalid_request" };
   const artifact = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
   if (!artifact || artifact.ownerHash !== ownerHash || !artifact.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
-  const key = `llm/${VERSION}/${decisionId}/${ownerHash}`;
+  const q=require('./_rookie-full-post276');
+  const prior=qualification===q.MODE?await store.get(`llm/${VERSION}/${decisionId}/${ownerHash}`,{type:'json'}):null;
+  if(qualification!=null&&(qualification!==q.MODE||!q.allowed({decisionId,artifact,prior,now})))return{status:'UNAVAILABLE',error:'qualification_authorization_mismatch'};
+  const key = qualification ? q.reviewKey(decisionId,ownerHash) : `llm/${VERSION}/${decisionId}/${ownerHash}`;
   const cached = await store.get(key, { type: "json" });
   if (cached) return revalidateCached(cached, cached.status === "REVIEW_READY" ? validateAnswer(cached.answer, artifact.frozenEvidence.packet) : []);
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   const reservation = { status: "PENDING", type: "SUPER_SAGE_INDEPENDENT_LLM_REVIEW", version: VERSION, decisionId, evidenceHash: artifact.frozenEvidence.evidenceHash, capturedAt: now.toISOString(), rules: RULES };
+  if(qualification)Object.assign(reservation,{qualification,qualificationOf:prior.requestId,customerEligible:false});
   const reserved = await store.setJSON(key, reservation, { onlyIfNew: true });
   if (!reserved || reserved.modified !== true) return { ...reservation, error: "review_already_reserved" };
   // Global one-call/day cap, atomically enforced across all callers. Failures
   // consume the reservation too; no automatic retries or billing surprises.
   const day = now.toISOString().slice(0, 10);
-  let budget = await store.setJSON(`llm-budget/${day}`, { decisionId, at: now.toISOString() }, { onlyIfNew: true });
-  if ((!budget || budget.modified !== true) && await recoveryAllowed(store, decisionId, ownerHash, artifact.frozenEvidence.evidenceHash, day)) {
+  let budget = await store.setJSON(qualification?q.budgetKey:`llm-budget/${day}`, { decisionId, at: now.toISOString() }, { onlyIfNew: true });
+  if (!qualification && (!budget || budget.modified !== true) && await recoveryAllowed(store, decisionId, ownerHash, artifact.frozenEvidence.evidenceHash, day)) {
     // One explicit migration recovery for a failed v1 request only. Successful
     // calls, different owners/packets and arbitrary second calls cannot use it.
     budget = await store.setJSON(`llm-recovery/${day}`, { decisionId, evidenceHash: artifact.frozenEvidence.evidenceHash, at: now.toISOString() }, { onlyIfNew: true });
@@ -145,6 +149,13 @@ async function runReview(args) {
   const artifact = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
   if (!artifact || artifact.ownerHash !== ownerHash || !artifact.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  const qualification=require('./_rookie-full-post276');
+  if(decisionId===qualification.PIN.decisionId) {
+    const prior=await store.get(`llm/${VERSION}/${decisionId}/${ownerHash}`,{type:'json'});
+    const saved=await store.get(qualification.reviewKey(decisionId,ownerHash),{type:'json'});
+    if(saved)return{...saved,cached:true};
+    if(qualification.allowed({decisionId,artifact,prior,now}))return qualification.queueQualification(args);
+  }
   const cached = await store.get(`llm/${VERSION}/${decisionId}/${ownerHash}`, { type: "json" });
   if (cached) return revalidateCached(cached, cached.status === "REVIEW_READY" ? validateAnswer(cached.answer, artifact.frozenEvidence.packet) : []);
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
