@@ -359,16 +359,25 @@ function presentGeneralFacts(focused) {
 // Private selected-pair qualification: five atomic slots per UTC day.
 // The original daily key is slot one, so prior spend is never reset or erased.
 const SELECTED_PAIR_DAILY_LIMIT = 5;
-function selectedBudgetKeys(now) {
+// Pat explicitly authorized one additional post-273 Miller/Higbee review on
+// Oct 14 Pacific (Oct 15 UTC). This is not a larger recurring daily budget.
+function selectedBudgetKeys(now, context = {}) {
   const first = `llm-fast-budget/${now.toISOString().slice(0,10)}`;
-  return Array.from({length: SELECTED_PAIR_DAILY_LIMIT}, (_, i) => i ? `${first}/selected-slot-${i + 1}` : first);
+  const keys = Array.from({length: SELECTED_PAIR_DAILY_LIMIT}, (_, i) => i ? `${first}/selected-slot-${i + 1}` : first);
+  if (now.toISOString().slice(0,10) === '2026-10-15' &&
+      context.decisionId === '215d4f4db4ca6f3baa0cad4fc2d8a459396d7e9b438ac4c080eebee577076cf8' &&
+      context.parentEvidenceHash === 'd4c17ca05a2b09cf4598bd33c6c6349fe140afe48abf1f815f3aab6305595953' &&
+      context.selection?.slotId === 'S9' &&
+      JSON.stringify(context.selection?.players) === JSON.stringify(['Kendre Miller','Tyler Higbee']) &&
+      context.promptHash === '27011204be8061be090238db5ae04183ba14a1370be4ada3b6a8882416c10780') keys.push(`${first}/authorized-post273-miller-higbee`);
+  return keys;
 }
-async function selectedBudgetFull(store, now) {
-  const slots = await Promise.all(selectedBudgetKeys(now).map(key => store.get(key, {type: "json"})));
+async function selectedBudgetFull(store, now, context) {
+  const slots = await Promise.all(selectedBudgetKeys(now, context).map(key => store.get(key, {type: "json"})));
   return slots.every(Boolean);
 }
-async function reserveSelectedBudget(store, now, record) {
-  for (const key of selectedBudgetKeys(now)) {
+async function reserveSelectedBudget(store, now, record, context) {
+  for (const key of selectedBudgetKeys(now, context)) {
     const result = await store.setJSON(key, record, {onlyIfNew: true});
     if (result?.modified) return {...result, key};
   }
@@ -526,7 +535,8 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
   // A denied daily budget is not a provider attempt or a review reservation.
   // The atomic budget acquisition below remains the concurrency authority.
-  if (selection && await selectedBudgetFull(store, now)) return {...base,status:"UNAVAILABLE",error:"daily_speed_benchmark_limit",nextBudgetResetAt:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toISOString()};
+  const selectedContext = {decisionId,parentEvidenceHash:original.frozenEvidence.evidenceHash,selection,promptHash:hash(system)};
+  if (selection && await selectedBudgetFull(store, now, selectedContext)) return {...base,status:"UNAVAILABLE",error:"daily_speed_benchmark_limit",nextBudgetResetAt:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toISOString()};
   stage = clock();
   const reservation = await store.setJSON(key, base, { onlyIfNew: true });
   timing.reservationMs = Math.round(clock() - stage);
@@ -535,7 +545,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   // Request deduplication still prevents retries of identical reviews;
   // it never resets the full-review or migration-recovery budgets.
   stage = clock();
-  let budget = selection ? await reserveSelectedBudget(store, now, {decisionId, version: VERSION, evidenceHash: focused.evidenceHash, promptHash: hash(system), reviewKey: key}) : drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
+  let budget = selection ? await reserveSelectedBudget(store, now, {decisionId, version: VERSION, evidenceHash: focused.evidenceHash, promptHash: hash(system), reviewKey: key}, selectedContext) : drill ? await store.setJSON(`llm-drill-budget/${drill.version}/${drill.caseId}`, { decisionId, evidenceHash: focused.evidenceHash, promptHash: hash(system) }, { onlyIfNew: true }) : await store.setJSON(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { decisionId, version: VERSION }, { onlyIfNew: true });
   if (!drill && !selection && !budget?.modified) {
     const previous = await store.get(`llm-fast/rookie-fast-pair-v1/${decisionId}/${ownerHash}`, { type: "json" });
     const dayBudget = await store.get(`llm-fast-budget/${now.toISOString().slice(0,10)}`, { type: "json" });
