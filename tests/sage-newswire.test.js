@@ -37,6 +37,15 @@ Date.now=()=>Date.parse('2026-10-08T18:00:00Z');
  }
  const merged=mergeStories(current,[{id:'old-dj',player:'DJ Moore',publishedAt:'2026-10-05T01:51:00Z',sourceUrl:'old',headline:'Old injury watch'},{id:'unrelated',player:'Other Player',publishedAt:'2026-10-05T01:51:00Z',sourceUrl:'other',headline:'Other report'}]);
  assert(!merged.some(s=>s.id==='old-dj'),'superseded cached report removed');assert(merged.some(s=>s.id==='unrelated'),'unrelated reporting retained');
+ const rolloverNow=Date.parse('2026-10-15T01:28:00Z');
+ const week6=editorialStories(rolloverNow);assert(week6.length>=20);assert(!week6.some(s=>/week5-/.test(s.id)),'last-week game guidance expires at Tuesday rollover');
+ assert.equal(week6.find(s=>s.player==='Lamar Jackson').status,'Practice watch','last-week OUT does not become this-week OUT');
+ assert.equal(week6.find(s=>s.player==='Zach Charbonnet').status,'OUT');
+ assert.equal(week6.find(s=>s.player==='Jaxon Smith-Njigba').status,'Cleared');
+ const frozenNow=Date.now;Date.now=()=>rolloverNow;
+ const cachedWeek5=current.find(s=>s.player==='Jayden Daniels');
+ assert(!mergeStories(week6,[cachedWeek5]).some(s=>s.id===cachedWeek5.id),'expired cached editorial cannot reappear');
+ Date.now=frozenNow;
  cache={mode:'source-headlines',updatedAt:new Date(Date.now()).toISOString(),stories:[{headline:'Depth Charts'}]};const fallback=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);assert(!fallback.stories.some(s=>s.headline==='Depth Charts'),'bad legacy feed cannot displace editorial');assert(fallback.automaticRefreshPending);
  assert.equal((await newswire.handler({httpMethod:'POST'})).statusCode,405);console.log('Newswire source coverage, editorial preservation, relevance, publication dates and specific analysis passed.');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{Date.now=realNow;});
