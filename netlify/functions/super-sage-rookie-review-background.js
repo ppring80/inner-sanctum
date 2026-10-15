@@ -20,6 +20,10 @@ exports.handler = async event => {
     await require('./_rookie-post248-qualification').executeQualification({ store: getStore({ name: 'super-sage-shadow-lab' }), decisionId, ownerHash, apiKey: process.env.ANTHROPIC_API_KEY });
     return { statusCode: 200 };
   }
+  if(mode==='full-qualification-post276') {
+    await executeReview({store:getStore({name:'super-sage-shadow-lab'}),decisionId,ownerHash,apiKey:process.env.ANTHROPIC_API_KEY,qualification:mode});
+    return {statusCode:200};
+  }
   if (mode != null) return { statusCode: 400 };
   await executeReview({ store: getStore({ name: "super-sage-shadow-lab" }), decisionId, ownerHash, apiKey: process.env.ANTHROPIC_API_KEY });
   return { statusCode: 200 };
