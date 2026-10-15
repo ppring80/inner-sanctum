@@ -324,6 +324,37 @@ function presentComponentUsage(focused) {
   }
   return focused;
 }
+// General pair presentation only. Preserve supplied measurements, events,
+// identities and source provenance; omit our internal explanatory commentary.
+function presentGeneralFacts(focused) {
+  const copy = JSON.parse(JSON.stringify(focused));
+  for (const player of copy.packet.players) {
+    for (const fact of player.facts) {
+      const value = fact.value;
+      if (!value || typeof value !== 'object') continue;
+      if (fact.field === 'backfieldContext' && value.sourceType === 'PROVIDER_ROSTER_UNORDERED') {
+        delete value.note;
+        value.workAllocationVerified = false;
+      }
+      if (fact.field === 'establishedRole') {
+        delete value.description;
+        delete value.reason;
+      }
+      if (fact.field === 'roleExpansion') delete value.note;
+      if (fact.field === 'observedOpportunity') {
+        delete value.interpretation;
+        delete value.observedTrendNote;
+      }
+      // Components cite their original usage fact, which keeps full provenance.
+      if (['observedCarries', 'observedTargets'].includes(fact.field) && value.derivedFrom) {
+        delete value.interpretation;
+        delete value.provenance;
+      }
+    }
+  }
+  copy.evidenceHash = hash(JSON.stringify(copy.packet));
+  return copy;
+}
 // Private selected-pair qualification: five atomic slots per UTC day.
 // The original daily key is slot one, so prior spend is never reset or erased.
 const SELECTED_PAIR_DAILY_LIMIT = 5;
@@ -435,7 +466,10 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     if (selection) {
       focused = await require("./_super-sage-usage-replay").supplementUsageReplay(focused,{parentEvidenceHash:original.frozenEvidence.evidenceHash,capturedAt:original.capturedAt,loadSnapshot:loadUsageSnapshot});
       focused.packet.requireSentenceEvidence = true;
-      if (!statusSubjects(focused.packet).length) presentComponentUsage(focused);
+      if (!statusSubjects(focused.packet).length) {
+        presentComponentUsage(focused);
+        focused = presentGeneralFacts(focused);
+      }
       if (statusSubjects(focused.packet).length === 1) { focused.packet.requireBackfieldExplanation = true; focused.packet.requireCandidateStatusSentence = true; }
       focused.evidenceHash = hash(JSON.stringify(focused.packet));
     }
@@ -569,4 +603,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
