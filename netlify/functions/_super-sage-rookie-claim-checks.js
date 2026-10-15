@@ -21,7 +21,7 @@ function namedClauses(sentence, player, players) {
 // Targeted claim checks, not a complete semantic verifier. Never rewrite output
 // or substitute a recommendation. Human qualification still applies.
 function validateClaims(answer, packet) {
-  const errors = [];
+  const errors = require('./_super-sage-pair-comparisons').validatePairComparisons(answer, packet, namedClauses);
   const text = [answer?.explanation, answer?.caveat, answer?.reconsider].filter(v => typeof v === "string").join("\n");
   const currentText = [answer?.explanation, answer?.caveat].filter(v => typeof v === "string").join("\n");
   const facts = (packet.players || []).flatMap(p => p.facts || []);
