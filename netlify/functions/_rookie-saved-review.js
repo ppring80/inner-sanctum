@@ -32,6 +32,8 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
   const input = kind==='full' ? {frozenEvidence:evidence.frozenEvidence} : {};
   if(kind==='full') {
     const fullQualification=await store.get(require('./_rookie-full-post276').reviewKey(decisionId,ownerHash),{type:'json'});
+    const candidate=await store.get(`llm-qualification/lineup-candidate-qualification-v1/${decisionId}/${ownerHash}`,{type:'json'});
+    if(candidate)return {available:true,readOnly:true,decisionId,kind,review:candidate,priorQualification:fullQualification||null,priorReview:priorReview||null,...input};
     if(fullQualification)return {available:true,readOnly:true,decisionId,kind,review:fullQualification,priorReview:priorReview||null,...input};
   }
   return { available: Boolean(review), readOnly: true, decisionId, kind, review: review || null,...input };

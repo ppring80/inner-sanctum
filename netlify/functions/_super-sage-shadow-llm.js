@@ -149,6 +149,13 @@ async function runReview(args) {
   const artifact = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
   if (!artifact || artifact.ownerHash !== ownerHash || !artifact.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  const candidateQualification=require('./_rookie-candidate-qualification');
+  if(decisionId===candidateQualification.PIN.decisionId) {
+    const priorCandidate=await store.get(require('./_rookie-full-post276').reviewKey(decisionId,ownerHash),{type:'json'});
+    const savedCandidate=await store.get(candidateQualification.reviewKey(decisionId,ownerHash),{type:'json'});
+    if(savedCandidate)return{...savedCandidate,cached:true};
+    if(candidateQualification.allowed({decisionId,artifact,prior:priorCandidate,now}))return candidateQualification.queueQualification(args);
+  }
   const qualification=require('./_rookie-full-post276');
   if(decisionId===qualification.PIN.decisionId) {
     const prior=await store.get(`llm/${VERSION}/${decisionId}/${ownerHash}`,{type:'json'});
