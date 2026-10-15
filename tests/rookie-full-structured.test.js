@@ -1,0 +1,54 @@
+"use strict";
+const assert=require('node:assert/strict');
+const {fullRequest,fullReviewSchema,validateAnswer,executeReview,hash,VERSION}=require('../netlify/functions/_super-sage-shadow-llm');
+const make=(playerId,name,position,avg)=>({playerId,name,position,facts:[{factId:`${playerId}:observedOpportunity`,field:'observedOpportunity',value:{avgLast3:avg}},{factId:`${playerId}:availability`,field:'availability',value:{unavailable:false}}]});
+const packet={players:[make('P1','Terry McLaurin','WR',7.33),make('P2','Keenan Allen','WR',7.67)],slots:[{slotId:'S1',slotLabel:'WR',eligiblePositions:['WR'],candidateIds:['P1','P2']}]};
+const raw={slots:[{slotId:'S1',playerId:'P1',confidence:'MEDIUM',explanation:"I lean McLaurin, although Allen averaged more carries plus targets over his last three games.",countercase:'Allen averaged 7.67 compared with 7.33.',missingInformation:[],reconsider:['New injury information.'],factIds:['P1:observedOpportunity','P2:observedOpportunity']}]};
+assert.deepEqual(validateAnswer(raw,packet),[]);
+const bad=text=>({...raw,slots:[{...raw.slots[0],factIds:[...raw.slots[0].factIds],explanation:text}]});
+assert.ok(validateAnswer(bad("McLaurin's higher projection and stronger recent opportunity volume tip the lean his way despite the tougher matchup. Allen averaged 7.67 opportunities per game."),packet).includes('usage_comparison_reversed'));
+assert.deepEqual(validateAnswer(bad("Allen has the higher recent opportunity average compared with McLaurin."),packet),[]);
+assert.deepEqual(validateAnswer(bad("McLaurin's recent work is not stronger recent opportunity volume than Allen's."),packet),[]);
+const tied=JSON.parse(JSON.stringify(packet));tied.players[0].facts[0].value.avgLast3=7.67;
+assert.ok(validateAnswer(bad("McLaurin has the higher recent opportunity average than Allen."),tied).includes('usage_comparison_reversed'));
+assert.ok(validateAnswer({...bad("McLaurin's stronger recent opportunity volume tips the lean his way over Allen."),slots:[{...bad("McLaurin's stronger recent opportunity volume tips the lean his way over Allen.").slots[0],factIds:['P1:observedOpportunity']}]},packet).includes('usage_comparison_evidence_missing'));
+assert.ok(validateAnswer(bad('Start McLaurin. His observed usage has been around 7.33 touches per game across three recent games.'),packet).includes('observed_opportunity_unit_changed'));
+assert.ok(validateAnswer(bad('McLaurin averaged 7.33 targets per game.'),packet).includes('observed_opportunity_unit_changed'));
+const explicit=JSON.parse(JSON.stringify(packet));explicit.players[0].facts.push({factId:'P1:observedTargets',field:'observedTargets',value:{avgLast3:7.33}});
+const target=bad('McLaurin averaged 7.33 targets per game.');target.slots[0].factIds.push('P1:observedTargets');
+assert.deepEqual(validateAnswer(target,explicit),[]);
+const ownUnits=JSON.parse(JSON.stringify(packet));ownUnits.players[1].facts.push({factId:'P2:observedTouches',field:'observedTouches',value:{avgLast3:7.67}});
+assert.ok(validateAnswer(bad('McLaurin averaged 7.33 touches per game.'),ownUnits).includes('observed_opportunity_unit_changed'),'another player cannot supply the unit');
+const duplicate={...raw,slots:[raw.slots[0],{...raw.slots[0],slotId:'S2'}]},twoSlots={...packet,slots:[packet.slots[0],{...packet.slots[0],slotId:'S2'}]};
+assert.ok(validateAnswer(duplicate,twoSlots).includes('invalid_ineligible_or_duplicate_player'));
+const unavailable=JSON.parse(JSON.stringify(packet));unavailable.players[0].facts[1].value.unavailable=true;
+assert.ok(validateAnswer(raw,unavailable).includes('unavailable_player_selected'));
+assert.ok(validateAnswer({...raw,slots:[]},packet).includes('incomplete_slots'));
+const req=fullRequest(packet,'claude-sonnet-4-6');
+assert.equal(req.tool_choice.name,'submit_lineup');assert.equal(req.tools[0].strict,true);
+assert.equal(req.tool_choice.disable_parallel_tool_use,true);
+assert.equal(req.max_tokens,780);
+assert.equal(JSON.parse(req.messages[0].content).players[0].name,'Terry McLaurin');
+assert.deepEqual(fullReviewSchema(packet).properties.slots.items.properties.playerId.anyOf[0].enum,['P1','P2']);
+assert.ok(req.system.includes('25-45 words'));
+const decisionId=hash('full-structured-test'),ownerHash=hash('owner'),now=new Date('2026-10-15T03:45:00Z');
+const frozenEvidence={packet,evidenceHash:hash(JSON.stringify(packet))};
+function store(){const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence}]]);return {data,get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return {modified:false};data.set(k,v);return {modified:true};}};}
+(async()=>{
+ let calls=0;
+ const args={store:store(),decisionId,ownerHash,now,apiKey:'synthetic',fetchImpl:async(_url,o)=>{calls++;const sent=JSON.parse(o.body);assert.deepEqual(sent,req);return {ok:true,json:async()=>({stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_lineup',input:raw}]})};}};
+ const ready=await executeReview(args);
+ assert.equal(ready.status,'REVIEW_READY');assert.equal(ready.rawText,JSON.stringify(raw));assert.deepEqual(ready.answer,raw);
+ assert.equal(ready.outgoing.evidenceHash,frozenEvidence.evidenceHash);assert.equal(ready.rules.productionAuthority,false);
+ await executeReview(args);assert.equal(calls,1);
+ const textOnly={...args,store:store(),fetchImpl:async()=>({ok:true,json:async()=>({stop_reason:'end_turn',content:[{type:'text',text:'Extra prose\n```json\n'+JSON.stringify(raw)+'\n```'}]})})};
+ const failed=await executeReview(textOnly);assert.equal(failed.status,'INVALID');assert.ok(failed.validationErrors.includes('invalid_json'));assert.ok(failed.validationErrors.includes('incomplete_model_response'));
+ for(const content of [[{type:'tool_use',name:'submit_lineup',input:raw},{type:'tool_use',name:'submit_lineup',input:raw}],[{type:'tool_use',name:'wrong_tool',input:raw}]]) {
+  const r=await executeReview({...args,store:store(),fetchImpl:async()=>({ok:true,json:async()=>({stop_reason:'tool_use',content})})});assert.ok(r.validationErrors.includes('incomplete_model_response'));
+ }
+ const historical=store(),old={status:'INVALID',rawText:'previous exact failed answer',answer:null,validationErrors:['invalid_json']};
+ historical.data.set(`llm/${VERSION}/${decisionId}/${ownerHash}`,old);
+ assert.strictEqual(await executeReview({...args,store:historical,fetchImpl:async()=>{throw Error('must not retry');}}),old);
+ assert.equal(VERSION,'rookie-independent-v2','no version change to bypass saved failure or budget');
+ console.log('Full-lineup repair: forced structured tool, bound IDs, raw output, invalid prose/duplicate/wrong tools, exact prior cache, unique/legal/available starters, workload units/direction and missing comparison citations. Provider mocked.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
