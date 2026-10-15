@@ -41,4 +41,6 @@ assert.strictEqual(revalidateCached(oldReview, validatePairVoice(mixedReview)).s
 assert.strictEqual(oldReview.status, 'REVIEW_READY');
 const { HUMAN_PAIR_STYLE } = require('../netlify/functions/_super-sage-shadow-voice');
 assert.ok(HUMAN_PAIR_STYLE.includes('carries plus targets'));
-assert.ok(HUMAN_PAIR_STYLE.includes('higher observed baseline'));
+assert.ok(!HUMAN_PAIR_STYLE.includes('higher observed baseline'));
+assert.ok(!HUMAN_PAIR_STYLE.includes('backfield role order'));
+assert.ok(HUMAN_PAIR_STYLE.includes('cite both players'));
