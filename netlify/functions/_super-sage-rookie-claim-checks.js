@@ -46,6 +46,22 @@ function validateClaims(answer, packet) {
     const roles = p.facts?.find(f => f.field === 'backfieldContext')?.value?.reportedRoles;
     return (roles?.players || []).filter(b => ['OUT', 'IR'].includes(b.status)).length >= 2;
   })) errors.push('unsupported_backfield_starter_claim');
+  // Check named comparative matchup claims against the two supplied labels.
+  // This checks the comparison, not a defensive weakness or forecast magnitude.
+  const matchupOrder = ['Strong Negative', 'Negative', 'Neutral', 'Positive', 'Strong Positive'];
+  const matchupPlayers = (packet.players || []).map(player => ({player, rank: matchupOrder.indexOf(player.facts?.find(f => f.field === 'matchup')?.value)}));
+  if (matchupPlayers.length === 2 && matchupPlayers.every(p => p.rank >= 0)) {
+    for (const [i, entry] of matchupPlayers.entries()) {
+      for (const sentence of currentText.split(/[.!?\n]/)) {
+        for (const clause of namedClauses(sentence, entry.player, packet.players)) {
+          const claim = clause.match(/^(?:[A-Za-z .'-]+?)(?:['’]s\s+|\s+(?:has|faces|gets)\s+(?:the\s+|an?\s+)?)(better|stronger|easier|tougher|worse|harder)\s+matchup\b/i);
+          if (!claim) continue;
+          const favorable = /better|stronger|easier/i.test(claim[1]);
+          if (favorable ? entry.rank <= matchupPlayers[1-i].rank : entry.rank >= matchupPlayers[1-i].rank) errors.push('matchup_comparison_reversed');
+        }
+      }
+    }
+  }
   for (const player of packet.players || []) {
     const context = player.facts?.find(f => f.field === "backfieldContext")?.value;
     const chart = context?.reportedRoles;
