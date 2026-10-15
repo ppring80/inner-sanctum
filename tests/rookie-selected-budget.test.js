@@ -19,5 +19,14 @@ const {selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget} = require(
  assert.equal((await reserveSelectedBudget(store,now,{})).modified,false);
  assert.equal((await reserveSelectedBudget(store,new Date('2026-10-16T00:00:00Z'),{})).modified,true);
  assert.strictEqual(data.get(first),legacy,'rollover preserves history');
+ const context={decisionId:'215d4f4db4ca6f3baa0cad4fc2d8a459396d7e9b438ac4c080eebee577076cf8',parentEvidenceHash:'d4c17ca05a2b09cf4598bd33c6c6349fe140afe48abf1f815f3aab6305595953',selection:{players:['Kendre Miller','Tyler Higbee'],slotId:'S9'},promptHash:'27011204be8061be090238db5ae04183ba14a1370be4ada3b6a8882416c10780'};
+ assert.equal(selectedBudgetKeys(now,context).length,6);
+ for(const change of [{decisionId:'other'},{parentEvidenceHash:'other'},{promptHash:'other'},{selection:{...context.selection,slotId:'S6'}},{selection:{...context.selection,players:['Tyler Higbee','Kendre Miller']}}]) assert.equal(selectedBudgetKeys(now,{...context,...change}).length,5);
+ assert.equal(selectedBudgetKeys(new Date('2026-10-16T00:00:00Z'),context).length,5,'one-time authorization expires');
+ const extra=await Promise.all(Array.from({length:8},()=>reserveSelectedBudget(store,now,{authorized:'post273'},context)));
+ assert.equal(extra.filter(r=>r.modified).length,1,'exactly one extra call under concurrency');
+ assert.equal(await selectedBudgetFull(store,now,context),true);
+ assert.equal(await selectedBudgetFull(store,now),true,'ordinary daily cap is unchanged');
+ assert.strictEqual(data.get(first),legacy);
  console.log('Selected pair budget: five global atomic daily slots, legacy spend counted, concurrent cap and next-day rollover.');
 })().catch(e=>{console.error(e);process.exitCode=1});
