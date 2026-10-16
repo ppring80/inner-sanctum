@@ -1280,7 +1280,17 @@ function renderNewswire() {
       : (newswireState.error ? 'Latest check unavailable' : 'Checking for updates…');
   }
 
-  var stories = newswireState.stories.slice();
+  // Newest reporting leads, including when an older editorial card is featured.
+  // Keep all evidence in the response; show each player's latest report here.
+  var seenNewswirePlayers = new Set();
+  var stories = newswireState.stories.slice().sort(function(a, b) {
+    return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+  }).filter(function(story) {
+    var key = String(story.player || story.id).toLowerCase();
+    if (seenNewswirePlayers.has(key)) return false;
+    seenNewswirePlayers.add(key);
+    return true;
+  });
   if (newswireState.view === 'roster') {
     var rosterNames = (state.myRosterNames || []).map(function(name) {
       return String(name).toLowerCase();
@@ -1304,8 +1314,7 @@ function renderNewswire() {
     return;
   }
 
-  var featured = stories.filter(function(story) { return story.featured === true; }).slice(0, 3);
-  if (!featured.length) featured = stories.slice(0, 3);
+  var featured = stories.slice(0, 3);
   var featuredIds = featured.map(function(story) { return story.id; });
   var compact = stories.filter(function(story) { return featuredIds.indexOf(story.id) === -1; });
 
