@@ -2,8 +2,11 @@
 // Selected-pair only: the model selects evidence, never authors customer prose.
 const CONTRACT='structured-pair-v1';
 const FACTORS=['projection','recentUsage','matchup','availability'];
-const SYSTEM='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or null (NO_CALL), confidence, a deciding factor favoring your pick and an opposing factor favoring the other player from decisionFactors. Use NONE for the opposing factor only if no factor favors the other player. A tie or missing fact cannot favor either player. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
-const schema={type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','tradeoffFactor','blocker','reconsider'],properties:{selected:{type:['string','null'],enum:['A','B',null]},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},decidingFactor:{type:'string',enum:[...FACTORS,'NONE']},tradeoffFactor:{type:'string',enum:[...FACTORS,'NONE']},blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
+const SYSTEM='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or NO_CALL, confidence, a deciding factor favoring your pick and an opposing factor favoring the other player from decisionFactors. Use NONE for the opposing factor only if no factor favors the other player. A tie or missing fact cannot favor either player. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
+const schema={type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','tradeoffFactor','blocker','reconsider'],properties:{selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},decidingFactor:{type:'string',enum:[...FACTORS,'NONE']},tradeoffFactor:{type:'string',enum:[...FACTORS,'NONE']},blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
+// Wire sentinel avoids the provider's rejected mixed-type enum. Internal and
+// customer-facing NO_CALL remains null; raw provider content is preserved.
+function decode(input){return input?.selected==='NO_CALL'?{...input,selected:null}:input;}
 const fact=(p,k)=>p.facts.find(f=>f.field===k);
 function factors(packet){
  const ps=packet.players, out={};
@@ -22,7 +25,7 @@ function factors(packet){
 function validate(input,packet){
  const errors=[],ps=packet.players,pick=ps.find(p=>p.id===input?.selected),other=ps.find(p=>p.id!==input?.selected),fs=factors(packet);
  if(!input||Object.keys(input).some(k=>!schema.required.includes(k))||schema.required.some(k=>!Object.hasOwn(input,k)))return ['invalid_structured_answer'];
- for(const [key,rule]of Object.entries(schema.properties))if(!rule.enum.includes(input[key]))errors.push('invalid_'+key);
+ for(const [key,rule]of Object.entries(schema.properties))if(!(key==='selected'&&input[key]===null)&&!rule.enum.includes(input[key]))errors.push('invalid_'+key);
  if(input.selected!==null&&!pick)errors.push('invalid_selection');
  if(pick&&fact(pick,'availability')?.value?.unavailable)errors.push('unavailable_player_selected');
  if(pick){
@@ -77,4 +80,4 @@ function render(input,packet){
  explanation=[explanation,caveat,...roles,...availability,...disclosures].join('\n');
  return {...input,answerContract:CONTRACT,explanation,caveat,reconsider,factIds:[...new Set(ids)]};
 }
-module.exports={CONTRACT,SYSTEM,schema,factors,validate,render};
+module.exports={CONTRACT,SYSTEM,schema,decode,factors,validate,render};

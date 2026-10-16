@@ -11,3 +11,7 @@ The selected view removes role status tokens and renames matchup favorabilityRan
 Offline verification replays the last failed answer's factual shape, checks both picks, ties/reversed factors, absence of an opposing factor, availability, conditional reversal, legacy rejection, deterministic rendering, citations, parent immutability and exact SAGE isolation. All provider transports in these checks are mocked. CI is required before merge.
 
 This constrains explanations to supplied evidence; it does not establish that the selected player will outperform the alternative or that confidence is calibrated. No live calls, refreshes, allowances or budget resets are part of implementation. Live qualification and provider/server/outside timing remain separately authorized and unmeasured for this new contract. No speed improvement is claimed.
+
+## Provider schema correction
+
+The first qualification request was rejected with HTTP 400 before generation because the provider rejected a mixed string/null selection enum. The wire schema now uses only string values A, B and NO_CALL. Decoding maps NO_CALL to the existing internal null; raw provider input remains unchanged in saved history. No player choice, factor direction, blocker, renderer, allowance or customer response rule changes. Tests verify every wire enum value matches its declared type and exercise NO_CALL through the mocked actual request/response path. Provider acceptance still requires the separately authorized live retry.
