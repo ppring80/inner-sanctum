@@ -4,7 +4,7 @@ const labels=['Strong Negative','Negative','Neutral','Positive','Strong Positive
 const phrases=['very difficult','difficult','neutral','favorable','very favorable'];
 function matchupRank(value){
  if(typeof value==='string'){const i=labels.indexOf(value);return i<0?null:i+1;}
- return Number.isInteger(value?.favorabilityRank)&&value.favorabilityRank>=1&&value.favorabilityRank<=5?value.favorabilityRank:null;
+ return Number.isInteger((value?.favorabilityOrder??value?.favorabilityRank))&&(value.favorabilityOrder??value.favorabilityRank)>=1&&(value.favorabilityOrder??value.favorabilityRank)<=5?(value.favorabilityOrder??value.favorabilityRank):null;
 }
 function expansionConfirmed(value){return value?.workloadChangeConfirmed===true||value?.validated===true;}
 function plainPresentation(focused){
@@ -12,12 +12,12 @@ function plainPresentation(focused){
  for(const player of result.packet.players)for(const fact of player.facts){
   const value=fact.value;
   if(fact.field==='matchup'){
-   const rank=matchupRank(value);fact.value=rank===null?{plain:'matchup not supplied',favorabilityRank:null}:{plain:phrases[rank-1],favorabilityRank:rank};
+   const rank=matchupRank(value);fact.value=rank===null?{plain:'matchup not supplied',favorabilityOrder:null}:{plain:phrases[rank-1],favorabilityOrder:rank};
   }
   if(fact.field==='establishedRole'&&value&&typeof value==='object'){
-   const {level,description,reason,...rest}=value;
+   const {level,description,reason,status,...rest}=value;
    const phrase={'high-volume':'large','moderate-volume':'steady','role-player':'smaller'}[level];
-   fact.value={...rest,plain:phrase?`${phrase} recent role for his position`:'recent role size not established for his position'};
+   fact.value={...rest,crossPositionComparable:result.packet.players.every(p=>p.position===player.position),plain:phrase?`${phrase} recent role for his position`:'recent role size not established for his position'};
   }
   if(fact.field==='roleExpansion'&&value&&typeof value==='object'){
    const confirmed=expansionConfirmed(value);
@@ -25,6 +25,8 @@ function plainPresentation(focused){
   }
  }
  result.packet.presentation='plain-v1';
+ result.packet.answerContract=require('./_rookie-structured-pair').CONTRACT;
+ result.packet.decisionFactors=require('./_rookie-structured-pair').factors(result.packet);
  result.packet.comparisons=require('./_super-sage-pair-comparisons').pairComparisons(result.packet);
  result.evidenceHash=require('./_super-sage-shadow-llm').hash(JSON.stringify(result.packet));
  return result;

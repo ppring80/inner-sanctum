@@ -20,11 +20,12 @@ async function secondOpinion({record,slotIndex,reviewPair,capturedAt,loadUsageSn
   // confidence are never supplied as a preferred model response.
   const result=await reviewPair(copy(focused.packet));
   if(result?.status!=='REVIEW_READY')return unavailable();
-  const answer=Array.isArray(result.answer?.sentenceFactIds)?result.answer:formatGroundedAnswer(result.answer);
+  const structured=focused.packet.answerContract==='structured-pair-v1';
+  const answer=structured?result.answer:Array.isArray(result.answer?.sentenceFactIds)?result.answer:formatGroundedAnswer(result.answer);
   const assessment=assessPairAnswer(answer,focused.packet);
   if(assessment.hard.length)return unavailable();
   const lean=focused.packet.players.find(p=>p.id===answer.selected)?.name||null;
-  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,softFlags:assessment.soft,answer:copy(answer)}};
+  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,softFlags:assessment.soft,answer:copy(structured?require('./_rookie-structured-pair').render(answer,focused.packet):answer)}};
  }catch{return unavailable();}
 }
 module.exports={secondOpinion};
