@@ -213,6 +213,7 @@ function boundRoleSchema(packet) {
   return schema;
 }
 function validate(answer, packet) {
+  if(packet.answerContract==='structured-pair-v1')return require('./_rookie-structured-pair').validate(answer,packet);
   const errors = [], p = packet.players.find(p => p.id === answer?.selected), ids = new Set(packet.players.flatMap(p => p.facts.map(f => f.factId)));
   if (!answer || !(answer.selected === null || p)) errors.push("invalid_selection");
   if (p?.facts.find(f => f.field === "availability")?.value?.unavailable === true) errors.push("unavailable_player_selected");
@@ -512,10 +513,12 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   const baseSystem = focused.packet.requireSentenceEvidence
     ? (focused.packet.requireBackfieldExplanation ? ROLE_SYSTEM : GROUNDED_SYSTEM)
     : SYSTEM;
-  const system=focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
+  const structured=focused.packet.answerContract==='structured-pair-v1';
+  const system=structured?require('./_rookie-structured-pair').SYSTEM:focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
   const grounded = focused.packet.requireSentenceEvidence === true;
   let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
-  if(selection&&grounded){
+  if(structured){schema=require('./_rookie-structured-pair').schema;if(!focused.packet.players.some(p=>p.facts.length))return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
+  if(selection&&grounded&&!structured){
     try{schema=bindCitationSchema(schema,focused.packet);
       if(focused.packet.presentation==='plain-v1')schema.properties.reconsider.description=require('./_rookie-plain-presentation').RECONSIDER_DESCRIPTION;
     }
@@ -631,7 +634,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       const calls = (body.content || []).filter(c => c.type === "tool_use" && c.name === "submit_decision");
       const rawText = calls.length === 1 ? JSON.stringify(calls[0].input) : (body.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
       let answer = null, validationErrors;
-      try { const input = JSON.parse(rawText); answer = focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = assessPairAnswer(answer, focused.packet).hard; } catch { validationErrors = ["invalid_json"]; }
+      try { const input = JSON.parse(rawText); answer = structured ? input : focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = assessPairAnswer(answer, focused.packet).hard; } catch { validationErrors = ["invalid_json"]; }
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > deadlineMs) validationErrors.push("model_deadline_exceeded");

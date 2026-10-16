@@ -34,7 +34,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
  for(const confirmed of [true,false])assert.equal(expansionConfirmed({validated:confirmed}),expansionConfirmed({workloadChangeConfirmed:confirmed}));
  assert.ok(validatePairVoice({explanation:'A strong positive matchup.'}).includes('report_like_customer_language'));
  assert.deepEqual(validatePairVoice({explanation:'A very favorable matchup.'}),[]);
- const packet=sample,pick=packet.players[1],alt=packet.players[0];
+ const packet=clone(sample);delete packet.answerContract;const pick=packet.players[1],alt=packet.players[0];
  const condition=text=>validateReconsider({selected:pick.id,reconsider:text},packet);
  assert.deepEqual(condition(`If ${pick.name} is ruled out or ${alt.name} earns more targets.`),[]);
  for(const text of ['New information before kickoff.',`If ${pick.name} earns more targets.`, `If ${alt.name} is ruled out.`, `If ${pick.name} develops a concussion.`, `If ${pick.name} is not ruled out.`, `If ${alt.name} doesn't earn more targets.`, `If ${pick.name}'s opponent allows fewer points to receivers.`, `If ${pick.name} is ruled out and ${pick.name} earns more targets.`])assert.deepEqual(condition(text),['reconsider_not_reversal'],text);

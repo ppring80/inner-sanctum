@@ -70,7 +70,7 @@ console.log('Comparison integrity: actual reversal, cross-position rank and unsu
  const result=await runFastReview(args);
  assert.equal(calls,1);
  assert.equal(result.status,'INVALID');
- assert.ok(result.validationErrors.includes('projection_comparison_reversed'));
+ assert.ok(result.validationErrors.includes('invalid_structured_answer'));
  assert.equal(result.rawText,JSON.stringify(raw));
  assert.equal(result.answer.selected,'B');
  assert.equal(result.outgoing.evidenceHash,hash(outgoing.messages[0].content));
