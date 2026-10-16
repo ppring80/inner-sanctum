@@ -9,7 +9,7 @@ const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvid
 const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true};}};
 (async()=>{
  let request;
- const answer={selected:'B',confidence:'LOW',caveat:'This is a close decision.',reconsider:'A new injury report.',explanationSentences:[{text:'I lean Bravo on the supplied evidence.',factIds:['B:standing']},{text:'Alpha remains the other option.',factIds:['A:standing']},{text:'I would revisit the choice before kickoff.',factIds:['A:availability','B:availability']}]};
+ const answer={selected:'B',confidence:'LOW',caveat:'This is a close decision.',reconsider:'If Alpha earns more targets.',explanationSentences:[{text:'I lean Bravo on the supplied evidence.',factIds:['B:standing']},{text:'Alpha remains the other option.',factIds:['A:standing']},{text:'I would revisit the choice before kickoff.',factIds:['A:availability','B:availability']}]};
  const result=await runFastReview({store,decisionId,ownerHash,apiKey:'synthetic',selection:{players:['Alpha','Bravo'],slotId:'S1'},fetchImpl:async(url,args)=>{request=JSON.parse(args.body);return new Response(JSON.stringify({id:'synthetic',model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]}),{status:200});}});
  const empty=JSON.parse(JSON.stringify(frozenEvidence.packet));empty.players.forEach(p=>p.facts=[]);
  const emptyStore={get:async()=>({ownerHash,frozenEvidence:{packet:empty,evidenceHash:hash(JSON.stringify(empty))}}),setJSON:async()=>{throw Error('must not reserve without evidence');}};

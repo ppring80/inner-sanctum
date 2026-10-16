@@ -1,4 +1,5 @@
 "use strict";
+const {expansionConfirmed}=require('./_rookie-plain-presentation');
 // Coverage only, not proof of factual correctness or a preferred recommendation.
 function validateBackfieldCoverage(answer, packet) {
   const errors = [], text = String(answer?.explanation || "");
@@ -27,7 +28,7 @@ function validateBackfieldCoverage(answer, packet) {
     for (const name of roles.notListedInChart || []) if (!text.split(/[.!?\n]/).some(s => mentionsIn(s, name) && /(?:absent|missing|not (?:even )?(?:listed|on)|outside|(?:don['’]t|do not|doesn['’]t|does not) (?:appear|feature)|none of (?:whom|them) (?:appear|feature)).*chart|chart.*(?:absent|missing|not (?:list|include))/i.test(s))) errors.push("missing_uncharted_alternative");
     const expansion = player.facts.find(f => f.field === "roleExpansion");
     if (expansion && !cited.has(expansion.factId)) errors.push("missing_role_expansion_citation");
-    if (expansion?.value?.validated !== true && !/\b(?:work|workload|snaps|touches|carries)\b[^.!?\n]*(?:unknown|unclear|unverified|not (?:known|confirmed|verified)|don't know|do not know|no verified sign)|(?:unknown|unclear|unverified|don't know|do not know|no verified sign)[^.!?\n]*\b(?:work|workload|snaps|touches|carries)\b/i.test(text)) errors.push("missing_workload_uncertainty");
+    if (!expansionConfirmed(expansion?.value) && !/\b(?:work|workload|snaps|touches|carries)\b[^.!?\n]*(?:unknown|unclear|unverified|not (?:known|confirmed|verified)|don't know|do not know|no verified sign)|(?:unknown|unclear|unverified|don't know|do not know|no verified sign)[^.!?\n]*\b(?:work|workload|snaps|touches|carries)\b/i.test(text)) errors.push("missing_workload_uncertainty");
     const availability = player.facts.find(f => f.field === "availability");
     if (/QUESTIONABLE|UNKNOWN|Q/i.test(availability?.value?.status || "") && !cited.has(availability.factId)) errors.push("missing_candidate_availability_citation");
   }

@@ -1,10 +1,41 @@
 'use strict';
 const crypto = require('crypto');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
+// Whitelist stored result fields: no evidence packet, request body, owner or keys.
+function selectedReviewView(review){
+ const fields=['type','status','version','decisionId','parentEvidenceHash','evidenceHash','capturedAt','model','candidates','provider','requestId','usage','stopReason','answer','validationErrors','softFlags','providerMs','decisionReadyMs'];
+ const result=Object.fromEntries(fields.filter(k=>Object.hasOwn(review,k)).map(k=>[k,review[k]]));
+ const pick=(object,keys)=>Object.fromEntries(keys.filter(k=>object&&Object.hasOwn(object,k)).map(k=>[k,object[k]]));
+ result.providerPhases=review.providerPhases?pick(review.providerPhases,['transport','deadlineMs','phase','headersMs','bodyMs','messageStartMs','firstOutputMs','completeMs','httpStatus','requestId','usage']):null;
+ result.outgoing=review.outgoing?pick(review.outgoing,['model','maxTokens','strict','systemBytes','schemaBytes','evidenceBytes','requestBytes','systemHash','evidenceHash','schemaHash']):null;
+ result.requestTiming=review.requestTiming?pick(review.requestTiming,['cacheReadMs','evidencePreparationMs','reservationMs','budgetMs','persistMs','providerMs','totalMs','scope']):null;
+ return result;
+}
+async function readSelectedReviews({store,decisionId,ownerHash}){
+ const evidence=await store.get(`evidence/${decisionId}/${ownerHash}`,{type:'json'});
+ if(evidence?.ownerHash!==ownerHash||!evidence?.frozenEvidence)return {available:false,readOnly:true,error:'owned_frozen_evidence_unavailable'};
+ if(hash(JSON.stringify(evidence.frozenEvidence.packet))!==evidence.frozenEvidence.evidenceHash)return {available:false,readOnly:true,error:'evidence_integrity_failure'};
+ if(typeof store.list!=='function')return {available:false,readOnly:true,error:'saved_review_listing_unavailable'};
+ const prefix=`llm-fast/rookie-fast-pair-v6-haiku/${decisionId}/${ownerHash}/selected/`,reviews=[];
+ for await(const page of store.list({prefix,paginate:true})){
+  for(const blob of page.blobs||[]){
+   if(typeof blob.key!=='string'||!blob.key.startsWith(prefix)||!/^([a-f0-9]{64})(?:\/request\/[a-f0-9]{64})?$/.test(blob.key.slice(prefix.length)))continue;
+   const review=await store.get(blob.key,{type:'json'});
+   if(review?.decisionId!==decisionId||review?.parentEvidenceHash!==evidence.frozenEvidence.evidenceHash)continue;
+   reviews.push(selectedReviewView(review));
+  }
+ }
+ reviews.sort((a,b)=>String(b.capturedAt||'').localeCompare(String(a.capturedAt||'')));
+ return {available:reviews.length>0,readOnly:true,decisionId,kind:'selected-pairs',reviews,timingNote:'Stored provider and review timings only. Current reader timing is separate; original full handler and outside-function latency are not inferred.'};
+}
 // This module has no provider function, fetch, queue, budget or write path.
 async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-role-change' }) {
   if (!/^[a-f0-9]{64}$/.test(decisionId || '') || !/^[a-f0-9]{64}$/.test(ownerHash || '')) {
     return { available: false, readOnly: true, error: 'invalid_request' };
+  }
+  if(kind==='selected-pairs'){
+    try{return await readSelectedReviews({store,decisionId,ownerHash});}
+    catch{return {available:false,readOnly:true,error:'selected_review_read_failed'};}
   }
   const keys = {
     'post232-role-change': `llm-drill/rookie-fast-pair-v6-haiku/fresh-role-post232/${decisionId}/${ownerHash}`,

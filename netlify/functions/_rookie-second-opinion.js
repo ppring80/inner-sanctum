@@ -2,7 +2,7 @@
 // Isolated composition prototype. No worker/customer import, provider, budget,
 // store or automatic promotion. reviewPair is supplied by the caller.
 const {buildEvidence}=require('./_super-sage-shadow-llm');
-const {prepareSelectedPair,formatGroundedAnswer,validate}=require('./_super-sage-shadow-fast-review');
+const {prepareSelectedPair,formatGroundedAnswer,assessPairAnswer}=require('./_super-sage-shadow-fast-review');
 const {toCustomerAnswer}=require('./_super-sage-lineup-presenters');
 const copy=v=>JSON.parse(JSON.stringify(v));
 const unresolved=new Set(['PROVISIONAL_UNRESOLVED','CLOSE_CALL_WITHIN_NOISE']);
@@ -21,9 +21,10 @@ async function secondOpinion({record,slotIndex,reviewPair,capturedAt,loadUsageSn
   const result=await reviewPair(copy(focused.packet));
   if(result?.status!=='REVIEW_READY')return unavailable();
   const answer=Array.isArray(result.answer?.sentenceFactIds)?result.answer:formatGroundedAnswer(result.answer);
-  if(validate(answer,focused.packet).length)return unavailable();
+  const assessment=assessPairAnswer(answer,focused.packet);
+  if(assessment.hard.length)return unavailable();
   const lean=focused.packet.players.find(p=>p.id===answer.selected)?.name||null;
-  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,answer:copy(answer)}};
+  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,softFlags:assessment.soft,answer:copy(answer)}};
  }catch{return unavailable();}
 }
 module.exports={secondOpinion};

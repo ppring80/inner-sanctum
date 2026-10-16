@@ -15,7 +15,7 @@ const copy=v=>JSON.parse(JSON.stringify(v));
   calls++;assert.equal(packet.players.length,2);assert.equal(packet.players[1].name,record.slots[unresolved].comparator.name);
   assert.equal(packet.slots,undefined);assert.equal(packet.decisionState,undefined);
   const p=packet.players[1],q=packet.players[0];
-  return {status:'REVIEW_READY',answer:{selected:'B',confidence:'LOW',caveat:'The supplied evidence leaves this close.',reconsider:'New injury or role information before kickoff.',explanationSentences:[
+  return {status:'REVIEW_READY',answer:{selected:'B',confidence:'LOW',caveat:'The supplied evidence leaves this close.',reconsider:`If ${q.name} earns more targets before kickoff.`,explanationSentences:[
    {text:`I lean ${p.name}, though this remains a close decision.`,factIds:[p.facts[0].factId]},
    {text:`${q.name} remains the other option; I would revisit this before kickoff.`,factIds:[q.facts[0].factId]}
   ]}};

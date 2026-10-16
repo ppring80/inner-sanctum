@@ -6483,8 +6483,8 @@ function buildServer(
     "get_saved_rookie_review",
     {
       title: "Read Saved Rookie Review",
-      description: "Private read-only retrieval of an already saved owned Rookie model review. Never invokes a provider, queues work, reserves a budget, refreshes data or writes history. A missing review returns unavailable. Includes current response-path timing separately from the exact saved review.",
-      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), kind: z.enum(["post232-role-change", "focused-role-change", "full"]).optional() }),
+      description: "Private read-only retrieval of an already saved owned Rookie model review. Never invokes a provider, queues work, reserves a budget, refreshes data or writes history. A missing review returns unavailable. kind selected-pairs lists saved owned selected-pair reviews and their recorded timing, hashes and usage without evidence packets or storage keys. Includes current response-path timing separately from the exact saved review.",
+      inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), kind: z.enum(["post232-role-change", "focused-role-change", "full", "selected-pairs"]).optional() }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
     async ({ decisionId, kind }) => {
