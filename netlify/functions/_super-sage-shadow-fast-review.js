@@ -383,6 +383,17 @@ async function reserveSelectedBudget(store, now, record, context) {
   }
   return {modified: false};
 }
+async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnapshot=async key=>require('@netlify/blobs').getStore({name:'opportunity-intel'}).get(key,{type:'json'})}={}) {
+  const slots=frozen.packet.slots.filter(s=>s.slotId===selection.slotId);
+  if(slots.length!==1)throw Error('focused_pair_slot_unavailable');
+  let focused=focusEvidence(frozen,selection.players,slots[0]);
+  focused=await require('./_super-sage-usage-replay').supplementUsageReplay(focused,{parentEvidenceHash:frozen.evidenceHash,capturedAt,loadSnapshot:loadUsageSnapshot});
+  focused.packet.requireSentenceEvidence=true;
+  if(!statusSubjects(focused.packet).length){presentComponentUsage(focused);focused=presentGeneralFacts(focused);}
+  if(statusSubjects(focused.packet).length===1){focused.packet.requireBackfieldExplanation=true;focused.packet.requireCandidateStatusSentence=true;}
+  focused.evidenceHash=hash(JSON.stringify(focused.packet));
+  return focused;
+}
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
@@ -470,19 +481,9 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   }
   let focused;
   try {
-    const slots = selection ? original.frozenEvidence.packet.slots.filter(s => s.slotId === selection.slotId) : [];
-    if (selection && slots.length !== 1) throw new Error("focused_pair_slot_unavailable");
-    focused = drill ? drill.build(original.frozenEvidence) : selection ? focusEvidence(original.frozenEvidence, selection.players, slots[0]) : focusEvidence(original.frozenEvidence, caseId === "role-change" ? ["Blake Corum", "Will Shipley"] : undefined);
-    if (selection) {
-      focused = await require("./_super-sage-usage-replay").supplementUsageReplay(focused,{parentEvidenceHash:original.frozenEvidence.evidenceHash,capturedAt:original.capturedAt,loadSnapshot:loadUsageSnapshot});
-      focused.packet.requireSentenceEvidence = true;
-      if (!statusSubjects(focused.packet).length) {
-        presentComponentUsage(focused);
-        focused = presentGeneralFacts(focused);
-      }
-      if (statusSubjects(focused.packet).length === 1) { focused.packet.requireBackfieldExplanation = true; focused.packet.requireCandidateStatusSentence = true; }
-      focused.evidenceHash = hash(JSON.stringify(focused.packet));
-    }
+    focused = drill ? drill.build(original.frozenEvidence) : selection
+      ? await prepareSelectedPair(original.frozenEvidence,selection,{capturedAt:original.capturedAt,loadUsageSnapshot})
+      : focusEvidence(original.frozenEvidence,caseId==='role-change'?['Blake Corum','Will Shipley']:undefined);
     if (!drill && caseId === "role-change") {
       focused.packet.requireSentenceEvidence = true;
       focused.packet.requireBackfieldExplanation = true;
@@ -614,4 +615,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { prepareSelectedPair, presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
