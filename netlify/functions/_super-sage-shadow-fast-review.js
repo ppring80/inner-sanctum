@@ -634,7 +634,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       const calls = (body.content || []).filter(c => c.type === "tool_use" && c.name === "submit_decision");
       const rawText = calls.length === 1 ? JSON.stringify(calls[0].input) : (body.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
       let answer = null, validationErrors;
-      try { const input = JSON.parse(rawText); answer = structured ? input : focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = assessPairAnswer(answer, focused.packet).hard; } catch { validationErrors = ["invalid_json"]; }
+      try { const input = JSON.parse(rawText); answer = structured ? require('./_rookie-structured-pair').decode(input) : focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = assessPairAnswer(answer, focused.packet).hard; } catch { validationErrors = ["invalid_json"]; }
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > deadlineMs) validationErrors.push("model_deadline_exceeded");

@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const {plainPresentation}=require('../netlify/functions/_rookie-plain-presentation');
-const {validate,render,factors,schema}=require('../netlify/functions/_rookie-structured-pair');
+const {validate,render,factors,schema,decode}=require('../netlify/functions/_rookie-structured-pair');
 const clone=x=>JSON.parse(JSON.stringify(x));
 // Replay the factual shape of msg_011Cg5CiwZSkJNqmwHG9LSHh without private input.
 const raw={players:[['A','Tyler Higbee','TE',5.44,'Strong Positive','high-volume'],['B','Keenan Allen','WR',8.57,'Neutral','moderate-volume']].map(([id,name,position,points,matchup,level])=>({id,name,position,facts:[['projection',{admissible:true,points}],['observedOpportunity',{avgLast3:7.67}],['matchup',matchup],['establishedRole',{status:'ESTABLISHED',level}],['availability',{effectiveStatus:{status:'ACTIVE'},unavailable:false,questionable:false}]].map(([field,value])=>({field,value,factId:`${id}:${field}`}))})),requiredDisclosures:[]};
@@ -19,6 +19,9 @@ const unavailable=clone(packet);unavailable.players[1].facts.find(f=>f.field==='
 const nc={selected:null,confidence:'LOW',decidingFactor:'NONE',tradeoffFactor:'NONE',blocker:'conflicting_evidence',reconsider:'evidence_resolves_blocker'};
 assert.deepEqual(validate(nc,packet),[]);assert.ok(validate({...nc,blocker:'NONE'},packet).length);assert.match(render(nc,packet).explanation,/has no call/);
 assert.ok(validate({selected:'B',confidence:'MEDIUM',explanationSentences:[],reconsider:'If Allen is inactive.'},packet).length,'legacy cache cannot compose');
+assert.equal(schema.properties.selected.type,'string');assert.deepEqual(schema.properties.selected.enum,['A','B','NO_CALL']);
+assert.deepEqual(validate(decode({...nc,selected:'NO_CALL'}),packet),[]);assert.equal(render(decode({...nc,selected:'NO_CALL'}),packet).selected,null);assert.equal(decode(good),good);
+for(const [key,rule] of Object.entries(schema.properties))assert.ok(rule.enum.every(v=>typeof v===rule.type),key+' enum values match declared wire type');
 assert.equal(schema.additionalProperties,false);assert.equal(schema.properties.explanation,undefined);assert.equal(schema.properties.factIds,undefined);
 const tied=clone(packet);tied.players[0].facts.find(f=>f.field==='projection').value.points=8.57;tied.players[0].facts.find(f=>f.field==='matchup').value={plain:'neutral',favorabilityOrder:3};
 assert.ok(validate({...good,tradeoffFactor:'NONE'},tied).length);assert.deepEqual(validate({...nc,blocker:'no_supported_factor'},tied),[]);
