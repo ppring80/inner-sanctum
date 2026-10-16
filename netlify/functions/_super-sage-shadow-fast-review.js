@@ -509,7 +509,10 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
   let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
-  if(selection&&grounded)schema=bindCitationSchema(schema,focused.packet);
+  if(selection&&grounded){
+    try{schema=bindCitationSchema(schema,focused.packet);}
+    catch{return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
+  }
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
   const maxTokens = focused.packet.requireBackfieldExplanation ? 750 : grounded ? 550 : 400;
   // Private grounded quality benchmark only; assess its full request time
