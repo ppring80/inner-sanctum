@@ -15,7 +15,7 @@ Date.now=()=>Date.parse('2026-10-08T18:00:00Z');
  {title:'Test Player ruled out with ankle injury',link:'https://www.nfl.com/news/test-player-injury',publishedAt:'2026-09-29T10:00:00Z'}],players,now);
  assert.equal(stories.length,1);assert.equal(stories[0].player,'Test Player');assert(stories[0].sageImpact.includes('Test Player'));assert(!stories[0].sageImpact.includes('This headline alone'));
  const editorial=editorialStories(now);assert(editorial.some(s=>s.sourceUrl.startsWith('https://x.com/AdamSchefter/status/')));assert(editorial.some(s=>s.sourceUrl.startsWith('https://www.nfl.com/')));assert(new Set(editorial.map(s=>s.sageImpact)).size===editorial.length);assert(editorial.every(s=>s.publishedAt&&s.summary&&s.sageImpact));
- assert.equal(mergeStories(editorial,[{...editorial[0],sageImpact:'Generic'}])[0].sageImpact,editorial[0].sageImpact,'automatic reports cannot replace editorial interpretation');
+ assert.equal(mergeStories(editorial,[{...editorial[0],sageImpact:'Generic'}]).find(s=>s.id===editorial[0].id).sageImpact,editorial[0].sageImpact,'automatic reports cannot replace editorial interpretation');
  assert.equal(parseFeed('<rss><item><title><![CDATA[Test &amp; report]]></title><link>https://www.espn.com/nfl/story/1</link><pubDate>Tue, 29 Sep 2026 10:00:00 GMT</pubDate></item></rss>','ESPN')[0].title,'Test & report');
  assert.equal(articleMetadata('<script type="application/ld+json">{"@type":"NewsArticle","headline":"Test Player ruled out","datePublished":"2026-09-29T10:00:00Z"}</script>','https://www.nfl.com/news/test').publishedAt,'2026-09-29T10:00:00Z');
  cache={mode:'editorial-with-sources',updatedAt:new Date(Date.now()).toISOString(),stories};assert.equal((await newswire.handler({httpMethod:'GET'})).statusCode,200);

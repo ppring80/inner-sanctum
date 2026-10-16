@@ -1,0 +1,17 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const refresh=fs.readFileSync('netlify/functions/refresh-sage-newswire.js','utf8');
+const page=fs.readFileSync('weekly.html','utf8');
+const merge=refresh.slice(refresh.indexOf('function mergeStories('),refresh.indexOf('\nexports.handler'));
+const ctx={isCurrentStory:s=>!s.expired};vm.createContext(ctx);vm.runInContext(merge,ctx);
+const old={id:'old',player:'Caleb Williams',publishedAt:'2026-10-14T16:00:00Z',sourceUrl:'https://nfl.com/old',headline:'Wednesday practice',featured:true,editorial:true,sageImpact:'Preserve me'};
+const fresh={id:'new',player:'Caleb Williams',publishedAt:'2026-10-15T23:00:00Z',sourceUrl:'https://espn.com/new',headline:'Thursday practice'};
+const other={id:'other',player:'Jalen Hurts',publishedAt:'2026-10-16T00:00:00Z',sourceUrl:'https://espn.com/other',headline:'Ruled out'};
+const combined=ctx.mergeStories([old],[fresh,other,{...old}, {...other,id:'expired',expired:true}]);
+assert.equal(combined.length,3);assert.equal(combined[0].id,'other');assert.equal(combined[2].sageImpact,'Preserve me');
+const display=page.slice(page.indexOf('var seenNewswirePlayers ='),page.indexOf("if (newswireState.view === 'roster')",page.indexOf('var seenNewswirePlayers =')));
+ctx.newswireState={stories:combined};vm.runInContext(display,ctx);
+assert.equal(ctx.stories.length,2);assert.equal(ctx.stories[1].id,'new');
+assert(page.includes('var featured = stories.slice(0, 3);'));
+for(const match of page.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+console.log('PASS: newest reports lead, older featured report displaced, editorial evidence retained, duplicates/expired excluded, page scripts parse.');
