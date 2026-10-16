@@ -101,6 +101,20 @@ function formatGroundedAnswer(input) {
   // and caveat. Original input remains in rawText/rawContent without alteration.
   return { ...input, explanationSentences: sentences, explanation: sentences.map(s => s.text).join("\n"), sentenceFactIds: sentences.map(s => s.factIds), factIds: [...new Set(sentences.flatMap(s => s.factIds))] };
 }
+// A strict output schema must expose the same citation vocabulary as validation.
+// Keep the frozen historical drill contracts unchanged; selected production
+// pair requests get a fresh evidence-bound schema and request fingerprint.
+function bindCitationSchema(schema, packet) {
+  const ids=[...new Set(packet.players.flatMap(p=>p.facts.map(f=>f.factId)))];
+  if(!ids.length)throw Error('citation_evidence_missing');
+  const bound=JSON.parse(JSON.stringify(schema));
+  function visit(node){
+    if(!node||typeof node!=='object')return;
+    if(node.properties?.factIds?.items)node.properties.factIds.items={type:'string',enum:ids};
+    for(const value of Object.values(node))if(value&&typeof value==='object')visit(value);
+  }
+  visit(bound);return bound;
+}
 function strictSchema(value) {
   if (Array.isArray(value)) return value.map(strictSchema);
   if (!value || typeof value !== "object") return value;
@@ -494,7 +508,11 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     ? (focused.packet.requireBackfieldExplanation ? ROLE_SYSTEM : GROUNDED_SYSTEM)
     : SYSTEM;
   const grounded = focused.packet.requireSentenceEvidence === true;
-  const schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
+  let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
+  if(selection&&grounded){
+    try{schema=bindCitationSchema(schema,focused.packet);}
+    catch{return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
+  }
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
   const maxTokens = focused.packet.requireBackfieldExplanation ? 750 : grounded ? 550 : 400;
   // Private grounded quality benchmark only; assess its full request time
@@ -615,4 +633,4 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
   timing.persistMs = Math.round(clock() - stage);
   return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
 }
-module.exports = { prepareSelectedPair, presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { bindCitationSchema, prepareSelectedPair, presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };

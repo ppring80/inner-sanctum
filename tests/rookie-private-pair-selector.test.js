@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const {hash}=require('../netlify/functions/_super-sage-shadow-llm');
 const {focusEvidence,runFastReview}=require('../netlify/functions/_super-sage-shadow-fast-review');
-const packet={request:{scoring:'half'},players:[{playerId:'P1',name:'Back A',position:'RB',facts:[]},{playerId:'P2',name:'Receiver B',position:'WR',facts:[]}],slots:[{slotId:'S1',slotLabel:'FLEX',eligiblePositions:['RB','WR','TE'],candidateIds:['P1','P2']},{slotId:'S2',slotLabel:'RB',eligiblePositions:['RB'],candidateIds:['P1']}]};
+const packet={request:{scoring:'half'},players:[{playerId:'P1',name:'Back A',position:'RB',facts:[{factId:'P1:availability',field:'availability',value:{status:'ACTIVE'}}]},{playerId:'P2',name:'Receiver B',position:'WR',facts:[{factId:'P2:availability',field:'availability',value:{status:'ACTIVE'}}]}],slots:[{slotId:'S1',slotLabel:'FLEX',eligiblePositions:['RB','WR','TE'],candidateIds:['P1','P2']},{slotId:'S2',slotLabel:'RB',eligiblePositions:['RB'],candidateIds:['P1']}]};
 const frozen={packet,evidenceHash:hash(JSON.stringify(packet))},before=JSON.stringify(frozen);
 assert.throws(()=>focusEvidence(frozen,['Back A','Receiver B']),/position_mismatch/);
 const pair=focusEvidence(frozen,['Back A','Receiver B'],packet.slots[0]);

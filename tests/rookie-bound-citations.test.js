@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {hash,buildEvidence}=require('../netlify/functions/_super-sage-shadow-llm');
+const {bindCitationSchema,strictSchema,boundRoleSchema,runFastReview}=require('../netlify/functions/_super-sage-shadow-fast-review');
+const decisionId=hash('citation-release-fixture'),ownerHash=hash('synthetic-owner');
+const p=name=>({name,position:'WR',standing:{tier:'FLEX',positionRank:name==='Alpha'?30:31},projection:{points:8,source:'Tank01',fresh:true},availability:{status:'ACTIVE',unavailable:false}});
+const frozenEvidence=buildEvidence({decisionId,request:{scoring:'half',week:6,season:2026},slots:[{slotLabel:'WR',eligiblePositions:['WR'],starter:p('Alpha'),comparator:p('Bravo')}]});
+const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence}]]);
+const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true};}};
+(async()=>{
+ let request;
+ const answer={selected:'B',confidence:'LOW',caveat:'This is a close decision.',reconsider:'A new injury report.',explanationSentences:[{text:'I lean Bravo on the supplied evidence.',factIds:['B:standing']},{text:'Alpha remains the other option.',factIds:['A:standing']},{text:'I would revisit the choice before kickoff.',factIds:['A:availability','B:availability']}]};
+ const result=await runFastReview({store,decisionId,ownerHash,apiKey:'synthetic',selection:{players:['Alpha','Bravo'],slotId:'S1'},fetchImpl:async(url,args)=>{request=JSON.parse(args.body);return new Response(JSON.stringify({id:'synthetic',model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]}),{status:200});}});
+ const empty=JSON.parse(JSON.stringify(frozenEvidence.packet));empty.players.forEach(p=>p.facts=[]);
+ const emptyStore={get:async()=>({ownerHash,frozenEvidence:{packet:empty,evidenceHash:hash(JSON.stringify(empty))}}),setJSON:async()=>{throw Error('must not reserve without evidence');}};
+ assert.equal((await runFastReview({store:emptyStore,decisionId,ownerHash,apiKey:'synthetic',selection:{players:['Alpha','Bravo'],slotId:'S1'},fetchImpl:async()=>{throw Error('must not send empty evidence');}})).error,'citation_evidence_missing');
+ assert.equal(result.status,'REVIEW_READY');assert.equal(request.tools[0].strict,true);
+ const packet=JSON.parse(request.messages[0].content),expected=[...new Set(packet.players.flatMap(p=>p.facts.map(f=>f.factId)))];
+ const allowed=request.tools[0].input_schema.properties.explanationSentences.items.properties.factIds.items.enum;
+ assert.deepEqual(allowed,expected);assert.equal(allowed.includes('comparisons'),false);assert.equal(allowed.includes('invented'),false);
+ const roleOriginal=strictSchema(boundRoleSchema(packet)),before=JSON.stringify(roleOriginal),roleBound=bindCitationSchema(roleOriginal,packet);
+ assert.deepEqual(roleBound.properties.statusSentence.properties.factIds.items.enum,expected);assert.equal(JSON.stringify(roleOriginal),before);
+ console.log('PASS: actual strict outgoing request restricts citations to the evidence IDs; comparisons/invented IDs excluded; valid response accepted; status citations bound without mutating historical schemas. No live call.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
