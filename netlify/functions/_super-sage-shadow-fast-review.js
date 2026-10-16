@@ -164,7 +164,7 @@ function requiredDisclosures(players) {
       out.push({ type: "noVerifiedOrder", playerId: player.id, team: context.value.team, detail: `${player.name}'s place in his team's backfield is not confirmed.`, factIds: [context.factId] });
     }
     const expansion = player.facts.find(f => f.field === "roleExpansion");
-    if (expansion && expansion.value?.validated !== true) out.push({ type: "workloadUnknown", playerId: player.id, factIds: [expansion.factId] });
+    if (expansion && !require('./_rookie-plain-presentation').expansionConfirmed(expansion.value)) out.push({ type: "workloadUnknown", playerId: player.id, factIds: [expansion.factId] });
   }
   return out;
 }
@@ -241,7 +241,12 @@ function validate(answer, packet) {
     if (typeof answer?.explanation === 'string' && answer.explanation.trim().split(/\s+/).length > 160) errors.push('role_explanation_too_long');
   }
   if (packet.requireBackfieldExplanation) errors.push(...require("./_super-sage-rookie-backfield-checks.js").validateBackfieldCoverage(answer, packet));
-  return [...new Set([...errors, ...validateClaims(answer, packet)])];
+  return [...new Set([...errors, ...validateClaims(answer, packet),...require('./_rookie-reconsider').validateReconsider(answer,packet)])];
+}
+function assessPairAnswer(answer,packet){
+ const styleOnly=new Set(['report_like_customer_language','role_explanation_too_long']);
+ const all=validate(answer,packet),soft=packet.presentation==='plain-v1'?all.filter(e=>styleOnly.has(e)):[];
+ return {hard:all.filter(e=>!soft.includes(e)),soft,all};
 }
 // ── Provider call with phase timing (diagnostics only; no prompt/schema change)
 // Buffered transport (default, unchanged request): Anthropic returns headers only
@@ -406,7 +411,7 @@ async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnap
   if(!statusSubjects(focused.packet).length){presentComponentUsage(focused);focused=presentGeneralFacts(focused);}
   if(statusSubjects(focused.packet).length===1){focused.packet.requireBackfieldExplanation=true;focused.packet.requireCandidateStatusSentence=true;}
   focused.evidenceHash=hash(JSON.stringify(focused.packet));
-  return focused;
+  return require('./_rookie-plain-presentation').plainPresentation(focused);
 }
 async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
@@ -504,13 +509,16 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       focused.packet.requireCandidateStatusSentence = true;
       focused.evidenceHash = hash(JSON.stringify(focused.packet));
     } } catch (e) { return { status: "UNAVAILABLE", error: e.message }; }
-  const system = focused.packet.requireSentenceEvidence
+  const baseSystem = focused.packet.requireSentenceEvidence
     ? (focused.packet.requireBackfieldExplanation ? ROLE_SYSTEM : GROUNDED_SYSTEM)
     : SYSTEM;
+  const system=focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
   const grounded = focused.packet.requireSentenceEvidence === true;
   let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
   if(selection&&grounded){
-    try{schema=bindCitationSchema(schema,focused.packet);}
+    try{schema=bindCitationSchema(schema,focused.packet);
+      if(focused.packet.presentation==='plain-v1')schema.properties.reconsider.description=require('./_rookie-plain-presentation').RECONSIDER_DESCRIPTION;
+    }
     catch{return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
   }
   const model = grounded ? "claude-sonnet-4-6" : MODEL;
@@ -548,7 +556,10 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     cached = await store.get(key,{type:"json"});
   }
   timing.evidencePreparationMs = Math.round(clock() - stage);
-  if (cached) return { ...withClaimAssessment(revalidateCached(cached, ["REVIEW_READY", "INVALID"].includes(cached.status) ? validate(cached.answer, focused.packet) : []), focused.packet), cached: true, requestTiming: { ...timing, totalMs: Math.round(clock() - start) } };
+  if(cached){
+    const assessment=['REVIEW_READY','INVALID'].includes(cached.status)?assessPairAnswer(cached.answer,focused.packet):{hard:[],soft:[]};
+    return {...withClaimAssessment(revalidateCached(cached,assessment.hard),focused.packet),...(focused.packet.presentation==='plain-v1'?{softFlags:assessment.soft}:{}),cached:true,requestTiming:{...timing,totalMs:Math.round(clock()-start),scope:'CURRENT_CACHE_READ'}};
+  }
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), ...(focused.packet.replay ? {replay:focused.packet.replay,customerEligible:false} : {}), rules: RULES };
   if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
@@ -620,17 +631,19 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
       const calls = (body.content || []).filter(c => c.type === "tool_use" && c.name === "submit_decision");
       const rawText = calls.length === 1 ? JSON.stringify(calls[0].input) : (body.content || []).filter(c => c.type === "text").map(c => c.text).join("\n");
       let answer = null, validationErrors;
-      try { const input = JSON.parse(rawText); answer = focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = validate(answer, focused.packet); } catch { validationErrors = ["invalid_json"]; }
+      try { const input = JSON.parse(rawText); answer = focused.packet.requireSentenceEvidence ? formatGroundedAnswer(input) : input; validationErrors = assessPairAnswer(answer, focused.packet).hard; } catch { validationErrors = ["invalid_json"]; }
       if (body.stop_reason !== "tool_use" || calls.length !== 1) validationErrors.push("incomplete_model_response");
       const providerMs = Math.round(clock() - providerStart);
       if (providerMs > deadlineMs) validationErrors.push("model_deadline_exceeded");
       result = { ...base, status: validationErrors.length ? "INVALID" : "REVIEW_READY", provider: "anthropic", responseEncoding: "TOOL_INPUT_JSON", model: body.model || model, requestId: body.id || providerPhases.requestId || null, providerPhases, outgoing, usage: body.usage, stopReason: body.stop_reason, rawContent: body.content, rawText, answer, validationErrors, providerMs, decisionReadyMs: Math.round(clock() - start), semanticReviewRequired: true };
     } catch (e) { providerPhases = e.providerPhases || providerPhases; result = { ...base, status: "UNAVAILABLE", providerPhases, outgoing, requestId: providerPhases?.requestId || null, error: e.name === "TimeoutError" || e.name === "AbortError" ? (diagnostic ? "ninety_second_diagnostic_timeout" : grounded ? "twenty_second_quality_timeout" : "ten_second_model_timeout") : /^provider_http_\d+$/.test(e.message) ? e.message : "model_request_failed", providerErrorType: e.providerErrorType || null, providerErrorMessage: e.providerErrorMessage || null, providerMs: Math.round(clock() - providerStart), decisionReadyMs: Math.round(clock() - start) }; }
   }
+  if(focused.packet.presentation==='plain-v1'&&result.answer)result.softFlags=assessPairAnswer(result.answer,focused.packet).soft;
+  if(selection)result.requestTiming={...timing,providerMs:result.providerMs||0,totalMs:Math.round(clock()-start),persistMs:null,scope:'THROUGH_VALIDATION_BEFORE_PERSIST'};
   result = withClaimAssessment(result, focused.packet);
   stage = clock();
   await store.setJSON(key, result);
   timing.persistMs = Math.round(clock() - stage);
-  return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start) } };
+  return { ...result, requestTiming: { ...timing, providerMs: result.providerMs || 0, totalMs: Math.round(clock() - start),...(selection?{scope:'THROUGH_REVIEW_PERSIST'}:{}) } };
 }
-module.exports = { bindCitationSchema, prepareSelectedPair, presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };
+module.exports = { GROUNDED_SCHEMA, assessPairAnswer, bindCitationSchema, prepareSelectedPair, presentGeneralFacts, GROUNDED_SYSTEM, presentComponentUsage, SELECTED_PAIR_DAILY_LIMIT, selectedBudgetKeys, selectedBudgetFull, reserveSelectedBudget, VERSION, POST232, POST236, POST238, POST238_WARM, POST241, STREAM_DIAGNOSTIC, POST246, POST248, FINAL_VOICE, SYSTEM, SCHEMA, ROLE_SYSTEM, ROLE_SCHEMA, focusEvidence, validate, runFastReview, formatGroundedAnswer, strictSchema, statusSubjects, boundRoleSchema, callProvider, requestFingerprint, presentBackfieldSource, requiredDisclosures };

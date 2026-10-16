@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {hash}=require('../netlify/functions/_super-sage-shadow-llm');
+const {readSavedReview}=require('../netlify/functions/_rookie-saved-review');
+const decisionId='a'.repeat(64),ownerHash=hash('reader-owner'),packet={privateMarker:'NEVER RETURN THIS EVIDENCE'};
+const frozenEvidence={packet,evidenceHash:hash(JSON.stringify(packet))};
+const prefix=`llm-fast/rookie-fast-pair-v6-haiku/${decisionId}/${ownerHash}/selected/`;
+let writes=0,lists=0,gets=[];
+const review={decisionId,parentEvidenceHash:frozenEvidence.evidenceHash,status:'REVIEW_READY',capturedAt:'2026-10-16T03:00:00Z',providerPhases:{completeMs:123,privateField:'NEVER RETURN THIS EVIDENCE'},outgoing:{schemaHash:'safe',requestBody:packet},usage:{input_tokens:10},requestTiming:{totalMs:140,scope:'THROUGH_VALIDATION_BEFORE_PERSIST'},ownerHash,frozenEvidence,secretKey:'NEVER RETURN THIS EVIDENCE'};
+const data=new Map([[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence}],[prefix+'b'.repeat(64)+'/request/'+'c'.repeat(64),review],[prefix+'d'.repeat(64),{...review,status:'PENDING',capturedAt:'2026-10-16T02:00:00Z',providerPhases:undefined,requestTiming:undefined}]]);
+const store={get:async k=>{gets.push(k);return data.get(k);},setJSON:()=>{writes++;throw Error('forbidden');},list:async function*({prefix:p,paginate}){lists++;assert.equal(p,prefix);assert.equal(paginate,true);yield {blobs:[{key:[...data.keys()][1]},{key:prefix+'not-a-hash'},{key:prefix.replace(ownerHash,'e'.repeat(64))+'b'.repeat(64)}]};yield {blobs:[{key:[...data.keys()][2]}]};}};
+(async()=>{
+ const result=await readSavedReview({store,decisionId,ownerHash,kind:'selected-pairs'});assert.equal(result.reviews.length,2);assert.equal(result.reviews[0].requestTiming.totalMs,140);assert.equal(result.reviews[1].requestTiming,null);
+ const json=JSON.stringify(result);for(const text of [ownerHash,'NEVER RETURN THIS EVIDENCE','secretKey','frozenEvidence','llm-fast/','requestBody'])assert.equal(json.includes(text),false,text);
+ const broken={...store,list:async function*(){throw Error(prefix+'private');}};
+ const brokenRead=await readSavedReview({store:broken,decisionId,ownerHash,kind:'selected-pairs'});assert.equal(brokenRead.error,'selected_review_read_failed');assert.equal(JSON.stringify(brokenRead).includes(ownerHash),false);
+ assert.equal(gets.includes(prefix+'not-a-hash'),false);assert.equal(writes,0);
+ const before=lists;assert.equal((await readSavedReview({store,decisionId,ownerHash:'f'.repeat(64),kind:'selected-pairs'})).error,'owned_frozen_evidence_unavailable');assert.equal(lists,before);
+ data.set(`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:{...frozenEvidence,packet:{tampered:true}}});assert.equal((await readSavedReview({store,decisionId,ownerHash,kind:'selected-pairs'})).error,'evidence_integrity_failure');assert.equal(lists,before);
+ console.log('PASS: selected review reader paginates after owner/hash gates, omits keys/evidence/request bodies, handles old missing timing honestly, and never writes.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

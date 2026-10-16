@@ -1,4 +1,5 @@
 "use strict";
+const {matchupRank,expansionConfirmed}=require('./_rookie-plain-presentation');
 // Associate a role assertion with its named subject, rather than every player
 // mentioned in the same sentence. This remains a targeted check, not a parser.
 function namedClauses(sentence, player, players) {
@@ -48,9 +49,8 @@ function validateClaims(answer, packet) {
   })) errors.push('unsupported_backfield_starter_claim');
   // Check named comparative matchup claims against the two supplied labels.
   // This checks the comparison, not a defensive weakness or forecast magnitude.
-  const matchupOrder = ['Strong Negative', 'Negative', 'Neutral', 'Positive', 'Strong Positive'];
-  const matchupPlayers = (packet.players || []).map(player => ({player, rank: matchupOrder.indexOf(player.facts?.find(f => f.field === 'matchup')?.value)}));
-  if (matchupPlayers.length === 2 && matchupPlayers.every(p => p.rank >= 0)) {
+  const matchupPlayers = (packet.players || []).map(player => ({player, rank: matchupRank(player.facts?.find(f => f.field === 'matchup')?.value)}));
+  if (matchupPlayers.length === 2 && matchupPlayers.every(p => p.rank !== null)) {
     for (const [i, entry] of matchupPlayers.entries()) {
       for (const sentence of currentText.split(/[.!?\n]/)) {
         for (const clause of namedClauses(sentence, entry.player, packet.players)) {
@@ -72,7 +72,7 @@ function validateClaims(answer, packet) {
     if (context && !chart && currentText.split(/[.!?\n]/).some(sentence => namedClauses(sentence, player, packet.players || []).some(clause => /(?:team[- ](?:published[- ]|published )?chart|depth[- ]chart)\s+(?:status|position|lists?|places?)/i.test(clause)))) errors.push('unsupported_team_chart_claim');
     if (context?.roleOrderVerified === false && currentText.split(/[.!?\n]/).some(sentence => mentionsPlayer(sentence) && /\bahead of (?:him|her|them)\b/i.test(sentence))) errors.push('unverified_backfield_role_order');
     const sourcedRoleChange = player.facts.some(f => f.field === "stateChanges" && (Array.isArray(f.value) ? f.value : [f.value]).some(change => change?.type === "ROLE_CHANGE" && change.verified === true));
-    if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /\b(?:expect|project|anticipate|will|likely|could|may|might)\b[^.!?\n]*\b\d+(?:\.\d+)?\s+(?:touches|carries|targets|snaps)\b/i.test(s)) && !player.facts.some(f => f.field === "expectedOpportunity" && (Array.isArray(f.value) ? f.value : [f.value]).some(v => v?.validated === true))) errors.push("unsupported_numeric_workload_forecast");
+    if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /\b(?:expect|project|anticipate|will|likely|could|may|might)\b[^.!?\n]*\b\d+(?:\.\d+)?\s+(?:touches|carries|targets|snaps)\b/i.test(s)) && !player.facts.some(f => f.field === "expectedOpportunity" && (Array.isArray(f.value) ? f.value : [f.value]).some(v => expansionConfirmed(v)))) errors.push("unsupported_numeric_workload_forecast");
     if (!candidate) continue;
     if (currentText.split(/[.!?\n]/).some(s => candidate.status === "UNKNOWN" && s.toLowerCase().includes(surname.toLowerCase()) && /no injury (?:issues|concerns)|healthy|health cleared/i.test(s))) errors.push("availability_overstated_as_health");
     if (currentText.split(/[.!?\n]/).some(s => mentionsPlayer(s) && /in line for more work|puts? .* (?:more work|increased workload)/i.test(s) && !/does not|doesn't|not establish/i.test(s) && !(/\b(?:I expect|I project|I anticipate|likely|could|may|might)\b/i.test(s) && sourcedRoleChange))) errors.push("unverified_workload_increase");

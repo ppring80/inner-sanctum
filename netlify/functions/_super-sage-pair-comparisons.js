@@ -1,6 +1,6 @@
 "use strict";
 // Arithmetic and scope only. No scoring, weighting or preferred starter.
-const matchupOrder = ['Strong Negative', 'Negative', 'Neutral', 'Positive', 'Strong Positive'];
+const {matchupRank}=require('./_rookie-plain-presentation');
 function pairComparisons(packet) {
   if (packet.players?.length !== 2) return null;
   const players = packet.players;
@@ -8,7 +8,7 @@ function pairComparisons(packet) {
   const projection = players.map(p => fact(p, 'projection'));
   const points = projection.map(f => f?.value?.points);
   const matchups = players.map(p => fact(p, 'matchup'));
-  const ranks = matchups.map(f => matchupOrder.indexOf(f?.value));
+  const ranks = matchups.map(f => matchupRank(f?.value));
   const relation = values => values[0] === values[1] ? null : players[values[0] > values[1] ? 0 : 1].id;
   return {
     candidates: players.map(p => ({playerId:p.id, name:p.name, position:p.position})),
@@ -18,7 +18,7 @@ function pairComparisons(packet) {
       higherPlayerId: relation(points), difference: Math.round(Math.abs(points[0]-points[1])*100)/100,
       factIds: projection.map(f => f.factId)
     }} : {}),
-    ...(ranks.every(r => r >= 0) ? {matchup: {
+    ...(ranks.every(r => r !== null) ? {matchup: {
       moreFavorablePlayerId: relation(ranks), factIds: matchups.map(f => f.factId)
     }} : {})
   };

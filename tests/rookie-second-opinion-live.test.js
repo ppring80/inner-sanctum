@@ -11,7 +11,7 @@ fast.runFastReview=async args=>{
  if(behavior==='timeout')throw Error('mock timeout');
  const artifact=await args.store.get(`evidence/${args.decisionId}/${args.ownerHash}`);
  const pair=await fast.prepareSelectedPair(artifact.frozenEvidence,args.selection);
- return {status:'REVIEW_READY',cached:true,parentEvidenceHash:artifact.frozenEvidence.evidenceHash,evidenceHash:pair.evidenceHash,answer:behavior==='invalid'?{selected:'invented'}:{selected:'B',confidence:'LOW',caveat:'The evidence remains close.',reconsider:'A new injury report.',explanationSentences:pair.packet.players.map(p=>({text:`${p.name} remains an option on the supplied evidence.`,factIds:[p.facts[0].factId]}))}};
+ return {status:'REVIEW_READY',cached:true,parentEvidenceHash:artifact.frozenEvidence.evidenceHash,evidenceHash:pair.evidenceHash,answer:behavior==='invalid'?{selected:'invented'}:{selected:'B',confidence:'LOW',caveat:'The evidence remains close.',reconsider:`If ${pair.packet.players[0].name} earns more targets.`,explanationSentences:pair.packet.players.map(p=>({text:`${p.name} remains an option on the supplied evidence.`,factIds:[p.facts[0].factId]}))}};
 };
 const {runSecondOpinion,recordKey}=require('../netlify/functions/_rookie-second-opinion-live');
 const ownerHash=hash('synthetic-owner'),record=run().record,decisionId=record.decisionId;
