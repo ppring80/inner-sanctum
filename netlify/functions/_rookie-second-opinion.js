@@ -20,7 +20,7 @@ async function secondOpinion({record,slotIndex,reviewPair,capturedAt,loadUsageSn
   // confidence are never supplied as a preferred model response.
   const result=await reviewPair(copy(focused.packet));
   if(result?.status!=='REVIEW_READY')return unavailable();
-  const answer=formatGroundedAnswer(result.answer);
+  const answer=Array.isArray(result.answer?.sentenceFactIds)?result.answer:formatGroundedAnswer(result.answer);
   if(validate(answer,focused.packet).length)return unavailable();
   const lean=focused.packet.players.find(p=>p.id===answer.selected)?.name||null;
   return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,answer:copy(answer)}};
