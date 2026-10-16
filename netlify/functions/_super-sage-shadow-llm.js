@@ -149,6 +149,13 @@ async function runReview(args) {
   const artifact = await store.get(`evidence/${decisionId}/${ownerHash}`, { type: "json" });
   if (!artifact || artifact.ownerHash !== ownerHash || !artifact.frozenEvidence) return { status: "UNAVAILABLE", error: "owned_frozen_evidence_unavailable" };
   if (hash(JSON.stringify(artifact.frozenEvidence.packet)) !== artifact.frozenEvidence.evidenceHash) return { status: "UNAVAILABLE", error: "evidence_integrity_failure" };
+  const candidateV2=require('./_rookie-candidate-v2-qualification');
+  if(decisionId===candidateV2.PIN.decisionId) {
+    const priorV2=await store.get(require('./_rookie-candidate-qualification').reviewKey(decisionId,ownerHash),{type:'json'});
+    const savedV2=await store.get(candidateV2.reviewKey(decisionId,ownerHash),{type:'json'});
+    if(savedV2)return{...savedV2,cached:true};
+    if(candidateV2.allowed({decisionId,artifact,prior:priorV2,now}))return candidateV2.queueQualification(args);
+  }
   const candidateQualification=require('./_rookie-candidate-qualification');
   if(decisionId===candidateQualification.PIN.decisionId) {
     const priorCandidate=await store.get(require('./_rookie-full-post276').reviewKey(decisionId,ownerHash),{type:'json'});

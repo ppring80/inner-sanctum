@@ -11,3 +11,7 @@ Exact original owned-input measurement: 16 players, 10 slots, 172 facts, 5 mater
 Run the read-only measurement with `node scripts/measure-rookie-lineup-candidate-v2.js /path/to/saved-input.json`. It emits sizes, hashes and counts, never the private packet. Private input is not committed.
 
 V2 is not imported by the worker or customer paths. The consumed v1 reservation, previous results, original provider content and pair prompt remain unchanged. This change creates no provider allowance, resets no budget and performs no paid run. A live qualification needs its own explicitly scoped authorization and exact request pin.
+
+## Authorized private validation, October 15 Pacific
+
+The separate v2 qualification is limited to UTC 2026-10-16, the same original decision/evidence, the exact failed v1 provider message and complete v2 request hash. It has a new atomic one-call reservation, with failures consuming it and no automatic retries. The full-review tool queues this exact candidate; the signed worker stores raw provider input separately from its normalized validation view. Read-only retrieval retains v1 as `priorCandidate`, the post-276 result as `priorQualification`, and the original full result as `priorReview`. Customer paths remain unchanged.

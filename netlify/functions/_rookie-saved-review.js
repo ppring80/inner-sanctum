@@ -33,6 +33,8 @@ async function readSavedReview({ store, decisionId, ownerHash, kind = 'post232-r
   if(kind==='full') {
     const fullQualification=await store.get(require('./_rookie-full-post276').reviewKey(decisionId,ownerHash),{type:'json'});
     const candidate=await store.get(`llm-qualification/lineup-candidate-qualification-v1/${decisionId}/${ownerHash}`,{type:'json'});
+    const candidateV2=await store.get(`llm-qualification/lineup-candidate-qualification-v2/${decisionId}/${ownerHash}`,{type:'json'});
+    if(candidateV2)return {available:true,readOnly:true,decisionId,kind,review:candidateV2,priorCandidate:candidate||null,priorQualification:fullQualification||null,priorReview:priorReview||null,...input};
     if(candidate)return {available:true,readOnly:true,decisionId,kind,review:candidate,priorQualification:fullQualification||null,priorReview:priorReview||null,...input};
     if(fullQualification)return {available:true,readOnly:true,decisionId,kind,review:fullQualification,priorReview:priorReview||null,...input};
   }
