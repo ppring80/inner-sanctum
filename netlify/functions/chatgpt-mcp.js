@@ -5648,10 +5648,11 @@ function buildServer(
         "requires OAuth scope inner_sanctum.league.read; pasted-roster analysis " +
         "does not require a provider API connection. This tool never modifies a lineup, roster, " +
         "league, or provider account -- it is read-only and only returns a " +
-        "recommendation.",
+        "recommendation. When the user explicitly asks for Rookie’s second opinion, set includeRookieSecondOpinion=true. This opt-in pilot only displays an existing validated saved opinion for the exact current unresolved decision; it never generates an opinion or invokes a paid provider. SAGE remains the lineup authority.",
 
       inputSchema:
         z.object({
+          includeRookieSecondOpinion: z.boolean().optional().describe("Only when the user asks for Rookie: include a validated saved second opinion beside SAGE. No new model call; linked league only."),
           season:
             z.number()
               .int()
@@ -5730,6 +5731,7 @@ function buildServer(
     },
 
     async ({
+      includeRookieSecondOpinion,
       season,
       week,
       roster,
@@ -6279,6 +6281,18 @@ function buildServer(
           } : (superSage ? { authority: "super-sage-lineup-decision", decisionId: null, status: superSage.status, reason: superSage.reason, evidenceStatus: superSage.evidenceStatus } : null)
         };
 
+        if (includeRookieSecondOpinion === true) {
+         try {
+          const {savedCustomerOpinion,opinionText}=require('./_rookie-customer-second-opinion');
+          const enabled=process.env.SUPER_SAGE_REVIEWER_PEEPHOLE==='true';
+          let store=null;
+          try { if(enabled&&!usingPastedRoster&&authContext?.snapshotKey)store=getStore({name:'super-sage-shadow-lab'}); } catch {}
+          const opinion=await savedCustomerOpinion({requested:true,enabled,usingPastedRoster,record:superSage?.record,ownerHash:authContext?.snapshotKey?rookieHash(authContext.snapshotKey):null,store});
+          if(structuredContent.superSage)structuredContent.superSage.rookieSecondOpinion=opinion;
+          if(structuredContent.superSage)structuredContent.superSage.rookieSecondOpinionText=opinionText(opinion);
+         } catch { /* Optional opinion must never prevent the SAGE answer. */ }
+        }
+
         return {
           content: [
             {
@@ -6287,6 +6301,7 @@ function buildServer(
                 customerAnswer
                   ? [
                       customerAnswerText(customerAnswer),
+                      structuredContent.superSage?.rookieSecondOpinionText || "",
                       unmatchedRosterPlayers.length
                         ? `Not in this week's Weekly SAGE rankings: ${unmatchedRosterPlayers.map((p) => p.rosterName).join(", ")}.`
                         : "",
