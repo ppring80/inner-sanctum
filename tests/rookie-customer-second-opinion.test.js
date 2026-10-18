@@ -1,0 +1,31 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {run}=require('../scripts/run-super-sage-week4-acceptance');
+const {hash,buildEvidence}=require('../netlify/functions/_super-sage-shadow-llm');
+const {runSecondOpinion,recordKey}=require('../netlify/functions/_rookie-second-opinion-live');
+const {savedCustomerOpinion,opinionText}=require('../netlify/functions/_rookie-customer-second-opinion');
+const {toCustomerAnswer}=require('../netlify/functions/_super-sage-lineup-presenters');
+const record=run().record,before=JSON.stringify(record),customer=toCustomerAnswer(record),decisionId=record.decisionId,ownerHash=hash('saved-pilot-owner');
+const data=new Map([[recordKey(decisionId,ownerHash),{ownerHash,record,recordHash:hash(before)}],[`evidence/${decisionId}/${ownerHash}`,{ownerHash,frozenEvidence:buildEvidence(record)}]]);
+let writes=0,calls=0,reads=0;
+const store={get:async k=>{reads++;return data.get(k);},setJSON:async(k,v,o={})=>{writes++;if(o.onlyIfNew&&data.has(k))return{modified:false};data.set(k,v);return{modified:true};}};
+const args={requested:true,enabled:true,usingPastedRoster:false,record,ownerHash,store};
+(async()=>{
+ const noRead={get:async()=>{throw Error('must not read');}};
+ assert.equal(await savedCustomerOpinion({...args,requested:false,store:noRead}),null);
+ for(const changes of [{enabled:false},{usingPastedRoster:true},{ownerHash:null}])assert.equal((await savedCustomerOpinion({...args,...changes,store:noRead})).status,'UNAVAILABLE');
+ const decided=JSON.parse(before);decided.slots.forEach(s=>s.decisionState='DECIDED');assert.equal((await savedCustomerOpinion({...args,record:decided,store:noRead})).status,'SKIPPED');
+ let w=writes;assert.equal((await savedCustomerOpinion(args)).status,'UNAVAILABLE');assert.equal(writes,w,'cache miss must not reserve budget or write');
+ const miss=await require('../netlify/functions/_super-sage-shadow-fast-review').runFastReview({store,decisionId,ownerHash,apiKey:'mock',savedOnly:true,selection:{players:['Blake Corum','Courtland Sutton'],slotId:'S7'},fetchImpl:async()=>{throw Error('saved-only must not call provider even with a key');}});assert.equal(miss.error,'saved_pair_review_unavailable');assert.equal(writes,w);
+ const generated=await runSecondOpinion({store,decisionId,ownerHash,apiKey:'mock',fetchImpl:async()=>{calls++;return new Response(JSON.stringify({id:'mock-customer-pilot',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{selected:'B',confidence:'MEDIUM',decidingFactor:'projection',tradeoffFactor:'recentUsage',blocker:'NONE',reconsider:'pick_ruled_out'}}]}),{status:200});}});
+ assert.equal(generated.status,'REVIEW_READY');assert.equal(calls,1);
+ w=writes;const ready=await savedCustomerOpinion(args);assert.equal(ready.status,'READY');assert.equal(ready.lean,'Courtland Sutton');assert.match(ready.reconsider,/Would switch if Courtland Sutton is ruled out/);assert.equal(writes,w);assert.equal(calls,1);assert.match(opinionText(ready),/Rookie second opinion \(saved\)/);assert.match(opinionText(ready),/SAGE’s lineup is unchanged/);
+ assert.equal(JSON.stringify(record),before);assert.deepEqual(toCustomerAnswer(record),customer);
+ for(const field of ['ownerHash','rawContent','rawText','providerPhases','storageKey','evidenceHash'])assert.equal(Object.hasOwn(ready,field),false);
+ assert.equal((await savedCustomerOpinion({...args,ownerHash:hash('wrong-owner')})).status,'UNAVAILABLE');
+ const changed=JSON.parse(before);changed.slots[0].slotLabel='changed';assert.equal((await savedCustomerOpinion({...args,record:changed})).status,'UNAVAILABLE');
+ const key=[...data.keys()].find(k=>k.includes('/request/'));const saved=data.get(key);
+ for(const answer of [{...saved.answer,decidingFactor:'recentUsage'}, {selected:'B',confidence:'HIGH',explanation:'Unverified legacy prose.'}]){data.set(key,{...saved,answer});assert.equal((await savedCustomerOpinion(args)).status,'UNAVAILABLE');assert.equal(writes,w);}
+ assert.equal(calls,1);assert.equal((await savedCustomerOpinion({...args,store:{get:async()=>{throw Error('storage timeout');}}})).status,'UNAVAILABLE');
+ console.log('PASS: opt-in/gate/owner/current-record isolation; validated saved opinion rendered; cache miss/invalid/legacy/storage failure never generate, reserve or write; decided slots skip; SAGE exact parity. One mocked provider call only.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

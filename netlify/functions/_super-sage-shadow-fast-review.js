@@ -414,8 +414,9 @@ async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnap
   focused.evidenceHash=hash(JSON.stringify(focused.packet));
   return require('./_rookie-plain-presentation').plainPresentation(focused);
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
+async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly = false, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
+  if(savedOnly&&!selection)return {status:'UNAVAILABLE',error:'saved_pair_selection_required'};
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
   if (selection && (drill || caseId || !Array.isArray(selection.players) || selection.players.length !== 2 || typeof selection.slotId !== "string")) return { status: "UNAVAILABLE", error: "invalid_pair_selection" };
   const selectionSuffix = selection ? `/selected/${hash(JSON.stringify(selection))}` : "";
@@ -563,6 +564,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, fetchImpl =
     const assessment=['REVIEW_READY','INVALID'].includes(cached.status)?assessPairAnswer(cached.answer,focused.packet):{hard:[],soft:[]};
     return {...withClaimAssessment(revalidateCached(cached,assessment.hard),focused.packet),...(focused.packet.presentation==='plain-v1'?{softFlags:assessment.soft}:{}),cached:true,requestTiming:{...timing,totalMs:Math.round(clock()-start),scope:'CURRENT_CACHE_READ'}};
   }
+  if(savedOnly)return {status:'UNAVAILABLE',error:'saved_pair_review_unavailable'};
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
   const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), ...(focused.packet.replay ? {replay:focused.packet.replay,customerEligible:false} : {}), rules: RULES };
   if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
