@@ -5648,11 +5648,11 @@ function buildServer(
         "requires OAuth scope inner_sanctum.league.read; pasted-roster analysis " +
         "does not require a provider API connection. This tool never modifies a lineup, roster, " +
         "league, or provider account -- it is read-only and only returns a " +
-        "recommendation. When the user explicitly asks for Rookie’s second opinion, set includeRookieSecondOpinion=true. This opt-in pilot only displays an existing validated saved opinion for the exact current unresolved decision; it never generates an opinion or invokes a paid provider. SAGE remains the lineup authority. If no unresolved pair exists, report that no Rookie opinion is needed and stop. Never use run_shadow_llm_review to fill a missing saved customer opinion.",
+        "recommendation. When the user explicitly asks for Rookie’s second opinion, set includeRookieSecondOpinion=true. This lineup tool displays an existing validated saved opinion when available; it never invokes a paid provider. If the user asks for a new second opinion, ask which two rostered players they want compared, then use request_rookie_second_opinion with their permission to send pair evidence to Anthropic. An explicit pair request is allowed even when SAGE has decided. Never use run_shadow_llm_review as a customer fallback. SAGE remains the lineup authority.",
 
       inputSchema:
         z.object({
-          includeRookieSecondOpinion: z.boolean().optional().describe("Only when the user asks for Rookie: include a validated saved second opinion beside SAGE. No new model call; linked league only."),
+          includeRookieSecondOpinion: z.boolean().optional().describe("When the user asks for Rookie: show a saved opinion if available; otherwise invite a named-pair request. This lineup call never generates a review."),
           season:
             z.number()
               .int()
@@ -6169,6 +6169,7 @@ function buildServer(
                   if(process.env.SUPER_SAGE_REVIEWER_PEEPHOLE==='true')await shadowLabStore.setJSON(
                     require('./_rookie-second-opinion-live').recordKey(record.decisionId,ownerHash),
                     {ownerHash,record,recordHash:rookieHash(JSON.stringify(record))},{onlyIfNew:true});
+                  if(process.env.SUPER_SAGE_REVIEWER_PEEPHOLE==='true'&&!usingPastedRoster)await shadowLabStore.setJSON(require('./_rookie-requested-pair').currentKey(ownerHash),{inputSource:'linked_league',decisionId:record.decisionId,recordHash:rookieHash(JSON.stringify(record))});
                 }
               } catch (shadowLabError) {
                 console.error("Super SAGE shadow lab write failed:", shadowLabError && shadowLabError.message);
@@ -6281,13 +6282,18 @@ function buildServer(
           } : (superSage ? { authority: "super-sage-lineup-decision", decisionId: null, status: superSage.status, reason: superSage.reason, evidenceStatus: superSage.evidenceStatus } : null)
         };
 
+        const rookieEnabled=process.env.SUPER_SAGE_REVIEWER_PEEPHOLE==='true'&&!usingPastedRoster&&!!authContext?.snapshotKey;
+        const rookieOffer=rookieEnabled?require('./_rookie-requested-pair').offer(superSage?.record):null;
+        if(rookieOffer&&structuredContent.superSage)structuredContent.superSage.rookieSecondOpinionOffer=rookieOffer;
+
         if (includeRookieSecondOpinion === true) {
          try {
           const {savedCustomerOpinion,opinionText}=require('./_rookie-customer-second-opinion');
           const enabled=process.env.SUPER_SAGE_REVIEWER_PEEPHOLE==='true';
           let store=null;
           try { if(enabled&&!usingPastedRoster&&authContext?.snapshotKey)store=getStore({name:'super-sage-shadow-lab'}); } catch {}
-          const opinion=await savedCustomerOpinion({requested:true,enabled,usingPastedRoster,record:superSage?.record,ownerHash:authContext?.snapshotKey?rookieHash(authContext.snapshotKey):null,store});
+          let opinion=await savedCustomerOpinion({requested:true,enabled,usingPastedRoster,record:superSage?.record,ownerHash:authContext?.snapshotKey?rookieHash(authContext.snapshotKey):null,store});
+          if(rookieOffer&&opinion?.status!=='READY')opinion={status:'CHOOSE_PAIR',label:'Choose two players for Rookie',detail:rookieOffer.text};
           if(structuredContent.superSage)structuredContent.superSage.rookieSecondOpinion=opinion;
           if(structuredContent.superSage)structuredContent.superSage.rookieSecondOpinionText=opinionText(opinion);
          } catch { /* Optional opinion must never prevent the SAGE answer. */ }
@@ -6301,7 +6307,7 @@ function buildServer(
                 customerAnswer
                   ? [
                       customerAnswerText(customerAnswer),
-                      structuredContent.superSage?.rookieSecondOpinionText || "",
+                      structuredContent.superSage?.rookieSecondOpinionText || structuredContent.superSage?.rookieSecondOpinionOffer?.text || "",
                       unmatchedRosterPlayers.length
                         ? `Not in this week's Weekly SAGE rankings: ${unmatchedRosterPlayers.map((p) => p.rosterName).join(", ")}.`
                         : "",
@@ -6511,20 +6517,33 @@ function buildServer(
     }
   );
 
+  // Explicit customer request, separate from saved-only lineup retrieval.
+  server.registerTool('request_rookie_second_opinion',{
+    title:'Ask Rookie About Two Players',
+    description:'Get a new independent second opinion for exactly two named players from the latest linked SAGE lineup, even when SAGE has decided. First get_lineup_recommendation to obtain the current decisionId and roster. If the user asks for a whole-lineup opinion, ask which two players to compare. This sends those players’ private football evidence (names, projections, usage, matchup, role, availability) to Anthropic Claude Sonnet and can incur a bounded provider call. Call only after the user explicitly permits this transfer; set consentToAnthropic=true only with that permission. Reuses existing cache and review limits with no retries, resets or new allowances. Returns verified factor choices in server-rendered language; never changes the lineup or generates a whole lineup.',
+    inputSchema:z.object({decisionId:z.string().regex(/^[a-f0-9]{64}$/),players:z.tuple([z.string().min(1).max(120),z.string().min(1).max(120)]),consentToAnthropic:z.boolean().describe('True only after the user permits sending these two players’ football evidence to Anthropic for the second opinion.')}),
+    annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:true}
+  },async ({decisionId,players,consentToAnthropic})=>{
+    if(process.env.SUPER_SAGE_REVIEWER_PEEPHOLE!=='true'||!authContext?.snapshotKey)return {isError:true,content:[{type:'text',text:'Rookie’s pair review requires the enabled linked-league release.'}]};
+    const result=await require('./_rookie-requested-pair').requestPair({store:getStore({name:'super-sage-shadow-lab'}),decisionId,players,consentToAnthropic,ownerHash:rookieHash(authContext.snapshotKey),apiKey:process.env.ANTHROPIC_API_KEY});
+    authContext.rookieReviewCompletedAt=performance.now();
+    return {isError:result.status!=='READY',content:[{type:'text',text:result.status==='READY'?[result.opinion.explanation,result.opinion.reconsider,result.opinion.detail].join('\n'):result.message}],structuredContent:result};
+  });
+
   // Explicit private model invocation; discovery is stable, execution gated.
   // This action can spend one bounded provider call and write an artifact.
   server.registerTool(
     "run_shadow_llm_review",
     {
       title: "Run Rookie Private Evidence Drill",
-      description: "INTERNAL BENCHMARK ONLY, not the customer Rookie second-opinion path. Customer requests use get_lineup_recommendation with includeRookieSecondOpinion=true and must stop when there is no unresolved pair or matching saved opinion. Full-lineup generation is retired and mode full is rejected without provider calls or writes. Private reviewer evidence drill: each invocation runs the next of four fixed cases from owned frozen evidence, including one explicitly synthetic missing-evidence test. At most four provider calls globally for the original curriculum, one per case, with no retries. One separately authorized post-PR-227 role-change check is bound to the exact saved failed review and owned frozen evidence; its separate one-call allowance preserves the original curriculum budget and history. Grounded quality drill has a twenty-second provider deadline; full tool latency is measured separately against the under-ten-second target. After all cases, returns saved results without new model calls. Optional caseId selects one fixed case directly without running earlier cases or changing budget limits. Default mode is drill; focused preserves the prior pair benchmark; focused with caseId role-change selects Blake Corum versus Will Shipley from the supplied owned frozen packet, using grounded Sonnet output and the existing one-call daily focused budget. Selected-pair second opinions use evidence-checked structured factors and deterministic wording, not model-authored prose; the provider selection enum is A/B/NO_CALL, with NO_CALL mapped to null internally. Focused selection accepts two exact frozen player names and a recorded slotId, checks both candidate eligibility, and allows five private selected-pair calls per UTC day, counting the existing daily focused call as the first slot, with atomic reservations, saved-request deduplication and no historical repair allowances. Focused with caseId close-call automatically selects the first unresolved pair from the owned frozen SAGE record and returns a separate private second opinion alongside the unchanged SAGE answer. It reuses the selected-pair cache and budget. Never changes customer decisions.",
+      description: "INTERNAL BENCHMARK ONLY, not the customer Rookie second-opinion path. Customer requests use get_lineup_recommendation and request_rookie_second_opinion for an explicitly named pair with Anthropic consent, whether or not SAGE has decided. Full-lineup generation is retired and mode full is rejected without provider calls or writes. Private reviewer evidence drill: each invocation runs the next of four fixed cases from owned frozen evidence, including one explicitly synthetic missing-evidence test. At most four provider calls globally for the original curriculum, one per case, with no retries. One separately authorized post-PR-227 role-change check is bound to the exact saved failed review and owned frozen evidence; its separate one-call allowance preserves the original curriculum budget and history. Grounded quality drill has a twenty-second provider deadline; full tool latency is measured separately against the under-ten-second target. After all cases, returns saved results without new model calls. Optional caseId selects one fixed case directly without running earlier cases or changing budget limits. Default mode is drill; focused preserves the prior pair benchmark; focused with caseId role-change selects Blake Corum versus Will Shipley from the supplied owned frozen packet, using grounded Sonnet output and the existing one-call daily focused budget. Selected-pair second opinions use evidence-checked structured factors and deterministic wording, not model-authored prose; the provider selection enum is A/B/NO_CALL, with NO_CALL mapped to null internally. Focused selection accepts two exact frozen player names and a recorded slotId, checks both candidate eligibility, and allows five private selected-pair calls per UTC day, counting the existing daily focused call as the first slot, with atomic reservations, saved-request deduplication and no historical repair allowances. Focused with caseId close-call automatically selects the first unresolved pair from the owned frozen SAGE record and returns a separate private second opinion alongside the unchanged SAGE answer. It reuses the selected-pair cache and budget. Never changes customer decisions.",
       inputSchema: z.object({ decisionId: z.string().regex(/^[a-f0-9]{64}$/), mode: z.enum(["drill", "focused", "full"]).optional(), caseId: z.enum(["injury", "close-call", "role-change", "missing-evidence"]).optional(), selection: z.object({ players: z.tuple([z.string().min(1).max(120), z.string().min(1).max(120)]), slotId: z.string().regex(/^S[1-9][0-9]*$/) }).optional() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true }
     },
     async ({ decisionId, mode = "drill", caseId, selection }) => {
       // Retired customer fallback: reject even stale clients advertising full.
       // This precedes store access, provider configuration, queues and budgets.
-      if(mode==='full')return {isError:true,content:[{type:'text',text:'Full-lineup Rookie generation is retired. For a customer second opinion use get_lineup_recommendation with includeRookieSecondOpinion=true. If no unresolved pair or saved opinion exists, keep SAGE’s lineup and stop. No model call was made.'}],structuredContent:{status:'UNAVAILABLE',error:'full_lineup_generation_retired',providerInvoked:false}};
+      if(mode==='full')return {isError:true,content:[{type:'text',text:'Full-lineup Rookie generation is retired. For a customer second opinion use get_lineup_recommendation with includeRookieSecondOpinion=true, then request_rookie_second_opinion for two named players with Anthropic consent. Keep SAGE’s lineup unchanged. No model call was made.'}],structuredContent:{status:'UNAVAILABLE',error:'full_lineup_generation_retired',providerInvoked:false}};
       if (selection && (mode !== "focused" || caseId != null)) return { isError: true, content: [{ type: "text", text: "selection requires focused mode without caseId. No model review was requested." }] };
       if (caseId != null && mode !== "drill" && !(mode === "focused" && ["role-change","close-call"].includes(caseId))) return { isError: true, content: [{ type: "text", text: "caseId requires drill mode, except focused role-change or close-call. No model review was requested." }] };
       if (process.env.SUPER_SAGE_REVIEWER_PEEPHOLE !== "true" || !authContext || !authContext.snapshotKey) {
@@ -7276,7 +7295,7 @@ exports.handler =
     const invocationStart = performance.now();
     const invocationTiming = { moduleLoadMs: rookieModuleLoadMs };
     const diagnosticRoute = getMcpRoute(event);
-    const rookieDiagnostic = diagnosticRoute.method === "tools/call" && ["run_shadow_llm_review", "get_saved_rookie_review", "get_shadow_decision"].includes(diagnosticRoute.name);
+    const rookieDiagnostic = diagnosticRoute.method === "tools/call" && ["run_shadow_llm_review", "get_saved_rookie_review", "get_shadow_decision", "request_rookie_second_opinion"].includes(diagnosticRoute.name);
     const diagnosticRequestId = rookieDiagnostic ? crypto.randomUUID() : null;
     try {
       connectLambda(
