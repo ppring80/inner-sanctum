@@ -2,7 +2,7 @@
 // Opt-in saved-result pilot. No provider credentials, network or write path.
 const {hash}=require('./_super-sage-shadow-llm');
 const {runSecondOpinion,recordKey}=require('./_rookie-second-opinion-live');
-async function savedCustomerOpinion({requested,enabled,usingPastedRoster,record,ownerHash,store,loadUsageSnapshot}){
+async function readCustomerOpinion({requested,enabled,usingPastedRoster,record,ownerHash,store,loadUsageSnapshot}){
  if(!requested)return null;
  const unavailable=()=>({status:'UNAVAILABLE',label:'Rookie second opinion unavailable',detail:'SAGE’s lineup is unchanged. No new model call was made.'});
  if(!enabled||usingPastedRoster||!/^[a-f0-9]{64}$/.test(ownerHash||'')||!record?.decisionId)return unavailable();
@@ -18,6 +18,14 @@ async function savedCustomerOpinion({requested,enabled,usingPastedRoster,record,
   if(answer.answerContract!=='structured-pair-v1')return unavailable();
   return {status:'READY',label:opinion.label,slotId:opinion.slotId,lean:opinion.lean,confidence:opinion.confidence,explanation:answer.explanation,reconsider:answer.reconsider,detail:'Separate saved second opinion. Confidence is Rookie’s assessment, not a calibrated probability. SAGE’s lineup is unchanged.'};
  }catch{return unavailable();}
+}
+// A stalled optional cache read must not hold the lineup response open. The
+// losing task can only read; it has no provider key, reservation or write path.
+async function savedCustomerOpinion(args){
+ if(!args.requested)return null;
+ let timer;
+ try{return await Promise.race([readCustomerOpinion(args),new Promise(resolve=>{timer=setTimeout(()=>resolve({status:'UNAVAILABLE',label:'Rookie second opinion unavailable',detail:'SAGE’s lineup is unchanged. No new model call was made.'}),args.readTimeoutMs??1500);})]);}
+ finally{clearTimeout(timer);}
 }
 function opinionText(opinion){
  if(!opinion)return '';

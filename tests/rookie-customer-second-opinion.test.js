@@ -27,5 +27,6 @@ const args={requested:true,enabled:true,usingPastedRoster:false,record,ownerHash
  const key=[...data.keys()].find(k=>k.includes('/request/'));const saved=data.get(key);
  for(const answer of [{...saved.answer,decidingFactor:'recentUsage'}, {selected:'B',confidence:'HIGH',explanation:'Unverified legacy prose.'}]){data.set(key,{...saved,answer});assert.equal((await savedCustomerOpinion(args)).status,'UNAVAILABLE');assert.equal(writes,w);}
  assert.equal(calls,1);assert.equal((await savedCustomerOpinion({...args,store:{get:async()=>{throw Error('storage timeout');}}})).status,'UNAVAILABLE');
+ assert.equal((await savedCustomerOpinion({...args,readTimeoutMs:5,store:{get:()=>new Promise(()=>{})}})).status,'UNAVAILABLE','stalled optional read yields the unchanged SAGE answer');
  console.log('PASS: opt-in/gate/owner/current-record isolation; validated saved opinion rendered; cache miss/invalid/legacy/storage failure never generate, reserve or write; decided slots skip; SAGE exact parity. One mocked provider call only.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
