@@ -1448,6 +1448,9 @@ exports.handler =
           ? fetchAdpBaseline(scoring)
           : Promise.resolve(null);
 
+      const currentAvailability = Number(season)===new Date().getUTCFullYear() && Number(week)===require('./_current-nfl-week').resolveCurrentNFLWeek(new Date(),Number(season))
+        ? await getStore({name:'player-data'}).get('playerData',{type:'json'}).catch(()=>null) : null;
+
       const population =
         findPlayerArray(
           snapshot
@@ -1513,7 +1516,7 @@ exports.handler =
                 ),
 
               availability:
-                availabilityForPlayer(player, season, week)
+                availabilityForPlayer(player, season, week, currentAvailability)
             }
           );
         }
