@@ -1284,7 +1284,7 @@ function renderNewswire() {
   // Keep all evidence in the response; show each player's latest report here.
   var seenNewswirePlayers = new Set();
   var stories = newswireState.stories.slice().sort(function(a, b) {
-    return Date.parse(b.sortAt || b.publishedAt) - Date.parse(a.sortAt || a.publishedAt);
+    return Date.parse(b.sortAt || b.publishedAt) - Date.parse(a.sortAt || a.publishedAt) || Number(!!b.hasReporting) - Number(!!a.hasReporting);
   }).filter(function(story) {
     var key = String(story.player || story.id).toLowerCase();
     if (seenNewswirePlayers.has(key)) return false;
@@ -1332,8 +1332,7 @@ function renderNewswire() {
       '<div class="newswire-impact"><strong>SAGE Impact</strong>' + escapeNewswireHtml(story.sageImpact) + '</div>' + newswireReporting(story) +
       '<div class="newswire-source">' +
         escapeNewswireHtml((story.dateLabel ? story.dateLabel + ' ' : '') + formatNewswireTime(story.publishedAt)) + ' · ' +
-        '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' +
-          escapeNewswireHtml(story.sourceLabel) + ' ↗</a>' +
+        (story.sourceUrl ? '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeNewswireHtml(story.sourceLabel) + ' ↗</a>' : escapeNewswireHtml(story.sourceLabel)) +
       '</div>' +
     '</article>';
   }).join('');
@@ -1355,11 +1354,12 @@ function renderNewswire() {
       '</div>' +
       '<div class="newswire-row-copy">' +
         '<div class="newswire-row-headline">' + escapeNewswireHtml(story.headline) + '</div>' +
+        (story.observedAt ? '<div class="newswire-summary">' + escapeNewswireHtml(story.summary) + '</div>' : '') +
         '<details class="newswire-row-details"><summary>SAGE Impact</summary><p>' +
           escapeNewswireHtml(story.sageImpact) + '</p></details>' + newswireReporting(story) +
       '</div>' +
       '<div class="newswire-row-time">' + escapeNewswireHtml((story.dateLabel ? story.dateLabel + ' ' : '') + formatNewswireTime(story.publishedAt)) +
-        '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Source ↗</a>' +
+        (story.sourceUrl ? '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Source ↗</a>' : '<span>Tank01</span>') +
       '</div>' +
     '</article>';
   }).join('');
