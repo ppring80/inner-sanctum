@@ -2,7 +2,7 @@
 // Temporary, fixed-input audit. One global five-call reservation, no retries.
 const {connectLambda,getStore}=require('@netlify/blobs');
 const {verifyWorkflowToken}=require('./_injury-workflow-auth');
-const {reserveTank01Calls}=require('./_tank01-daily-budget');
+const {requireTank01Budget}=require('./_tank01-daily-budget');
 const HOST='tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com';
 const KEY='reserve-fields-v1';
 const EXPIRES=Date.parse('2026-10-22T00:00:00Z');
@@ -49,7 +49,7 @@ exports.handler=async event=>{
  const token=String(event.headers?.authorization||event.headers?.Authorization||'').replace(/^Bearer /i,'');
  if(!await verifyWorkflowToken(token))return{statusCode:401,body:'Unauthorized'};
  connectLambda(event);const store=getStore({name:'tank01-reserve-audit'});
- const result=event.httpMethod==='GET'?await store.get(KEY,{type:'json'})||{status:'NOT_RUN'}:await audit({store,apiKey:process.env.TANK01_API_KEY,reserve:()=>reserveTank01Calls(event,{job:'tank01-reserve-field-audit',calls:5,priority:'normal',maxJobCalls:5})});
+ const result=event.httpMethod==='GET'?await store.get(KEY,{type:'json'})||{status:'NOT_RUN'}:await audit({store,apiKey:process.env.TANK01_API_KEY,reserve:async()=>{const denied=await requireTank01Budget(event,{job:'tank01-reserve-field-audit',calls:5,priority:'normal',maxJobCalls:5});return denied?{allowed:false,reason:'Shared budget denied'}:{allowed:true};}});
  return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(result)};
 };
 exports._test={audit,fields};
