@@ -154,6 +154,8 @@ exports.handler = async (event) => {
         status: "Success",
         updatedAt: cached.updatedAt || null,
         playerCount: cached.playerCount || Object.keys(cached.players).length,
+        availabilityMode: cached.availabilityMode || null,
+        source: cached.source || null,
         teamsSucceeded: cached.teamsSucceeded,
         teamsFailed: cached.teamsFailed,
         players: cached.players
