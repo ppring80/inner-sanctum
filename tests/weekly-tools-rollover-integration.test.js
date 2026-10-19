@@ -22,12 +22,12 @@ function load(name,extra={}){const sandbox={exports:{},Date:TestDate,URL,process
 const builders={};for(const job of recovery.jobsForWeek(2026,5))builders['./'+job.job+'.js']={handler:async event=>{const selected=recovery.jobsForWeek(2026,5).find(j=>j.job===job.job&&String(j.week)===(job.store==='opportunity-intel'?String(recovery.resolveCurrentNFLWeek(new Date())-1):event.queryStringParameters.week));built.push(selected.job+':'+selected.week);if(selected.job==='refresh-wr-snapshot'&&failWR)return{statusCode:429,body:JSON.stringify({error:'Fixture budget exhausted'})};await getStore({name:selected.store}).setJSON(recovery.cacheKey(selected),fixture(selected));return{statusCode:200,body:JSON.stringify({cached:true})};}};
 const worker=load('weekly-sage-refresh-background.js',builders);
 let injuryChecks=0;
-const watchdog=load('recover-weekly-sage.js',{'./refresh-injury-transactions':{handler:async()=>{injuryChecks++;return {statusCode:200,body:'{"cached":true}'};}}});
+const watchdog=load('recover-weekly-sage.js',{'./refresh-injury-transactions':{handler:async()=>{injuryChecks++;throw Error('Official transaction collector must remain outside weekly recovery');}}});
 async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=process.env.TANK01_REFRESH_TOKEN,url=process.env.URL;global.Date=TestDate;process.env.TANK01_REFRESH_TOKEN='fixture-only-secret';process.env.URL='https://fixture.invalid';
  try{
   // Begin with complete Week 4 evidence, then run the real scheduler and signed worker at rollover.
   for(const job of recovery.jobsForWeek(2026,4))await getStore({name:job.store}).setJSON(recovery.cacheKey(job),fixture(job));
-  assert.equal(JSON.parse((await watchdog.handler({})).body).ready,true);assert.equal(dispatches.length,0);assert.equal(injuryChecks,1,'official injury check also runs when weekly caches are complete');
+  assert.equal(JSON.parse((await watchdog.handler({})).body).ready,true);assert.equal(dispatches.length,0);assert.equal(injuryChecks,0,'weekly caches do not depend on official collection');
   instant=Date.parse('2026-10-06T06:00:00Z');
   await watchdog.handler({});assert(dispatches.length===1);assert(built.includes('refresh-weekly-sage-schedule:5'));assert(built.includes('refresh-weekly-sage-defense:4'));
   const wr=recovery.jobsForWeek(2026,5).find(j=>j.job==='refresh-wr-snapshot');
@@ -38,6 +38,8 @@ async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=
   instant+=31*60000;await watchdog.handler({});assert.equal(built.filter(x=>x==='refresh-wr-snapshot:5').length,2,'daily failed attempts capped');
   failWR=false;instant=Date.parse('2026-10-07T06:00:00Z');
   for(let i=0;i<12;i++){await watchdog.handler({});if((await recovery.inspectJobs(getStore,2026,5)).every(j=>j.ready))break;}
+  assert.equal(injuryChecks,0,'weekly rollover and Tank01 refresh dispatch never invoke the official collector');
+  assert(fs.readFileSync('netlify.toml','utf8').includes('[functions."refresh-injury-transactions"]\n  schedule = "20 * * * *"'),'independent official transaction schedule remains enabled');
   const rows=await recovery.inspectJobs(getStore,2026,5);assert(rows.every(j=>j.ready),JSON.stringify(rows.filter(j=>!j.ready)));
   for(const name of ['refresh-player-data','refresh-weekly-projections','refresh-sage-newswire'])assert(built.some(item=>item.startsWith(name+':')),name+' freshness recovered');
   assert.equal((await worker.handler({httpMethod:'POST',headers:{},body:'{}'})).statusCode,401,'unsigned refresh rejected');
