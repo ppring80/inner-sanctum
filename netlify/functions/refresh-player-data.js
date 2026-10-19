@@ -48,7 +48,11 @@ exports.handler = async (event) => {
     const response=await fetchTank01('getNFLPlayerList');
     if(response.error || response.statusCode && Number(response.statusCode)!==200)throw Error('Provider rejected full player feed');
     const cached=require('./_tank01-player-cache').buildPlayerCache(response.body);
-    await getStore({name:'player-data'}).setJSON('playerData',cached);
+    const store=getStore({name:'player-data'});
+    const previous=await store.get('playerData',{type:'json'}).catch(()=>null);
+    // Retain display metadata only when omitted; never carry old availability.
+    for(const [id,p] of Object.entries(cached.players))if(p.exp===undefined&&previous?.players?.[id]?.exp!==undefined)p.exp=previous.players[id].exp;
+    await store.setJSON('playerData',cached);
     return {statusCode:200,body:JSON.stringify({cached:true,teamsSucceeded:32,teamsFailed:0,playerCount:cached.playerCount,availabilityMode:cached.availabilityMode})};
   } catch (_) {
     return {statusCode:502,body:JSON.stringify({cached:false,error:'Full player availability refresh failed; previous cache preserved.'})};
