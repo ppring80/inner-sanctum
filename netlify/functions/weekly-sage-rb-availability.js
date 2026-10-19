@@ -63,7 +63,14 @@ function normalizeStatus(value) {
     .replace(/\s+/g, " ").toUpperCase();
 }
 
-function availabilityForPlayer(player, season, week) {
+function availabilityForPlayer(player, season, week, currentCache = null) {
+  if(currentCache?.availabilityMode===require('./_tank01-player-cache').MODE){
+    const records=Object.entries(currentCache.players||{});
+    const hits=records.filter(([id,p])=>player?.playerID?String(player.playerID)===id:normalizeName(player?.name||player?.longName)===normalizeName(p.longName)&&p.team===player?.team);
+    const p=hits.length===1?hits[0][1]:null;
+    const status=normalizeStatus(p?.rosterStatus==='UNSIGNED'?'UNSIGNED':p?.injury?.designation||p?.rosterStatus||(p?.active===false?'INACTIVE':''));
+    return {status:status||null,eligible:!HARD_UNAVAILABLE.has(status)&&p?.active!==false,source:'cached Tank01 full player list',verified:!!p&&Date.now()-Date.parse(currentCache.updatedAt)>=0&&Date.now()-Date.parse(currentCache.updatedAt)<8*3600000,reason:status?`Provider reports ${status}.`:null};
+  }
   const reserve = require("./_reserve-transactions.js").reserveTransaction(player || {},season,week);
   if (reserve) return {...reserve,eligible:false,backfieldRole:"committee",vacatedOpportunity:0.40};
   const weekly = WEEKLY_FACTS[`${season}:${Number(week)}`] || {};
