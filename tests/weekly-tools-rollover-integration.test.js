@@ -12,7 +12,7 @@ function fixture(job){const base={evidenceType:job.evidenceType,season:job.seaso
  if(job.store==='weekly-sage-defense')return{...base,schedule:{completedGames:1,gamesReturned:1,processedGames:1},gameResults:[{status:'processed'}]};
  if(job.store==='opportunity-intel')return{...base,weeksRequested:[job.week],gamesFound:1,gamesFailed:0,records:{fixture:{}}};
  if(job.store==='risers-fallers')return{...base,currentWeek:job.week,previousWeek:job.week-1,allDeltas:{fixture:{}}};
- if(job.store==='player-data')return{updatedAt:new Date().toISOString(),teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{}]))};
+ if(job.store==='player-data')return{updatedAt:new Date().toISOString(),availabilityMode:'tank01-full-player-list-v1',teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{}]))};
  if(job.store==='sage-newswire')return{updatedAt:new Date().toISOString(),mode:'editorial-with-sources',collection:{automaticStories:1},stories:[{headline:'Fixture verified news'}]};
  if(job.store==='weekly-projections')return{...base,generatedAt:new Date().toISOString(),rows:Array.from({length:100},()=>({}))};
  return{...base,population:[{}],failures:[],nextStep:{ready:true},populationSummary:{weeksWithEvidence:job.week-1,weeksScanned:job.week-1}};
@@ -39,7 +39,7 @@ async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=
   failWR=false;instant=Date.parse('2026-10-07T06:00:00Z');
   for(let i=0;i<12;i++){await watchdog.handler({});if((await recovery.inspectJobs(getStore,2026,5)).every(j=>j.ready))break;}
   assert.equal(injuryChecks,0,'weekly rollover and Tank01 refresh dispatch never invoke the official collector');
-  assert(fs.readFileSync('netlify.toml','utf8').includes('[functions."refresh-injury-transactions"]\n  schedule = "20 * * * *"'),'independent official transaction schedule remains enabled');
+  assert(!fs.readFileSync('netlify.toml','utf8').includes('[functions."refresh-injury-transactions"]'),'retired scraper must not have a scheduled trigger');
   const rows=await recovery.inspectJobs(getStore,2026,5);assert(rows.every(j=>j.ready),JSON.stringify(rows.filter(j=>!j.ready)));
   for(const name of ['refresh-player-data','refresh-weekly-projections','refresh-sage-newswire'])assert(built.some(item=>item.startsWith(name+':')),name+' freshness recovered');
   assert.equal((await worker.handler({httpMethod:'POST',headers:{},body:'{}'})).statusCode,401,'unsigned refresh rejected');
