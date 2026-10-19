@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {buildPlayerCache,MODE}=require('../netlify/functions/_tank01-player-cache');
+const {verify}=require('../scripts/verify-player-availability');
+const rows=Array.from({length:1100},(_,i)=>({playerID:String(i),longName:'Player '+i,pos:'RB',team:'T'+i%32,isFreeAgent:'False',injury:{designation:''}}));
+rows[0].injury={designation:'Injured Reserve'};rows[1].injury={designation:'Out'};rows[2].injury={designation:'Injured Reserve - Designated to Return'};
+rows[3].isFreeAgent='True';rows[3].injury={designation:'Injured Reserve'};
+const c=buildPlayerCache(rows,'2026-10-19T02:00:00Z');assert.equal(c.availabilityMode,MODE);assert.equal(c.players['3'].team,null,'departed players cannot create injury context for their former team');assert.equal(c.players['3'].rosterStatus,'UNSIGNED');assert.equal(c.players['2'].injury.designation,'IR','designated for return does not mean activated');assert.equal(c.players['2'].injury.providerDesignation,'Injured Reserve - Designated to Return');assert.equal(c.players['0'].injury.designation,'IR');assert.equal(c.players['1'].injury.designation,'Out','PUP must not be invented from an Out designation');
+assert.throws(()=>buildPlayerCache(rows.slice(0,10)));assert.throws(()=>buildPlayerCache([...rows,rows[0]]));assert.throws(()=>buildPlayerCache(rows.map(p=>({...p,injury:undefined}))));assert.throws(()=>buildPlayerCache(rows.map(p=>({...p,team:'NO'}))));
+assert.equal(verify(c,Date.parse('2026-10-19T03:00:00Z')).players,1100);assert.throws(()=>verify(c,Date.parse('2026-10-19T11:00:00Z')));assert.throws(()=>verify({...c,availabilityMode:null},Date.parse('2026-10-19T03:00:00Z')));
+const {applyCentralAvailability}=require('../netlify/functions/weekly-sage-rankings');
+const a={RB:[{name:'Travis Etienne Jr.',position:'RB',team:'NO',playerID:'active'}]},inactive={};
+const player={longName:'Travis Etienne Jr.',pos:'RB',team:'NO',injury:{designation:''}};
+applyCentralAvailability(a,inactive,{providerAvailability:true,players:{active:player},byName:new Map(),transactions:[],fresh:true},2026,6);assert.equal(a.RB.length,1);assert.equal(a.RB[0].availabilityVerified,true);
+const {roleContext}=require('../netlify/functions/_injury-transactions');const role=roleContext({name:'Replacement',position:'RB',team:'NO'},{ir:{longName:'Reserve Back',pos:'RB',team:'NO',injury:{designation:'Injured Reserve'}}},[],2026,6,c.updatedAt);assert(role.absences.some(p=>p.name==='Reserve Back'));
+console.log('PASS complete current Tank01 feed, no stale reserve carry-forward, activation/IR/PUP-Out semantics, fail-closed coverage/freshness and teammate IR context.');
