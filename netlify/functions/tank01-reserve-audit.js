@@ -50,6 +50,7 @@ exports.handler=async event=>{
  if(!await verifyWorkflowToken(token))return{statusCode:401,body:'Unauthorized'};
  connectLambda(event);const store=getStore({name:'tank01-reserve-audit'});
  const result=event.httpMethod==='GET'?await store.get(KEY,{type:'json'})||{status:'NOT_RUN'}:await audit({store,apiKey:process.env.TANK01_API_KEY,reserve:async()=>{const denied=await requireTank01Budget(event,{job:'tank01-reserve-field-audit',calls:5,priority:'normal',maxJobCalls:5});return denied?{allowed:false,reason:'Shared budget denied'}:{allowed:true};}});
- return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(result)};
+ const fullPlayerList=event.httpMethod==='POST'?await require('./_tank01-full-list-audit').fullListAudit({store,apiKey:process.env.TANK01_API_KEY,reserve:async()=>!await requireTank01Budget(event,{job:'tank01-full-player-list-audit',calls:1,maxJobCalls:1})}):await store.get('full-player-list-v1',{type:'json'});
+ return{statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({...result,fullPlayerList})};
 };
 exports._test={audit,fields};
