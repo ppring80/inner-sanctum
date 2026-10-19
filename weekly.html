@@ -1276,15 +1276,15 @@ function renderNewswire() {
 
   if (updated) {
     updated.textContent = newswireState.updatedAt
-      ? 'Last checked ' + formatNewswireTime(newswireState.updatedAt)
-      : (newswireState.error ? 'Latest check unavailable' : 'Checking for updates…');
+      ? 'Availability checked ' + formatNewswireTime(newswireState.updatedAt)
+      : (newswireState.error ? 'Latest check unavailable' : 'Current availability unavailable');
   }
 
   // Newest reporting leads, including when an older editorial card is featured.
   // Keep all evidence in the response; show each player's latest report here.
   var seenNewswirePlayers = new Set();
   var stories = newswireState.stories.slice().sort(function(a, b) {
-    return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
+    return Date.parse(b.sortAt || b.publishedAt) - Date.parse(a.sortAt || a.publishedAt) || Number(!!b.hasReporting) - Number(!!a.hasReporting);
   }).filter(function(story) {
     var key = String(story.player || story.id).toLowerCase();
     if (seenNewswirePlayers.has(key)) return false;
@@ -1329,11 +1329,10 @@ function renderNewswire() {
       '</div>' +
       '<div class="newswire-headline">' + escapeNewswireHtml(story.headline) + '</div>' +
       '<div class="newswire-summary">' + escapeNewswireHtml(story.summary) + '</div>' +
-      '<div class="newswire-impact"><strong>SAGE Impact</strong>' + escapeNewswireHtml(story.sageImpact) + '</div>' +
+      '<div class="newswire-impact"><strong>SAGE Impact</strong>' + escapeNewswireHtml(story.sageImpact) + '</div>' + newswireReporting(story) +
       '<div class="newswire-source">' +
-        escapeNewswireHtml(formatNewswireTime(story.publishedAt)) + ' · ' +
-        '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' +
-          escapeNewswireHtml(story.sourceLabel) + ' ↗</a>' +
+        escapeNewswireHtml((story.dateLabel ? story.dateLabel + ' ' : '') + formatNewswireTime(story.publishedAt)) + ' · ' +
+        (story.sourceUrl ? '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeNewswireHtml(story.sourceLabel) + ' ↗</a>' : escapeNewswireHtml(story.sourceLabel)) +
       '</div>' +
     '</article>';
   }).join('');
@@ -1355,15 +1354,22 @@ function renderNewswire() {
       '</div>' +
       '<div class="newswire-row-copy">' +
         '<div class="newswire-row-headline">' + escapeNewswireHtml(story.headline) + '</div>' +
+        (story.observedAt ? '<div class="newswire-summary">' + escapeNewswireHtml(story.summary) + '</div>' : '') +
         '<details class="newswire-row-details"><summary>SAGE Impact</summary><p>' +
-          escapeNewswireHtml(story.sageImpact) + '</p></details>' +
+          escapeNewswireHtml(story.sageImpact) + '</p></details>' + newswireReporting(story) +
       '</div>' +
-      '<div class="newswire-row-time">' + escapeNewswireHtml(formatNewswireTime(story.publishedAt)) +
-        '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Source ↗</a>' +
+      '<div class="newswire-row-time">' + escapeNewswireHtml((story.dateLabel ? story.dateLabel + ' ' : '') + formatNewswireTime(story.publishedAt)) +
+        (story.sourceUrl ? '<a href="' + escapeNewswireHtml(story.sourceUrl) + '" target="_blank" rel="noopener noreferrer">Source ↗</a>' : '<span>Tank01</span>') +
       '</div>' +
     '</article>';
   }).join('');
   if (loadMore) loadMore.style.display = compact.length > newswireState.compactLimit ? 'block' : 'none';
+}
+
+function newswireReporting(story) {
+  var report = story.report;
+  if (!report) return '';
+  return '<details class="newswire-row-details"><summary>Latest source report · ' + escapeNewswireHtml(formatNewswireTime(report.publishedAt)) + '</summary><p>' + escapeNewswireHtml(report.headline) + '</p><p>' + escapeNewswireHtml(report.summary) + '</p><p>' + escapeNewswireHtml(report.sageImpact) + '</p><a href="' + escapeNewswireHtml(report.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeNewswireHtml(report.sourceLabel) + ' ↗</a></details>';
 }
 
 function loadNewswire() {
@@ -1378,7 +1384,7 @@ function loadNewswire() {
         throw new Error('Newswire unavailable');
       }
       newswireState.stories = result.data.stories;
-      newswireState.updatedAt = result.data.updatedAt || null;
+      newswireState.updatedAt = result.data.availability ? (result.data.availability.fresh ? result.data.availability.updatedAt : null) : result.data.updatedAt || null;
       newswireState.error = null;
       renderNewswire();
     })

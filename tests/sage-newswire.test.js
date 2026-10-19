@@ -21,15 +21,9 @@ Date.now=()=>Date.parse('2026-10-08T18:00:00Z');
  cache={mode:'editorial-with-sources',updatedAt:new Date(Date.now()).toISOString(),stories};assert.equal((await newswire.handler({httpMethod:'GET'})).statusCode,200);
  assert(!editorialStories(Date.parse('2026-10-09T22:00:00Z')).some(s=>s.id==='zay-flowers-20261002'),'seven-day report expiry remains enforced');
  const live=JSON.parse((await newswire.handler({httpMethod:'GET'})).body);
- assert(live.stories.some(s=>s.player==='Justin Jefferson'&&s.status==='OUT'),'manual reports appear immediately despite a fresh older automatic cache');
- assert(live.stories.some(s=>s.player==='Breece Hall'&&s.status==='OUT'),'shared roundup URL must retain each affected player');
- assert(live.stories.some(s=>s.player==='Zay Flowers'&&s.status==='Questionable'));
- assert(live.stories.some(s=>s.player==='Saquon Barkley'&&/hamstring/i.test(s.headline)),'Oct 4 Barkley injury must appear');
- assert(live.stories.some(s=>s.player==="Ja'Marr Chase"&&s.status==='Concussion'),'Oct 4 Chase concussion must appear');
- assert(live.stories.some(s=>s.player==='Lamar Jackson'&&/ankle/i.test(s.headline)),'Oct 4 Lamar injury must appear');
- assert(live.stories.some(s=>s.player==='Rashee Rice'&&/hamstring/i.test(s.headline)),'Oct 4 Rice injury must appear');
- assert(live.stories.some(s=>s.player==='Tyquan Thornton'&&/dislocated ankle/i.test(s.headline)),'Oct 4 Thornton injury must appear');
- assert(live.stories.filter(s=>s.featured).every(s=>Date.parse(s.publishedAt)>=Date.parse('2026-10-02')));
+ assert(!live.availability.fresh,'news reports alone cannot certify current player availability');
+ assert(live.stories.every(s=>Date.now()-Date.parse(s.publishedAt)<72*3600000),'expired editorial advice is not current news');
+ assert(editorialStories().some(s=>s.player==='Justin Jefferson'),'dated editorial evidence remains available to the reporting layer');
  assert.equal(mergeStories([{player:'One',sourceUrl:'same',headline:'One out'},{player:'Two',sourceUrl:'same',headline:'Two out'}],[]).length,2);
  const current=editorialStories(Date.parse('2026-10-10T21:30:00Z'));
  for(const [player,status] of [['Saquon Barkley','OUT'],['Lamar Jackson','OUT'],['Jayden Daniels','Starting'],['Justin Jefferson','Questionable'],['DJ Moore','Questionable'],['Josh Palmer','OUT'],['Tank Bigsby','IR'],['Dallas Goedert','Cleared']]){
