@@ -1,12 +1,13 @@
 'use strict';
-const assert=require('assert');const Module=require('module');const original=Module._load;
-let writes=[];
+const assert=require('assert'),Module=require('module'),original=Module._load;
+let writes=[],reserved=[];
 Module._load=function(id,parent,...args){
- if(id==='@netlify/blobs')return {connectLambda(){},getStore(){return {get:async()=>({players:{reserve:{longName:"Reserve Player",injury:{designation:"IR"}}}}),setJSON:async(key,value)=>writes.push(value)}}};
- if(id==='./_tank01-daily-budget.js' && parent.filename.endsWith('refresh-player-data.js'))return {requireTank01Budget:async()=>null};
+ if(id==='@netlify/blobs')return{connectLambda(){},getStore(){return{get:async()=>({players:{old:{longName:'Old Reserve',injury:{designation:'IR'}}}}),setJSON:async(key,value)=>writes.push(value)}}};
+ if(id==='./_tank01-daily-budget.js'&&parent.filename.endsWith('refresh-player-data.js'))return{requireTank01Budget:async(event,opts)=>{reserved.push(opts);return null;}};
  return original.call(this,id,parent,...args);
 };
 const {handler}=require('../netlify/functions/refresh-player-data');Module._load=original;
-let fail=false;
-global.fetch=async url=>{const u=new URL(url);if(u.pathname.endsWith('getNFLTeams'))return {ok:true,json:async()=>({body:Array.from({length:32},(_,i)=>({teamAbv:'T'+i}))})};const team=u.searchParams.get('teamAbv');return {ok:!(fail&&team==='T0'),status:503,json:async()=>({body:{roster:Array.from({length:40},(_,i)=>({playerID:team+'-'+i,longName:'Player '+i,pos:'WR',team}))}})};};
-(async()=>{let r=await handler({});assert.equal(r.statusCode,200);assert.equal(JSON.parse(r.body).cached,true);assert.equal(writes.length,1);assert.equal(writes[0].teamsSucceeded,32);assert.equal(writes[0].players.reserve.injury.designation,"IR");fail=true;r=await handler({});assert.equal(r.statusCode,502);assert.equal(writes.length,1,'a partial refresh must preserve the complete cache');console.log('Player availability preserves complete cache on partial provider failure.');})().catch(e=>{console.error(e);process.exitCode=1});
+let fail=false,calls=0;
+const players=Array.from({length:1280},(_,i)=>({playerID:String(i),longName:'Player '+i,pos:'WR',team:'T'+(i%32),isFreeAgent:'False',injury:{designation:i===0?'Injured Reserve':''}}));
+global.fetch=async url=>{calls++;assert(new URL(url).pathname.endsWith('getNFLPlayerList'));return{ok:!fail,status:503,json:async()=>({statusCode:200,body:players})};};
+(async()=>{let r=await handler({});assert.equal(r.statusCode,200);assert.equal(writes.length,1);assert.equal(calls,1);assert.equal(reserved[0].calls,1);assert.equal(writes[0].availabilityMode,'tank01-full-player-list-v1');assert.equal(writes[0].players['0'].injury.designation,'IR');assert(!writes[0].players.old,'obsolete reserve records are not merged into a current full feed');fail=true;r=await handler({});assert.equal(r.statusCode,502);assert.equal(writes.length,1,'failed refresh preserves complete cache');console.log('Full Tank01 player availability: one guarded call, explicit IR retained, stale records not carried forward, provider failure preserves cache.');})().catch(e=>{console.error(e);process.exitCode=1});
