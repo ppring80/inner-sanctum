@@ -7,10 +7,9 @@ exports.handler = async event => {
   const denied = requireTank01RefreshAuthorization(event);
   if (denied) return denied;
   connectLambda(event);
-  // Independent official evidence: stale-only, shared lease, zero Tank01 calls.
-  // The authenticated Netlify recovery loop supplies retries without a GitHub secret.
-  try { await require("./refresh-injury-transactions").handler(event); }
-  catch(error) { console.error("INJURY_RECOVERY_FAILED", error.message); }
+  // Official transactions run on their own hourly schedule and authenticated
+  // recovery workflow. Never await that network collector here: a stalled
+  // source must not consume the weekly watchdog before Tank01 jobs dispatch.
   const season = new Date().getUTCFullYear();
   const week = resolveCurrentNFLWeek(new Date(), season);
   const rows = await inspectJobs(getStore, season, week);
