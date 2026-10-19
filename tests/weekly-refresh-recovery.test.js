@@ -30,7 +30,7 @@ async function main() {
   assert.deepEqual(jobs.filter(j => j.store === 'weekly-sage-defense').map(j => j.week), [1,2,3]);
   assert.equal(jobs.filter(j => j.store.endsWith('-snapshot')).length, 6);
   const injury = jobs.find(j => j.store === 'player-data');
-  const availability = {updatedAt:new Date().toISOString(),teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{longName:'Player '+i}]))};
+  const availability = {updatedAt:new Date().toISOString(),availabilityMode:'tank01-full-player-list-v1',teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{longName:'Player '+i}]))};
   assert.equal(cacheKey(injury),'playerData');
   assert(completeCache(availability,injury));
   assert(!completeCache({...availability,teamsSucceeded:31,teamsFailed:1},injury));

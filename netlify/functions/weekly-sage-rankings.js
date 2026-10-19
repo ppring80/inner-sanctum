@@ -286,8 +286,9 @@ async function loadCentralAvailability() {
   try {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
-    const transactionCache = await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
-    const clubCustomerReadsEnabled=process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true'&&process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true';
+    const providerAvailability=cached?.availabilityMode===require('./_tank01-player-cache').MODE;
+    const transactionCache = providerAvailability?null:await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
+    const clubCustomerReadsEnabled=!providerAvailability&&process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true'&&process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true';
     const clubReserveEvidence=clubCustomerReadsEnabled?await getStore({name:require('./_club-availability-run').STORE}).get('observations',{type:'json'}).catch(()=>null):null;
     const newswireCache = await getStore({name:'sage-newswire'}).get('latest',{type:'json'}).catch(()=>null);
     const editorialNewswire = require('./_newswire-editorial').editorialStories();
@@ -315,7 +316,8 @@ async function loadCentralAvailability() {
       playerCount: Object.keys(players).length,
       players,
       byName,
-      transactions: require('./_injury-transactions').mergeTransactions(transactionCache,[]).records,
+      providerAvailability,
+      transactions: providerAvailability?[]:require('./_injury-transactions').mergeTransactions(transactionCache,[]).records,
       transactionsCheckedAt: transactionCache?.checkedAt || null,
       clubCustomerReadsEnabled,
       clubReserveEvidence,
@@ -362,9 +364,9 @@ function applyCentralAvailability(positions, inactive, availability, season, wee
         availability.transactions=(availability.transactions||[]).filter(record=>!(record.team===row.team&&require('./_injury-transactions').playerKey(record.name)===require('./_injury-transactions').playerKey(row.name)));
         availability.transactions.push(transaction);
       }
-      const ordinaryReserve = transaction ? (transaction.status==='ACTIVE'?null:transaction) : require("./_reserve-transactions.js").reserveTransaction(row,season,week);
+      const ordinaryReserve = transaction ? (transaction.status==='ACTIVE'?null:transaction) : availability.providerAvailability?null:require("./_reserve-transactions.js").reserveTransaction(row,season,week);
       const reserve = clubDecision.action==='KEEP_RESERVE_RESTRICTION'?clubDecision:clubDecision.action==='EXPLICIT_DEPARTURE'?{...clubDecision,status:'INACTIVE'}:ordinaryReserve;
-      const reported = [(injury && injury.designation), player?.rosterStatus]
+      const reported = (String(player?.isFreeAgent).toLowerCase()==='true'?['UNSIGNED']:[(injury && injury.designation), player?.rosterStatus])
         .map(normalizeAvailabilityStatus).filter(Boolean).filter(status=>transaction?.status!=='ACTIVE'||!['IR','INJURED RESERVE','RESERVE/INJURED','PUP','RESERVE/PUP','NFI','RESERVE/NFI'].includes(status));
       const status = reserve ? reserve.status : reported.find(value => HARD_UNAVAILABLE.has(value)) ||
         (player?.active === false ? "INACTIVE" : reported[0]);
@@ -629,7 +631,7 @@ exports.handler = async function (event) {
   // consumer, without rebuilding provider statistics or inventing workload.
   const depthCache = await getStore({name:"current-nfl-facts"}).get("latest",{type:"json"}).catch(()=>null);
   const teamRoles = await getStore({name:"team-backfield-roles"}).get("latest",{type:"json"}).catch(()=>null);
-  const roleEvidence = [...require('./_reserve-transactions').TRANSACTIONS.filter(t=>Number(season)===t.season&&targetWeek>=t.fromWeek&&(!t.activationWeek||targetWeek<t.activationWeek)&&!require('./_injury-transactions').matchingTransaction(t,season,targetWeek,centralAvailability.transactions)),...(centralAvailability.transactions||[])];
+  const roleEvidence = [...(centralAvailability.providerAvailability?[]:require('./_reserve-transactions').TRANSACTIONS).filter(t=>Number(season)===t.season&&targetWeek>=t.fromWeek&&(!t.activationWeek||targetWeek<t.activationWeek)&&!require('./_injury-transactions').matchingTransaction(t,season,targetWeek,centralAvailability.transactions)),...(centralAvailability.transactions||[])];
   for(const row of positions.RB||[]) {
     const reportedRole = require("./_reported-role-evidence").reportedRoleEvidence(row,centralAvailability.newswireStories,season,targetWeek);
     if(reportedRole) row.reportedRole = reportedRole;

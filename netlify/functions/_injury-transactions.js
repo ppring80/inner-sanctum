@@ -53,7 +53,7 @@ function roleContext(row, players, transactions, season, week, updatedAt) {
     const roster=Object.values(players||{}).find(p=>p.team===r.team&&playerKey(p.longName)===playerKey(r.name));
     if(r.position==='RB'||roster?.pos==='RB')unavailable.set(playerKey(r.name),r);
   }
-  for(const p of Object.values(players||{}))if(p.team===row.team&&p.pos==='RB'&&['IR','OUT','DOUBTFUL','PUP','NFI','RESERVE/INJURED'].includes(String(p.injury?.designation||p.rosterStatus||'').toUpperCase())) {
+  for(const p of Object.values(players||{}))if(p.team===row.team&&p.pos==='RB'&&['IR','INJURED RESERVE','OUT','DOUBTFUL','PUP','RESERVE/PUP','NFI','RESERVE/NFI','RESERVE/INJURED'].includes(String(p.injury?.designation||p.rosterStatus||'').toUpperCase())) {
     const transaction=matchingTransaction({name:p.longName,position:'RB',team:p.team},season,week,transactions);
     if(transaction?.status==='ACTIVE')continue;
     unavailable.set(playerKey(p.longName),{name:p.longName,status:p.injury?.designation||p.rosterStatus,source:'cached Tank01 roster',sourceUrl:null,reportedAt:updatedAt});

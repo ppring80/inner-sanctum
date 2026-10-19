@@ -18,7 +18,7 @@ assert.strictEqual(criticalCheckpoint(null,ms('2026-11-05T23:10:00Z')).reason,'a
 assert.strictEqual(criticalCheckpoint(null,ms('2026-10-07T22:10:59Z')).at,ms('2026-10-07T22:00:00Z'),'checkpoint stable across seconds');
 assert.strictEqual(dailyRuns(ms('2026-10-11T12:00:00Z')),10);assert.strictEqual(dailyRuns(ms('2026-10-13T00:00:00Z')),4);
 const now=ms('2026-10-08T23:05:00Z'),checkpoint=criticalCheckpoint(schedule,now);
-const cache={updatedAt:'2026-10-08T22:00:00Z',teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{}]))};
+const cache={updatedAt:'2026-10-08T22:00:00Z',availabilityMode:'tank01-full-player-list-v1',teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{}]))};
 const job={store:'player-data',criticalCheckpoint:checkpoint,criticalDue:true};
 assert.strictEqual(completeCache(cache,job,now),false,'critical checkpoint invalidates otherwise fresh eight-hour cache');
 assert.strictEqual(completeCache({...cache,updatedAt:'2026-10-08T22:50:00Z'},job,now),true,'recent refresh avoids duplicate calls');

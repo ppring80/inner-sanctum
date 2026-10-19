@@ -28,6 +28,7 @@ function completeCache(value, job, now = Date.now()) {
   if (job.store === 'opportunity-intel') return Boolean(value && String(value.season) === job.season && Math.max(...(value.weeksRequested || [])) >= job.week && value.gamesFound > 0 && value.gamesFailed === 0 && Object.keys(value.records || {}).length > 0);
   if (job.store === 'risers-fallers') return Boolean(value && String(value.season) === job.season && Number(value.currentWeek) === job.week && Number(value.previousWeek) === job.week-1 && Object.keys(value.allDeltas || {}).length > 0);
   if (job.store === 'player-data') {
+    if(value?.availabilityMode!==require('./_tank01-player-cache').MODE)return false;
     const updated = value && Date.parse(value.updatedAt), age = now-updated;
     return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000 && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
   }
