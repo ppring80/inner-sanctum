@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {availabilityForPlayer}=require('../netlify/functions/weekly-sage-rb-availability');
+const player={playerID:'4702555',name:'Jonah Coleman',position:'RB',team:'DEN'};
+const cache={availabilityMode:'tank01-full-player-list-v1',updatedAt:new Date().toISOString(),players:{'4702555':{longName:'Jonah Coleman',pos:'RB',team:'DEN',injury:{designation:''}}}};
+assert.equal(availabilityForPlayer(player,2026,6).eligible,false,'historical legacy reserve fixture remains available without a current source');
+assert.equal(availabilityForPlayer(player,2026,6,cache).eligible,true,'current provider status supersedes a static reserve seed');
+cache.players['4702555'].injury.designation='IR';assert.equal(availabilityForPlayer(player,2026,6,cache).eligible,false);
+cache.players['4702555'].injury.designation='Out';assert.equal(availabilityForPlayer(player,2026,6,cache).eligible,false);
+cache.players['4702555'].rosterStatus='UNSIGNED';assert.equal(availabilityForPlayer(player,2026,6,cache).status,'UNSIGNED');
+console.log('PASS RB builder current provider status supersedes old reserve seeds; IR, Out and departures remain unavailable.');
