@@ -286,10 +286,12 @@ async function loadCentralAvailability() {
   try {
     const store = getStore({ name: "player-data" });
     const cached = await store.get("playerData", { type: "json" });
-    const providerAvailability=cached?.availabilityMode===require('./_tank01-player-cache').MODE;
-    const transactionCache = providerAvailability?null:await getStore({name:require('./_injury-transactions').STORE}).get('latest',{type:'json'}).catch(()=>null);
-    const clubCustomerReadsEnabled=!providerAvailability&&process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true'&&process.env.OFFICIAL_CLUB_CUSTOMER_READS_ENABLED==='true';
-    const clubReserveEvidence=clubCustomerReadsEnabled?await getStore({name:require('./_club-availability-run').STORE}).get('observations',{type:'json'}).catch(()=>null):null;
+    // Availability now comes solely from Tank01. A missing/stale provider
+    // cache must not resurrect retired scraped transactions or static seeds.
+    const providerAvailability=true;
+    const transactionCache=null;
+    const clubCustomerReadsEnabled=false;
+    const clubReserveEvidence=null;
     const newswireCache = await getStore({name:'sage-newswire'}).get('latest',{type:'json'}).catch(()=>null);
     const editorialNewswire = require('./_newswire-editorial').editorialStories();
     const newswireStories = [...editorialNewswire,...(Array.isArray(newswireCache?.stories)?newswireCache.stories:[])];
@@ -326,7 +328,7 @@ async function loadCentralAvailability() {
   } catch (error) {
     return {
       available: false, updatedAt: null, ageHours: null, fresh: false,
-      playerCount: 0, players: {}, byName: new Map(), transactions:require('./_injury-transactions').VERIFIED, newswireStories:require('./_newswire-editorial').editorialStories(), error: error.message
+      playerCount: 0, players: {}, byName: new Map(), providerAvailability:true, transactions:[], newswireStories:require('./_newswire-editorial').editorialStories(), error: error.message
     };
   }
 }
