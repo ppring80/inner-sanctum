@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('assert');
+const {nextJob}=require('../netlify/functions/_weekly-refresh-recovery');
+const now=Date.parse('2026-10-20T14:00:00Z');
+const blocked={job:'refresh-weekly-sage-defense',store:'weekly-sage-defense',ready:false,status:{day:'2026-10-20',attempts:2,attemptLimit:2}};
+const player={job:'refresh-player-data',store:'player-data',ready:false};
+const news={job:'refresh-sage-newswire',store:'sage-newswire',ready:false};
+const rank={job:'refresh-qb-snapshot',store:'qb-snapshot',ready:false};
+assert.equal(nextJob([blocked,rank,player,news],now),player);
+assert.equal(nextJob([blocked,rank,{...player,ready:true},news],now),news);
+assert.equal(nextJob([blocked,rank,{...player,ready:true},{...news,ready:true}],now),null,'Rankings still wait for defensive evidence');
+const cooling={...player,status:{day:'2026-10-20',attempts:1,attemptLimit:4,retryAfter:now+1800000}};
+assert.equal(nextJob([blocked,cooling,news],now),news,'Player retry cooldown cannot block news');
+const exhausted={...news,status:{day:'2026-10-20',attempts:8,attemptLimit:8}};
+assert.equal(nextJob([blocked,cooling,exhausted],now),null,'Existing attempt limits remain enforced');
+const running={...news,status:{leaseUntil:now+60000}};
+assert.equal(nextJob([blocked,cooling,running],now),null,'Running jobs are not duplicated');
+console.log('PASS: independent availability/news bypass blocked rankings; dependency, retry, attempt and lease protections retained.');
