@@ -1,0 +1,27 @@
+[
+  {
+    "id": "bernard-first-start-20261011",
+    "player": "Germie Bernard",
+    "position": "WR",
+    "team": "PIT",
+    "season": 2026,
+    "week": 5,
+    "appliesFromWeek": 5,
+    "kind": "ROLE_GAIN",
+    "explicitRole": "STARTER",
+    "authority": "VERIFIED_REPORTER",
+    "reporter": "Chris Ward",
+    "sourceLabel": "Chris Ward · Steelers Now",
+    "sourceUrl": "https://plus.steelersnow.com/articles/promising-steelers-rookie-makes-first-career-start",
+    "publishedAt": "2026-10-11",
+    "publicationPrecision": "DAY",
+    "effectiveAt": "2026-10-11",
+    "dateBasis": "EFFECTIVE",
+    "firstAffectedGameID": "20261011_IND@PIT",
+    "firstAffectedGameVerified": true,
+    "firstAffectedGameSourceUrl": "https://www.steelers.com/team/players-roster/germie-bernard/logs/2026/reg/",
+    "verifiedAt": "2026-10-21T22:05:22Z",
+    "currentRoleSourceUrl": "https://www.steelers.com/team/depth-chart/",
+    "statement": "Bernard first started October 11; Pittsburgh currently lists him first at a receiver spot. The report establishes the role change, not future target growth."
+  }
+]

@@ -644,7 +644,7 @@ exports.handler = async function (event) {
   }
 
   // Carry dated direct reports without turning teammate absence into a starter claim.
-  require('./_reported-role-evidence').applyReportedRoleEvents(positions,centralAvailability.newswireStories,season,targetWeek);
+  require('./_reported-role-evidence').applyReportedRoleEvents(positions,[...require('./_newswire-editorial').editorialRoleStories(season,targetWeek),...centralAvailability.newswireStories],season,targetWeek);
 
   // Columbia state-change propagation: a verified unavailable QB changes the
   // offensive environment for same-team WR/TE/RB. This schedules/reports

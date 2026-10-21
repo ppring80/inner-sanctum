@@ -1,0 +1,38 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {editorialRoleStories,editorialStories}=require('../netlify/functions/_newswire-editorial');
+const {reportedRoleEvents,applyReportedRoleEvents}=require('../netlify/functions/_reported-role-evidence');
+const {establishRole,qualifyEvent}=require('../netlify/functions/_super-sage-role-establishment');
+const {fromSnapshot,normalizeName}=require('../netlify/functions/_super-sage-opportunity-evidence');
+const {buildLineupDecisionRecord}=require('../netlify/functions/_super-sage-lineup-decision');
+const {toCustomerAnswer}=require('../netlify/functions/_super-sage-lineup-presenters');
+const {buildEvidence}=require('../netlify/functions/_super-sage-shadow-llm');
+const {nextJob}=require('../netlify/functions/_weekly-refresh-recovery');
+const now=new Date('2026-10-21T22:10:00Z');
+const row={name:'Germie Bernard',position:'WR',team:'PIT',rank:41,recommendation:'FLEX',availabilityVerified:true,projectedPoints:10.4,projection:{points:10.4,source:'Tank01',fresh:true,scoring:'half',week:7,updatedAt:'2026-10-21T22:06:00Z'}};
+const stories=editorialRoleStories(2026,7,now.getTime());assert.equal(stories.length,1);
+const events=reportedRoleEvents(row,stories,2026,7,now);assert.equal(events.length,1);
+assert.equal(events[0].publishedAt,'2026-10-11');assert.equal(events[0].week,5);assert.equal(events[0].firstAffectedGameID,'20261011_IND@PIT');
+assert(!editorialStories(now.getTime()).some(s=>s.id===events[0].id),'Historical role records do not masquerade as current news');
+// Real cached Bernard game observations. Availability and fresh projection in
+// this test are controlled inputs; this is not a production replay claim.
+const games=[{gameID:'20261001_PIT@CLE',week:4,carries:0,targets:2,opportunities:2},{gameID:'20261011_IND@PIT',week:5,carries:1,targets:9,opportunities:10},{gameID:'20261018_PIT@TB',week:6,carries:0,targets:12,opportunities:12}];
+const build=require('../netlify/functions/refresh-opportunity-intel').buildOpportunityIntelligence;
+const work=build(games,'WR');
+const opportunity=fromSnapshot({season:2026,computedAt:'2026-10-21T22:06:00Z',records:{[normalizeName(row.name)+'|WR']:{_rawGames:games,...work}}},{season:2026,week:7,decisionCutoff:now.toISOString()});
+const args={event:events[0],opportunity,projection:{...row.projection,admissible:true},statusEvidence:[{family:'test',source:'controlled active status',status:'ACTIVE',fresh:true}],name:row.name,position:'WR',team:'PIT',season:2026,week:7,scoring:'half'};
+const proof=establishRole(args);assert.equal(proof.status,'ESTABLISHED',JSON.stringify(proof));assert.equal(proof.provisional,true);assert.equal(proof.sampleSize,'limited');assert.deepEqual(proof.gameIDs,games.slice(1).map(g=>g.gameID));
+for(const patch of [{reporter:'Other Writer'},{sourceUrl:'https://unknown.example/articles/story'},{team:'NE'}])assert(!qualifyEvent({...events[0],...patch},{...row,season:2026,week:7,cutoff:now.toISOString()}).valid);
+for(const patch of [{firstAffectedGameVerified:false},{firstAffectedGameID:'20261001_PIT@CLE'},{firstAffectedGameID:'20261011_NYJ@NE'},{firstAffectedGameID:'20261011_PIT@IND'}])assert.equal(establishRole({...args,event:{...events[0],...patch}}).reason,'first_affected_game_unverified');
+const without={...events[0]};delete without.firstAffectedGameID;assert.notEqual(establishRole({...args,event:without}).status,'ESTABLISHED','Ambiguous day cannot silently include first-start game');
+const positions={WR:[structuredClone(row)]};applyReportedRoleEvents(positions,stories,2026,7,now);
+const r=buildLineupDecisionRecord({rankings:{positions,metadata:{availability:{fresh:true}}},roster:[{name:row.name,position:'WR'}],slots:[{slotLabel:'WR',eligiblePositions:['WR'],count:1}],season:2026,week:7,scoring:'half',opportunity});
+assert.equal(r.slots[0].starter.baselineValidity.state,'VALID');assert.equal(r.slots[0].confidence.label,'Moderate');assert.match(toCustomerAnswer(r).threeSeconds.join(' '),/only two games/);assert.match(JSON.stringify(buildEvidence(r).packet),/20261011_IND@PIT/);
+const later=new Date('2026-10-29T22:10:00Z'),old=editorialRoleStories(2026,8,later.getTime());assert.equal(old.length,1,'Role history survives news expiry and rollover');
+const stale=reportedRoleEvents(row,old,2026,8,later);assert.equal(stale.length,1);assert.equal(stale[0].fresh,false);assert.equal(establishRole({...args,event:stale[0],week:8}).reason,'role_event_unverified_or_stale');
+assert.equal(editorialRoleStories(2025,7,now.getTime()).length,0);assert.equal(editorialRoleStories(2026,4,now.getTime()).length,0);
+assert.equal(establishRole({...args,conflictingEvents:[{...events[0],kind:'TEAMMATE_RETURN',effectiveAt:'2026-10-20'}]}).reason,'role_event_conflict');
+const blocked={job:'refresh-weekly-sage-defense',store:'weekly-sage-defense',ready:false,status:{day:'2026-10-21',attempts:2,attemptLimit:2}},projection={job:'refresh-weekly-projections',store:'weekly-projections',ready:false};
+assert.equal(nextJob([blocked,projection],now.getTime()),projection,'Projection refresh has no dependency on stalled defensive backfill');
+for(const status of [{leaseUntil:now.getTime()+1000},{retryAfter:now.getTime()+1000},{day:'2026-10-21',attempts:8,attemptLimit:8}])assert.equal(nextJob([blocked,{...projection,status}],now.getTime()),null,'Lease/retry/budget attempt limits remain');
+console.log('PASS: real dated editorial report reaches two-game proof and caveat; history, sources, boundaries, conflicts and projection retry safeguards hold.');
