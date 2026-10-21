@@ -643,6 +643,9 @@ exports.handler = async function (event) {
     if(context){row.roleContext=context;row.sageTake=`${context.note} ${row.sageTake||''}`;}
   }
 
+  // Carry dated direct reports without turning teammate absence into a starter claim.
+  require('./_reported-role-evidence').applyReportedRoleEvents(positions,centralAvailability.newswireStories,season,targetWeek);
+
   // Columbia state-change propagation: a verified unavailable QB changes the
   // offensive environment for same-team WR/TE/RB. This schedules/reports
   // reassessment only; it never invents a fantasy-point penalty or replacement
