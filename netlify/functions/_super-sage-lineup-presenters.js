@@ -168,6 +168,10 @@ function toCustomerAnswer(record, evidenceStatus = null) {
       const leader = s.comparator && s.comparator.name === s.reassessedFrom ? s.comparator : null;
       const triggers = leader && leader.baselineValidity ? leader.baselineValidity.triggers.map((t) => TRIGGER_PHRASE[t.code]).filter(Boolean) : [];
       three.push(`${s.reassessedFrom}${leader ? ` (${rankLabel(leader)})` : ""} is set aside this week: current evidence contradicts his ranking${triggers.length ? ` (${[...new Set(triggers)].join(", ")})` : ""}. ${shortName(s.starter)} starts instead.`);
+    } else if (s.decidedBy === "FLEX_BASELINE_REASSESSED" && s.comparator) {
+      three.push(`${shortName(s.starter)} starts over ${shortName(s.comparator)}: ${shortName(s.comparator)}'s ranking needs reassessment. ${shortName(s.starter)} has the higher fresh projection with no conflicting availability, recent workload or matchup evidence.`);
+    } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator && validityOf(s.starter) === "REASSESS") {
+      three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is PROVISIONAL — no validated edge. ${shortName(s.starter)}'s ranking needs reassessment, and the supplied evidence does not resolve this choice.`);
     } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator) {
       const evidence = decisionEvidenceLine(s);
       three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is PROVISIONAL — no validated edge. ${evidence ? evidence + " " : ""}${shortName(s.comparator)} projects higher, but SAGE cannot yet prove that advantage exceeds normal projection error. This is a conservative hold, not proof that ${shortName(s.starter)} is the better play.`);
@@ -186,7 +190,7 @@ function toCustomerAnswer(record, evidenceStatus = null) {
   (record.benchWatch || []).forEach((w) => { if (w.notes && w.notes.length) ten.push(`${w.player}: ${firstSentence(w.notes[0])}`); });
   decided.forEach((s) => { const line = statusLine(s.starter); if (line) ten.push(`${shortName(s.starter)} — ${line}`); });
   // Non-obvious calls get a compact evidence comparison in the 10-second layer.
-  decided.filter((s) => s.comparator && (s.hasValidatedEdge === false || s.confidence.label === "Limited" || s.decidedBy === "BASELINE_REASSESSED"))
+  decided.filter((s) => s.comparator && (s.hasValidatedEdge === false || s.confidence.label === "Limited" || s.decidedBy === "BASELINE_REASSESSED" || s.decidedBy === "FLEX_BASELINE_REASSESSED"))
     .forEach((s) => {
       const line = decisionEvidenceLine(s);
       if (line) ten.push(`Evidence: ${line}`);

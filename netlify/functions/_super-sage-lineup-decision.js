@@ -28,6 +28,9 @@
 //     prior. Fresh verified current-state evidence can mark it VALID,
 //     REASSESS, INVALID or UNAVAILABLE (see _super-sage-baseline-validity.js)
 //     without changing the rank or applying a numeric penalty.
+//     A reassessed FLEX prior may yield to a VALID same-tier alternative with
+//     coherent fresh common-source evidence; a VALID prior keeps the original
+//     cross-position burden. Unsupported reassessed holds are provisional.
 //   * Cross-position challenges are classified ORDINARY / SURPRISING /
 //     PROHIBITED. A sourced projection may resolve an otherwise ORDINARY
 //     comparison when the complete current evidence is coherent and the
@@ -446,6 +449,30 @@ function insufficientEvidence(orderedEligible) {
 
 const validityOf = (p) => (p.baselineValidity ? p.baselineValidity.state : "VALID");
 
+// A reassessed FLEX prior does not get the protection of a VALID prior. This
+// narrow consistency check is not a projection ranking or a role-growth signal:
+// both established workloads and matchups must be supplied and non-conflicting.
+function reassessedFlexAlternative(challenger, incumbent) {
+  const cp = challenger.projection, ip = incumbent.projection;
+  const matchupOrder = ["Strong Negative", "Negative", "Neutral", "Positive", "Strong Positive"];
+  const cm = matchupOrder.indexOf(challenger.matchup), im = matchupOrder.indexOf(incumbent.matchup);
+  const cw = challenger.observedOpportunity?.avgLast3, iw = incumbent.observedOpportunity?.avgLast3;
+  return validityOf(incumbent) === "REASSESS" && validityOf(challenger) === "VALID"
+    && challenger.position !== incumbent.position
+    && challenger.standing && incumbent.standing
+    && challenger.standing.tierIndex <= incumbent.standing.tierIndex
+    && freshAdmissible(challenger) && freshAdmissible(incumbent)
+    && cp.source === ip.source && cp.scoring === ip.scoring && cp.week !== null && cp.week === ip.week
+    && cp.points > ip.points
+    && challenger.uncertainty.length === 0
+    && !challenger.forwardSignals.some((s) => s.decisionActive && s.direction === "down")
+    && !incumbent.forwardSignals.some((s) => s.decisionActive && s.direction === "up")
+    && ["ACTIVE", "A"].includes(challenger.availability.effectiveStatus?.status)
+    && challenger.establishedRole?.status === "ESTABLISHED" && incumbent.establishedRole?.status === "ESTABLISHED"
+    && Number.isFinite(cw) && Number.isFinite(iw) && cw >= iw
+    && cm >= 0 && im >= 0 && cm >= im;
+}
+
 // REASSESS removes the benefit of the doubt: a VALID same-position rival in
 // the same or next tier with a higher fresh, sourced projection goes ahead.
 function reassessYield(ordered) {
@@ -524,7 +551,7 @@ const UNRESOLVED_RESOLUTIONS = new Map([
   ["ORDINARY_WITHIN_NOISE_BAND", "CLOSE_CALL_WITHIN_NOISE"]
 ]);
 const NO_EDGE_CONFIDENCE = {
-  PROVISIONAL_UNRESOLVED: { label: "Unresolved", rules: ["conservative hold: an ORDINARY comparison the uncalibrated projection-noise policy cannot resolve; no validated edge"] },
+  PROVISIONAL_UNRESOLVED: { label: "Unresolved", rules: ["conservative hold: current evidence does not resolve the comparison; no validated edge"] },
   CLOSE_CALL_WITHIN_NOISE: { label: "Close call", rules: ["conservative hold: the projection difference is within the calibrated noise band; no validated edge"] }
 };
 
@@ -557,6 +584,14 @@ function decideFlexSlot(slot, pool, request) {
       decidedBy: winner.result.resolution === "CURRENT_EVIDENCE_COMPARISON" ? "CURRENT_EVIDENCE_COMPARISON" : "DISPLACEMENT_GATE_PASSED",
       gate: winner.result, blockedChallengers: evaluations.filter((e) => e !== winner) };
   }
+  const reassessment = evaluations.filter((e) => ordered.find((p) => p.position === e.challenger.position) === e.challenger
+      && reassessedFlexAlternative(e.challenger, incumbent))
+    .sort((a, b) => flexBaselineOrder(a.challenger, b.challenger))[0];
+  if (reassessment) return {
+    starter: reassessment.challenger, comparator: incumbent, reassessedFrom: incumbent,
+    decidedBy: "FLEX_BASELINE_REASSESSED", decisionState: "DECIDED", gate: null,
+    blockedChallengers: evaluations.filter((e) => e !== reassessment)
+  };
   // The most relevant blocked challenger is the one a reader would most expect
   // to start: the strongest common-unit projection among cross-position
   // challengers, otherwise the next established option.
@@ -568,7 +603,8 @@ function decideFlexSlot(slot, pool, request) {
   const mostRelevant = unresolved[0] || byProjection[0] || evaluations[0] || null;
   const comparator = mostRelevant ? mostRelevant.challenger : (reassessedFrom || ordered[1] || null);
   const decisionState = mostRelevant && UNRESOLVED_RESOLUTIONS.has(mostRelevant.result.resolution)
-    ? UNRESOLVED_RESOLUTIONS.get(mostRelevant.result.resolution) : "DECIDED";
+    ? UNRESOLVED_RESOLUTIONS.get(mostRelevant.result.resolution)
+    : mostRelevant && validityOf(incumbent) === "REASSESS" ? "PROVISIONAL_UNRESOLVED" : "DECIDED";
   return { starter: incumbent, comparator, decidedBy: evaluations.length && decidedBy === "ESTABLISHED_BASELINE" ? "ESTABLISHED_BASELINE_PRESERVED" : decidedBy,
     gate: mostRelevant ? mostRelevant.result : null, blockedChallengers: evaluations, reassessedFrom, decisionState };
 }
@@ -659,13 +695,17 @@ function explainSlot(record) {
   }
   if (record.decidedBy === "BASELINE_REASSESSED") {
     why.push(`Next by Weekly SAGE: ${s.name} (${label(s)}, baseline ${s.baselineValidity.state}, fresh projection ${freshAdmissible(s) ? s.projection.points.toFixed(1) : "n/a"}).`);
+  } else if (record.decidedBy === "FLEX_BASELINE_REASSESSED") {
+    why.push(`${s.name} starts over ${c.name}: ${c.name}'s ranking needs reassessment (${validityText(c)}).`);
+    why.push(`${s.name} has a valid same-or-better tier, a higher fresh ${s.projection.source} projection (${s.projection.points.toFixed(1)} vs ${c.projection.points.toFixed(1)}), no added uncertainty, and no conflicting recent workload or matchup evidence. Recent workload is context, not a forecast of more work.`);
+    whatCouldChange.push(`${c.name}'s current-state evidence clearing would restore that standing's authority.`);
   } else if (record.decidedBy === "INVALID_BASELINE_ONLY_OPTION") {
     why.push(`${s.name} is the only legal option for ${record.slotLabel}, but the Weekly SAGE standing is suspended (INVALID): ${validityText(s)}`);
   } else if (record.decidedBy === "CURRENT_EVIDENCE_COMPARISON") {
     why.push(`${s.name} (${label(s)}) starts over ${c.name} (${label(c)}) in an ORDINARY comparison: same tier, both baselines VALID, no added uncertainty, consistent established roles.`);
     why.push(`The fresh ${s.projection.source} projection (${s.projection.points.toFixed(1)} vs ${c.projection.points.toFixed(1)}) exceeds the calibrated noise band (${record.gate.band.value}).`);
   }
-  if (["BASELINE_REASSESSED", "INVALID_BASELINE_ONLY_OPTION", "CURRENT_EVIDENCE_COMPARISON"].includes(record.decidedBy)) {
+  if (["BASELINE_REASSESSED", "FLEX_BASELINE_REASSESSED", "INVALID_BASELINE_ONLY_OPTION", "CURRENT_EVIDENCE_COMPARISON"].includes(record.decidedBy)) {
     // handled above; FLEX reassessments also explain the cross-position comparison below.
     if (record.decidedBy === "BASELINE_REASSESSED" && record.gate && record.comparator && record.comparator !== r) crossPositionLines(record, why, whatCouldChange);
   } else if (record.decidedBy === "WITHIN_POSITION_ORDER") {
@@ -717,6 +757,12 @@ function unresolvedLines(record, why, whatCouldChange) {
   const s = record.starter, c = record.comparator, band = record.gate.band || {};
   const proj = (p) => (freshAdmissible(p) ? p.projection.points.toFixed(1) : "n/a");
   if (record.decisionState === "PROVISIONAL_UNRESOLVED") {
+    if (validityOf(s) === "REASSESS") {
+      why.push(`${s.name}'s ranking needs reassessment, and the supplied evidence does not establish a validated edge over ${c.name}. This is a provisional hold, not proof that ${s.name} is the better play.`);
+      whatCouldChange.push(`Verified current-state evidence resolving ${s.name}'s ranking concerns or a fully supported alternative.`);
+      crossPositionLines(record, why, whatCouldChange);
+      return;
+    }
     why.push(`${s.name} (${label(s)}) is kept as the conservative incumbent because the projection-noise policy has not yet been calibrated by historical backtest.`);
     why.push(`${c.name} (${label(c)}) projects higher in the current source (${c.projection.source}: ${proj(c)} vs ${proj(s)}), but SAGE cannot yet show that the gap exceeds normal projection error. This is a conservative hold, not a validated edge.`);
     whatCouldChange.push("A calibrated projection-noise band (historical backtest) would resolve this comparison.");
