@@ -15,7 +15,7 @@ async function readCustomerOpinion({requested,enabled,usingPastedRoster,record,o
   const opinion=result.secondOpinion,answer=opinion.answer;
   // No legacy prose, evidence bodies, raw provider replies, storage keys or
   // request metadata can cross this boundary. English is re-rendered upstream.
-  if(answer.answerContract!=='structured-pair-v1')return unavailable();
+  if(!['structured-pair-v1','structured-pair-v2'].includes(answer.answerContract))return unavailable();
   return {status:'READY',label:opinion.label,slotId:opinion.slotId,lean:opinion.lean,confidence:opinion.confidence,explanation:answer.explanation,reconsider:answer.reconsider,detail:'Separate saved second opinion. Confidence is Rookie’s assessment, not a calibrated probability. SAGE’s lineup is unchanged.'};
  }catch{return unavailable();}
 }

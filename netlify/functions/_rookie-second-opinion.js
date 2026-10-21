@@ -20,12 +20,16 @@ async function secondOpinion({record,slotIndex,reviewPair,capturedAt,loadUsageSn
   // confidence are never supplied as a preferred model response.
   const result=await reviewPair(copy(focused.packet));
   if(result?.status!=='REVIEW_READY')return unavailable();
-  const structured=focused.packet.answerContract==='structured-pair-v1';
+  const sp=require('./_rookie-structured-pair');
+  const structured=[sp.CONTRACT,sp.CONTRACT_V1].includes(focused.packet.answerContract);
+  // A saved v1 review is judged against the v1 packet rebuilt from the same frozen evidence.
+  const contractFocused=structured&&result.legacyContract===sp.CONTRACT_V1?await prepareSelectedPair(frozen,{players:[slot.starter.name,slot.comparator.name],slotId:selectedSlot.slotId},{capturedAt,loadUsageSnapshot,contract:'v1'}):focused;
+  if(structured&&result.evidenceHash&&result.evidenceHash!==contractFocused.evidenceHash)return unavailable();
   const answer=structured?result.answer:Array.isArray(result.answer?.sentenceFactIds)?result.answer:formatGroundedAnswer(result.answer);
-  const assessment=assessPairAnswer(answer,focused.packet);
+  const assessment=assessPairAnswer(answer,contractFocused.packet);
   if(assessment.hard.length)return unavailable();
   const lean=focused.packet.players.find(p=>p.id===answer.selected)?.name||null;
-  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,softFlags:assessment.soft,answer:copy(structured?require('./_rookie-structured-pair').render(answer,focused.packet):answer)}};
+  return {...base,secondOpinion:{status:'READY',label:lean?`Rookie leans ${lean}`:'Rookie has no call',slotId:selectedSlot.slotId,lean,confidence:answer.confidence,softFlags:assessment.soft,answer:copy(structured?sp.render(answer,contractFocused.packet):answer)}};
  }catch{return unavailable();}
 }
 module.exports={secondOpinion};

@@ -213,7 +213,7 @@ function boundRoleSchema(packet) {
   return schema;
 }
 function validate(answer, packet) {
-  if(packet.answerContract==='structured-pair-v1')return require('./_rookie-structured-pair').validate(answer,packet);
+  if(['structured-pair-v1','structured-pair-v2'].includes(packet.answerContract))return require('./_rookie-structured-pair').validate(answer,packet);
   const errors = [], p = packet.players.find(p => p.id === answer?.selected), ids = new Set(packet.players.flatMap(p => p.facts.map(f => f.factId)));
   if (!answer || !(answer.selected === null || p)) errors.push("invalid_selection");
   if (p?.facts.find(f => f.field === "availability")?.value?.unavailable === true) errors.push("unavailable_player_selected");
@@ -403,7 +403,7 @@ async function reserveSelectedBudget(store, now, record, context) {
   }
   return {modified: false};
 }
-async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnapshot=async key=>require('@netlify/blobs').getStore({name:'opportunity-intel'}).get(key,{type:'json'})}={}) {
+async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnapshot=async key=>require('@netlify/blobs').getStore({name:'opportunity-intel'}).get(key,{type:'json'}), contract='v2'}={}) {
   const slots=frozen.packet.slots.filter(s=>s.slotId===selection.slotId);
   if(slots.length!==1)throw Error('focused_pair_slot_unavailable');
   let focused=focusEvidence(frozen,selection.players,slots[0]);
@@ -412,7 +412,7 @@ async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnap
   if(!statusSubjects(focused.packet).length){presentComponentUsage(focused);focused=presentGeneralFacts(focused);}
   if(statusSubjects(focused.packet).length===1){focused.packet.requireBackfieldExplanation=true;focused.packet.requireCandidateStatusSentence=true;}
   focused.evidenceHash=hash(JSON.stringify(focused.packet));
-  return require('./_rookie-plain-presentation').plainPresentation(focused);
+  return require('./_rookie-plain-presentation').plainPresentation(focused,{contract});
 }
 async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly = false, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
@@ -514,11 +514,13 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
   const baseSystem = focused.packet.requireSentenceEvidence
     ? (focused.packet.requireBackfieldExplanation ? ROLE_SYSTEM : GROUNDED_SYSTEM)
     : SYSTEM;
-  const structured=focused.packet.answerContract==='structured-pair-v1';
-  const system=structured?require('./_rookie-structured-pair').SYSTEM:focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
+  const sp=require('./_rookie-structured-pair');
+  const structured=[sp.CONTRACT,sp.CONTRACT_V1].includes(focused.packet.answerContract);
+  const structuredV1=focused.packet.answerContract===sp.CONTRACT_V1;
+  const system=structured?(structuredV1?sp.SYSTEM_V1:sp.SYSTEM):focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
   const grounded = focused.packet.requireSentenceEvidence === true;
   let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
-  if(structured){schema=require('./_rookie-structured-pair').schema;if(!focused.packet.players.some(p=>p.facts.length))return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
+  if(structured){schema=structuredV1?sp.schema_V1:sp.schemaFor(focused.packet);if(!focused.packet.players.some(p=>p.facts.length))return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
   if(selection&&grounded&&!structured){
     try{schema=bindCitationSchema(schema,focused.packet);
       if(focused.packet.presentation==='plain-v1')schema.properties.reconsider.description=require('./_rookie-plain-presentation').RECONSIDER_DESCRIPTION;
@@ -556,8 +558,24 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
   if (drill?.caseId === POST248.caseId && (transport !== 'stream' || hash(system) !== POST248.promptHash || hash(JSON.stringify(schema)) !== POST248.schemaHash || maxTokens > POST248.maxOutputTokens || deadlineMs !== POST248.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST248.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (drill?.caseId === FINAL_VOICE.caseId && (transport !== 'stream' || hash(system) !== FINAL_VOICE.promptHash || hash(JSON.stringify(schema)) !== FINAL_VOICE.schemaHash || maxTokens > FINAL_VOICE.maxOutputTokens || deadlineMs !== FINAL_VOICE.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > FINAL_VOICE.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (selection) {
+    const base=key;
     key += `/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(schema))}))}`;
     cached = await store.get(key,{type:"json"});
+    // Saved v1 reviews keep their original key (v1 packet, prompt and schema). Read
+    // them explicitly and judge them only by v1 rules; never rewrite or re-request.
+    if(!cached&&structured&&!structuredV1){
+      try{
+        const v1=await prepareSelectedPair(original.frozenEvidence,selection,{capturedAt:original.capturedAt,loadUsageSnapshot,contract:'v1'});
+        const v1Key=base+`/request/${hash(JSON.stringify({evidenceHash:v1.evidenceHash,promptHash:hash(sp.SYSTEM_V1),schemaHash:hash(JSON.stringify(sp.schema_V1))}))}`;
+        const legacy=await store.get(v1Key,{type:"json"});
+        if(legacy){
+          const hard=['REVIEW_READY','INVALID'].includes(legacy.status)&&sp.isV1(legacy.answer)?sp.validateV1(legacy.answer,v1.packet):['legacy_contract_unrecognized'];
+          timing.evidencePreparationMs = Math.round(clock() - stage);
+          const assessed=legacy.status==='INVALID'?legacy:revalidateCached(legacy,hard);
+          return {...withClaimAssessment(assessed,v1.packet),softFlags:[],cached:true,legacyContract:sp.CONTRACT_V1,requestTiming:{...timing,totalMs:Math.round(clock()-start),scope:'LEGACY_V1_CACHE_READ'}};
+        }
+      }catch{return {status:'UNAVAILABLE',error:'legacy_review_read_failed'};}
+    }
   }
   timing.evidencePreparationMs = Math.round(clock() - stage);
   if(cached){
