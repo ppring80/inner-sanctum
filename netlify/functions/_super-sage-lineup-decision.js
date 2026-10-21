@@ -131,8 +131,17 @@ function buildEvidencePacket(candidate, request) {
       verified: true,
       redistributionVerified: row.roleContext.projectionRecalculated === true,
       magnitudeValidated: false,
+      effectiveAt: row.roleContext.effectiveAt || null,
+      publishedAt: row.roleContext.publishedAt || null,
+      observedAt: row.roleContext.observedAt || null,
+      evidenceDates: row.roleContext.evidenceDates || [],
+      event: row.roleContext.event || null,
+      events: row.roleContext.events || [],
       note: row.roleContext.note || null
     });
+    for(const prior of row.roleContext.priorContexts||[])stateChanges.push({
+      type:"ROLE_CHANGE",status:"REASSESS",verified:true,redistributionVerified:false,magnitudeValidated:false,
+      effectiveAt:prior.effectiveAt||null,observedAt:prior.observedAt||null,event:null,events:[],note:prior.note||null});
   }
 
   const signals = (Array.isArray(row && row.superSageSignals) ? row.superSageSignals : []).map((signal) => ({
@@ -206,6 +215,22 @@ function observedRoleEvidence(candidate, row, legacyOpp, signals, stateChanges, 
 
 // Applies the baseline-validity stage and its availability consequences.
 function applyBaselineValidity(packet, tierMedians, request) {
+  const roleChanges=packet.stateChanges.filter(c=>c.type === "ROLE_CHANGE");
+  for(const change of roleChanges){
+    change.establishment=require('./_super-sage-role-establishment').establishRole({
+      event:change.event,conflictingEvents:change.events,opportunity:request.opportunity,
+      projection:packet.projection,statusEvidence:packet.availability.statusEvidence,
+      name:packet.name,position:packet.position,team:packet.team,season:request.season,week:request.week,scoring:request.scoring});
+    if(change.establishment.status === "ESTABLISHED")change.status="ROLE_ESTABLISHED";
+  }
+  if(roleChanges.length&&roleChanges.every(c=>c.establishment.status === "ESTABLISHED")){
+    packet.uncertainty=packet.uncertainty.filter(u=>u.code!=="UNVERIFIED_REDISTRIBUTION");
+    const proof=roleChanges[0].establishment;
+    packet.establishedRole={status:"ESTABLISHED",level:proof.volumeTier,
+      description:proof.provisional ? `Provisional current role supported by two games after ${proof.effectiveAt}.` : `Current role established from work after ${proof.effectiveAt}.`,
+      reason:proof.provisional ? "Two consistent games meet existing per-game volume tiers; the producer sample remains limited." : "Existing producer sample and volume rules applied only to post-change games.",postChange:proof};
+    if(!packet.roleExpansion.validated)packet.roleExpansion.note="Dated post-change work supports the current role; further workload growth is not validated.";
+  }
   const validity = assessBaselineValidity({
     statusEvidence: packet.availability.statusEvidence,
     stateChanges: packet.stateChanges,
@@ -332,7 +357,8 @@ function evaluateDisplacement(challenger, incumbent) {
     code: "UNPROMOTED_SIGNAL", player: challenger.name, value: s.id, reason: `Signal status is ${s.status}; only promoted signals may decide.` }));
   challenger.stateChanges.filter((s) => s.type === "ROLE_CHANGE").forEach((s) => notAdmissible.push({
     code: "UNVALIDATED_STATE_CHANGE", player: challenger.name, value: s.type,
-    reason: s.redistributionVerified ? "State change has no validated magnitude." : "Role change is verified; redistribution is not." }));
+    reason: s.establishment?.status === "ESTABLISHED" ? "The current role is established; further growth has no validated magnitude."
+      : s.redistributionVerified ? "State change has no validated magnitude." : "Role change is verified; redistribution is not." }));
 
   return { passed: conditions.every((c) => c.passed), conditions, notAdmissible };
 }
@@ -402,6 +428,7 @@ function confidenceFor(starter, comparator, decidedBy) {
   if (starter.uncertainty.length >= 2) rules.push("starter carries multiple uncertainty items");
   if (comparator && !comparator.standing) rules.push("comparator has no Weekly SAGE standing");
   if (rules.length) return { label: "Limited", rules };
+  if ([starter,comparator].some(p=>p?.establishedRole?.postChange?.provisional)) return { label: "Moderate", rules: ["only two games support the new role; confidence capped at moderate"] };
   const strongerTier = comparator && comparator.standing && starter.standing.tierIndex < comparator.standing.tierIndex;
   const displaced = decidedBy === "DISPLACEMENT_GATE_PASSED" || decidedBy === "CURRENT_EVIDENCE_COMPARISON";
   if (strongerTier && starter.uncertainty.length === 0 && !displaced) {
@@ -604,7 +631,7 @@ function decideFlexSlot(slot, pool, request) {
   const comparator = mostRelevant ? mostRelevant.challenger : (reassessedFrom || ordered[1] || null);
   const decisionState = mostRelevant && UNRESOLVED_RESOLUTIONS.has(mostRelevant.result.resolution)
     ? UNRESOLVED_RESOLUTIONS.get(mostRelevant.result.resolution)
-    : mostRelevant && validityOf(incumbent) === "REASSESS" ? "PROVISIONAL_UNRESOLVED" : "DECIDED";
+    : mostRelevant && (validityOf(incumbent) === "REASSESS" || mostRelevant.challenger.stateChanges.some(c=>c.type === "ROLE_CHANGE" && c.event?.kind === "ROLE_GAIN" && c.establishment?.status !== "ESTABLISHED")) ? "PROVISIONAL_UNRESOLVED" : "DECIDED";
   return { starter: incumbent, comparator, decidedBy: evaluations.length && decidedBy === "ESTABLISHED_BASELINE" ? "ESTABLISHED_BASELINE_PRESERVED" : decidedBy,
     gate: mostRelevant ? mostRelevant.result : null, blockedChallengers: evaluations, reassessedFrom, decisionState };
 }
@@ -757,6 +784,11 @@ function unresolvedLines(record, why, whatCouldChange) {
   const s = record.starter, c = record.comparator, band = record.gate.band || {};
   const proj = (p) => (freshAdmissible(p) ? p.projection.points.toFixed(1) : "n/a");
   if (record.decisionState === "PROVISIONAL_UNRESOLVED") {
+    if(c.stateChanges.some(ch=>ch.type === "ROLE_CHANGE" && ch.event?.kind === "ROLE_GAIN" && ch.establishment?.status !== "ESTABLISHED")){
+      why.push(`${c.name}'s reported new role is not established by the required dated post-change evidence. ${s.name} is a provisional hold, not a validated edge.`);
+      whatCouldChange.push(`Verified post-change work, a fresh comparable projection and confirmed availability for ${c.name}.`);
+      return;
+    }
     if (validityOf(s) === "REASSESS") {
       why.push(`${s.name}'s ranking needs reassessment, and the supplied evidence does not establish a validated edge over ${c.name}. This is a provisional hold, not proof that ${s.name} is the better play.`);
       whatCouldChange.push(`Verified current-state evidence resolving ${s.name}'s ranking concerns or a fully supported alternative.`);

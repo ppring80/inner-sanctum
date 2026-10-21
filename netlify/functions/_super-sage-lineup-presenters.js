@@ -170,6 +170,8 @@ function toCustomerAnswer(record, evidenceStatus = null) {
       three.push(`${s.reassessedFrom}${leader ? ` (${rankLabel(leader)})` : ""} is set aside this week: current evidence contradicts his ranking${triggers.length ? ` (${[...new Set(triggers)].join(", ")})` : ""}. ${shortName(s.starter)} starts instead.`);
     } else if (s.decidedBy === "FLEX_BASELINE_REASSESSED" && s.comparator) {
       three.push(`${shortName(s.starter)} starts over ${shortName(s.comparator)}: ${shortName(s.comparator)}'s ranking needs reassessment. ${shortName(s.starter)} has the higher fresh projection with no conflicting availability, recent workload or matchup evidence.`);
+    } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator && s.comparator.stateChanges?.some(c=>c.type==='ROLE_CHANGE'&&c.event?.kind==='ROLE_GAIN'&&c.establishment?.status!=='ESTABLISHED')) {
+      three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is PROVISIONAL — no validated edge. ${shortName(s.comparator)}'s reported new role still needs dated post-change evidence.`);
     } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator && validityOf(s.starter) === "REASSESS") {
       three.push(`${shortName(s.starter)} over ${shortName(s.comparator)} is PROVISIONAL — no validated edge. ${shortName(s.starter)}'s ranking needs reassessment, and the supplied evidence does not resolve this choice.`);
     } else if (s.decisionState === "PROVISIONAL_UNRESOLVED" && s.comparator) {
@@ -189,6 +191,14 @@ function toCustomerAnswer(record, evidenceStatus = null) {
   const firstSentence = (t) => { const m = String(t).match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : String(t); };
   (record.benchWatch || []).forEach((w) => { if (w.notes && w.notes.length) ten.push(`${w.player}: ${firstSentence(w.notes[0])}`); });
   decided.forEach((s) => { const line = statusLine(s.starter); if (line) ten.push(`${shortName(s.starter)} — ${line}`); });
+  decided.forEach(s=>(s.starter.stateChanges||[]).filter(c=>c.type==='ROLE_CHANGE'&&c.establishment?.status==='ESTABLISHED')
+    .forEach(c=>ten.push(`${shortName(s.starter)}: work after ${c.establishment.effectiveAt} supports the current role. No further workload increase is assumed.`)));
+  record.slots.forEach(s=>[s.starter,s.comparator].filter(Boolean).forEach(p=>{
+    if(p.establishedRole?.postChange?.provisional){
+      const caveat=`${shortName(p)}: only two games support the new role, so confidence is moderate at most.`;
+      if(!three.includes(caveat))three.push(caveat);
+    }
+  }));
   // Non-obvious calls get a compact evidence comparison in the 10-second layer.
   decided.filter((s) => s.comparator && (s.hasValidatedEdge === false || s.confidence.label === "Limited" || s.decidedBy === "BASELINE_REASSESSED" || s.decidedBy === "FLEX_BASELINE_REASSESSED"))
     .forEach((s) => {

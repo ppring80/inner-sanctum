@@ -23,4 +23,24 @@ function reportedRoleEvidence(row, stories, season, week, now = new Date()) {
     sourceUrl:story.sourceUrl,publishedAt:story.publishedAt,verifiedAt:story.verifiedAt,
     workloadAmountVerified:false,healthClearanceEstablished:false,projectionAdjustmentEstablished:false};
 }
-module.exports = {reportedRoleEvidence};
+// Structured direct role reports. No network calls or prose-to-role inference.
+function reportedRoleEvents(row,stories,season,week,now=new Date()){
+ if(!['QB','RB','WR','TE'].includes(row.position)||Number(season)!==new Date(now).getUTCFullYear()||Number(week)!==resolveCurrentNFLWeek(new Date(now),Number(season)))return [];
+ return (Array.isArray(stories)?stories:[]).filter(s=>s?.editorial===true&&s.roleReport?.type==='TEAM_REPORTED_ROLE_CHANGE'&&s.roleReport.fresh!==false&&(!s.expiresAt||Date.parse(s.expiresAt)>new Date(now).getTime()))
+  .map(s=>({...s.roleReport,player:s.player,position:s.position,team:s.team,sourceUrl:s.sourceUrl,publishedAt:s.publishedAt,verifiedAt:s.verifiedAt,verified:true,fresh:true}))
+  .filter(e=>typeof e.statement==='string'&&e.statement.length>0&&e.statement.length<=400&&require('./_super-sage-role-establishment').qualifyEvent(e,{...row,season,week,cutoff:new Date(now).toISOString()}).valid)
+  .sort((a,b)=>Date.parse(b.effectiveAt)-Date.parse(a.effectiveAt)||[a.kind,a.sourceUrl,a.id||''].join('|').localeCompare([b.kind,b.sourceUrl,b.id||''].join('|')));
+}
+function applyReportedRoleEvents(positions,stories,season,week,now=new Date()){
+ for(const pos of ['QB','RB','WR','TE'])for(const row of positions[pos]||[]){
+  const events=reportedRoleEvents(row,stories,season,week,now);
+  if(!events.length)continue;
+  const prior=row.roleContext;
+  row.roleContext={...prior,status:'REASSESS',event:events[0],events,
+   priorContexts:prior&&!prior.event?[prior]:[],effectiveAt:events[0].effectiveAt,
+   publishedAt:events[0].publishedAt,observedAt:events[0].verifiedAt,
+   note:[events[0].statement,prior?.note].filter(Boolean).join(' ')};
+ }
+ return positions;
+}
+module.exports = {reportedRoleEvidence,reportedRoleEvents,applyReportedRoleEvents};
