@@ -89,4 +89,13 @@ const STORIES=[
 for(const story of STORIES){if(!story.week)story.verifiedAt='2026-10-10T21:12:00.000Z';if(Date.parse(story.publishedAt)<Date.parse('2026-10-13T06:00:00Z')&&story.status!=='IR')story.expiresAt='2026-10-13T06:00:00Z';}
 function isCurrentStory(story,now=Date.now()){const definition=STORIES.find(s=>s.id===story.id);const expiresAt=definition?.expiresAt||story.expiresAt;return !expiresAt||now<Date.parse(expiresAt);}
 function editorialStories(now=Date.now()){const current=STORIES.filter(s=>isCurrentStory(s,now)&&now>=Date.parse(s.sourceUpdatedAt||s.publishedAt));return current.filter(s=>!current.some(update=>update.player===s.player&&update.id!==s.id&&update.supersedesBefore&&Date.parse(s.publishedAt)<Date.parse(update.supersedesBefore))).filter(s=>now-Date.parse(s.publishedAt)<7*86400000&&now>=Date.parse(s.publishedAt)).map(s=>({...s,editorial:true,verifiedAt:s.verifiedAt||VERIFIED_AT}));}
-module.exports={VERIFIED_AT,STORIES,editorialStories,isCurrentStory};
+// Role history is independent of the seven-day display feed. Old/stale events
+// remain visible to baseline reassessment until a later verified event supersedes
+// them; stale verification cannot clear a role concern.
+function editorialRoleStories(season,week,now=Date.now()) {
+ return require('./_verified-role-events.json')
+  .filter(e=>Number(e.season)===Number(season)&&Number(e.appliesFromWeek)<=Number(week)&&Date.parse(e.effectiveAt)<=now&&Date.parse(e.publishedAt)<=now&&Date.parse(e.verifiedAt)<=now)
+  .map(e=>({id:e.id,editorial:true,player:e.player,position:e.position,team:e.team,sourceLabel:e.sourceLabel,sourceUrl:e.sourceUrl,publishedAt:e.publishedAt,verifiedAt:e.verifiedAt,
+   roleReport:{...e,type:'TEAM_REPORTED_ROLE_CHANGE',verified:true,fresh:now-Date.parse(e.verifiedAt)<7*86400000}}));
+}
+module.exports={VERIFIED_AT,STORIES,editorialStories,editorialRoleStories,isCurrentStory};

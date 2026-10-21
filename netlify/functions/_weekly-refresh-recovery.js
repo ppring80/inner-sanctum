@@ -33,10 +33,10 @@ function completeCache(value, job, now = Date.now()) {
     return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000 && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
   }
   if (job.store === 'sage-newswire') {
-    const age = value && Date.now()-Date.parse(value.updatedAt);
+    const age = value && now-Date.parse(value.updatedAt);
     return Boolean(value && value.mode === 'editorial-with-sources' && value.collection?.automaticStories > 0 && Array.isArray(value.stories) && value.stories.length && Number.isFinite(age) && age >= 0 && age < 6*60*60*1000);
   }
-  if (job.store === 'weekly-projections') return require('./_weekly-projections.js').validCache(value, job.season, job.week, require('./_weekly-projections.js').REFRESH_MS);
+  if (job.store === 'weekly-projections') return require('./_weekly-projections.js').validCache(value, job.season, job.week, require('./_weekly-projections.js').REFRESH_MS,now);
   if (!value || value.evidenceType !== job.evidenceType || String(value.season) !== job.season || Number(value.targetWeek ?? value.week) !== job.week || value.seasonType !== job.seasonType) return false;
   if (job.store === 'weekly-sage-schedule') return Array.isArray(value.games) && value.games.length > 0 && value.gamesReturned === value.games.length;
   if (job.store === 'weekly-sage-defense') return value.schedule && value.schedule.completedGames > 0 && value.schedule.completedGames === value.schedule.gamesReturned && value.schedule.processedGames === value.schedule.completedGames && Array.isArray(value.gameResults) && value.gameResults.every(game => game.status === 'processed');
@@ -68,9 +68,9 @@ function canRetry(status, now = Date.now()) {
 function nextJob(rows, now = Date.now()) {
   const critical = rows.find(row=>row.store === 'player-data' && row.criticalDue && !row.ready && canRetry(row.status,now));
   if (critical) return critical;
-  // Availability and reporting have no defensive-statistics or snapshot
+  // Availability, projections and reporting have no defensive-statistics or snapshot
   // dependency. A failed rankings build must not starve these shared feeds.
-  const independent = rows.find(row => ['player-data','sage-newswire'].includes(row.store) && !row.ready && canRetry(row.status, now));
+  const independent = rows.find(row => ['player-data','weekly-projections','sage-newswire'].includes(row.store) && !row.ready && canRetry(row.status, now));
   if (independent) return independent;
   for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
