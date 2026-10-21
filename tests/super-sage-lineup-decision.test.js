@@ -207,10 +207,12 @@ test('the explanation is derived only from the decision record', () => {
   ]);
   const e = explainLineup(d).slots[0];
   // Intentional change (approved baseline validity): the verified QB change puts
-  // the starter's baseline under REASSESS, which caps confidence at Limited.
+  // the starter's baseline under REASSESS. Without a supported replacement,
+  // this is a provisional hold, not evidence of a Limited edge.
   assert.strictEqual(d.slots[0].starter.baselineValidity.state, 'REASSESS');
-  assert.strictEqual(e.headline, 'START ESTABLISHED WR over BUSY RB — Limited edge');
-  assert.ok(e.why.some((w) => /stronger established Weekly SAGE standing/.test(w)));
+  assert.strictEqual(e.headline, 'PROVISIONAL: START ESTABLISHED WR — no validated edge over BUSY RB');
+  assert.strictEqual(d.slots[0].decisionState, 'PROVISIONAL_UNRESOLVED');
+  assert.ok(e.why.some((w) => /ranking needs reassessment/.test(w)));
   assert.ok(e.why.some((w) => /6\.7 recent opportunities per game are observed workload, not a verified forecast/.test(w)));
   assert.ok(e.materialFacts.some((m) => m.includes(qbNote)), 'material state change in the initial output');
   assert.ok(e.whatCouldChange.some((w) => /validated evidence of a larger role for Busy RB/.test(w)));
