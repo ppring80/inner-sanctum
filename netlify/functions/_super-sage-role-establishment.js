@@ -46,7 +46,13 @@ function establishRole({event,opportunity,projection={},statusEvidence=[],name,p
  const signal=k=>window.signals.find(s=>s.type===k)?.value;
  const proof={effectiveAt:q.effectiveAt,eventId:event.id||null,gameIDs:games.map(g=>g.gameID),gamesSampled:games.length,sampleSize:signal('sampleSize'),trend:signal('trendClassification')||null,volumeTier:signal('volumeTier')||null,opportunities:window.opportunities,
   projectionIncorporationEstablished:false};
- if(proof.sampleSize!=='adequate'||!['high-volume','moderate-volume','role-player'].includes(proof.volumeTier))return fail('post_change_role_not_established',proof);
+ // Two games support only a provisional current role, never a growth signal.
+ // Reuse position-specific producer volume tiers for EACH game: an average
+ // cannot hide a spike or a low-involvement game. The global sample rule stays 3.
+ const gameVolumeTiers=games.map(g=>producer.buildOpportunityIntelligence([g],position).signals.find(s=>s.type==='volumeTier')?.value);
+ const provisional=games.length===2&&gameVolumeTiers.every(t=>['high-volume','moderate-volume'].includes(t))&&gameVolumeTiers[0]===gameVolumeTiers[1];
+ if((proof.sampleSize!=='adequate'&&!provisional)||!['high-volume','moderate-volume','role-player'].includes(proof.volumeTier))return fail('post_change_role_not_established',proof);
+ if(provisional)Object.assign(proof,{provisional:true,confidenceCap:'Moderate',gameVolumeTiers,caveat:'Only two games in the new role; confidence is moderate at most.'});
  const generated=stamp(projection.updatedAt);
  if(!projection.admissible||!Number.isFinite(projection.points)||projection.fresh!==true||!projection.source||!scoring||projection.scoring!==scoring||Number(projection.week)!==Number(week)||generated===null||generated<=stamp(event.effectiveAt)||generated>stamp(cutoff))return fail('post_change_projection_unverified',proof);
  const status=require('./_super-sage-baseline-validity').resolveStatus(statusEvidence);

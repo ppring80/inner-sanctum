@@ -227,8 +227,8 @@ function applyBaselineValidity(packet, tierMedians, request) {
     packet.uncertainty=packet.uncertainty.filter(u=>u.code!=="UNVERIFIED_REDISTRIBUTION");
     const proof=roleChanges[0].establishment;
     packet.establishedRole={status:"ESTABLISHED",level:proof.volumeTier,
-      description:`Current role established from work after ${proof.effectiveAt}.`,
-      reason:"Existing producer sample and volume rules applied only to post-change games.",postChange:proof};
+      description:proof.provisional ? `Provisional current role supported by two games after ${proof.effectiveAt}.` : `Current role established from work after ${proof.effectiveAt}.`,
+      reason:proof.provisional ? "Two consistent games meet existing per-game volume tiers; the producer sample remains limited." : "Existing producer sample and volume rules applied only to post-change games.",postChange:proof};
     if(!packet.roleExpansion.validated)packet.roleExpansion.note="Dated post-change work supports the current role; further workload growth is not validated.";
   }
   const validity = assessBaselineValidity({
@@ -428,6 +428,7 @@ function confidenceFor(starter, comparator, decidedBy) {
   if (starter.uncertainty.length >= 2) rules.push("starter carries multiple uncertainty items");
   if (comparator && !comparator.standing) rules.push("comparator has no Weekly SAGE standing");
   if (rules.length) return { label: "Limited", rules };
+  if ([starter,comparator].some(p=>p?.establishedRole?.postChange?.provisional)) return { label: "Moderate", rules: ["only two games support the new role; confidence capped at moderate"] };
   const strongerTier = comparator && comparator.standing && starter.standing.tierIndex < comparator.standing.tierIndex;
   const displaced = decidedBy === "DISPLACEMENT_GATE_PASSED" || decidedBy === "CURRENT_EVIDENCE_COMPARISON";
   if (strongerTier && starter.uncertainty.length === 0 && !displaced) {

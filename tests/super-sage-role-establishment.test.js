@@ -18,7 +18,7 @@ const args={event,opportunity:opportunity(),projection,statusEvidence,name,posit
 let passed=0;const test=(n,f)=>{f();passed++;console.log('PASS '+n);};
 test('only post-change games use the unchanged producer sample and volume rules',()=>{const before=JSON.stringify(args),p=establishRole(args);assert.equal(p.status,'ESTABLISHED',JSON.stringify(p));assert.equal(p.gamesSampled,3);assert.equal(p.opportunities.avgLast3,9);assert.deepEqual(p.gameIDs,raw.slice(1).map(g=>g.gameID));assert.equal(p.workloadGrowthValidated,false);assert.equal(p.projectionIncorporationEstablished,false);assert.equal(JSON.stringify(args),before);});
 test('old-season work, same-day work, a spike and duplicate games cannot establish a role',()=>{
- for(const games of [[raw[0],raw[1]],[raw[0],raw[1],raw[2]],[],[{...raw[1],gameID:'20261001_PIT@AAA'}]])assert.notEqual(establishRole({...args,opportunity:opportunity(games)}).status,'ESTABLISHED');
+ for(const games of [[raw[0],raw[1]],[],[{...raw[1],gameID:'20261001_PIT@AAA'}]])assert.notEqual(establishRole({...args,opportunity:opportunity(games)}).status,'ESTABLISHED');
  assert.equal(establishRole({...args,opportunity:opportunity([raw[1],raw[1],raw[2]])}).reason,'duplicate_post_change_games');
  const bad=clone(raw);bad[1].gameID='20251004_PIT@AAA';assert.notEqual(establishRole({...args,opportunity:opportunity(bad)}).status,'ESTABLISHED');
 });
@@ -104,5 +104,27 @@ test('same-date contradictory source order cannot choose a different event',()=>
  const a=reader.reportedRoleEvents({name,position,team},[story('ROLE_GAIN'),story('ROLE_LOSS')],season,week,new Date('2026-10-20T12:00:00Z'));
  const b=reader.reportedRoleEvents({name,position,team},[story('ROLE_LOSS'),story('ROLE_GAIN')],season,week,new Date('2026-10-20T12:00:00Z'));
  assert.deepEqual(a,b);assert.equal(establishRole({...args,event:a[0],conflictingEvents:a}).reason,'role_event_conflict');
+});
+test('two consistent meaningful games support only a provisional role; global sample stays limited',()=>{
+ const games=raw.slice(1,3),p=establishRole({...args,opportunity:opportunity(games)});
+ assert.equal(p.status,'ESTABLISHED');assert.equal(p.provisional,true);assert.equal(p.sampleSize,'limited');assert.equal(p.confidenceCap,'Moderate');assert.equal(p.workloadGrowthValidated,false);
+ const r=record({fixed:true,post:games});assert.equal(r.slots[0].starter.name,'Prior Player');assert.equal(r.slots[0].confidence.label,'Moderate');
+ assert.match(toCustomerAnswer(r).threeSeconds.join(' '),/only two games support the new role/);
+ const frozen=buildEvidence(r);assert.match(JSON.stringify(frozen.packet),/confidenceCap/);
+ assert.equal(establishRole(args).provisional,undefined);
+ const confidence=require('../netlify/functions/_super-sage-lineup-decision').confidenceFor;
+ const strong={standing:{tierIndex:0},uncertainty:[],establishedRole:{postChange:p}},weak={standing:{tierIndex:1},uncertainty:[]};
+ assert.equal(confidence(strong,weak,'WITHIN_POSITION_ORDER').label,'Moderate');
+ assert.equal(confidence({...strong,establishedRole:{}},weak,'WITHIN_POSITION_ORDER').label,'Strong');
+ assert.equal(confidence({...strong,uncertainty:[{text:'injury'},{text:'QB'}]},weak,'WITHIN_POSITION_ORDER').label,'Limited');
+});
+test('one-game spikes, uneven or low-involvement pairs never qualify provisionally',()=>{
+ for(const counts of [[0,12],[2,12],[5,12],[1,2]]){
+  const games=raw.slice(1,3).map((g,i)=>({...g,targets:counts[i],opportunities:counts[i]}));
+  assert.notEqual(establishRole({...args,opportunity:opportunity(games)}).status,'ESTABLISHED',JSON.stringify(counts));
+ }
+ for(const patch of [{fresh:false},{effectiveAt:null}])assert.notEqual(establishRole({...args,event:{...event,...patch},opportunity:opportunity(raw.slice(1,3))}).status,'ESTABLISHED');
+ assert.equal(establishRole({...args,opportunity:opportunity(raw.slice(1,3)),conflictingEvents:[{...event,kind:'TEAMMATE_RETURN',effectiveAt:'2026-10-12'}]}).reason,'role_event_conflict');
+ assert.equal(establishRole({...args,opportunity:opportunity(raw.slice(1,3)),statusEvidence:[]}).reason,'current_availability_unverified');
 });
 console.log(passed+' dated role-establishment checks passed');

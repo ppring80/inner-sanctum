@@ -193,6 +193,12 @@ function toCustomerAnswer(record, evidenceStatus = null) {
   decided.forEach((s) => { const line = statusLine(s.starter); if (line) ten.push(`${shortName(s.starter)} — ${line}`); });
   decided.forEach(s=>(s.starter.stateChanges||[]).filter(c=>c.type==='ROLE_CHANGE'&&c.establishment?.status==='ESTABLISHED')
     .forEach(c=>ten.push(`${shortName(s.starter)}: work after ${c.establishment.effectiveAt} supports the current role. No further workload increase is assumed.`)));
+  record.slots.forEach(s=>[s.starter,s.comparator].filter(Boolean).forEach(p=>{
+    if(p.establishedRole?.postChange?.provisional){
+      const caveat=`${shortName(p)}: only two games support the new role, so confidence is moderate at most.`;
+      if(!three.includes(caveat))three.push(caveat);
+    }
+  }));
   // Non-obvious calls get a compact evidence comparison in the 10-second layer.
   decided.filter((s) => s.comparator && (s.hasValidatedEdge === false || s.confidence.label === "Limited" || s.decidedBy === "BASELINE_REASSESSED" || s.decidedBy === "FLEX_BASELINE_REASSESSED"))
     .forEach((s) => {
