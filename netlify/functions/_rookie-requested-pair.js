@@ -38,8 +38,11 @@ async function requestPair({store,decisionId,ownerHash,players,consentToAnthropi
   const focused=await prepareSelectedPair(frozen,selection,{capturedAt:evidence.capturedAt,loadUsageSnapshot});
   const review=await runFastReview({store,decisionId,ownerHash,selection,apiKey,fetchImpl,loadUsageSnapshot,now});
   if(review.status!=='REVIEW_READY')return fail(review.error||'invalid_review',review.error==='daily_speed_benchmark_limit'?'Rookie’s current review limit has been reached. SAGE’s lineup is unchanged.':'Rookie could not return a validated opinion. SAGE’s lineup is unchanged.');
-  if(review.parentEvidenceHash!==frozen.evidenceHash||review.evidenceHash!==focused.evidenceHash||structured.validate(review.answer,focused.packet).length)return fail('invalid_review','Rookie could not return a validated opinion. SAGE’s lineup is unchanged.');
-  const answer=structured.render(review.answer,focused.packet),lean=focused.packet.players.find(p=>p.id===answer.selected)?.name||null;
+  // A saved v1 review is judged against the v1 packet rebuilt here from the same
+  // frozen evidence and matched by hash; it is never re-scored under v2 rules.
+  const contractFocused=review.legacyContract===structured.CONTRACT_V1?await prepareSelectedPair(frozen,selection,{capturedAt:evidence.capturedAt,loadUsageSnapshot,contract:'v1'}):focused;
+  if(review.parentEvidenceHash!==frozen.evidenceHash||review.evidenceHash!==contractFocused.evidenceHash||structured.validate(review.answer,contractFocused.packet).length)return fail('invalid_review','Rookie could not return a validated opinion. SAGE’s lineup is unchanged.');
+  const answer=structured.render(review.answer,contractFocused.packet),lean=contractFocused.packet.players.find(p=>p.id===answer.selected)?.name||null;
   return {status:'READY',decisionId,lineupChanged:false,context:{...frozen.packet.request,evidenceCapturedAt:evidence.capturedAt||null},opinion:{label:lean?`Rookie leans ${lean}`:'Rookie has no call',players:selection.players,slotId:selection.slotId,lean,confidence:answer.confidence,explanation:answer.explanation,reconsider:answer.reconsider,detail:'Separate second opinion. Confidence is Rookie’s assessment, not a guarantee. Your lineup is unchanged.'},timing:{cached:review.cached===true,providerMs:review.cached?0:review.providerMs,currentReviewMs:review.requestTiming?.totalMs??null}};
  }catch{return fail('review_unavailable','Rookie could not complete this review. SAGE’s lineup is unchanged.');}
 }

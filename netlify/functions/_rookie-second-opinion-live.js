@@ -17,7 +17,8 @@ async function runSecondOpinion(args){
  const composed=await secondOpinion({record,slotIndex,capturedAt:evidence.capturedAt,loadUsageSnapshot:args.loadUsageSnapshot,reviewPair:async packet=>{
   selection={players:packet.players.map(p=>p.name),slotId:packet.slotId};
   review=await runFastReview({...args,selection,caseId:null});
-  if(review.parentEvidenceHash!==evidence.frozenEvidence.evidenceHash||review.evidenceHash!==hash(JSON.stringify(packet)))return{status:'UNAVAILABLE'};
+  const contractPair=review.legacyContract==='structured-pair-v1'?await require('./_super-sage-shadow-fast-review').prepareSelectedPair(evidence.frozenEvidence,selection,{capturedAt:evidence.capturedAt,loadUsageSnapshot:args.loadUsageSnapshot,contract:'v1'}):{evidenceHash:hash(JSON.stringify(packet))};
+  if(review.parentEvidenceHash!==evidence.frozenEvidence.evidenceHash||review.evidenceHash!==contractPair.evidenceHash)return{status:'UNAVAILABLE'};
   return review;
  }});
  return {status:composed.secondOpinion.status==='READY'?'REVIEW_READY':composed.secondOpinion.status==='SKIPPED'?'SKIPPED':'UNAVAILABLE',type:'PRIVATE_ROOKIE_SECOND_OPINION',customerEligible:false,decisionId,sageAnswer:composed.sageAnswer,secondOpinion:composed.secondOpinion,selection,review,cached:review?.cached===true};

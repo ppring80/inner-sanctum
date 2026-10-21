@@ -7,7 +7,7 @@ function matchupRank(value){
  return Number.isInteger((value?.favorabilityOrder??value?.favorabilityRank))&&(value.favorabilityOrder??value.favorabilityRank)>=1&&(value.favorabilityOrder??value.favorabilityRank)<=5?(value.favorabilityOrder??value.favorabilityRank):null;
 }
 function expansionConfirmed(value){return value?.workloadChangeConfirmed===true||value?.validated===true;}
-function plainPresentation(focused){
+function plainPresentation(focused,{contract='v2'}={}){
  const result=JSON.parse(JSON.stringify(focused));
  for(const player of result.packet.players)for(const fact of player.facts){
   const value=fact.value;
@@ -25,8 +25,10 @@ function plainPresentation(focused){
   }
  }
  result.packet.presentation='plain-v1';
- result.packet.answerContract=require('./_rookie-structured-pair').CONTRACT;
- result.packet.decisionFactors=require('./_rookie-structured-pair').factors(result.packet);
+ const sp=require('./_rookie-structured-pair');
+ result.packet.answerContract=contract==='v1'?sp.CONTRACT_V1:sp.CONTRACT;
+ result.packet.decisionFactors=sp.factors(result.packet);
+ if(contract!=='v1')result.packet.advantages=sp.advantages(result.packet);
  result.packet.comparisons=require('./_super-sage-pair-comparisons').pairComparisons(result.packet);
  result.evidenceHash=require('./_super-sage-shadow-llm').hash(JSON.stringify(result.packet));
  return result;

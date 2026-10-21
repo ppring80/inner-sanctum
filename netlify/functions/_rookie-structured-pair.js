@@ -1,9 +1,12 @@
 'use strict';
 // Selected-pair only: the model selects evidence, never authors customer prose.
-const CONTRACT='structured-pair-v1';
+// v2 (new reviews): the model no longer selects a tradeoff; the server renders every
+// verified advantage of the alternative. v1 stays byte-identical so saved v1 reviews
+// can be found under their original cache keys and validated by their own rules.
+const CONTRACT='structured-pair-v2',CONTRACT_V1='structured-pair-v1';
 const FACTORS=['projection','recentUsage','matchup','availability'];
-const SYSTEM='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or NO_CALL, confidence, a deciding factor favoring your pick and an opposing factor favoring the other player from decisionFactors. Use NONE for the opposing factor only if no factor favors the other player. A tie or missing fact cannot favor either player. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
-const schema={type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','tradeoffFactor','blocker','reconsider'],properties:{selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},decidingFactor:{type:'string',enum:[...FACTORS,'NONE']},tradeoffFactor:{type:'string',enum:[...FACTORS,'NONE']},blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
+const SYSTEM_V1='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or NO_CALL, confidence, a deciding factor favoring your pick and an opposing factor favoring the other player from decisionFactors. Use NONE for the opposing factor only if no factor favors the other player. A tie or missing fact cannot favor either player. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
+const schema_V1={type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','tradeoffFactor','blocker','reconsider'],properties:{selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},decidingFactor:{type:'string',enum:[...FACTORS,'NONE']},tradeoffFactor:{type:'string',enum:[...FACTORS,'NONE']},blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
 // Wire sentinel avoids the provider's rejected mixed-type enum. Internal and
 // customer-facing NO_CALL remains null; raw provider content is preserved.
 function decode(input){return input?.selected==='NO_CALL'?{...input,selected:null}:input;}
@@ -22,10 +25,10 @@ function factors(packet){
  if(availability.every(v=>active(v)||uncertain(v)))add('availability',availability.map(v=>active(v)?1:0),['availability']);
  return out;
 }
-function validate(input,packet){
+function validateV1(input,packet){
  const errors=[],ps=packet.players,pick=ps.find(p=>p.id===input?.selected),other=ps.find(p=>p.id!==input?.selected),fs=factors(packet);
- if(!input||Object.keys(input).some(k=>!schema.required.includes(k))||schema.required.some(k=>!Object.hasOwn(input,k)))return ['invalid_structured_answer'];
- for(const [key,rule]of Object.entries(schema.properties))if(!(key==='selected'&&input[key]===null)&&!rule.enum.includes(input[key]))errors.push('invalid_'+key);
+ if(!input||Object.keys(input).some(k=>!schema_V1.required.includes(k))||schema_V1.required.some(k=>!Object.hasOwn(input,k)))return ['invalid_structured_answer'];
+ for(const [key,rule]of Object.entries(schema_V1.properties))if(!(key==='selected'&&input[key]===null)&&!rule.enum.includes(input[key]))errors.push('invalid_'+key);
  if(input.selected!==null&&!pick)errors.push('invalid_selection');
  if(pick&&fact(pick,'availability')?.value?.unavailable)errors.push('unavailable_player_selected');
  if(pick){
@@ -42,8 +45,8 @@ function validate(input,packet){
  }
  return [...new Set(errors)];
 }
-function render(input,packet){
- const errors=validate(input,packet);if(errors.length)throw Error(errors.join(','));
+function renderV1(input,packet){
+ const errors=validateV1(input,packet);if(errors.length)throw Error(errors.join(','));
  const ps=packet.players,pick=ps.find(p=>p.id===input.selected),other=ps.find(p=>p.id!==input.selected),fs=factors(packet);
  const names=id=>ps.find(p=>p.id===id).name;
  const describe=(key,id)=>{
@@ -78,6 +81,74 @@ function render(input,packet){
  const availability=ps.map(p=>{const v=fact(p,'availability')?.value;ids.push(...(fact(p,'availability')?[fact(p,'availability').factId]:[]));return v?.questionable||v?.unavailable?`${p.name}: ${v.effectiveStatus?.status|| (v.unavailable?'unavailable':'questionable')}.`:null;}).filter(Boolean);
  const roles=ps.map(p=>{const f=fact(p,'establishedRole');if(!f)return null;ids.push(f.factId);return `${p.name}: ${f.value.plain}.`;}).filter(Boolean);
  explanation=[explanation,caveat,...roles,...availability,...disclosures].join('\n');
- return {...input,answerContract:CONTRACT,explanation,caveat,reconsider,factIds:[...new Set(ids)]};
+ return {...input,answerContract:CONTRACT_V1,explanation,caveat,reconsider,factIds:[...new Set(ids)]};
 }
-module.exports={CONTRACT,SYSTEM,schema,decode,factors,validate,render};
+
+// ── v2 ──────────────────────────────────────────────────────────────────
+// Each player's verified advantages, as the model sees them. A tie or a factor
+// that cannot be computed favors nobody and is listed separately.
+function advantages(packet){
+ const fs=factors(packet),out={};
+ for(const p of packet.players)out[p.id]=FACTORS.filter(k=>fs[k]?.favoredId===p.id);
+ out.tied=FACTORS.filter(k=>fs[k]&&fs[k].favoredId===null);
+ out.notComparable=FACTORS.filter(k=>!fs[k]);
+ return out;
+}
+const SYSTEM='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or NO_CALL, a confidence, and the deciding factor: one of your pick\'s verified advantages listed in advantages. Factors under tied or notComparable favor nobody and cannot decide. The other player\'s advantages are shown to the customer automatically; do not select them. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use decidingFactor NONE, evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
+// Per-packet schema: only factors that verifiably favor a player can decide.
+function schemaFor(packet){
+ const fs=factors(packet),supported=FACTORS.filter(k=>fs[k]&&fs[k].favoredId!==null);
+ return {type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','blocker','reconsider'],properties:{
+  selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},
+  decidingFactor:{type:'string',enum:[...supported,'NONE']},
+  blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},
+  reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
+}
+const isV1=input=>input&&typeof input==='object'&&Object.hasOwn(input,'tradeoffFactor');
+function validateV2(input,packet){
+ const errors=[],ps=packet.players,pick=ps.find(p=>p.id===input?.selected),fs=factors(packet),sch=schemaFor(packet);
+ if(!input||Object.keys(input).some(k=>!sch.required.includes(k))||sch.required.some(k=>!Object.hasOwn(input,k)))return ['invalid_structured_answer'];
+ for(const [key,rule]of Object.entries(sch.properties))if(!(key==='selected'&&input[key]===null)&&!rule.enum.includes(input[key]))errors.push('invalid_'+key);
+ if(input.selected!==null&&!pick)errors.push('invalid_selection');
+ if(pick&&fact(pick,'availability')?.value?.unavailable)errors.push('unavailable_player_selected');
+ if(pick){
+  const other=ps.find(p=>p.id!==pick.id);
+  if(!fs[input.decidingFactor]||fs[input.decidingFactor].favoredId!==pick.id)errors.push('deciding_factor_not_for_pick');
+  if(input.blocker!=='NONE')errors.push('unexpected_blocker');
+  const v=fact(other,'availability')?.value;
+  if(!['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared'].includes(input.reconsider)||(input.reconsider==='alternative_cleared'&&!v?.questionable))errors.push('reconsider_not_reversal');
+ }else if(input.selected===null){
+  const winners=new Set(Object.values(fs).map(f=>f.favoredId).filter(Boolean));
+  if(input.blocker==='NONE'||(input.blocker==='conflicting_evidence'&&winners.size<2)||(input.blocker==='no_supported_factor'&&winners.size!==0)||(input.blocker==='insufficient_evidence'&&FACTORS.every(k=>fs[k])))errors.push('no_call_without_supported_blocker');
+  if(input.decidingFactor!=='NONE'||input.reconsider!=='evidence_resolves_blocker')errors.push('invalid_no_call_shape');
+ }
+ return [...new Set(errors)];
+}
+// The server derives the alternative's advantages from the verified factors; the
+// v1 renderer is reused unchanged for the shared text, disclosures and fact IDs.
+function renderV2(input,packet){
+ const errors=validateV2(input,packet);if(errors.length)throw Error(errors.join(','));
+ const fs=factors(packet),other=packet.players.find(p=>p.id!==input.selected);
+ const opposing=input.selected===null?[]:FACTORS.filter(k=>fs[k]?.favoredId===other.id);
+ const base=renderV1({...input,tradeoffFactor:input.selected===null?'NONE':(opposing[0]||'NONE')},packet);
+ let caveat=base.caveat,explanation=base.explanation;
+ if(input.selected!==null&&opposing.length>1){
+  const ps=packet.players,names=id=>ps.find(p=>p.id===id).name;
+  const describe=k=>{const f=fs[k],a=f.values[ps.findIndex(p=>p.id===other.id)],b=f.values[ps.findIndex(p=>p.id!==other.id)];
+   if(k==='projection')return `${names(other.id)} projects higher (${a} versus ${b} points)`;
+   if(k==='recentUsage')return `${names(other.id)} had more recent carries plus targets (${a} versus ${b} per game); that is past workload, not a forecast`;
+   if(k==='matchup')return `${names(other.id)} has the more favorable matchup`;
+   return `${names(other.id)} has confirmed active status while the other player's availability is uncertain`;};
+  const all=`The tradeoffs: ${opposing.map(describe).join('; ')}.`;
+  explanation=explanation.replace(caveat,all);caveat=all;
+ }
+ const ids=[...base.factIds,...opposing.flatMap(k=>fs[k].factIds)];
+ const {tradeoffFactor,...rest}=base;
+ return {...rest,decidingFactor:input.decidingFactor,opposingFactors:opposing,answerContract:CONTRACT,explanation,caveat,factIds:[...new Set(ids)]};
+}
+// Explicit contract handling: a v1 answer (it carries tradeoffFactor) is judged only
+// by v1 rules; a failed v1 answer stays failed.
+function validate(input,packet){return isV1(input)?validateV1(input,packet):validateV2(input,packet);}
+function render(input,packet){return isV1(input)?renderV1(input,packet):renderV2(input,packet);}
+const schema=schema_V1; // legacy export name (v1 wire schema)
+module.exports={CONTRACT,CONTRACT_V1,SYSTEM,SYSTEM_V1,schema,schema_V1,schemaFor,advantages,isV1,decode,factors,validate,validateV1,validateV2,render,renderV1,renderV2};
