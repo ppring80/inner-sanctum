@@ -104,7 +104,8 @@ async function runJob(job, event, dependencies) {
   const priorStatus = previous && (job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
   if (!canRetry(priorStatus, now)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
-  const value = { status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
+  const lastFailure=previous?.data?.lastFailure||null;
+  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {
@@ -121,11 +122,13 @@ async function runJob(job, event, dependencies) {
     const ready = result.statusCode === 200 && (response.cached === true || (response.writeOccurred === true && response.gamesFailed === 0 && response.noOp === false && Number(response.targetWeek) === job.week) || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
     const detail = response.error || null;
     const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
+    if(!ready)final.lastFailure={day,at:final.finishedAt,statusCode:result.statusCode,error:detail,budgetReason:response.budget?.reason||null,attempts:value.attempts};
     await state.setJSON(key, final);
     console.log('WEEKLY_REFRESH_RESULT', JSON.stringify({ job: job.job, week: job.week, ...final }));
     return final;
   } catch (error) {
     const final = { ...value, status: 'failed', leaseUntil: 0, retryAfter: now + RETRY_MS, finishedAt: new Date().toISOString(), error: 'Weekly refresh worker failed; inspect function logs.' };
+    final.lastFailure={day,at:final.finishedAt,statusCode:null,error:final.error,budgetReason:null,attempts:value.attempts};
     await state.setJSON(key, final);
     console.error('WEEKLY_REFRESH_FAILED', job.job, job.week, error.message);
     return final;

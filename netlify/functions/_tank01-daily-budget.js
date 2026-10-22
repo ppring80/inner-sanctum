@@ -6,6 +6,27 @@ const STORE_NAME = "tank01-daily-budget";
 const DEFAULT_DAILY_LIMIT = 700;
 const DEFAULT_NORMAL_LIMIT = 600;
 const MAX_CAS_ATTEMPTS = 8;
+const PROJECTION_JOB = 'refresh-weekly-projections';
+// Within the existing normal pool: four routine six-hour refreshes plus the
+// existing bounded retry allowance (eight total worker attempts per UTC day).
+const PROJECTION_RESERVE = 8;
+function projectionProtection(state, standardLimit) {
+  const allocation = Math.min(PROJECTION_RESERVE, standardLimit);
+  const count = Number(state.projectionReserved ?? state.jobs?.[PROJECTION_JOB] ?? 0);
+  const used = Number.isSafeInteger(count) && count >= 0 ? count : 0;
+  const remaining = Math.max(0, allocation-used);
+  return {allocation,used,remaining,backgroundLimit:standardLimit-remaining};
+}
+function reserveDecision(state, {job,requested,priority,maxJobCalls,limit,standardLimit,day}) {
+  const reserved=Number(state.reserved||0),normalReserved=Number(state.normalReserved??state.reserved??0);
+  const protection=projectionProtection(state,standardLimit);
+  const base={job,requested,reserved,remaining:Math.max(0,limit-reserved),limit,day};
+  if(Number(state.jobs?.[job]||0)+requested>maxJobCalls)return {allowed:false,reason:'job-daily-limit',...base};
+  if(reserved+requested>limit||(priority==='normal'&&normalReserved+requested>standardLimit))return {allowed:false,reason:'daily-limit',...base};
+  if(priority==='normal'&&job!==PROJECTION_JOB&&normalReserved+requested>protection.backgroundLimit)
+    return {allowed:false,reason:'projection-reserve',...base,projectionReserveRemaining:protection.remaining,backgroundNormalLimit:protection.backgroundLimit};
+  return null;
+}
 const localFallbackByDay = new Map();
 
 function utcDay(now = new Date()) {
@@ -73,15 +94,15 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     const state = localFallbackByDay.get(day) || { day, reserved: 0, normalReserved: 0, injuryReserved: 0, jobs: {} };
     const reserved = Number(state.reserved || 0);
     const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
-    if (Number(state.jobs?.[job] || 0) + requested > maxJobCalls) return {allowed:false,reason:"job-daily-limit",job,requested,reserved,limit,day};
-    if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
-      return { allowed: false, reason: "daily-limit", job, requested, reserved, remaining: Math.max(0, limit - reserved), limit, day };
-    }
+    const denied=reserveDecision(state,{job,requested,priority,maxJobCalls,limit,standardLimit,day});
+    if(denied)return denied;
     const next = {
       day,
       limit,
       reserved: reserved + requested,
       normalLimit: standardLimit,
+      projectionReserve: Math.min(PROJECTION_RESERVE,standardLimit),
+      projectionReserved: projectionProtection(state,standardLimit).used + (job===PROJECTION_JOB&&priority==='normal'?requested:0),
       normalReserved: normalReserved + (priority === "normal" ? requested : 0),
       injuryReserved: Number(state.injuryReserved || 0) + (priority === "injury" ? requested : 0),
       updatedAt: now.toISOString(),
@@ -105,26 +126,16 @@ async function reserveTank01Calls(event, options, dependencies = {}) {
     // Ledgers written before priority pools existed are treated as normal
     // consumption. This is conservative and cannot expose the reserved pool.
     const normalReserved = Number(state.normalReserved ?? state.reserved ?? 0);
-    if (Number(state.jobs?.[job] || 0) + requested > maxJobCalls) return {allowed:false,reason:"job-daily-limit",job,requested,reserved,limit,day};
-
-    if (reserved + requested > limit || (priority === "normal" && normalReserved + requested > standardLimit)) {
-      return {
-        allowed: false,
-        reason: "daily-limit",
-        job,
-        requested,
-        reserved,
-        remaining: Math.max(0, limit - reserved),
-        limit,
-        day
-      };
-    }
+    const denied=reserveDecision(state,{job,requested,priority,maxJobCalls,limit,standardLimit,day});
+    if(denied)return denied;
 
     const next = {
       day,
       limit,
       reserved: reserved + requested,
       normalLimit: standardLimit,
+      projectionReserve: Math.min(PROJECTION_RESERVE,standardLimit),
+      projectionReserved: projectionProtection(state,standardLimit).used + (job===PROJECTION_JOB&&priority==='normal'?requested:0),
       normalReserved: normalReserved + (priority === "normal" ? requested : 0),
       injuryReserved: Number(state.injuryReserved || 0) + (priority === "injury" ? requested : 0),
       updatedAt: now.toISOString(),
@@ -169,6 +180,9 @@ module.exports = {
   DEFAULT_DAILY_LIMIT,
   DEFAULT_NORMAL_LIMIT,
   MAX_CAS_ATTEMPTS,
+  PROJECTION_JOB,
+  PROJECTION_RESERVE,
+  projectionProtection,
   utcDay,
   dailyLimit,
   normalLimit,
