@@ -25,3 +25,6 @@ jobs:
           node-version: '20'
       - name: Verify shared Tank01 injury availability
         run: node scripts/verify-player-availability.js
+      - name: Read authenticated refresh diagnostics
+        if: always()
+        run: node scripts/diagnose-weekly-refresh.js
