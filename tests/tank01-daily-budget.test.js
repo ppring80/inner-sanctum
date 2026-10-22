@@ -46,11 +46,15 @@ function fakeStore() {
   assert.strictEqual(store.value().reserved, 101);
 
   const priorityStore = fakeStore();
-  const normal = await reserveTank01Calls({}, { job: 'weekly-jobs', calls: 600 }, {
+  const normal = await reserveTank01Calls({}, { job: 'weekly-jobs', calls: 592 }, {
     store: priorityStore, limit: 700, normalLimit: 600, now: new Date('2026-09-23T11:00:00Z')
   });
   assert.strictEqual(normal.allowed, true);
 
+  const protectedCalls = await reserveTank01Calls({}, {job:'refresh-weekly-projections',calls:8}, {
+    store:priorityStore,limit:700,normalLimit:600,now:new Date('2026-09-23T11:00:30Z')
+  });
+  assert.strictEqual(protectedCalls.allowed,true);
   const extraNormal = await reserveTank01Calls({}, { job: 'extra-normal', calls: 1 }, {
     store: priorityStore, limit: 700, normalLimit: 600, now: new Date('2026-09-23T11:01:00Z')
   });

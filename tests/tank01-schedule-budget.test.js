@@ -3,6 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const {PROJECTION_RESERVE,DEFAULT_NORMAL_LIMIT,DEFAULT_DAILY_LIMIT}=require('../netlify/functions/_tank01-daily-budget');
 
 const toml = fs.readFileSync(path.join(__dirname, '..', 'netlify.toml'), 'utf8');
 assert.ok(!toml.includes('0 */6 * * 1-6'), 'six-hour player refresh must not return');
@@ -19,4 +20,8 @@ assert.ok(tuesdayMaximum - 99 <= 600, 'scheduled Tuesday maximum must fit the sh
 assert.ok(1000 - tuesdayMaximum >= 300, 'scheduled Tuesday plan must preserve at least 300 calls of plan headroom');
 
 assert.ok(!/\[functions\."refresh-player-data(?:-game-day)?"\]/.test(toml),'availability must have one coordinator, not duplicate fixed schedules');
-console.log(`Tank01 planned Tuesday reservations ${tuesdayMaximum}/700; 314 calls below PRO allowance. All days retain the atomic global ceiling.`);
+assert.ok(tuesdayMaximum-99<=DEFAULT_NORMAL_LIMIT-PROJECTION_RESERVE,'planned normal background jobs still fit after protecting projections');
+const withProjections=tuesdayMaximum+PROJECTION_RESERVE;
+assert.ok(withProjections<=DEFAULT_DAILY_LIMIT,'including all eight projection attempts stays within the existing total ceiling');
+assert.ok(1000-withProjections>=300,'projection protection preserves at least 300 calls of plan headroom');
+console.log(`Tank01 planned Tuesday including projection protection: ${withProjections}/700; ${1000-withProjections} below PRO allowance.`);

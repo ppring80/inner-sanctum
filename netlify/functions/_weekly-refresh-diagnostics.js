@@ -15,13 +15,14 @@ async function refreshDiagnostics(getStore,rows,now=Date.now()){
   const normalLimit=Number.isFinite(Number(ledger.normalLimit))&&Number(ledger.normalLimit)>0?Number(ledger.normalLimit):null;
   return {day,available:true,updatedAt:ledger.updatedAt||null,reserved:total,normalReserved:normal,injuryReserved:Number(ledger.injuryReserved||0),limit,normalLimit,
    totalExhausted:limit===null?null:total>=limit,normalExhausted:normalLimit===null?null:normal>=normalLimit,
-   projectionReservations:Number(ledger.jobs?.['refresh-weekly-projections']||0)};
+   projectionReservations:Number(ledger.jobs?.['refresh-weekly-projections']||0),
+   projectionProtection:ledger.projectionReserve==null?{active:false}:{active:true,allocation:ledger.projectionReserve,used:ledger.projectionReserved,remaining:Math.max(0,ledger.projectionReserve-ledger.projectionReserved),backgroundLimit:normalLimit===null?null:normalLimit-Math.max(0,ledger.projectionReserve-ledger.projectionReserved)}};
  }));
  const jobs=rows.filter(r=>['weekly-projections','sage-newswire','player-data'].includes(r.store)).map(r=>{
   const s=r.status||{};return {job:r.job,ready:r.ready,state:s.status||'pending',day:s.day||null,attempts:s.attempts??null,attemptLimit:s.attemptLimit??null,
-   canRetry:canRetry(r.status,now),leaseUntil:s.leaseUntil||null,retryAfter:s.retryAfter||null,lastAttempt:s.startedAt||null,finishedAt:s.finishedAt||null,statusCode:s.statusCode??null,error:s.error||null};
+   canRetry:canRetry(r.status,now),leaseUntil:s.leaseUntil||null,retryAfter:s.retryAfter||null,lastAttempt:s.startedAt||null,finishedAt:s.finishedAt||null,statusCode:s.statusCode??null,error:s.error||null,lastFailure:s.lastFailure||null};
  });
- return {checkedAt:new Date(now).toISOString(),budgetDays:days,jobs,historicalJobFailuresAvailable:false,
-  limitation:'Job state holds only the latest run. A successful rollover can overwrite yesterday\'s failure; retained budget ledgers do not reconstruct the exact failed request.'};
+ return {checkedAt:new Date(now).toISOString(),projectionPolicy:{protectedCalls:Math.min(budget.PROJECTION_RESERVE,budget.normalLimit()),normalLimit:budget.normalLimit(),totalLimit:budget.dailyLimit()},budgetDays:days,jobs,historicalJobFailuresAvailable:jobs.some(j=>j.lastFailure),
+  limitation:'Only failures captured after lastFailure retention was deployed are available; older overwritten failures cannot be reconstructed from budget ledgers.'};
 }
 module.exports={refreshDiagnostics};
