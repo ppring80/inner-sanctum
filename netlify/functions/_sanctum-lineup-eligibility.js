@@ -8,8 +8,8 @@ function lineupRequest(messages) {
   if (!text) {
     const last = [...(Array.isArray(messages) ? messages : [])].reverse()
       .find(m => m.role === 'user' && typeof m.content === 'string')?.content || '';
-    const weekMatch = last.match(/\\b(?:NFL\\s+)?Week\\s+(\\d{1,2})\\b/i);
-    if (!weekMatch || !/\\b(start|sit|bench|lineup|bye|play|swap|replace)\\b/i.test(last)) return null;
+    const weekMatch = last.match(/\b(?:NFL\s+)?Week\s+(\d{1,2})\b/i);
+    if (!weekMatch || !/\b(start|sit|bench|lineup|bye|play|swap|replace)\b/i.test(last)) return null;
     const week = Number(weekMatch[1]);
     if (week < 1 || week > 18) return null;
     return { week, names: [], freeform: last };
