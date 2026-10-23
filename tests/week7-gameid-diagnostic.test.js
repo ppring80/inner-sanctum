@@ -10,7 +10,8 @@ assert.equal(out.counts.byeWithGameId,1);
 assert.equal(out.issues.find(x=>x.player==='Wrong matchup').scheduleGameID,'20261025_PHI@DAL');
 assert.equal(out.issues.find(x=>x.player==='Bye player').type,'BYE_WITH_GAME_ID');
 (async()=>{
-const r=await handler({httpMethod:'GET'}, {readSchedule:async()=>schedule,fetch:async()=>({ok:true,json:async()=>rankings})});
+process.env.SANCTUM_DIAGNOSTIC_TOKEN='unit-test-only-token';
+const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer unit-test-only-token'}}, {readSchedule:async()=>schedule,fetch:async()=>({ok:true,json:async()=>rankings})});
 assert.equal(r.statusCode,200);
 assert.equal(JSON.parse(r.body).counts.gameIdConflict,1);
 assert.equal((await handler({httpMethod:'POST'},{})).statusCode,405);
