@@ -27,7 +27,7 @@ const response=(body,status=200)=>({ok:status===200,status,text:async()=>body});
  const getStore=({name})=>{if(!stores.has(name)){let data=null,etag=0;stores.set(name,{get:async()=>data,getWithMetadata:async()=>data?{data:structuredClone(data),etag:String(etag)}:null,setJSON:async(k,next,opts={})=>{if(opts.onlyIfNew&&data||opts.onlyIfMatch&&opts.onlyIfMatch!==String(etag))return{modified:false};writes++;data=structuredClone(next);etag++;return{modified:true};}});}return stores.get(name);};
  const player={updatedAt:new Date(NOW).toISOString(),players:{one:{longName:'J.J. McCarthy',team:'NYG',pos:'QB'}}};
  await getStore({name:'player-data'}).setJSON('playerData',player);
- let calls=0;const collect=async()=>{calls++;return collected;};
+ let calls=0;const collect=async(_,options)=>{calls++;assert.equal(options.now,NOW);assert.equal(options.previousCollection,undefined);return collected;};
  const first=await refresh({getStore,collect,season:2026,now:NOW});assert.equal(first.cached,true);assert.equal(calls,1);
  const saved=await getStore({name:'sage-role-events'}).get('season:2026');assert(saved.events.some(e=>e.player==='J.J. McCarthy'));assert.equal(saved.dedicatedCollection.indexesSucceeded,1);
  assert.equal((await refresh({getStore,collect,season:2026,now:NOW+60000})).skipped,true);assert.equal(calls,1,'Six-hour collection deduplication');
