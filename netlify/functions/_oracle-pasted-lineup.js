@@ -24,7 +24,7 @@ function parsePastedOracleLineup(messages) {
     if(!slot) return {error:'Unrecognized lineup slot: '+match[1].trim()};
     const name=match[2].trim();
     if(!name || name.length>80) return {error:'Please verify the starter names.'};
-    starters.push({name,position:slot[2],slotPos:slot[1],slotLabel:match[1].trim()});
+    starters.push({name,position:slot[2],slotPos:slot[1],slotLabel:match[1].trim(),...(slot[1]==='DEF' && /^Pittsburgh Steelers$/i.test(name) ? {team:'PIT'} : {})});
     slotCounts[slot[1]]=(slotCounts[slot[1]]||0)+1;
   }
   const bench=benchSection.split(/[,\\n]/).map(s=>s.trim()).filter(Boolean).map(name=>({name}));
