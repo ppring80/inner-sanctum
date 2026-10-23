@@ -2202,6 +2202,26 @@ function getFilteredSorted() {
       var bUnavailable = b.eligibleForWeeklyRanking === false ? 1 : 0;
       if (aUnavailable !== bUnavailable) return aUnavailable - bUnavailable;
 
+      // FLEX and SUPERFLEX compare players across positions using the same
+      // scoring-specific projected fantasy points displayed in the table.
+      // Missing projections are unknown, never zero or a SAGE-score substitute.
+      if ((state.posFilter === 'FLEX' || state.posFilter === 'SUPERFLEX') &&
+          state.sortKey === 'proj' && getSelectedWeek() !== 1) {
+        var aProjected = typeof a.providerProjectedPoints === 'number' &&
+          Number.isFinite(a.providerProjectedPoints);
+        var bProjected = typeof b.providerProjectedPoints === 'number' &&
+          Number.isFinite(b.providerProjectedPoints);
+        if (aProjected !== bProjected) return aProjected ? -1 : 1;
+        if (aProjected && a.providerProjectedPoints !== b.providerProjectedPoints) {
+          return b.providerProjectedPoints - a.providerProjectedPoints;
+        }
+        // Stable fallback for equally projected or unprojected players.
+        return a.pos.localeCompare(b.pos) ||
+          (Number.isFinite(a.positionRank) ? a.positionRank : 9999) -
+          (Number.isFinite(b.positionRank) ? b.positionRank : 9999) ||
+          a.name.localeCompare(b.name);
+      }
+
       // Within a single natural-position view, the authoritative backend
       // position rank is the primary order. This locks the website to the
       // same Weekly SAGE ordering exposed through MCP instead of re-ranking

@@ -1,0 +1,11 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const html = fs.readFileSync('weekly.html','utf8');
+assert(html.includes("state.posFilter === 'FLEX' || state.posFilter === 'SUPERFLEX'"));
+assert(html.includes("if (aProjected !== bProjected) return aProjected ? -1 : 1;"));
+assert(html.includes('return b.providerProjectedPoints - a.providerProjectedPoints;'));
+assert(html.includes("getSelectedWeek() !== 1"));
+assert(html.includes('if (aUnavailable !== bUnavailable) return aUnavailable - bUnavailable;'));
+assert(html.includes('return a.positionRank - b.positionRank;'));
+console.log('PASS: FLEX/SUPERFLEX projection sorting and positional order guards');
