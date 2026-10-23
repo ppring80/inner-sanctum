@@ -1,0 +1,27 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {compare,handler}=require('../netlify/functions/week7-gameid-diagnostic');
+const schedule={season:2026,targetWeek:7,generatedAt:'2026-10-23T12:00:00Z',byeTeams:['JAX'],games:[{gameID:'20261025_PHI@DAL',away:'PHI',home:'DAL',gameDate:'20261025',gameTime:'4:25p'}]};
+const rankings={season:2026,targetWeek:7,generatedAt:'2026-10-23T12:00:00Z',positions:{WR:[{name:'DeVonta Smith',team:'PHI',gameID:'20261025_PHI@DAL'},{name:'Wrong matchup',team:'DAL',gameID:'20261025_DAL@NYG'}]},inactive:{RB:[{name:'Bye player',team:'JAX',gameID:'20261018_JAX@LAR'}]}};
+const out=compare(rankings,schedule);
+assert.equal(out.counts.matched,1);
+assert.equal(out.counts.gameIdConflict,1);
+assert.equal(out.counts.byeWithGameId,1);
+assert.equal(out.issues.find(x=>x.player==='Wrong matchup').scheduleGameID,'20261025_PHI@DAL');
+assert.equal(out.issues.find(x=>x.player==='Bye player').type,'BYE_WITH_GAME_ID');
+(async()=>{
+process.env.SANCTUM_DIAGNOSTIC_TOKEN='unit-test-only-token';
+const r=await handler({httpMethod:'GET',headers:{authorization:'Bearer unit-test-only-token'}}, {readSchedule:async()=>schedule,fetch:async()=>({ok:true,json:async()=>rankings})});
+assert.equal(r.statusCode,200);
+assert.equal(JSON.parse(r.body).counts.gameIdConflict,1);
+assert.equal((await handler({httpMethod:'POST'},{})).statusCode,405);
+const unauthorized=await handler({httpMethod:'GET',headers:{}},{});
+assert.equal(unauthorized.statusCode,401,'public diagnostic must require authorization');
+process.env.SANCTUM_DIAGNOSTIC_TOKEN='unit-test-only-token';
+const wrong=await handler({httpMethod:'GET',headers:{authorization:'Bearer incorrect'}},{});
+assert.equal(wrong.statusCode,401);
+const allowed=await handler({httpMethod:'GET',headers:{authorization:'Bearer unit-test-only-token'}},{readSchedule:async()=>schedule,fetch:async()=>({ok:true,json:async()=>rankings})});
+assert.equal(allowed.statusCode,200);
+delete process.env.SANCTUM_DIAGNOSTIC_TOKEN;
+console.log('Week 7 cached game-ID diagnostic: PASS');
+})().catch(e=>{console.error(e);process.exitCode=1});
