@@ -265,29 +265,39 @@ function orderPositionsByDisplayedProjections(positions) {
   const audit = {};
   POSITIONS.forEach(position => {
     const rows = Array.isArray(positions[position]) ? positions[position] : [];
-    const eligible = rows.filter(row => row.eligibleForWeeklyRanking !== false);
-    const complete = eligible.length > 0 && eligible.every(row =>
+    const hasProjection = row =>
       typeof row.projectedPoints === "number" &&
       Number.isFinite(row.projectedPoints) &&
       row.projection &&
-      Number(row.projection.points) === row.projectedPoints
-    );
-    // Fail closed: never mix projected-point order with an unprojected player.
-    // Preserve existing SAGE ordering until projection coverage is complete.
-    if (!complete) {
-      audit[position] = { applied: false, eligible: eligible.length,
-        missing: eligible.filter(row => !Number.isFinite(row.projectedPoints) || !row.projection).length };
-      return;
-    }
+      Number(row.projection.points) === row.projectedPoints;
+    const eligible = rows.filter(row => row.eligibleForWeeklyRanking !== false);
+    const projected = eligible.filter(hasProjection);
     const originalIndex = new Map(rows.map((row, index) => [row, index]));
-    positions[position] = [...rows].sort((a,b) => {
+    // Never represent a missing projection as zero or silently rank it
+    // against a player with a measured projected score.
+    positions[position] = [...rows].sort((a, b) => {
       const aUnavailable = a.eligibleForWeeklyRanking === false ? 1 : 0;
       const bUnavailable = b.eligibleForWeeklyRanking === false ? 1 : 0;
       if (aUnavailable !== bUnavailable) return aUnavailable - bUnavailable;
       if (aUnavailable) return originalIndex.get(a) - originalIndex.get(b);
-      return b.projectedPoints - a.projectedPoints || originalIndex.get(a) - originalIndex.get(b);
-    });
-    audit[position] = { applied: true, eligible: eligible.length, missing: 0 };
+      const aMissing = hasProjection(a) ? 0 : 1;
+      const bMissing = hasProjection(b) ? 0 : 1;
+      if (aMissing !== bMissing) return aMissing - bMissing;
+      if (!aMissing) return b.projectedPoints - a.projectedPoints || originalIndex.get(a) - originalIndex.get(b);
+      return originalIndex.get(a) - originalIndex.get(b);
+    }).map(row => ({
+      ...row,
+      projectionRankStatus: row.eligibleForWeeklyRanking === false
+        ? "unavailable"
+        : hasProjection(row) ? "projected" : "unprojected"
+    }));
+    audit[position] = {
+      mode: projected.length === eligible.length && eligible.length ? "complete"
+        : projected.length ? "partial" : "sage_fallback",
+      eligible: eligible.length,
+      projected: projected.length,
+      missing: eligible.length - projected.length
+    };
   });
   return audit;
 }
@@ -792,7 +802,7 @@ exports.handler = async function (event) {
           "Outliers require an explicit injury, role, usage, matchup, or freshness explanation before approval."
       },
       note:
-        "When complete, sourced projections are available for every eligible player at a position, the displayed projected points determine that position's order and rank-derived recommendations. Otherwise the original SAGE order is preserved. Positions are not merged into one cross-position rank."
+        "Eligible players with valid sourced projections are ordered by displayed points; players without projections are separated after them in original SAGE order, flagged unprojected. When none have projections the original SAGE order is retained. Positions are not merged into one cross-position rank."
     }
   });
 };
