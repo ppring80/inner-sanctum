@@ -929,6 +929,15 @@ function candidatesFromMatched(matched, unmatched = [], rankings = null) {
   ];
 }
 
+// Hash source identity and admissibility, not elapsed-age diagnostics. A cache
+// crossing the freshness boundary still changes identity through `fresh`.
+// Player rows already bind the statuses/exclusions used by the decision.
+function availabilityIdentity(meta) {
+  if (!meta) return null;
+  const fields = ["source", "availabilityMode", "available", "updatedAt", "fresh", "freshnessThresholdHours", "transactionsCheckedAt"];
+  return Object.fromEntries(fields.filter(key => meta[key] !== undefined).map(key => [key, meta[key]]));
+}
+
 function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [], matchedRoster = null, factCutoffs = null }) {
   const candidates = matchedRoster ? candidatesFromMatched(matchedRoster.matched, matchedRoster.unmatched, rankings) : matchRosterToRankings(roster, rankings);
   const decision = decideLineup({ rankings, candidates, slots, scoring, season, week, registry, policy, opportunity, statusUpdates, factCutoffs });
@@ -939,7 +948,7 @@ function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, w
     slots: (slots || []).map((s) => ({ slotLabel: s.slotLabel, eligiblePositions: (s.eligiblePositions || []).map(upper), count: Number(s.count) || 1 })),
     roster: candidates.map((c) => ({ name: c.name, position: c.position, rosterStatus: c.rosterStatus, rosterStatusAsOf: c.rosterStatusAsOf, row: c.row, inactiveRow: c.inactiveRow }))
       .sort((a, b) => (a.position + a.name < b.position + b.name ? -1 : 1)),
-    availabilityMeta: (rankings && rankings.metadata && rankings.metadata.availability) || null,
+    availabilityMeta: availabilityIdentity(rankings && rankings.metadata && rankings.metadata.availability),
     policy: { version: policy.version, band: policy.projectionNoiseBand, nearZero: policy.nearZeroProjection },
     opportunity: opportunity ? { status: opportunity.status, provenance: opportunity.provenance || null,
       records: Object.fromEntries(Object.entries(opportunity.records || {}).filter(([k]) => rosterKeys.has(k))) } : null,
