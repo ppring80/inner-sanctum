@@ -4,7 +4,15 @@
 const { connectLambda } = require('@netlify/blobs');
 const { readCachedWeeklySchedule } = require('./_weekly-sage-schedule-cache');
 const { buildKickoffIndex } = require('./_super-sage-kickoff');
-const { requireTank01RefreshAuthorization } = require('./_tank01-refresh-guard');
+const crypto = require('node:crypto');
+function authorized(event) {
+  const expected=process.env.SANCTUM_DIAGNOSTIC_TOKEN;
+  const header=Object.entries(event.headers||{}).find(([k])=>k.toLowerCase()==='authorization')?.[1]||'';
+  const received=String(header).match(/^Bearer\s+(.+)$/i)?.[1]||'';
+  if(!expected||!received) return false;
+  const x=Buffer.from(received),y=Buffer.from(expected);
+  return x.length===y.length && crypto.timingSafeEqual(x,y);
+}
 const TEAM_ALIAS = {JAC:'JAX',WSH:'WAS',LA:'LAR',OAK:'LV',SD:'LAC',ARZ:'ARI',GNB:'GB',KAN:'KC',NWE:'NE',NOR:'NO',SFO:'SF',TAM:'TB',HST:'HOU',BLT:'BAL',CLV:'CLE'};
 const teamCode = x => { const s=String(x||'').trim().toUpperCase(); return TEAM_ALIAS[s]||s; };
 const POSITIONS=['QB','RB','WR','TE','K','DEF'];
@@ -35,8 +43,7 @@ async function handler(event,deps={}) {
   // Reuse the existing manual-operations secret. This diagnostic must not
   // expose player-level evidence to anonymous public requests.
   if(!deps.readSchedule) {
-    const authError=requireTank01RefreshAuthorization(event);
-    if(authError) return authError;
+    if(!authorized(event)) return reply(401,{error:'Diagnostic authorization required'});
     connectLambda(event);
   }
   let schedule,rankings;
