@@ -644,7 +644,10 @@ exports.handler = async function (event) {
   }
 
   // Carry dated direct reports without turning teammate absence into a starter claim.
-  require('./_reported-role-evidence').applyReportedRoleEvents(positions,[...require('./_newswire-editorial').editorialRoleStories(season,targetWeek),...centralAvailability.newswireStories],season,targetWeek);
+  const roleReader=require('./_role-event-ingestion');
+  const roleHistory=await roleReader.readRoleHistory(getStore,season);
+  const roleStories=roleReader.mergeRoleStories(roleReader.roleHistoryStories(roleHistory,season,targetWeek),require('./_newswire-editorial').editorialRoleStories(season,targetWeek));
+  require('./_reported-role-evidence').applyReportedRoleEvents(positions,[...roleStories,...centralAvailability.newswireStories],season,targetWeek);
 
   // Columbia state-change propagation: a verified unavailable QB changes the
   // offensive environment for same-team WR/TE/RB. This schedules/reports
@@ -717,6 +720,7 @@ exports.handler = async function (event) {
 
     metadata: {
       projections: projectionCoverage,
+      roleIngestion:{available:roleHistory?.version===roleReader.VERSION,checkedAt:roleHistory?.checkedAt||null,events:roleStories.length,coverage:roleHistory?.collection?.coverage||'NOT_YET_OBSERVED',collection:roleHistory?.collection||null},
       complete: successCount === POSITIONS.length,
       positionsRequested: POSITIONS,
       positionsSucceeded: POSITIONS.filter((_, i) => results[i].ok),

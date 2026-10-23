@@ -31,13 +31,18 @@ function mergeStories(editorial,automatic){
 }
 exports.handler=async event=>{
  const denied=requireTank01RefreshAuthorization(event);if(denied)return denied;connectLambda(event);
- try{const store=getStore({name:'sage-newswire'}),previous=await store.get('latest',{type:'json'});const players=(await getStore({name:'player-data'}).get('playerData',{type:'json'}))?.players||{};
+ try{const store=getStore({name:'sage-newswire'}),previous=await store.get('latest',{type:'json'});const playerCache=await getStore({name:'player-data'}).get('playerData',{type:'json'});const players=playerCache?.players||{};
  const {items,errors}=await collectSources();
+ // Role evidence is deterministic and independent of paid Newswire summaries.
+ // Its own failure must preserve news, and a summary failure must preserve roles.
+ let roleIngestion;
+ try{const roles=require('./_role-event-ingestion');roleIngestion=await roles.ingestRoleReports({store:getStore({name:roles.STORE}),items,playerCache,season:new Date().getUTCFullYear()});}
+ catch(error){roleIngestion={cached:false,error:error.message};console.error('SAGE_ROLE_INGESTION_FAILED',error.message);}
  const retained=(previous?.mode==='editorial-with-sources'?previous.stories:[]).filter(s=>s.editorial&&Date.now()-Date.parse(s.publishedAt)<7*86400000);
  const editorial=mergeStories(editorialStories(),retained),candidates=normalizeStories(items,players);
  const automatic=candidates.length?await analyzeStories(candidates):[];
  if(!automatic.length)throw Error('No current, player-specific source reports passed validation; editorial reports preserved.');
- const stories=mergeStories(editorial,automatic);await store.setJSON('latest',{version:3,mode:'editorial-with-sources',updatedAt:new Date().toISOString(),stories,collection:{sources:['NFL.com','ESPN','CBS Sports'],automaticStories:automatic.length,editorialStories:editorial.length,errors,x:'Verified reporter posts retained; direct X timeline collection is not connected.'}});
+ const stories=mergeStories(editorial,automatic);await store.setJSON('latest',{version:3,mode:'editorial-with-sources',updatedAt:new Date().toISOString(),stories,collection:{sources:['NFL.com','ESPN','CBS Sports'],automaticStories:automatic.length,editorialStories:editorial.length,roleIngestion,errors,x:'Verified reporter posts retained; direct X timeline collection is not connected.'}});
  return {statusCode:200,body:JSON.stringify({cached:true,stories:stories.length})};
  }catch(error){console.error('SAGE_NEWSWIRE_REFRESH_FAILED',error.message);return {statusCode:502,body:JSON.stringify({cached:false,error:error.message})};}
 };
