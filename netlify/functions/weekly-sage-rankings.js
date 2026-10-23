@@ -261,6 +261,37 @@ function scoringLabel(scoring) {
   return key ? key.toUpperCase() : "Selected-scoring";
 }
 
+function orderPositionsByDisplayedProjections(positions) {
+  const audit = {};
+  POSITIONS.forEach(position => {
+    const rows = Array.isArray(positions[position]) ? positions[position] : [];
+    const eligible = rows.filter(row => row.eligibleForWeeklyRanking !== false);
+    const complete = eligible.length > 0 && eligible.every(row =>
+      typeof row.projectedPoints === "number" &&
+      Number.isFinite(row.projectedPoints) &&
+      row.projection &&
+      Number(row.projection.points) === row.projectedPoints
+    );
+    // Fail closed: never mix projected-point order with an unprojected player.
+    // Preserve existing SAGE ordering until projection coverage is complete.
+    if (!complete) {
+      audit[position] = { applied: false, eligible: eligible.length,
+        missing: eligible.filter(row => !Number.isFinite(row.projectedPoints) || !row.projection).length };
+      return;
+    }
+    const originalIndex = new Map(rows.map((row, index) => [row, index]));
+    positions[position] = [...rows].sort((a,b) => {
+      const aUnavailable = a.eligibleForWeeklyRanking === false ? 1 : 0;
+      const bUnavailable = b.eligibleForWeeklyRanking === false ? 1 : 0;
+      if (aUnavailable !== bUnavailable) return aUnavailable - bUnavailable;
+      if (aUnavailable) return originalIndex.get(a) - originalIndex.get(b);
+      return b.projectedPoints - a.projectedPoints || originalIndex.get(a) - originalIndex.get(b);
+    });
+    audit[position] = { applied: true, eligible: eligible.length, missing: 0 };
+  });
+  return audit;
+}
+
 function reconcileRankedRecommendations(positions, scoring) {
   POSITIONS.forEach(position => {
     const usesOwnSageTake = position === "K" || position === "DEF";
@@ -628,6 +659,7 @@ exports.handler = async function (event) {
     targetWeek
   );
   const startedGameExclusions = applyGameEligibility(positions, new Date(), evidenceUsage);
+  const projectionOrderAudit = orderPositionsByDisplayedProjections(positions);
   reconcileRankedRecommendations(positions, scoring);
   // Shared read-time context: one cached status change reaches every weekly
   // consumer, without rebuilding provider statistics or inventing workload.
@@ -760,7 +792,7 @@ exports.handler = async function (event) {
           "Outliers require an explicit injury, role, usage, matchup, or freshness explanation before approval."
       },
       note:
-        "Each position's leaderboard array is unmodified from its own weekly-sage-<pos>-leaderboard output -- scores, order, and recommendations are not recalculated here. Positions are not merged into one cross-position rank."
+        "When complete, sourced projections are available for every eligible player at a position, the displayed projected points determine that position's order and rank-derived recommendations. Otherwise the original SAGE order is preserved. Positions are not merged into one cross-position rank."
     }
   });
 };
@@ -776,4 +808,5 @@ exports.removeStartedGames = removeStartedGames;
 exports.applyGameEligibility = applyGameEligibility;
 exports.weeklyRecommendation = weeklyRecommendation;
 exports.scoringLabel = scoringLabel;
+exports.orderPositionsByDisplayedProjections = orderPositionsByDisplayedProjections;
 exports.reconcileRankedRecommendations = reconcileRankedRecommendations;
