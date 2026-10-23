@@ -10,7 +10,14 @@ It makes no Tank01 or model calls and does not change either provider's budget.
 
 Discovery reads the NFL reporting index, all 32 official club news indexes and
 registered reporter indexes. Up to 32 articles are read, round-robin by publisher:
-currently at most 66 public HTTP reads with concurrency four, ten-second request
+Discovery accepts approved non-fantasy article links regardless of headline
+keywords. Publisher order rotates between runs, and each publisher prioritizes
+its least recently attempted articles. Up to 2,048 public URL/attempt timestamps
+are retained in dedicated collection progress, including failed reads; old
+caches without progress start normally. A Newswire write preserves this state.
+Newly discovered links precede previously attempted ones. This prevents the same
+first matches from monopolizing the budget, but is not a guarantee that every
+article will be read before expiry. Currently at most 66 public HTTP reads with concurrency four, ten-second request
 bounds and four-megabyte response limits. Redirects are rejected. Fantasy guides
 cannot consume these article slots or displace existing Newswire injury reads.
 Existing Newswire collection, editorial records and analysis remain in place.
@@ -48,6 +55,14 @@ also reach the existing customer REASSESS path; they cannot silently preserve
 a confident incumbent baseline. Future-week assertions stay out of the current
 week. Corrected/withdrawn queue items stop creating current uncertainty. The
 adapter does not guess a starter.
+
+Dated participation changes (for example more/fewer snaps, routes, carries or
+touches) enter the same unresolved review queue even without explicit starter
+wording. A count alone or more touchdowns is insufficient. These reports keep
+their exact source quote and publication bound and produce only reassessment;
+they cannot establish starter status, an effective game date, increased future
+opportunity, health clearance or a ranking boost. Conditional reports retain
+uncertainty, and future-week reports stay out of the current week.
 
 The adapter does not claim universal natural-language coverage. Unsupported
 formats/wording and unread articles remain explicit limits. Source text and

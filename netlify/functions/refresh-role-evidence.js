@@ -10,7 +10,7 @@ async function refresh({getStore,collect=collectRoleSources,season,now=Date.now(
  const playerCache=await getStore({name:'player-data'}).get('playerData',{type:'json'});
  const identityAge=now-Date.parse(playerCache?.updatedAt);
  if(!Number.isFinite(identityAge)||identityAge<0||identityAge>=8*3600000||!Object.keys(playerCache?.players||{}).length)throw Error('Fresh player identity required; source collection not attempted.');
- const {items,collection}=await collect();
+ const {items,collection}=await collect(undefined,{previousCollection:previous?.dedicatedCollection,now});
  // Total outage never replaces the last successful collection/evidence.
  if(!collection.indexesSucceeded)throw Error('No role sources accessible; prior evidence preserved.');
  return roles.ingestRoleReports({store,items,playerCache,season,now,collection});

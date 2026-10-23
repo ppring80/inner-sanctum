@@ -44,6 +44,12 @@ function claimsForArticle(article,players,{season}){
    if(announcing&&clubs.some(c=>c.team!==p.team&&teamMention(actor,c))||attributed&&clubs.some(c=>c.team!==p.team&&teamMention(attributed,c))){
     unresolved.push({player:p.longName,position:p.pos,team:p.team,sourceQuote:statement.slice(0,400),reason:'TEAM_RELATION_CONFLICT'});continue;
    }
+   // Observed or reported participation changes are review evidence only.
+   // A snap count alone is not a change, nor proof of future opportunity.
+   // Keep conditional context in the review queue rather than promoting it
+   // through the strict starter/committee grammar below.
+   const participation=/\b(?:snaps?|reps?|routes?|carries|touches|playing time|play(?:ing)?(?:\s+\w+){0,2}\s+more often)\b/i.test(statement);
+   const change=/\b(?:more|fewer|less|increas\w*|decreas\w*|expand\w*|reduc\w*|bulk|once went|first time|season[- ]high|season[- ]low)\b/i.test(statement);
    const firstStart=/^\s+(?:made|makes)\s+(?:his|their|the)\s+first\s+(?:(?:career|NFL|regular-season)\s+)*start\b/i.test(after);
    const starts=/^\s+(?:(?:will|shall)\s+start\b|(?:will\s+be|is|remains|continues\s+as)\s+.{0,70}?\b(?:starter|starting\s+(?:quarterback|running back|wide receiver|tight end))\b|(?:has been|was|is)\s+(?:named|appointed|confirmed|selected)\s+.{0,70}?\b(?:starter|starting)\b)/i.test(after)
     ||/\b(?:have|has)\s+(?:named|announced|selected)\s+(?:\w+\s+){0,4}$/i.test(before)&&/^\s+(?:(?:as|their|its|the)\s+){0,3}(?:new\s+)?(?:starter|starting\s+(?:quarterback|running back|wide receiver|tight end))\b/i.test(after)
@@ -52,6 +58,10 @@ function claimsForArticle(article,players,{season}){
     ||/\b(?:have|has)\s+(?:moved|demoted|benched)\s+$/i.test(before)&&/\b(?:bench|backup)\b/i.test(after);
    const committee=/\b(?:split|share|sharing|committee|rotate|rotation)\b/i.test(title+' '+statement)&&/\b(?:reps|snaps|carries|backfield|touches)\b/i.test(title+' '+statement);
    if(!firstStart&&!starts&&!loss&&!committee){
+   if(participation&&change){
+    unresolved.push({player:p.longName,position:p.pos,team:p.team,sourceQuote:statement.slice(Math.max(0,m.index-80),Math.max(0,m.index-80)+400),reason:'PARTICIPATION_CHANGE_REQUIRES_REVIEW'});
+   }
+
     if(/\b(?:starter|starting\s+(?:quarterback|running back|wide receiver|tight end|job|role|assignment|position)|benched|workload|committee|backfield|reps)\b/i.test(statement))unresolved.push({player:p.longName,position:p.pos,team:p.team,sourceQuote:statement.slice(Math.max(0,m.index-80),Math.max(0,m.index-80)+400),reason:'UNSUPPORTED_ROLE_ASSERTION'});
     continue;
    }
