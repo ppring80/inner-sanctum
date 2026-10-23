@@ -5,11 +5,11 @@ const { hash } = require('../netlify/functions/_super-sage-shadow-llm');
 const originalLoad = Module._load;
 const previousGate = process.env.SUPER_SAGE_REVIEWER_PEEPHOLE;
 const decisionId = 'a'.repeat(64), ownerHash = hash('linked-owner');
-const packet = { players: [] };
+const packet = { version:'rookie-independent-v2', request:{season:2026,week:7,scoring:'half'}, players:[{playerId:'P1',name:'Fixture Player',position:'WR',facts:[]}],slots:[{slotId:'S1',eligiblePositions:['WR'],candidateIds:['P1']}] };
 const savedReview = { status: 'INVALID', rawText: 'exact saved output', requestId: 'saved-id', providerMs: 10563, validationErrors: ['saved-error'] };
 const shadowArtifact = { type: 'SUPER_SAGE_PRIVATE_SHADOW_LAB', productionDecisionId: decisionId, rules: { existing: true }, shadowRecord: { choice: 'B' } };
 const originalArtifact = JSON.stringify(shadowArtifact);
-let ownedEvidence = true;
+let ownedEvidence = true, corruptEvidence = false, wrongOwner = false;
 let paidCalls = 0, writes = 0, responseMode = 'json';
 Module._load = function(request, parent, isMain) {
  if (request === '@modelcontextprotocol/server') return {
@@ -27,7 +27,7 @@ Module._load = function(request, parent, isMain) {
    if (name === 'chatgpt-oauth') return { expiresAt: Math.floor(Date.now()/1000) + 60, resource: 'https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp', scopes: ['inner_sanctum.league.read'], snapshotKey: 'linked-owner' };
    if (name === 'league-snapshots') return { leagueName: 'owned league' };
    if (key === 'decision/' + decisionId) return shadowArtifact;
-   if (key === `evidence/${decisionId}/${ownerHash}` && ownedEvidence) return { ownerHash, frozenEvidence: { packet, evidenceHash: hash(JSON.stringify(packet)) } };
+   if (key === `evidence/${decisionId}/${ownerHash}` && ownedEvidence) return { ownerHash:wrongOwner?hash('other-owner'):ownerHash,capturedAt:'2026-10-23T04:12:00Z', frozenEvidence: { packet, evidenceHash: corruptEvidence?'f'.repeat(64):hash(JSON.stringify(packet)) } };
    if (key === `llm-drill/rookie-fast-pair-v6-haiku/fresh-role-post232/${decisionId}/${ownerHash}`) return savedReview;
    return null;
   }, setJSON: () => { writes++; throw Error('unexpected write'); }
@@ -71,12 +71,30 @@ const { handler, _test: { buildServer } } = require('../netlify/functions/chatgp
  assert.strictEqual(compat.artifact.rules.customerVisible, false);
  assert.strictEqual(compat.artifact.responseTiming.requestId, compatResponse.headers['x-rookie-request-id']);
  assert.strictEqual(JSON.stringify(shadowArtifact), originalArtifact);
+ assert.strictEqual(compat.artifact.ownedFrozenEvidence.available,true);
+ assert.deepStrictEqual(compat.artifact.ownedFrozenEvidence.frozenEvidence.packet,packet);
+ assert.ok(!JSON.stringify(compat.artifact.ownedFrozenEvidence).includes(ownerHash));
+ responseMode='sse';const sse=await handler({...event,body:JSON.stringify(envelope)});
+ const sseResult=JSON.parse(sse.body.split('\n').find(line=>line.startsWith('data: ')).slice(6)).result.structuredContent;
+ assert.deepStrictEqual(sseResult.artifact.ownedFrozenEvidence.frozenEvidence.packet,packet);
+ for(const flag of ['corrupt','wrong-owner']){
+  corruptEvidence=flag==='corrupt';wrongOwner=flag==='wrong-owner';
+  const denied=await buildServer({}, {snapshotKey:'linked-owner'}).tools.get_shadow_decision.callback({decisionId});
+  assert.strictEqual(denied.structuredContent.artifact.ownedFrozenEvidence.available,false);
+  assert.ok(!denied.structuredContent.artifact.ownedFrozenEvidence.frozenEvidence);
+ }
+ corruptEvidence=false;wrongOwner=false;
  ownedEvidence = false;
  const unowned = await buildServer({}, { snapshotKey: 'linked-owner' }).tools.get_shadow_decision.callback({ decisionId });
  assert.strictEqual(unowned.structuredContent.artifact.savedRookieReview.available, false);
  assert.ok(!unowned.structuredContent.artifact.savedRookieReview.review);
  const noLinked = await buildServer({}, null).tools.get_shadow_decision.callback({ decisionId });
  assert.ok(!('savedRookieReview' in noLinked.structuredContent.artifact));
+ assert.ok(!('ownedFrozenEvidence' in noLinked.structuredContent.artifact));
+ shadowArtifact.ownedFrozenEvidence={available:true,frozenEvidence:{packet:{secret:'global-scorecard-must-not-supply-owned-data'}}};
+ const poisoned=await buildServer({},null).tools.get_shadow_decision.callback({decisionId});
+ assert.ok(!('ownedFrozenEvidence' in poisoned.structuredContent.artifact));
+ delete shadowArtifact.ownedFrozenEvidence;
  assert.strictEqual(paidCalls, 0); assert.strictEqual(writes, 0);
  console.log('Saved Rookie tools: private OAuth gate, existing-reader compatibility, no generation/writes, handler JSON/SSE timing.');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => {
