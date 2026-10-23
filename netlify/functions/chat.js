@@ -316,11 +316,15 @@ exports.handler = async (event) => {
       }
       if (oracleVerdict) {
         // SAGE alone decides; persona affects wording, never the evidence or call.
-        const intro = personaKey === 'trash' ? 'Trash Lord: ' : personaKey === 'analyst' ? 'Analyst: ' : '';
+        const verdictText = personaKey === 'trash'
+          ? oracleVerdict.text.replace(/^The Oracle has weighed/, 'Trash Lord has checked').replace(/^SAGE cannot verify/, 'Trash Lord cannot verify')
+          : personaKey === 'analyst'
+            ? oracleVerdict.text.replace(/^The Oracle has weighed/, 'SAGE has evaluated')
+            : oracleVerdict.text;
         return {
           statusCode: 200,
           headers: CORS_HEADERS,
-          body: JSON.stringify({ content: [{ type: "text", text: intro + oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
+          body: JSON.stringify({ content: [{ type: "text", text: verdictText }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
         };
       }
       // Fail closed: structured lineup requests must never fall through to
