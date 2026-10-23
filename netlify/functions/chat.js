@@ -291,14 +291,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { model, max_tokens, system, messages, lineup } = JSON.parse(event.body);
+    const { model, max_tokens, system, messages, lineup, persona } = JSON.parse(event.body);
 
     // Oracle lineup button: the verdict comes from Super SAGE's shared lineup
     // authority (same decision the website and ChatGPT receive), presented as
     // KEEP / SWAP / HOLD PENDING NEWS. The language model is not asked to
     // evaluate the lineup, so it cannot echo eligibility as a verdict or guess
     // identities. Requests without a structured lineup are unchanged.
-    const pasted = !lineup && /Oracle/i.test(String(system || '')) ? parsePastedOracleLineup(messages) : null;
+    const pasted = !lineup && (persona === 'oracle' || (!persona && /Oracle/i.test(String(system || '')))) ? parsePastedOracleLineup(messages) : null;
     const effectiveLineup = lineup || (pasted && pasted.lineup);
     if (pasted && pasted.error) {
       return { statusCode: 200, headers: CORS_HEADERS,
