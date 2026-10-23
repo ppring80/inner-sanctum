@@ -298,7 +298,10 @@ exports.handler = async (event) => {
     // KEEP / SWAP / HOLD PENDING NEWS. The language model is not asked to
     // evaluate the lineup, so it cannot echo eligibility as a verdict or guess
     // identities. Requests without a structured lineup are unchanged.
-    const pasted = !lineup && (persona === 'oracle' || (!persona && /Oracle/i.test(String(system || '')))) ? parsePastedOracleLineup(messages) : null;
+    const personaKey = ['oracle', 'trash', 'analyst'].includes(String(persona || '').toLowerCase())
+      ? String(persona).toLowerCase()
+      : (/Trash Lord/i.test(String(system || '')) ? 'trash' : /Analyst/i.test(String(system || '')) ? 'analyst' : 'oracle');
+    const pasted = !lineup ? parsePastedOracleLineup(messages) : null;
     const effectiveLineup = lineup || (pasted && pasted.lineup);
     if (pasted && pasted.error) {
       return { statusCode: 200, headers: CORS_HEADERS,
@@ -312,10 +315,12 @@ exports.handler = async (event) => {
         console.log("Oracle lineup verdict failed:", e.message);
       }
       if (oracleVerdict) {
+        // SAGE alone decides; persona affects wording, never the evidence or call.
+        const intro = personaKey === 'trash' ? 'Trash Lord: ' : personaKey === 'analyst' ? 'Analyst: ' : '';
         return {
           statusCode: 200,
           headers: CORS_HEADERS,
-          body: JSON.stringify({ content: [{ type: "text", text: oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
+          body: JSON.stringify({ content: [{ type: "text", text: intro + oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
         };
       }
       // Fail closed: structured lineup requests must never fall through to
