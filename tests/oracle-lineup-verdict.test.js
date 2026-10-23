@@ -708,6 +708,24 @@ test('chat.js never falls through to model when Oracle verdict returns null or t
   assert.ok(branch.indexOf('cannot verify your lineup with SAGE') > branch.indexOf('if (oracleVerdict)'), 'unavailable response must follow verdict handling');
 });
 
+test('rejected evidence never turns benched players into SWAP or invented bye warnings', () => {
+  const { renderUnavailableText } = require('../netlify/functions/_oracle-lineup-verdict.js');
+  const text = renderUnavailableText({week:7,reason:'one matchup mismatch',eligibility:{rows:[
+    {name:'Chris Rodriguez Jr.',team:'JAX',status:'BYE'},
+    {name:'Rashee Rice',team:'KC',status:'INJURY BLOCKED'}
+  ]}});
+  assert.match(text,/cannot verify/);
+  assert.doesNotMatch(text,/SWAP|Chris Rodriguez|Rashee Rice|on bye|listed Out/i);
+});
+
+test('all three personas use shared SAGE for pasted lineups', () => {
+  const chat = fs.readFileSync(path.join(ROOT,'netlify/functions/chat.js'),'utf8');
+  assert.match(chat,/parsePastedOracleLineup\\(messages\\)/);
+  assert.match(chat,/personaKey === 'trash'/);
+  assert.match(chat,/personaKey === 'analyst'/);
+  assert.match(chat,/buildOracleLineupVerdict\\(\\{ lineup: effectiveLineup/);
+});
+
 test('chat.js requests without a structured lineup keep the existing model path', async () => {
   const { chat, modelCalls } = loadChatWithMocks();
   const res = await chat.handler({
