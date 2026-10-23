@@ -308,8 +308,8 @@ function reconcileRankedRecommendations(positions, scoring) {
     positions[position] = (Array.isArray(positions[position]) ? positions[position] : [])
       .map((row, index) => {
         const rank = index + 1;
-        const recommendation = weeklyRecommendation(position, rank);
-        const reconciled = { ...row, rank, recommendation };
+        const recommendation = row.projectionRankStatus === "unprojected" ? null : weeklyRecommendation(position, rank);
+        const reconciled = { ...row, rank, recommendation, recommendationEvidence: row.projectionRankStatus === "unprojected" ? "insufficient_projection" : "ranked" };
         if (usesOwnSageTake) return reconciled;
         const baseline = (row.sage && row.sage.baseline) || row.baseline || null;
         const baselineText = baseline && baseline.applied
