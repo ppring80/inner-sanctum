@@ -19,17 +19,17 @@ for (const position of context.POSITIONS) {
   const positions = {[position]:[row('low',14.8),row('high',20.4),row('middle',18.7),row('inactive',30,false)]};
   const audit = context.order(positions);
   assert.equal(audit[position].mode,'complete',position+' complete');
-  assert.deepEqual(positions[position].map(x=>x.name),['high','middle','low','inactive']);
-  assert.deepEqual(positions[position].map(x=>x.projectionRankStatus),['projected','projected','projected','unavailable']);
+  assert.equal(positions[position].map(x=>String(x.name)).join(','),'high,middle,low,inactive');
+  assert.equal(positions[position].map(x=>x.projectionRankStatus).join(','),'projected,projected,projected,unavailable');
 }
 const partial = {WR:[row('low',14.8),row('unknown',null),row('high',20.4)]};
 assert.equal(context.order(partial).WR.mode,'partial');
-assert.deepEqual(partial.WR.map(x=>x.name),['high','low','unknown']);
+assert.equal(partial.WR.map(x=>String(x.name)).join(','),'high,low,unknown');
 assert.equal(partial.WR[2].projectionRankStatus,'unprojected');
 const none = {TE:[row('first',null),row('second',null)]};
 assert.equal(context.order(none).TE.mode,'sage_fallback');
-assert.deepEqual(none.TE.map(x=>x.name),['first','second']);
+assert.equal(none.TE.map(x=>String(x.name)).join(','),'first,second');
 const tie = {QB:[row('first',12),row('second',12)]};
 context.order(tie);
-assert.deepEqual(tie.QB.map(x=>x.name),['first','second']);
+assert.equal(tie.QB.map(x=>String(x.name)).join(','),'first,second');
 console.log('PASS: six positions, partial fallback, no-projection fallback, unavailable, stable ties');
