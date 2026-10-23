@@ -1,0 +1,12 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const source = fs.readFileSync('netlify/functions/weekly-sage-rankings.js','utf8');
+assert(source.includes('const projectionOrderAudit = orderPositionsByDisplayedProjections(positions);'));
+assert(source.indexOf('orderPositionsByDisplayedProjections(positions);') < source.indexOf('reconcileRankedRecommendations(positions, scoring);'));
+assert(source.includes('return b.projectedPoints - a.projectedPoints'));
+assert(source.includes('eligible.every(row =>'));
+assert(source.includes('row.eligibleForWeeklyRanking !== false'));
+assert(source.includes('row.projection'));
+assert(source.includes('originalIndex.get(a) - originalIndex.get(b)'));
+console.log('Weekly projection order structural guards PASS');
