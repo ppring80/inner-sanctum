@@ -189,6 +189,18 @@ test('a provider ID is trusted only when the name agrees', () => {
   assert.equal(byId.via, 'provider ID');
 });
 
+test('a player absent from the evidence never resolves to a substring look-alike (live Week 7 pattern)', () => {
+  // Observed in authentic Week 7 Weekly SAGE (2026-10-23): Rashee Rice was absent,
+  // while a loose substring match on "rice" hit Jadarian Price (SEA, KC's opponent)
+  // and Audric Estime ("audRIC Estime"). Minimal rows below mirror those names.
+  const rows = rankingRows({ positions: { RB: [
+    { name: 'Jadarian Price', position: 'RB', team: 'SEA', playerID: 'x1' },
+    { name: 'Audric Estime', position: 'RB', team: 'CLE', playerID: 'x2' }
+  ], WR: [{ name: 'Xavier Worthy', position: 'WR', team: 'KC', playerID: 'x3' }] }, inactive: {} });
+  assert.equal(resolveIdentity({ name: 'Rashee Rice', position: 'WR', eligiblePositions: ['WR'], team: 'KC' }, rows).status, 'NOT_FOUND');
+  assert.equal(resolveIdentity({ name: 'Rashee Rice', position: null, eligiblePositions: ['QB', 'RB', 'WR', 'TE', 'K'], team: null }, rows).status, 'NOT_FOUND');
+});
+
 test('legacy cache lookup narrows same-name players by position, then team', () => {
   const players = {
     a: { longName: 'Mike Williams', pos: 'WR', team: 'NYJ' },
