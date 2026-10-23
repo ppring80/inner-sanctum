@@ -101,3 +101,6 @@ async function handler(event, deps = {}) {
 
 exports.handler = (event) => handler(event);
 exports._test = { handler, buildWeeklyRankingsUrl, validate };
+// Shared with the Oracle lineup verdict so it requests the identical Weekly SAGE evidence.
+exports.buildWeeklyRankingsUrl = buildWeeklyRankingsUrl;
+exports.baseUrlFor = baseUrlFor;

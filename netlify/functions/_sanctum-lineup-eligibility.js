@@ -18,12 +18,26 @@ function lineupRequest(messages) {
   if (!Number.isInteger(week) || week < 1 || week > 18) return null;
   const starters = text.match(/STARTERS:\s*([\s\S]*?)(?:\n\nBENCH:|\n\nIMPORTANT GROUNDING:|\n\nPlease analyze|$)/i)?.[1] || '';
   const bench = text.match(/\n\nBENCH:\s*([^\n]*)/i)?.[1] || '';
+  // Starter slot labels carry a position hint ("Wide Receiver 1: DeVonta
+  // Smith") that separates same-name players at different positions.
+  const hints = {};
+  starters.split('\n').forEach(line => {
+    const label = line.match(/^([^:]+):/)?.[1] || '';
+    const name = line.replace(/^[^:]+:\s*/, '').trim();
+    const pos = SLOT_LABEL_POSITIONS.find(([re]) => re.test(label))?.[1];
+    if (name && pos) hints[name] = { position: pos };
+  });
   const names = [...starters.split('\n').map(line => line.replace(/^[^:]+:\s*/, '').trim()),...bench.split(',').map(s => s.trim())].filter(Boolean);
-  return { week, names: [...new Set(names)] };
+  return { week, names: [...new Set(names)], hints };
 }
+const SLOT_LABEL_POSITIONS = [[/^quarterback/i,'QB'],[/^running back/i,'RB'],[/^wide receiver/i,'WR'],[/^tight end/i,'TE'],[/^kicker/i,'K'],[/^defense/i,'DEF']];
 const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g,'');
-function evidenceForPlayer(name, players) {
-  const found = Object.values(players || {}).filter(p => normalize(p.longName || p.name) === normalize(name));
+// Name alone is not identity: when several cached players share a name,
+// narrow by position, then team. Still ambiguous -> null (never a guess).
+function evidenceForPlayer(name, players, hint = {}) {
+  let found = Object.values(players || {}).filter(p => normalize(p.longName || p.name) === normalize(name));
+  if (found.length > 1 && hint.position) found = found.filter(p => String(p.pos || p.position || '').toUpperCase() === hint.position);
+  if (found.length > 1 && hint.team) found = found.filter(p => String(p.team || '').toUpperCase() === String(hint.team).toUpperCase());
   return found.length === 1 ? found[0] : null;
 }
 async function buildLineupEligibility(messages, season = 2026) {
@@ -46,18 +60,18 @@ async function buildLineupEligibility(messages, season = 2026) {
         phrase.includes(normalize(name))))];
   }
   const rows = request.names.map(name => {
-    const player = evidenceForPlayer(name,cache?.players);
+    const player = evidenceForPlayer(name,cache?.players,(request.hints||{})[name]);
     const team = String(player?.team || '').toUpperCase();
     const bye = scheduleValid && schedule.byeTeams.includes(team);
     const scheduled = scheduleValid && schedule.activeTeams.includes(team);
     const designation = player?.injury?.designation || '';
     const blockedInjury = /^(OUT|IR|PUP|NFI|DOUBTFUL|INJURED RESERVE)$/i.test(designation);
     const eligible = Boolean(player && scheduled && injuryFresh && !blockedInjury);
-    return { name,team:team||'UNKNOWN',status:bye?'BYE':blockedInjury?'INJURY BLOCKED':eligible?'SCHEDULED; injury snapshot checked':'UNVERIFIED',injury:designation||'none in snapshot',eligible };
+    return { name,team:team||'UNKNOWN',status:bye?'BYE':blockedInjury?'INJURY BLOCKED':eligible?'ELIGIBLE (eligibility only, not an evaluation)':'UNVERIFIED',injury:designation||'none in snapshot',eligible };
   });
   const blockedNames = rows.filter(r=>!r.eligible).map(r=>r.name);
   return { week:request.week,rows,blockedNames,freeform:Boolean(request.freeform),
-    text:'WEEK '+request.week+' LINEUP ELIGIBILITY — CACHED EVIDENCE ONLY (schedule '+(schedule?.generatedAt||'unavailable')+', injury '+(cache?.updatedAt||'unavailable')+'). Do not recommend starting, swapping in, or promoting any player unless status is SCHEDULED; injury snapshot checked. BYE and INJURY BLOCKED are prohibited. UNVERIFIED is not eligible for an affirmative substitution. QUESTIONABLE players require a conditional warning and final inactive check. These restrictions apply to Oracle, Trash Lord and Analyst.\n'+rows.map(r=>r.name+' | '+r.team+' | '+r.status+' | injury: '+r.injury).join('\n') };
+    text:'WEEK '+request.week+' LINEUP ELIGIBILITY — CACHED EVIDENCE ONLY (schedule '+(schedule?.generatedAt||'unavailable')+', injury '+(cache?.updatedAt||'unavailable')+'). Do not recommend starting, swapping in, or promoting any player unless status is ELIGIBLE. ELIGIBLE only means the player has a Week game and no blocking designation in the snapshot; it is NOT a start/sit evaluation. Never tell the user a starter is confirmed, locked in, or good because he is scheduled or eligible — evaluate him against eligible bench alternatives, or say plainly that an evaluation is unavailable. BYE and INJURY BLOCKED are prohibited. UNVERIFIED is not eligible for an affirmative substitution. QUESTIONABLE players require a conditional warning and final inactive check. These restrictions apply to Oracle, Trash Lord and Analyst.\n'+rows.map(r=>r.name+' | '+r.team+' | '+r.status+' | injury: '+r.injury).join('\n') };
 }
 function unsafeRecommendation(reply, blockedNames) {
   const s = String(reply || '');
