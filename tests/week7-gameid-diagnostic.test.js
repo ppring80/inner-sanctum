@@ -14,5 +14,7 @@ const r=await handler({httpMethod:'GET'}, {readSchedule:async()=>schedule,fetch:
 assert.equal(r.statusCode,200);
 assert.equal(JSON.parse(r.body).counts.gameIdConflict,1);
 assert.equal((await handler({httpMethod:'POST'},{})).statusCode,405);
+const unauthorized=await handler({httpMethod:'GET',headers:{}},{});
+assert.ok([401,503].includes(unauthorized.statusCode),'public diagnostic must require authorization');
 console.log('Week 7 cached game-ID diagnostic: PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
