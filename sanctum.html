@@ -1634,7 +1634,96 @@ function getLineupAdvice() {
     '\n\nIMPORTANT GROUNDING: STARTERS and BENCH describe only my fantasy lineup choices. They do not establish any player\'s real NFL depth-chart role. Do not call a benched fantasy player an NFL backup, buried, demoted, or losing work unless verified role evidence is explicitly provided. If current role, injury, matchup, or usage data is unavailable, say that plainly and limit the advice to the lineup information shown.' +
     request;
 
+  if (ap === 'oracle') {
+    ask(modelPrompt, visiblePrompt, buildOracleLineupPayload(week));
+    return;
+  }
   ask(modelPrompt, visiblePrompt);
+}
+
+// Structured lineup for the Oracle verdict: the same names the customer sees,
+// plus the position, NFL team, roster status and provider ID the page already
+// holds, so the server resolves identity without guessing from names alone.
+function oracleRosterDetail(name) {
+  var key = String(name || '').toLowerCase();
+  var pools = [sleeperRosterPlayers, allSleeperPlayers];
+  for (var i = 0; i < pools.length; i++) {
+    var hits = (pools[i] || []).filter(function(p) { return p && String(p.name || '').toLowerCase() === key; });
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) return null;
+  }
+  return null;
+}
+
+function oracleProviderDetail(connection, name) {
+  var key = String(name || '').toLowerCase();
+  var hits = (connection && Array.isArray(connection.roster) ? connection.roster : []).filter(function(p) {
+    return p && String(p.name || p.displayName || '').trim().toLowerCase() === key;
+  });
+  return hits.length === 1 ? hits[0] : null;
+}
+
+function buildOracleLineupPayload(week) {
+  var connection = (typeof LeagueConnection !== 'undefined' && LeagueConnection.getActiveConnection) ? LeagueConnection.getActiveConnection() : null;
+  function entry(name, extra) {
+    var d = oracleRosterDetail(name) || {};
+    var raw = oracleProviderDetail(connection, name) || {};
+    var out = { name: name, position: d.pos || null, team: d.team && d.team !== 'FA' ? d.team : null,
+      rosterStatus: raw.status || raw.rosterStatus || null,
+      providerPlayerId: raw.providerPlayerId || raw.playerId || raw.id || null };
+    Object.keys(extra || {}).forEach(function(k) { out[k] = extra[k]; });
+    return out;
+  }
+  var slotCounts = {};
+  var starters = [];
+  STARTER_SLOTS.forEach(function(s) {
+    slotCounts[s.pos] = (slotCounts[s.pos] || 0) + 1;
+    var el = document.getElementById('slot-' + s.id);
+    var val = el ? el.value.trim() : '';
+    if (val) starters.push(entry(val, { slotLabel: s.label, slotPos: s.pos }));
+  });
+  var bench = [];
+  BENCH_SLOTS.forEach(function(s) {
+    var el = document.getElementById('slot-' + s.id);
+    var val = el ? el.value.trim() : '';
+    if (val) bench.push(entry(val));
+  });
+  return {
+    week: Number(week),
+    scoring: connection && connection.scoringFormat ? connection.scoringFormat : null,
+    teams: connection && connection.teamCount ? connection.teamCount : null,
+    provider: connection && connection.provider ? connection.provider : (sleeperConnected ? 'sleeper' : null),
+    slotCounts: slotCounts,
+    starters: starters,
+    bench: bench
+  };
+}
+
+// The Oracle verdict ends by offering SAGE's deeper analysis. A short yes/no
+// reply to that offer is answered here from the analysis SAGE already
+// returned, so the language model is never asked to invent deeper evidence
+// and no question is spent. Any other message takes the normal path.
+var DEEPER_YES = /^\s*(yes|yeah|yep|yup|sure|ok|okay|please|yes please|show me( the)? details|yes\s*[,—–-]?\s*show me( the)? details|deeper( analysis)?|details)[\s.!]*$/i;
+var DEEPER_NO = /^\s*(no|nope|no thanks|no\s*[,—–-]?\s*keep it simple|keep it simple)[\s.!]*$/i;
+function answerDeeperOffer(q, displayTxt) {
+  var h = hist[ap];
+  var last = h.length ? h[h.length - 1] : null;
+  if (!last || last.role !== 'assistant' || !last.deeperAnalysis) return false;
+  var yes = DEEPER_YES.test(q), no = DEEPER_NO.test(q);
+  if (!yes && !no) return false;
+  var deeper = last.deeperAnalysis;
+  last.deeperAnalysis = null; // offered once
+  document.getElementById('inp').value = '';
+  h.push({ role: 'user', content: q, displayContent: displayTxt || q });
+  h.push(yes
+    ? { role: 'assistant', content: deeper, displayHtml: escapeVerdictHtml(deeper) }
+    : { role: 'assistant', content: 'Understood — the verdict stands.' });
+  draw();
+  return true;
+}
+
+function escapeVerdictHtml(text) {
+  return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 }
 
 function toggleLineup() {
@@ -1819,7 +1908,7 @@ function draw() {
     d.className = "msg " + h[j].role;
     var bubClass = "bub bot" + (ap === "analyst" ? " analyst-bub" : "");
     if (h[j].role === "assistant") {
-      d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="' + bubClass + '">' + h[j].content + '</div>';
+      d.innerHTML = '<div class="av av-' + ap + '">' + P[ap].em + '</div><div class="' + bubClass + '">' + (h[j].displayHtml || h[j].content) + '</div>';
     } else {
       d.innerHTML = '<div class="bub u-' + ap + '">' + (h[j].displayContent || h[j].content) + '</div>';
     }
@@ -1917,10 +2006,11 @@ function toggleVoice() {
   btn.style.borderColor = voiceOn ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)";
 }
 
-function ask(txt, displayTxt) {
+function ask(txt, displayTxt, lineup) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
+  if (answerDeeperOffer(q, displayTxt)) return;
 
   refreshIsAcolyteFromGate();
 
@@ -1960,8 +2050,11 @@ function ask(txt, displayTxt) {
     try {
       var data = JSON.parse(xhr.responseText);
       if (data && data.content && data.content[0]) { reply = data.content[0].text; }
+      var verdictFormat = data && data.format === 'oracle-lineup-verdict';
     } catch(e) { reply = "Parse error: " + e.message; }
-    hist[ap].push({ role: "assistant", content: reply });
+    hist[ap].push(verdictFormat
+      ? { role: "assistant", content: reply, displayHtml: escapeVerdictHtml(reply), deeperAnalysis: data.deeperAnalysis || null }
+      : { role: "assistant", content: reply });
     busy = false; draw(); speak(reply);
 
     if (!isAcolyte && questionCount >= QUESTION_LIMIT) {
@@ -1974,14 +2067,16 @@ function ask(txt, displayTxt) {
     hist[ap].push({ role: "assistant", content: "Connection lost. Try again." });
     busy = false; draw();
   };
-  xhr.send(JSON.stringify({
+  var requestBody = {
     model: "claude-sonnet-5",
     max_tokens: 1000,
     system: getSystemPrompt(ap),
     messages: hist[ap].map(function(message) {
       return { role: message.role, content: message.content };
     })
-  }));
+  };
+  if (lineup) requestBody.lineup = lineup;
+  xhr.send(JSON.stringify(requestBody));
 }
 
 function showUpgradeModal() {

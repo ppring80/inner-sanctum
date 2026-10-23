@@ -88,16 +88,24 @@ async function handler(event, deps = {}) {
 
   const result = await decideSharedLineup({ rankings, rankingsError, roster, provider: body.provider || null, slots, season, week, scoring, schedule, scheduleError, opportunityStore, now: deps.now ? deps.now() : new Date() });
   if (result.status !== "DECIDED") return reply(200, { status: result.status, reason: result.reason, evidenceStatus: result.evidenceStatus });
+  // Invariant: a rostered player SAGE could not evaluate is named, never
+  // silently omitted (ChatGPT already appends its own equivalent line).
+  const customerAnswer = toCustomerAnswer(result.record, result.evidenceStatus);
+  const notEvaluated = (result.record.unmatched || []).map((p) => p.name).filter(Boolean);
+  if (notEvaluated.length) customerAnswer.oneSecond.push(`Not evaluated by SAGE this week (no Weekly SAGE evidence): ${notEvaluated.join(", ")}. This is not a bench or drop call.`);
   return reply(200, {
     status: "DECIDED",
     decisionId: result.record.decisionId,
     record: result.record,
     evidenceStatus: result.evidenceStatus,
     kickoff: result.kickoff,
-    customerAnswer: toCustomerAnswer(result.record, result.evidenceStatus),
+    customerAnswer,
     website: toWebsiteLineup(result.record)
   });
 }
 
 exports.handler = (event) => handler(event);
 exports._test = { handler, buildWeeklyRankingsUrl, validate };
+// Shared with the Oracle lineup verdict so it requests the identical Weekly SAGE evidence.
+exports.buildWeeklyRankingsUrl = buildWeeklyRankingsUrl;
+exports.baseUrlFor = baseUrlFor;

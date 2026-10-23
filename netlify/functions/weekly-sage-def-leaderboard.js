@@ -294,6 +294,22 @@ async function readSchedule({
   return cached;
 }
 
+// Week game per team (gameID, date, kickoff time, home/away) from the SAME
+// cached schedule that supplies the opponent, so K/DEF rows carry the kickoff
+// fields QB/WR/TE rows already carry. Bye teams have no entry.
+function buildGameMap(schedule) {
+  const map = new Map();
+  (Array.isArray(schedule && schedule.games) ? schedule.games : []).forEach(function (game) {
+    const away = normalizeTeam(game.away);
+    const home = normalizeTeam(game.home);
+    if (!away || !home) return;
+    const base = { gameID: game.gameID || null, gameDate: game.gameDate || null, gameTime: game.gameTime || null };
+    map.set(away, { ...base, location: "away" });
+    map.set(home, { ...base, location: "home" });
+  });
+  return map;
+}
+
 function buildOpponentMap(schedule) {
   const map =
     new Map();
@@ -543,6 +559,7 @@ exports.handler =
         buildOpponentMap(
           schedule
         );
+      const gameMap = buildGameMap(schedule);
 
       const offenseYardsPopulation =
         Array.isArray(
@@ -636,6 +653,11 @@ exports.handler =
             opponent:
               opponent,
 
+            ...(function () {
+              const game = gameMap.get(normalizeTeam(record.team));
+              return game ? { location: game.location, gameID: game.gameID, gameDate: game.gameDate, gameTime: game.gameTime } : {};
+            })(),
+
             sageScore:
               compositeScore,
 
@@ -716,6 +738,18 @@ exports.handler =
 
             opponent:
               record.opponent,
+
+            location:
+              record.location || null,
+
+            gameID:
+              record.gameID || null,
+
+            gameDate:
+              record.gameDate || null,
+
+            gameTime:
+              record.gameTime || null,
 
             matchup:
               matchupEvidence,

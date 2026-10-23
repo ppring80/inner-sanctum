@@ -1,6 +1,7 @@
 const Anthropic = require("@anthropic-ai/sdk");
 const { getStore, connectLambda } = require("@netlify/blobs");
 const { buildLineupEligibility, unsafeRecommendation } = require("./_sanctum-lineup-eligibility");
+const { buildOracleLineupVerdict, ORACLE_LINEUP_FORMAT } = require("./_oracle-lineup-verdict");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -289,7 +290,39 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { model, max_tokens, system, messages } = JSON.parse(event.body);
+    const { model, max_tokens, system, messages, lineup } = JSON.parse(event.body);
+
+    // Oracle lineup button: the verdict comes from Super SAGE's shared lineup
+    // authority (same decision the website and ChatGPT receive), presented as
+    // KEEP / SWAP / HOLD PENDING NEWS. The language model is not asked to
+    // evaluate the lineup, so it cannot echo eligibility as a verdict or guess
+    // identities. Requests without a structured lineup are unchanged.
+    if (lineup) {
+      let oracleVerdict = null;
+      try {
+        oracleVerdict = await buildOracleLineupVerdict({ lineup, event, messages });
+      } catch (e) {
+        console.log("Oracle lineup verdict failed:", e.message);
+      }
+      if (oracleVerdict) {
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ content: [{ type: "text", text: oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
+        };
+      }
+      // Fail closed: structured lineup requests must never fall through to
+      // the legacy model-only path when shared SAGE evidence is unavailable.
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          content: [{ type: "text", text: "The Oracle cannot verify your lineup with SAGE right now. No start or swap recommendation has been made. Please try again when the lineup evidence is available." }],
+          format: ORACLE_LINEUP_FORMAT,
+          deeperAnalysis: null
+        })
+      };
+    }
 
     let liveDataContext = "";
     try {
