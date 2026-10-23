@@ -32,6 +32,8 @@ const { loadObservedOpportunity } = require("./_super-sage-opportunity-evidence.
 const { buildLiveShadowComparison } = require("./_super-sage-live-shadow.js");
 const { buildAutomaticShadowRecord } = require("./_super-sage-live-shadow-adapter.js");
 
+const {canonicalNameKey}=require("../../player-identity");
+
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
 const SERVICE_VERSION = 1;
 
@@ -131,8 +133,19 @@ async function decideSharedLineup({ rankings = null, rankingsError = null, roste
     ? { ...rankings, metadata: { ...meta, availability: { ...(meta.availability || {}), available: false } } }
     : rankings;
 
+  // Admit current facts for still-unlocked players, not new game outcomes.
+  // Use stable source timestamps rather than request time in frozen inputs, so
+  // unchanged evidence keeps its decision ID and review deduplication.
+  const factCutoffs={};
+  if(index.ok)for(const {row} of matchedRoster.matched){
+    if(teamKickoffState(index,row.team,now).state!=="PREGAME")continue;
+    const events=[row.roleContext?.event,...(row.roleContext?.events||[])].filter(Boolean);
+    if(!events.length)continue;
+    const dates=[row.projection?.updatedAt,...events.flatMap(e=>[e.effectiveAt,e.publishedAt,e.verifiedAt])].map(Date.parse).filter(t=>Number.isFinite(t)&&t<=now.getTime());
+    if(dates.length)factCutoffs[canonicalNameKey(row.name)+"|"+row.position]=new Date(Math.max(...dates)).toISOString();
+  }
   const record = buildLineupDecisionRecord({
-    rankings: authorityRankings, slots, scoring, season, week, opportunity, statusUpdates, matchedRoster
+    rankings: authorityRankings, slots, scoring, season, week, opportunity, statusUpdates, matchedRoster, factCutoffs
   });
   // Observational only: production authority has already completed above.
   // If no explicit shadow is supplied, Rookie automatically consumes the

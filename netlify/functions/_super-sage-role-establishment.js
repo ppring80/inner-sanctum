@@ -24,9 +24,12 @@ function qualifyEvent(event,{name,position,team,season,week,cutoff,historical=fa
  if(event.kind==='ROLE_GAIN'&&!['TEAM_ANNOUNCEMENT','TEAM_CHART','VERIFIED_REPORTER'].includes(event.authority))return fail('starter_role_not_established_by_transaction_or_injury_alone');
  return {valid:true,effectiveAt:event.effectiveAt,kind:event.kind,event};
 }
-function establishRole({event,opportunity,projection={},statusEvidence=[],name,position,team,season,week,scoring,conflictingEvents=[]}){
+function establishRole({event,opportunity,projection={},statusEvidence=[],name,position,team,season,week,scoring,conflictingEvents=[],factCutoff=null}){
  const cutoff=opportunity?.provenance?.decisionCutoff||opportunity?.provenance?.computedAt;
- const q=qualifyEvent(event,{name,position,team,season,week,cutoff});
+ // Observed outcomes retain their pre-week cutoff. Current facts have an
+ // independently bounded, player-pregame source cutoff from the live service.
+ const factsCutoff=factCutoff===null?cutoff:factCutoff;
+ const q=qualifyEvent(event,{name,position,team,season,week,cutoff:factsCutoff});
  const fail=(reason,extra={})=>({status:'UNRESOLVED',reason,effectiveAt:event?.effectiveAt||null,...extra});
  if(!q.valid)return fail(q.reason);
  if(conflictingEvents.some(e=>e!==event&&stamp(e.effectiveAt)>=stamp(event.effectiveAt)&&(e.kind!==event.kind||e.explicitRole!==event.explicitRole)))return fail('role_event_conflict');
@@ -47,7 +50,7 @@ function establishRole({event,opportunity,projection={},statusEvidence=[],name,p
  const producer=require('./refresh-opportunity-intel');
  const window=producer.buildOpportunityIntelligence(games,position);
  const signal=k=>window.signals.find(s=>s.type===k)?.value;
- const proof={effectiveAt:q.effectiveAt,eventId:event.id||null,firstAffectedGameID:first||null,gameIDs:games.map(g=>g.gameID),gamesSampled:games.length,sampleSize:signal('sampleSize'),trend:signal('trendClassification')||null,volumeTier:signal('volumeTier')||null,opportunities:window.opportunities,
+ const proof={...(factCutoff===null?{}:{factsCutoff}),effectiveAt:q.effectiveAt,eventId:event.id||null,firstAffectedGameID:first||null,gameIDs:games.map(g=>g.gameID),gamesSampled:games.length,sampleSize:signal('sampleSize'),trend:signal('trendClassification')||null,volumeTier:signal('volumeTier')||null,opportunities:window.opportunities,
   projectionIncorporationEstablished:false};
  // Two games support only a provisional current role, never a growth signal.
  // Reuse position-specific producer volume tiers for EACH game: an average
@@ -57,7 +60,7 @@ function establishRole({event,opportunity,projection={},statusEvidence=[],name,p
  if((proof.sampleSize!=='adequate'&&!provisional)||!['high-volume','moderate-volume','role-player'].includes(proof.volumeTier))return fail('post_change_role_not_established',proof);
  if(provisional)Object.assign(proof,{provisional:true,confidenceCap:'Moderate',gameVolumeTiers,caveat:'Only two games in the new role; confidence is moderate at most.'});
  const generated=stamp(projection.updatedAt);
- if(!projection.admissible||!Number.isFinite(projection.points)||projection.fresh!==true||!projection.source||!scoring||projection.scoring!==scoring||Number(projection.week)!==Number(week)||generated===null||generated<=stamp(event.effectiveAt)||generated>stamp(cutoff))return fail('post_change_projection_unverified',proof);
+ if(!projection.admissible||!Number.isFinite(projection.points)||projection.fresh!==true||!projection.source||!scoring||projection.scoring!==scoring||Number(projection.week)!==Number(week)||generated===null||generated<=stamp(event.effectiveAt)||generated>stamp(factsCutoff))return fail('post_change_projection_unverified',proof);
  const status=require('./_super-sage-baseline-validity').resolveStatus(statusEvidence);
  if(status.effective?.statusClass!=='ACTIVE'||status.conflict||status.staleMoreSevere.length)return fail('current_availability_unverified',proof);
  return {...proof,status:'ESTABLISHED',reason:'dated_current_role_supported_by_post_change_work',projectionUpdatedAt:projection.updatedAt,
