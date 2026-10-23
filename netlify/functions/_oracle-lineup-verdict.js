@@ -778,7 +778,15 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
   const kickoffIndex = buildKickoffIndex(schedule, { season: payload.season, week: payload.week });
 
   const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex, scoring: payload.scoring });
-  if (!evidenceCheck.ok) return unavailable(`the evidence is not verifiably Week ${payload.week}: ${evidenceCheck.problems.join('; ')}`);
+  if (!evidenceCheck.ok) {
+    // Server-side diagnostics only. Do not weaken the evidence guard or
+    // disclose player/game identifiers in the customer-facing response.
+    console.warn('ORACLE_WEEK_EVIDENCE_MISMATCH', JSON.stringify({
+      season: payload.season, week: payload.week,
+      problems: evidenceCheck.problems
+    }));
+    return unavailable(`the evidence is not verifiably Week ${payload.week}; see server diagnostics`);
+  }
   let opportunityStore = null;
   try { opportunityStore = deps.getStore ? deps.getStore({ name: 'opportunity-intel' }) : require('@netlify/blobs').getStore({ name: 'opportunity-intel' }); } catch (_) { opportunityStore = null; }
 
