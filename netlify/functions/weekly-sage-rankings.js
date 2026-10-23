@@ -720,7 +720,7 @@ exports.handler = async function (event) {
 
     metadata: {
       projections: projectionCoverage,
-      roleIngestion:{available:roleHistory?.version===roleReader.VERSION,checkedAt:roleHistory?.checkedAt||null,events:roleStories.length,coverage:roleHistory?.collection?.coverage||'NOT_YET_OBSERVED',collection:roleHistory?.collection||null},
+      roleIngestion:{available:roleHistory?.version===roleReader.VERSION,checkedAt:roleHistory?.checkedAt||null,events:roleStories.length,coverage:roleHistory?.collection?.coverage||'NOT_YET_OBSERVED',collection:roleHistory?.collection||null,dedicatedCollection:roleHistory?.dedicatedCollection||null,unresolvedReports:roleHistory?.unresolved?.length||0},
       complete: successCount === POSITIONS.length,
       positionsRequested: POSITIONS,
       positionsSucceeded: POSITIONS.filter((_, i) => results[i].ok),

@@ -52,9 +52,10 @@ for(const bad of [
  item(gain,{extra:{url:'https://www.nfl.com/news/other'}}),
  item(gain,{extra:{articleBody:null}}),
  item(gain,{extra:{articleBody:'<p>'+gain+'</p>'}})
- ,item(gain,{extra:{dateModified:'2026-10-22T17:30:00Z'}})
+
  ,item(gain,{extra:{headline:'Seahawks deny starter rumour'}})
 ])assert.equal(extract(bad).reports.length,0,'Unverified body/date/source rejected');
+const edited=extract(item(gain,{extra:{dateModified:'2026-10-22T17:30:00Z'}}));assert.equal(edited.reports.length,1);assert.equal(edited.reports[0].effectiveAt,'2026-10-22T17:30:00.000Z');assert.equal(edited.reports[0].actualEffectiveAt,null);
 assert.equal(roles.articleEvidence(source.html+source.html,source.link),null,'Ambiguous article metadata');
 assert.equal(roles.articleEvidence('<script type="application/ld+json">null</script>',source.link),null);
 assert.equal(extract(source,identity(player,now-8*3600000)).reports.length,0,'Stale identity cannot produce evidence');

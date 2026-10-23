@@ -19,9 +19,11 @@ function jobsForWeek(season, targetWeek) {
   add('refresh-player-data', 'player-data', targetWeek, 'player-availability-cache');
   add('refresh-weekly-projections', 'weekly-projections', targetWeek, 'weekly-projection-cache');
   add('refresh-sage-newswire', 'sage-newswire', targetWeek, 'editorial-with-sources');
+  add('refresh-role-evidence', 'sage-role-events', targetWeek, 'verified-role-history');
+  jobs[jobs.length-1].optional=true;
   return jobs;
 }
-const cacheKey = job => ['opportunity-intel','risers-fallers'].includes(job.store) ? 'latest' : job.store === 'player-data' ? 'playerData' : job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
+const cacheKey = job => ['opportunity-intel','risers-fallers'].includes(job.store) ? 'latest' : job.store === 'player-data' ? 'playerData' : job.store === 'sage-role-events' ? `season:${job.season}` : job.store === 'sage-newswire' ? 'latest' : `week:${job.season}:${job.week}:${job.seasonType}`;
 const stateKey = job => `${job.job}:${cacheKey(job)}${['opportunity-intel','risers-fallers'].includes(job.store) ? ':'+job.season+':'+job.week : ''}`;
 
 function completeCache(value, job, now = Date.now()) {
@@ -31,6 +33,10 @@ function completeCache(value, job, now = Date.now()) {
     if(value?.availabilityMode!==require('./_tank01-player-cache').MODE)return false;
     const updated = value && Date.parse(value.updatedAt), age = now-updated;
     return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000 && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
+  }
+  if (job.store === 'sage-role-events') {
+    const age=now-Date.parse(value?.dedicatedCollection?.checkedAt);
+    return Boolean(value?.version===1&&String(value.season)===job.season&&Array.isArray(value.events)&&value.dedicatedCollection.indexesSucceeded>0&&Number.isFinite(age)&&age>=0&&age<6*60*60*1000);
   }
   if (job.store === 'sage-newswire') {
     const age = value && now-Date.parse(value.updatedAt);
@@ -70,7 +76,7 @@ function nextJob(rows, now = Date.now()) {
   if (critical) return critical;
   // Availability, projections and reporting have no defensive-statistics or snapshot
   // dependency. A failed rankings build must not starve these shared feeds.
-  const independent = rows.find(row => ['player-data','weekly-projections','sage-newswire'].includes(row.store) && !row.ready && canRetry(row.status, now));
+  const independent = ['player-data','weekly-projections','sage-role-events','sage-newswire'].map(store=>rows.find(row=>row.store===store&&!row.ready&&canRetry(row.status,now))).find(Boolean);
   if (independent) return independent;
   for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
@@ -105,7 +111,7 @@ async function runJob(job, event, dependencies) {
   if (!canRetry(priorStatus, now)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const lastFailure=previous?.data?.lastFailure||null;
-  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
+  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {

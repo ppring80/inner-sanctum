@@ -113,7 +113,7 @@ function assessBaselineValidity({ statusEvidence, stateChanges = [], projection 
   if (conflict) triggers.push({ code: "SOURCE_CONFLICT", family: "availability", detail: conflictText(conflict) });
   stateChanges.filter((c) => c.type === "QB_AVAILABILITY_CHANGE").forEach((c) => triggers.push({ code: "QB_ENVIRONMENT_CHANGE", family: "environment", detail: c.note || "Verified quarterback availability change." }));
   stateChanges.filter((c) => c.type === "ROLE_CHANGE" && c.establishment?.status !== "ESTABLISHED").forEach((c) => triggers.push({ code: "ROLE_CHANGE", family: "role",
-    detail: c.redistributionVerified ? "Verified role change (redistribution verified)." : "Verified role change; redistribution not verified." }));
+    detail: c.event?.kind === "ROLE_REASSESSMENT" ? "Role report unresolved; starting assignment not established." : c.redistributionVerified ? "Verified role change (redistribution verified)." : "Verified role change; redistribution not verified." }));
 
   // A fresh projection below the median of the next-lower tier at the same
   // position contradicts the standing (no constant: medians come from the

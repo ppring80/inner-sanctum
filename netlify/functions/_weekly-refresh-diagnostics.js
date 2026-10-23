@@ -18,7 +18,7 @@ async function refreshDiagnostics(getStore,rows,now=Date.now()){
    projectionReservations:Number(ledger.jobs?.['refresh-weekly-projections']||0),
    projectionProtection:ledger.projectionReserve==null?{active:false}:{active:true,allocation:ledger.projectionReserve,used:ledger.projectionReserved,remaining:Math.max(0,ledger.projectionReserve-ledger.projectionReserved),backgroundLimit:normalLimit===null?null:normalLimit-Math.max(0,ledger.projectionReserve-ledger.projectionReserved)}};
  }));
- const jobs=rows.filter(r=>['weekly-projections','sage-newswire','player-data'].includes(r.store)).map(r=>{
+ const jobs=rows.filter(r=>['weekly-projections','sage-newswire','player-data','sage-role-events'].includes(r.store)).map(r=>{
   const s=r.status||{};return {job:r.job,ready:r.ready,state:s.status||'pending',day:s.day||null,attempts:s.attempts??null,attemptLimit:s.attemptLimit??null,
    canRetry:canRetry(r.status,now),leaseUntil:s.leaseUntil||null,retryAfter:s.retryAfter||null,lastAttempt:s.startedAt||null,finishedAt:s.finishedAt||null,statusCode:s.statusCode??null,error:s.error||null,lastFailure:s.lastFailure||null};
  });
