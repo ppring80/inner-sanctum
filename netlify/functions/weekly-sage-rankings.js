@@ -287,6 +287,7 @@ function orderPositionsByDisplayedProjections(positions) {
       return originalIndex.get(a) - originalIndex.get(b);
     }).map(row => ({
       ...row,
+      projectionOrderMode: projected.length === eligible.length && eligible.length ? "complete" : projected.length ? "partial" : "sage_fallback",
       projectionRankStatus: row.eligibleForWeeklyRanking === false
         ? "unavailable"
         : hasProjection(row) ? "projected" : "unprojected"
@@ -308,8 +309,8 @@ function reconcileRankedRecommendations(positions, scoring) {
     positions[position] = (Array.isArray(positions[position]) ? positions[position] : [])
       .map((row, index) => {
         const rank = index + 1;
-        const recommendation = row.projectionRankStatus === "unprojected" ? null : weeklyRecommendation(position, rank);
-        const reconciled = { ...row, rank, recommendation, recommendationEvidence: row.projectionRankStatus === "unprojected" ? "insufficient_projection" : "ranked" };
+        const recommendation = row.projectionOrderMode === "partial" && row.projectionRankStatus === "unprojected" ? null : weeklyRecommendation(position, rank);
+        const reconciled = { ...row, rank, recommendation, recommendationEvidence: row.projectionOrderMode === "partial" && row.projectionRankStatus === "unprojected" ? "insufficient_projection" : row.projectionOrderMode === "sage_fallback" ? "sage_fallback" : "ranked" };
         if (usesOwnSageTake) return reconciled;
         const baseline = (row.sage && row.sage.baseline) || row.baseline || null;
         const baselineText = baseline && baseline.applied
