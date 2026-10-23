@@ -326,8 +326,9 @@ test('Weekly SAGE evidence for the wrong week is rejected, not presented', async
   });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /The Oracle will not guess\. SAGE's Week 7 evaluation is unavailable right now \(the evidence is not verifiably Week 7: Weekly SAGE returned Week 6 evidence, not Week 7\)/);
-  assert.match(out.text, /SWAP — Sam LaPorta \(DET\): on bye in Week 7\. Do not start him\./);
+  assert.match(out.text, /SAGE cannot verify the Week 7 lineup evidence/);
+  assert.match(out.text, /Weekly SAGE returned Week 6 evidence, not Week 7/);
+  assert.doesNotMatch(out.text, /SWAP|Sam LaPorta|on bye/i);
   assert.ok(!/KEEP/.test(out.text));
 });
 
