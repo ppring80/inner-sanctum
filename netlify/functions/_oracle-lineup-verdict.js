@@ -738,21 +738,14 @@ function renderDeeperText(verdict) {
   return lines.join('\n');
 }
 
-function renderUnavailableText({ week, reason, eligibility }) {
-  const lines = [
-    `The Oracle will not guess. SAGE's Week ${week} evaluation is unavailable right now (${reason}), so I cannot weigh your starters against your bench.`,
-    'Nothing in your lineup is confirmed by this answer.'
-  ];
-  const rows = (eligibility && Array.isArray(eligibility.rows)) ? eligibility.rows : [];
-  const blocked = rows.filter((r) => r.status === 'BYE' || r.status === 'INJURY BLOCKED');
-  if (blocked.length) {
-    lines.push('');
-    lines.push('What the cached evidence does show:');
-    blocked.forEach((r) => lines.push(`SWAP — ${r.name} (${r.team}): ${r.status === 'BYE' ? `on bye in Week ${week}` : `listed ${r.injury}`}. Do not start him.`));
-  }
-  lines.push('');
-  lines.push('Ask again shortly, and confirm every starter against the final inactive report before kickoff.');
-  return lines.join('\n');
+function renderUnavailableText({ week, reason }) {
+  // Rejected or mismatched evidence is not authoritative for player-level
+  // availability. Do not convert bench warnings into starter SWAP calls.
+  return [
+    `SAGE cannot verify the Week ${week} lineup evidence (${reason}).`,
+    'No starters, substitutions, injuries or bye assignments are confirmed by this response.',
+    'The lineup decision is unavailable until the evidence is corrected.'
+  ].join('\\n');
 }
 
 // ─── Orchestration ─────────────────────────────────────────────────────
@@ -771,11 +764,10 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
     else rankings = await response.json();
   } catch (error) { rankingsError = `Weekly SAGE request failed: ${error.message}`; }
 
-  const unavailable = async (reason) => {
-    let eligibility = null;
-    try { eligibility = await (deps.buildLineupEligibility || require('./_sanctum-lineup-eligibility').buildLineupEligibility)(messages); } catch (_) { eligibility = null; }
-    return { status: 'UNAVAILABLE', reason, text: renderUnavailableText({ week: payload.week, reason, eligibility }) };
-  };
+  const unavailable = async (reason) => ({
+    status: 'UNAVAILABLE', reason,
+    text: renderUnavailableText({ week: payload.week, reason })
+  });
   if (!rankings) return unavailable(rankingsError || 'Weekly SAGE unavailable');
 
   let schedule = null, scheduleError = null;
