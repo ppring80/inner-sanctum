@@ -678,6 +678,36 @@ test('chat.js answers the Oracle lineup button from SAGE without asking the mode
   } finally { global.fetch = realFetch; }
 });
 
+test('chat.js fails closed when structured Oracle lineup evidence cannot be retrieved', async () => {
+  const { chat, modelCalls } = loadChatWithMocks();
+  const realFetch = global.fetch;
+  global.fetch = async () => { throw new Error('weekly rankings unavailable'); };
+  try {
+    const res = await chat.handler({
+      httpMethod: 'POST', headers: { origin: 'https://theinnersanctum.xyz', host: 'theinnersanctum.xyz' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1000, system: 'You are The Oracle', messages: [{ role: 'user', content: 'Check my lineup' }], lineup: customerLineup() })
+    });
+    const body = JSON.parse(res.body);
+    assert.equal(res.statusCode, 200);
+    assert.equal(body.format, ORACLE_LINEUP_FORMAT);
+    assert.equal(body.content[0].type, 'text');
+    assert.match(body.content[0].text, /cannot verify|unavailable|not evaluated/i);
+    assert.doesNotMatch(body.content[0].text, /legacy model reply/);
+    assert.equal(modelCalls.length, 0, 'structured lineup must never fall back to language model');
+  } finally { global.fetch = realFetch; }
+});
+
+test('chat.js never falls through to model when Oracle verdict returns null or throws', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'netlify/functions/chat.js'), 'utf8');
+  const start = src.indexOf('if (lineup) {');
+  const end = src.indexOf('let liveDataContext =', start);
+  assert.ok(start >= 0 && end > start);
+  const branch = src.slice(start, end);
+  assert.match(branch, /if \(oracleVerdict\)/);
+  assert.match(branch, /return \{[\s\S]*?cannot verify your lineup with SAGE/);
+  assert.ok(branch.indexOf('cannot verify your lineup with SAGE') > branch.indexOf('if (oracleVerdict)'), 'unavailable response must follow verdict handling');
+});
+
 test('chat.js requests without a structured lineup keep the existing model path', async () => {
   const { chat, modelCalls } = loadChatWithMocks();
   const res = await chat.handler({
