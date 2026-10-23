@@ -748,7 +748,7 @@ function renderUnavailableText({ week, reason }) {
     `SAGE cannot verify the Week ${week} lineup evidence (${reason}).`,
     'No starters, substitutions, injuries or bye assignments are confirmed by this response.',
     'The lineup decision is unavailable until the evidence is corrected.'
-  ].join('\\n');
+  ].join('\n');
 }
 
 // ─── Orchestration ─────────────────────────────────────────────────────
