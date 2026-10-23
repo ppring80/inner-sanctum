@@ -2,6 +2,7 @@ const Anthropic = require("@anthropic-ai/sdk");
 const { getStore, connectLambda } = require("@netlify/blobs");
 const { buildLineupEligibility, unsafeRecommendation } = require("./_sanctum-lineup-eligibility");
 const { buildOracleLineupVerdict, ORACLE_LINEUP_FORMAT } = require("./_oracle-lineup-verdict");
+const { parsePastedOracleLineup } = require("./_oracle-pasted-lineup");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -297,10 +298,16 @@ exports.handler = async (event) => {
     // KEEP / SWAP / HOLD PENDING NEWS. The language model is not asked to
     // evaluate the lineup, so it cannot echo eligibility as a verdict or guess
     // identities. Requests without a structured lineup are unchanged.
-    if (lineup) {
+    const pasted = !lineup && /Oracle/i.test(String(system || '')) ? parsePastedOracleLineup(messages) : null;
+    const effectiveLineup = lineup || (pasted && pasted.lineup);
+    if (pasted && pasted.error) {
+      return { statusCode: 200, headers: CORS_HEADERS,
+        body: JSON.stringify({ content: [{ type: "text", text: pasted.error }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: null }) };
+    }
+    if (effectiveLineup) {
       let oracleVerdict = null;
       try {
-        oracleVerdict = await buildOracleLineupVerdict({ lineup, event, messages });
+        oracleVerdict = await buildOracleLineupVerdict({ lineup: effectiveLineup, event, messages });
       } catch (e) {
         console.log("Oracle lineup verdict failed:", e.message);
       }
