@@ -2071,6 +2071,7 @@ function ask(txt, displayTxt, lineup) {
     model: "claude-sonnet-5",
     max_tokens: 1000,
     system: getSystemPrompt(ap),
+    persona: ap,
     messages: hist[ap].map(function(message) {
       return { role: message.role, content: message.content };
     })
