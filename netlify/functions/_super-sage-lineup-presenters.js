@@ -159,6 +159,9 @@ function toCustomerAnswer(record, evidenceStatus = null) {
       : `All ${decided.length} slots decided.`
   ];
 
+  const unresolvedRoleStarters=decided.filter(s=>validityOf(s.starter)==='REASSESS'&&(s.starter.stateChanges||[]).some(c=>c.type==='ROLE_CHANGE'&&c.event?.kind==='ROLE_REASSESSMENT'));
+  if(unresolvedRoleStarters.length)oneSecond.push(`Role evidence unresolved: ${unresolvedRoleStarters.map(s=>`${shortName(s.starter)} (${s.confidence.label} confidence)`).join(', ')}. Confirm the starting assignment before relying on these choices.`);
+
   // 3 seconds: only the reasons that drove the important decisions.
   const three = [];
   const narrated = new Set();

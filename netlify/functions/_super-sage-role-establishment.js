@@ -9,7 +9,7 @@ function qualifyEvent(event,{name,position,team,season,week,cutoff,historical=fa
  if(!event)return fail('dated_role_event_missing');
  if(event.verified!==true||(!historical&&event.fresh!==true))return fail('role_event_unverified_or_stale');
  if(canonicalNameKey(event.player)!==canonicalNameKey(name)||event.position!==position||event.team!==team||Number(event.season)!==Number(season)||(event.appliesFromWeek!=null ? !Number.isInteger(event.appliesFromWeek)||event.appliesFromWeek!==Number(event.week)||event.appliesFromWeek>Number(week) : Number(event.week)!==Number(week)))return fail('role_event_identity_or_week_mismatch');
- if(!['ROLE_GAIN','ROLE_LOSS','TEAMMATE_ABSENCE','TEAMMATE_RETURN'].includes(event.kind))return fail('role_event_kind_unsupported');
+ if(!['ROLE_GAIN','ROLE_LOSS','ROLE_REASSESSMENT','TEAMMATE_ABSENCE','TEAMMATE_RETURN'].includes(event.kind))return fail('role_event_kind_unsupported');
  let url;try{url=new URL(event.sourceUrl);}catch{return fail('role_event_source_unverified');}
  const club=CLUBS.find(c=>c.team===team),host=club&&new URL(club.origin).hostname;
  const reporter=event.authority==='VERIFIED_REPORTER'&&require('./_role-report-sources.json').some(s=>s.team===team&&s.host===url.hostname&&url.pathname.startsWith(s.pathPrefix)&&s.reporters.includes(event.reporter));

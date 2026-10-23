@@ -4,6 +4,7 @@ const { jobsForWeek, verify, runJob, inspectJobs, nextJob } = require('./_weekly
 
 // Static imports keep every builder in the background function bundle.
 const builders = {
+  'refresh-role-evidence': require('./refresh-role-evidence.js'),
   'refresh-opportunity-intel': require('./refresh-opportunity-intel.js'),
   'refresh-risers-fallers': require('./refresh-risers-fallers.js'),
   'refresh-player-data': require('./refresh-player-data.js'),
@@ -41,7 +42,7 @@ exports.handler = async event => {
   let selected = (await inspectJobs(getStore, request.season, request.targetWeek)).find(row=>row.job === job.job && row.week === job.week);
   while (selected && Date.now() - started < 12 * 60 * 1000) {
     const result = await runJob(selected, event, dependencies);
-    if (result.status === 'failed' || result.status === 'waiting') return { statusCode: result.status === 'failed' ? 500 : 200 };
+    if ((result.status === 'failed' || result.status === 'waiting') && !selected.optional) return { statusCode: result.status === 'failed' ? 500 : 200 };
     // Continue in dependency order within the background time allowance.
     // A large initial backfill can resume on the next watchdog tick.
     selected = nextJob(await inspectJobs(getStore, request.season, request.targetWeek));

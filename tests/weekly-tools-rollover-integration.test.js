@@ -13,6 +13,7 @@ function fixture(job){const base={evidenceType:job.evidenceType,season:job.seaso
  if(job.store==='opportunity-intel')return{...base,weeksRequested:[job.week],gamesFound:1,gamesFailed:0,records:{fixture:{}}};
  if(job.store==='risers-fallers')return{...base,currentWeek:job.week,previousWeek:job.week-1,allDeltas:{fixture:{}}};
  if(job.store==='player-data')return{updatedAt:new Date().toISOString(),availabilityMode:'tank01-full-player-list-v1',teamsSucceeded:32,teamsFailed:0,players:Object.fromEntries(Array.from({length:1000},(_,i)=>[i,{}]))};
+ if(job.store==='sage-role-events')return{version:1,season:Number(job.season),events:[],dedicatedCollection:{checkedAt:new Date().toISOString(),indexesSucceeded:1}};
  if(job.store==='sage-newswire')return{updatedAt:new Date().toISOString(),mode:'editorial-with-sources',collection:{automaticStories:1},stories:[{headline:'Fixture verified news'}]};
  if(job.store==='weekly-projections')return{...base,generatedAt:new Date().toISOString(),rows:Array.from({length:100},()=>({}))};
  return{...base,population:[{}],failures:[],nextStep:{ready:true},populationSummary:{weeksWithEvidence:job.week-1,weeksScanned:job.week-1}};

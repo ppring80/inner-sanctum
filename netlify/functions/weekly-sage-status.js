@@ -15,8 +15,8 @@ exports.handler = async event => {
     const week = resolveCurrentNFLWeek(new Date(), season);
     const rows = await inspectJobs(getStore, season, week);
     if(diagnostic)return {statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(await require('./_weekly-refresh-diagnostics').refreshDiagnostics(getStore,rows))};
-    const jobs = rows.map(row => ({ job: row.job, week: row.week, ready: row.ready, state: row.status && row.status.status || 'pending', lastAttempt: row.status && row.status.startedAt || null, error: row.status && row.status.error || null }));
-    const ready = rows.length > 0 && rows.every(row => row.ready);
+    const jobs = rows.map(row => ({ job: row.job, week: row.week, optional: Boolean(row.optional), ready: row.ready, state: row.status && row.status.status || 'pending', lastAttempt: row.status && row.status.startedAt || null, error: row.status && row.status.error || null }));
+    const ready = rows.length > 0 && rows.filter(row=>!row.optional).every(row => row.ready);
     const playerCache=await getStore({name:'player-data'}).get('playerData',{type:'json'});
     const providerMode=playerCache?.availabilityMode===require('./_tank01-player-cache').MODE;
     const playerAge=Date.now()-Date.parse(playerCache?.updatedAt||'');
