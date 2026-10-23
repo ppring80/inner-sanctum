@@ -311,6 +311,17 @@ exports.handler = async (event) => {
           body: JSON.stringify({ content: [{ type: "text", text: oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
         };
       }
+      // Fail closed: structured lineup requests must never fall through to
+      // the legacy model-only path when shared SAGE evidence is unavailable.
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          content: [{ type: "text", text: "The Oracle cannot verify your lineup with SAGE right now. No start or swap recommendation has been made. Please try again when the lineup evidence is available." }],
+          format: ORACLE_LINEUP_FORMAT,
+          deeperAnalysis: null
+        })
+      };
     }
 
     let liveDataContext = "";
