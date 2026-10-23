@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - fix/oracle-pasted-lineup-routing
+      - diagnostic/week7-sage-gameid
     paths-ignore:
       - 'README.md'
       - 'support.html'
