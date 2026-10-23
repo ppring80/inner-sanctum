@@ -278,7 +278,7 @@ test('relabeled Week 4 data (targetWeek and projection.week set to 7) is rejecte
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.equal(calls.args, undefined, 'SAGE is never asked to decide on non-Week-7 evidence');
-  assert.match(out.text, /rankings generated 2026-10-03T21:50:58\.713Z, outside Week 7/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
   assert.match(out.text, /projections updated 2026-10-03T18:50:17\.806Z, outside Week 7/);
   assert.match(out.text, /injury report updated 2026-10-03T21:00:56\.354Z, outside Week 7/);
   assert.match(out.text, /player games fall outside Week 7 \(.*game 20261004/);
@@ -309,14 +309,14 @@ test('matchups that contradict the Week 7 schedule are rejected', async () => {
   const { deps: d } = deps(r, { readSchedule: async () => schedule });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /matchups disagree with the Week 7 schedule/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('evidence generated after the request time (future-dated) is rejected', async () => {
   const { deps: d } = deps(week7Rankings(), { now: () => new Date('2026-10-21T12:00:00Z') });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /rankings generated 2026-10-24T21:50:58\.713Z, outside Week 7/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('Weekly SAGE evidence for the wrong week is rejected, not presented', async () => {
@@ -327,7 +327,7 @@ test('Weekly SAGE evidence for the wrong week is rejected, not presented', async
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.match(out.text, /SAGE cannot verify the Week 7 lineup evidence/);
-  assert.match(out.text, /Weekly SAGE returned Week 6 evidence, not Week 7/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
   assert.doesNotMatch(out.text, /SWAP|Sam LaPorta|on bye/i);
   assert.ok(!/KEEP/.test(out.text));
 });
