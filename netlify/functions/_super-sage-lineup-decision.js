@@ -220,7 +220,7 @@ function applyBaselineValidity(packet, tierMedians, request) {
     change.establishment=require('./_super-sage-role-establishment').establishRole({
       event:change.event,conflictingEvents:change.events,opportunity:request.opportunity,
       projection:packet.projection,statusEvidence:packet.availability.statusEvidence,
-      name:packet.name,position:packet.position,team:packet.team,season:request.season,week:request.week,scoring:request.scoring});
+      name:packet.name,position:packet.position,team:packet.team,season:request.season,week:request.week,scoring:request.scoring,factCutoff:request.factCutoffs?.[require("../../player-identity").canonicalNameKey(packet.name)+"|"+packet.position]??null});
     if(change.establishment.status === "ESTABLISHED")change.status="ROLE_ESTABLISHED";
   }
   if(roleChanges.length&&roleChanges.every(c=>c.establishment.status === "ESTABLISHED")){
@@ -636,9 +636,9 @@ function decideFlexSlot(slot, pool, request) {
     gate: mostRelevant ? mostRelevant.result : null, blockedChallengers: evaluations, reassessedFrom, decisionState };
 }
 
-function decideLineup({ rankings, candidates, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [] }) {
+function decideLineup({ rankings, candidates, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [], factCutoffs = null }) {
   const availabilityMeta = (rankings && rankings.metadata && rankings.metadata.availability) || {};
-  const request = { scoring, season, week, registry, policy, opportunity, statusUpdates, availabilityMeta };
+  const request = { scoring, season, week, registry, policy, opportunity, statusUpdates, availabilityMeta, factCutoffs };
   const bounds = tierBounds(rankings);
   const tierMedians = tierProjectionMedians(rankings, request);
   const packets = (candidates || []).map((c) => {
@@ -929,9 +929,9 @@ function candidatesFromMatched(matched, unmatched = [], rankings = null) {
   ];
 }
 
-function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [], matchedRoster = null }) {
+function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, week, registry = SIGNALS, policy = POLICY, opportunity = null, statusUpdates = [], matchedRoster = null, factCutoffs = null }) {
   const candidates = matchedRoster ? candidatesFromMatched(matchedRoster.matched, matchedRoster.unmatched, rankings) : matchRosterToRankings(roster, rankings);
-  const decision = decideLineup({ rankings, candidates, slots, scoring, season, week, registry, policy, opportunity, statusUpdates });
+  const decision = decideLineup({ rankings, candidates, slots, scoring, season, week, registry, policy, opportunity, statusUpdates, factCutoffs });
   const rosterKeys = new Set(candidates.map((c) => `${normalizeName(c.name)}|${c.position}`));
   const explanation = explainLineup(decision);
   const inputs = canonical({
@@ -944,6 +944,7 @@ function buildLineupDecisionRecord({ rankings, roster, slots, scoring, season, w
     opportunity: opportunity ? { status: opportunity.status, provenance: opportunity.provenance || null,
       records: Object.fromEntries(Object.entries(opportunity.records || {}).filter(([k]) => rosterKeys.has(k))) } : null,
     statusUpdates: (statusUpdates || []).map((u) => ({ ...u })),
+    ...(factCutoffs&&Object.keys(factCutoffs).length?{factCutoffs}:{}),
     tierBounds: tierBounds(rankings),
     registry: Object.fromEntries(Object.entries(registry).map(([id, sig]) => [id, sig.status]))
   });
