@@ -224,7 +224,7 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
   }
   const rows = rankingRows(rankings);
   const startDay = ymd(start), endDay = ymd(end - 1);
-  let badGames = 0, badProj = 0, badMatchups = 0; const examples = [];
+  let badGames = 0, badProj = 0, badMatchups = 0; const examples = [], matchupExamples = [];
   rows.forEach((r) => {
     const day = String(r.gameDate || String(r.gameID || '').slice(0, 8) || '');
     if (day && (day < startDay || day > endDay)) { badGames++; if (examples.length < 2) examples.push(`${r.name} game ${day}`); }
@@ -235,12 +235,15 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
       const team = teamCode(r.currentTeam || r.team);
       const key = Object.keys(kickoffIndex.byTeam).find((k) => teamCode(k) === team);
       const game = key ? kickoffIndex.byTeam[key] : null;
-      if (!game || (game.gameID && game.gameID !== r.gameID)) badMatchups++;
+      if (!game || (game.gameID && game.gameID !== r.gameID)) {
+        badMatchups++;
+        if (matchupExamples.length < 3) matchupExamples.push(`${r.name} (${team || 'unknown team'}): rankings ${r.gameID}, schedule ${game?.gameID || 'missing'}`);
+      }
     }
   });
   if (badGames) problems.push(`${badGames} player games fall outside Week ${week} (${examples.join(', ')})`);
   if (badProj) problems.push(`${badProj} player projections are not Week ${week} ${scoring ? SCORING_LABEL[scoring] + ' ' : ''}projections`);
-  if (badMatchups) problems.push(`${badMatchups} matchups disagree with the Week ${week} schedule`);
+  if (badMatchups) problems.push(`${badMatchups} matchups disagree with the Week ${week} schedule (${matchupExamples.join('; ')})`);
   return { ok: problems.length === 0, problems };
 }
 
