@@ -308,7 +308,7 @@ exports.handler = async (event) => {
         return {
           statusCode: 200,
           headers: CORS_HEADERS,
-          body: JSON.stringify({ content: [{ type: "text", text: oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT })
+          body: JSON.stringify({ content: [{ type: "text", text: oracleVerdict.text }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
         };
       }
     }

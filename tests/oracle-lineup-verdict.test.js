@@ -108,10 +108,20 @@ test('Week 7 customer case: complete verdict, never a SCHEDULED echo', async () 
   assert.equal(out.status, 'VERDICT');
   assert.ok(!/SCHEDULED/i.test(out.text), 'must not present schedule status as a verdict');
   assert.equal(out.verdict.rows.length, 7, 'every starter gets exactly one verdict row');
-  out.verdict.rows.forEach((r) => assert.ok(['KEEP', 'SWAP', 'HOLD PENDING NEWS'].includes(r.decision), r.decision));
-  assert.match(out.text, /^The Oracle has weighed every starter against your bench/);
-  assert.match(out.text, /Week 7 verdict: 1 SWAP, 6 KEEP\./);
+  out.verdict.rows.forEach((r) => assert.ok(['KEEP', 'SWAP', 'HOLD PENDING NEWS', 'NOT EVALUATED'].includes(r.decision), r.decision));
+  // 1-second layer: the verdict counts first.
+  assert.match(out.text, /^The Oracle has weighed your Week 7 lineup against your bench: 1 SWAP, 6 KEEP\.\n/);
+  // Every change is explained, with the slide spelled out and the reason.
+  assert.match(out.text, /\nSWAP WR1: bench DeVonta Smith, move Puka Nacua to WR1 and start Blake Corum at FLEX — DeVonta Smith is out \(hamstring\)/);
+  // Routine KEEPs are grouped; the strongest bench alternative is explained.
+  assert.match(out.text, /\nKEEP Jalen Hurts, Bijan Robinson, Kyren Williams, Rashee Rice, Sam LaPorta, Puka Nacua\.\n/);
+  assert.match(out.text, /\nBest bench option: Jakobi Meyers \(WR, JAX, 8\.1 proj\) — doesn't improve your lineup; Rashee Rice, your weakest eligible starter, brings 4\.2 more projected points\./);
   assert.equal((out.text.match(/Would you like the deeper SAGE analysis on your lineup\?/g) || []).length, 1);
+  assert.ok(out.text.length <= 1000, `voice-length answer (${out.text.length} chars)`);
+  assert.ok(!/scrolls|prophecy|spirits/i.test(out.text), 'no theatrical filler');
+  // 10-second layer is offered separately and carries every comparison.
+  assert.match(out.deeper, /^Deeper SAGE analysis — Week 7: 1 SWAP, 6 KEEP\./);
+  assert.match(out.deeper, /KEEP — Wide Receiver 2: Rashee Rice \(KC, WR20/);
 });
 
 test('DeVonta Smith resolves to PHI and his OUT status drives a SWAP with the real replacement', async () => {
@@ -169,13 +179,13 @@ test('same-name players are separated by team before SAGE sees them', async () =
   assert.equal(out.verdict.rows.find((r) => r.player.startsWith('Rashee Rice')).player, 'Rashee Rice (WR, KC)');
 });
 
-test('same-name players without a team are HOLD, never guessed, and withheld from SAGE', async () => {
+test('same-name players without a team are NOT EVALUATED, never guessed, and withheld from SAGE', async () => {
   const lineup = customerLineup();
   lineup.starters[4] = { slotLabel: 'Wide Receiver 2', slotPos: 'WR', name: 'Rashee Rice', position: 'WR', team: null };
   const { deps: d, calls } = deps(week7Rankings(withSecondRashee));
   const out = await buildOracleLineupVerdict({ lineup, event: {}, deps: d });
   const rice = out.verdict.rows.find((r) => r.player.startsWith('Rashee Rice'));
-  assert.equal(rice.decision, 'HOLD PENDING NEWS');
+  assert.equal(rice.decision, 'NOT EVALUATED');
   assert.match(rice.reason, /More than one WR named Rashee Rice .*\(KC, NYJ\).*I won't guess/);
   assert.ok(!calls.roster.some((e) => e.name === 'Rashee Rice'), 'ambiguous identity is not handed to SAGE');
 });
@@ -215,13 +225,13 @@ test('legacy cache lookup narrows same-name players by position, then team', () 
 
 // ─── 3. Unresolved team data ───────────────────────────────────────────
 
-test('a starter with no Weekly SAGE evidence and no team is HOLD with an honest reason', async () => {
+test('a starter with no Weekly SAGE evidence and no team is NOT EVALUATED with an honest reason', async () => {
   const lineup = customerLineup();
   lineup.starters[5] = { slotLabel: 'Tight End', slotPos: 'TE', name: 'Zzyzx Quarrington', position: null, team: null };
   const { deps: d } = deps(week7Rankings());
   const out = await buildOracleLineupVerdict({ lineup, event: {}, deps: d });
   const row = out.verdict.rows.find((r) => r.player.startsWith('Zzyzx'));
-  assert.equal(row.decision, 'HOLD PENDING NEWS');
+  assert.equal(row.decision, 'NOT EVALUATED');
   assert.match(row.reason, /could not match Zzyzx Quarrington to verified Week 7 evidence — his team is unresolved/);
   assert.ok(!/Zzyzx Quarrington \(/.test(row.reason), 'no invented team or stats');
 });
@@ -229,7 +239,7 @@ test('a starter with no Weekly SAGE evidence and no team is HOLD with an honest 
 test('league team that disagrees with current evidence is surfaced, not hidden', async () => {
   const { deps: d } = deps(week7Rankings());
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
-  assert.match(out.text, /Jakobi Meyers: your league lists LV, current NFL evidence lists JAX/);
+  assert.match(out.deeper, /Jakobi Meyers: your league lists LV, current NFL evidence lists JAX/);
 });
 
 // ─── 4. Stale evidence ─────────────────────────────────────────────────
@@ -246,8 +256,10 @@ test('stale injury evidence never confirms a starter', async () => {
   const smith = out.verdict.rows.find((r) => r.player.startsWith('DeVonta Smith'));
   assert.equal(smith.player, 'DeVonta Smith (WR, PHI)', 'identity stays resolved even when status is stale');
   assert.match(smith.reason, /latest listed status is OUT, and the injury report is stale/);
-  assert.ok(!/could not match DeVonta Smith/.test(out.text));
-  assert.match(out.text, /Evidence degraded — availability: Injury\/status feed is stale/);
+  assert.ok(!/could not match DeVonta Smith/.test(out.text + out.deeper));
+  assert.match(out.deeper, /Evidence degraded — availability: Injury\/status feed is stale/);
+  assert.match(out.text, /Caution: injury report is stale/);
+  assert.ok(!/\nKEEP /.test(out.text), 'no KEEP line on stale availability');
 });
 
 test('a projection from another week rejects the evidence packet', async () => {
@@ -255,7 +267,7 @@ test('a projection from another week rejects the evidence packet', async () => {
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /player projections are not Week 7 projections/);
+  assert.match(out.text, /player projections are not Week 7 Half-PPR projections/);
   assert.ok(!/\bproj\b|KEEP/.test(out.text));
 });
 
@@ -332,7 +344,8 @@ test('a stale week selection is disclosed', async () => {
   const r6 = week7Rankings(null, { week: 6, days: 14 });
   const { deps: d } = deps(r6);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup({ week: 6 }), event: {}, deps: d });
-  assert.match(out.text, /you asked about Week 6; the current NFL week is Week 7/);
+  assert.match(out.text, /\(The current NFL week is Week 7\.\)/);
+  assert.match(out.deeper, /you asked about Week 6; the current NFL week is Week 7/);
 });
 
 // ─── 5. Starter vs bench comparisons ───────────────────────────────────
@@ -388,7 +401,8 @@ test('starters whose game kicked off are LOCKED (KEEP), never swapped, and withh
   });
   assert.ok(!out.verdict.rows.some((r) => r.decision === 'SWAP'), 'no move is suggested into or out of a started game');
   assert.deepEqual(calls.args.slots.map((x) => `${x.slotLabel}x${x.count}`), ['RBx2', 'WRx1', 'TEx1'], 'locked slots are not re-decided');
-  assert.match(out.text, /Jakobi Meyers: game already kicked off — cannot be moved into your lineup/);
+  assert.match(out.deeper, /Jakobi Meyers: game already kicked off — cannot be moved into your lineup/);
+  assert.match(out.text, /\nLocked \(games started\): Jalen Hurts, DeVonta Smith, Puka Nacua\./);
 });
 
 test('kickoff locks use the Week 7 schedule when it is available', async () => {
@@ -425,8 +439,18 @@ test('a SWAP to a player with unverifiable kickoff is a caveat before the slate,
   assert.match(liveRow.reason, /games are underway and Blake Corum's kickoff cannot be verified — he may already be locked/);
 });
 
+const asPpr = (x) => { x.scoring = 'ppr'; allRows(x).forEach((p) => { if (p.projection) p.projection.scoring = 'ppr'; }); }; // SYNTHETIC relabel of scoring only
+
+test('a Weekly SAGE packet in a different scoring than the league is rejected', async () => {
+  const { deps: d, calls } = deps(week7Rankings()); // half-PPR packet
+  const out = await buildOracleLineupVerdict({ lineup: customerLineup({ scoring: 'ppr' }), event: {}, deps: d });
+  assert.equal(out.status, 'UNAVAILABLE');
+  assert.equal(calls.args, undefined);
+  assert.match(out.text, /Weekly SAGE returned half scoring, not ppr/);
+});
+
 test('league scoring reaches Weekly SAGE and the authority unchanged', async () => {
-  const { deps: d, calls } = deps(week7Rankings());
+  const { deps: d, calls } = deps(week7Rankings(asPpr));
   await buildOracleLineupVerdict({ lineup: customerLineup({ scoring: 'PPR' }), event: { headers: { host: 'theinnersanctum.xyz' } }, deps: d });
   assert.match(calls.urls[0], /^https:\/\/theinnersanctum\.xyz\/\.netlify\/functions\/weekly-sage-rankings\?season=2026&week=7&seasonType=reg&scoring=ppr&teams=12$/);
   assert.equal(calls.args.scoring, 'ppr');
@@ -463,6 +487,24 @@ test('KEEP explains what separates the starter from the bench, not just rank', a
   assert.match(bijan, /12\.7 more projected points, a stronger role score \(84 vs 60\) and a stronger production score \(74 vs 58\)/);
 });
 
+test('point gaps require same-week, same-scoring, fresh projections on BOTH players', async () => {
+  const cases = {
+    'scoring label missing': (row) => { delete row.projection.scoring; },
+    'stale projection': (row) => { row.projection.fresh = false; },
+    'week label missing': (row) => { delete row.projection.week; }
+  };
+  for (const [label, mutate] of Object.entries(cases)) {
+    const r = week7Rankings((x) => mutate(findRow(x, 'Jakobi Meyers')));
+    const { deps: d } = deps(r);
+    const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
+    assert.equal(out.status, 'VERDICT', label);
+    const rice = out.verdict.rows.find((x) => x.player.startsWith('Rashee Rice')).reason;
+    assert.match(rice, /Jakobi Meyers \(JAX, WR41, no comparable projection/, label);
+    assert.ok(!/more projected points/.test(rice), `${label}: no point gap stated`);
+    assert.equal(out.verdict.rows.find((x) => x.player.startsWith('Rashee Rice')).decision, 'KEEP', `${label}: SAGE decision unchanged`);
+  }
+});
+
 test('contradictory status sources are stated, with SAGE applying the most severe', async () => {
   const lineup = customerLineup();
   lineup.starters[4].rosterStatus = 'OUT'; // provider says OUT; Weekly SAGE availability says active
@@ -478,15 +520,110 @@ test('a missing projection is said out loud, never filled in', async () => {
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   const rice = out.verdict.rows.find((x) => x.player.startsWith('Rashee Rice')).reason;
-  assert.match(rice, /Jakobi Meyers \(JAX, WR41, no current projection, @ CIN/);
+  assert.match(rice, /Jakobi Meyers \(JAX, WR41, no comparable projection, @ CIN/);
   assert.ok(!/more projected points/.test(rice), 'no projection gap is computed against a missing projection');
 });
 
 test('unknown kickoff without a schedule is reported explicitly', async () => {
   const { deps: d } = deps(week7Rankings());
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
-  assert.match(out.text, /Evidence unavailable — kickoff: Kickoff could not be established for Bijan Robinson, Kyren Williams, Blake Corum/);
-  assert.match(out.text, /Evidence unavailable — schedule: Schedule unavailable\./);
+  assert.match(out.deeper, /Evidence unavailable — kickoff: Kickoff could not be established for Bijan Robinson, Kyren Williams, Blake Corum/);
+  assert.match(out.deeper, /Evidence unavailable — schedule: Schedule unavailable\./);
+  assert.match(out.text, /\nKickoff time unverified for Bijan Robinson, Kyren Williams and Blake Corum\. Bijan Robinson and Kyren Williams are KEEPs, so no move depends on it\. The SWAP involving Blake Corum is safe only if made before his game starts\.\n/);
+  assert.ok(!/make moves before their games/.test(out.text), 'no generic kickoff warning');
+});
+
+// ─── 5d. Rostered-player invariant and concise 1/3/10 output ────────────
+
+// Mirrors the authentic Week 7 observation (2026-10-23): Rashee Rice on KC's
+// Tank01 roster, listed Questionable, but absent from Weekly SAGE (outside the
+// top-4 WR depth-chart population). The roster entry below copies that fact.
+const RICE_ROSTER = { updatedAt: '2026-10-23T16:20:21.805Z', players: {
+  r1: { longName: 'Rashee Rice', pos: 'WR', team: 'KC', injury: { designation: 'Questionable', description: 'Oct 22: Rice (hamstring/knee) did not practice Thursday.' } },
+  r2: { longName: 'Rasheed Walker', pos: 'OT', team: 'CAR', injury: {} },
+  r3: { longName: 'Jadarian Price', pos: 'RB', team: 'SEA', injury: {} }
+} };
+const withoutRice = (x) => { x.positions.WR = x.positions.WR.filter((p) => p.name !== 'Rashee Rice'); };
+
+test('a rostered starter outside SAGE evidence is named with roster facts, never dropped', async () => {
+  const { deps: d } = deps(week7Rankings(withoutRice), { readPlayerData: async () => RICE_ROSTER });
+  const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
+  const rice = out.verdict.rows.find((r) => r.player.startsWith('Rashee Rice'));
+  assert.equal(rice.decision, 'NOT EVALUATED', 'no verdict is assigned');
+  assert.equal(rice.player, 'Rashee Rice (WR, KC)');
+  assert.ok(!/WR\d|proj|SAGE ranks|matchup|KEEP|SWAP/.test(rice.reason + ' ' + rice.brief), 'no invented ranking, projection or verdict');
+  assert.match(out.text, /^The Oracle has weighed your Week 7 lineup against your bench: [^\n]*1 NOT EVALUATED/);
+  assert.match(rice.reason, /Rashee Rice is on KC's roster and listed Questionable \(Oct 22: Rice \(hamstring\/knee\) did not practice Thursday\.\), but SAGE did not evaluate him for Week 7/);
+  assert.match(out.text, /\nNOT EVALUATED WR2 Rashee Rice: on KC's roster, listed questionable \(hamstring\/knee\); SAGE has no Week 7 evaluation, so no call\./);
+  assert.ok(!/Price|Walker/.test(out.text), 'never mapped to a look-alike');
+});
+
+test('a rostered bench player outside SAGE evidence is listed as not evaluated', async () => {
+  const lineup = customerLineup();
+  lineup.starters[4] = { slotLabel: 'Wide Receiver 2', slotPos: 'WR', name: 'Jakobi Meyers', position: 'WR', team: 'JAX' };
+  lineup.bench = [{ name: 'Rashee Rice', position: 'WR', team: 'KC' }, { name: 'Blake Corum', position: 'RB', team: 'LAR' }];
+  const { deps: d } = deps(week7Rankings(withoutRice), { readPlayerData: async () => RICE_ROSTER });
+  const out = await buildOracleLineupVerdict({ lineup, event: {}, deps: d });
+  assert.match(out.text, /\nNot evaluated by SAGE this week: Rashee Rice \(KC, questionable\)\./);
+  assert.match(out.deeper, /Rashee Rice: on KC's roster, listed Questionable, but not evaluated by SAGE this week/);
+});
+
+test('a player in neither SAGE evidence nor the roster cache is still named', async () => {
+  const lineup = customerLineup();
+  lineup.bench.push({ name: 'Zzyzx Quarrington', position: 'WR', team: null });
+  const { deps: d } = deps(week7Rankings(), { readPlayerData: async () => RICE_ROSTER });
+  const out = await buildOracleLineupVerdict({ lineup, event: {}, deps: d });
+  assert.match(out.text, /Not evaluated by SAGE this week: Zzyzx Quarrington\./);
+});
+
+test('a narrow KEEP is listed individually with its margin, not hidden in the group', async () => {
+  const r = week7Rankings((x) => { const m = findRow(x, 'Jakobi Meyers'); m.projection.points = 11.9; m.projectedPoints = 11.9; });
+  const { deps: d } = deps(r);
+  const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
+  assert.match(out.text, /\nKEEP WR2 Rashee Rice: edges Jakobi Meyers by 0\.4 projected points\./);
+  assert.ok(!/KEEP [^\n]*, Rashee Rice,/.test(out.text), 'not also grouped as routine');
+});
+
+test('a HOLD in the concise answer names the risk, the game and the bench fallback', async () => {
+  const q = week7Rankings((x) => { const row = findRow(x, 'Rashee Rice'); row.injuryStatus = 'QUESTIONABLE'; row.injuryDescription = 'Oct 22: Rice (knee) was limited at practice.'; });
+  const { deps: d } = deps(q);
+  const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
+  assert.match(out.text, /\nHOLD WR2 Rashee Rice: questionable \(knee\), @ LV Sun 4:25p; if he's out, start Jakobi Meyers\./);
+  assert.ok(out.text.length <= 1000);
+});
+
+test('website Start/Sit names rostered players SAGE could not evaluate', async () => {
+  const { _test } = require('../netlify/functions/super-sage-lineup.js');
+  const res = await _test.handler({ httpMethod: 'POST', headers: { host: 'theinnersanctum.xyz' }, body: JSON.stringify({
+    season: 2026, week: 7, scoring: 'half', provider: 'sleeper',
+    roster: [{ name: 'Rashee Rice', position: 'WR', team: 'KC' }, { name: 'Puka Nacua', position: 'WR', team: 'LAR' }, { name: 'Jakobi Meyers', position: 'WR', team: 'JAX' }],
+    slots: [{ slotLabel: 'WR', eligiblePositions: ['WR'], count: 1 }]
+  }) }, { fetch: async () => ({ ok: true, json: async () => week7Rankings(withoutRice) }), readSchedule: async () => null, getStore: () => null, connectLambda() {}, now: () => WEEK7_NOW });
+  const body = JSON.parse(res.body);
+  assert.equal(body.status, 'DECIDED');
+  assert.ok(body.customerAnswer.oneSecond.includes('Not evaluated by SAGE this week (no Weekly SAGE evidence): Rashee Rice. This is not a bench or drop call.'));
+  assert.deepEqual(body.record.slots.map((x) => x.starter.name), ['Puka Nacua'], 'SAGE decision unchanged');
+});
+
+test('sanctum.html answers yes/no to the deeper-analysis offer locally, without a model call', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'sanctum.html'), 'utf8');
+  const grab = (name) => { const start = html.indexOf('function ' + name + '('); let depth = 0, i = html.indexOf('{', start);
+    for (; i < html.length; i++) { if (html[i] === '{') depth++; else if (html[i] === '}' && --depth === 0) break; } return html.slice(start, i + 1); };
+  const pick = (re) => html.match(re)[0];
+  const ctx = { hist: { oracle: [{ role: 'assistant', content: 'verdict', deeperAnalysis: 'Deeper SAGE analysis — Week 7: 1 SWAP.\nKEEP — QB: x' }] }, ap: 'oracle', draws: 0,
+    document: { getElementById: () => ({ value: 'x' }) } };
+  ctx.draw = () => { ctx.draws++; };
+  vm.createContext(ctx);
+  vm.runInContext([pick(/var DEEPER_YES = [^\n]+/), pick(/var DEEPER_NO = [^\n]+/), grab('escapeVerdictHtml'), grab('answerDeeperOffer')].join('\n'), ctx);
+  assert.equal(vm.runInContext('answerDeeperOffer("Who should I start at flex?")', ctx), false, 'other questions take the normal path');
+  assert.equal(vm.runInContext('DEEPER_NO.test("No — keep it simple")', ctx), true, "contract's No wording");
+  assert.equal(vm.runInContext('answerDeeperOffer("Yes — show me the details")', ctx), true, "contract's Yes wording");
+  const h = ctx.hist.oracle;
+  assert.equal(h[h.length - 1].content, 'Deeper SAGE analysis — Week 7: 1 SWAP.\nKEEP — QB: x');
+  assert.ok(h[h.length - 1].displayHtml.includes('<br>'));
+  assert.equal(vm.runInContext('answerDeeperOffer("yes")', ctx), false, 'offered once');
+  assert.ok(html.includes('if (answerDeeperOffer(q, displayTxt)) return;'), 'checked before quota and network');
+  assert.ok(html.indexOf('if (answerDeeperOffer(q, displayTxt)) return;') < html.indexOf('refreshIsAcolyteFromGate();\n\n  if (!isAcolyte)'), 'no question is spent');
 });
 
 // ─── 6. Request contract and scoring ───────────────────────────────────
@@ -498,7 +635,7 @@ test('league scoring is used when provided and disclosed when assumed', async ()
   const { deps: d, calls } = deps(week7Rankings());
   const out = await buildOracleLineupVerdict({ lineup: customerLineup({ scoring: null }), event: {}, deps: d });
   assert.equal(calls.args.scoring, 'half');
-  assert.match(out.text, /your league scoring was not provided, so Half-PPR was assumed/);
+  assert.match(out.text, /Caution: league scoring not provided, so Half-PPR was assumed/);
 });
 
 test('roster rules come from the league slot counts, including empty slots', () => {
@@ -535,8 +672,8 @@ test('chat.js answers the Oracle lineup button from SAGE without asking the mode
     assert.equal(res.statusCode, 200);
     assert.equal(body.format, ORACLE_LINEUP_FORMAT);
     assert.equal(body.content[0].type, 'text', 'customer response contract preserved');
-    assert.match(body.content[0].text, /^The Oracle has weighed every starter against your bench/);
-    assert.match(body.content[0].text, /Week 7 verdict: /);
+    assert.match(body.content[0].text, /^The Oracle has weighed your Week 7 lineup against your bench: /);
+    assert.match(body.deeperAnalysis, /^Deeper SAGE analysis — Week 7: /);
     assert.equal(modelCalls.length, 0);
   } finally { global.fetch = realFetch; }
 });

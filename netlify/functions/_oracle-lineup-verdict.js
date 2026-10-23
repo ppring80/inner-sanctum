@@ -157,6 +157,31 @@ function resolveIdentity(entry, rows) {
   return { status: 'NOT_FOUND', candidates: [] };
 }
 
+// Roster facts for players with NO Weekly SAGE row (e.g. outside SAGE's
+// depth-chart population). Read from the cached Tank01 roster (the same
+// player-data blob chat.js reads). Facts are reported, never scored: they let
+// the Oracle name such a player explicitly instead of letting him disappear.
+const ROSTER_POS = { PK: 'K', DST: 'DEF', 'D/ST': 'DEF' };
+function rosterFactFor(entry, playerData) {
+  const list = Object.values((playerData && playerData.players) || {});
+  if (!list.length) return { status: 'NONE' };
+  const key = canonicalNameKey(entry.name);
+  const named = list.filter((p) => canonicalNameKey(p.longName || p.name) === key &&
+    entry.eligiblePositions.includes(ROSTER_POS[upper(p.pos || p.position)] || upper(p.pos || p.position)));
+  let hits = entry.team ? named.filter((p) => teamCode(p.team) === entry.team) : named;
+  if (!hits.length && named.length === 1) hits = named;
+  if (hits.length !== 1) return { status: hits.length ? 'AMBIGUOUS' : 'NONE' };
+  const p = hits[0];
+  const injury = p.injury || {};
+  const desc = String(injury.description || '').replace(/\s+/g, ' ').trim();
+  return {
+    status: 'FOUND', team: teamCode(p.team), position: ROSTER_POS[upper(p.pos)] || upper(p.pos || p.position),
+    designation: String(injury.designation || '').trim() || null,
+    description: desc ? (desc.length > 120 ? desc.slice(0, 117) + '...' : desc) : null,
+    asOf: playerData.updatedAt || null
+  };
+}
+
 function toSageRosterEntry(entry, identity) {
   if (identity.status === 'RESOLVED') {
     const r = identity.row;
@@ -178,7 +203,7 @@ function weekWindow(week) {
 }
 const ymd = (ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, '');
 
-function validateWeekEvidence(rankings, { season, week, now = new Date(), kickoffIndex = null }) {
+function validateWeekEvidence(rankings, { season, week, now = new Date(), kickoffIndex = null, scoring = null }) {
   const problems = [];
   const { start, end } = weekWindow(week);
   const nowMs = now.getTime();
@@ -187,6 +212,7 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
   if (!rankings) return { ok: false, problems: ['no Weekly SAGE evidence'] };
   if (String(rankings.season) !== String(season)) problems.push(`season ${rankings.season} is not ${season}`);
   if (Number(rankings.targetWeek) !== Number(week)) problems.push(`Weekly SAGE returned Week ${rankings.targetWeek} evidence, not Week ${week}`);
+  if (scoring && normalizeScoring(rankings.scoring) !== scoring) problems.push(`Weekly SAGE returned ${rankings.scoring || 'unlabeled'} scoring, not ${scoring}`);
   if (!inWindow(rankings.generatedAt)) problems.push(`rankings generated ${label(rankings.generatedAt)}, outside Week ${week}`);
   const meta = rankings.metadata || {};
   if (meta.projections && meta.projections.available !== false) {
@@ -203,7 +229,8 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
     const day = String(r.gameDate || String(r.gameID || '').slice(0, 8) || '');
     if (day && (day < startDay || day > endDay)) { badGames++; if (examples.length < 2) examples.push(`${r.name} game ${day}`); }
     const pr = r.projection;
-    if (pr && ((pr.week != null && Number(pr.week) !== Number(week)) || (pr.updatedAt && !inWindow(pr.updatedAt)))) badProj++;
+    if (pr && ((pr.week != null && Number(pr.week) !== Number(week)) || (pr.updatedAt && !inWindow(pr.updatedAt)) ||
+      (scoring && pr.scoring && normalizeScoring(pr.scoring) !== scoring))) badProj++;
     if (kickoffIndex && kickoffIndex.ok && r.gameID && r.position !== 'DEF') {
       const team = teamCode(r.currentTeam || r.team);
       const key = Object.keys(kickoffIndex.byTeam).find((k) => teamCode(k) === team);
@@ -212,7 +239,7 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
     }
   });
   if (badGames) problems.push(`${badGames} player games fall outside Week ${week} (${examples.join(', ')})`);
-  if (badProj) problems.push(`${badProj} player projections are not Week ${week} projections`);
+  if (badProj) problems.push(`${badProj} player projections are not Week ${week} ${scoring ? SCORING_LABEL[scoring] + ' ' : ''}projections`);
   if (badMatchups) problems.push(`${badMatchups} matchups disagree with the Week ${week} schedule`);
   return { ok: problems.length === 0, problems };
 }
@@ -232,8 +259,9 @@ function evidenceBits(p, row) {
   if (!p) return [];
   const bits = [];
   if (p.baseline && p.baseline.positionRank != null) bits.push(`${p.position}${p.baseline.positionRank}`);
-  if (p.projection && p.projection.admissible !== false && p.projection.points != null) bits.push(`${fmt(p.projection.points)} proj`);
-  else if (p.matched !== false) bits.push('no current projection');
+  const pts = admissiblePoints(p);
+  if (pts != null) bits.push(`${fmt(pts)} proj`);
+  else if (p.matched !== false) bits.push('no comparable projection');
   const game = gameLine(row);
   if (game) bits.push(game);
   if (p.matchup) bits.push(`${String(p.matchup).toLowerCase()} matchup`);
@@ -256,8 +284,19 @@ function idLabel(p, row) {
 // and the Weekly SAGE rows. Only factors that differ are reported; nothing is
 // re-ranked or re-scored.
 const MATCHUP_ORDER = { positive: 2, neutral: 1, negative: 0 };
+// Projected points the Oracle may compare: SAGE-admissible AND, on the raw
+// Weekly SAGE row, explicitly for the requested week, explicitly in the
+// league's scoring, and fresh. (SAGE itself admits a projection whose week or
+// scoring is merely missing; the Oracle never states a point gap on that.)
+// COMPARE_CTX is set at the start of the synchronous deriveVerdict call.
+let COMPARE_CTX = null;
 function admissiblePoints(p) {
-  return p && p.projection && p.projection.admissible !== false && Number.isFinite(Number(p.projection.points)) ? Number(p.projection.points) : null;
+  if (!p || !p.projection || p.projection.admissible === false || !Number.isFinite(Number(p.projection.points))) return null;
+  if (!COMPARE_CTX) return null;
+  const row = COMPARE_CTX.rows.get(keyOf(p.name, p.position));
+  const rp = row && row.projection;
+  if (!rp || Number(rp.week) !== Number(COMPARE_CTX.week) || normalizeScoring(rp.scoring) !== COMPARE_CTX.scoring || rp.fresh !== true || p.projection.fresh !== true) return null;
+  return Number(p.projection.points);
 }
 function separation(a, rowA, b, rowB) {
   const forA = [], againstA = [];
@@ -280,6 +319,39 @@ function separationSentence(a, rowA, b, rowB) {
   if (!forA.length && !againstA.length) return `No single factor separates them in the evidence; SAGE's ranking (${a.position}${a.baseline && a.baseline.positionRank} vs ${b.position}${b.baseline && b.baseline.positionRank}) decides it.`;
   const pros = forA.length ? `${a.name} brings ${listJoin(forA)}` : `${a.name} holds the higher SAGE ranking`;
   return `${pros}${againstA.length ? `, despite ${listJoin(againstA)}` : ''}.`;
+}
+
+// Short forms for the concise (voice-length) answer.
+function injuryPart(desc) { const m = String(desc || '').match(/\(([^)]{2,30})\)/); return m ? ` (${m[1]})` : ''; }
+function shortStatus(p) {
+  const a = availabilityText(p);
+  return a.status ? `${String(a.status).toLowerCase()}${injuryPart(a.desc)}` : 'unavailable';
+}
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function gameShort(row) {
+  const g = gameLine(row);
+  if (!g) return null;
+  const d = String(row.gameDate || '');
+  const day = d.length === 8 ? WEEKDAY[new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))).getUTCDay()] : null;
+  return `${g}${day ? ` ${day}` : ''}${row.gameTime ? ` ${row.gameTime}` : ''}`;
+}
+function topFactor(a, rowA, b, rowB) {
+  const { forA } = separation(a, rowA, b, rowB);
+  return forA.length ? forA[0] : null;
+}
+function shortSlot(label) {
+  const s = String(label || '');
+  const n = (s.match(/(\d+)\s*$/) || [])[1] || '';
+  if (/^quarterback/i.test(s)) return 'QB' + n;
+  if (/^running back/i.test(s)) return 'RB' + n;
+  if (/^wide receiver/i.test(s)) return 'WR' + n;
+  if (/^tight end/i.test(s)) return 'TE' + n;
+  if (/^kicker/i.test(s)) return 'K';
+  if (/^defense/i.test(s)) return 'DEF';
+  if (/^superflex/i.test(s)) return 'SFLEX' + n;
+  if (/^flex \(wr\/te\)/i.test(s)) return 'W/T' + n;
+  if (/^flex/i.test(s)) return 'FLEX' + n;
+  return s;
 }
 
 function availabilityText(p) {
@@ -322,11 +394,12 @@ function indexRecord(record) {
   return idx;
 }
 
-function deriveVerdict({ payload, result, rankings, identities, now = new Date(), locked = new Map(), kickoffUnknown = [], slateStarted = false }) {
+function deriveVerdict({ payload, result, rankings, identities, now = new Date(), locked = new Map(), kickoffUnknown = [], slateStarted = false, rosterFacts = new Map() }) {
   const unknownKick = new Set(kickoffUnknown);
   const record = result.record;
   const evidenceStatus = result.evidenceStatus || {};
   const rows = rankingRows(rankings);
+  COMPARE_CTX = { week: payload.week, scoring: payload.scoring, rows: new Map(rows.map((r) => [keyOf(r.name, r.position), r])) };
   const rowFor = (p) => (p ? rows.find((r) => keyOf(r.name, r.position) === keyOf(p.name, p.position)) || null : null);
   const idx = indexRecord(record);
   const locate = (entry) => {
@@ -378,12 +451,14 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
       const k = locked.get(entry);
       const r = identity.row;
       s.row = { decision: 'KEEP', slot, player: idLabel({ name: r.name, position: r.position, team: r.team }, r),
-        reason: `Locked: ${r.name}'s ${gameLine(r) ? gameLine(r) + ' ' : ''}game kicked off at ${k.kickoff} (${k.source}), so this slot can no longer change.` };
+        reason: `Locked: ${r.name}'s ${gameLine(r) ? gameLine(r) + ' ' : ''}game kicked off at ${k.kickoff} (${k.source}), so this slot can no longer change.`,
+        brief: 'locked — his game has started', locked: true, name: r.name };
       return;
     }
     if (identity && identity.status === 'AMBIGUOUS') {
       const teams = [...new Set(identity.candidates.map((r) => teamCode(r.currentTeam || r.team)).filter(Boolean))];
-      s.row = { decision: 'HOLD PENDING NEWS', slot, player: `${entry.name}`, reason: `More than one ${entry.eligiblePositions.join('/')} named ${entry.name} is in Week ${payload.week} evidence${teams.length ? ` (${teams.join(', ')})` : ''}, and your lineup did not say which. I won't guess — reconnect your league or confirm his team before kickoff.` };
+      s.row = { decision: 'NOT EVALUATED', slot, player: `${entry.name}`, unevaluated: true, reason: `More than one ${entry.eligiblePositions.join('/')} named ${entry.name} is in Week ${payload.week} evidence${teams.length ? ` (${teams.join(', ')})` : ''}, and your lineup did not say which. I won't guess — reconnect your league or confirm his team before kickoff.`,
+        brief: `more than one ${entry.name} in the evidence${teams.length ? ` (${teams.join(', ')})` : ''} — confirm which before kickoff`, name: entry.name };
       return;
     }
     if ((!loc || loc.where === 'UNMATCHED') && identity && identity.status === 'RESOLVED') {
@@ -393,11 +468,20 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
       const status = r.status && !/^active$/i.test(r.status) ? String(r.status).toUpperCase() : null;
       const stale = evidenceStatus.availability && evidenceStatus.availability.status !== 'AVAILABLE';
       s.row = { decision: 'HOLD PENDING NEWS', slot, player: idLabel({ name: r.name, position: r.position, team: r.team }, r),
-        reason: `SAGE has no Week ${payload.week} standing for ${r.name}${status ? `: his latest listed status is ${status}` : ''}${stale ? `, and the injury report is ${evidenceStatus.availability.status === 'DEGRADED' ? 'stale' : 'unavailable'} (${evidenceStatus.availability.detail})` : ''}. Do not count on him until his status is confirmed before kickoff.` };
+        reason: `SAGE has no Week ${payload.week} standing for ${r.name}${status ? `: his latest listed status is ${status}` : ''}${stale ? `, and the injury report is ${evidenceStatus.availability.status === 'DEGRADED' ? 'stale' : 'unavailable'} (${evidenceStatus.availability.detail})` : ''}. Do not count on him until his status is confirmed before kickoff.`,
+        brief: `no SAGE standing${status ? `; latest status ${status}` : ''} — confirm before kickoff`, name: r.name };
       return;
     }
     if (!loc || loc.where === 'UNMATCHED') {
-      s.row = { decision: 'HOLD PENDING NEWS', slot, player: `${entry.name}${entry.team ? ` (${entry.team})` : ''}`, reason: `I could not match ${entry.name} to verified Week ${payload.week} evidence${entry.team ? '' : ' — his team is unresolved'}. SAGE has no standing for him, so I won't call this start; confirm his team and status before kickoff.` };
+      const fact = rosterFacts.get(entry);
+      if (fact && fact.status === 'FOUND') {
+        s.row = { decision: 'NOT EVALUATED', slot, player: `${entry.name} (${fact.position}, ${fact.team})`, name: entry.name, unevaluated: true,
+          reason: `${entry.name} is on ${fact.team}'s roster${fact.designation ? ` and listed ${fact.designation}${fact.description ? ` (${fact.description})` : ''}` : ''}, but SAGE did not evaluate him for Week ${payload.week}, so it cannot compare him with your bench. This is not a SAGE start or sit call; confirm his status before kickoff.`,
+          brief: `on ${fact.team}'s roster${fact.designation ? `, listed ${fact.designation.toLowerCase()}${injuryPart(fact.description)}` : ''}; SAGE has no Week ${payload.week} evaluation, so no call` };
+        return;
+      }
+      s.row = { decision: 'NOT EVALUATED', slot, player: `${entry.name}${entry.team ? ` (${entry.team})` : ''}`, name: entry.name, unevaluated: true, reason: `I could not match ${entry.name} to verified Week ${payload.week} evidence${entry.team ? '' : ' — his team is unresolved'}. SAGE has no standing for him, so I won't call this start; confirm his team and status before kickoff.`,
+        brief: `not found in Week ${payload.week} evidence${entry.team ? '' : ' (team unresolved)'}; no SAGE evaluation, so no call` };
       return;
     }
     if (loc.where === 'UNAVAILABLE' || (loc.where === 'BENCH' && !record.slots.some((sl) => sl.decisionState === 'NO_CALL' && (sl.candidates || []).some((c) => keyOf(c.name, c.position) === keyOf(loc.packet.name, loc.packet.position))))) {
@@ -405,7 +489,7 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
       return;
     }
     if (loc.where === 'BENCH') {
-      s.row = { decision: 'HOLD PENDING NEWS', slot, player: idLabel(loc.packet, rowFor(loc.packet)), reason: `SAGE has no Week ${payload.week} standing to decide this slot; it makes no call rather than guessing.` };
+      s.row = { decision: 'HOLD PENDING NEWS', slot, player: idLabel(loc.packet, rowFor(loc.packet)), reason: `SAGE has no Week ${payload.week} standing to decide this slot; it makes no call rather than guessing.`, brief: 'SAGE makes no call for this slot', name: loc.packet.name };
     }
   });
   starters.filter((s) => s.demoted).forEach((s) => { s.promotion = takePromotion(s.entry.slotPos, s.loc.packet.position, true); });
@@ -442,7 +526,8 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
         const conf = ` ${s.promotion.slot.confidence.label} confidence.`;
         if (unknownKick.has(q.name) && slateStarted) {
           verdictRows.push({ decision: 'HOLD PENDING NEWS', slot, player: idLabel(p, row),
-            reason: `SAGE would start ${describe(q, rowFor(q))} over ${p.name}${out ? ` (${why.trim()})` : ''}, but this week's games are underway and ${q.name}'s kickoff cannot be verified — he may already be locked. Confirm his game has not started before making this move.${identityNote}`.replace(/\s+/g, ' ').trim() });
+            reason: `SAGE would start ${describe(q, rowFor(q))} over ${p.name}${out ? ` (${why.trim()})` : ''}, but this week's games are underway and ${q.name}'s kickoff cannot be verified — he may already be locked. Confirm his game has not started before making this move.${identityNote}`.replace(/\s+/g, ' ').trim(),
+            brief: `SAGE would start ${q.name}, but his kickoff can't be verified with games underway`, name: p.name });
           return;
         }
         const kickCaveat = unknownKick.has(q.name) ? ` Kickoff for ${q.name} is not verified; make this move before his game starts.` : '';
@@ -450,10 +535,15 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
           ? ` Slide ${s.slide.loc.packet.name} from ${s.slide.entry.slotLabel || SAGE_SLOT_LABEL[s.slide.entry.slotPos]} into ${slot} and start ${q.name} at ${s.slide.entry.slotLabel || SAGE_SLOT_LABEL[s.slide.entry.slotPos]}.`
           : '';
         verdictRows.push({ decision: 'SWAP', slot, player: idLabel(p, row), replacement: idLabel(q, rowFor(q)),
-          reason: `Start ${describe(q, rowFor(q))} over ${out ? p.name : describe(p, row)}. ${why}${out ? '' : ' ' + separationSentence(q, rowFor(q), p, row)}${move}${conf}${kickCaveat}${caution.length ? ` Confirm ${q.name} first: ${caution.join('; ')}.` : ''}${identityNote}`.replace(/\s+/g, ' ').trim() });
+          reason: `Start ${describe(q, rowFor(q))} over ${out ? p.name : describe(p, row)}. ${why}${out ? '' : ' ' + separationSentence(q, rowFor(q), p, row)}${move}${conf}${kickCaveat}${caution.length ? ` Confirm ${q.name} first: ${caution.join('; ')}.` : ''}${identityNote}`.replace(/\s+/g, ' ').trim(),
+          name: p.name,
+          brief: `${s.slide
+            ? `bench ${p.name}, move ${s.slide.loc.packet.name} to ${shortSlot(slot)} and start ${q.name} at ${shortSlot(s.slide.entry.slotLabel || SAGE_SLOT_LABEL[s.slide.entry.slotPos])}`
+            : `start ${q.name} over ${p.name}`} — ${out ? `${p.name} is ${shortStatus(p)}` : (topFactor(q, rowFor(q), p, row) || `SAGE ranks ${q.name} ahead`)}${caution.length ? `; confirm ${q.name}: ${caution[0]}` : ''}` });
       } else {
         verdictRows.push({ decision: 'SWAP', slot, player: idLabel(p, row), replacement: null,
-          reason: `${why || `SAGE does not start ${p.name}.`} No eligible bench player can replace him — he cannot help you this week, so find a ${eligibleFor(entry.slotPos).join('/')} on waivers.${identityNote}` });
+          reason: `${why || `SAGE does not start ${p.name}.`} No eligible bench player can replace him — he cannot help you this week, so find a ${eligibleFor(entry.slotPos).join('/')} on waivers.${identityNote}`,
+          name: p.name, brief: `${p.name} is ${out ? shortStatus(p) : 'not started by SAGE'} and no bench player fits — check waivers` });
       }
       return;
     }
@@ -464,39 +554,84 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
     const kick = row && row.gameDate && row.gameTime ? ` (kickoff ${row.gameDate.slice(4, 6)}/${row.gameDate.slice(6, 8)} ${row.gameTime} ET)` : '';
     if (reasons.length) {
       verdictRows.push({ decision: 'HOLD PENDING NEWS', slot, player: idLabel(p, row),
-        reason: `SAGE would start ${describe(p, row)}, but ${reasons.join('; ')}. Check the final inactive list before ${game ? 'his ' + game + ' game' : 'kickoff'}${kick}.${alt ? ` If he's out, ${describe(alt, rowFor(alt))} is your best eligible bench option.` : ' You have no eligible bench fallback.'}${identityNote}` });
+        reason: `SAGE would start ${describe(p, row)}, but ${reasons.join('; ')}. Check the final inactive list before ${game ? 'his ' + game + ' game' : 'kickoff'}${kick}.${alt ? ` If he's out, ${describe(alt, rowFor(alt))} is your best eligible bench option.` : ' You have no eligible bench fallback.'}${identityNote}`,
+        name: p.name,
+        brief: `${(p.availability && p.availability.questionable) ? shortStatus(p) : reasons[0].replace(/ \(.*$/, '')}${gameShort(row) ? `, ${gameShort(row)}` : ''}; ${alt ? `if he's out, start ${alt.name}` : 'no eligible bench fallback'}` });
       return;
     }
     if (s.slidFor) {
       const to = s.slidFor.entry.slotLabel || SAGE_SLOT_LABEL[s.slidFor.entry.slotPos];
       verdictRows.push({ decision: 'KEEP', slot, player: idLabel(p, row),
-        reason: `${describe(p, row)} stays in your lineup but moves to ${to} to make room for ${s.slidFor.promotion.packet.name} (see SWAP). ${loc.slot.confidence.label} confidence.${identityNote}`.replace(/\s+/g, ' ').trim() });
+        reason: `${describe(p, row)} stays in your lineup but moves to ${to} to make room for ${s.slidFor.promotion.packet.name} (see SWAP). ${loc.slot.confidence.label} confidence.${identityNote}`.replace(/\s+/g, ' ').trim(),
+        name: p.name, brief: `moves to ${shortSlot(to)}`, meaningful: false });
       return;
     }
     const close = loc.slot.decisionState === 'CLOSE_CALL_WITHIN_NOISE' || loc.slot.decisionState === 'PROVISIONAL_UNRESOLVED';
     const versus = alt
       ? `${close ? ' Close call over' : ' Beats'} your best eligible bench option, ${describe(alt, rowFor(alt))}. ${separationSentence(p, row, alt, rowFor(alt))}`
       : ' No eligible bench player challenges him.';
+    const pa = admissiblePoints(p), pb = alt ? admissiblePoints(alt) : null;
+    const narrow = alt && pa != null && pb != null && pa - pb < 1.5;
+    const conflictTeam = s.identity && s.identity.teamConflict;
     verdictRows.push({ decision: 'KEEP', slot, player: idLabel(p, row),
-      reason: `${describe(p, row)}.${versus} ${loc.slot.confidence.label} confidence.${identityNote}`.replace(/\s+/g, ' ').trim() });
+      reason: `${describe(p, row)}.${versus} ${loc.slot.confidence.label} confidence.${identityNote}`.replace(/\s+/g, ' ').trim(),
+      name: p.name,
+      meaningful: Boolean(close || narrow || conflictTeam),
+      brief: close && alt ? `close call over ${alt.name} — within normal projection error`
+        : narrow ? `edges ${alt.name} by ${fmt(pa - pb)} projected points`
+        : conflictTeam ? `your league lists ${conflictTeam.rosterTeam}; current NFL evidence (used by SAGE) lists ${conflictTeam.evidenceTeam}`
+        : 'starts over your bench' });
   });
 
   // SAGE starters with no customer starter to replace (an empty slot).
   promotions.filter((x) => !x.used).forEach((x) => verdictRows.push({ decision: 'SWAP', slot: x.slot.slotLabel, player: '(empty slot)', replacement: idLabel(x.packet, rowFor(x.packet)),
-    reason: `Fill your open ${x.slot.slotLabel} slot with ${describe(x.packet, rowFor(x.packet))}.` }));
+    reason: `Fill your open ${x.slot.slotLabel} slot with ${describe(x.packet, rowFor(x.packet))}.`, name: x.packet.name, brief: `fill your open ${x.slot.slotLabel} slot with ${x.packet.name}` }));
 
   const benchNotes = benchEntries.map((b) => {
     if (locked.has(b.entry)) return `${b.identity.row.name}: game already kicked off — cannot be moved into your lineup`;
     if (b.identity && b.identity.status === 'AMBIGUOUS') return `${b.entry.name}: more than one player by that name — not evaluated`;
-    if (!b.loc || b.loc.where === 'UNMATCHED') return `${b.entry.name}: no verified Week ${payload.week} evidence — not evaluated`;
+    if (!b.loc || b.loc.where === 'UNMATCHED') {
+      const fact = rosterFacts.get(b.entry);
+      return fact && fact.status === 'FOUND'
+        ? `${b.entry.name}: on ${fact.team}'s roster${fact.designation ? `, listed ${fact.designation}` : ''}, but not evaluated by SAGE this week`
+        : `${b.entry.name}: no verified Week ${payload.week} evidence — not evaluated`;
+    }
     if (b.loc.where === 'UNAVAILABLE') { const a = availabilityText(b.loc.packet); return `${b.loc.packet.name}: ${a.status ? a.status.toUpperCase() : 'unavailable'}`; }
     if (b.identity && b.identity.teamConflict) return `${b.loc.packet.name}: your league lists ${b.identity.teamConflict.rosterTeam}, current NFL evidence lists ${b.identity.teamConflict.evidenceTeam}`;
     return null;
   }).filter(Boolean);
 
 
+  // Strongest bench alternative: a bench player SAGE moves in is covered by
+  // its SWAP; otherwise the best-projected eligible bench player, measured
+  // against the weakest eligible kept starter he could replace.
+  let benchSummary = null;
+  const movingIn = promotions.filter((x) => x.used && benchEntries.some((b) => b.loc && keyOf(b.loc.packet.name, b.loc.packet.position) === keyOf(x.packet.name, x.packet.position)));
+  const sitting = benchEntries.filter((b) => b.loc && b.loc.where === 'BENCH' && !locked.has(b.entry));
+  const bestOf = (list) => list.slice().sort((a, b) => (admissiblePoints(b.loc.packet) ?? -1) - (admissiblePoints(a.loc.packet) ?? -1))[0];
+  const best = sitting.length ? bestOf(sitting) : null;
+  if (best) {
+    const bp = best.loc.packet;
+    const kept = starters.filter((k) => k.loc && k.loc.where === 'START' && !k.demoted && !locked.has(k.entry) && eligibleFor(k.entry.slotPos).includes(bp.position));
+    const weakest = kept.slice().sort((a, b) => (admissiblePoints(a.loc.packet) ?? 1e9) - (admissiblePoints(b.loc.packet) ?? 1e9))[0];
+    const bpts = admissiblePoints(bp);
+    const head = `${bp.name} (${bp.position}, ${teamCode(bp.team) || '—'}${bpts != null ? `, ${fmt(bpts)} proj` : ''})`;
+    if (!weakest) benchSummary = `Best bench option: ${head} — no eligible starting slot for him.`;
+    else {
+      const w = weakest.loc.packet;
+      const factor = topFactor(w, rowFor(w), bp, rowFor(bp));
+      benchSummary = `Best bench option: ${head} — doesn't improve your lineup; ${w.name}, your weakest eligible starter, ${factor ? `brings ${factor}` : 'holds the higher SAGE standing'}.`;
+    }
+  } else if (movingIn.length) {
+    benchSummary = `Best bench option: ${movingIn[0].packet.name} — moving into your lineup (see SWAP).`;
+  }
+  const unevaluatedBench = benchEntries.filter((b) => !locked.has(b.entry) && (!b.loc || b.loc.where === 'UNMATCHED')).map((b) => {
+    const fact = rosterFacts.get(b.entry);
+    return fact && fact.status === 'FOUND' ? `${b.entry.name} (${fact.team}${fact.designation ? `, ${fact.designation.toLowerCase()}` : ''})` : b.entry.name;
+  });
+
   const currentWeek = resolveCurrentNFLWeek(now, SEASON);
-  const order = { SWAP: 0, 'HOLD PENDING NEWS': 1, KEEP: 2 };
+  const order = { SWAP: 0, 'HOLD PENDING NEWS': 1, 'NOT EVALUATED': 2, KEEP: 3 };
   const LIMIT_KEYS = ['weeklySage', 'availability', 'projections', 'schedule'];
   return {
     week: payload.week,
@@ -510,6 +645,9 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
       .sort((a, b) => order[a.decision] - order[b.decision] || a._i - b._i)
       .map(({ _i, ...r }) => r),
     benchNotes,
+    benchSummary,
+    unevaluatedBench,
+    kickoffUnknown: [...unknownKick],
     evidenceLimits: LIMIT_KEYS.map((k) => [k, evidenceStatus[k]])
       .filter(([, t]) => t && t.status !== 'AVAILABLE')
       .map(([k, t]) => ({ name: k, status: t.status, detail: t.detail }))
@@ -518,20 +656,70 @@ function deriveVerdict({ payload, result, rankings, identities, now = new Date()
 
 // ─── Customer text (1/3/10, Oracle voice, no invented evidence) ────────
 
-function oracleOpener(rows) {
-  const swaps = rows.filter((r) => r.decision === 'SWAP').length;
-  const holds = rows.filter((r) => r.decision === 'HOLD PENDING NEWS').length;
-  if (swaps) return 'The Oracle has weighed every starter against your bench — change is required.';
-  if (holds) return 'The Oracle has weighed every starter against your bench — the scrolls are not yet final.';
-  return 'The Oracle has weighed every starter against your bench — your lineup stands.';
+const DEEPER_QUESTION = 'Would you like the deeper SAGE analysis on your lineup?';
+
+// Which players lack a verified kickoff, and whether each call still holds:
+// a KEEP needs no move (safe); a player moved in or out by a SWAP is safe only
+// before his game starts; other bench players are unaffected.
+function kickoffSafety(verdict) {
+  const unknown = verdict.kickoffUnknown || [];
+  if (!unknown.length) return null;
+  const rows = verdict.rows;
+  const inSwap = (n) => rows.some((r) => r.decision === 'SWAP' && (r.name === n || (r.replacement || '').startsWith(n + ' (')));
+  const kept = (n) => rows.some((r) => r.decision === 'KEEP' && r.name === n);
+  const moves = unknown.filter(inSwap);
+  const keeps = unknown.filter((n) => !inSwap(n) && kept(n));
+  const parts = [`Kickoff time unverified for ${listJoin(unknown)}.`];
+  if (keeps.length) parts.push(`${listJoin(keeps)} ${keeps.length > 1 ? 'are KEEPs' : 'is a KEEP'}, so no move depends on it.`);
+  if (moves.length) parts.push(`The SWAP involving ${listJoin(moves)} is safe only if made before ${moves.length > 1 ? 'their games start' : 'his game starts'}.`);
+  if (!keeps.length && !moves.length) parts.push('No recommended move depends on it.');
+  return parts.join(' ');
 }
 
+function verdictCounts(rows) {
+  return [['SWAP', 'SWAP'], ['HOLD PENDING NEWS', 'HOLD'], ['NOT EVALUATED', 'NOT EVALUATED'], ['KEEP', 'KEEP']]
+    .map(([d, label]) => [label, rows.filter((r) => r.decision === d).length])
+    .filter(([, n]) => n > 0)
+    .map(([label, n]) => `${n} ${label}`)
+    .join(', ');
+}
+
+// 1/3/10, voice length: the verdict first, every change and unresolved risk,
+// the strongest bench alternative, meaningful KEEPs, then routine KEEPs
+// grouped. Full comparisons live in the deeper analysis.
 function renderVerdictText(verdict) {
-  const counts = ['SWAP', 'HOLD PENDING NEWS', 'KEEP']
+  const rows = verdict.rows;
+  const lines = [`The Oracle has weighed your Week ${verdict.week} lineup against your bench: ${verdictCounts(rows)}.`];
+  if (verdict.currentWeek && verdict.currentWeek !== verdict.week) lines.push(`(The current NFL week is Week ${verdict.currentWeek}.)`);
+  rows.filter((r) => r.decision === 'SWAP').forEach((r) => lines.push(`SWAP ${shortSlot(r.slot)}: ${r.brief}.`));
+  rows.filter((r) => r.decision === 'HOLD PENDING NEWS').forEach((r) => lines.push(`HOLD ${shortSlot(r.slot)} ${r.name}: ${r.brief}.`));
+  rows.filter((r) => r.decision === 'NOT EVALUATED').forEach((r) => lines.push(`NOT EVALUATED ${shortSlot(r.slot)} ${r.name}: ${r.brief}.`));
+  rows.filter((r) => r.decision === 'KEEP' && r.meaningful).forEach((r) => lines.push(`KEEP ${shortSlot(r.slot)} ${r.name}: ${r.brief}.`));
+  const routine = rows.filter((r) => r.decision === 'KEEP' && !r.meaningful && !r.locked);
+  if (routine.length) lines.push(`KEEP ${routine.map((r) => r.name).join(', ')}.`);
+  const lockedRows = rows.filter((r) => r.locked);
+  if (lockedRows.length) lines.push(`Locked (games started): ${lockedRows.map((r) => r.name).join(', ')}.`);
+  if (verdict.benchSummary) lines.push(verdict.benchSummary);
+  if (verdict.unevaluatedBench && verdict.unevaluatedBench.length) lines.push(`Not evaluated by SAGE this week: ${verdict.unevaluatedBench.join(', ')}.`);
+  const cautions = [];
+  if (!verdict.scoringProvided) cautions.push('league scoring not provided, so Half-PPR was assumed');
+  const avail = verdict.evidenceLimits.find((l) => l.name === 'availability');
+  if (avail) cautions.push(`injury report ${avail.status === 'DEGRADED' ? 'is stale' : 'is unavailable'}`);
+  if (verdict.evidenceLimits.some((l) => l.name === 'projections')) cautions.push('no current projections');
+  if (cautions.length) lines.push(`Caution: ${cautions.join('; ')}.`);
+  const kick = kickoffSafety(verdict);
+  if (kick) lines.push(kick);
+  lines.push(DEEPER_QUESTION);
+  return lines.join('\n');
+}
+
+// Deeper analysis (the 10-second layer): every comparison and evidence limit.
+function renderDeeperText(verdict) {
+  const counts = ['SWAP', 'HOLD PENDING NEWS', 'NOT EVALUATED', 'KEEP']
     .map((d) => [d, verdict.rows.filter((r) => r.decision === d).length])
     .filter(([, n]) => n > 0)
     .map(([d, n]) => `${n} ${d}`);
-  const lines = [oracleOpener(verdict.rows), `Week ${verdict.week} verdict: ${counts.join(', ')}.`];
+  const lines = [`Deeper SAGE analysis — Week ${verdict.week}: ${counts.join(', ')}.`];
   if (verdict.currentWeek && verdict.currentWeek !== verdict.week) {
     lines.push(`Note: you asked about Week ${verdict.week}; the current NFL week is Week ${verdict.currentWeek}.`);
   }
@@ -547,8 +735,6 @@ function renderVerdictText(verdict) {
   lines.push(`Basis: ${basis.join('; ')}.`);
   verdict.evidenceLimits.forEach((l) => lines.push(`Evidence ${l.status.toLowerCase()} — ${l.name}: ${l.detail}`));
   lines.push('Bench is a start/sit call for this week only — it does not mean drop.');
-  lines.push('');
-  lines.push('Would you like the deeper SAGE analysis on your lineup?');
   return lines.join('\n');
 }
 
@@ -596,7 +782,7 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
   try { schedule = await (deps.readSchedule || readCachedWeeklySchedule)({ season: payload.season, week: payload.week, seasonType: 'reg' }); } catch (error) { scheduleError = error.message; }
   const kickoffIndex = buildKickoffIndex(schedule, { season: payload.season, week: payload.week });
 
-  const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex });
+  const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex, scoring: payload.scoring });
   if (!evidenceCheck.ok) return unavailable(`the evidence is not verifiably Week ${payload.week}: ${evidenceCheck.problems.join('; ')}`);
   let opportunityStore = null;
   try { opportunityStore = deps.getStore ? deps.getStore({ name: 'opportunity-intel' }) : require('@netlify/blobs').getStore({ name: 'opportunity-intel' }); } catch (_) { opportunityStore = null; }
@@ -639,7 +825,7 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
 
   if (!slots.length) {
     const verdict = deriveVerdict({ payload, result: { record: { slots: [], bench: [], unavailable: [], unmatched: [], decisionId: null }, evidenceStatus: {} }, rankings, identities, now, locked });
-    return { status: 'VERDICT', verdict, text: renderVerdictText(verdict) };
+    return { status: 'VERDICT', verdict, text: renderVerdictText(verdict), deeper: renderDeeperText(verdict) };
   }
   const result = await (deps.decideSharedLineup || decideSharedLineup)({
     rankings, rankingsError, roster, provider: payload.provider, slots,
@@ -648,12 +834,23 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
   });
   if (result.status !== 'DECIDED' || !result.record) return unavailable(result.reason || 'SAGE could not decide');
 
+  // Roster facts only for players SAGE has no row for.
+  const rosterFacts = new Map();
+  const missing = [...identities.entries()].filter(([, id]) => id && id.status === 'NOT_FOUND');
+  if (missing.length) {
+    let playerData = null;
+    try {
+      playerData = deps.readPlayerData ? await deps.readPlayerData()
+        : await require('@netlify/blobs').getStore({ name: 'player-data' }).get('playerData', { type: 'json' });
+    } catch (_) { playerData = null; }
+    missing.forEach(([entry]) => rosterFacts.set(entry, rosterFactFor(entry, playerData)));
+  }
   const slateStarted = kickoffIndex.ok
     ? Boolean(kickoffIndex.games.some((g) => g.kickoff && Date.parse(g.kickoff) <= now.getTime()))
     : rows.some((r) => { const iso = easternToIso(r.gameDate, r.gameTime); return iso && Date.parse(iso) <= now.getTime(); });
-  const verdict = deriveVerdict({ payload, result, rankings, identities, now, locked, kickoffUnknown, slateStarted });
+  const verdict = deriveVerdict({ payload, result, rankings, identities, now, locked, kickoffUnknown, slateStarted, rosterFacts });
   if (kickoffUnknown.length) verdict.evidenceLimits.push({ name: 'kickoff', status: 'UNAVAILABLE', detail: `Kickoff could not be established for ${kickoffUnknown.join(', ')}; confirm their games have not started before moving them.` });
-  return { status: 'VERDICT', verdict, text: renderVerdictText(verdict) };
+  return { status: 'VERDICT', verdict, text: renderVerdictText(verdict), deeper: renderDeeperText(verdict) };
 }
 
 module.exports = {
@@ -665,9 +862,12 @@ module.exports = {
   deriveVerdict,
   holdReasons,
   renderVerdictText,
+  renderDeeperText,
   renderUnavailableText,
+  shortSlot,
   buildOracleLineupVerdict,
   validateWeekEvidence,
   weekWindow,
-  separation
+  separation,
+  rosterFactFor
 };

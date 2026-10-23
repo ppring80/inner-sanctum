@@ -1699,6 +1699,29 @@ function buildOracleLineupPayload(week) {
   };
 }
 
+// The Oracle verdict ends by offering SAGE's deeper analysis. A short yes/no
+// reply to that offer is answered here from the analysis SAGE already
+// returned, so the language model is never asked to invent deeper evidence
+// and no question is spent. Any other message takes the normal path.
+var DEEPER_YES = /^\s*(yes|yeah|yep|yup|sure|ok|okay|please|yes please|show me( the)? details|yes\s*[,—–-]?\s*show me( the)? details|deeper( analysis)?|details)[\s.!]*$/i;
+var DEEPER_NO = /^\s*(no|nope|no thanks|no\s*[,—–-]?\s*keep it simple|keep it simple)[\s.!]*$/i;
+function answerDeeperOffer(q, displayTxt) {
+  var h = hist[ap];
+  var last = h.length ? h[h.length - 1] : null;
+  if (!last || last.role !== 'assistant' || !last.deeperAnalysis) return false;
+  var yes = DEEPER_YES.test(q), no = DEEPER_NO.test(q);
+  if (!yes && !no) return false;
+  var deeper = last.deeperAnalysis;
+  last.deeperAnalysis = null; // offered once
+  document.getElementById('inp').value = '';
+  h.push({ role: 'user', content: q, displayContent: displayTxt || q });
+  h.push(yes
+    ? { role: 'assistant', content: deeper, displayHtml: escapeVerdictHtml(deeper) }
+    : { role: 'assistant', content: 'Understood — the verdict stands.' });
+  draw();
+  return true;
+}
+
 function escapeVerdictHtml(text) {
   return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 }
@@ -1987,6 +2010,7 @@ function ask(txt, displayTxt, lineup) {
   var inp = document.getElementById("inp");
   var q = txt || inp.value.trim();
   if (!q || busy) { return; }
+  if (answerDeeperOffer(q, displayTxt)) return;
 
   refreshIsAcolyteFromGate();
 
@@ -2029,7 +2053,7 @@ function ask(txt, displayTxt, lineup) {
       var verdictFormat = data && data.format === 'oracle-lineup-verdict';
     } catch(e) { reply = "Parse error: " + e.message; }
     hist[ap].push(verdictFormat
-      ? { role: "assistant", content: reply, displayHtml: escapeVerdictHtml(reply) }
+      ? { role: "assistant", content: reply, displayHtml: escapeVerdictHtml(reply), deeperAnalysis: data.deeperAnalysis || null }
       : { role: "assistant", content: reply });
     busy = false; draw(); speak(reply);
 
