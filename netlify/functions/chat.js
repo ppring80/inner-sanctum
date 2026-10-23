@@ -299,6 +299,22 @@ exports.handler = async (event) => {
     }
 
     const lineupEligibility = await buildLineupEligibility(messages);
+    // Answer explicit freeform bye questions from the verified week-specific
+    // cache, rather than letting the language model guess or hedge.
+    if (lineupEligibility?.freeform && lineupEligibility.rows.length) {
+      const byes = lineupEligibility.rows.filter(row => row.status === "BYE");
+      const unknown = lineupEligibility.rows.filter(row => row.status === "UNVERIFIED");
+      const blocked = lineupEligibility.rows.filter(row => row.status === "INJURY BLOCKED");
+      if (byes.length || unknown.length || blocked.length) {
+        const statements = [
+          ...byes.map(row => row.name + " (" + row.team + ") is on bye in Week " + lineupEligibility.week + ". Do not start him this week."),
+          ...blocked.map(row => row.name + " (" + row.team + ") has an injury designation that blocks a start. Do not put him in your lineup."),
+          ...unknown.map(row => "I cannot verify " + row.name + "'s Week " + lineupEligibility.week + " eligibility from the cached schedule and injury evidence. Do not start him without confirming availability.")
+        ];
+        return { statusCode: 200, headers: CORS_HEADERS,
+          body: JSON.stringify({ content: [{ type: "text", text: statements.join(" ") }] }) };
+      }
+    }
     const systemBlocks = [
       {
         type: "text",
