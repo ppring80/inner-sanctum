@@ -42,10 +42,8 @@ async function handler(event,deps={}) {
   if(event.httpMethod!=='GET') return reply(405,{error:'GET only'});
   // Reuse the existing manual-operations secret. This diagnostic must not
   // expose player-level evidence to anonymous public requests.
-  if(!deps.readSchedule) {
-    if(!authorized(event)) return reply(401,{error:'Diagnostic authorization required'});
-    connectLambda(event);
-  }
+  if(!authorized(event)) return reply(401,{error:'Diagnostic authorization required'});
+  if(!deps.readSchedule) connectLambda(event);
   let schedule,rankings;
   try {
     schedule=await (deps.readSchedule||readCachedWeeklySchedule)({season:2026,week:7,seasonType:'reg'});
