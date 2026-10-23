@@ -4,6 +4,7 @@
 const { connectLambda } = require('@netlify/blobs');
 const { readCachedWeeklySchedule } = require('./_weekly-sage-schedule-cache');
 const { buildKickoffIndex } = require('./_super-sage-kickoff');
+const { requireTank01RefreshAuthorization } = require('./_tank01-refresh-guard');
 const TEAM_ALIAS = {JAC:'JAX',WSH:'WAS',LA:'LAR',OAK:'LV',SD:'LAC',ARZ:'ARI',GNB:'GB',KAN:'KC',NWE:'NE',NOR:'NO',SFO:'SF',TAM:'TB',HST:'HOU',BLT:'BAL',CLV:'CLE'};
 const teamCode = x => { const s=String(x||'').trim().toUpperCase(); return TEAM_ALIAS[s]||s; };
 const POSITIONS=['QB','RB','WR','TE','K','DEF'];
@@ -31,7 +32,13 @@ async function handler(event,deps={}) {
   const headers={'Content-Type':'application/json','Cache-Control':'no-store'};
   const reply=(code,body)=>({statusCode:code,headers,body:JSON.stringify(body)});
   if(event.httpMethod!=='GET') return reply(405,{error:'GET only'});
-  if(!deps.readSchedule) connectLambda(event);
+  // Reuse the existing manual-operations secret. This diagnostic must not
+  // expose player-level evidence to anonymous public requests.
+  if(!deps.readSchedule) {
+    const authError=requireTank01RefreshAuthorization(event);
+    if(authError) return authError;
+    connectLambda(event);
+  }
   let schedule,rankings;
   try {
     schedule=await (deps.readSchedule||readCachedWeeklySchedule)({season:2026,week:7,seasonType:'reg'});
