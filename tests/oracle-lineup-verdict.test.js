@@ -699,7 +699,7 @@ test('chat.js fails closed when structured Oracle lineup evidence cannot be retr
 
 test('chat.js never falls through to model when Oracle verdict returns null or throws', () => {
   const src = fs.readFileSync(path.join(ROOT, 'netlify/functions/chat.js'), 'utf8');
-  const start = src.indexOf('if (lineup) {');
+  const start = src.indexOf('if (effectiveLineup) {');
   const end = src.indexOf('let liveDataContext =', start);
   assert.ok(start >= 0 && end > start);
   const branch = src.slice(start, end);
