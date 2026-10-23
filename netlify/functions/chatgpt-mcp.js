@@ -67,6 +67,7 @@ const { decideSharedLineup } = require("./_super-sage-lineup-service.js");
 const { buildEvidence: buildRookieEvidence, hash: rookieHash } = require("./_super-sage-shadow-llm.js");
 const { runFastReview: runRookieReview } = require("./_super-sage-shadow-fast-review.js");
 const { readSavedReview } = require("./_rookie-saved-review.js");
+const { readOwnedFrozenEvidence } = require("./_rookie-frozen-evidence-reader.js");
 const { finishRookieResponse } = require("./_rookie-response-timing.js");
 const { runNextDrill } = require("./_super-sage-rookie-drill.js");
 const {
@@ -6440,7 +6441,7 @@ function buildServer(
       {
         title: "Get Super SAGE Private Shadow Decision",
         description:
-          "Internal read-only reviewer tool. Reads a previously persisted Rookie shadow scorecard by immutable production decision ID, including an existing saved model review when authorized owned frozen evidence is available. Never invokes a provider, queues work, spends budget, refreshes data or writes history. It never recalculates a decision, reads outcomes, changes rankings, or changes the customer answer.",
+          "Internal read-only reviewer tool. Reads a previously persisted Rookie shadow scorecard by immutable production decision ID, including the caller’s owned hash-verified frozen input and an existing saved model review when available. Frozen input is returned in artifact.ownedFrozenEvidence, independently of whether any model review exists. Never invokes a provider, queues work, spends budget, refreshes data or writes history. It never recalculates a decision, reads outcomes, changes rankings, or changes the customer answer.",
         inputSchema: z.object({
           decisionId: z.string().min(32).max(128)
         }),
@@ -6461,19 +6462,24 @@ function buildServer(
         try {
           const savedReadStart = performance.now();
           const store = getStore({ name: "super-sage-shadow-lab" });
-          const [artifact, savedRookieReview, diagnosticRookieReview] = await Promise.all([
+          const [artifact, savedRookieReview, diagnosticRookieReview, ownedFrozenEvidence] = await Promise.all([
             store.get("decision/" + decisionId, { type: "json" }),
             authContext?.snapshotKey
               ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey) })
               : Promise.resolve(null),
-            authContext?.snapshotKey ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey), kind: 'stream-diagnostic' }) : Promise.resolve(null)
+            authContext?.snapshotKey ? readSavedReview({ store, decisionId, ownerHash: rookieHash(authContext.snapshotKey), kind: 'stream-diagnostic' }) : Promise.resolve(null),
+            authContext?.snapshotKey ? readOwnedFrozenEvidence({store,decisionId,ownerHash:rookieHash(authContext.snapshotKey)}) : Promise.resolve(null)
           ]);
           if (authContext) authContext.rookieReviewCompletedAt = performance.now();
           if (!artifact || artifact.type !== "SUPER_SAGE_PRIVATE_SHADOW_LAB" || artifact.productionDecisionId !== decisionId) {
             return { content: [{ type: "text", text: "No private Rookie shadow scorecard exists for that decision ID." }], structuredContent: base };
           }
+          // Owned input may only come from the authenticated owner-scoped read,
+          // never from a field embedded in the shared scorecard.
+          const {ownedFrozenEvidence: ignoredOwnedFrozenEvidence, ...scorecard} = artifact;
           const safe = {
-            ...artifact,
+            ...scorecard,
+            ...(ownedFrozenEvidence ? {ownedFrozenEvidence} : {}),
             ...(savedRookieReview ? {
               savedRookieReview,
               diagnosticRookieReview,
