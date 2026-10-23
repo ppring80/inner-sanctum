@@ -1,5 +1,6 @@
 const Anthropic = require("@anthropic-ai/sdk");
 const { getStore, connectLambda } = require("@netlify/blobs");
+const { buildLineupEligibility, unsafeRecommendation } = require("./_sanctum-lineup-eligibility");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -297,6 +298,7 @@ exports.handler = async (event) => {
       console.log("NFL context fetch failed:", e.message);
     }
 
+    const lineupEligibility = await buildLineupEligibility(messages);
     const systemBlocks = [
       {
         type: "text",
@@ -321,6 +323,8 @@ exports.handler = async (event) => {
       });
     }
 
+    if (lineupEligibility) systemBlocks.push({ type: "text", text: lineupEligibility.text });
+
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await client.messages.create({
       model,
@@ -344,11 +348,16 @@ exports.handler = async (event) => {
       console.log("Spend logging failed (non-fatal):", logErr.message);
     }
 
-    const fullText = response.content
+    let fullText = response.content
       .filter(block => block.type === "text")
       .map(block => block.text)
       .join("\n")
       .trim();
+
+    if (lineupEligibility && unsafeRecommendation(fullText, lineupEligibility.blockedNames)) {
+      console.warn("Blocked unverified or ineligible lineup substitution for week", lineupEligibility.week);
+      fullText = "I cannot safely recommend that lineup change. A player involved is on bye, injured, or lacks verified Week " + lineupEligibility.week + " availability. Check the eligible starters and final inactive report before making a substitution.";
+    }
 
     return {
       statusCode: 200,
