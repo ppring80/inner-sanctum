@@ -42,6 +42,19 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     assert.ok(!error.stack.includes(hiddenValue));
     return true;
   });
+  const skewEnv = {...env,NETLIFY_SKEW_PROTECTION_TOKEN:hiddenValue};
+  assert.doesNotThrow(() => assertIsolated(skewEnv),'exact Netlify skew variable is permitted during build');
+  assert.doesNotThrow(() => assertIsolated(skewEnv,event),'exact Netlify skew variable is permitted at runtime');
+  for (const key of ['PRODUCTION_TOKEN','PRODUCTION_SECRET','PROVIDER_API_KEY','DATABASE_CONNECTION_STRING','SERVICE_PASSWORD',
+    'NETLIFY_AUTH_TOKEN','ANTHROPIC_API_KEY','NETLIFY_SKEW_PROTECTION_TOKEN_SECRET','NETLIFY_SKEW_PROTECTION_API_KEY']) {
+    assert.throws(() => assertIsolated({...skewEnv,[key]:'SYNTHETIC_PRODUCTION_VALUE'},event), error => {
+      assert.equal(error.message,'Acceptance credential preflight failed (values withheld); rejected variable names: '+JSON.stringify([key]));
+      assert.ok(!error.stack.includes(hiddenValue));
+      assert.ok(!error.stack.includes('SYNTHETIC_PRODUCTION_VALUE'));
+      return true;
+    });
+  }
+  assert.throws(() => assertIsolated({...skewEnv,SITE_ID:PRODUCTION_SITE_ID}),/site identity mismatch/);
   assert.doesNotThrow(() => assertIsolated({...env,EMPTY_TOKEN:''},event));
   assert.throws(() => assertIsolated(env, {headers:{'x-nf-site-id':PRODUCTION_SITE_ID}}), /invocation site mismatch/);
   assert.throws(() => assertIsolated({...env,NETLIFY_BLOBS_CONTEXT:Buffer.from(JSON.stringify({siteID:PRODUCTION_SITE_ID})).toString('base64')},event), /storage identity mismatch/);
@@ -93,7 +106,7 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   const bin = fs.mkdtempSync(path.join(os.tmpdir(),'sage-acceptance-npm-'));
   const npmMarker = path.join(bin,'called');
   fs.writeFileSync(path.join(bin,'npm'), '#!/bin/sh\nprintf "%s\\n" "$PWD" "$*" >> "'+npmMarker+'"\n', {mode:0o755});
-  const buildEnv = {...gitConfig.build.environment, SITE_ID:site, PATH:bin+path.delimiter+process.env.PATH};
+  const buildEnv = {...gitConfig.build.environment, SITE_ID:site, NETLIFY_SKEW_PROTECTION_TOKEN:hiddenValue, PATH:bin+path.delimiter+process.env.PATH};
   let built;
   try {
     built = JSON.parse(execFileSync('bash', ['-c',gitConfig.build.command],
