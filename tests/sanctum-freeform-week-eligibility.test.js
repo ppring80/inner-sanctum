@@ -24,6 +24,8 @@ const questionPattern = text => /\b(?:what|which|list|name|who)\b/i.test(text) &
 assert.ok(questionPattern(byeQuestion), 'exact customer team-bye question must match');
 assert.equal(context.parse([{role:'user',content:byeQuestion}]).week,7);
 assert.ok(chat.includes('teamByeQuestion && lineupEligibility?.freeform'));
+assert.ok(chat.includes('process.env.CONTEXT === "deploy-preview"'));
+assert.ok(chat.includes('origin === "https://deploy-preview-321--delicate-dragon-447881.netlify.app"'));
 assert.ok(chat.includes('lineupEligibility.byeTeams'));
 assert.match(chat, /bye-week schedule is not verified/);
 const eligibilitySource = fs.readFileSync('netlify/functions/_sanctum-lineup-eligibility.js','utf8');
