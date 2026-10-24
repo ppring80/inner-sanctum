@@ -202,6 +202,21 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   for(const url of ['https://theinnersanctum.xyz/.netlify/functions/weekly-sage-rankings','https://api.anthropic.com/v1/messages','https://tank01.example.com/','https://test.blobs.netlify.com/'+PRODUCTION_SITE_ID+'/store']) {
     await assert.rejects(()=>sandbox.globalThis.fetch(url),/network access blocked/);
   }
+  // Rejected endpoint diagnostics must contain only parsed protocol and hostname.
+  for (const endpoint of ['https://private-user:private-password@untrusted.example:8443/private-path?token=private-query#private-fragment',
+    'http://private-user:private-password@test.blobs.netlify.com:8080/private-path?token=private-query#private-fragment']) {
+    const parsed = new URL(endpoint);
+    const rejectedEvent = {...event, blobs:Buffer.from(JSON.stringify({url:endpoint,token:'private-invocation-token',other:'private-invocation-data'})).toString('base64')};
+    await assert.rejects(()=>sandbox.exports.handler(rejectedEvent),error=>{
+      assert.equal(error.message,'Untrusted Blobs endpoint; '+JSON.stringify({protocol:parsed.protocol,hostname:parsed.hostname}));
+      for (const secret of ['private-user','private-password','8443','8080','private-path','private-query','private-fragment','private-invocation-token','private-invocation-data']) {
+        assert.equal(error.message.includes(secret),false);
+        assert.equal(error.stack.includes(secret),false);
+      }
+      return true;
+    });
+  }
+  assert.equal(handlerCalls,1,'rejected endpoints never reach authentication handler');
   assert.equal(networkCalls,0);
   const rank = await sandbox.globalThis.fetch(origin+'/.netlify/functions/weekly-sage-rankings?season=2026&week=7');
   assert.deepEqual(await rank.json(),fixture.rankings);
