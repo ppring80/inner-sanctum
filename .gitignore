@@ -1,0 +1,6 @@
+node_modules
+.netlify/
+.sage-acceptance/
+.env
+.env.*
+scripts/__pycache__/
