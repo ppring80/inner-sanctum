@@ -7,7 +7,13 @@ const CREDENTIAL_NAME = /(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|CONNECTION_STRI
 // https://docs.netlify.com/build/frameworks/frameworks-api/#netlifyv1skew-protectionjson
 const PLATFORM_RUNTIME_KEYS = new Set([
   "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-  "NETLIFY_SKEW_PROTECTION_TOKEN"
+  "NETLIFY_SKEW_PROTECTION_TOKEN",
+  // AWS automatically injects this per-execution-environment metadata token:
+  // https://docs.aws.amazon.com/lambda/latest/dg/configuration-metadata-endpoint.html
+  "AWS_LAMBDA_METADATA_TOKEN",
+  // Netlify injects this into hosted serverless functions; not a user API key.
+  // Corroboration: https://github.com/sveltejs/kit/pull/17044
+  "NETLIFY_FUNCTIONS_TOKEN"
 ]);
 function assertIsolated(env, event) {
   const config = oauthConfiguration(env);
