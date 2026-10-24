@@ -297,10 +297,11 @@ test('only stale matchups (game dates from an earlier week) are enough to reject
 
 test('inactive bye player with historical game ID does not invalidate current Week evidence', async () => {
   const r = week7Rankings();
+  const currentSchedule = scheduleFrom(r); // Build schedule before inserting historical bye evidence.
   r.inactive.RB = r.inactive.RB || [];
   r.inactive.RB.push({ name: 'Historical Bye Player', team: 'JAX', position: 'RB', gameID: '20261004_JAX@HOU', gameDate: '20261004', projection: null });
   const check = require('../netlify/functions/_oracle-lineup-verdict.js').validateWeekEvidence(r, {
-    season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(scheduleFrom(r), {season:2026,week:7}), scoring: 'half'
+    season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(currentSchedule, {season:2026,week:7}), scoring: 'half'
   });
   assert.equal(check.ok, true, check.problems.join('; '));
 });
@@ -341,7 +342,7 @@ test('SAGE unavailable: the Oracle says so and invents nothing', async () => {
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.match(out.text, /Weekly SAGE responded 503/);
-  assert.match(out.text, /Nothing in your lineup is confirmed by this answer\./);
+  assert.match(out.text, /No starters, substitutions, injuries or bye assignments are confirmed by this response\./);
   assert.ok(!/SCHEDULED|KEEP|proj/.test(out.text));
 });
 
