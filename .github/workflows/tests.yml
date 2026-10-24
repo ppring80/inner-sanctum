@@ -6,6 +6,7 @@ on:
       - main
       - fix/oracle-pasted-lineup-routing
       - fix/sanctum-cross-persona-lineup
+      - fix/sanctum-roster-scoped-evidence
     paths-ignore:
       - 'README.md'
       - 'support.html'

@@ -306,6 +306,30 @@ test('inactive bye player with historical game ID does not invalidate current We
   assert.equal(check.ok, true, check.problems.join('; '));
 });
 
+test('unrelated ranked player matchup conflict cannot block the customer lineup', () => {
+  const rankings = week7Rankings();
+  const schedule = scheduleFrom(rankings);
+  const index = require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(schedule, { season: 2026, week: 7 });
+  const row = { ...findRow(rankings, 'DeVonta Smith'), name: 'Unrelated Ranked Player', gameID: '20261025_FAKE@KC', gameDate: '20261025' };
+  rankings.positions.WR.push(row);
+  const rosterNames = [...customerLineup().starters, ...customerLineup().bench].map(p => p.name);
+  const result = verdictModule.validateWeekEvidence(rankings, { season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: index, scoring: 'half', rosterNames });
+  assert.equal(result.ok, true, result.problems.join('; '));
+});
+
+test('rostered player matchup conflict still blocks the SAGE decision', () => {
+  const rankings = week7Rankings();
+  const schedule = scheduleFrom(rankings);
+  const index = require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(schedule, { season: 2026, week: 7 });
+  const activeRosterRow = rankings.positions.WR.find(p => p.name === 'Rashee Rice');
+  assert.ok(activeRosterRow, 'fixture must use an active rostered WR');
+  activeRosterRow.gameID = '20261025_FAKE@KC';
+  const rosterNames = [...customerLineup().starters, ...customerLineup().bench].map(p => p.name);
+  const result = verdictModule.validateWeekEvidence(rankings, { season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: index, scoring: 'half', rosterNames });
+  assert.equal(result.ok, false);
+  assert.match(result.problems.join('; '), /matchups disagree/);
+});
+
 test('matchups that contradict the Week 7 schedule are rejected', async () => {
   const r = week7Rankings();
   const schedule = scheduleFrom(r);
