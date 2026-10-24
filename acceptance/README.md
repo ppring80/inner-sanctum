@@ -81,7 +81,9 @@ identity and credentials before generating the package or installing the existin
 root package.json dependencies. npm lifecycle scripts are disabled. Dependencies
 are installed on Netlify, not on your computer. All publish/functions/include paths
 are relative to acceptance and resolve only into the generated .sage-acceptance tree.
-The root netlify.toml is not changed, copied into the package, or selected.
+The root netlify.toml is not changed, copied into the package, or selected. The explicit
+ignore command (exit 1) ensures changes to shared sources outside acceptance still
+trigger a build on this project's permitted branch.
 
 The word production in this project's branch/context labels refers only to the
 acceptance site's stable URL, not the actual Inner Sanctum production site.
