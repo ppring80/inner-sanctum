@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Module = require('node:module');
+const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 const { oauthConfiguration, PRODUCTION_SITE_ID } = require('../netlify/functions/_sage-oauth-config');
 const { assertIsolated } = require('../acceptance/runtime');
@@ -64,20 +65,34 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     {cwd:root,encoding:'utf8'}));
   assert.deepEqual(Object.keys(gitConfig).sort(), ['build','functions']);
   assert.deepEqual(Object.keys(gitConfig.build).sort(), ['command','environment','functions','publish']);
-  assert.equal(gitConfig.build.command, 'node scripts/prepare-sage-acceptance.js');
-  assert.equal(gitConfig.build.publish, '.sage-acceptance/public');
-  assert.equal(gitConfig.build.functions, '.sage-acceptance/functions');
-  assert.deepEqual(gitConfig.functions, {node_bundler:'esbuild',included_files:['.sage-acceptance/lib/**']});
+  assert.equal(gitConfig.build.command, 'cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2');
+  assert.equal(gitConfig.build.publish, '../.sage-acceptance/public');
+  assert.equal(gitConfig.build.functions, '../.sage-acceptance/functions');
+  assert.deepEqual(gitConfig.functions, {node_bundler:'esbuild',included_files:['../.sage-acceptance/lib/**']});
   assert.deepEqual(gitConfig.build.environment, { NODE_VERSION:'24', SAGE_ACCEPTANCE_MODE:'isolated',
     SAGE_ACCEPTANCE_ORIGIN:origin, SAGE_ACCEPTANCE_SITE_ID:site });
-  const buildEnv = {...gitConfig.build.environment, SITE_ID:site, PATH:process.env.PATH};
-  const built = JSON.parse(execFileSync('bash', ['-c',gitConfig.build.command],
-    {cwd:root,env:buildEnv,encoding:'utf8'}));
-  assert.equal(path.relative(root,path.join(root,gitConfig.build.publish)), '.sage-acceptance/public');
-  assert.throws(() => execFileSync('bash',['-c',gitConfig.build.command],
-    {cwd:root,env:{...buildEnv,SITE_ID:PRODUCTION_SITE_ID},stdio:'pipe'}), 'wrong project cannot build');
-  assert.throws(() => execFileSync('bash',['-c',gitConfig.build.command],
-    {cwd:root,env:{...buildEnv,ANTHROPIC_API_KEY:'synthetic-rejected-value'},stdio:'pipe'}), 'credential-bearing build fails');
+  const base = path.join(root,'acceptance');
+  // Execute the actual command from Netlify's chosen base. Stub only npm so the
+  // offline gate records dependency setup without package downloads or hooks.
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(),'sage-acceptance-npm-'));
+  const npmMarker = path.join(bin,'called');
+  fs.writeFileSync(path.join(bin,'npm'), '#!/bin/sh\nprintf "%s\\n" "$PWD" "$*" >> "'+npmMarker+'"\n', {mode:0o755});
+  const buildEnv = {...gitConfig.build.environment, SITE_ID:site, PATH:bin+path.delimiter+process.env.PATH};
+  let built;
+  try {
+    built = JSON.parse(execFileSync('bash', ['-c',gitConfig.build.command],
+      {cwd:base,env:buildEnv,encoding:'utf8'}));
+    assert.equal(path.resolve(base,gitConfig.build.publish),path.join(root,'.sage-acceptance/public'));
+    assert.equal(path.resolve(base,gitConfig.build.functions),path.join(root,'.sage-acceptance/functions'));
+    assert.equal(path.resolve(base,gitConfig.functions.included_files[0]),path.join(root,'.sage-acceptance/lib/**'));
+    assert.equal(fs.readFileSync(npmMarker,'utf8'),root+'\ninstall --ignore-scripts --omit=dev --no-audit --no-fund\n');
+    fs.unlinkSync(npmMarker);
+    for (const override of [{SITE_ID:PRODUCTION_SITE_ID},{ANTHROPIC_API_KEY:'synthetic-rejected-value'}]) {
+      assert.throws(() => execFileSync('bash',['-c',gitConfig.build.command],
+        {cwd:base,env:{...buildEnv,...override},stdio:'pipe'}));
+      assert.equal(fs.existsSync(npmMarker),false,'site/credential preflight must fail before dependency setup');
+    }
+  } finally { fs.rmSync(bin,{recursive:true,force:true}); }
   const {out,manifest} = built;
   assert.equal(manifest.siteId,site);
   assert.deepEqual(fs.readdirSync(path.join(out,'functions')).sort(),['chatgpt-mcp.js','chatgpt-oauth.js']);
