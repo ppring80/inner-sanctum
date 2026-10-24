@@ -52,7 +52,9 @@ exports.handler = async (event, context) => {
   assertIsolated(process.env, event);
   const blobs = JSON.parse(Buffer.from(event.blobs, "base64").toString("utf8"));
   const url = new URL(blobs.url);
-  if (url.protocol !== "https:" || !url.hostname.endsWith(".netlify.com")) throw new Error("Untrusted Blobs endpoint");
+  if (url.protocol !== "https:" || !url.hostname.endsWith(".netlify.com")) throw new Error(
+    "Untrusted Blobs endpoint; " + JSON.stringify({protocol:url.protocol, hostname:url.hostname})
+  );
   blobOrigin = url.origin;
   const rpc = event.httpMethod === "POST" && event.body ? (() => { try { return JSON.parse(event.isBase64Encoded ? Buffer.from(event.body,"base64").toString("utf8") : event.body); } catch { return null; } })() : null;
   if (rpc?.method === "tools/call" && !["compare_players", "get_player_profile", "get_lineup_recommendation"].includes(rpc.params?.name))
