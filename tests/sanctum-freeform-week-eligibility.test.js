@@ -27,5 +27,5 @@ assert.ok(chat.includes('teamByeQuestion && lineupEligibility?.freeform'));
 assert.ok(chat.includes('lineupEligibility.byeTeams'));
 assert.match(chat, /bye-week schedule is not verified/);
 const eligibilitySource = fs.readFileSync('netlify/functions/_sanctum-lineup-eligibility.js','utf8');
-assert.match(eligibilitySource, /byeTeams: scheduleValid \\? \\[\\.\\.\\.schedule\\.byeTeams\\] : null/);
+assert.ok(eligibilitySource.includes('byeTeams: scheduleValid ? [...schedule.byeTeams] : null'));
 console.log('PASS: freeform Week 7 lineup eligibility and direct team bye question');
