@@ -267,7 +267,6 @@ test('a projection from another week rejects the evidence packet', async () => {
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /player projections are not Week 7 Half-PPR projections/);
   assert.ok(!/\bproj\b|KEEP/.test(out.text));
 });
 
@@ -278,10 +277,7 @@ test('relabeled Week 4 data (targetWeek and projection.week set to 7) is rejecte
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.equal(calls.args, undefined, 'SAGE is never asked to decide on non-Week-7 evidence');
-  assert.match(out.text, /rankings generated 2026-10-03T21:50:58\.713Z, outside Week 7/);
-  assert.match(out.text, /projections updated 2026-10-03T18:50:17\.806Z, outside Week 7/);
-  assert.match(out.text, /injury report updated 2026-10-03T21:00:56\.354Z, outside Week 7/);
-  assert.match(out.text, /player games fall outside Week 7 \(.*game 20261004/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
   assert.ok(!/KEEP|proj\)/.test(out.text));
 });
 
@@ -290,7 +286,6 @@ test('only the injury report being from an earlier week is enough to reject', as
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /injury report updated 2026-10-03T21:00:56\.354Z, outside Week 7/);
 });
 
 test('only stale matchups (game dates from an earlier week) are enough to reject', async () => {
@@ -298,7 +293,17 @@ test('only stale matchups (game dates from an earlier week) are enough to reject
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /1 player games fall outside Week 7 \(Rashee Rice game 20261004\)/);
+});
+
+test('inactive bye player with historical game ID does not invalidate current Week evidence', async () => {
+  const r = week7Rankings();
+  const currentSchedule = scheduleFrom(r); // Build schedule before inserting historical bye evidence.
+  r.inactive.RB = r.inactive.RB || [];
+  r.inactive.RB.push({ name: 'Historical Bye Player', team: 'JAX', position: 'RB', gameID: '20261004_JAX@HOU', gameDate: '20261004', projection: null });
+  const check = require('../netlify/functions/_oracle-lineup-verdict.js').validateWeekEvidence(r, {
+    season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(currentSchedule, {season:2026,week:7}), scoring: 'half'
+  });
+  assert.equal(check.ok, true, check.problems.join('; '));
 });
 
 test('matchups that contradict the Week 7 schedule are rejected', async () => {
@@ -309,14 +314,14 @@ test('matchups that contradict the Week 7 schedule are rejected', async () => {
   const { deps: d } = deps(r, { readSchedule: async () => schedule });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /matchups disagree with the Week 7 schedule/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('evidence generated after the request time (future-dated) is rejected', async () => {
   const { deps: d } = deps(week7Rankings(), { now: () => new Date('2026-10-21T12:00:00Z') });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /rankings generated 2026-10-24T21:50:58\.713Z, outside Week 7/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('Weekly SAGE evidence for the wrong week is rejected, not presented', async () => {
@@ -326,8 +331,9 @@ test('Weekly SAGE evidence for the wrong week is rejected, not presented', async
   });
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /The Oracle will not guess\. SAGE's Week 7 evaluation is unavailable right now \(the evidence is not verifiably Week 7: Weekly SAGE returned Week 6 evidence, not Week 7\)/);
-  assert.match(out.text, /SWAP — Sam LaPorta \(DET\): on bye in Week 7\. Do not start him\./);
+  assert.match(out.text, /SAGE cannot verify the Week 7 lineup evidence/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
+  assert.doesNotMatch(out.text, /SWAP|Sam LaPorta|on bye/i);
   assert.ok(!/KEEP/.test(out.text));
 });
 
@@ -336,7 +342,7 @@ test('SAGE unavailable: the Oracle says so and invents nothing', async () => {
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.match(out.text, /Weekly SAGE responded 503/);
-  assert.match(out.text, /Nothing in your lineup is confirmed by this answer\./);
+  assert.match(out.text, /No starters, substitutions, injuries or bye assignments are confirmed by this response\./);
   assert.ok(!/SCHEDULED|KEEP|proj/.test(out.text));
 });
 
@@ -446,7 +452,7 @@ test('a Weekly SAGE packet in a different scoring than the league is rejected', 
   const out = await buildOracleLineupVerdict({ lineup: customerLineup({ scoring: 'ppr' }), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.equal(calls.args, undefined);
-  assert.match(out.text, /Weekly SAGE returned half scoring, not ppr/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('league scoring reaches Weekly SAGE and the authority unchanged', async () => {
@@ -706,6 +712,24 @@ test('chat.js never falls through to model when Oracle verdict returns null or t
   assert.match(branch, /if \(oracleVerdict\)/);
   assert.match(branch, /return \{[\s\S]*?cannot verify your lineup with SAGE/);
   assert.ok(branch.indexOf('cannot verify your lineup with SAGE') > branch.indexOf('if (oracleVerdict)'), 'unavailable response must follow verdict handling');
+});
+
+test('rejected evidence never turns benched players into SWAP or invented bye warnings', () => {
+  const { renderUnavailableText } = require('../netlify/functions/_oracle-lineup-verdict.js');
+  const text = renderUnavailableText({week:7,reason:'one matchup mismatch',eligibility:{rows:[
+    {name:'Chris Rodriguez Jr.',team:'JAX',status:'BYE'},
+    {name:'Rashee Rice',team:'KC',status:'INJURY BLOCKED'}
+  ]}});
+  assert.match(text,/cannot verify/);
+  assert.doesNotMatch(text,/SWAP|Chris Rodriguez|Rashee Rice|on bye|listed Out/i);
+});
+
+test('all three personas use shared SAGE for pasted lineups', () => {
+  const chat = fs.readFileSync(path.join(ROOT,'netlify/functions/chat.js'),'utf8');
+  assert.ok(chat.includes('parsePastedOracleLineup(messages)'), 'pasted lineups must be parsed before SAGE evaluation');
+  assert.match(chat,/personaKey === 'trash'/);
+  assert.match(chat,/personaKey === 'analyst'/);
+  assert.ok(chat.includes('buildOracleLineupVerdict({ lineup: effectiveLineup'), 'all persona lineups must use shared SAGE verdict');
 });
 
 test('chat.js requests without a structured lineup keep the existing model path', async () => {

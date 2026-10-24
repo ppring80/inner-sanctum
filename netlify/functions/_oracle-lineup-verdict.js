@@ -224,8 +224,9 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
   }
   const rows = rankingRows(rankings);
   const startDay = ymd(start), endDay = ymd(end - 1);
-  let badGames = 0, badProj = 0, badMatchups = 0; const examples = [];
+  let badGames = 0, badProj = 0, badMatchups = 0; const examples = [], matchupExamples = [];
   rows.forEach((r) => {
+    if (r._inactive) return; // Historical inactive/bye game IDs are not current matchups.
     const day = String(r.gameDate || String(r.gameID || '').slice(0, 8) || '');
     if (day && (day < startDay || day > endDay)) { badGames++; if (examples.length < 2) examples.push(`${r.name} game ${day}`); }
     const pr = r.projection;
@@ -235,12 +236,15 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
       const team = teamCode(r.currentTeam || r.team);
       const key = Object.keys(kickoffIndex.byTeam).find((k) => teamCode(k) === team);
       const game = key ? kickoffIndex.byTeam[key] : null;
-      if (!game || (game.gameID && game.gameID !== r.gameID)) badMatchups++;
+      if (!game || (game.gameID && game.gameID !== r.gameID)) {
+        badMatchups++;
+        if (matchupExamples.length < 3) matchupExamples.push(`${r.name} (${team || 'unknown team'}): rankings ${r.gameID}, schedule ${game?.gameID || 'missing'}`);
+      }
     }
   });
   if (badGames) problems.push(`${badGames} player games fall outside Week ${week} (${examples.join(', ')})`);
   if (badProj) problems.push(`${badProj} player projections are not Week ${week} ${scoring ? SCORING_LABEL[scoring] + ' ' : ''}projections`);
-  if (badMatchups) problems.push(`${badMatchups} matchups disagree with the Week ${week} schedule`);
+  if (badMatchups) problems.push(`${badMatchups} matchups disagree with the Week ${week} schedule (${matchupExamples.join('; ')})`);
   return { ok: problems.length === 0, problems };
 }
 
@@ -738,21 +742,14 @@ function renderDeeperText(verdict) {
   return lines.join('\n');
 }
 
-function renderUnavailableText({ week, reason, eligibility }) {
-  const lines = [
-    `The Oracle will not guess. SAGE's Week ${week} evaluation is unavailable right now (${reason}), so I cannot weigh your starters against your bench.`,
-    'Nothing in your lineup is confirmed by this answer.'
-  ];
-  const rows = (eligibility && Array.isArray(eligibility.rows)) ? eligibility.rows : [];
-  const blocked = rows.filter((r) => r.status === 'BYE' || r.status === 'INJURY BLOCKED');
-  if (blocked.length) {
-    lines.push('');
-    lines.push('What the cached evidence does show:');
-    blocked.forEach((r) => lines.push(`SWAP — ${r.name} (${r.team}): ${r.status === 'BYE' ? `on bye in Week ${week}` : `listed ${r.injury}`}. Do not start him.`));
-  }
-  lines.push('');
-  lines.push('Ask again shortly, and confirm every starter against the final inactive report before kickoff.');
-  return lines.join('\n');
+function renderUnavailableText({ week, reason }) {
+  // Rejected or mismatched evidence is not authoritative for player-level
+  // availability. Do not convert bench warnings into starter SWAP calls.
+  return [
+    `SAGE cannot verify the Week ${week} lineup evidence (${reason}).`,
+    'No starters, substitutions, injuries or bye assignments are confirmed by this response.',
+    'The lineup decision is unavailable until the evidence is corrected.'
+  ].join('\n');
 }
 
 // ─── Orchestration ─────────────────────────────────────────────────────
@@ -771,11 +768,10 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
     else rankings = await response.json();
   } catch (error) { rankingsError = `Weekly SAGE request failed: ${error.message}`; }
 
-  const unavailable = async (reason) => {
-    let eligibility = null;
-    try { eligibility = await (deps.buildLineupEligibility || require('./_sanctum-lineup-eligibility').buildLineupEligibility)(messages); } catch (_) { eligibility = null; }
-    return { status: 'UNAVAILABLE', reason, text: renderUnavailableText({ week: payload.week, reason, eligibility }) };
-  };
+  const unavailable = async (reason) => ({
+    status: 'UNAVAILABLE', reason,
+    text: renderUnavailableText({ week: payload.week, reason })
+  });
   if (!rankings) return unavailable(rankingsError || 'Weekly SAGE unavailable');
 
   let schedule = null, scheduleError = null;
@@ -783,7 +779,15 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
   const kickoffIndex = buildKickoffIndex(schedule, { season: payload.season, week: payload.week });
 
   const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex, scoring: payload.scoring });
-  if (!evidenceCheck.ok) return unavailable(`the evidence is not verifiably Week ${payload.week}: ${evidenceCheck.problems.join('; ')}`);
+  if (!evidenceCheck.ok) {
+    // Server-side diagnostics only. Do not weaken the evidence guard or
+    // disclose player/game identifiers in the customer-facing response.
+    console.warn('ORACLE_WEEK_EVIDENCE_MISMATCH', JSON.stringify({
+      season: payload.season, week: payload.week,
+      problems: evidenceCheck.problems
+    }));
+    return unavailable(`the evidence is not verifiably Week ${payload.week}; see server diagnostics`);
+  }
   let opportunityStore = null;
   try { opportunityStore = deps.getStore ? deps.getStore({ name: 'opportunity-intel' }) : require('@netlify/blobs').getStore({ name: 'opportunity-intel' }); } catch (_) { opportunityStore = null; }
 
