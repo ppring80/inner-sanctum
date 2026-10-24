@@ -303,7 +303,7 @@ exports.handler = async (event) => {
     // list, not the player-by-player lineup eligibility pathway.
     const latestQuestion = [...(Array.isArray(messages) ? messages : [])].reverse()
       .find(m => m && m.role === 'user' && typeof m.content === 'string')?.content || '';
-    const teamByeQuestion = /\\b(?:which|what|list|name|who)\\b[\\s\\S]{0,90}\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\bbye\\b|\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\b(?:on|have|with)\\s+(?:a\\s+)?byes?\\b/i.test(latestQuestion);
+    const teamByeQuestion = /\b(?:what|which|list|name|who)\b/i.test(latestQuestion) && /\bteams?\b/i.test(latestQuestion) && /\bbye\b/i.test(latestQuestion);
     if (teamByeQuestion && lineupEligibility?.freeform) {
       const teams = lineupEligibility.byeTeams;
       const answer = Array.isArray(teams)
