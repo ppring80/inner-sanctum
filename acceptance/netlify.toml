@@ -1,9 +1,10 @@
-# Select this file by setting the TEST site's Package directory to acceptance.
-# Paths are relative to the repository root (leave Base directory unset).
+# Select this file by setting the TEST site's Base directory to acceptance.
+# Paths are relative to that base; only the generated package is published.
+# Preflight/package generation precedes dependency setup; lifecycle scripts are disabled.
 [build]
-  command = "node scripts/prepare-sage-acceptance.js"
-  publish = ".sage-acceptance/public"
-  functions = ".sage-acceptance/functions"
+  command = "cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2"
+  publish = "../.sage-acceptance/public"
+  functions = "../.sage-acceptance/functions"
 
 [build.environment]
   NODE_VERSION = "24"
@@ -13,4 +14,4 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = [".sage-acceptance/lib/**"]
+  included_files = ["../.sage-acceptance/lib/**"]
