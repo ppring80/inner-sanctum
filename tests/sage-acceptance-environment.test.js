@@ -187,9 +187,17 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   const fixture = JSON.parse(fs.readFileSync(path.join(out,'lib/acceptance/football-fixture.json')));
   assert.equal(fixture.provenance.kind,'synthetic');
   let networkCalls = 0, handlerCalls = 0;
+  const storageRequests = [];
+  const sdk = require('@netlify/blobs');
   const sandbox = {process:{env:{SITE_ID:site,AWS_LAMBDA_METADATA_TOKEN:hiddenValue,NETLIFY_FUNCTIONS_TOKEN:hiddenValue}},exports:{},URL,Buffer,Response,
-    globalThis:{fetch:async()=>{networkCalls++;return new Response('{}');}},
+    globalThis:{fetch:async(input,options)=>{networkCalls++;storageRequests.push({input:String(input),options});return new Response('{}');}},
     require:p=>{
+      if(p === '@netlify/blobs') return {connectLambda:e=>{
+        // Run the real SDK initializer, retaining its output in the VM's environment.
+        const previous = process.env.NETLIFY_BLOBS_CONTEXT;
+        try { sdk.connectLambda(e); sandbox.process.env.NETLIFY_BLOBS_CONTEXT = process.env.NETLIFY_BLOBS_CONTEXT; }
+        finally { if(previous === undefined) delete process.env.NETLIFY_BLOBS_CONTEXT; else process.env.NETLIFY_BLOBS_CONTEXT = previous; }
+      }};
       if(p.endsWith('acceptance/runtime')) return {assertIsolated};
       if(p.endsWith('football-fixture.json')) return fixture;
       return {handler:async()=>{handlerCalls++;return {statusCode:401};}};
@@ -218,6 +226,45 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   }
   assert.equal(handlerCalls,1,'rejected endpoints never reach authentication handler');
   assert.equal(networkCalls,0);
+  // Real SDK context and request construction, with synthetic credentials and no network.
+  const platformEvent = {...event,blobs:Buffer.from(JSON.stringify({url:'https://edge.netlifyblobs.com',token:'synthetic-only'})).toString('base64')};
+  assert.equal((await sandbox.exports.handler(platformEvent)).statusCode,401);
+  const context = JSON.parse(Buffer.from(sandbox.process.env.NETLIFY_BLOBS_CONTEXT,'base64').toString());
+  assert.equal(context.siteID,site);
+  assert.equal(context.edgeURL,'https://edge.netlifyblobs.com');
+  const previousContext = process.env.NETLIFY_BLOBS_CONTEXT;
+  try {
+    process.env.NETLIFY_BLOBS_CONTEXT = sandbox.process.env.NETLIFY_BLOBS_CONTEXT;
+    for (const region of [undefined,'us-east-2']) {
+      const store = sdk.getStore({name:'acceptance-regression',region,fetch:sandbox.globalThis.fetch});
+      await store.get('synthetic-key');
+    }
+  } finally { if(previousContext === undefined) delete process.env.NETLIFY_BLOBS_CONTEXT; else process.env.NETLIFY_BLOBS_CONTEXT = previousContext; }
+  assert.equal(networkCalls,2);
+  assert.ok(storageRequests.every(r=>r.options.redirect === 'error'));
+  for (const target of [
+    'https://edge.netlifyblobs.com/'+PRODUCTION_SITE_ID+'/'+site+'/store',
+    'https://edge.netlifyblobs.com/other/'+site+'/store',
+    'https://edge.netlifyblobs.com/region:invalid/'+site+'/store',
+    'https://edge.netlifyblobs.com/region:us-east-2/'+PRODUCTION_SITE_ID+'/'+site,
+    'https://edge.netlifyblobs.com/'+site+'-suffix/store',
+    'https://edge.netlifyblobs.com:8443/'+site+'/store',
+    'https://user:password@edge.netlifyblobs.com/'+site+'/store',
+    'https://edge.netlifyblobs.com.evil.example/'+site+'/store',
+    'http://edge.netlifyblobs.com/'+site+'/store',
+    'https://theinnersanctum.xyz/'+site+'/store',
+    'https://api.anthropic.com/'+site+'/store'
+  ]) await assert.rejects(()=>sandbox.globalThis.fetch(target,{redirect:'follow'}),/network access blocked/);
+  await assert.rejects(()=>sandbox.exports.handler({...platformEvent,headers:{'x-nf-site-id':PRODUCTION_SITE_ID}}),/invocation site mismatch/);
+  for (const endpoint of ['https://edge.netlifyblobs.com:8443','https://user:password@edge.netlifyblobs.com','http://edge.netlifyblobs.com','not-a-url']) {
+    await assert.rejects(()=>sandbox.exports.handler({...platformEvent,blobs:Buffer.from(JSON.stringify({url:endpoint,token:'synthetic-only'})).toString('base64')}),/Blobs endpoint/);
+    await assert.rejects(()=>sandbox.globalThis.fetch('https://edge.netlifyblobs.com/'+site+'/store'),/network access blocked/);
+  }
+  // Even caller-supplied redirect:follow is overridden before the transport.
+  await sandbox.exports.handler(platformEvent);
+  await sandbox.globalThis.fetch('https://edge.netlifyblobs.com/'+site+'/store',{redirect:'follow'});
+  assert.equal(storageRequests.at(-1).options.redirect,'error');
+  assert.equal(networkCalls,3,'denied requests never reach transport');
   const rank = await sandbox.globalThis.fetch(origin+'/.netlify/functions/weekly-sage-rankings?season=2026&week=7');
   assert.deepEqual(await rank.json(),fixture.rankings);
   const wrongPeriod = await sandbox.globalThis.fetch(origin+'/.netlify/functions/weekly-sage-rankings?season=2026&week=8');
