@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - fix/oracle-pasted-lineup-routing
-      - fix/sanctum-cross-persona-lineup
     paths-ignore:
       - 'README.md'
       - 'support.html'
