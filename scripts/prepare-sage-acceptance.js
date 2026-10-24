@@ -13,6 +13,8 @@ function prepare(root, env = process.env) {
   fs.rmSync(out, { recursive: true, force: true });
   for (const dir of ["public", "functions", "lib/acceptance", "lib/netlify/functions"]) fs.mkdirSync(path.join(out, dir), { recursive: true });
   fs.cpSync(path.join(root, "netlify/functions"), path.join(out, "lib/netlify/functions"), { recursive: true });
+  // Preserve ../../player-identity imports without copying the public website.
+  fs.copyFileSync(path.join(root, "player-identity.js"), path.join(out, "lib/player-identity.js"));
   fs.copyFileSync(path.join(root, "acceptance/runtime.js"), path.join(out, "lib/acceptance/runtime.js"));
   fs.copyFileSync(path.join(root, "acceptance/football-fixture.json"), path.join(out, "lib/acceptance/football-fixture.json"));
   const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
