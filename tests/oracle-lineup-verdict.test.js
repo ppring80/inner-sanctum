@@ -301,6 +301,16 @@ test('only stale matchups (game dates from an earlier week) are enough to reject
   assert.match(out.text, /1 player games fall outside Week 7 \(Rashee Rice game 20261004\)/);
 });
 
+test('inactive bye player with historical game ID does not invalidate current Week evidence', async () => {
+  const r = week7Rankings();
+  r.inactive.RB = r.inactive.RB || [];
+  r.inactive.RB.push({ name: 'Historical Bye Player', team: 'JAX', position: 'RB', gameID: '20261004_JAX@HOU', gameDate: '20261004', projection: null });
+  const check = require('../netlify/functions/_oracle-lineup-verdict.js').validateWeekEvidence(r, {
+    season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(scheduleFrom(r), {season:2026,week:7}), scoring: 'half'
+  });
+  assert.equal(check.ok, true, check.problems.join('; '));
+});
+
 test('matchups that contradict the Week 7 schedule are rejected', async () => {
   const r = week7Rankings();
   const schedule = scheduleFrom(r);
