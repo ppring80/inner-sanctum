@@ -1,7 +1,8 @@
 # SAGE acceptance environment — issue #325
 
-This is a separate manual-deploy project. Never connect this project to main's
-Git auto-deploys and never deploy the repository root or its production netlify.toml.
+This is a separate Git-connected acceptance project. Connect only its dedicated
+branch using acceptance/netlify.toml. Never select main, publish the repository
+root, or use the production root netlify.toml. No CLI installation is required.
 Do not merge PR #324 or #326 to establish the test connection.
 
 ## Project and identity
@@ -26,8 +27,11 @@ The production site is never an allowed acceptance identity.
    Check inherited/shared variables as well as site variables, in Builds and Functions scopes.
    Do not export or paste any values. Current connector inventory returned no site
    variables and no shared team variables on 2026-10-24; recheck before publishing.
-2. Keep the project unlinked from production Git continuous deployment. No plugins,
-   integration or build hooks should inject credentials. Do not copy production settings.
+2. Connect only the dedicated acceptance branch, with Package directory set to
+   acceptance BEFORE the first build. No plugins, integrations or build hooks should
+   inject credentials. Do not copy production settings. If the linking wizard cannot
+   select the package/configuration before starting a build, stop without completing
+   the link; do not let it build the root configuration.
 3. Use only the artifact generated below. It has two entry points, no schedules,
    no refresh endpoints and only a notice/build manifest in the public directory.
    Helpers are private bundled dependencies, not public function endpoints.
@@ -40,28 +44,58 @@ The production site is never an allowed acceptance identity.
 5. Do not disable secret scanning. Inspect build.json: it must identify the intended
    commit, clean tracked source, correct site/origin and synthetic fixture provenance.
 
-## Manual publish (account owner)
+## GitHub continuous deployment (account owner)
 
-Use a checkout of the infrastructure branch and install the existing package dependencies.
-The Netlify connector available to this session has no deployment-upload operation;
-no account credentials should be given to the assistant.
+The configuration is committed at acceptance/netlify.toml. Netlify searches the
+Package directory before the base/root directory. Its selection is essential:
+UI publish/functions overrides alone are not safe because file settings take precedence.
+The generated .sage-acceptance/netlify.toml is for manual artifact use, not Git startup.
 
-```sh
-npm ci
-npm install --global netlify-cli
-netlify login
-SAGE_ACCEPTANCE_MODE=isolated \
-SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 \
-SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app \
-SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 \
-node scripts/prepare-sage-acceptance.js
-cd .sage-acceptance
-netlify deploy --prod --site dcdb8384-114c-4f80-a2fe-acc0ecb39d57 --config netlify.toml --dir public --functions functions
-```
+Open https://app.netlify.com/projects/sprightly-chebakia-13d478 and go to
+Project configuration > Developer settings > Continuous deployment > Repository >
+Link repository. Authorize the existing Netlify GitHub App as needed; do not change
+permissions or settings of the production Netlify project.
 
-Here --prod publishes only the separate acceptance site's stable origin. It must never
-be run without the explicit test site ID. .netlify and .sage-acceptance are ignored.
-The original repository configuration is not used by this artifact.
+Before completing the link or allowing the first build, confirm these settings:
+
+| Setting | Value |
+| --- | --- |
+| Repository | ppring80/inner-sanctum |
+| Production branch of this TEST project | infra/sage-acceptance-325 |
+| Base directory | Unset (repository root) |
+| Package directory | acceptance |
+| Configuration file selected | acceptance/netlify.toml |
+| Build command | node scripts/prepare-sage-acceptance.js |
+| Publish directory | .sage-acceptance/public |
+| Functions directory | .sage-acceptance/functions |
+| Node version | 24 (set in the acceptance file) |
+| Additional branch deploys | None |
+| Deploy Previews | Disabled for this test project |
+
+If these fields are not all offered in the link wizard, stop before its final
+confirmation; do not rely on changing them after a default-root deployment.
+The word production in this project's branch/context labels refers only to the
+acceptance site's stable URL, not the actual Inner Sanctum production site.
+
+The acceptance file supplies three PUBLIC build-time settings: isolated mode,
+test site ID and test origin. Netlify supplies SITE_ID; do not override it. The
+existing generator validates the actual site ID and embeds the public settings
+in its two function wrappers. No provider keys or private customer data are needed.
+Do not add secret-scanning exclusions or copy the root context.production block.
+
+After the configuration is approved, use Deploys > Trigger deploy. Commit messages
+on the infrastructure branch currently include [skip netlify], so use the explicit
+dashboard trigger for the first build. Keep the PR title's [skip netlify] marker to
+avoid previews on the existing production project. Future unmarked pushes can
+publish automatically ONLY on the configured test project/branch; for deliberate
+candidate acceptance, hold the branch fixed until its deployment SHA is recorded.
+
+The first live deploy is still an acceptance check, not an assumed success. Confirm
+in its build log that the selected config is acceptance/netlify.toml, publish is
+.sage-acceptance/public, functions is .sage-acceptance/functions, and only chatgpt-mcp
+and chatgpt-oauth are deployed. Confirm there are no scheduled functions and the
+public build.json matches the expected clean commit/site/origin. No deploy has
+been authorized by the configuration-verification task itself.
 
 ## First live checks and ChatGPT connection
 
