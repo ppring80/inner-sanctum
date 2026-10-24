@@ -27,10 +27,10 @@ The production site is never an allowed acceptance identity.
    Check inherited/shared variables as well as site variables, in Builds and Functions scopes.
    Do not export or paste any values. Current connector inventory returned no site
    variables and no shared team variables on 2026-10-24; recheck before publishing.
-2. Connect only the dedicated acceptance branch, with Package directory set to
+2. Connect only the dedicated acceptance branch, with Base directory set to
    acceptance BEFORE the first build. No plugins, integrations or build hooks should
    inject credentials. Do not copy production settings. If the linking wizard cannot
-   select the package/configuration before starting a build, stop without completing
+   select the base/configuration before starting a build, stop without completing
    the link; do not let it build the root configuration.
 3. Use only the artifact generated below. It has two entry points, no schedules,
    no refresh endpoints and only a notice/build manifest in the public directory.
@@ -46,8 +46,9 @@ The production site is never an allowed acceptance identity.
 
 ## GitHub continuous deployment (account owner)
 
-The configuration is committed at acceptance/netlify.toml. Netlify searches the
-Package directory before the base/root directory. Its selection is essential:
+The configuration is committed at acceptance/netlify.toml. Set Base directory to acceptance in the repository-linking wizard. Netlify selects
+acceptance/netlify.toml from that base before the root configuration. No Package
+directory field is required. Its selection is essential:
 UI publish/functions overrides alone are not safe because file settings take precedence.
 The generated .sage-acceptance/netlify.toml is for manual artifact use, not Git startup.
 
@@ -62,18 +63,26 @@ Before completing the link or allowing the first build, confirm these settings:
 | --- | --- |
 | Repository | ppring80/inner-sanctum |
 | Production branch of this TEST project | infra/sage-acceptance-325 |
-| Base directory | Unset (repository root) |
-| Package directory | acceptance |
+| Base directory | acceptance |
+| Package directory | Leave unset / not required |
 | Configuration file selected | acceptance/netlify.toml |
-| Build command | node scripts/prepare-sage-acceptance.js |
-| Publish directory | .sage-acceptance/public |
-| Functions directory | .sage-acceptance/functions |
+| Build command | cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2 |
+| Publish directory | ../.sage-acceptance/public |
+| Functions directory | ../.sage-acceptance/functions |
 | Node version | 24 (set in the acceptance file) |
 | Additional branch deploys | None |
 | Deploy Previews | Disabled for this test project |
 
-If these fields are not all offered in the link wizard, stop before its final
-confirmation; do not rely on changing them after a default-root deployment.
+The Package directory field may be absent. Set Base directory to acceptance;
+confirm the command and relative output paths above. If Base directory is also
+absent, stop before the final confirmation; do not rely on changing them after a default-root deployment.
+The build runs from acceptance, changes to the repository root, and validates site
+identity and credentials before generating the package or installing the existing
+root package.json dependencies. npm lifecycle scripts are disabled. Dependencies
+are installed on Netlify, not on your computer. All publish/functions/include paths
+are relative to acceptance and resolve only into the generated .sage-acceptance tree.
+The root netlify.toml is not changed, copied into the package, or selected.
+
 The word production in this project's branch/context labels refers only to the
 acceptance site's stable URL, not the actual Inner Sanctum production site.
 
@@ -91,8 +100,8 @@ publish automatically ONLY on the configured test project/branch; for deliberate
 candidate acceptance, hold the branch fixed until its deployment SHA is recorded.
 
 The first live deploy is still an acceptance check, not an assumed success. Confirm
-in its build log that the selected config is acceptance/netlify.toml, publish is
-.sage-acceptance/public, functions is .sage-acceptance/functions, and only chatgpt-mcp
+in its build log that the selected config is acceptance/netlify.toml, base is acceptance, publish resolves to
+.sage-acceptance/public at repository root, functions resolves to .sage-acceptance/functions, and only chatgpt-mcp
 and chatgpt-oauth are deployed. Confirm there are no scheduled functions and the
 public build.json matches the expected clean commit/site/origin. No deploy has
 been authorized by the configuration-verification task itself.
