@@ -19,6 +19,10 @@ assert(chat.includes('lineupEligibility?.freeform'));
 assert(chat.includes('row.status === "BYE"'));
 assert(chat.includes('row.status === "UNVERIFIED"'));
 assert(chat.includes('Do not start him this week.'));
+assert(chat.includes('availability not confirmed for Week '));
+assert(chat.includes('Keep a backup ready.'));
+assert(!chat.includes('eligibility from the cached schedule and injury evidence. Do not start him without confirming availability.'));
+
 const byeQuestion = "what NFL teams are on BYE for week 7";
 const questionPattern = text => /\b(?:what|which|list|name|who)\b/i.test(text) && /\bteams?\b/i.test(text) && /\bbye\b/i.test(text);
 assert.ok(questionPattern(byeQuestion), 'exact customer team-bye question must match');
