@@ -124,6 +124,43 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   } finally { fs.rmSync(bin,{recursive:true,force:true}); }
   const {out,manifest} = built;
   assert.equal(manifest.siteId,site);
+  const packagedLib = path.join(out,'lib');
+  const identity = path.join(packagedLib,'player-identity.js');
+  assert.deepEqual(fs.readFileSync(identity),fs.readFileSync(path.join(root,'player-identity.js')),
+    'shared identity dependency is copied byte-for-byte into private lib');
+  const localImportsResolve = () => {
+    let checked = 0;
+    const seen = new Set();
+    const pending = ['chatgpt-mcp.js','chatgpt-oauth.js'].map(name => path.join(out,'functions',name));
+    while (pending.length) {
+      const file = pending.pop();
+      if (seen.has(file) || !file.endsWith('.js')) continue;
+      seen.add(file);
+      const relative = path.relative(out,file);
+      const resolver = Module.createRequire(file);
+      const source = fs.readFileSync(file,'utf8');
+      for (const match of source.matchAll(/\brequire\(\s*(['"])(\.[^'"]*)\1\s*\)/g)) {
+        const resolved = resolver.resolve(match[2]);
+        assert.ok(resolved.startsWith(packagedLib+path.sep),'relative imports must stay inside the private package: '+relative);
+        assert.ok(fs.existsSync(resolved),'packaged dependency missing: '+relative+' -> '+match[2]);
+        pending.push(resolved);
+        checked++;
+      }
+    }
+    return checked;
+  };
+  assert.ok(localImportsResolve()>10,'verify both entry points and their transitive local dependencies without executing handlers');
+  for (const name of ['_super-sage-lineup-decision.js','_super-sage-lineup-service.js','_super-sage-role-establishment.js']) {
+    const original = path.join(root,'netlify/functions',name);
+    const packaged = path.join(packagedLib,'netlify/functions',name);
+    assert.deepEqual(fs.readFileSync(packaged),fs.readFileSync(original),'production SAGE modules remain byte-identical');
+    assert.equal(Module.createRequire(packaged).resolve('../../player-identity'),identity);
+  }
+  // Prove the packaging check catches the exact omission from the failed deploy.
+  fs.unlinkSync(identity);
+  assert.throws(localImportsResolve,/packaged dependency missing|Cannot find module/);
+  fs.copyFileSync(path.join(root,'player-identity.js'),identity);
+  localImportsResolve();
   assert.deepEqual(fs.readdirSync(path.join(out,'functions')).sort(),['chatgpt-mcp.js','chatgpt-oauth.js']);
   const toml = fs.readFileSync(path.join(out,'netlify.toml'),'utf8');
   assert.doesNotMatch(toml,/schedule|SECRETS_SCAN_ENABLED/);
