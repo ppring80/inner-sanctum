@@ -3,7 +3,12 @@
 // Used only by the two entry points in the isolated deployment artifact.
 const { oauthConfiguration } = require("../netlify/functions/_sage-oauth-config");
 const CREDENTIAL_NAME = /(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|CONNECTION_STRING)$/i;
-const PLATFORM_RUNTIME_KEYS = new Set(["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]);
+// Netlify's deployment fingerprint, not an OAuth/provider credential:
+// https://docs.netlify.com/build/frameworks/frameworks-api/#netlifyv1skew-protectionjson
+const PLATFORM_RUNTIME_KEYS = new Set([
+  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+  "NETLIFY_SKEW_PROTECTION_TOKEN"
+]);
 function assertIsolated(env, event) {
   const config = oauthConfiguration(env);
   if (env.SAGE_ACCEPTANCE_MODE !== "isolated") throw new Error("Acceptance mode required");
