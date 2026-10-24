@@ -1356,8 +1356,26 @@ function profileToText(profile) {
 // COMPARISON AUTHORITY
 // ===========================================================
 
+const UNRESOLVED_FLEX_GUIDANCE =
+  "For a FLEX/start-sit question, do not stop at this unresolved comparison. " +
+  "Continue through get_lineup_recommendation and its existing shared lineup authority. " +
+  "Reuse known season, week, scoring and applicable authorized league/roster context. " +
+  "Ask only for missing league size, scoring, FLEX eligibility and relevant roster-slot information. " +
+  "Confirm whether both candidates are available for the open FLEX or needed in dedicated slots; " +
+  "request more roster information only when needed to establish a legal lineup. " +
+  "Do not treat this comparison's default team count or scoring as confirmed customer context, " +
+  "invent roster or slot assignments, substitute an unrelated linked league, or choose from positional ranks. " +
+  "Preserve a provisional result if the shared authority cannot validate an edge. ";
+
+function needsFlexLineupContext(foundPlayers, missingPlayers, decision) {
+  return decision.final === false && missingPlayers.length === 0 && foundPlayers.length >= 2 &&
+    foundPlayers.every(item => ["RB", "WR", "TE"].includes(item.row.position)) &&
+    new Set(foundPlayers.map(item => item.row.position)).size > 1;
+}
+
 function buildComparisonAuthority(
-  externalAnalysisRequested
+  externalAnalysisRequested,
+  continueFlex = false
 ) {
   const allowed =
     externalAnalysisRequested === true;
@@ -1387,18 +1405,19 @@ function buildComparisonAuthority(
       allowed,
 
     hostInstruction:
-      allowed
+      (continueFlex ? UNRESOLVED_FLEX_GUIDANCE : "") + (allowed
         ? (
             "The user explicitly requested outside analysis. " +
             "Present the Inner Sanctum result first and clearly " +
             "separate any external information from Inner Sanctum."
           )
         : (
-            "Present the Inner Sanctum comparison directly and stop. " +
+            (continueFlex ? "Keep Inner Sanctum as the decision authority. " :
+              "Present the Inner Sanctum comparison directly and stop. ") +
             "Do not browse, search for, cite, introduce, or use external " +
             "fantasy rankings, projections, injuries, news, statistics, " +
             "expert opinions, websites, or other outside player analysis."
-          )
+          ))
   };
 }
 
@@ -1805,6 +1824,7 @@ function comparisonToText({
   scoring
 }) {
   const lines = [];
+  const continueFlex = needsFlexLineupContext(foundPlayers, missingPlayers, decision);
 
   lines.push(
     `Inner Sanctum Player Comparison — ` +
@@ -1953,6 +1973,9 @@ function comparisonToText({
       "If external information is provided, clearly separate it " +
       "from the Inner Sanctum/SAGE result."
     );
+    if (continueFlex) lines.push(authority.hostInstruction);
+  } else if (continueFlex) {
+    lines.push("AUTHORITY MODE: EXCLUSIVE. " + authority.hostInstruction);
   } else {
     lines.push(
       "AUTHORITY MODE: EXCLUSIVE. " +
@@ -4792,9 +4815,11 @@ function buildServer(
         "now, not as a verdict on the trade itself. " +
         "IMPORTANT: unless externalAnalysisRequested is explicitly true because " +
         "the USER specifically asked for outside verification or outside context, " +
-        "the returned Inner Sanctum comparison is EXCLUSIVE and complete. " +
-        "After the tool returns with externalAnalysisAllowed=false, answer only " +
-        "from this tool result and stop. Do not browse, search for, cite, introduce, " +
+        "Inner Sanctum remains the exclusive fantasy-analysis authority. " +
+        "After the tool returns with externalAnalysisAllowed=false, follow its hostInstruction. " +
+        "For an unresolved cross-position FLEX/start-sit question, request only missing league/roster " +
+        "context and continue through get_lineup_recommendation; never invent a winner. " +
+        "For a final comparison, answer from this tool result and stop. Do not browse, search for, cite, introduce, " +
         "or use external fantasy rankings, projections, player statistics, injuries, " +
         "news, expert opinions, websites, or other outside analysis. Do not change " +
         "or condition the Inner Sanctum recommendation using outside information.",
@@ -4884,7 +4909,7 @@ function buildServer(
       const outsideRequested =
         externalAnalysisRequested === true;
 
-      const authority =
+      let authority =
         buildComparisonAuthority(
           outsideRequested
         );
@@ -5023,6 +5048,9 @@ function buildServer(
           chooseComparisonWinner(
             foundPlayers
           );
+        authority = buildComparisonAuthority(
+          outsideRequested, needsFlexLineupContext(foundPlayers, missingPlayers, decision)
+        );
 
         const structuredContent = {
           superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. ")),
