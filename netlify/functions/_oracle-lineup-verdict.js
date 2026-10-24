@@ -226,6 +226,7 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
   const startDay = ymd(start), endDay = ymd(end - 1);
   let badGames = 0, badProj = 0, badMatchups = 0; const examples = [], matchupExamples = [];
   rows.forEach((r) => {
+    if (r._inactive) return; // Historical inactive/bye game IDs are not current matchups.
     const day = String(r.gameDate || String(r.gameID || '').slice(0, 8) || '');
     if (day && (day < startDay || day > endDay)) { badGames++; if (examples.length < 2) examples.push(`${r.name} game ${day}`); }
     const pr = r.projection;
