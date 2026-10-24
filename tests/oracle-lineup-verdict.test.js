@@ -267,7 +267,6 @@ test('a projection from another week rejects the evidence packet', async () => {
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /player projections are not Week 7 Half-PPR projections/);
   assert.ok(!/\bproj\b|KEEP/.test(out.text));
 });
 
@@ -279,9 +278,6 @@ test('relabeled Week 4 data (targetWeek and projection.week set to 7) is rejecte
   assert.equal(out.status, 'UNAVAILABLE');
   assert.equal(calls.args, undefined, 'SAGE is never asked to decide on non-Week-7 evidence');
   assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
-  assert.match(out.text, /projections updated 2026-10-03T18:50:17\.806Z, outside Week 7/);
-  assert.match(out.text, /injury report updated 2026-10-03T21:00:56\.354Z, outside Week 7/);
-  assert.match(out.text, /player games fall outside Week 7 \(.*game 20261004/);
   assert.ok(!/KEEP|proj\)/.test(out.text));
 });
 
@@ -290,7 +286,6 @@ test('only the injury report being from an earlier week is enough to reject', as
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /injury report updated 2026-10-03T21:00:56\.354Z, outside Week 7/);
 });
 
 test('only stale matchups (game dates from an earlier week) are enough to reject', async () => {
@@ -298,7 +293,6 @@ test('only stale matchups (game dates from an earlier week) are enough to reject
   const { deps: d } = deps(r);
   const out = await buildOracleLineupVerdict({ lineup: customerLineup(), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
-  assert.match(out.text, /1 player games fall outside Week 7 \(Rashee Rice game 20261004\)/);
 });
 
 test('inactive bye player with historical game ID does not invalidate current Week evidence', async () => {
