@@ -20,7 +20,7 @@ assert(chat.includes('row.status === "BYE"'));
 assert(chat.includes('row.status === "UNVERIFIED"'));
 assert(chat.includes('Do not start him this week.'));
 const byeQuestion = "what NFL teams are on BYE for week 7";
-const questionPattern = /\\b(?:which|what|list|name|who)\\b[\\s\\S]{0,90}\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\bbyes?\\b|\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\b(?:on|have|with)\\s+(?:a\\s+)?byes?\\b/i;
+const questionPattern = /\\b(?:which|what|list|name|who)\\b[\\s\\S]{0,90}\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\bbye\\b|\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\b(?:on|have|with)\\s+(?:a\\s+)?byes?\\b/i;
 assert.ok(questionPattern.test(byeQuestion), 'exact customer team-bye question must match');
 assert.equal(context.parse([{role:'user',content:byeQuestion}]).week,7);
 assert.match(chat, /teamByeQuestion && lineupEligibility\\?\\.freeform/);
