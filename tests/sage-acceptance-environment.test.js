@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const Module = require('node:module');
+const { execFileSync } = require('node:child_process');
 const { oauthConfiguration, PRODUCTION_SITE_ID } = require('../netlify/functions/_sage-oauth-config');
 const { assertIsolated } = require('../acceptance/runtime');
-const { prepare } = require('../scripts/prepare-sage-acceptance');
 const root = path.resolve(__dirname, '..');
 const origin = 'https://sprightly-chebakia-13d478.netlify.app';
 const site = 'dcdb8384-114c-4f80-a2fe-acc0ecb39d57';
@@ -57,7 +57,28 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     delete require.cache[require.resolve('../netlify/functions/chatgpt-oauth')];
   }
 
-  const {out,manifest} = prepare(root,env);
+  // Parse the committed Git-build configuration and execute its actual command.
+  // Python's standard TOML parser avoids another npm dependency or test framework.
+  const gitConfig = JSON.parse(execFileSync('python3', ['-c',
+    'import json,tomllib; print(json.dumps(tomllib.load(open("acceptance/netlify.toml","rb"))))'],
+    {cwd:root,encoding:'utf8'}));
+  assert.deepEqual(Object.keys(gitConfig).sort(), ['build','functions']);
+  assert.deepEqual(Object.keys(gitConfig.build).sort(), ['command','environment','functions','publish']);
+  assert.equal(gitConfig.build.command, 'node scripts/prepare-sage-acceptance.js');
+  assert.equal(gitConfig.build.publish, '.sage-acceptance/public');
+  assert.equal(gitConfig.build.functions, '.sage-acceptance/functions');
+  assert.deepEqual(gitConfig.functions, {node_bundler:'esbuild',included_files:['.sage-acceptance/lib/**']});
+  assert.deepEqual(gitConfig.build.environment, { NODE_VERSION:'24', SAGE_ACCEPTANCE_MODE:'isolated',
+    SAGE_ACCEPTANCE_ORIGIN:origin, SAGE_ACCEPTANCE_SITE_ID:site });
+  const buildEnv = {...gitConfig.build.environment, SITE_ID:site, PATH:process.env.PATH};
+  const built = JSON.parse(execFileSync('bash', ['-c',gitConfig.build.command],
+    {cwd:root,env:buildEnv,encoding:'utf8'}));
+  assert.equal(path.relative(root,path.join(root,gitConfig.build.publish)), '.sage-acceptance/public');
+  assert.throws(() => execFileSync('bash',['-c',gitConfig.build.command],
+    {cwd:root,env:{...buildEnv,SITE_ID:PRODUCTION_SITE_ID},stdio:'pipe'}), 'wrong project cannot build');
+  assert.throws(() => execFileSync('bash',['-c',gitConfig.build.command],
+    {cwd:root,env:{...buildEnv,ANTHROPIC_API_KEY:'synthetic-rejected-value'},stdio:'pipe'}), 'credential-bearing build fails');
+  const {out,manifest} = built;
   assert.equal(manifest.siteId,site);
   assert.deepEqual(fs.readdirSync(path.join(out,'functions')).sort(),['chatgpt-mcp.js','chatgpt-oauth.js']);
   const toml = fs.readFileSync(path.join(out,'netlify.toml'),'utf8');
@@ -87,5 +108,5 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   const wrongPeriod = await sandbox.globalThis.fetch(origin+'/.netlify/functions/weekly-sage-rankings?season=2026&week=8');
   assert.equal(wrongPeriod.status,404);
   fs.rmSync(out,{recursive:true,force:true});
-  console.log('PASS: production defaults, isolated discovery, fail-closed identity/credentials/storage, two-endpoint packaging, paid-tool/network exclusion, synthetic evidence and period binding.');
+  console.log('PASS: production defaults, isolated discovery, fail-closed identity/credentials/storage, committed Git config and build, two-endpoint packaging, paid-tool/network exclusion, synthetic evidence and period binding.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
