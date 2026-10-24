@@ -1797,6 +1797,7 @@ function chooseComparisonWinner(
 
 function comparisonToText({
   foundPlayers,
+  unavailablePlayers = [],
   missingPlayers,
   decision,
   authority,
@@ -1893,6 +1894,10 @@ function comparisonToText({
       }
     }
   );
+
+  unavailablePlayers.forEach((item) => {
+    lines.push(`${item.row.name}: INELIGIBLE — ${item.row.sageTake}`);
+  });
 
   if (
     missingPlayers.length
@@ -4972,6 +4977,7 @@ function buildServer(
 
         const comparisonPlayers = [];
         const foundPlayers = [];
+        const unavailablePlayers = [];
         const missingPlayers = [];
 
         requestedPlayers.forEach(
@@ -4983,6 +4989,18 @@ function buildServer(
               );
 
             if (!row) {
+              // Reuse Profile's inactive context for an exact identity only.
+              // Keep unavailable rows out of every comparison/winner input.
+              const inactiveRow = findPlayer(rankings, requestedName);
+              if (inactiveRow && inactiveRow.recommendation === "INELIGIBLE" &&
+                  normalizePlayerName(inactiveRow.name) === normalizePlayerName(requestedName)) {
+                const profile = buildProfileModel(inactiveRow, {
+                  season: resolvedSeason, week: resolvedWeek, scoring: resolvedScoring
+                });
+                comparisonPlayers.push({ requestedName, found: true, profile });
+                unavailablePlayers.push({ requestedName, row: inactiveRow, profile });
+                return;
+              }
               missingPlayers.push(
                 requestedName
               );
@@ -5051,9 +5069,14 @@ function buildServer(
                 type: "text",
 
                 text:
-                  "Inner Sanctum could not find enough of the requested " +
-                  "players in the current Weekly SAGE rankings to make " +
-                  "a valid comparison."
+                  unavailablePlayers.length
+                    ? comparisonToText({
+                        foundPlayers, unavailablePlayers, missingPlayers, decision, authority,
+                        season: resolvedSeason, week: resolvedWeek, scoring: resolvedScoring
+                      }) + "\n\nFewer than two eligible players are available for a comparison."
+                    : "Inner Sanctum could not find enough of the requested " +
+                      "players in the current Weekly SAGE rankings to make " +
+                      "a valid comparison."
               }
             ],
 
@@ -5069,6 +5092,7 @@ function buildServer(
               text:
                 comparisonToText({
                   foundPlayers,
+                  unavailablePlayers,
                   missingPlayers,
                   decision,
                   authority,
