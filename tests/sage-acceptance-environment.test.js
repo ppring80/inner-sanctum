@@ -64,8 +64,9 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     'import json,tomllib; print(json.dumps(tomllib.load(open("acceptance/netlify.toml","rb"))))'],
     {cwd:root,encoding:'utf8'}));
   assert.deepEqual(Object.keys(gitConfig).sort(), ['build','functions']);
-  assert.deepEqual(Object.keys(gitConfig.build).sort(), ['command','environment','functions','publish']);
+  assert.deepEqual(Object.keys(gitConfig.build).sort(), ['command','environment','functions','ignore','publish']);
   assert.equal(gitConfig.build.command, 'cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2');
+  assert.equal(gitConfig.build.ignore,'exit 1','changes outside acceptance must still trigger automatic builds');
   assert.equal(gitConfig.build.publish, '../.sage-acceptance/public');
   assert.equal(gitConfig.build.functions, '../.sage-acceptance/functions');
   assert.deepEqual(gitConfig.functions, {node_bundler:'esbuild',included_files:['../.sage-acceptance/lib/**']});
