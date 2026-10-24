@@ -1071,17 +1071,6 @@ function leaderboardRecord(result) {
       ) ||
       null,
 
-    // Kickoff fields from the same upcomingGame (shared player-matchup
-    // playerContext) that WR/TE/QB rows already copy.
-    gameID:
-      (result.upcomingGame && result.upcomingGame.gameID) || null,
-
-    gameDate:
-      (result.upcomingGame && result.upcomingGame.gameDate) || null,
-
-    gameTime:
-      (result.upcomingGame && result.upcomingGame.gameTime) || null,
-
     role: {
       rawScore:
         num(role.rawScore),

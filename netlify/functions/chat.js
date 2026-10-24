@@ -1,8 +1,6 @@
 const Anthropic = require("@anthropic-ai/sdk");
 const { getStore, connectLambda } = require("@netlify/blobs");
 const { buildLineupEligibility, unsafeRecommendation } = require("./_sanctum-lineup-eligibility");
-const { buildOracleLineupVerdict, ORACLE_LINEUP_FORMAT } = require("./_oracle-lineup-verdict");
-const { parsePastedOracleLineup } = require("./_oracle-pasted-lineup");
 
 // ═══════════════════════════════════════
 // ALLOWED ORIGINS
@@ -291,54 +289,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { model, max_tokens, system, messages, lineup, persona } = JSON.parse(event.body);
-
-    // Oracle lineup button: the verdict comes from Super SAGE's shared lineup
-    // authority (same decision the website and ChatGPT receive), presented as
-    // KEEP / SWAP / HOLD PENDING NEWS. The language model is not asked to
-    // evaluate the lineup, so it cannot echo eligibility as a verdict or guess
-    // identities. Requests without a structured lineup are unchanged.
-    const personaKey = ['oracle', 'trash', 'analyst'].includes(String(persona || '').toLowerCase())
-      ? String(persona).toLowerCase()
-      : (/Trash Lord/i.test(String(system || '')) ? 'trash' : /Analyst/i.test(String(system || '')) ? 'analyst' : 'oracle');
-    const pasted = !lineup ? parsePastedOracleLineup(messages) : null;
-    const effectiveLineup = lineup || (pasted && pasted.lineup);
-    if (pasted && pasted.error) {
-      return { statusCode: 200, headers: CORS_HEADERS,
-        body: JSON.stringify({ content: [{ type: "text", text: pasted.error }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: null }) };
-    }
-    if (effectiveLineup) {
-      let oracleVerdict = null;
-      try {
-        oracleVerdict = await buildOracleLineupVerdict({ lineup: effectiveLineup, event, messages });
-      } catch (e) {
-        console.log("Oracle lineup verdict failed:", e.message);
-      }
-      if (oracleVerdict) {
-        // SAGE alone decides; persona affects wording, never the evidence or call.
-        const verdictText = personaKey === 'trash'
-          ? oracleVerdict.text.replace(/^The Oracle has weighed/, 'Trash Lord has checked').replace(/^SAGE cannot verify/, 'Trash Lord cannot verify')
-          : personaKey === 'analyst'
-            ? oracleVerdict.text.replace(/^The Oracle has weighed/, 'SAGE has evaluated')
-            : oracleVerdict.text;
-        return {
-          statusCode: 200,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({ content: [{ type: "text", text: verdictText }], format: ORACLE_LINEUP_FORMAT, deeperAnalysis: oracleVerdict.deeper || null })
-        };
-      }
-      // Fail closed: structured lineup requests must never fall through to
-      // the legacy model-only path when shared SAGE evidence is unavailable.
-      return {
-        statusCode: 200,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({
-          content: [{ type: "text", text: "The Oracle cannot verify your lineup with SAGE right now. No start or swap recommendation has been made. Please try again when the lineup evidence is available." }],
-          format: ORACLE_LINEUP_FORMAT,
-          deeperAnalysis: null
-        })
-      };
-    }
+    const { model, max_tokens, system, messages } = JSON.parse(event.body);
 
     let liveDataContext = "";
     try {
