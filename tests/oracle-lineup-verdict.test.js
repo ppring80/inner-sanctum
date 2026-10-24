@@ -321,7 +321,9 @@ test('rostered player matchup conflict still blocks the SAGE decision', () => {
   const rankings = week7Rankings();
   const schedule = scheduleFrom(rankings);
   const index = require('../netlify/functions/_super-sage-kickoff.js').buildKickoffIndex(schedule, { season: 2026, week: 7 });
-  findRow(rankings, 'DeVonta Smith').gameID = '20261025_FAKE@PHI';
+  const activeRosterRow = rankings.positions.WR.find(p => p.name === 'Rashee Rice');
+  assert.ok(activeRosterRow, 'fixture must use an active rostered WR');
+  activeRosterRow.gameID = '20261025_FAKE@KC';
   const rosterNames = [...customerLineup().starters, ...customerLineup().bench].map(p => p.name);
   const result = verdictModule.validateWeekEvidence(rankings, { season: 2026, week: 7, now: WEEK7_NOW, kickoffIndex: index, scoring: 'half', rosterNames });
   assert.equal(result.ok, false);
