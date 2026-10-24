@@ -299,6 +299,19 @@ exports.handler = async (event) => {
     }
 
     const lineupEligibility = await buildLineupEligibility(messages);
+    // A direct question asking which teams are on bye needs the cached team
+    // list, not the player-by-player lineup eligibility pathway.
+    const latestQuestion = [...(Array.isArray(messages) ? messages : [])].reverse()
+      .find(m => m && m.role === 'user' && typeof m.content === 'string')?.content || '';
+    const teamByeQuestion = /\\b(?:which|what|list|name|who)\\b[\\s\\S]{0,90}\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\bbyes?\\b|\\b(?:teams?|nfl teams?)\\b[\\s\\S]{0,90}\\b(?:on|have|with)\\s+(?:a\\s+)?byes?\\b/i.test(latestQuestion);
+    if (teamByeQuestion && lineupEligibility?.freeform) {
+      const teams = lineupEligibility.byeTeams;
+      const answer = Array.isArray(teams)
+        ? (teams.length ? 'NFL Week ' + lineupEligibility.week + ' bye teams: ' + teams.join(', ') + '.' : 'No NFL teams are on bye in Week ' + lineupEligibility.week + '.')
+        : 'The Week ' + lineupEligibility.week + ' bye-week schedule is not verified in the cache. I cannot reliably list the teams.';
+      return { statusCode: 200, headers: CORS_HEADERS,
+        body: JSON.stringify({ content: [{ type: 'text', text: answer }] }) };
+    }
     // Answer explicit freeform bye questions from the verified week-specific
     // cache, rather than letting the language model guess or hedge.
     if (lineupEligibility?.freeform && lineupEligibility.rows.length) {
