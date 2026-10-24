@@ -278,7 +278,7 @@ exports.handler = async (event) => {
   }
 
   const origin = event.headers.origin || event.headers.Origin || "";
-  const originAllowed = ALLOWED_ORIGINS.includes(origin);
+  const originAllowed = ALLOWED_ORIGINS.includes(origin) || (process.env.CONTEXT === "deploy-preview" && origin === "https://deploy-preview-321--delicate-dragon-447881.netlify.app");
   if (!originAllowed) {
     console.log(`Blocked request from origin: ${origin}`);
     return {
