@@ -1,0 +1,16 @@
+# Select this file by setting the TEST site's Package directory to acceptance.
+# Paths are relative to the repository root (leave Base directory unset).
+[build]
+  command = "node scripts/prepare-sage-acceptance.js"
+  publish = ".sage-acceptance/public"
+  functions = ".sage-acceptance/functions"
+
+[build.environment]
+  NODE_VERSION = "24"
+  SAGE_ACCEPTANCE_MODE = "isolated"
+  SAGE_ACCEPTANCE_SITE_ID = "dcdb8384-114c-4f80-a2fe-acc0ecb39d57"
+  SAGE_ACCEPTANCE_ORIGIN = "https://sprightly-chebakia-13d478.netlify.app"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = [".sage-acceptance/lib/**"]
