@@ -203,7 +203,7 @@ function weekWindow(week) {
 }
 const ymd = (ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, '');
 
-function validateWeekEvidence(rankings, { season, week, now = new Date(), kickoffIndex = null, scoring = null }) {
+function validateWeekEvidence(rankings, { season, week, now = new Date(), kickoffIndex = null, scoring = null, rosterNames = null }) {
   const problems = [];
   const { start, end } = weekWindow(week);
   const nowMs = now.getTime();
@@ -224,6 +224,7 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
   }
   const rows = rankingRows(rankings);
   const startDay = ymd(start), endDay = ymd(end - 1);
+  const rosterKeys = Array.isArray(rosterNames) ? new Set(rosterNames.map(canonicalNameKey)) : null;
   let badGames = 0, badProj = 0, badMatchups = 0; const examples = [], matchupExamples = [];
   rows.forEach((r) => {
     if (r._inactive) return; // Historical inactive/bye game IDs are not current matchups.
@@ -232,7 +233,10 @@ function validateWeekEvidence(rankings, { season, week, now = new Date(), kickof
     const pr = r.projection;
     if (pr && ((pr.week != null && Number(pr.week) !== Number(week)) || (pr.updatedAt && !inWindow(pr.updatedAt)) ||
       (scoring && pr.scoring && normalizeScoring(pr.scoring) !== scoring))) badProj++;
-    if (kickoffIndex && kickoffIndex.ok && r.gameID && r.position !== 'DEF') {
+    // A bad matchup for an unrelated ranked player must not invalidate a
+    // customer's entire lineup. Keep strict checks for every rostered player.
+    if (kickoffIndex && kickoffIndex.ok && r.gameID && r.position !== 'DEF' &&
+        (!rosterKeys || rosterKeys.has(canonicalNameKey(r.name)))) {
       const team = teamCode(r.currentTeam || r.team);
       const key = Object.keys(kickoffIndex.byTeam).find((k) => teamCode(k) === team);
       const game = key ? kickoffIndex.byTeam[key] : null;
@@ -778,7 +782,7 @@ async function buildOracleLineupVerdict({ lineup, event = {}, messages = [], dep
   try { schedule = await (deps.readSchedule || readCachedWeeklySchedule)({ season: payload.season, week: payload.week, seasonType: 'reg' }); } catch (error) { scheduleError = error.message; }
   const kickoffIndex = buildKickoffIndex(schedule, { season: payload.season, week: payload.week });
 
-  const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex, scoring: payload.scoring });
+  const evidenceCheck = validateWeekEvidence(rankings, { season: payload.season, week: payload.week, now, kickoffIndex, scoring: payload.scoring, rosterNames: [...payload.starters, ...payload.bench].map(p => p.name) });
   if (!evidenceCheck.ok) {
     // Server-side diagnostics only. Do not weaken the evidence guard or
     // disclose player/game identifiers in the customer-facing response.
