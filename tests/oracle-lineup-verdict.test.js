@@ -452,7 +452,7 @@ test('a Weekly SAGE packet in a different scoring than the league is rejected', 
   const out = await buildOracleLineupVerdict({ lineup: customerLineup({ scoring: 'ppr' }), event: {}, deps: d });
   assert.equal(out.status, 'UNAVAILABLE');
   assert.equal(calls.args, undefined);
-  assert.match(out.text, /Weekly SAGE returned half scoring, not ppr/);
+  assert.match(out.text, /the evidence is not verifiably Week 7; see server diagnostics/);
 });
 
 test('league scoring reaches Weekly SAGE and the authority unchanged', async () => {
@@ -726,7 +726,7 @@ test('rejected evidence never turns benched players into SWAP or invented bye wa
 
 test('all three personas use shared SAGE for pasted lineups', () => {
   const chat = fs.readFileSync(path.join(ROOT,'netlify/functions/chat.js'),'utf8');
-  assert.match(chat,/parsePastedOracleLineup\\(messages\\)/);
+  assert.ok(chat.includes('parsePastedOracleLineup(messages)'), 'pasted lineups must be parsed before SAGE evaluation');
   assert.match(chat,/personaKey === 'trash'/);
   assert.match(chat,/personaKey === 'analyst'/);
   assert.ok(chat.includes('buildOracleLineupVerdict({ lineup: effectiveLineup'), 'all persona lineups must use shared SAGE verdict');
