@@ -55,6 +55,25 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     });
   }
   assert.throws(() => assertIsolated({...skewEnv,SITE_ID:PRODUCTION_SITE_ID}),/site identity mismatch/);
+  const platformRuntimeEnv = {...skewEnv,AWS_LAMBDA_METADATA_TOKEN:hiddenValue,NETLIFY_FUNCTIONS_TOKEN:hiddenValue};
+  for (const key of ['AWS_LAMBDA_METADATA_TOKEN','NETLIFY_FUNCTIONS_TOKEN']) {
+    assert.doesNotThrow(() => assertIsolated({...env,[key]:hiddenValue},event));
+  }
+  assert.doesNotThrow(() => assertIsolated(platformRuntimeEnv),'cold-start guard accepts both observed infrastructure variables');
+  assert.doesNotThrow(() => assertIsolated(platformRuntimeEnv,event),'invocation guard accepts both observed infrastructure variables');
+  for (const key of ['PRODUCTION_TOKEN','PRODUCTION_SECRET','PROVIDER_API_KEY','DATABASE_CONNECTION_STRING','SERVICE_PASSWORD',
+    'NETLIFY_AUTH_TOKEN','ANTHROPIC_API_KEY','NETLIFY_FUNCTIONS_TOKEN_SECRET','NETLIFY_OTHER_TOKEN',
+    'AWS_LAMBDA_METADATA_TOKEN_SECRET','AWS_OTHER_TOKEN']) {
+    assert.throws(() => assertIsolated({...platformRuntimeEnv,[key]:'SYNTHETIC_UNAUTHORIZED_VALUE'},event), error => {
+      assert.equal(error.message,'Acceptance credential preflight failed (values withheld); rejected variable names: '+JSON.stringify([key]));
+      assert.ok(!error.stack.includes(hiddenValue));
+      assert.ok(!error.stack.includes('SYNTHETIC_UNAUTHORIZED_VALUE'));
+      return true;
+    });
+  }
+  assert.throws(() => assertIsolated({...platformRuntimeEnv,SITE_ID:PRODUCTION_SITE_ID}),/site identity mismatch/);
+  assert.throws(() => assertIsolated(platformRuntimeEnv,{headers:{'x-nf-site-id':PRODUCTION_SITE_ID}}),/invocation site mismatch/);
+  assert.throws(() => assertIsolated({...platformRuntimeEnv,NETLIFY_BLOBS_CONTEXT:Buffer.from(JSON.stringify({siteID:PRODUCTION_SITE_ID})).toString('base64')},event),/storage identity mismatch/);
   assert.doesNotThrow(() => assertIsolated({...env,EMPTY_TOKEN:''},event));
   assert.throws(() => assertIsolated(env, {headers:{'x-nf-site-id':PRODUCTION_SITE_ID}}), /invocation site mismatch/);
   assert.throws(() => assertIsolated({...env,NETLIFY_BLOBS_CONTEXT:Buffer.from(JSON.stringify({siteID:PRODUCTION_SITE_ID})).toString('base64')},event), /storage identity mismatch/);
@@ -168,7 +187,7 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   const fixture = JSON.parse(fs.readFileSync(path.join(out,'lib/acceptance/football-fixture.json')));
   assert.equal(fixture.provenance.kind,'synthetic');
   let networkCalls = 0, handlerCalls = 0;
-  const sandbox = {process:{env:{SITE_ID:site}},exports:{},URL,Buffer,Response,
+  const sandbox = {process:{env:{SITE_ID:site,AWS_LAMBDA_METADATA_TOKEN:hiddenValue,NETLIFY_FUNCTIONS_TOKEN:hiddenValue}},exports:{},URL,Buffer,Response,
     globalThis:{fetch:async()=>{networkCalls++;return new Response('{}');}},
     require:p=>{
       if(p.endsWith('acceptance/runtime')) return {assertIsolated};
