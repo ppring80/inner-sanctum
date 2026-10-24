@@ -729,7 +729,7 @@ test('all three personas use shared SAGE for pasted lineups', () => {
   assert.match(chat,/parsePastedOracleLineup\\(messages\\)/);
   assert.match(chat,/personaKey === 'trash'/);
   assert.match(chat,/personaKey === 'analyst'/);
-  assert.match(chat,/buildOracleLineupVerdict\\(\\{ lineup: effectiveLineup/);
+  assert.ok(chat.includes('buildOracleLineupVerdict({ lineup: effectiveLineup'), 'all persona lineups must use shared SAGE verdict');
 });
 
 test('chat.js requests without a structured lineup keep the existing model path', async () => {
