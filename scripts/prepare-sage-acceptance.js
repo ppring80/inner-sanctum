@@ -34,6 +34,7 @@ for (const [key,value] of Object.entries(settings)) {
 const { assertIsolated } = require("../lib/acceptance/runtime");
 assertIsolated(process.env);
 const fixture = require("../lib/acceptance/football-fixture.json");
+const { connectLambda } = require("@netlify/blobs");
 let blobOrigin;
 const networkFetch = globalThis.fetch;
 globalThis.fetch = async (input, options) => {
@@ -43,16 +44,26 @@ globalThis.fetch = async (input, options) => {
       return new Response(JSON.stringify({error:"fixture_period_unavailable"}), {status:404});
     return Response.json(fixture.rankings);
   }
-  if (blobOrigin && url.origin === blobOrigin && url.pathname.split("/").includes(settings.SAGE_ACCEPTANCE_SITE_ID))
+  const parts = url.pathname.split("/");
+  const siteIndex = /^region:(ap-southeast-1|ap-southeast-2|eu-central-1|us-east-1|us-east-2)$/.test(parts[1]) ? 2 : 1;
+  if (blobOrigin && url.origin === blobOrigin && !url.username && !url.password && !url.port &&
+      parts[siteIndex] === settings.SAGE_ACCEPTANCE_SITE_ID)
     return networkFetch(input, {...options, redirect:"error"});
   throw new Error("Acceptance network access blocked");
 };
 const handler = require("../lib/netlify/functions/${endpoint}").handler;
 exports.handler = async (event, context) => {
   assertIsolated(process.env, event);
-  const blobs = JSON.parse(Buffer.from(event.blobs, "base64").toString("utf8"));
-  const url = new URL(blobs.url);
-  if (url.protocol !== "https:" || !url.hostname.endsWith(".netlify.com")) throw new Error(
+  blobOrigin = undefined;
+  // Lambda compatibility: use the SDK's platform-injected context, not a hostname family.
+  connectLambda(event);
+  assertIsolated(process.env, event);
+  const storage = JSON.parse(Buffer.from(globalThis.netlifyBlobsContext || process.env.NETLIFY_BLOBS_CONTEXT, "base64").toString("utf8"));
+  if (storage.siteID !== settings.SAGE_ACCEPTANCE_SITE_ID) throw new Error("Acceptance storage identity mismatch");
+  let url;
+  try { url = new URL(storage.edgeURL); }
+  catch { throw new Error("Invalid Blobs endpoint"); }
+  if (url.protocol !== "https:" || url.username || url.password || url.port) throw new Error(
     "Untrusted Blobs endpoint; " + JSON.stringify({protocol:url.protocol, hostname:url.hostname})
   );
   blobOrigin = url.origin;
