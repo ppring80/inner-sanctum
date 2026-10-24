@@ -278,7 +278,7 @@ exports.handler = async (event) => {
   }
 
   const origin = event.headers.origin || event.headers.Origin || "";
-  const originAllowed = ALLOWED_ORIGINS.includes(origin);
+  const originAllowed = ALLOWED_ORIGINS.includes(origin) || (origin === "https://deploy-preview-321--delicate-dragon-447881.netlify.app" && (event.headers.host || event.headers.Host) === "deploy-preview-321--delicate-dragon-447881.netlify.app");
   if (!originAllowed) {
     console.log(`Blocked request from origin: ${origin}`);
     return {
@@ -299,6 +299,19 @@ exports.handler = async (event) => {
     }
 
     const lineupEligibility = await buildLineupEligibility(messages);
+    // A direct question asking which teams are on bye needs the cached team
+    // list, not the player-by-player lineup eligibility pathway.
+    const latestQuestion = [...(Array.isArray(messages) ? messages : [])].reverse()
+      .find(m => m && m.role === 'user' && typeof m.content === 'string')?.content || '';
+    const teamByeQuestion = /\b(?:what|which|list|name|who)\b/i.test(latestQuestion) && /\bteams?\b/i.test(latestQuestion) && /\bbye\b/i.test(latestQuestion);
+    if (teamByeQuestion && lineupEligibility?.freeform) {
+      const teams = lineupEligibility.byeTeams;
+      const answer = Array.isArray(teams)
+        ? (teams.length ? 'NFL Week ' + lineupEligibility.week + ' bye teams: ' + teams.join(', ') + '.' : 'No NFL teams are on bye in Week ' + lineupEligibility.week + '.')
+        : 'The Week ' + lineupEligibility.week + ' bye-week schedule is not verified in the cache. I cannot reliably list the teams.';
+      return { statusCode: 200, headers: CORS_HEADERS,
+        body: JSON.stringify({ content: [{ type: 'text', text: answer }] }) };
+    }
     // Answer explicit freeform bye questions from the verified week-specific
     // cache, rather than letting the language model guess or hedge.
     if (lineupEligibility?.freeform && lineupEligibility.rows.length) {

@@ -57,6 +57,7 @@ async function buildLineupEligibility(messages, season = 2026) {
   });
   const blockedNames = rows.filter(r=>!r.eligible).map(r=>r.name);
   return { week:request.week,rows,blockedNames,freeform:Boolean(request.freeform),
+    byeTeams: scheduleValid ? [...schedule.byeTeams] : null,
     text:'WEEK '+request.week+' LINEUP ELIGIBILITY — CACHED EVIDENCE ONLY (schedule '+(schedule?.generatedAt||'unavailable')+', injury '+(cache?.updatedAt||'unavailable')+'). Do not recommend starting, swapping in, or promoting any player unless status is SCHEDULED; injury snapshot checked. BYE and INJURY BLOCKED are prohibited. UNVERIFIED is not eligible for an affirmative substitution. QUESTIONABLE players require a conditional warning and final inactive check. These restrictions apply to Oracle, Trash Lord and Analyst.\n'+rows.map(r=>r.name+' | '+r.team+' | '+r.status+' | injury: '+r.injury).join('\n') };
 }
 function unsafeRecommendation(reply, blockedNames) {
