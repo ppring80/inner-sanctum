@@ -28,6 +28,21 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   for (const key of ['ANTHROPIC_API_KEY','TANK01_API_KEY','OPENAI_API_KEY','NETLIFY_AUTH_TOKEN','OTHER_PROVIDER_SECRET']) {
     assert.throws(() => assertIsolated({...env,[key]:'not-a-real-secret'}, event), /credential preflight/);
   }
+  const hiddenValue = 'SYNTHETIC_VALUE_MUST_NEVER_APPEAR';
+  for (const key of ['ANTHROPIC_API_KEY','TANK01_API_KEY','OPENAI_API_KEY','NETLIFY_AUTH_TOKEN','OTHER_PROVIDER_SECRET']) {
+    assert.throws(() => assertIsolated({...env,[key]:hiddenValue},event), error => {
+      assert.equal(error.message, 'Acceptance credential preflight failed (values withheld); rejected variable names: '+JSON.stringify([key]));
+      assert.ok(!error.stack.includes(hiddenValue),'diagnostic and stack must never contain credential values');
+      return true;
+    });
+  }
+  assert.throws(() => assertIsolated({...env,Z_BUILD_TOKEN:hiddenValue,A_PROVIDER_KEY:hiddenValue,UNRELATED:'safe'},event), error => {
+    assert.ok(error.message.endsWith('["A_PROVIDER_KEY","Z_BUILD_TOKEN"]'),'all rejected names are sorted deterministically');
+    assert.ok(!error.message.includes('UNRELATED'));
+    assert.ok(!error.stack.includes(hiddenValue));
+    return true;
+  });
+  assert.doesNotThrow(() => assertIsolated({...env,EMPTY_TOKEN:''},event));
   assert.throws(() => assertIsolated(env, {headers:{'x-nf-site-id':PRODUCTION_SITE_ID}}), /invocation site mismatch/);
   assert.throws(() => assertIsolated({...env,NETLIFY_BLOBS_CONTEXT:Buffer.from(JSON.stringify({siteID:PRODUCTION_SITE_ID})).toString('base64')},event), /storage identity mismatch/);
   assertIsolated(env,event);
