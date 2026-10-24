@@ -322,7 +322,7 @@ exports.handler = async (event) => {
         const statements = [
           ...byes.map(row => row.name + " (" + row.team + ") is on bye in Week " + lineupEligibility.week + ". Do not start him this week."),
           ...blocked.map(row => row.name + " (" + row.team + ") has an injury designation that blocks a start. Do not put him in your lineup."),
-          ...unknown.map(row => "I cannot verify " + row.name + "'s Week " + lineupEligibility.week + " eligibility from the cached schedule and injury evidence. Do not start him without confirming availability.")
+          ...unknown.map(row => row.name + " — availability not confirmed for Week " + lineupEligibility.week + ". Check the latest injury report and final game-day inactives before starting him. Keep a backup ready.")
         ];
         return { statusCode: 200, headers: CORS_HEADERS,
           body: JSON.stringify({ content: [{ type: "text", text: statements.join(" ") }] }) };
