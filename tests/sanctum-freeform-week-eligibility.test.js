@@ -23,7 +23,7 @@ const byeQuestion = "what NFL teams are on BYE for week 7";
 const questionPattern = text => /\b(?:what|which|list|name|who)\b/i.test(text) && /\bteams?\b/i.test(text) && /\bbye\b/i.test(text);
 assert.ok(questionPattern(byeQuestion), 'exact customer team-bye question must match');
 assert.equal(context.parse([{role:'user',content:byeQuestion}]).week,7);
-assert.match(chat, /teamByeQuestion && lineupEligibility\\?\\.freeform/);
+assert.ok(chat.includes('teamByeQuestion && lineupEligibility?.freeform'));
 assert.match(chat, /lineupEligibility\\.byeTeams/);
 assert.match(chat, /bye-week schedule is not verified/);
 const eligibilitySource = fs.readFileSync('netlify/functions/_sanctum-lineup-eligibility.js','utf8');
