@@ -8,7 +8,11 @@ function assertIsolated(env, event) {
   const config = oauthConfiguration(env);
   if (env.SAGE_ACCEPTANCE_MODE !== "isolated") throw new Error("Acceptance mode required");
   const forbidden = Object.keys(env).filter(key => env[key] && CREDENTIAL_NAME.test(key) && !PLATFORM_RUNTIME_KEYS.has(key));
-  if (forbidden.length) throw new Error("Acceptance credential preflight failed (values withheld)");
+  // Report names only; retain the exact rejection predicate and exceptions above.
+  if (forbidden.length) throw new Error(
+    "Acceptance credential preflight failed (values withheld); rejected variable names: " +
+    JSON.stringify(forbidden.sort())
+  );
   if (event && event.headers?.["x-nf-site-id"] !== env.SAGE_ACCEPTANCE_SITE_ID) {
     throw new Error("Acceptance invocation site mismatch");
   }
