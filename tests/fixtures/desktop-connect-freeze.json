@@ -23,7 +23,7 @@
     "cbs-extension/service-worker.js": "905b651a0b661d7a021b3809d6d47f6d195a58f4ab5f3bb329b4fb5529505edb",
     "provider-adapters.js": "08350229c2ad4ed6fae4c5da9425d16b9ac52a155f0ad63b8cdca36f0ec32ce2",
     "league-connection.js": "2d840e23bb6203f40f9ac4b7aed1bbb396a8ba86f24b6eb1421d45c7036c8d91",
-    "netlify/functions/league-snapshot.js": "fc8deb73284b0b1292662841ed2489c46bad1fdcf5aac10e8df8b5dd7f598ebb"
+    "netlify/functions/league-snapshot.js": "aab767bf8d515e7a69fef57ec52a1278f80ca297b6af720a548f26c7d9b22b1f"
   },
   "blocks": {
     "cbsListenerConstants": {
