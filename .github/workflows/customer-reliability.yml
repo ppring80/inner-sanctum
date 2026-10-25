@@ -1,0 +1,28 @@
+name: Customer Reliability — Production
+on:
+  schedule:
+    - cron: '15 14 * * *'
+    - cron: '30 8 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-reliability-production
+  cancel-in-progress: false
+
+jobs:
+  customer-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Read-only production customer checks
+        run: node scripts/customer-reliability-smoke.js
+      - name: Report failure in Actions
+        if: failure()
+        run: echo "::error::Customer reliability smoke failed. Review the failed checks before approving changes."
