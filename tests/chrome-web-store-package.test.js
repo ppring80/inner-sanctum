@@ -63,3 +63,18 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.js
 
   console.log('Chrome Web Store packaging regression tests passed.');
 })();
+
+// Check the actual ZIP and prove missing direct/transitive dependencies fail.
+const os=require('os'), cp=require('child_process');
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'sanctum-extension-'));
+try {
+  const zip=path.join(temp,'extension.zip');
+  cp.execFileSync('python3',[path.join(root,'scripts/package-chrome-extension.py'),'--output',zip]);
+  cp.execFileSync('python3',[path.join(root,'scripts/package-chrome-extension.py'),'--verify',zip]);
+  for(const missing of ['league-sync-content-bridge.js','league-sync-worker.js']) {
+    const broken=path.join(temp,'broken.zip');
+    cp.execFileSync('python3',['-c', 'import sys,zipfile; src=zipfile.ZipFile(sys.argv[1]); dst=zipfile.ZipFile(sys.argv[2],"w"); [dst.writestr(n,src.read(n)) for n in src.namelist() if n!=sys.argv[3]]; dst.close()',zip,broken,missing]);
+    assert.throws(()=>cp.execFileSync('python3',[path.join(root,'scripts/package-chrome-extension.py'),'--verify',broken],{stdio:'pipe'}), 'ZIP missing '+missing+' must fail');
+  }
+} finally {fs.rmSync(temp,{recursive:true,force:true});}
+console.log('Actual ZIP closure and both missing-dependency mutations passed.');
