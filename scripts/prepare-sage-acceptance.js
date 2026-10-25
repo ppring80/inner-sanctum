@@ -17,6 +17,14 @@ function prepare(root, env = process.env) {
   fs.copyFileSync(path.join(root, "player-identity.js"), path.join(out, "lib/player-identity.js"));
   fs.copyFileSync(path.join(root, "acceptance/runtime.js"), path.join(out, "lib/acceptance/runtime.js"));
   fs.copyFileSync(path.join(root, "acceptance/football-fixture.json"), path.join(out, "lib/acceptance/football-fixture.json"));
+  fs.copyFileSync(path.join(root, "acceptance/espn-preservation-assertions.js"), path.join(out, "lib/acceptance/espn-preservation-assertions.js"));
+  // Instrument only the generated isolated copy. Production MCP source stays unchanged.
+  const mcpFile = path.join(out, "lib/netlify/functions/chatgpt-mcp.js");
+  const mcpSource = fs.readFileSync(mcpFile, "utf8");
+  const anchor = "  return server;\n}";
+  if (mcpSource.split(anchor).length !== 2) throw new Error("Acceptance registration anchor mismatch");
+  fs.writeFileSync(mcpFile, mcpSource.replace(anchor,
+    '  require("../../acceptance/espn-preservation-assertions").register(server, z);\n' + anchor));
   const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   const manifest = { sourceCommit: sha, sourceDirty: !!execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" }).trim(), siteId: env.SAGE_ACCEPTANCE_SITE_ID, origin: config.issuer, fixture: fixture.provenance };
   fs.writeFileSync(path.join(out, "public/build.json"), JSON.stringify(manifest, null, 2));
@@ -68,7 +76,7 @@ exports.handler = async (event, context) => {
   );
   blobOrigin = url.origin;
   const rpc = event.httpMethod === "POST" && event.body ? (() => { try { return JSON.parse(event.isBase64Encoded ? Buffer.from(event.body,"base64").toString("utf8") : event.body); } catch { return null; } })() : null;
-  if (rpc?.method === "tools/call" && !["compare_players", "get_player_profile", "get_lineup_recommendation"].includes(rpc.params?.name))
+  if (rpc?.method === "tools/call" && !["compare_players", "get_player_profile", "get_lineup_recommendation", "get_espn_preservation_assertions"].includes(rpc.params?.name))
     return {statusCode:403, body:JSON.stringify({error:"acceptance_tool_not_enabled"})};
   return handler(event, context);
 };
