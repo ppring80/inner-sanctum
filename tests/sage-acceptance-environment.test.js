@@ -207,6 +207,8 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   assert.equal(handlerCalls,0);
   assert.equal((await sandbox.exports.handler({...event,httpMethod:'POST',body:JSON.stringify({method:'tools/call',params:{name:'compare_players'}})})).statusCode,401,'allowed tool still uses unchanged authentication handler');
   assert.equal(handlerCalls,1);
+  assert.equal((await sandbox.exports.handler({...event,httpMethod:'POST',body:JSON.stringify({method:'tools/call',params:{name:'get_espn_preservation_assertions'}})})).statusCode,401,'synthetic assertion tool uses the same OAuth-protected handler');
+  assert.equal(handlerCalls,2);
   for(const url of ['https://theinnersanctum.xyz/.netlify/functions/weekly-sage-rankings','https://api.anthropic.com/v1/messages','https://tank01.example.com/','https://test.blobs.netlify.com/'+PRODUCTION_SITE_ID+'/store']) {
     await assert.rejects(()=>sandbox.globalThis.fetch(url),/network access blocked/);
   }
