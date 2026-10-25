@@ -6069,13 +6069,30 @@ function buildServer(
         Array.isArray(lineupSlots) &&
         lineupSlots.length > 0;
 
-      if (!lineupRequirementsAvailable) {
-        warnings.push(
-          usingPastedRoster
-            ? "Lineup requirements could not be reconstructed from the pasted roster-slot labels, so no starters were assigned."
-            : "Lineup requirements could not be determined from the linked league's captured settings, so no starters were assigned."
-        );
+      const missingSlotPlayers = usingPastedRoster
+        ? roster.filter(player => !cleanString(player.lineupSlot))
+        : [];
+      if (!lineupRequirementsAvailable || missingSlotPlayers.length > 0) {
+        const clarification = lineupRequirementsAvailable
+          ? `Which roster slot applies to ${missingSlotPlayers.map(player => player.name).join(", ")}? Confirm whether they are available for the open starting slot or needed in another starting spot.`
+          : "Which starting slot is open, and which positions does it allow? For a FLEX choice, confirm whether both candidates are available for that slot or needed in dedicated starting spots.";
+        return {
+          content: [{ type: "text", text: clarification +
+            (usingPastedRoster ? "\nSupplied roster (retained): " + JSON.stringify(roster) : "") }],
+          structuredContent: {
+            source: "Inner Sanctum",
+            inputSource: usingPastedRoster ? "pasted_roster" : "linked_league",
+            liveFantasyDataConnected: !usingPastedRoster,
+            lineupRequirementsAvailable: false,
+            readOnly: true,
+            context,
+            starters: [], bench: [], unmatchedRosterPlayers: [], unfilledSlots: [],
+            warnings: [clarification],
+            error: "roster_slot_context_unavailable"
+          }
+        };
       }
+
 
       try {
         const baseUrl =
