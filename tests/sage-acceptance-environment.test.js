@@ -226,7 +226,7 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
       return true;
     });
   }
-  assert.equal(handlerCalls,1,'rejected endpoints never reach authentication handler');
+  assert.equal(handlerCalls,2,'rejected endpoints never reach authentication handler after both allowed tool checks');
   assert.equal(networkCalls,0);
   // Real SDK context and request construction, with synthetic credentials and no network.
   const platformEvent = {...event,blobs:Buffer.from(JSON.stringify({url:'https://edge.netlifyblobs.com',token:'synthetic-only'})).toString('base64')};
