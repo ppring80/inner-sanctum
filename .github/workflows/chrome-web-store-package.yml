@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'cbs-extension/**'
+      - 'scripts/package-chrome-extension.py'
       - 'chrome-web-store-privacy.html'
       - 'docs/CHROME_WEB_STORE_SUBMISSION.md'
       - 'tests/chrome-web-store-package.test.js'
@@ -27,28 +28,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/cws/icons
-          cp cbs-extension/manifest.json dist/cws/
-          cp cbs-extension/service-worker.js dist/cws/
-          cp cbs-extension/service-worker-v050.js dist/cws/
-          cp cbs-extension/cbs-browser-connector.js dist/cws/
-          cp cbs-extension/cbs-content-bridge.js dist/cws/
-          cp cbs-extension/cbs-main-bridge.js dist/cws/
-          cp cbs-extension/cbs-free-agent-capture.js dist/cws/
-          cp cbs-extension/espn-content-bridge.js dist/cws/
-          cp cbs-extension/espn-main-bridge.js dist/cws/
-          cp cbs-extension/sanctum-content-bridge.js dist/cws/
-          cp cbs-extension/icons/icon-16.png dist/cws/icons/
-          cp cbs-extension/icons/icon-32.png dist/cws/icons/
-          cp cbs-extension/icons/icon-48.png dist/cws/icons/
-          cp cbs-extension/icons/icon-128.png dist/cws/icons/
-          (
-            cd dist/cws
-            zip -r -X ../inner-sanctum-connect-0.5.2-cws.zip .
-          )
-          sha256sum dist/inner-sanctum-connect-0.5.2-cws.zip | tee dist/inner-sanctum-connect-0.5.2-cws.sha256
-          test "$(unzip -Z1 dist/inner-sanctum-connect-0.5.2-cws.zip | head -1)" = "manifest.json"
-          ! unzip -Z1 dist/inner-sanctum-connect-0.5.2-cws.zip | grep -Eq '(^|/)(__MACOSX|\.git|tests|docs)(/|$)'
+          python3 scripts/package-chrome-extension.py --output dist/inner-sanctum-connect-0.5.2-cws.zip
+          python3 scripts/package-chrome-extension.py --verify dist/inner-sanctum-connect-0.5.2-cws.zip
 
       - name: Upload Chrome Web Store package
         uses: actions/upload-artifact@v4
