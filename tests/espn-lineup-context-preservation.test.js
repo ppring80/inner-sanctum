@@ -61,6 +61,32 @@ const compare = (players, externalAnalysisRequested = false) => tools.compare_pl
   assert.equal(adapted.roster[1].lineupSlot, 'Bench');
   const snapshot = { provider: 'espn', league: { id: 'fixture-league', season: 2026, scoringPeriodId: 7 }, team: { id: 'fixture-team' }, week: 7,
     meta: { source: 'espn-browser-assisted', capturedAt: '2026-10-22T12:00:00Z' }, roster: adapted.roster };
+  // Real connection, browser snapshot projection, server canonicalization and MCP boundary.
+  const storage = new Map();
+  const connectionVm = {window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},console,Date,JSON,Set,Map};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../league-connection.js'),'utf8'),connectionVm);
+  const page=fs.readFileSync(require.resolve('../connect-league.html'),'utf8');
+  const browserFn=page.slice(page.indexOf('function buildChatGptLeagueSnapshot('),page.indexOf('function setChatGptLinkMessage('));
+  const projectSnapshot=vm.runInNewContext(browserFn+';buildChatGptLeagueSnapshot',{Date,getConnectedLeagueIdentity:c=>({leagueId:c.league.id,leagueName:c.league.name,teamId:c.team.id,teamName:c.team.name})});
+  const serverPath=require.resolve('../netlify/functions/league-snapshot.js');
+  const serverVm={require:require('module').createRequire(serverPath),exports:{},process,console,Buffer,URL};
+  vm.runInNewContext(fs.readFileSync(serverPath,'utf8')+';exports.canonical=buildCanonicalSnapshot;',serverVm);
+  const api=connectionVm.window.LeagueConnection;
+  for(const [teamId,period,week,capturedAt] of [['team-a',7,8,'2026-10-22T12:00:00Z'],['team-b',9,10,null]]) {
+    const rawTeam={id:teamId,name:'Synthetic Team',roster:{entries:[{lineupSlotId:4,playerPoolEntry:{player:{id:teamId+'-player',fullName:'Fixture WR',defaultPositionId:3,proTeamId:1}}}]}};
+    const roster=normalizeTeam(rawTeam,{scoringPeriodId:period});
+    api.connect('espn',{league:{id:'fixture-league',name:'Synthetic League',season:2026,scoringPeriodId:period,teamCount:12},team:{id:teamId,name:'Synthetic Team'},week,roster,scoringFormat:'ppr',meta:{source:'espn-browser-assisted',capturedAt}});
+    const stored=serverVm.exports.canonical(projectSnapshot('espn',api.getActiveConnection()));
+    const result=extractRosterEntries(stored)[0].lineupContext;
+    assert.equal(result.teamId,teamId);assert.equal(result.playerId,teamId+'-player');assert.equal(result.leagueId,'fixture-league');
+    assert.equal(result.season,2026);assert.equal(result.scoringPeriodId,period);assert.equal(result.week,week);
+    assert.notEqual(result.week,result.scoringPeriodId,'NFL week must not be inferred from provider scoring period');
+    assert.equal(result.originalSlotId,'4');assert.equal(result.asOf,capturedAt);
+    assert.equal(result.lock.state,'unknown');assert.equal(result.eligibility.status,'unknown');
+    assert.equal(stored.league.scoringPeriodId,undefined,'passive source envelope does not alter existing decision league context');
+    const missing=serverVm.exports.canonical({...stored,espnLineupSource:{...stored.espnLineupSource,capturedAt:'bad timestamp'}});
+    assert.equal(extractRosterEntries(missing)[0].lineupContext.asOf,null);
+  }
   const normalized = extractRosterEntries(snapshot);
   const ctx = normalized[0].lineupContext;
   assert.equal(ctx.leagueId, 'fixture-league'); assert.equal(ctx.teamId, 'fixture-team');
