@@ -109,10 +109,9 @@ const SERVER_INFO = {
 
 const AUTH_STORE = "chatgpt-oauth";
 const SNAPSHOT_STORE = "league-snapshots";
-const MCP_RESOURCE =
-  "https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp";
-const PROTECTED_RESOURCE_METADATA_URL =
-  "https://theinnersanctum.xyz/.well-known/oauth-protected-resource";
+const oauthConfig = require("./_sage-oauth-config.js").oauthConfiguration();
+const MCP_RESOURCE = oauthConfig.resource;
+const PROTECTED_RESOURCE_METADATA_URL = oauthConfig.protectedResourceMetadata;
 const SCOPE_LEAGUE_READ =
   "inner_sanctum.league.read";
 
