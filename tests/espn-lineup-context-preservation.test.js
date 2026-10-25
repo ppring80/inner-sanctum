@@ -76,6 +76,16 @@ const compare = (players, externalAnalysisRequested = false) => tools.compare_pl
     const rawTeam={id:teamId,name:'Synthetic Team',roster:{entries:[{lineupSlotId:4,playerPoolEntry:{player:{id:teamId+'-player',fullName:'Fixture WR',defaultPositionId:3,proTeamId:1}}}]}};
     const roster=normalizeTeam(rawTeam,{scoringPeriodId:period});
     api.connect('espn',{league:{id:'fixture-league',name:'Synthetic League',season:2026,scoringPeriodId:period,teamCount:12},team:{id:teamId,name:'Synthetic Team'},week,roster,scoringFormat:'ppr',meta:{source:'espn-browser-assisted',capturedAt}});
+    const patchSource=teamSource.slice(teamSource.indexOf('  function buildEspnTeamContextPatch('),teamSource.indexOf('  function readJson('));
+    const buildTeamPatch=vm.runInNewContext(patchSource+';buildEspnTeamContextPatch', {Date,teamDisplayName:t=>t.name,normalizeEspnRoster:normalizeTeam,detectEspnScoringFormat:()=>null,normalizeEspnLineup:()=>({})});
+    const current=api.getActiveConnection();
+    const switchedTeam={...rawTeam,id:teamId+'-switched',roster:{entries:[{lineupSlotId:23,playerPoolEntry:{player:{id:teamId+'-switched-player',fullName:'Fixture WR',defaultPositionId:3,proTeamId:1}}}]}};
+    const switchedConnection=api.updateConnection(current.connectionId,buildTeamPatch(current,switchedTeam));
+    const switchedStored=serverVm.exports.canonical(projectSnapshot('espn',switchedConnection));
+    const switchedCtx=extractRosterEntries(switchedStored)[0].lineupContext;
+    assert.equal(switchedCtx.teamId,teamId+'-switched');assert.equal(switchedCtx.playerId,teamId+'-switched-player');
+    assert.equal(switchedCtx.originalSlotId,'23');assert.equal(switchedCtx.scoringPeriodId,period);assert.equal(switchedCtx.week,week);assert.equal(switchedCtx.asOf,capturedAt);
+    api.updateConnection(switchedConnection.connectionId,{team:current.team,teamId:current.teamId,roster:current.roster});
     const stored=serverVm.exports.canonical(projectSnapshot('espn',api.getActiveConnection()));
     const result=extractRosterEntries(stored)[0].lineupContext;
     assert.equal(result.teamId,teamId);assert.equal(result.playerId,teamId+'-player');assert.equal(result.leagueId,'fixture-league');
