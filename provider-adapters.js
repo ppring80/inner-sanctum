@@ -339,6 +339,11 @@
           ? rawData.roster.map(
               function (p) {
                 return {
+                  // Passive ESPN source facts; not selection/eligibility inputs.
+                  providerPlayerId: p?.providerPlayerId ?? p?.playerId ?? p?.id ?? null,
+                  lineupSlotId: p?.lineupSlotId ?? null,
+                  lineupSlot: p?.lineupSlot ?? null,
+                  defaultPositionId: p?.defaultPositionId ?? null,
                   name:
                     firstDefined(
                       p?.name,
