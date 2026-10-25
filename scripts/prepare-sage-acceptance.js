@@ -25,7 +25,10 @@ function prepare(root, env = process.env) {
   if (mcpSource.split(anchor).length !== 2) throw new Error("Acceptance registration anchor mismatch");
   fs.writeFileSync(mcpFile, mcpSource.replace(anchor,
     '  require("../../acceptance/espn-preservation-assertions").register(server, z);\n' + anchor));
+  const snapshotFile = path.join(out, "lib/netlify/functions/league-snapshot.js");
+  fs.appendFileSync(snapshotFile, "\nexports.acceptanceCanonical = buildCanonicalSnapshot;\n");
   const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  fs.writeFileSync(path.join(out, "lib/acceptance/build-identity.json"), JSON.stringify({sourceCommit:sha}));
   const manifest = { sourceCommit: sha, sourceDirty: !!execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" }).trim(), siteId: env.SAGE_ACCEPTANCE_SITE_ID, origin: config.issuer, fixture: fixture.provenance };
   fs.writeFileSync(path.join(out, "public/build.json"), JSON.stringify(manifest, null, 2));
   fs.writeFileSync(path.join(out, "public/index.html"), '<!doctype html><title>SAGE acceptance test</title><h1>SAGE acceptance test</h1><p>Synthetic frozen evidence. Not current football advice. No connected customer leagues.</p>');
