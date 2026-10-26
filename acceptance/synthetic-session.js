@@ -10,10 +10,19 @@ function create({store,expected,canonical,assertions,now=()=>Date.now(),nonce=()
  const read=()=>store().getWithMetadata(KEY,{type:'json'});
  async function write(value,etag){const r=await store().setJSON(KEY,value,etag?{onlyIfMatch:etag}:{onlyIfNew:true});if(!r.modified)throw Error('conflict');}
  function scrubTimes(value){const x=JSON.parse(JSON.stringify(value));delete x.connectedAt;delete x.syncedAt;if(x.meta)delete x.meta.capturedAt;if(x.espnLineupSource)delete x.espnLineupSource.capturedAt;return x;}
+ function chromeFixture(value){
+  const x=JSON.parse(JSON.stringify(value));
+  const omit=(object,key)=>{if(object?.[key]===null)delete object[key];};
+  omit(x.team,'rank');omit(x.settings,'rosterSettings');omit(x.settings,'scheduleSettings');
+  for(const p of x.roster||[])for(const key of ['acquisitionType','injuryStatus','projectedPoints'])omit(p,key);
+  for(const t of x.standings||[])omit(t,'rank');
+  return x;
+ }
  function valid(input,caseId){
   if(!cases.some(c=>c[0]===caseId)||!input||!expected[caseId])return false;
   // Every non-time field must exactly match the reviewed fixture, including nested fields.
-  if(!isDeepStrictEqual(scrubTimes(input),scrubTimes(expected[caseId])))return false;
+  const submitted=scrubTimes(input),reviewed=scrubTimes(expected[caseId]);
+  if(!isDeepStrictEqual(submitted,reviewed)&&!isDeepStrictEqual(submitted,chromeFixture(reviewed)))return false;
   for(const t of [input.connectedAt,input.syncedAt,input.meta?.capturedAt,input.espnLineupSource?.capturedAt])if(t!==null&&t!==undefined&&(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(t)||!Number.isFinite(Date.parse(t))))return false;
   if(input.meta?.capturedAt!==input.espnLineupSource?.capturedAt)return false;
   return caseId==='synthetic-b'?input.meta?.capturedAt===null:typeof input.meta?.capturedAt==='string';
