@@ -7,7 +7,7 @@ const json=(statusCode,value,headers={})=>({statusCode,headers:{'Content-Type':'
 async function handler(event){
  try{
   if(event.httpMethod!=='POST'||event.headers?.origin!==origin)return json(403,{ok:false,errorCategory:'ORIGIN_REJECTED'});
-  if(event.headers.authorization||Buffer.byteLength(event.body||'')>20000)return json(403,{ok:false,errorCategory:'REQUEST_REJECTED'});
+  if(Object.keys(event.headers||{}).some(k=>k.toLowerCase()==='authorization')||Buffer.byteLength(event.body||'')>20000)return json(403,{ok:false,errorCategory:'REQUEST_REJECTED'});
   const body=JSON.parse(event.body||'{}');
   if(body.action==='begin'&&Object.keys(body).length===1){const r=await session().begin();return r.ok?json(200,{ok:true},{'Set-Cookie':`__Host-sage-synthetic=${r.token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=600`}):json(409,r);}
   if(body.action!=='upload'||Object.keys(body).sort().join(',')!=='action,caseId,snapshot')return json(400,{ok:false,errorCategory:'REQUEST_REJECTED'});
