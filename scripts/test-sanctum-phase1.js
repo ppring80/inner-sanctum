@@ -170,10 +170,14 @@ function latestNetlify(checks, statuses) {
               : "failed",
       });
   }
+  const latest = new Map();
+  for (const entry of entries.filter((x) => Number.isFinite(x.when))) {
+    if (!latest.has(entry.id) || latest.get(entry.id).when < entry.when)
+      latest.set(entry.id, entry);
+  }
+  const deployments = [...latest.values()].sort((a, b) => b.when - a.when);
   return (
-    entries
-      .filter((x) => Number.isFinite(x.when))
-      .sort((a, b) => b.when - a.when)[0] || null
+    deployments.find((x) => x.state === "pending") || deployments[0] || null
   );
 }
 function manifest(m, sha) {
@@ -301,14 +305,19 @@ async function execute(
     mutated = true;
     if ((await ref()).object?.sha !== sha)
       throw new Stop("TEST_BRANCH_CHANGED", "FAIL");
+    // Legacy recovery commits without a skip marker use Git CD alone.
+    const usesGitDeploy =
+      env.OPERATION === "recover" &&
+      !/\[skip (?:netlify|ci)\]/i.test(commit.commit?.message || "");
     hook.searchParams.set("trigger_branch", BRANCH);
     hook.searchParams.set("trigger_title", "Phase 1 candidate " + sha);
     report.deployment = "TRIGGERED";
-    await request(hook.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approvedCandidateSha: sha, siteId: SITE }),
-    });
+    if (!usesGitDeploy)
+      await request(hook.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvedCandidateSha: sha, siteId: SITE }),
+      });
     const deadline = start + 600000;
     let sawReady = false;
     while (now() < deadline) {
