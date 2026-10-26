@@ -24,8 +24,10 @@ const doc = (sha) => ({
   fixture: { kind: "synthetic" },
 });
 function fixture(options = {}) {
+  const target = options.recovery ? m.ACCEPTED.sha : candidate;
+  const previous = options.recovery ? candidate : m.ACCEPTED.sha;
   let clock = 100000,
-    ref = options.ref || m.ACCEPTED.sha,
+    ref = options.ref || previous,
     triggered = false;
   const calls = [];
   const response = (body, status = 200) => ({
@@ -54,7 +56,7 @@ function fixture(options = {}) {
       if (options.throwNetwork) throw Error(hook + secret);
       if (url === m.ORIGIN + "/build.json")
         return response(
-          doc(triggered && !options.oldManifest ? candidate : m.ACCEPTED.sha),
+          doc(triggered && !options.oldManifest ? target : previous),
         );
       if (
         url.includes("/commits/") &&
@@ -62,7 +64,7 @@ function fixture(options = {}) {
         !url.includes("/statuses")
       )
         return response({
-          sha: candidate,
+          sha: target,
           commit: {
             message: options.unmarked ? "change" : "[skip netlify] candidate",
           },
@@ -81,6 +83,7 @@ function fixture(options = {}) {
             m.BRANCH,
         );
         ref = JSON.parse(init.body).sha;
+        if (options.recovery) triggered = true;
         return response({ object: { sha: ref } });
       }
       if (url.startsWith(hook)) {
@@ -109,6 +112,35 @@ function fixture(options = {}) {
     f.calls
       .filter((c) => c.init.method === "PATCH")
       .every((c) => c.url.endsWith(m.BRANCH)),
+  );
+  f = fixture({ recovery: true, unmarked: true });
+  r = await m.execute(
+    { ...env, CANDIDATE_SHA: m.ACCEPTED.sha, OPERATION: "recover" },
+    f,
+  );
+  assert.equal(r.phase1, "PASS");
+  assert.equal(f.calls.filter((c) => c.url.startsWith(hook)).length, 0);
+  const status = (id, state, time) => ({
+    target_url:
+      "https://app.netlify.com/projects/sprightly-chebakia-13d478/deploys/" +
+      id.repeat(24),
+    creator: { login: "netlify" },
+    state,
+    updated_at: new Date(time).toISOString(),
+  });
+  assert.equal(
+    m.latestNetlify(
+      [],
+      [status("a", "pending", 1000), status("b", "success", 2000)],
+    ).state,
+    "pending",
+  );
+  assert.equal(
+    m.latestNetlify(
+      [],
+      [status("a", "pending", 1000), status("a", "success", 2000)],
+    ).state,
+    "ready",
   );
   for (const override of [
     { CANDIDATE_SHA: "main" },
