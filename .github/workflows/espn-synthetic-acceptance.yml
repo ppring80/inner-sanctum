@@ -1,0 +1,29 @@
+name: ESPN Synthetic Browser Acceptance
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-browser:
+    runs-on: ubuntu-latest
+    env:
+      SITE_ID: dcdb8384-114c-4f80-a2fe-acc0ecb39d57
+      SAGE_ACCEPTANCE_MODE: isolated
+      SAGE_ACCEPTANCE_SITE_ID: dcdb8384-114c-4f80-a2fe-acc0ecb39d57
+      SAGE_ACCEPTANCE_ORIGIN: https://sprightly-chebakia-13d478.netlify.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm install --prefix /tmp/sage-browser-tools --ignore-scripts --no-audit --no-fund playwright@1.58.2 @netlify/zip-it-and-ship-it@16.5.1
+      - run: node /tmp/sage-browser-tools/node_modules/playwright/cli.js install --with-deps chromium
+      - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app node scripts/prepare-espn-synthetic.js
+      - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_PLAYWRIGHT_MODULE=/tmp/sage-browser-tools/node_modules/playwright node scripts/test-espn-synthetic-browser.js
+        env:
+          SAGE_PLAYWRIGHT_MODULE: /tmp/sage-browser-tools/node_modules/playwright
+      - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_ZISI_MODULE=/tmp/sage-browser-tools/node_modules/@netlify/zip-it-and-ship-it/dist/main.js node scripts/test-espn-synthetic-bundle.js
+        env:
+          SAGE_ZISI_MODULE: /tmp/sage-browser-tools/node_modules/@netlify/zip-it-and-ship-it/dist/main.js
