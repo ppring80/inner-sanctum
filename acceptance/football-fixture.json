@@ -2,10 +2,11 @@
   "provenance": {"kind": "synthetic", "purpose": "OAuth and routing plumbing only; not current football advice", "season": 2026, "week": 7},
   "rankings": {
     "season": 2026, "week": 7, "positions": {
-      "RB": [{"name":"Alvin Kamara","position":"RB","team":"NO","rank":20,"recommendation":"FLEX"}],
+      "RB": [{"name":"Alvin Kamara","position":"RB","team":"NO","rank":20,"recommendation":"FLEX"},{"name":"Eligible Control Back","playerID":"synthetic-control-rb","position":"RB","team":"NO","rank":30,"recommendation":"FLEX"}],
       "WR": [{"name":"Kendrick Bourne","position":"WR","team":"ARI","rank":38,"recommendation":"FLEX"}],
       "TE": [{"name":"T.J. Hockenson","position":"TE","team":"MIN","rank":9,"recommendation":"START"}]
     },
+    "metadata": {"gameEligibility":{"evidenceUsage":"rankings","excluded":[{"name":"Ashton Jeanty","playerID":"4890973","position":"RB"},{"name":"Jaylen Warren","playerID":"4569987","position":"RB"},{"name":"Michael Wilson","playerID":"4360761","position":"WR"},{"name":"Joe Burrow","playerID":"3915511","position":"QB"},{"name":"Jordan Love","playerID":"4036378","position":"QB"}]}},
     "inactive": {"RB":[{"name":"Jordan Mason","position":"RB","team":"MIN","status":"IR","reason":"Synthetic fixture: Provider reports IR."}]}
   }
 }
