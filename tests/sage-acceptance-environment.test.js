@@ -272,5 +272,5 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   const wrongPeriod = await sandbox.globalThis.fetch(origin+'/.netlify/functions/weekly-sage-rankings?season=2026&week=8');
   assert.equal(wrongPeriod.status,404);
   fs.rmSync(out,{recursive:true,force:true});
-  console.log('PASS: production defaults, isolated discovery, fail-closed identity/credentials/storage, committed Git config and build, two-endpoint packaging, paid-tool/network exclusion, synthetic evidence and period binding.');
+  console.log('PASS: production defaults, isolated discovery, fail-closed identity/credentials/storage, committed Git config and build, explicit three-endpoint synthetic packaging, paid-tool/network exclusion, synthetic evidence and period binding.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
