@@ -112,7 +112,7 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
     {cwd:root,encoding:'utf8'}));
   assert.deepEqual(Object.keys(gitConfig).sort(), ['build','functions']);
   assert.deepEqual(Object.keys(gitConfig.build).sort(), ['command','environment','functions','ignore','publish']);
-  assert.equal(gitConfig.build.command, 'cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2');
+  assert.equal(gitConfig.build.command, 'cd .. && node scripts/prepare-espn-synthetic.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2');
   assert.equal(gitConfig.build.ignore,'exit 1','changes outside acceptance must still trigger automatic builds');
   assert.equal(gitConfig.build.publish, '../.sage-acceptance/public');
   assert.equal(gitConfig.build.functions, '../.sage-acceptance/functions');
@@ -180,10 +180,10 @@ const event = { headers: { 'x-nf-site-id':site }, blobs:Buffer.from(JSON.stringi
   assert.throws(localImportsResolve,/packaged dependency missing|Cannot find module/);
   fs.copyFileSync(path.join(root,'player-identity.js'),identity);
   localImportsResolve();
-  assert.deepEqual(fs.readdirSync(path.join(out,'functions')).sort(),['chatgpt-mcp.js','chatgpt-oauth.js']);
+  assert.deepEqual(fs.readdirSync(path.join(out,'functions')).sort(),['chatgpt-mcp.js','chatgpt-oauth.js','espn-synthetic.js']);
   const toml = fs.readFileSync(path.join(out,'netlify.toml'),'utf8');
   assert.doesNotMatch(toml,/schedule|SECRETS_SCAN_ENABLED/);
-  assert.deepEqual(fs.readdirSync(path.join(out,'public')).sort(),['_headers','_redirects','build.json','index.html']);
+  assert.deepEqual(fs.readdirSync(path.join(out,'public')).sort(),['_headers','_redirects','build.json','connect-league.html','football.html','index.html','league-connection.js','provider-adapters.js','snapshot-builder.js','synthetic-page.js','team-context.js']);
   const fixture = JSON.parse(fs.readFileSync(path.join(out,'lib/acceptance/football-fixture.json')));
   assert.equal(fixture.provenance.kind,'synthetic');
   let networkCalls = 0, handlerCalls = 0;
