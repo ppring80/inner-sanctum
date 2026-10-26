@@ -2,11 +2,15 @@ name: ESPN Synthetic Browser Acceptance
 on:
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: espn-synthetic-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   synthetic-browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       SITE_ID: dcdb8384-114c-4f80-a2fe-acc0ecb39d57
       SAGE_ACCEPTANCE_MODE: isolated
@@ -19,9 +23,20 @@ jobs:
           node-version: 24
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm install --prefix /tmp/sage-browser-tools --ignore-scripts --no-audit --no-fund playwright@1.58.2 @netlify/zip-it-and-ship-it@16.5.1
-      - run: node /tmp/sage-browser-tools/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Install pinned Chrome for Testing
+        timeout-minutes: 3
+        run: |
+          python3 - <<'PYTHON'
+          import urllib.request,hashlib,zipfile,pathlib
+          p=pathlib.Path('/tmp/sage-chrome.zip')
+          p.write_bytes(urllib.request.urlopen('https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.6/linux64/chrome-linux64.zip?download=sage332',timeout=90).read())
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='b5e3195041af345a668d110f5daf5581961fa3608626ea588c97dd0fe81c4e38'
+          with zipfile.ZipFile(p) as z: z.extractall('/tmp/sage-chrome')
+          PYTHON
+          chmod +x /tmp/sage-chrome/chrome-linux64/chrome /tmp/sage-chrome/chrome-linux64/chrome_crashpad_handler
+
       - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app node scripts/prepare-espn-synthetic.js
-      - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_PLAYWRIGHT_MODULE=/tmp/sage-browser-tools/node_modules/playwright node scripts/test-espn-synthetic-browser.js
+      - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_CHROME_EXECUTABLE=/tmp/sage-chrome/chrome-linux64/chrome SAGE_PLAYWRIGHT_MODULE=/tmp/sage-browser-tools/node_modules/playwright node scripts/test-espn-synthetic-browser.js
         env:
           SAGE_PLAYWRIGHT_MODULE: /tmp/sage-browser-tools/node_modules/playwright
       - run: env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_ZISI_MODULE=/tmp/sage-browser-tools/node_modules/@netlify/zip-it-and-ship-it/dist/main.js node scripts/test-espn-synthetic-bundle.js
