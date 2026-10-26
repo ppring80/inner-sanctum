@@ -4,7 +4,7 @@
 [build]
   # Shared SAGE sources are outside the base: rebuild on every permitted branch push.
   ignore = "exit 1"
-  command = "cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2"
+  command = "cd .. && node scripts/prepare-espn-synthetic.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2"
   publish = "../.sage-acceptance/public"
   functions = "../.sage-acceptance/functions"
 
