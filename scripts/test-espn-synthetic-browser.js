@@ -18,7 +18,7 @@ async function run(){
  let denied=0;
  try{
   await browser.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.origin!==origin){denied++;return route.abort();}
-   if(u.pathname==='/.netlify/functions/espn-synthetic'){const r=await runtime.handler({httpMethod:req.method(),headers:req.headers(),body:req.postData()});return route.fulfill({status:r.statusCode,headers:r.headers,body:r.body});}
+   if(u.pathname==='/.netlify/functions/espn-synthetic'){const r=await runtime.handler({httpMethod:req.method(),headers:await req.allHeaders(),body:req.postData()});return route.fulfill({status:r.statusCode,headers:r.headers,body:r.body});}
    const f=path.join(out,'public',u.pathname.startsWith('/football/')?'football.html':u.pathname.slice(1));if(!f.startsWith(out+'/public/')||!fs.existsSync(f))return route.fulfill({status:404,body:''});
    return route.fulfill({status:200,headers:u.pathname.startsWith('/football/')?{'Content-Security-Policy':"default-src 'none'; connect-src 'none'; frame-ancestors 'none'"}:u.pathname==='/connect-league.html'?{'Content-Security-Policy':"default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'none'; frame-ancestors 'none'"}:{},contentType:f.endsWith('.js')?'application/javascript':'text/html',body:fs.readFileSync(f)});
   });
@@ -28,7 +28,7 @@ async function run(){
    const provider=await browser.newPage();await provider.goto(origin+'/football/team?leagueId=synthetic-league&teamId='+team+'&seasonId=2026');
    await page.goto(origin+'/connect-league.html#'+team);await page.evaluate(t=>window.selectCase(t),team);await page.click('#capture');
    await page.waitForFunction(t=>window.LeagueConnection.getConnection('espn')?.teamId===t,team);
-   await page.click('#upload');await page.waitForFunction(()=>document.getElementById('status').textContent==='200');await provider.close();
+   await page.click('#upload');await page.waitForFunction(()=>document.getElementById('status').textContent!=='');assert.equal(await page.locator('#status').textContent(),'200');await provider.close();
   }
   const result=await call('get_espn_stored_assertions');assert.equal(result.statusCode,200);
   const body=result.body.startsWith('event:')||result.body.includes('\ndata:')?JSON.parse(result.body.split('data: ')[1].split('\n')[0]):JSON.parse(result.body);
