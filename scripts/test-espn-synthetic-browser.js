@@ -20,7 +20,7 @@ async function run(){
   await browser.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.origin!==origin){denied++;return route.abort();}
    if(u.pathname==='/.netlify/functions/espn-synthetic'){const r=await runtime.handler({httpMethod:req.method(),headers:req.headers(),body:req.postData()});return route.fulfill({status:r.statusCode,headers:r.headers,body:r.body});}
    const f=path.join(out,'public',u.pathname.startsWith('/football/')?'football.html':u.pathname.slice(1));if(!f.startsWith(out+'/public/')||!fs.existsSync(f))return route.fulfill({status:404,body:''});
-   return route.fulfill({status:200,contentType:f.endsWith('.js')?'application/javascript':'text/html',body:fs.readFileSync(f)});
+   return route.fulfill({status:200,headers:u.pathname.startsWith('/football/')?{'Content-Security-Policy':"default-src 'none'; connect-src 'none'; frame-ancestors 'none'"}:u.pathname==='/connect-league.html'?{'Content-Security-Policy':"default-src 'none'; script-src 'self'; connect-src 'self'; style-src 'none'; frame-ancestors 'none'"}:{},contentType:f.endsWith('.js')?'application/javascript':'text/html',body:fs.readFileSync(f)});
   });
   const page=await browser.newPage();await page.goto(origin+'/connect-league.html#synthetic-a');
   await page.click('#begin');await page.waitForFunction(()=>document.getElementById('status').textContent==='200');
