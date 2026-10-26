@@ -1031,6 +1031,23 @@ function findPlayer(
   );
 }
 
+// Explanation-only fallback: these identities never re-enter actionable rows.
+function findKickoffExcluded(rankings, requestedName, week) {
+  const excluded = rankings.metadata?.gameEligibility?.excluded;
+  if (!Array.isArray(excluded)) return null;
+  const matches = excluded.filter(row => row && typeof row.name === "string" &&
+    normalizePlayerName(row.name) === normalizePlayerName(requestedName));
+  if (matches.length !== 1 || !matches[0].playerID || !matches[0].position) return null;
+  const identity = matches[0];
+  return {
+    name: identity.name, playerID: identity.playerID, position: identity.position,
+    team: null, positionRank: null, overallRank: null, adp: null,
+    sageLabel: null, sageConfidenceLabel: null, matchup: null, opponent: null,
+    recommendation: "GAME_STARTED",
+    sageTake: `${identity.name}'s game has already started, so this player cannot be newly selected for Week ${week} lineup changes.`
+  };
+}
+
 // ===========================================================
 // UNIVERSAL PLAYER PROFILE V1 MAPPING
 // ===========================================================
@@ -1916,7 +1933,7 @@ function comparisonToText({
   );
 
   unavailablePlayers.forEach((item) => {
-    lines.push(`${item.row.name}: INELIGIBLE — ${item.row.sageTake}`);
+    lines.push(`${item.row.name}: ${item.row.recommendation} — ${item.row.sageTake}`);
   });
 
   if (
@@ -4677,6 +4694,23 @@ function buildServer(
         }
 
         if (!row) {
+          const excluded = findKickoffExcluded(rankings, requestedPlayer, resolvedWeek);
+          if (excluded) {
+            const profile = buildProfileModel(excluded, {
+              season: resolvedSeason, week: resolvedWeek, scoring: resolvedScoring
+            });
+            return {
+              content: [{ type: "text", text: profileToText(profile) }],
+              structuredContent: {
+                found: true, source: "Inner Sanctum", liveFantasyDataConnected: true,
+                playerRequested: requestedPlayer, season: resolvedSeason,
+                week: resolvedWeek, scoring: resolvedScoring, profile
+              }
+            };
+          }
+        }
+
+        if (!row) {
           const structuredContent = {
             found: false,
             source: "Inner Sanctum",
@@ -5024,6 +5058,15 @@ function buildServer(
                 });
                 comparisonPlayers.push({ requestedName, found: true, profile });
                 unavailablePlayers.push({ requestedName, row: inactiveRow, profile });
+                return;
+              }
+              const excluded = findKickoffExcluded(rankings, requestedName, resolvedWeek);
+              if (excluded) {
+                const profile = buildProfileModel(excluded, {
+                  season: resolvedSeason, week: resolvedWeek, scoring: resolvedScoring
+                });
+                comparisonPlayers.push({ requestedName, found: true, profile });
+                unavailablePlayers.push({ requestedName, row: excluded, profile });
                 return;
               }
               missingPlayers.push(
