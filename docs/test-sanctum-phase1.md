@@ -106,7 +106,7 @@ An explicit recover dispatch accepts only the recorded recovery SHA. It reruns
 that baseline's regression/connection/Chrome checks and its actual bundled seven
 assertions. The newer PR335 browser path is not applicable to the older accepted
 baseline and is not claimed as re-tested. It uses the same fixed branch, test
-hook, SHA/READY verification and report path. Recovery cannot supersede a build
+SHA/READY verification and report path. Legacy recovery commits without a skip marker use the Git deployment triggered by the ref update alone; no additional hook is posted. Recovery cannot supersede a build
 whose state is unknown: a branch/host mismatch remains BLOCKED until the prior
 build is settled. No automatic rollback, production publication, secret changes,
 private data cleanup or authorization bypass is attempted.
