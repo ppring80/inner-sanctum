@@ -51,3 +51,12 @@ verify cleanup independently, and record deployment SHA. Do not promote on local
 results alone. Rollback: close the test session, verify cleanup, disable this
 variant and restore accepted synthetic Test Sanctum SHA 48a2604. Production is
 untouched and publishing stays locked. The FLEX optimizer is excluded.
+
+The actual Chrome path omits null team/standings rank, optional roster acquisition,
+injury/projection fields, and optional roster/schedule settings. The strict fixture
+validator accepts exactly two reviewed representations: the complete fixture and
+that fixture with only those specific null optional fields omitted. It does not
+relax identity, slots, period/week, capture timestamps, unknown-state assertions,
+unknown-field rejection or any non-null value. The submitted payload is passed
+unchanged to existing normalization; this is a fixture-format allowance, not a
+production capture or normalization change.
