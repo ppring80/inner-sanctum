@@ -1985,6 +1985,40 @@ function buildWeeklyRisks(row) {
   return null;
 }
 
+// Presentation-only: never write formatted prose back into state.rankings or decision evidence.
+// The source sageTake remains untouched for SAGE and Rookie decision IDs.
+function weeklyDisplayExplanation(row) {
+  var raw = String(row && row.sageTake || '').trim();
+  if (!raw) return null;
+  // Only rebuild prose with the confirmed unsupported role/drop or ranking-causality wording.
+  // Other player-specific explanations, including qualified role changes, pass through.
+  if (!/share is not verified|do not use the old rank alone|do not.*recommend dropping|driving the ranking despite/i.test(raw)) return raw;
+  var parts = [];
+  var rank = Number(row.positionRank);
+  var projection = Number(row.providerProjectedPoints);
+  if (row.pos && Number.isInteger(rank) && rank > 0) {
+    var lead = row.pos + rank;
+    if (Number.isFinite(projection) && row.providerProjectedPoints != null)
+      lead += ' — ' + projection.toFixed(1) + ' projected ' + getScoringFormat() + ' points.';
+    else lead += '.';
+    parts.push(lead);
+  }
+  var matchup = { 'Strong Negative':'Very difficult', Negative:'Difficult', Neutral:'Neutral', Positive:'Favorable', 'Strong Positive':'Very favorable' }[row.matchup];
+  if (matchup && row.opp && row.opp !== '—')
+    parts.push(matchup + ' matchup against ' + String(row.opp).replace(/^vs\\s*/i, '') + '.');
+  var injury = String(row.injury || '').toLowerCase();
+  if (injury === 'questionable' || injury === 'doubtful')
+    parts.push(injury.charAt(0).toUpperCase() + injury.slice(1) + '; confirm status before kickoff.');
+  if (row.eligibleForWeeklyRanking === false && row.availabilityStatus)
+    parts.push('Unavailable: ' + row.availabilityStatus + '.');
+  return parts.join(' ') || raw;
+}
+function weeklyEscapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
 function mapWeeklyRowToProfileModel(row, effectiveCall) {
   var id = row.playerID || (row.name + '|' + row.pos);
   var call = (effectiveCall !== undefined) ? effectiveCall : row.call;
@@ -2058,7 +2092,7 @@ function mapWeeklyRowToProfileModel(row, effectiveCall) {
     // do" explanation -- the closest real analogue to V1's Insight
     // section, used as-is rather than duplicating it into verdict
     // reasons above.
-    insight: row.sageTake || null
+    insight: weeklyDisplayExplanation(row)
   };
 }
 
@@ -2377,7 +2411,7 @@ function renderTable() {
           // baseline sentence, or the score-tier + confidence string.
           var verdictText =
             p.sageTake
-              ? p.sageTake
+              ? weeklyDisplayExplanation(p)
               : (
                   week1
                     ? 'Preseason ranking baseline'
@@ -2478,7 +2512,7 @@ function renderTable() {
                     : (lineupAssignment
                         ? rosterLineupTag(lineupAssignment)
                         : callTag(call))) +
-                  verdictText +
+                  weeklyEscapeHtml(verdictText) +
                 '</div>' +
               '</td>' +
 
