@@ -35,6 +35,19 @@ assert.throws(()=>verifyRankedAvailability(positions,cache({}, {isFreeAgent:'Tru
 const kicker=cache();kicker.players['test-0'].pos='PK';
 assert.equal(verifyRankedAvailability({K:[{...row,position:'K'}]},kicker,now).rankedPlayersChecked,1,'Shared K/PK normalization is retained');
 
+// FB is compatible only with the already-built RB fantasy population; this is
+// a general position normalization, never a named-player exception.
+const fullback=cache({}, {pos:'FB'});
+assert.equal(verifyRankedAvailability(positions,fullback,now).rankedPlayersChecked,1);
+for(const patch of [{name:'Other Runner'},{team:'SEA'},{playerID:'missing'},{position:'WR'}]){
+ const input=patch.position?{WR:[{...row,...patch}]}:{RB:[{...row,...patch}]};
+ assert.throws(()=>verifyRankedAvailability(input,fullback,now),/identity (missing|mismatch)/);
+}
+assert.throws(()=>verifyRankedAvailability(positions,cache({}, {pos:'TE'}),now),/identity mismatch/);
+assert.throws(()=>verifyRankedAvailability(positions,cache({designation:'IR'}, {pos:'FB'}),now),/restriction appears/);
+assert.throws(()=>verifyRankedAvailability(positions,cache({}, {pos:'FB',active:false}),now),/restriction appears/);
+assert.throws(()=>verifyRankedAvailability(positions,{...fullback,updatedAt:new Date(now-9*3600000).toISOString()},now),/stale/);
+
 // Public identity regression; empty current designation is not an activation assertion.
 const coleman={name:'Jonah Coleman',playerID:'4702555',position:'RB',team:'DEN'};
 const current=cache();delete current.players['test-0'];

@@ -23,7 +23,11 @@ function verifyRankedAvailability(positions,cache,now=Date.now()){
   const player=row.playerID!=null?cache.players[String(row.playerID)]:null;
   assert(player,`${row.name}: current availability identity missing`);
   const reportedPosition=normalizedPosition(player.pos);
-  assert(canonicalNameKey(player.longName)===canonicalNameKey(row.name)&&(reportedPosition==='PK'?'K':reportedPosition)===position&&normalizeTeam(player.team)===normalizeTeam(row.team),`${row.name}: current availability identity mismatch`);
+  // The existing RB snapshot selects provider depthChart.RB members and emits RB,
+  // including roster-labelled fullbacks. Audit that fantasy group without changing
+  // provider roster labels or assigning any customer-specific slot eligibility.
+  const fantasyPosition=reportedPosition==='PK'?'K':reportedPosition==='FB'?'RB':reportedPosition;
+  assert(canonicalNameKey(player.longName)===canonicalNameKey(row.name)&&fantasyPosition===position&&normalizeTeam(player.team)===normalizeTeam(row.team),`${row.name}: current availability identity mismatch`);
   const statuses=[player.injury?.designation,player.rosterStatus,String(player.isFreeAgent).toLowerCase()==='true'?'UNSIGNED':null,player.active===false?'INACTIVE':null].map(normalizeStatus).filter(Boolean);
   const restriction=statuses.find(status=>HARD_UNAVAILABLE.has(status));
   assert(!restriction,`${row.name}: current ${restriction} restriction appears in active rankings`);
