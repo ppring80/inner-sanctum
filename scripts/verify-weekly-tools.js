@@ -7,17 +7,24 @@ const {_test:{normalizeTeam}}=require('../netlify/functions/waiver-candidates');
 const {resolveCurrentNFLWeek}=require('../netlify/functions/_current-nfl-week');
 const base=process.env.SAGE_HEALTH_URL || 'https://theinnersanctum.xyz';
 const positions=['QB','RB','WR','TE','K','DEF'];
-async function request(name,body){
+async function request(name,body,onData){
  const r=await fetch(`${base}/.netlify/functions/${name}`,{signal:AbortSignal.timeout(90000),...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
- const data=await r.json();assert.equal(r.status,200,`${name}: HTTP ${r.status}: ${JSON.stringify(data)}`);return data;
+ const data=await r.json();if(onData)onData(data);assert.equal(r.status,200,`${name}: HTTP ${r.status}: ${JSON.stringify(data)}`);return data;
 }
 function identity(row){return {name:row.name,position:row.position,team:row.team};}
-async function main(){
+async function verifyCore({supplementaryFailures=[]}={}){
  const now=new Date(),season=now.getUTCMonth()===0?now.getUTCFullYear()-1:now.getUTCFullYear();
  if(season===2026 && now<Date.parse('2026-09-10T00:00:00Z')){console.log('Before regular-season opener; skipped.');return;}
  const week=resolveCurrentNFLWeek(now,season);assert(week,'Current season requires a supported week calendar.');
- const status=await request('weekly-sage-status');assert.equal(status.ready,true,'Weekly caches incomplete');assert.equal(status.week,week);
- assert.equal(status.injuryTransactions?.fresh,true,'Official injury transaction cache missing or stale');
+ const status=await request('weekly-sage-status',undefined,data=>{
+  for(const job of data.supplementary?.jobs || [])if(!job.ready)supplementaryFailures.push({check:job.job,week:job.week,error:job.error||job.reason,budgetReason:job.budgetReason||null});
+ });
+ assert.equal(status.ready,true,'Weekly caches incomplete');assert.equal(status.core?.ready,true,'Core evidence incomplete');assert.equal(status.week,week);
+ assert.equal(status.playerAvailability?.availabilityMode,'tank01-full-player-list-v1','Full-player availability evidence missing');
+ assert.equal(status.playerAvailability.fresh,true,'Player availability missing or stale');
+ assert.equal(status.playerAvailability.teamsSucceeded,32,'Player availability coverage incomplete');
+ assert.equal(status.playerAvailability.teamsFailed,0,'Player availability has failed teams');
+ assert(status.playerAvailability.playerCount>=1000,'Player availability population incomplete');
  const data=await request(`weekly-sage-rankings?season=${season}&week=${week}&scoring=half-ppr&evidenceUsage=archive`);
  assert.equal(data.metadata.complete,true);assert.equal(data.metadata.availability.fresh,true,'Player availability stale');assert.equal(data.metadata.projections.fresh,true,'Projections stale');
  const pool={};
@@ -36,7 +43,6 @@ async function main(){
  assert.equal(unmatched.sage,null,'Multi-initial player inherited another SAGE rank');
  assert.equal(unmatched.opportunity,null,'Multi-initial player inherited another usage record');
  assert.equal(unmatched.providerProjectedPoints,null,'Multi-initial player inherited another projection');
- if(week>=3){const trends=await request('get-risers-fallers');assert.equal(trends.status,'Success','Public trends endpoint failed');assert.equal(trends.fullAccess,false,'Anonymous check must remain a preview');assert.equal(trends.preview,true);assert(trends.risers.length<=1&&trends.fallers.length<=1,'Preview exposed full paid lists');}
  const marketEstimates=new Map();
  for(const upgrade of [true,false]){
   const roster=[],availablePlayers=[];
@@ -44,7 +50,7 @@ async function main(){
   const result=await request('waiver-recommendations',{provider:'health-check-fixture',providerProjectionWeek:week-1,season,week,scoring:'half-ppr',teams:12,originalFaabBudget:200,roster,availablePlayers,lineupConstruction:{QB:1,RB:2,WR:2,TE:1,K:1,DEF:1}});
   assert.equal(result.metadata.sageIncomplete,false);assert.equal(result.metadata.sageFallbackUsed,false);assert.equal(result.metadata.scheduleDataAvailable,true);
   if(week>=2)assert.equal(result.metadata.opportunityDataAvailable,true,'Current opportunity evidence missing');
-  if(week>=3)assert.equal(result.metadata.trendDataAvailable,true,'Current trend evidence missing');
+  if(week>=3&&result.metadata.trendDataAvailable!==true)supplementaryFailures.push({check:'waiver-trends',error:'Current trend evidence missing'});
   assert.equal(result.recommendations.length,positions.length,'FAAB check lost a provider-supplied candidate');
   assert.deepEqual([...new Set(result.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'FAAB check must cover every position');
   for(const row of result.recommendations){const source=upgrade?pool[row.position][0]:pool[row.position].at(-1);assert.equal(row.opponent,normalizeTeam(source.opponent),`${row.position}: saved provider opponent overrode current week`);assert.equal(row.matchup?.opponent,row.opponent);assert.equal(row.matchup?.bye,row.opponent==='BYE');assert(!row.gameTime||Date.parse(row.gameTime)>Date.parse(`${season}-09-01T00:00:00Z`),'Stale provider kickoff leaked into current schedule');}
@@ -60,6 +66,34 @@ async function main(){
  for(const row of independent.recommendations){assert.equal(row.faab,null,'Stale snapshot supplied an actionable bid');assert(!['ADD_NOW','STASH'].includes(row.verdict),'Stale snapshot supplied an actionable move');}
  assert.deepEqual([...new Set(independent.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'Independent market check must cover every position');
  for(const row of independent.recommendations){assert(marketEstimates.has(row.position),`Unexpected FAAB position ${row.position}`);assert.deepEqual(row.marketFaab,marketEstimates.get(row.position),`${row.position}: market value changed with roster fit`);}
- console.log(`PASS: season ${season}, week ${week}; complete rankings, fresh availability/projections/news, current waiver evidence, supported FAAB bids and dollar conversion.`);
+ return {season,week,supplementaryFailures};
 }
-main().catch(error=>{console.error(error.message);process.exitCode=1;});
+async function verifySupplementary(){
+ const now=new Date(),season=now.getUTCMonth()===0?now.getUTCFullYear()-1:now.getUTCFullYear();
+ if(resolveCurrentNFLWeek(now,season)<3)return;
+ const trends=await request('get-risers-fallers');
+ assert.equal(trends.status,'Success','Public trends endpoint failed');
+ try {
+  assert.equal(trends.fullAccess,false,'Anonymous check must remain a preview');
+  assert.equal(trends.preview,true);
+  assert(trends.risers.length<=1&&trends.fallers.length<=1,'Preview exposed full paid lists');
+ } catch(error) { error.critical=true; throw error; }
+}
+async function runHealthChecks({coreCheck=verifyCore,supplementaryCheck=verifySupplementary}={}){
+ // Run both sections even if core fails. Supplementary failure never claims core success.
+ const failures=[];
+ const [core,supplementary]=await Promise.allSettled([Promise.resolve().then(()=>coreCheck({supplementaryFailures:failures})),Promise.resolve().then(supplementaryCheck)]);
+ if(core.status==='fulfilled'&&core.value?.supplementaryFailures&&core.value.supplementaryFailures!==failures)failures.push(...core.value.supplementaryFailures);
+ if(supplementary.status==='rejected')failures.push({check:'public-risers-fallers',error:supplementary.reason.message});
+ const critical=supplementary.status==='rejected'&&supplementary.reason.critical;
+ return {core:{status:core.status==='fulfilled'&&!critical?'PASS':'FAIL',...(critical?{error:supplementary.reason.message}:{}),...(core.status==='rejected'?{error:core.reason.message}:{season:core.value?.season,week:core.value?.week})},
+  supplementary:{status:failures.length?'DEGRADED':'PASS',failures}};
+}
+async function main(){
+ const report=await runHealthChecks();
+ console.log('WEEKLY_TOOLS_HEALTH '+JSON.stringify(report));
+ if(report.supplementary.status==='DEGRADED')console.log('::warning::Supplementary SAGE intelligence is degraded; see WEEKLY_TOOLS_HEALTH failures.');
+ if(report.core.status==='FAIL')process.exitCode=1;
+}
+if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});
+module.exports={runHealthChecks,verifyCore};
