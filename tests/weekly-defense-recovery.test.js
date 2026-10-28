@@ -76,6 +76,9 @@ global.fetch = async (input, init = {}) => {
     if (mode === 'request-error') throw Error('synthetic request failed with SECRET_URL');
     if (mode === 'provider-403') return new Response(null, { status: 403 });
     if (mode === 'invalid-json') return new Response('not JSON');
+    if (mode === 'null-response') return Response.json(null);
+    if (mode === 'null-body') return Response.json({ body: null });
+    if (mode === 'missing-body') return Response.json({});
     const data = box();
     if (mode === 'two-incomplete' && builds <= 2) delete data.teamStats.away;
     if (mode === 'missing-numeric') delete data.teamStats.home.rushTD;
@@ -207,6 +210,27 @@ async function main() {
   customerRankings = null;
   clock += 86400000;
   await attempt(); assert.equal(builds, 3, 'Complete defensive evidence never rebuilds, including after UTC rollover');
+
+  for (const scenario of ['null-response', 'null-body', 'missing-body']) {
+    reset(scenario); clock = RealDate.parse('2026-11-03T06:00:00Z');
+    const previous = { generatedAt: 'preserved-before-incomplete-response' };
+    seed(defense.store, cacheKey(defense), previous);
+    await attempt();
+    assert.equal(status().statusCode, 422, scenario);
+    assert.equal(status().failure.category, 'provider_incomplete', scenario);
+    assert.equal(status().failure.retryable, true, scenario);
+    assert.deepEqual(status().failure.gameIDs, [game.gameID]);
+    assert.equal(status().failure.counts.affected, 1);
+    assert.deepEqual(read(defense.store, cacheKey(defense)), previous);
+    assert.equal(status().retryAfter - clock, 30 * 60000);
+    mode = 'complete';
+    clock += 30 * 60000 - 1; await attempt(); assert.equal(providerCalls, 2, 'No provider calls before backoff expires');
+    clock++; await attempt();
+    assert.equal(status().status, 'ready'); assert.equal(status().attempts, 2);
+    assert.equal(status().lastFailure.failure.category, 'provider_incomplete');
+    assert.equal(read(defense.store, cacheKey(defense)).schedule.processedGames, 1);
+    assert.equal(providerCalls, 4);
+  }
 
   reset('missing-numeric'); clock = RealDate.parse('2026-11-03T06:00:00Z');
   for (let i = 1; i <= 4; i++) {

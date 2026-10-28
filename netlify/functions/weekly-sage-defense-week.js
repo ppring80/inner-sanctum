@@ -287,7 +287,7 @@ async function getBoxScore(gameID) {
     playByPlay: "false"
   });
 
-  return result.body || null;
+  return result?.body || null;
 }
 
 function enforceWeeklyGameCeiling({ seasonType, completedGames }) {
