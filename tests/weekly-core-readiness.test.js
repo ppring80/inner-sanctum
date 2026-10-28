@@ -79,6 +79,20 @@ async function main() {
     global.fetch = async () => { requests++; return {status:200,json:async()=>requests===1?healthStatus:{metadata:{complete:false}}}; };
     await assert.rejects(verifyCore());
     assert.equal(requests,2,'Retired transactions must not reject valid full-player availability');
+    // Original defect: status discloses a budget failure; a later core check fails;
+    // the public supplementary endpoint succeeds. Neither result may erase the finding.
+    for (const http of [200,503]) {
+      global.fetch=async url=>({status:String(url).includes('get-risers-fallers')?200:http,json:async()=>String(url).includes('get-risers-fallers')
+        ?{status:'Success',fullAccess:false,preview:true,risers:[],fallers:[]}
+        :{...healthStatus,ready:http===200,core:{ready:http===200},playerAvailability:{...healthStatus.playerAvailability,fresh:false}}});
+      const combined=await runHealthChecks();
+      assert.equal(combined.core.status,'FAIL');
+      assert.equal(combined.supplementary.status,'DEGRADED');
+      assert.equal(combined.supplementary.failures[0].check,'refresh-risers-fallers');
+      assert.equal(combined.supplementary.failures[0].budgetReason,'daily-limit');
+      assert.equal(combined.supplementary.failures[0].error,trend.status.error);
+      assert.match(combined.core.error,http===200?/availability/:/HTTP 503/);
+    }
     for (const patch of [{fresh:false},{teamsSucceeded:31},{teamsFailed:1},{playerCount:999},{availabilityMode:'legacy'}]) {
       requests=0;
       global.fetch=async()=>{requests++;return{status:200,json:async()=>({...healthStatus,playerAvailability:{...healthStatus.playerAvailability,...patch}})};};

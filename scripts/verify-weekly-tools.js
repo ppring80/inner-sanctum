@@ -7,18 +7,19 @@ const {_test:{normalizeTeam}}=require('../netlify/functions/waiver-candidates');
 const {resolveCurrentNFLWeek}=require('../netlify/functions/_current-nfl-week');
 const base=process.env.SAGE_HEALTH_URL || 'https://theinnersanctum.xyz';
 const positions=['QB','RB','WR','TE','K','DEF'];
-async function request(name,body){
+async function request(name,body,onData){
  const r=await fetch(`${base}/.netlify/functions/${name}`,{signal:AbortSignal.timeout(90000),...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
- const data=await r.json();assert.equal(r.status,200,`${name}: HTTP ${r.status}: ${JSON.stringify(data)}`);return data;
+ const data=await r.json();if(onData)onData(data);assert.equal(r.status,200,`${name}: HTTP ${r.status}: ${JSON.stringify(data)}`);return data;
 }
 function identity(row){return {name:row.name,position:row.position,team:row.team};}
-async function verifyCore(){
- const supplementaryFailures=[];
+async function verifyCore({supplementaryFailures=[]}={}){
  const now=new Date(),season=now.getUTCMonth()===0?now.getUTCFullYear()-1:now.getUTCFullYear();
  if(season===2026 && now<Date.parse('2026-09-10T00:00:00Z')){console.log('Before regular-season opener; skipped.');return;}
  const week=resolveCurrentNFLWeek(now,season);assert(week,'Current season requires a supported week calendar.');
- const status=await request('weekly-sage-status');assert.equal(status.ready,true,'Weekly caches incomplete');assert.equal(status.core?.ready,true,'Core evidence incomplete');assert.equal(status.week,week);
- for(const job of status.supplementary?.jobs || [])if(!job.ready)supplementaryFailures.push({check:job.job,week:job.week,error:job.error||job.reason,budgetReason:job.budgetReason||null});
+ const status=await request('weekly-sage-status',undefined,data=>{
+  for(const job of data.supplementary?.jobs || [])if(!job.ready)supplementaryFailures.push({check:job.job,week:job.week,error:job.error||job.reason,budgetReason:job.budgetReason||null});
+ });
+ assert.equal(status.ready,true,'Weekly caches incomplete');assert.equal(status.core?.ready,true,'Core evidence incomplete');assert.equal(status.week,week);
  assert.equal(status.playerAvailability?.availabilityMode,'tank01-full-player-list-v1','Full-player availability evidence missing');
  assert.equal(status.playerAvailability.fresh,true,'Player availability missing or stale');
  assert.equal(status.playerAvailability.teamsSucceeded,32,'Player availability coverage incomplete');
@@ -80,8 +81,9 @@ async function verifySupplementary(){
 }
 async function runHealthChecks({coreCheck=verifyCore,supplementaryCheck=verifySupplementary}={}){
  // Run both sections even if core fails. Supplementary failure never claims core success.
- const [core,supplementary]=await Promise.allSettled([Promise.resolve().then(coreCheck),Promise.resolve().then(supplementaryCheck)]);
- const failures=core.status==='fulfilled'?(core.value?.supplementaryFailures||[]):[];
+ const failures=[];
+ const [core,supplementary]=await Promise.allSettled([Promise.resolve().then(()=>coreCheck({supplementaryFailures:failures})),Promise.resolve().then(supplementaryCheck)]);
+ if(core.status==='fulfilled'&&core.value?.supplementaryFailures&&core.value.supplementaryFailures!==failures)failures.push(...core.value.supplementaryFailures);
  if(supplementary.status==='rejected')failures.push({check:'public-risers-fallers',error:supplementary.reason.message});
  const critical=supplementary.status==='rejected'&&supplementary.reason.critical;
  return {core:{status:core.status==='fulfilled'&&!critical?'PASS':'FAIL',...(critical?{error:supplementary.reason.message}:{}),...(core.status==='rejected'?{error:core.reason.message}:{season:core.value?.season,week:core.value?.week})},
