@@ -1992,22 +1992,30 @@ function weeklyDisplayExplanation(row) {
   if (!raw) return null;
   // Only rebuild prose with the confirmed unsupported role/drop or ranking-causality wording.
   // Other player-specific explanations, including qualified role changes, pass through.
-  if (!/share is not verified|do not use the old rank alone|do not.*recommend dropping|driving the ranking despite/i.test(raw)) return raw;
+  if (!/share is not verified|do not use the old rank alone|do not.*recommend dropping|driving the ranking despite|support(?:s)? the ranking/i.test(raw)) return raw;
+  // Remove only the existing unsupported template, not the rest of the player's evidence.
+  var retained = raw
+    .replace(/Backfield role change: [\s\S]*?The absence alone does not establish increased work; the share is not verified\./g, '')
+    .replace(/Do not use the old rank alone to recommend dropping this player\./g, '')
+    .replace(/[^.!?]*\bis driving the ranking despite[^.!?]*[.!?]/gi, '')
+    .replace(/support(s)? the ranking/gi, 'support$1 his outlook')
+    .replace(/Solid start\./g, '').trim();
   var parts = [];
   var rank = Number(row.positionRank);
   var projection = Number(row.providerProjectedPoints);
   if (row.pos && Number.isInteger(rank) && rank > 0) {
     var lead = row.pos + rank;
     if (Number.isFinite(projection) && row.providerProjectedPoints != null)
-      lead += ' — ' + projection.toFixed(1) + ' projected ' + getScoringFormat() + ' points.';
+      lead += ' — ' + projection.toFixed(1) + ' projected ' + ({half:'half-PPR',ppr:'PPR',standard:'standard'}[getScoringFormat()] || getScoringFormat()) + ' points.';
     else lead += '.';
     parts.push(lead);
   }
   var matchup = { 'Strong Negative':'Very difficult', Negative:'Difficult', Neutral:'Neutral', Positive:'Favorable', 'Strong Positive':'Very favorable' }[row.matchup];
   if (matchup && row.opp && row.opp !== '—')
-    parts.push(matchup + ' matchup against ' + String(row.opp).replace(/^vs\\s*/i, '') + '.');
+    parts.push(matchup + ' matchup against ' + String(row.opp).replace(/^vs\s*/i, '') + '.');
+  if (retained) parts.push(retained);
   var injury = String(row.injury || '').toLowerCase();
-  if (injury === 'questionable' || injury === 'doubtful')
+  if ((injury === 'questionable' || injury === 'doubtful') && retained.toLowerCase().indexOf(injury) === -1)
     parts.push(injury.charAt(0).toUpperCase() + injury.slice(1) + '; confirm status before kickoff.');
   if (row.eligibleForWeeklyRanking === false && row.availabilityStatus)
     parts.push('Unavailable: ' + row.availabilityStatus + '.');
