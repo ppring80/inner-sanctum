@@ -66,3 +66,6 @@ for (const sentence of ['A strong role is driving the ranking despite a difficul
   assert(!sandbox.weeklyDisplayExplanation({...row, sageTake:sentence}).includes('driving the ranking'));
 
 assert(sandbox.weeklyDisplayExplanation({...row, sageTake:'Strong production and a strong role support the ranking.'}).includes('support his outlook'));
+
+for (const sentence of ["This week's difficult matchup is driving the ranking.", 'A strong role is driving the ranking.', 'Limited production is driving the ranking.'])
+  assert(!sandbox.weeklyDisplayExplanation({...row,sageTake:sentence}).includes('driving the ranking'));

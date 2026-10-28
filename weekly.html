@@ -1992,12 +1992,12 @@ function weeklyDisplayExplanation(row) {
   if (!raw) return null;
   // Only rebuild prose with the confirmed unsupported role/drop or ranking-causality wording.
   // Other player-specific explanations, including qualified role changes, pass through.
-  if (!/share is not verified|do not use the old rank alone|do not.*recommend dropping|driving the ranking despite|support(?:s)? the ranking/i.test(raw)) return raw;
+  if (!/share is not verified|do not use the old rank alone|do not.*recommend dropping|driving the ranking|support(?:s)? the ranking/i.test(raw)) return raw;
   // Remove only the existing unsupported template, not the rest of the player's evidence.
   var retained = raw
     .replace(/Backfield role change: [\s\S]*?The absence alone does not establish increased work; the share is not verified\./g, '')
     .replace(/Do not use the old rank alone to recommend dropping this player\./g, '')
-    .replace(/[^.!?]*\bis driving the ranking despite[^.!?]*[.!?]/gi, '')
+    .replace(/[^.!?]*\bis driving the ranking[^.!?]*[.!?]/gi, '')
     .replace(/support(s)? the ranking/gi, 'support$1 his outlook')
     .replace(/Solid start\./g, '').trim();
   var parts = [];
