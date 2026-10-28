@@ -19,6 +19,7 @@ const TANK01_HOST =
 const DEFAULT_SEASON_TYPE = "reg";
 const MAX_REGULAR_SEASON_GAMES_PER_WEEK = 16;
 const BOX_SCORE_CONCURRENCY = 4;
+const { buildError } = require('./_weekly-defense-failure');
 
 function tank01Headers() {
   return {
@@ -34,78 +35,53 @@ async function tank01Fetch(endpoint, params) {
     `https://${TANK01_HOST}/${endpoint}` +
     (query ? `?${query}` : "");
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: tank01Headers()
-  });
-
-  let data = null;
+  let response;
   try {
-    data = await response.json();
-  } catch (error) {
-    data = null;
-  }
-
+    response = await fetch(url, {
+      method: "GET", headers: tank01Headers(), signal: AbortSignal.timeout(30000)
+    });
+  } catch (_) { throw buildError('provider_request'); }
   if (!response.ok) {
-    let message =
-      `Tank01 ${endpoint} failed with HTTP ${response.status}`;
-
-    if (data && data.message) {
-      message = data.message;
-    } else if (
-      data &&
-      data.body &&
-      typeof data.body === "string"
-    ) {
-      message = data.body;
-    }
-
-    throw new Error(message);
+    throw buildError(response.status === 429 || response.status >= 500 ? 'provider_request' : 'validation');
   }
+  let data;
+  try { data = await response.json(); }
+  catch (_) { throw buildError('provider_incomplete'); }
 
   return data;
 }
 
+// Missing required statistics never become measured zeroes.
 function numberValue(value) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
-    return 0;
-  }
-
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function numOrNull(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
+const numOrNull = numberValue;
 
+function parsePair(value) {
+  if (typeof value !== 'string' || !/^\d+\s*-\s*\d+$/.test(value.trim())) return null;
+  return value.split('-').map(Number);
+}
 function parseCompletionsAttempts(value) {
-  if (!value || typeof value !== "string") {
-    return { completions: 0, attempts: 0 };
-  }
-
-  const parts = value.split("-");
-  return {
-    completions: numberValue(parts[0]),
-    attempts: numberValue(parts[1])
-  };
+  const pair = parsePair(value);
+  return { completions: pair?.[0] ?? null, attempts: pair?.[1] ?? null };
+}
+function parseSacks(value) {
+  const pair = parsePair(value);
+  return { sacks: pair?.[0] ?? null, yardsLost: pair?.[1] ?? null };
 }
 
-function parseSacks(value) {
-  if (!value || typeof value !== "string") {
-    return { sacks: 0, yardsLost: 0 };
-  }
-
-  const parts = value.split("-");
-  return {
-    sacks: numberValue(parts[0]),
-    yardsLost: numberValue(parts[1])
-  };
+function requiredStatsPresent(boxScore) {
+  const numeric = ['rushingAttempts', 'rushingYards', 'rushTD', 'passingYards', 'passTD',
+    'interceptionsThrown', 'totalYards', 'totalPlays'];
+  return numberValue(boxScore?.homePts) !== null && numberValue(boxScore?.awayPts) !== null &&
+    ['home', 'away'].every(side => {
+      const stats = boxScore?.teamStats?.[side];
+      return stats && numeric.every(key => numberValue(stats[key]) !== null) &&
+        parsePair(stats.passCompletionsAndAttempts) && parsePair(stats.sacksAndYardsLost);
+    });
 }
 
 function isCompletedGame(game) {
@@ -301,7 +277,8 @@ async function getGamesForWeek({ season, week, seasonType }) {
     seasonType
   });
 
-  return Array.isArray(result.body) ? result.body : [];
+  if (!Array.isArray(result?.body)) throw buildError('provider_incomplete');
+  return result.body;
 }
 
 async function getBoxScore(gameID) {
@@ -448,7 +425,7 @@ async function buildWeeklyDefense({
   seasonType = DEFAULT_SEASON_TYPE
 }) {
   if (!process.env.TANK01_API_KEY) {
-    throw new Error("TANK01_API_KEY is not configured.");
+    throw buildError('validation');
   }
 
   const normalizedSeason = String(season || new Date().getFullYear());
@@ -479,6 +456,15 @@ async function buildWeeklyDefense({
     seasonType: normalizedSeasonType
   });
 
+  const ids = new Set(), teams = new Set();
+  for (const game of games) {
+    if (!game || typeof game.gameID !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(game.gameID) ||
+        !/^[A-Z]{2,3}$/.test(game.home || '') || !/^[A-Z]{2,3}$/.test(game.away || '') ||
+        game.home === game.away || ids.has(game.gameID) || teams.has(game.home) || teams.has(game.away) ||
+        (game.season != null && String(game.season) !== normalizedSeason) ||
+        (game.gameWeek != null && Number(game.gameWeek) !== normalizedWeek)) throw buildError('identity', [game?.gameID]);
+    ids.add(game.gameID); teams.add(game.home); teams.add(game.away);
+  }
   const completedGames = games.filter(isCompletedGame);
   enforceWeeklyGameCeiling({
     seasonType: normalizedSeasonType,
@@ -500,8 +486,18 @@ async function buildWeeklyDefense({
             gameID: game.gameID,
             away: game.away,
             home: game.home,
-            status: "missing_team_stats"
+            status: "missing_team_stats",
+            failureCategory: "provider_incomplete"
           };
+        }
+
+        if (!requiredStatsPresent(boxScore)) return {
+          gameID: game.gameID, away: game.away, home: game.home,
+          status: 'missing_required_stats', failureCategory: 'provider_incomplete'
+        };
+        for (const side of ['home', 'away']) {
+          const team = teamStats[side].teamAbv || teamStats[side].team;
+          if (team && team !== game[side]) throw buildError('identity', [game?.gameID]);
         }
 
         kickerEvidenceByGame.push(
@@ -546,7 +542,7 @@ async function buildWeeklyDefense({
           away: game.away,
           home: game.home,
           status: "error",
-          error: error.message
+          failureCategory: error.defenseCategory || "processing"
         };
       }
     }
@@ -586,7 +582,8 @@ exports.buildWeeklyDefense = buildWeeklyDefense;
 exports._test = {
   MAX_REGULAR_SEASON_GAMES_PER_WEEK,
   enforceWeeklyGameCeiling,
-  isCompletedGame
+  isCompletedGame,
+  numberValue, requiredStatsPresent
 };
 
 function jsonResponse(statusCode, body) {

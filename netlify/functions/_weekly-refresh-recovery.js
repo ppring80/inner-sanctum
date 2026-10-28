@@ -5,6 +5,7 @@ const { resolveCurrentNFLWeek } = require('./_current-nfl-week.js');
 const STATE_STORE = 'weekly-sage-refresh-status';
 const LEASE_MS = 20 * 60 * 1000;
 const RETRY_MS = 30 * 60 * 1000;
+const { retryState, failure: defenseFailure, DEFENSE_POLICY, BACKOFF_MS } = require('./_weekly-defense-failure');
 const { dailyRuns, criticalCheckpoint } = require('./_availability-refresh-rhythm.js');
 
 function jobsForWeek(season, targetWeek) {
@@ -61,13 +62,18 @@ async function inspectJobs(getStore, season, week, now = Date.now()) {
       state.get(stateKey(job),{type:'json'})
     ]);
     const policyJob = job.store === 'player-data' ? {...job,criticalCheckpoint:checkpoint,criticalDue:Boolean(checkpoint)} : job;
-    return {...policyJob,ready:completeCache(cached,policyJob,now),status:job.store === 'player-data' && status ? {...status,attemptLimit:dailyRuns(now)} : status};
+    return {...policyJob,ready:completeCache(cached,policyJob,now),status:job.store === 'weekly-sage-defense' && status ? {...status,retryPolicy:DEFENSE_POLICY,attemptLimit:4} : job.store === 'player-data' && status ? {...status,attemptLimit:dailyRuns(now)} : status};
   }));
 }
 
 function canRetry(status, now = Date.now()) {
   if (!status) return true;
   if (Number(status.leaseUntil) > now || Number(status.retryAfter) > now) return false;
+  if (status.retryPolicy === DEFENSE_POLICY) {
+    if (Number(status.attempts || 0) >= 4) return false;
+    if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
+    return status.failure?.retryable !== false;
+  }
   return status.day !== new Date(now).toISOString().slice(0, 10) || Number(status.attempts || 0) < Number(status.attemptLimit || 2);
 }
 
@@ -107,11 +113,12 @@ async function runJob(job, event, dependencies) {
   const state = getStore({ name: STATE_STORE });
   const key = stateKey(job);
   const previous = await state.getWithMetadata(key, { type: 'json' });
-  const priorStatus = previous && (job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
+  const defensive = job.store === 'weekly-sage-defense';
+  const priorStatus = previous && (defensive ? {...previous.data, retryPolicy: DEFENSE_POLICY, attemptLimit: 4} : job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
   if (!canRetry(priorStatus, now)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const lastFailure=previous?.data?.lastFailure||null;
-  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, attemptLimit: job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && previous.data.day === day ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
+  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, ...(defensive?{retryPolicy:DEFENSE_POLICY}:{}), attemptLimit: defensive ? 4 : job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && (defensive || previous.data.day === day) ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {
@@ -127,16 +134,25 @@ async function runJob(job, event, dependencies) {
     // Do not reject its successful write because the Lambda edge read can lag.
     const ready = result.statusCode === 200 && (response.cached === true || (response.writeOccurred === true && response.gamesFailed === 0 && response.noOp === false && Number(response.targetWeek) === job.week) || completeCache(await cache.get(cacheKey(job), { type: 'json' }), job));
     const detail = response.error || null;
-    const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : now + RETRY_MS, finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
-    if(!ready)final.lastFailure={day,at:final.finishedAt,statusCode:result.statusCode,error:detail,budgetReason:response.budget?.reason||null,attempts:value.attempts};
+    const failure = defensive && !ready ? retryState(response, result.statusCode) : null;
+    const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : (defensive ? Date.now() + BACKOFF_MS[Math.min(value.attempts-1,2)] : now + RETRY_MS), finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
+    if (failure) {
+      final.failure = failure;
+      final.blockedReason = value.attempts >= 4 ? 'defense_attempt_limit' : !failure.retryable ? `defense_${failure.category}` : null;
+    }
+    if(!ready)final.lastFailure={day,at:final.finishedAt,statusCode:result.statusCode,error:detail,budgetReason:response.budget?.reason||null,attempts:value.attempts,...(failure?{failure,blockedReason:final.blockedReason}:{})};
     await state.setJSON(key, final);
     console.log('WEEKLY_REFRESH_RESULT', JSON.stringify({ job: job.job, week: job.week, ...final }));
     return final;
   } catch (error) {
     const final = { ...value, status: 'failed', leaseUntil: 0, retryAfter: now + RETRY_MS, finishedAt: new Date().toISOString(), error: 'Weekly refresh worker failed; inspect function logs.' };
-    final.lastFailure={day,at:final.finishedAt,statusCode:null,error:final.error,budgetReason:null,attempts:value.attempts};
+    if (defensive) {
+      final.failure = defenseFailure('processing');
+      final.blockedReason = 'defense_processing';
+    }
+    final.lastFailure={day,at:final.finishedAt,statusCode:null,error:final.error,budgetReason:null,attempts:value.attempts,...(defensive?{failure:final.failure,blockedReason:final.blockedReason}:{})};
     await state.setJSON(key, final);
-    console.error('WEEKLY_REFRESH_FAILED', job.job, job.week, error.message);
+    console.error('WEEKLY_REFRESH_FAILED', job.job, job.week, defensive ? final.failure.category : error.message);
     return final;
   }
 }
