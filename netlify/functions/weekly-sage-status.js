@@ -1,6 +1,7 @@
 'use strict';
 const { connectLambda, getStore } = require('@netlify/blobs');
 const { inspectJobs, resolveCurrentNFLWeek } = require('./_weekly-refresh-recovery.js');
+const { weeklyReadiness, readinessTier } = require('./_weekly-sage-readiness');
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return { statusCode: 405 };
   const diagnostic=event.queryStringParameters?.diagnostics==='refresh';
@@ -15,8 +16,9 @@ exports.handler = async event => {
     const week = resolveCurrentNFLWeek(new Date(), season);
     const rows = await inspectJobs(getStore, season, week);
     if(diagnostic)return {statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(await require('./_weekly-refresh-diagnostics').refreshDiagnostics(getStore,rows))};
-    const jobs = rows.map(row => ({ job: row.job, week: row.week, optional: Boolean(row.optional), ready: row.ready, state: row.status && row.status.status || 'pending', lastAttempt: row.status && row.status.startedAt || null, error: row.status && row.status.error || null }));
-    const ready = rows.length > 0 && rows.filter(row=>!row.optional).every(row => row.ready);
+    const jobs = rows.map(row => ({ job: row.job, week: row.week, optional: Boolean(row.optional), readinessTier: readinessTier(row), ready: row.ready, state: row.status && row.status.status || 'pending', lastAttempt: row.status && row.status.startedAt || null, error: row.status && row.status.error || null }));
+    const readiness = weeklyReadiness(rows, season, week);
+    const ready = readiness.ready;
     const playerCache=await getStore({name:'player-data'}).get('playerData',{type:'json'});
     const providerMode=playerCache?.availabilityMode===require('./_tank01-player-cache').MODE;
     const playerAge=Date.now()-Date.parse(playerCache?.updatedAt||'');
@@ -38,7 +40,7 @@ exports.handler = async event => {
     } catch (_) {
       clubAvailability={enabled:process.env.OFFICIAL_CLUB_COLLECTION_ENABLED==='true',customerReadsEnabled:false,fresh:false,coveragePassed:false,error:'Official club coverage status unavailable.'};
     }
-    return { statusCode: ready ? 200 : 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ season, week, ready, jobs, playerAvailability,injuryTransactions,clubAvailability }) };
+    return { statusCode: ready ? 200 : 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ season, week, ...readiness, jobs, playerAvailability,injuryTransactions,clubAvailability }) };
   } catch (_) {
     return { statusCode: 503, body: JSON.stringify({ ready: false, error: 'Weekly cache status could not be checked.' }) };
   }

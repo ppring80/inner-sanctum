@@ -58,8 +58,8 @@ async function isolation(){
  try{
   await load('weekly-sage-refresh-background.js').handler({httpMethod:'POST',body:JSON.stringify({job:role.job,week:7,season:2026,targetWeek:7}),headers:{}});
   assert.deepEqual(completed,[role.job,news.job],'Optional role failure cannot block the following Newswire build');
-  const endpoint=load('weekly-sage-status.js',{inspectJobs:async()=>[role,news],resolveCurrentNFLWeek:()=>7});
+  const endpoint=load('weekly-sage-status.js',{inspectJobs:async()=>jobsForWeek(new Date().getUTCFullYear(),7).map(job=>({...job,ready:job.store!=='sage-role-events'})),resolveCurrentNFLWeek:()=>7});
   const result=await endpoint.handler({httpMethod:'GET'});assert.equal(result.statusCode,200,'Optional evidence failure cannot take core rankings offline');
-  const status=JSON.parse(result.body);assert.equal(status.ready,true);assert.equal(status.jobs[0].ready,false);assert.equal(status.jobs[0].optional,true);
+  const status=JSON.parse(result.body);assert.equal(status.ready,true);const roleStatus=status.jobs.find(job=>job.job===role.job);assert.equal(roleStatus.ready,false);assert.equal(roleStatus.optional,true);
  }finally{if(saved===undefined)delete process.env.URL;else process.env.URL=saved;}
 }
