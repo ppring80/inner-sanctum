@@ -5399,9 +5399,18 @@ function buildServer(
               0,
               resolvedLimit
             )
-            .map(
-              mapWeeklyRankingRow
-            );
+            .map(row => {
+              const displayed = mapWeeklyRankingRow(row);
+              const originals = (rankings.positions[row.position] || []).filter(entry =>
+                (row.playerID ? String(entry.playerID) === String(row.playerID) : entry.name === row.name) &&
+                entry.name === row.name && entry.team === row.team);
+              if (originals.length === 1) {
+                displayed.sageTake = require('./sage-take').buildWeeklyRankingExplanation(originals[0], {
+                  season: resolvedSeason, week: resolvedWeek, scoring: resolvedScoring
+                }) || displayed.sageTake;
+              }
+              return displayed;
+            });
 
         const structuredContent = {
           superSageResponse: buildSuperSageResponseGuidance(`${resolvedPosition} Week ${resolvedWeek} rankings`),
