@@ -265,9 +265,9 @@ function capitalize(text) {
 
 // Wraps a builder so it can never throw past this module's boundary.
 function safe(builder) {
-  return function (player) {
+  return function (player, context) {
     try {
-      const take = builder(player || {});
+      const take = builder(player || {}, context);
       return typeof take === "string" && take.trim() ? take.trim() : null;
     } catch (error) {
       return null;
@@ -277,3 +277,52 @@ function safe(builder) {
 
 exports.buildWeek1SageTake = safe(buildWeek1Take);
 exports.buildWeek2PlusSageTake = safe(buildWeek2PlusTake);
+
+// Weekly Rankings display only. Call after ranking/selection, never on the
+// source rows supplied to the lineup authority or Rookie evidence packets.
+function buildWeeklyRankingExplanation(row, { season, week, scoring, now = new Date() } = {}) {
+  const context = row.roleContext;
+  const events = [context?.event, ...(context?.events || [])].filter(Boolean);
+  const roleNotes = [...new Set(events.filter(event =>
+    ['ROLE_GAIN', 'ROLE_LOSS', 'ROLE_REASSESSMENT'].includes(event.kind) &&
+    require('./_super-sage-role-establishment').qualifyEvent(event, {
+      name: row.name, position: row.position, team: row.team, season, week,
+      cutoff: new Date(now).toISOString()
+    }).valid
+  ).map(event => event.statement).filter(statement => typeof statement === 'string' && statement.trim()))];
+  // Remove the exact shared context template, not arbitrary player-specific prose.
+  let existing = String(row.sageTake || '');
+  for (const note of [context?.note, ...(context?.priorContexts || []).map(prior => prior.note)].filter(Boolean))
+    existing = existing.split(note).join('').trim();
+  const projection = row.projection;
+  const format = { half: 'half-PPR', ppr: 'PPR', standard: 'standard' }[scoring];
+  const projectionOrdered = ['complete', 'partial'].includes(row.projectionOrderMode) && row.projectionRankStatus === 'projected';
+  const projected = projectionOrdered &&
+    Number.isInteger(row.rank) && row.rank > 0 && typeof row.projectedPoints === 'number' && Number.isFinite(row.projectedPoints) &&
+    projection?.fresh === true && projection.source && Number(projection.season) === Number(season) &&
+    Number(projection.week) === Number(week) && projection.scoring === scoring && format;
+  const parts = [];
+  if (projectionOrdered && Number.isInteger(row.rank) && ['QB', 'RB', 'WR', 'TE'].includes(row.position)) {
+    const standing = `${row.position}${row.rank}${row.recommendation ? ' · ' + row.recommendation : ''}`;
+    parts.push(projected ? `${standing}: ${row.projectedPoints.toFixed(2)} projected ${format} points.` : `${standing}. Fresh projection evidence is unavailable.`);
+    const matchup = typeof row.matchup === 'object' ? row.matchup?.label : row.matchup;
+    const phrase = { 'Strong Negative': 'Very difficult', Negative: 'Difficult', Neutral: 'Neutral', Positive: 'Favorable', 'Strong Positive': 'Very favorable' }[matchup];
+    if (phrase && row.opponent) parts.push(`${phrase} matchup against ${row.opponent}.`);
+    if (typeof row.production?.adjustedScore === 'number' && row.production.adjustedScore >= 60)
+      parts.push('Strong production supports his outlook.');
+    const observed = row.components?.opportunity, usage = observed?.opportunities;
+    const provenance = observed?.provenance;
+    if (observed?.source === 'Inner Sanctum Opportunity Intelligence' && Number(provenance?.season) === Number(season) &&
+        Array.isArray(provenance.weeksIncluded) && provenance.weeksIncluded.length &&
+        provenance.weeksIncluded.every(value => Number.isInteger(value) && value > 0 && value < Number(week)) &&
+        usage?.gamesSampled >= 3 && typeof usage.avgLast3 === 'number' && Number.isFinite(usage.avgLast3) && usage.avgLast3 >= 0)
+      parts.push(`Recent usage: ${usage.avgLast3.toFixed(1)} carries plus targets per game over the last three games.`);
+  } else if (existing) parts.push(existing);
+  parts.push(...roleNotes);
+  const status = String(row.injuryStatus || '').trim().toUpperCase();
+  const label = { Q: 'Questionable', QUESTIONABLE: 'Questionable', D: 'Doubtful', DOUBTFUL: 'Doubtful' }[status];
+  if (label) parts.push(`${label}; confirm game status before kickoff.`);
+  if (row.availabilityVerified === false) parts.push('Current availability is unverified.');
+  return [...new Set(parts.filter(Boolean))].join(' ') || null;
+}
+exports.buildWeeklyRankingExplanation = safe(buildWeeklyRankingExplanation);
