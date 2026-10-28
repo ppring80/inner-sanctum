@@ -21,5 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Verify real caches and controlled FAAB fixtures
         run: node scripts/verify-weekly-tools.js
