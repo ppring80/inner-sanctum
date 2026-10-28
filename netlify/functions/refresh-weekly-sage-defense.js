@@ -24,6 +24,7 @@ const {
   buildWeeklyDefense
 } = require("./weekly-sage-defense-week.js");
 
+const { summarize, failure } = require('./_weekly-defense-failure');
 const DEFAULT_SEASON_TYPE = "reg";
 const STORE_NAME = "weekly-sage-defense";
 
@@ -162,6 +163,23 @@ function validateCompleteDefense(
     }
   }
 
+  if (evidence.defenses && typeof evidence.defenses === 'object' && !Array.isArray(evidence.defenses)) {
+    const required = {
+      runDefense: ['attemptsAllowed', 'yardsAllowed', 'touchdownsAllowed'],
+      passDefense: ['attemptsAllowed', 'completionsAllowed', 'yardsAllowed', 'touchdownsAllowed', 'interceptions', 'sacks'],
+      totalDefense: ['yardsAllowed', 'playsFaced'],
+      pointsAllowed: ['total', 'gamesRepresented']
+    };
+    for (const [team, profile] of Object.entries(evidence.defenses)) {
+      if (!profile || profile.team !== team || profile.games !== 1 || profile.pointsAllowed?.gamesRepresented !== 1 ||
+          Object.entries(required).some(([group, fields]) => fields.some(field =>
+            typeof profile[group]?.[field] !== 'number' || !Number.isFinite(profile[group][field])))) {
+        problems.push('A defensive profile has missing or invalid required statistics.');
+        break;
+      }
+    }
+  }
+
   return problems;
 }
 
@@ -251,7 +269,9 @@ exports.handler = async function (event) {
         blobKey: key,
         error:
           "Weekly SAGE defensive evidence was incomplete; existing cache (if any) was left untouched.",
-        problems
+        problems,
+        failure: String(evidence?.season) !== season || Number(evidence?.week) !== week || evidence?.seasonType !== seasonType
+          ? failure('identity') : summarize(evidence, problems)
       });
     }
 
@@ -278,7 +298,7 @@ exports.handler = async function (event) {
   } catch (error) {
     console.error(
       `refresh-weekly-sage-defense failed for ${key}:`,
-      error
+      failure(error.defenseCategory || "processing", error.defenseGameIDs)
     );
 
     return jsonResponse(502, {
@@ -290,10 +310,7 @@ exports.handler = async function (event) {
       blobKey: key,
       error:
         "Could not build and cache Weekly SAGE defensive evidence.",
-      detail:
-        error && error.message
-          ? error.message
-          : String(error)
+      failure: failure(error.defenseCategory || "processing", error.defenseGameIDs)
     });
   }
 };

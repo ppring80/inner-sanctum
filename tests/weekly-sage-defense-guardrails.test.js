@@ -40,6 +40,12 @@ const identity = {
   seasonType: 'reg'
 };
 
+function defense(team) {
+  return { team, games: 1,
+    runDefense: { attemptsAllowed: 20, yardsAllowed: 80, touchdownsAllowed: 0 },
+    passDefense: { attemptsAllowed: 30, completionsAllowed: 20, yardsAllowed: 220, touchdownsAllowed: 2, interceptions: 0, sacks: 1 },
+    totalDefense: { yardsAllowed: 300, playsFaced: 51 }, pointsAllowed: { total: 14, gamesRepresented: 1 } };
+}
 function evidence(overrides = {}) {
   return {
     evidenceType: 'weekly-sage-defense-week',
@@ -52,8 +58,8 @@ function evidence(overrides = {}) {
       processedGames: 1
     },
     defenses: {
-      NE: { team: 'NE' },
-      NYJ: { team: 'NYJ' }
+      NE: defense('NE'),
+      NYJ: defense('NYJ')
     },
     gameResults: [{ status: 'processed' }],
     kickerEvidence: [],
@@ -115,4 +121,5 @@ assert.ok(
   ).includes('kickerEvidence is not an array.')
 );
 
-console.log('13 Weekly SAGE defense guardrail tests passed, 0 failed.');
+assert.ok(validateCompleteDefense(evidence({ defenses: { NE: { ...defense('NE'), runDefense: { ...defense('NE').runDefense, touchdownsAllowed: null } }, NYJ: defense('NYJ') } }), identity).includes('A defensive profile has missing or invalid required statistics.'));
+console.log('14 Weekly SAGE defense guardrail tests passed, 0 failed.');
