@@ -12,6 +12,31 @@ async function request(name,body,onData){
  const data=await r.json();if(onData)onData(data);assert.equal(r.status,200,`${name}: HTTP ${r.status}: ${JSON.stringify(data)}`);return data;
 }
 function identity(row){return {name:row.name,position:row.position,team:row.team};}
+// Audit current eligibility from the same cache and normalization as customer tools.
+// A blank designation means no restriction is reported, not confirmed activation.
+function verifyRankedAvailability(positions,cache,now=Date.now()){
+ const cacheEvidence=require('./verify-player-availability').verify(cache,now);
+ const {canonicalNameKey,normalizedPosition}=require('../player-identity');
+ const {HARD_UNAVAILABLE,normalizeStatus}=require('../netlify/functions/weekly-sage-rb-availability');
+ let checked=0,noRestrictionReported=0,explicitlyActive=0;
+ for(const position of ['QB','RB','WR','TE','K'])for(const row of positions[position]||[]){
+  const player=row.playerID!=null?cache.players[String(row.playerID)]:null;
+  assert(player,`${row.name}: current availability identity missing`);
+  const reportedPosition=normalizedPosition(player.pos);
+  // The existing RB snapshot selects provider depthChart.RB members and emits RB,
+  // including roster-labelled fullbacks. Audit that fantasy group without changing
+  // provider roster labels or assigning any customer-specific slot eligibility.
+  const fantasyPosition=reportedPosition==='PK'?'K':reportedPosition==='FB'?'RB':reportedPosition;
+  assert(canonicalNameKey(player.longName)===canonicalNameKey(row.name)&&fantasyPosition===position&&normalizeTeam(player.team)===normalizeTeam(row.team),`${row.name}: current availability identity mismatch`);
+  const statuses=[player.injury?.designation,player.rosterStatus,String(player.isFreeAgent).toLowerCase()==='true'?'UNSIGNED':null,player.active===false?'INACTIVE':null].map(normalizeStatus).filter(Boolean);
+  const restriction=statuses.find(status=>HARD_UNAVAILABLE.has(status));
+  assert(!restriction,`${row.name}: current ${restriction} restriction appears in active rankings`);
+  checked++;
+  if(player.active===true||statuses.includes('ACTIVE'))explicitlyActive++;
+  else if(!statuses.length)noRestrictionReported++;
+ }
+ return {...cacheEvidence,rankedPlayersChecked:checked,explicitlyActive,noRestrictionReported};
+}
 async function verifyCore({supplementaryFailures=[]}={}){
  const now=new Date(),season=now.getUTCMonth()===0?now.getUTCFullYear()-1:now.getUTCFullYear();
  if(season===2026 && now<Date.parse('2026-09-10T00:00:00Z')){console.log('Before regular-season opener; skipped.');return;}
@@ -28,8 +53,7 @@ async function verifyCore({supplementaryFailures=[]}={}){
  const data=await request(`weekly-sage-rankings?season=${season}&week=${week}&scoring=half-ppr&evidenceUsage=archive`);
  assert.equal(data.metadata.complete,true);assert.equal(data.metadata.availability.fresh,true,'Player availability stale');assert.equal(data.metadata.projections.fresh,true,'Projections stale');
  const pool={};
- const {TRANSACTIONS,reserveTransaction}=require('../netlify/functions/_reserve-transactions');
- for(const transaction of TRANSACTIONS){if(!reserveTransaction(transaction,season,week))continue;assert(!Object.values(data.positions).flat().some(row=>String(row.playerID)===transaction.playerID||row.name===transaction.name),`${transaction.name}: confirmed reserve player appears in active rankings`);}
+ const availability=verifyRankedAvailability(data.positions,await request('player-data'));
  for(const pos of positions){const rows=data.positions[pos];assert(rows.length>0,`${pos}: empty rankings`);assert(rows.every(x=>x.opponent),`${pos}: missing opponent`);assert(rows.every((x,i)=>Number(x.rank)===i+1),`${pos}: authoritative position ranks are missing or out of order`);pool[pos]=rows.filter(x=>Number.isFinite(x.projectedPoints));assert(pool[pos].length>0,`${pos}: no matched projections`);}
  const news=await request('sage-newswire');assert(news.stories.length>0);assert.equal(news.mode,'editorial-with-sources','Automatic editorial source refresh incomplete');assert(news.stories.every(s=>s.publishedAt&&s.sageImpact&&s.sageImpact.length>50),'Newswire lacks verified dates or analysis');assert(!news.stories.some(s=>/^(Latest Buzz|Depth Charts|Consistency Ratings|xTD Leaders|xFP Leaders)$/.test(s.headline)),'Generic resource links displaced player news');assert(!news.stories.some(s=>s.sageImpact.includes('This headline alone does not establish availability')),'Newswire boilerplate returned');assert(Date.now()-Date.parse(news.updatedAt)<24*3600000,'Newswire stale');
  // A synthetic multi-initial name must not borrow a genuine player's evidence.
@@ -66,7 +90,7 @@ async function verifyCore({supplementaryFailures=[]}={}){
  for(const row of independent.recommendations){assert.equal(row.faab,null,'Stale snapshot supplied an actionable bid');assert(!['ADD_NOW','STASH'].includes(row.verdict),'Stale snapshot supplied an actionable move');}
  assert.deepEqual([...new Set(independent.recommendations.map(row=>row.position))].sort(),[...positions].sort(),'Independent market check must cover every position');
  for(const row of independent.recommendations){assert(marketEstimates.has(row.position),`Unexpected FAAB position ${row.position}`);assert.deepEqual(row.marketFaab,marketEstimates.get(row.position),`${row.position}: market value changed with roster fit`);}
- return {season,week,supplementaryFailures};
+ return {season,week,availability,supplementaryFailures};
 }
 async function verifySupplementary(){
  const now=new Date(),season=now.getUTCMonth()===0?now.getUTCFullYear()-1:now.getUTCFullYear();
@@ -86,7 +110,7 @@ async function runHealthChecks({coreCheck=verifyCore,supplementaryCheck=verifySu
  if(core.status==='fulfilled'&&core.value?.supplementaryFailures&&core.value.supplementaryFailures!==failures)failures.push(...core.value.supplementaryFailures);
  if(supplementary.status==='rejected')failures.push({check:'public-risers-fallers',error:supplementary.reason.message});
  const critical=supplementary.status==='rejected'&&supplementary.reason.critical;
- return {core:{status:core.status==='fulfilled'&&!critical?'PASS':'FAIL',...(critical?{error:supplementary.reason.message}:{}),...(core.status==='rejected'?{error:core.reason.message}:{season:core.value?.season,week:core.value?.week})},
+ return {core:{status:core.status==='fulfilled'&&!critical?'PASS':'FAIL',...(critical?{error:supplementary.reason.message}:{}),...(core.status==='rejected'?{error:core.reason.message}:{season:core.value?.season,week:core.value?.week,...(core.value?.availability?{availability:core.value.availability}:{})})},
   supplementary:{status:failures.length?'DEGRADED':'PASS',failures}};
 }
 async function main(){
@@ -96,4 +120,4 @@ async function main(){
  if(report.core.status==='FAIL')process.exitCode=1;
 }
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});
-module.exports={runHealthChecks,verifyCore};
+module.exports={runHealthChecks,verifyCore,verifyRankedAvailability};
