@@ -1,0 +1,180 @@
+      })
+      .then(function (value) {
+        button.disabled = false;
+        button.textContent = "Send a new link";
+        panel.removeAttribute("data-busy");
+        return value;
+      });
+  }
+
+  function renderHandoffLink(output, link, expiresAt) {
+    output.innerHTML = "";
+    var qrWrap = el("div", "is-handoff-qr");
+    output.appendChild(qrWrap);
+
+    var row = el("div", "is-handoff-link-row");
+    var input = el("input", "is-handoff-link");
+    input.type = "text";
+    input.readOnly = true;
+    input.value = link;
+    input.setAttribute("value", link);
+    input.setAttribute("aria-label", "One-time link for your phone");
+    var copy = el("button", "is-handoff-copy-btn", "Copy link");
+    copy.type = "button";
+    copy.addEventListener("click", function () {
+      var done = function () { copy.textContent = "Copied"; };
+      try {
+        if (window.navigator.clipboard && window.navigator.clipboard.writeText) {
+          window.navigator.clipboard.writeText(link).then(done, function () {});
+        } else if (input.select) {
+          input.select();
+          if (document.execCommand) document.execCommand("copy");
+          done();
+        }
+      } catch (e) { /* the link stays visible for manual copy */ }
+    });
+    row.appendChild(input);
+    row.appendChild(copy);
+    output.appendChild(row);
+
+    var when = formatTime(expiresAt);
+    output.appendChild(el(
+      "div",
+      "is-handoff-note",
+      "Scan this code with your phone's camera, or open the link on your phone. " +
+      "It works once and expires in 10 minutes" + (when ? " (at " + when + ")." : ".")
+    ));
+
+    return loadQrLibrary()
+      .then(function (factory) {
+        qrWrap.appendChild(buildQrSvg(factory, link).svg);
+        return true;
+      })
+      .catch(function () {
+        qrWrap.remove();
+        return true;
+      });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Mobile: provider-neutral connect panel                              */
+  /* ------------------------------------------------------------------ */
+
+  function renderMobileForm() {
+    if (!device.mobile) return;
+    var provider = currentSelectedProvider();
+    if (!isHandoffProvider(provider)) return;
+    var forms = document.getElementById("providerForms");
+    if (!forms) return;
+
+    var LC = leagueConnection();
+    var connection = LC && LC.getConnection ? LC.getConnection(provider) : null;
+    var stateKey = provider + ":" + (connection ? connection.connectionId + ":" + (connection.syncedAt || "") : "none");
+    var current = forms.querySelector("." + MOBILE_FORM_CLASS);
+    if (current && current.getAttribute("data-state") === stateKey) return;
+
+    var previousResult = document.getElementById(MOBILE_RESULT_ID);
+    var keepResult = previousResult && /\bshow\b/.test(previousResult.className)
+      ? { className: previousResult.className, html: previousResult.innerHTML }
+      : null;
+
+    var name = providerName(provider);
+    var form = el("div", "provider-form show " + MOBILE_FORM_CLASS);
+    form.setAttribute("data-provider", provider);
+    form.setAttribute("data-state", stateKey);
+
+    if (connection && isTransferableRecord(connection)) {
+      var info = el("div", "pf-info");
+      info.appendChild(el("strong", "", "League connected"));
+      info.appendChild(el("br"));
+      info.appendChild(document.createTextNode(
+        [connection.leagueName, connection.teamName].filter(Boolean).join(" · ")
+      ));
+      if (connection.syncedAt) {
+        info.appendChild(el("br"));
+        info.appendChild(document.createTextNode("League synced " + formatSynced(connection.syncedAt)));
+      }
+      form.appendChild(info);
+      form.appendChild(el(
+        "div",
+        "connect-note",
+        "To refresh this league, choose Send to my phone on your computer after it syncs."
+      ));
+    } else {
+      var intro = el("div", "pf-info");
+      intro.appendChild(el("strong", "", "Already connected on a computer? Bring your league to this device."));
+      intro.appendChild(el("br"));
+      intro.appendChild(document.createTextNode(
+        "On your computer, open Link Your League, connect your " + name +
+        " league, then choose Send to my phone. Scan the code with this device's camera or open the link."
+      ));
+      form.appendChild(intro);
+      form.appendChild(el(
+        "div",
+        "connect-note",
+        "Not connected yet? Connect " + name + " once on a computer, then send it here. " +
+        "Inner Sanctum never asks for your " + name + " password."
+      ));
+    }
+
+    var result = el("div", "result-box");
+    result.id = MOBILE_RESULT_ID;
+    if (keepResult) {
+      result.className = keepResult.className;
+      result.innerHTML = keepResult.html;
+    }
+    form.appendChild(result);
+
+    forms.innerHTML = "";
+    forms.appendChild(form);
+  }
+
+  function scheduleMobileRender() {
+    window.setTimeout(renderMobileForm, 0);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Handoff import (any device)                                         */
+  /* ------------------------------------------------------------------ */
+
+  function statusTarget() {
+    if (device.mobile) {
+      renderMobileForm();
+      var mobileBox = document.getElementById(MOBILE_RESULT_ID);
+      if (mobileBox) return { kind: "mobile", node: mobileBox };
+    }
+    var panel = document.getElementById(DESKTOP_PANEL_ID) || ensureDesktopPanel();
+    if (!panel) return null;
+    var status = panel.querySelector(".is-handoff-import-status");
+    if (!status) {
+      status = el("div", "is-handoff-status is-handoff-import-status");
+      panel.insertBefore(status, panel.firstChild);
+    }
+    return { kind: "desktop", node: status };
+  }
+
+  function showStatus(type, html) {
+    var target = statusTarget();
+    if (!target) return;
+    if (target.kind === "mobile") {
+      target.node.className = "result-box " + type + " show";
+    } else {
+      target.node.className = "is-handoff-status is-handoff-import-status " + type;
+    }
+    target.node.innerHTML = html;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function sameLeagueAndTeam(a, b) {
+    return Boolean(a && b &&
+      String(a.leagueId) === String(b.leagueId) &&
+      String(a.teamId) === String(b.teamId));
+  }

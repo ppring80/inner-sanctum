@@ -1,0 +1,180 @@
+    try {
+      var params = new URLSearchParams(loc.search || "");
+      params.delete(HANDOFF_PARAM);
+      var search = params.toString();
+      var hashParams = new URLSearchParams(String(loc.hash || "").replace(/^#/, ""));
+      var hadHashCode = hashParams.has(HANDOFF_PARAM);
+      hashParams.delete(HANDOFF_PARAM);
+      var hash = hadHashCode ? hashParams.toString() : String(loc.hash || "").replace(/^#/, "");
+      var clean = loc.pathname + (search ? "?" + search : "") + (hash ? "#" + hash : "");
+      if (window.history && typeof window.history.replaceState === "function") {
+        window.history.replaceState(window.history.state || null, "", clean);
+      }
+      return clean;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function postHandoff(body) {
+    return window.fetch(HANDOFF_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      credentials: "same-origin",
+      cache: "no-store"
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        return { ok: res.ok, status: res.status, data: data || {} };
+      });
+    });
+  }
+
+  function rerenderPage() {
+    ["renderPlatformRow", "renderConnectedBanner", "renderProviderForm", "renderChatGptLinkPanel"].forEach(function (name) {
+      if (typeof window[name] === "function") {
+        try { window[name](); } catch (e) { /* keep the import result visible */ }
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* QR code (vendored, loaded only when needed)                         */
+  /* ------------------------------------------------------------------ */
+
+  var qrLoader = null;
+
+  function loadQrLibrary() {
+    if (typeof window.qrcode === "function") return Promise.resolve(window.qrcode);
+    if (qrLoader) return qrLoader;
+    qrLoader = new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = QR_SCRIPT_SRC;
+      script.async = true;
+      script.addEventListener("load", function () {
+        if (typeof window.qrcode === "function") resolve(window.qrcode);
+        else reject(new Error("QR unavailable"));
+      });
+      script.addEventListener("error", function () { reject(new Error("QR unavailable")); });
+      (document.head || document.documentElement).appendChild(script);
+    });
+    qrLoader.catch(function () { qrLoader = null; });
+    return qrLoader;
+  }
+
+  function buildQrSvg(qrcodeFactory, text) {
+    var qr = qrcodeFactory(0, "M");
+    qr.addData(text, "Byte");
+    qr.make();
+    var count = qr.getModuleCount();
+    var quiet = 4;
+    var size = count + quiet * 2;
+    var path = "";
+    for (var row = 0; row < count; row += 1) {
+      for (var col = 0; col < count; col += 1) {
+        if (qr.isDark(row, col)) path += "M" + (col + quiet) + " " + (row + quiet) + "h1v1h-1z";
+      }
+    }
+    var svgNS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS
+      ? document.createElementNS(svgNS, "svg")
+      : document.createElement("svg");
+    svg.setAttribute("viewBox", "0 0 " + size + " " + size);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "QR code for your one-time link");
+    svg.setAttribute("shape-rendering", "crispEdges");
+    var shape = document.createElementNS ? document.createElementNS(svgNS, "path") : document.createElement("path");
+    shape.setAttribute("d", path);
+    shape.setAttribute("fill", "#000");
+    svg.appendChild(shape);
+    return { svg: svg, moduleCount: count };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Desktop: Send to my phone                                           */
+  /* ------------------------------------------------------------------ */
+
+  function activeTransferableConnection() {
+    var LC = leagueConnection();
+    if (!LC) return null;
+    var active = LC.getActiveConnection ? LC.getActiveConnection() : null;
+    return isTransferableRecord(active) ? active : null;
+  }
+
+  function ensureDesktopPanel() {
+    var panel = document.getElementById(DESKTOP_PANEL_ID);
+    if (panel) return panel;
+    var forms = document.getElementById("providerForms");
+    if (!forms || !forms.parentNode) return null;
+    ensureStyles();
+    panel = el("div", "is-handoff-panel");
+    panel.id = DESKTOP_PANEL_ID;
+    forms.parentNode.insertBefore(panel, forms.nextSibling);
+    return panel;
+  }
+
+  function renderDesktopPanel() {
+    var existing = document.getElementById(DESKTOP_PANEL_ID);
+    if (existing && existing.getAttribute("data-busy") === "1") return;
+
+    var connection = activeTransferableConnection();
+    var connectionKey = connection ? connection.provider + ":" + connection.connectionId : "";
+
+    if (!connection) {
+      if (existing && existing.getAttribute("data-mode") === "send") existing.remove();
+      return;
+    }
+    if (existing && existing.getAttribute("data-mode") === "send" &&
+        existing.getAttribute("data-connection") === connectionKey) {
+      return;
+    }
+
+    var panel = existing || ensureDesktopPanel();
+    if (!panel) return;
+    panel.innerHTML = "";
+    panel.setAttribute("data-mode", "send");
+    panel.setAttribute("data-connection", connectionKey);
+
+    var name = providerName(connection.provider);
+    panel.appendChild(el("div", "is-handoff-title", "Use this league on your phone"));
+    panel.appendChild(el(
+      "p",
+      "is-handoff-copy",
+      "Send your connected " + name + " league to your phone or tablet. It works once and no passwords are shared."
+    ));
+    var button = el("button", "is-handoff-btn", "Send to my phone");
+    button.type = "button";
+    button.addEventListener("click", function () { sendToPhone(panel, connection.provider, button); });
+    panel.appendChild(button);
+    panel.appendChild(el("div", "is-handoff-output"));
+  }
+
+  function sendToPhone(panel, provider, button) {
+    var LC = leagueConnection();
+    var record = LC && LC.getConnection ? LC.getConnection(provider) : null;
+    var output = panel.querySelector(".is-handoff-output");
+    output.innerHTML = "";
+
+    if (!isTransferableRecord(record)) {
+      output.appendChild(el("div", "is-handoff-status error", "Connect your league on this computer first, then try again."));
+      return Promise.resolve(false);
+    }
+
+    button.disabled = true;
+    panel.setAttribute("data-busy", "1");
+    output.appendChild(el("div", "is-handoff-status", "Creating your link…"));
+
+    return postHandoff({ action: "create", record: record })
+      .then(function (result) {
+        if (!result.ok || !result.data || !result.data.code) {
+          throw new Error((result.data && result.data.error) || "We couldn't create a link. Please try again.");
+        }
+        // Fragment form: the code never appears in an HTTP request, access log
+        // or Referer header.
+        var link = window.location.origin + "/connect-league#" + HANDOFF_PARAM + "=" + encodeURIComponent(result.data.code);
+        return renderHandoffLink(output, link, result.data.expiresAt);
+      })
+      .catch(function (err) {
+        output.innerHTML = "";
+        output.appendChild(el("div", "is-handoff-status error", (err && err.message) || "We couldn't create a link. Please try again."));
+        return false;

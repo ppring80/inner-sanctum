@@ -1,0 +1,180 @@
+'use strict';
+
+// tests/helpers/connect-page-harness.js
+//
+// TEST-ONLY. Never loaded by Netlify or any customer-facing page.
+//
+// Runs the REAL connect-league.html page (every <script> in document order:
+// the inline scripts plus the repo-local /league-connection.js and
+// /provider-adapters.js) inside a Node vm context backed by a deliberately
+// small fake browser. Scripts the page injects later (league-connection.js
+// appends /team-context.js on DOMContentLoaded) are loaded from the repo too,
+// so post-connect behavior matches the browser.
+//
+// No production connection logic is duplicated here. The fake only provides
+// the browser primitives the page touches: a tiny HTML parser that builds a
+// nested element tree, a minimal CSS selector matcher (tag, #id, .class,
+// [attr], [attr=value], descendant combinator, comma lists), classList,
+// events, Map-backed localStorage/sessionStorage, a fetch recorder, a
+// window.open stub, CustomEvent/dispatchEvent, and a controllable timer queue
+// so asynchronous effects (setTimeout) can be flushed deterministically.
+//
+// Phase 0 of the mobile league-connect project: these harness-driven tests
+// freeze the proven desktop CBS/ESPN connection behavior.
+
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const { webcrypto } = require('crypto');
+
+const REPO_ROOT = path.join(__dirname, '..', '..');
+const PAGE_URL = 'https://theinnersanctum.xyz/connect-league';
+const DESKTOP_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+
+const VOID_TAGS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
+  'meta', 'source', 'track', 'wbr'
+]);
+const RAW_TEXT_TAGS = new Set(['script', 'style', 'textarea', 'title']);
+
+function readRepoFile(relativePath) {
+  return fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+}
+
+function decodeEntities(text) {
+  return String(text)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&middot;/g, '·')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+}
+
+function escapeText(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/* ------------------------------------------------------------------ */
+/* Minimal selector matcher                                            */
+/* ------------------------------------------------------------------ */
+
+function parseCompound(compound) {
+  const parts = { tag: null, id: null, classes: [], attrs: [] };
+  const re = /\[([\w-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\]]*)))?\]|([#.]?)([\w-]+)/g;
+  let match;
+  let consumed = '';
+  while ((match = re.exec(compound)) !== null) {
+    consumed += match[0];
+    if (match[1]) {
+      const value = match[2] ?? match[3] ?? match[4];
+      parts.attrs.push({ name: match[1], value: value === undefined ? null : value });
+    } else if (match[5] === '#') {
+      parts.id = match[6];
+    } else if (match[5] === '.') {
+      parts.classes.push(match[6]);
+    } else {
+      parts.tag = match[6].toLowerCase();
+    }
+  }
+  if (consumed !== compound) {
+    throw new Error('connect-page-harness: unsupported selector "' + compound + '"');
+  }
+  return parts;
+}
+
+function parseSelector(selector) {
+  return String(selector)
+    .split(',')
+    .map((group) => group.trim())
+    .filter(Boolean)
+    .map((group) => group.split(/\s+/).map(parseCompound));
+}
+
+function matchesCompound(el, parts) {
+  if (!el || el.nodeType !== 1) return false;
+  if (parts.tag && el.tagName.toLowerCase() !== parts.tag) return false;
+  if (parts.id && el.id !== parts.id) return false;
+  for (const cls of parts.classes) {
+    if (!el.classList.contains(cls)) return false;
+  }
+  for (const attr of parts.attrs) {
+    const actual = el.getAttribute(attr.name);
+    if (actual === null) return false;
+    if (attr.value !== null && actual !== attr.value) return false;
+  }
+  return true;
+}
+
+function matchesChain(el, chain) {
+  if (!matchesCompound(el, chain[chain.length - 1])) return false;
+  let index = chain.length - 2;
+  let ancestor = el.parentNode;
+  while (index >= 0 && ancestor) {
+    if (matchesCompound(ancestor, chain[index])) index -= 1;
+    ancestor = ancestor.parentNode;
+  }
+  return index < 0;
+}
+
+function matchesSelector(el, selector) {
+  return parseSelector(selector).some((chain) => matchesChain(el, chain));
+}
+
+/* ------------------------------------------------------------------ */
+/* Fake DOM                                                            */
+/* ------------------------------------------------------------------ */
+
+class FakeClassList {
+  constructor(el) { this._el = el; }
+  _list() { return String(this._el.className || '').split(/\s+/).filter(Boolean); }
+  _write(list) { this._el.className = list.join(' '); }
+  contains(name) { return this._list().includes(name); }
+  add(...names) {
+    const list = this._list();
+    names.forEach((n) => { if (!list.includes(n)) list.push(n); });
+    this._write(list);
+  }
+  remove(...names) { this._write(this._list().filter((n) => !names.includes(n))); }
+  toggle(name, force) {
+    const on = force === undefined ? !this.contains(name) : Boolean(force);
+    if (on) this.add(name); else this.remove(name);
+    return on;
+  }
+}
+
+class FakeNode {
+  constructor(doc) {
+    this.ownerDocument = doc;
+    this.parentNode = null;
+    this.childNodes = [];
+    this._listeners = {};
+  }
+  get children() { return this.childNodes.filter((n) => n.nodeType === 1); }
+  get firstChild() { return this.childNodes[0] || null; }
+  get nextSibling() {
+    if (!this.parentNode) return null;
+    const siblings = this.parentNode.childNodes;
+    return siblings[siblings.indexOf(this) + 1] || null;
+  }
+  appendChild(child) { return this.insertBefore(child, null); }
+  insertBefore(child, reference) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this;
+    const index = reference ? this.childNodes.indexOf(reference) : -1;
+    if (index >= 0) this.childNodes.splice(index, 0, child);
+    else this.childNodes.push(child);
+    this._markDirty();
+    if (this.ownerDocument && this.ownerDocument._onInsert) this.ownerDocument._onInsert(child);
+    return child;
+  }
+  removeChild(child) {
+    const index = this.childNodes.indexOf(child);
+    if (index >= 0) this.childNodes.splice(index, 1);
+    child.parentNode = null;
