@@ -96,13 +96,16 @@ function advantages(packet){
 }
 const SYSTEM='Give an independent second opinion on this unresolved fantasy football pair. Choose A, B, or NO_CALL, a confidence, and the deciding factor: one of your pick\'s verified advantages listed in advantages. Factors under tied or notComparable favor nobody and cannot decide. The other player\'s advantages are shown to the customer automatically; do not select them. Weigh these facts; there is no supplied preferred player. Position-relative roles are context, never comparable across positions. Do not generate prose or new facts. For a pick, choose a hypothetical reversal: pick_ruled_out, alternative_more_work_confirmed, or alternative_cleared only if the alternative currently has uncertain availability. For NO_CALL use decidingFactor NONE, evidence_resolves_blocker and a supported blocker. These are future conditions, never claims about current health or workload.';
 // Per-packet schema: only factors that verifiably favor a player can decide.
-function schemaFor(packet){
+function schemaFor(packet,{legacyReconsider=false}={}){
  const fs=factors(packet),supported=FACTORS.filter(k=>fs[k]&&fs[k].favoredId!==null);
+ // With neither player questionable, clearance cannot reverse either pick.
+ // Keep the old wire shape available only to locate saved v2 reviews.
+ const canClear=legacyReconsider||packet.players.some(p=>fact(p,'availability')?.value?.questionable===true);
  return {type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','blocker','reconsider'],properties:{
   selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},
   decidingFactor:{type:'string',enum:[...supported,'NONE']},
   blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},
-  reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
+  reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed',...(canClear?['alternative_cleared']:[]),'evidence_resolves_blocker']}}};
 }
 const isV1=input=>input&&typeof input==='object'&&Object.hasOwn(input,'tradeoffFactor');
 function validateV2(input,packet){
