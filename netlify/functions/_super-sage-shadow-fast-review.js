@@ -561,6 +561,17 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
     const base=key;
     key += `/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(schema))}))}`;
     cached = await store.get(key,{type:"json"});
+    // Tightening new response choices must not orphan accepted or failed v2
+    // history, spend again for the same request, or reinterpret a saved failure.
+    if(!cached&&structured&&!structuredV1){
+      const previousSchema=sp.schemaFor(focused.packet,{legacyReconsider:true});
+      const previousKey=base+`/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(previousSchema))}))}`;
+      if(previousKey!==key){
+        try{cached=await store.get(previousKey,{type:'json'});}
+        catch{return {status:'UNAVAILABLE',error:'legacy_review_read_failed'};}
+        if(cached?.status==='INVALID')return {...cached,cached:true};
+      }
+    }
     // Saved v1 reviews keep their original key (v1 packet, prompt and schema). Read
     // them explicitly and judge them only by v1 rules; never rewrite or re-request.
     if(!cached&&structured&&!structuredV1){
