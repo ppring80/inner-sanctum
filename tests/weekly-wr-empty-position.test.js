@@ -12,7 +12,7 @@ async function main(){
  assert.equal(result.ok,false);assert.match(result.error,/component HTTP 502/);assert.equal(result.data,bad);
  api.fetch=async()=>({ok:true,json:async()=>({leaderboard:[{name:'WR'}]})});assert.equal((await api.fetchPositionLeaderboard({baseUrl:'https://example.test',position:'WR'})).ok,true);
  const ctx={state:{myRosterOnly:false},Date,encodeURIComponent,getSelectedSeason:()=>2026,getSelectedWeek:()=>4,getScoringFormat:()=> 'half',flattenRankings:d=>Object.values(d.positions).flat(),updateWeeklyContextUI(){},renderTable(){},buildConnectedProviderFallback(){throw Error('Full pool replaced with roster');}};
- vm.createContext(ctx);vm.runInContext(loader,ctx);
+ vm.createContext(ctx);vm.runInContext(html.match(/function deriveCurrentWeeklyWeek\(now\) \{[\s\S]*?\n\}/)[0],ctx);vm.runInContext(loader,ctx);
  ctx.fetch=async()=>({ok:true,json:async()=>({positions:{...full,WR:[]},inactive:{WR:[{name:'Unavailable WR'}]},metadata:{complete:true,positionsFailed:[]}})});
  await ctx.loadWeeklyRankings();assert.match(ctx.state.loadError,/Missing positions: WR/,'inactive WR must not conceal an empty active pool');
  let resolveOld;
