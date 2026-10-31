@@ -1581,13 +1581,18 @@ function loadWeeklyRankings() {
   var season = getSelectedSeason();
   var week = getSelectedWeek();
   var scoring = getScoringFormat();
+  var now = new Date();
+  // Only past weeks use archive evidence. Current/future boards must retain
+  // the server's scheduled-kickoff exclusions across all six positions.
+  var historical = Number(season) < now.getFullYear() ||
+    (Number(season) === now.getFullYear() && week < deriveCurrentWeeklyWeek(now));
   var url =
     '/.netlify/functions/weekly-sage-rankings?season=' +
     encodeURIComponent(season) +
     '&week=' + encodeURIComponent(String(week)) +
     '&seasonType=reg' +
     '&scoring=' + encodeURIComponent(scoring) +
-    '&teams=12&evidenceUsage=archive';
+    '&teams=12&evidenceUsage=' + (historical ? 'archive' : 'rankings');
 
   function missingPositions(data) {
     var declared = data && data.metadata && data.metadata.positionsFailed || [];
