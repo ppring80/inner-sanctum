@@ -1,0 +1,11 @@
+{
+  "provenance": {"kind": "synthetic", "purpose": "OAuth and routing plumbing only; not current football advice", "season": 2026, "week": 7},
+  "rankings": {
+    "season": 2026, "week": 7, "positions": {
+      "RB": [{"name":"Alvin Kamara","position":"RB","team":"NO","rank":20,"recommendation":"FLEX"}],
+      "WR": [{"name":"Kendrick Bourne","position":"WR","team":"ARI","rank":38,"recommendation":"FLEX"}],
+      "TE": [{"name":"T.J. Hockenson","position":"TE","team":"MIN","rank":9,"recommendation":"START"}]
+    },
+    "inactive": {"RB":[{"name":"Jordan Mason","position":"RB","team":"MIN","status":"IR","reason":"Synthetic fixture: Provider reports IR."}]}
+  }
+}

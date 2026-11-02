@@ -1,0 +1,19 @@
+# Select this file by setting the TEST site's Base directory to acceptance.
+# Paths are relative to that base; only the generated package is published.
+# Preflight/package generation precedes dependency setup; lifecycle scripts are disabled.
+[build]
+  # Shared SAGE sources are outside the base: rebuild on every permitted branch push.
+  ignore = "exit 1"
+  command = "cd .. && node scripts/prepare-sage-acceptance.js && npm install --ignore-scripts --omit=dev --no-audit --no-fund 1>&2"
+  publish = "../.sage-acceptance/public"
+  functions = "../.sage-acceptance/functions"
+
+[build.environment]
+  NODE_VERSION = "24"
+  SAGE_ACCEPTANCE_MODE = "isolated"
+  SAGE_ACCEPTANCE_SITE_ID = "dcdb8384-114c-4f80-a2fe-acc0ecb39d57"
+  SAGE_ACCEPTANCE_ORIGIN = "https://sprightly-chebakia-13d478.netlify.app"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["../.sage-acceptance/lib/**"]

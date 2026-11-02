@@ -7,9 +7,9 @@ const { recordSageFunnelEvent } = require("./_sage-funnel-analytics.js");
 const AUTH_STORE = "chatgpt-oauth";
 const SNAPSHOT_STORE = "league-snapshots";
 
-const ISSUER = "https://theinnersanctum.xyz";
-const MCP_RESOURCE =
-  "https://theinnersanctum.xyz/.netlify/functions/chatgpt-mcp";
+const oauthConfig = require("./_sage-oauth-config.js").oauthConfiguration();
+const ISSUER = oauthConfig.issuer;
+const MCP_RESOURCE = oauthConfig.resource;
 
 const AUTHORIZATION_ENDPOINT =
   `${ISSUER}/.netlify/functions/chatgpt-oauth?action=authorize`;
