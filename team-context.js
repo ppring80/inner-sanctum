@@ -124,6 +124,7 @@
         nflTeam: nflTeam,
         projectedPoints: findEspnProjection(player, scoringPeriodId),
         lineupSlotId: entry?.lineupSlotId ?? null,
+        defaultPositionId: player?.defaultPositionId ?? null,
         status: playerPoolEntry?.status || null
       };
     }).filter(function (player) { return Boolean(player.name); });

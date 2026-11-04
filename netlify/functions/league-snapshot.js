@@ -780,6 +780,15 @@ function buildCanonicalSnapshot(
 
     provider,
 
+    // Passive provenance: never substitute storage timestamps or infer NFL
+    // week from the provider scoring period. Existing decision context stays unchanged.
+    ...(provider === "espn" ? { espnLineupSource: {
+      scoringPeriodId: sanitized.espnLineupSource?.scoringPeriodId ?? leagueSource.scoringPeriodId ?? null,
+      week: sanitized.espnLineupSource?.week ?? sanitized.week ?? null,
+      capturedAt: safeString(sanitized.espnLineupSource
+        ? sanitized.espnLineupSource.capturedAt : sanitized.meta?.capturedAt)
+    } } : {}),
+
     league: {
       id:
         safeString(
