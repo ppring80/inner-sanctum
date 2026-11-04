@@ -1,0 +1,180 @@
+'use strict';
+
+// tests/mobile-connect.test.js
+//
+// Phase 1 (mobile league-connect): mobile-connect.js running inside the REAL
+// connect-league page (Phase 0 harness), under desktop and mobile browsers.
+
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const {
+  DESKTOP_UA,
+  loadConnectPage,
+  loadExtensionWorker,
+  runInjectedFunction
+} = require('./helpers/connect-page-harness');
+const scenarios = require('./helpers/connect-golden-scenarios');
+const { createFakeBlobs, loadFunctionWithFakeBlobs } = require('./helpers/fake-netlify-blobs');
+
+const MARKUP_GOLDEN = JSON.parse(
+  fs.readFileSync(path.join(scenarios.FIXTURE_DIR, 'connect-markup.golden.json'), 'utf8')
+).observations;
+
+const UA = {
+  windowsChrome: DESKTOP_UA,
+  windowsEdgeTouch: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0',
+  macSafari: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  macChrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+  linuxChrome: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+  androidChrome: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
+  androidTablet: 'Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+  iphoneSafari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+  iphoneChrome: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0.0.0 Mobile/15E148 Safari/604.1',
+  ipadLegacy: 'Mozilla/5.0 (iPad; CPU OS 12_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1 Mobile/15E148 Safari/604.1'
+};
+
+const CODE = 'Q'.repeat(20) + 'handoffTestCode_-0123456'; // 43 base64url chars
+const FORBIDDEN_COPY = /bookmarklet|bookmark|swid|espn_s2|browser-assisted|extension|blob|capability|token/i;
+
+let passed = 0;
+async function test(name, fn) {
+  await fn();
+  passed += 1;
+  console.log('  ok - ' + name);
+}
+
+async function waitFor(check, label, rounds = 400) {
+  for (let i = 0; i < rounds; i += 1) {
+    if (check()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error('timed out waiting for ' + label);
+}
+
+function providerForm(h) {
+  const form = h.document.querySelector('#providerForms .provider-form');
+  return form ? { className: form.className, innerHTML: form.innerHTML } : null;
+}
+
+async function selectEspnLikeACustomer(h) {
+  const button = h.document.getElementById('platform-espn');
+  button.onclick();
+  const click = h.createEvent('click', { bubbles: true });
+  click.target = button;
+  h.document.getElementById('platformRow').dispatchEvent(click);
+  h.documentListeners('click').filter((l) => !l.capture).forEach((l) => l.fn.call(h.document, click));
+  await h.settle();
+}
+
+async function realCbsRecord() {
+  const h = loadConnectPage();
+  await h.window.receiveCbsConnection(scenarios.readInput('cbs-capture.input.json'));
+  await h.settle();
+  return scenarios.clone(h.window.LeagueConnection.getConnection('cbs'));
+}
+
+async function realEspnRecord() {
+  const worker = loadExtensionWorker();
+  const h = loadConnectPage();
+  await worker.context.deliverEspnToSanctum(scenarios.SANCTUM_TAB_ID, scenarios.readInput('espn-capture.input.json'));
+  runInjectedFunction(h, worker.executeScriptCalls.pop());
+  await h.settle();
+  return scenarios.clone(h.window.LeagueConnection.getConnection('espn'));
+}
+
+function claimResponder(response) {
+  const calls = [];
+  const responder = async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body || '{}') });
+    if (typeof response === 'function') return response(url, init);
+    return response;
+  };
+  return { calls, responder };
+}
+
+function mobilePage(options) {
+  return loadConnectPage({ userAgent: UA.androidChrome, ...options });
+}
+
+// Production form is the fragment; the query form is compatibility only.
+const FRAGMENT_LINK = 'https://theinnersanctum.xyz/connect-league#handoff=' + CODE;
+const QUERY_LINK = 'https://theinnersanctum.xyz/connect-league?handoff=' + CODE;
+
+async function openHandoffLink(options) {
+  const h = loadConnectPage({ url: FRAGMENT_LINK, domReady: false, ...options });
+  return h;
+}
+
+function allBrowserStorage(h) {
+  const dump = (storage) => Array.from(storage._map.entries()).map(([k, v]) => k + '=' + v).join('\n');
+  return dump(h.window.localStorage) + '\n' + dump(h.window.sessionStorage);
+}
+
+function spyRefresh(h) {
+  const calls = [];
+  const original = h.window.refreshChatGptLinkIfNeeded;
+  h.window.refreshChatGptLinkIfNeeded = function (provider) { calls.push(provider); return original.apply(this, arguments); };
+  return calls;
+}
+
+(async function run() {
+  /* ---------------- device detection ---------------- */
+
+  await test('device detection: desktops (touch laptops included) are never mobile', async () => {
+    const detect = loadConnectPage().window.InnerSanctumDeviceConnect.detectDevice;
+    [[UA.windowsChrome, 0], [UA.windowsEdgeTouch, 10], [UA.macSafari, 0], [UA.macChrome, 0], [UA.linuxChrome, 5], [UA.macSafari, 1]]
+      .forEach(([userAgent, maxTouchPoints]) => {
+        assert.deepStrictEqual(JSON.parse(JSON.stringify(detect({ userAgent, maxTouchPoints }))), { mobile: false, kind: 'desktop' }, userAgent + ' / ' + maxTouchPoints);
+      });
+  });
+
+  await test('device detection: Android, iPhone and iPad (incl. iPadOS desktop-style UA) are mobile', async () => {
+    const detect = loadConnectPage().window.InnerSanctumDeviceConnect.detectDevice;
+    const kind = (userAgent, maxTouchPoints = 5) => detect({ userAgent, maxTouchPoints }).kind;
+    assert.strictEqual(kind(UA.androidChrome), 'android');
+    assert.strictEqual(kind(UA.androidTablet), 'android');
+    assert.strictEqual(kind(UA.iphoneSafari), 'iphone');
+    assert.strictEqual(kind(UA.iphoneChrome), 'iphone');
+    assert.strictEqual(kind(UA.ipadLegacy), 'ipad');
+    assert.strictEqual(kind(UA.macSafari, 5), 'ipad', 'iPadOS Safari reports Macintosh with touch');
+  });
+
+  /* ---------------- desktop non-interference ---------------- */
+
+  for (const [label, userAgent, maxTouchPoints] of [
+    ['Windows Chrome', UA.windowsChrome, 0],
+    ['Mac Safari', UA.macSafari, 0],
+    ['touch-screen Windows laptop', UA.windowsEdgeTouch, 10]
+  ]) {
+    await test('desktop (' + label + '): CBS and ESPN provider forms are not rewritten', async () => {
+      const h = loadConnectPage({ userAgent, maxTouchPoints });
+      assert.strictEqual(h.window.InnerSanctumDeviceConnect.device.mobile, false);
+      assert.deepStrictEqual(providerForm(h), MARKUP_GOLDEN.cbs.disconnected.providerForm);
+      await selectEspnLikeACustomer(h);
+      assert.deepStrictEqual(providerForm(h), MARKUP_GOLDEN.espn.afterNoExtensionSafetyGuard.providerForm);
+      assert.strictEqual(h.document.querySelector('.is-mobile-connect'), null);
+      assert.strictEqual(h.document.getElementById('isDeviceHandoffPanel'), null, 'no panel until a league is connected');
+    });
+  }
+
+  await test('desktop: a connected CBS league gets a separate "Send to my phone" panel outside the provider form', async () => {
+    const h = loadConnectPage();
+    await h.window.receiveCbsConnection(scenarios.readInput('cbs-capture.input.json'));
+    await h.settle();
+    const panel = h.document.getElementById('isDeviceHandoffPanel');
+    assert.ok(panel, 'panel rendered');
+    assert.strictEqual(panel.closest('#providerForms'), null, 'panel is not inside #providerForms');
+    assert.strictEqual(panel.parentNode, h.document.getElementById('providerForms').parentNode);
+    assert.strictEqual(panel.querySelector('.connect-btn'), null, 'panel never uses the extension-intercepted class');
+    assert.strictEqual(panel.querySelector('.is-handoff-btn').textContent, 'Send to my phone');
+    const form = h.document.querySelector('#providerForms .provider-form');
+    assert.ok(form.innerHTML.includes('onclick="startCbsConnect()"'), 'CBS desktop form is untouched');
+  });
+
+  /* ---------------- desktop Send to my phone ---------------- */
+
+  await test('desktop: Send to my phone posts the finished record (never the ChatGPT link) and shows link + QR + expiry', async () => {
+    const created = { code: 'A'.repeat(43), expiresAt: '2026-09-26T18:10:00.000Z' };
+    const { calls, responder } = claimResponder({ status: 200, body: { success: true, ...created } });
+    const h = loadConnectPage({ fetchResponder: responder });

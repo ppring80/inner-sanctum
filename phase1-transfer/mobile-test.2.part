@@ -1,0 +1,180 @@
+    h.window.localStorage.setItem('innerSanctum_chatgptLeagueLinks', JSON.stringify({ cbs: { linkToken: 'chatgpt-secret-token' } }));
+    await h.window.receiveCbsConnection(scenarios.readInput('cbs-capture.input.json'));
+    await h.settle();
+    calls.length = 0;
+
+    h.document.querySelector('#isDeviceHandoffPanel .is-handoff-btn').click();
+    await waitFor(() => h.document.querySelector('#isDeviceHandoffPanel .is-handoff-link'), 'handoff link');
+    await waitFor(() => h.document.querySelector('#isDeviceHandoffPanel .is-handoff-qr svg path'), 'QR code');
+
+    const handoffCalls = calls.filter((c) => /connection-handoff/.test(c.url));
+    assert.strictEqual(handoffCalls.length, 1);
+    assert.strictEqual(handoffCalls[0].body.action, 'create');
+    assert.deepStrictEqual(handoffCalls[0].body.record, scenarios.clone(h.window.LeagueConnection.getConnection('cbs')));
+    assert.ok(!JSON.stringify(handoffCalls[0].body).includes('chatgpt-secret-token'), 'ChatGPT link never sent');
+
+    const link = h.document.querySelector('#isDeviceHandoffPanel .is-handoff-link').getAttribute('value');
+    assert.strictEqual(link, 'https://theinnersanctum.xyz/connect-league#handoff=' + created.code, 'fragment form');
+    assert.ok(!link.includes('?handoff='), 'generated links never use the query form');
+    assert.ok(!h.document.getElementById('isDeviceHandoffPanel').innerHTML.includes('?handoff='));
+    const path = h.document.querySelector('#isDeviceHandoffPanel .is-handoff-qr svg path').getAttribute('d');
+    assert.ok(path.length > 500, 'QR modules drawn');
+    const note = h.document.querySelector('#isDeviceHandoffPanel .is-handoff-note').textContent;
+    assert.match(note, /works once and expires in 10 minutes/);
+    assert.ok(!FORBIDDEN_COPY.test(h.document.getElementById('isDeviceHandoffPanel').textContent));
+  });
+
+  await test('desktop: a failed create shows a safe error and allows retry', async () => {
+    const { responder } = claimResponder({ status: 429, body: { success: false, error: 'Too many links were created. Please wait a few minutes and try again.' } });
+    const h = loadConnectPage({ fetchResponder: responder });
+    await h.window.receiveCbsConnection(scenarios.readInput('cbs-capture.input.json'));
+    await h.settle();
+    const button = h.document.querySelector('#isDeviceHandoffPanel .is-handoff-btn');
+    button.click();
+    await waitFor(() => h.document.querySelector('#isDeviceHandoffPanel .is-handoff-status.error'), 'error');
+    assert.match(h.document.querySelector('#isDeviceHandoffPanel .is-handoff-status.error').textContent, /Too many links/);
+    await waitFor(() => button.disabled === false, 'button re-enabled');
+  });
+
+  /* ---------------- mobile UI ---------------- */
+
+  for (const [label, userAgent, maxTouchPoints] of [
+    ['Android Chrome', UA.androidChrome, 5],
+    ['iPhone Safari', UA.iphoneSafari, 5],
+    ['iPad Safari (desktop-style UA)', UA.macSafari, 5]
+  ]) {
+    await test('mobile (' + label + '): CBS and ESPN show one provider-neutral flow, no desktop-only instructions', async () => {
+      const h = loadConnectPage({ userAgent, maxTouchPoints });
+      assert.strictEqual(h.window.InnerSanctumDeviceConnect.device.mobile, true);
+      const cbs = h.document.querySelector('#providerForms .is-mobile-connect');
+      assert.ok(cbs, 'CBS mobile form');
+      assert.strictEqual(cbs.getAttribute('data-provider'), 'cbs');
+      assert.ok(cbs.textContent.includes('Already connected on a computer? Bring your league to this device.'));
+      assert.strictEqual(h.document.querySelector('#providerForms .connect-btn'), null, 'no unusable connect button');
+      assert.ok(!FORBIDDEN_COPY.test(h.document.getElementById('providerForms').textContent));
+
+      await selectEspnLikeACustomer(h);
+      const espn = h.document.querySelector('#providerForms .is-mobile-connect');
+      assert.strictEqual(espn.getAttribute('data-provider'), 'espn');
+      assert.ok(espn.textContent.includes('Already connected on a computer? Bring your league to this device.'));
+      assert.ok(!/not active in this browser/.test(h.document.getElementById('providerForms').textContent));
+      assert.ok(!FORBIDDEN_COPY.test(h.document.getElementById('providerForms').textContent));
+      assert.strictEqual(h.document.getElementById('isDeviceHandoffPanel'), null, 'no Send to my phone panel on mobile');
+    });
+  }
+
+  /* ---------------- handoff import ---------------- */
+
+  for (const [provider, makeRecord] of [['cbs', realCbsRecord], ['espn', realEspnRecord]]) {
+    await test('handoff imports ' + provider.toUpperCase() + ': URL cleaned before claim, saved, ChatGPT refresh, success UI', async () => {
+      const record = await makeRecord();
+      const { calls, responder } = claimResponder({ status: 200, body: { success: true, record } });
+      const h = await openHandoffLink({ userAgent: UA.iphoneSafari, maxTouchPoints: 5, fetchResponder: responder });
+
+      assert.ok(!h.window.location.href.includes(CODE), 'code removed at script load, before anything else');
+      const refreshCalls = spyRefresh(h);
+      h.domReady();
+      await h.window.InnerSanctumDeviceConnect.whenImported();
+      await h.settle();
+
+      const first = h.timeline[0];
+      assert.strictEqual(first.type, 'replaceState');
+      assert.strictEqual(first.url, '/connect-league');
+      h.timeline.filter((e) => e.type === 'fetch').forEach((e) => assert.ok(!e.locationHref.includes(CODE)));
+      assert.deepStrictEqual(calls[0].body, { action: 'claim', code: CODE });
+
+      assert.deepStrictEqual(scenarios.clone(h.window.LeagueConnection.getConnection(provider)), record);
+      assert.strictEqual(h.window.LeagueConnection.getConnectionsByProvider(provider).length, 1);
+      assert.deepStrictEqual(refreshCalls, [provider]);
+      assert.strictEqual(h.window.selectedProvider, provider);
+
+      const box = h.document.getElementById('isMobileConnectResult');
+      assert.strictEqual(box.className, 'result-box success show');
+      assert.ok(box.textContent.includes('League connected'));
+      assert.ok(box.textContent.includes(record.leagueName));
+      assert.ok(h.document.querySelector('.is-mobile-connect').textContent.includes('League synced'));
+      assert.ok(!FORBIDDEN_COPY.test(h.document.getElementById('providerForms').textContent));
+    });
+  }
+
+  await test('re-sending the same league updates it in place (update, not a duplicate connect)', async () => {
+    const record = await realCbsRecord();
+    const refreshed = scenarios.clone(record);
+    refreshed.roster.push({ cbsPlayerId: '1', name: 'New Player', position: 'WR', nflTeam: 'KC', status: 'active', projectedPoints: null });
+    refreshed.syncedAt = new Date(Date.parse(record.syncedAt) + 60000).toISOString();
+    const { responder } = claimResponder({ status: 200, body: { success: true, record: refreshed } });
+    const h = await openHandoffLink({ userAgent: UA.androidChrome, fetchResponder: responder });
+    h.window.LeagueConnection.connect('cbs', record);
+    const methods = [];
+    ['connect', 'update'].forEach((m) => {
+      const original = h.window.LeagueConnection[m];
+      h.window.LeagueConnection[m] = function () { methods.push(m); return original.apply(this, arguments); };
+    });
+    h.domReady();
+    await h.window.InnerSanctumDeviceConnect.whenImported();
+    await h.settle();
+    assert.deepStrictEqual(methods, ['update']);
+    const all = h.window.LeagueConnection.getConnectionsByProvider('cbs');
+    assert.strictEqual(all.length, 1);
+    assert.strictEqual(all[0].roster.length, refreshed.roster.length);
+  });
+
+  await test('a different league of the same provider is added alongside, never overwritten', async () => {
+    const record = await realCbsRecord();
+    const other = scenarios.clone(record);
+    other.leagueId = 'another-league'; other.league.id = 'another-league'; other.leagueName = 'Another League';
+    other.league.name = 'Another League'; delete other.connectionId;
+    const { responder } = claimResponder({ status: 200, body: { success: true, record: other } });
+    const h = await openHandoffLink({ userAgent: UA.androidChrome, fetchResponder: responder });
+    h.window.LeagueConnection.connect('cbs', record);
+    h.domReady();
+    await h.window.InnerSanctumDeviceConnect.whenImported();
+    await h.settle();
+    const leagues = h.window.LeagueConnection.getConnectionsByProvider('cbs').map((c) => c.leagueId).sort();
+    assert.deepStrictEqual(leagues, ['another-league', 'phase0league']);
+    const original = h.window.LeagueConnection.getConnectionsByProvider('cbs').find((c) => c.leagueId === 'phase0league');
+    assert.deepStrictEqual(scenarios.clone(original.roster), record.roster);
+  });
+
+  for (const [label, response, expected] of [
+    ['expired or already used', { status: 410, body: { success: false, error: 'This link has expired or was already used. On your computer, choose Send to my phone to get a new one.' } }, /expired or was already used/],
+    ['rate limited', { status: 429, body: { success: false, error: 'Too many attempts. Please wait a few minutes and try again.' } }, /Too many attempts/],
+    ['server returned an unusable record', { status: 200, body: { success: true, record: { provider: 'cbs', leagueId: 'x' } } }, /could not be added/],
+    ['network unreachable', () => { throw new TypeError('Failed to fetch'); }, /couldn't reach Inner Sanctum/],
+    ['hostile error text', { status: 410, body: { success: false, error: '<img src=x onerror=alert(1)>' } }, /<img src=x onerror=alert\(1\)>/]
+  ]) {
+    await test('failed handoff (' + label + ') renders a safe, useful error and stores nothing', async () => {
+      const { responder } = claimResponder(response);
+      const h = await openHandoffLink({ userAgent: UA.androidChrome, fetchResponder: responder });
+      h.domReady();
+      await h.window.InnerSanctumDeviceConnect.whenImported();
+      await h.settle();
+      assert.ok(!h.window.location.href.includes(CODE), 'code removed even when the claim fails');
+      const box = h.document.getElementById('isMobileConnectResult');
+      assert.strictEqual(box.className, 'result-box error show');
+      assert.match(box.textContent, expected);
+      assert.ok(!/<img|<script/i.test(box.innerHTML), 'error text is escaped, never markup');
+      assert.strictEqual(h.getStoredState(), null);
+    });
+  }
+
+  await test('compatibility: a ?handoff= link still imports and is removed before the claim', async () => {
+    const record = await realEspnRecord();
+    const { calls, responder } = claimResponder({ status: 200, body: { success: true, record } });
+    const h = loadConnectPage({ url: QUERY_LINK, userAgent: UA.iphoneSafari, maxTouchPoints: 5, domReady: false, fetchResponder: responder });
+    assert.ok(!h.window.location.href.includes(CODE), 'removed at script evaluation');
+    assert.strictEqual(h.timeline[0].type, 'replaceState');
+    assert.strictEqual(h.timeline[0].url, '/connect-league');
+    h.domReady();
+    await h.window.InnerSanctumDeviceConnect.whenImported();
+    h.timeline.filter((e) => e.type === 'fetch').forEach((e) => assert.ok(!e.locationHref.includes(CODE)));
+    assert.strictEqual(calls[0].body.code, CODE);
+    assert.deepStrictEqual(scenarios.clone(h.window.LeagueConnection.getConnection('espn')), record);
+    assert.ok(!allBrowserStorage(h).includes(CODE), 'never persisted');
+  });
+
+  await test('other fragment/query content is preserved when the code is removed', async () => {
+    const h = loadConnectPage({
+      url: 'https://theinnersanctum.xyz/connect-league?ref=qr#handoff=' + CODE + '&tab=espn',
+      userAgent: UA.androidChrome, domReady: false,
+      fetchResponder: async () => ({ status: 410, body: { success: false, error: 'This link has expired or was already used.' } })

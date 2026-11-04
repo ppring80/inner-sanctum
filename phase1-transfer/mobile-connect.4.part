@@ -1,0 +1,127 @@
+
+  function saveRecord(record) {
+    var LC = leagueConnection();
+    if (!LC) throw new Error("League connection is unavailable.");
+    var provider = record.provider;
+    // Same semantics as the existing connection flows (update when this device
+    // already holds this league), without ever overwriting a DIFFERENT league
+    // of the same provider: in that case connect() adds it alongside.
+    var existing = LC.isConnected(provider) ? LC.getConnection(provider) : null;
+    if (existing && sameLeagueAndTeam(existing, record)) {
+      return LC.update(provider, record);
+    }
+    return LC.connect(provider, record);
+  }
+
+  function importHandoff(code) {
+    showStatus("loading", "Bringing your league to this device…");
+
+    return postHandoff({ action: "claim", code: code })
+      .then(function (result) {
+        if (!result.ok) {
+          var error = new Error(
+            (result.data && result.data.error) ||
+            "This link has expired or was already used. On your computer, choose Send to my phone to get a new one."
+          );
+          error.handoffStatus = result.status;
+          throw error;
+        }
+        var record = result.data && result.data.record;
+        if (!isTransferableRecord(record)) {
+          throw new Error("That league could not be added. On your computer, choose Send to my phone to try again.");
+        }
+        var saved = saveRecord(record);
+        try { window.selectedProvider = record.provider; } catch (e) { /* page global */ }
+        rerenderPage();
+        var refresh = typeof window.refreshChatGptLinkIfNeeded === "function"
+          ? window.refreshChatGptLinkIfNeeded(record.provider)
+          : Promise.resolve(false);
+        return Promise.resolve(refresh).catch(function () { return false; }).then(function () {
+          return saved;
+        });
+      })
+      .then(function (saved) {
+        renderMobileForm();
+        renderDesktopPanel();
+        showStatus(
+          "success",
+          "<strong>✓ League connected.</strong><br>" +
+          escapeHtml([saved.leagueName, saved.teamName].filter(Boolean).join(" · ")) +
+          (saved.syncedAt ? "<br>League synced " + escapeHtml(formatSynced(saved.syncedAt)) : "")
+        );
+        return saved;
+      })
+      .catch(function (err) {
+        // fetch() rejects with a TypeError when the network is unreachable.
+        var networkFailure = err && err.handoffStatus === undefined && err.name === "TypeError";
+        var message = networkFailure
+          ? "We couldn't reach Inner Sanctum. Check your connection, then choose Send to my phone on your computer to get a new link."
+          : (err && err.message) || "Something went wrong. Please try again.";
+        showStatus("error", "⚠️ " + escapeHtml(message));
+        return null;
+      });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Startup                                                             */
+  /* ------------------------------------------------------------------ */
+
+  // Remove a handoff code from the address bar as early as possible so it is
+  // not left in history, bookmarks or shared screenshots.
+  var pendingCode = readHandoffCode();
+  if (pendingCode) stripHandoffFromUrl();
+
+  var importPromise = null;
+
+  function start() {
+    renderDesktopPanelIfDesktop();
+    if (device.mobile) {
+      renderMobileForm();
+      document.addEventListener("click", function (event) {
+        var target = event && event.target;
+        if (target && target.closest && target.closest(".platform-btn")) scheduleMobileRender();
+      });
+      var forms = document.getElementById("providerForms");
+      if (forms && typeof window.MutationObserver === "function") {
+        new window.MutationObserver(function () { renderMobileForm(); }).observe(forms, { childList: true });
+      }
+    }
+    window.addEventListener("innerSanctum:leagueContextChanged", function () {
+      window.setTimeout(function () {
+        renderDesktopPanelIfDesktop();
+        renderMobileForm();
+      }, 0);
+    });
+    // A link opened in an already-open Link Your League tab only changes the
+    // fragment (no reload), so handle it here too.
+    window.addEventListener("hashchange", function () {
+      var code = readHandoffCode();
+      if (!code) return;
+      stripHandoffFromUrl();
+      importPromise = importHandoff(code);
+    });
+    if (pendingCode) {
+      var code = pendingCode;
+      pendingCode = null;
+      importPromise = importHandoff(code);
+    }
+  }
+
+  function renderDesktopPanelIfDesktop() {
+    if (!device.mobile) renderDesktopPanel();
+  }
+
+  window.InnerSanctumDeviceConnect = Object.freeze({
+    version: "1.0.0",
+    device: device,
+    detectDevice: detectDevice,
+    providers: HANDOFF_PROVIDERS.slice(),
+    whenImported: function () { return importPromise || Promise.resolve(null); }
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
+})();
