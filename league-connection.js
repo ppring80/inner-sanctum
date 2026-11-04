@@ -384,7 +384,24 @@
       const active = this.getActiveConnection();
       const existing = active?.provider === provider ? active : this.getConnection(provider);
       if (!existing) throw new Error("Cannot update provider that is not connected: " + provider);
-      return upsert(provider, data || {}, existing.connectionId);
+
+      const next = data || {};
+      const sameLeagueTarget = sameLeague(existing, next);
+      const sameTeamTarget = sameTeamOrUpgradeable(existing, next);
+
+      /*
+        A provider-level "update" is allowed to refresh the active league,
+        but it must never erase a different league/team from the same account.
+        When the incoming identity is different, treat it as a new/upserted
+        connection instead. This preserves the existing league and makes the
+        newly connected league active, which is exactly what multi-league
+        provider switching needs for CBS and ESPN.
+      */
+      if (!sameLeagueTarget || !sameTeamTarget) {
+        return upsert(provider, next, null);
+      }
+
+      return upsert(provider, next, existing.connectionId);
     },
     updateConnection(connectionId, data) {
       const existing = this.getConnectionById(connectionId);
