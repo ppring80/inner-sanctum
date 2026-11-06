@@ -30,7 +30,7 @@ async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=
   for(const job of recovery.jobsForWeek(2026,4))await getStore({name:job.store}).setJSON(recovery.cacheKey(job),fixture(job));
   assert.equal(JSON.parse((await watchdog.handler({})).body).ready,true);assert.equal(dispatches.length,0);assert.equal(injuryChecks,0,'weekly caches do not depend on official collection');
   instant=Date.parse('2026-10-06T06:00:00Z');
-  await watchdog.handler({});assert(dispatches.length===1);assert(built.includes('refresh-weekly-sage-schedule:5'));assert(built.includes('refresh-weekly-sage-defense:4'));
+  await watchdog.handler({});assert(dispatches.length===1);assert(built.includes('refresh-weekly-sage-schedule:5'));assert(built.includes('refresh-qb-snapshot:5'),'offensive snapshots begin before defensive evidence');
   const wr=recovery.jobsForWeek(2026,5).find(j=>j.job==='refresh-wr-snapshot');
   assert.equal((await getStore({name:wr.store}).get(recovery.cacheKey(wr))),null,'failed new week is not published');
   assert(await getStore({name:wr.store}).get('week:2026:4:reg'),'old week is retained');
