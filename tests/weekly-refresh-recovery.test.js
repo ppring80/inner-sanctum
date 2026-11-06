@@ -106,6 +106,17 @@ async function main() {
     'the rebuild applies to Week 8 only');
   assert(!canRetry({...gameIdGuardFailure,attempts:4},Date.parse('2026-11-06T06:00:00Z'),defenseWeek8),
     'four-attempt ceiling is unchanged');
+  // Third attempt was blocked by the actual Tank01 gameWeek='Week 8' format.
+  // Permit only its fourth and final attempt, after backoff, for this exact record.
+  const weekLabelFailure = {...gameIdGuardFailure, attempts:3,
+    retryAfter:1793946022586,
+    failure:{category:'identity',retryable:false,gameIDs:['20261029_CAR@GB']},
+    lastFailure:{at:'2026-11-06T04:20:22.586Z'}};
+  assert(!canRetry(weekLabelFailure,1793946022585,defenseWeek8),'third failure still observes backoff');
+  assert(canRetry(weekLabelFailure,1793946022586,defenseWeek8),'one final corrected Week 8 rebuild');
+  assert(!canRetry({...weekLabelFailure,attempts:4},1793946022586,defenseWeek8),'never exceed four attempts');
+  assert(!canRetry({...weekLabelFailure,failure:{category:'identity',retryable:false,gameIDs:['20261101_ARI@DAL']}},1793946022586,defenseWeek8),'other failures remain blocked');
+  assert(!canRetry(weekLabelFailure,1793946022586,{...defenseWeek8,week:7}),'only 2026 Week 8 is eligible');
   const isolated = jobsForWeek(2026,9).map(j=>({...j,ready:true,status:null}));
   const failedDefense = isolated.find(j=>j.store==='weekly-sage-defense'&&j.week===8);
   failedDefense.ready=false;
