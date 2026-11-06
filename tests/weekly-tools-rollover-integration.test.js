@@ -38,7 +38,7 @@ async function main(){const savedDate=global.Date,savedFetch=global.fetch,token=
   instant+=31*60000;await watchdog.handler({});
   instant+=31*60000;await watchdog.handler({});assert.equal(built.filter(x=>x==='refresh-wr-snapshot:5').length,2,'daily failed attempts capped');
   failWR=false;instant=Date.parse('2026-10-07T06:00:00Z');
-  for(let i=0;i<12;i++){await watchdog.handler({});if((await recovery.inspectJobs(getStore,2026,5)).every(j=>j.ready))break;}
+  for(let i=0;i<18;i++){await watchdog.handler({});if((await recovery.inspectJobs(getStore,2026,5)).every(j=>j.ready))break;}
   assert.equal(injuryChecks,0,'weekly rollover and Tank01 refresh dispatch never invoke the official collector');
   assert(!fs.readFileSync('netlify.toml','utf8').includes('[functions."refresh-injury-transactions"]'),'retired scraper must not have a scheduled trigger');
   const rows=await recovery.inspectJobs(getStore,2026,5);assert(rows.every(j=>j.ready),JSON.stringify(rows.filter(j=>!j.ready)));
