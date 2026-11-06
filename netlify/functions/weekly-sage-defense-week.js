@@ -458,11 +458,23 @@ async function buildWeeklyDefense({
 
   const ids = new Set(), teams = new Set();
   for (const game of games) {
-    if (!game || typeof game.gameID !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(game.gameID) ||
-        !/^[A-Z]{2,3}$/.test(game.home || '') || !/^[A-Z]{2,3}$/.test(game.away || '') ||
-        game.home === game.away || ids.has(game.gameID) || teams.has(game.home) || teams.has(game.away) ||
-        (game.season != null && String(game.season) !== normalizedSeason) ||
-        (game.gameWeek != null && Number(game.gameWeek) !== normalizedWeek)) throw buildError('identity', [game?.gameID]);
+    const invalidID = !game || typeof game.gameID !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,80}$/.test(game.gameID);
+    const invalidTeams = !game || !/^[A-Z]{2,3}$/.test(game.home || '') ||
+      !/^[A-Z]{2,3}$/.test(game.away || '') || game.home === game.away;
+    const duplicateGame = !invalidID && ids.has(game.gameID);
+    const duplicateTeam = !invalidTeams && (teams.has(game.home) || teams.has(game.away));
+    const wrongSeason = game?.season != null && String(game.season) !== normalizedSeason;
+    const wrongWeek = game?.gameWeek != null && Number(game.gameWeek) !== normalizedWeek;
+    if (invalidID || invalidTeams || duplicateGame || duplicateTeam || wrongSeason || wrongWeek) {
+      const reason = invalidID ? 'invalid_game_id' : invalidTeams ? 'invalid_teams' :
+        duplicateGame ? 'duplicate_game' : duplicateTeam ? 'duplicate_team' :
+        wrongSeason ? 'wrong_season' : 'wrong_week';
+      console.error('WEEKLY_DEFENSE_IDENTITY', JSON.stringify({
+        stage: 'schedule', reason, gameID: /^[A-Za-z0-9_-]{1,80}$/.test(game?.gameID || '') ? game.gameID : null
+      }));
+      throw buildError('identity', [game?.gameID]);
+    }
     ids.add(game.gameID); teams.add(game.home); teams.add(game.away);
   }
   const completedGames = games.filter(isCompletedGame);
@@ -497,7 +509,14 @@ async function buildWeeklyDefense({
         };
         for (const side of ['home', 'away']) {
           const team = teamStats[side].teamAbv || teamStats[side].team;
-          if (team && team !== game[side]) throw buildError('identity', [game?.gameID]);
+          if (team && team !== game[side]) {
+            console.error('WEEKLY_DEFENSE_IDENTITY', JSON.stringify({
+              stage: 'box_score', reason: 'team_mismatch', gameID: game.gameID,
+              side, scheduledTeam: game[side],
+              boxScoreTeam: /^[A-Za-z]{2,3}$/.test(team) ? team : 'invalid'
+            }));
+            throw buildError('identity', [game?.gameID]);
+          }
         }
 
         kickerEvidenceByGame.push(

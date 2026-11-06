@@ -51,6 +51,14 @@ async function main(){
  const stores=new Map();const getStore=({name})=>{if(!stores.has(name)){const records=new Map();stores.set(name,{get:async k=>records.get(k)?.data||null,getWithMetadata:async k=>records.get(k)||null,setJSON:async(k,data,o={})=>{const old=records.get(k);if(o.onlyIfNew&&old||o.onlyIfMatch&&o.onlyIfMatch!==old?.etag)return {modified:false};records.set(k,{data:structuredClone(data),etag:String(Number(old?.etag||0)+1)});return {modified:true};}});}return stores.get(name);};
  const oldLoad=Module._load;Module._load=function(name,...args){return name==='@netlify/blobs'?{connectLambda(){},getStore}:oldLoad.call(this,name,...args);};
  let refresh;try{delete require.cache[require.resolve('../netlify/functions/refresh-injury-transactions')];refresh=require('../netlify/functions/refresh-injury-transactions');}finally{Module._load=oldLoad;}
+ // The collector fixture is explicitly October 2026 with September as the
+ // historical month. Pin its clock so the test survives month rollover.
+ const RealDate=Date;
+ const fixtureNow=RealDate.parse('2026-10-15T12:00:00Z');
+ global.Date=class extends RealDate {
+  constructor(...args){super(...(args.length?args:[fixtureNow]));}
+  static now(){return fixtureNow;}
+ };
  let requests=0;global.fetch=async url=>{requests++;assert.match(url,/^https:\/\/www.nfl.com\/transactions\//,'no Tank01/customer request');return {ok:true,text:async()=>url.includes('/reserve-list/')&&url.endsWith('/10')?html:`<a href="${new URL(url).pathname}"></a><section class="nfl-o-no-results">No Transactions Available</section>`};};
  try{await Promise.all(Array.from({length:5},()=>refresh.handler({})));assert.equal(requests,6,'duplicate refreshes collect only once');const stored=await getStore({name:h.STORE}).get('latest');assert(stored.checkedAt);await refresh.handler({});assert.equal(requests,6,'fresh cache skips source calls');
   await getStore({name:h.STORE}).setJSON('latest',{...stored,checkedAt:'2000-01-01'});await getStore({name:h.STORE}).setJSON('refresh-lease',{until:0});
@@ -60,7 +68,7 @@ async function main(){
   global.fetch=async url=>{const path=new URL(url).pathname;const source=path.includes('/reserve-list/')&&path.endsWith('/10')?html:'<a href="'+path+'"></a><section class="nfl-o-no-results">No Transactions Available</section>';return {ok:true,text:async()=>source+(path.includes('/reserve-list/')&&path.endsWith('/09')?'<a href="'+path+'?after=repeat" class="nfl-o-table-pagination__next">Next Page</a>':'')};};
   const historical=await refresh.handler({});assert.equal(historical.statusCode,200);assert.equal(JSON.parse(historical.body).historicalWarnings.length,1,'historical loop disclosed without hiding current month evidence');
   await getStore({name:h.STORE}).setJSON('latest',{...stored,checkedAt:'2000-01-01'});await getStore({name:h.STORE}).setJSON('refresh-lease',{until:0});global.fetch=async()=>({ok:false,status:503});const failed=await refresh.handler({});assert.equal(failed.statusCode,502);assert.deepEqual((await getStore({name:h.STORE}).get('latest')).records,stored.records,'failed collection preserves all transactions');assert((await getStore({name:h.STORE}).get('health')).error);
- }finally{global.fetch=oldFetch;}
+ }finally{global.fetch=oldFetch;global.Date=RealDate;}
  console.log('PASS: real official transaction shape, safe activation, missing-roster IR, teammate context across MCP, guarded drops, atomic six-source collection, zero Tank01, failure preservation.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
