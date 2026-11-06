@@ -94,6 +94,18 @@ async function main() {
     'no other defensive week may replay');
   assert(!canRetry({...originalIdentityFailure,leaseUntil:Date.parse('2026-11-06T04:00:00Z')},Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
     'active lease must still prevent replay');
+  // Exact persisted record of the #350 replay failure (game-ID guard).
+  const gameIdGuardFailure = {...originalIdentityFailure,attempts:2,retryAfter:1793938271939,lastFailure:{at:'2026-11-06T03:11:11.939Z'}};
+  assert(!canRetry(gameIdGuardFailure,1793938271939-1,defenseWeek8),'game-ID rebuild still honours backoff');
+  assert(canRetry(gameIdGuardFailure,1793938271939,defenseWeek8),'one rebuild of the recorded game-ID guard failure is allowed');
+  assert(!canRetry({...gameIdGuardFailure,attempts:3,lastFailure:{at:'2026-11-06T05:00:00Z'}},Date.parse('2026-11-06T06:00:00Z'),defenseWeek8),
+    'a failure of that rebuild remains blocked');
+  assert(!canRetry({...gameIdGuardFailure,lastFailure:{at:'2026-11-06T03:30:00Z'}},Date.parse('2026-11-06T06:00:00Z'),defenseWeek8),
+    'later second-attempt identity failures do not replay');
+  assert(!canRetry(gameIdGuardFailure,Date.parse('2026-11-06T06:00:00Z'),{...defenseWeek8,week:7}),
+    'the rebuild applies to Week 8 only');
+  assert(!canRetry({...gameIdGuardFailure,attempts:4},Date.parse('2026-11-06T06:00:00Z'),defenseWeek8),
+    'four-attempt ceiling is unchanged');
   const isolated = jobsForWeek(2026,9).map(j=>({...j,ready:true,status:null}));
   const failedDefense = isolated.find(j=>j.store==='weekly-sage-defense'&&j.week===8);
   failedDefense.ready=false;

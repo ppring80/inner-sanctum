@@ -5,12 +5,15 @@
 const RETRYABLE = new Set(['provider_request', 'provider_incomplete', 'schedule_incomplete']);
 const CATEGORIES = new Set([...RETRYABLE, 'processing', 'identity', 'validation', 'budget']);
 const MAX_GAMES = 16;
+// Tank01 game IDs are YYYYMMDD_AWAY@HOME (e.g. 20260909_NE@SEA). Allow '@',
+// still refuse slashes, colons, spaces, '?' and anything URL- or message-like.
+const GAME_ID_PATTERN = /^[A-Za-z0-9_@-]{1,80}$/;
 const DEFENSE_POLICY = 'defense-bounded-v1';
 const BACKOFF_MS = [30, 60, 120].map(minutes => minutes * 60000);
 
 function failure(category, gameIDs = [], counts = {}) {
   const safe = CATEGORIES.has(category) ? category : 'validation';
-  const safeIDs = [...new Set((Array.isArray(gameIDs) ? gameIDs : []).filter(id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(id)))].slice(0, MAX_GAMES);
+  const safeIDs = [...new Set((Array.isArray(gameIDs) ? gameIDs : []).filter(id => typeof id === 'string' && GAME_ID_PATTERN.test(id)))].slice(0, MAX_GAMES);
   return {
     category: safe,
     retryable: RETRYABLE.has(safe),
@@ -51,4 +54,4 @@ function retryState(response, statusCode) {
   return failure(response?.failure?.category, response?.failure?.gameIDs || [], response?.failure?.counts || {});
 }
 
-module.exports = { failure, buildError, summarize, retryState, DEFENSE_POLICY, BACKOFF_MS };
+module.exports = { failure, buildError, summarize, retryState, DEFENSE_POLICY, BACKOFF_MS, GAME_ID_PATTERN };
