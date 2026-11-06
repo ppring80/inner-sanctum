@@ -77,8 +77,7 @@ function eligibleWeek8IdentityReplay(status, job) {
   // The #350 replay (2026-11-06T03:11Z) failed on the schedule game-ID guard
   // rejecting Tank01's YYYYMMDD_AWAY@HOME IDs. Allow exactly one rebuild of
   // that recorded failure with the corrected guard; any later failure stays blocked.
-  if (Number(status.attempts) === 2) return
-    at >= Date.parse('2026-11-06T02:16:32Z') && at < Date.parse('2026-11-06T03:30:00Z');
+  if (Number(status.attempts) === 2) return at >= Date.parse('2026-11-06T02:16:32Z') && at < Date.parse('2026-11-06T03:30:00Z');
   // The third recorded failure is the Tank01 gameWeek='Week 8' parsing guard.
   // Permit only its final fourth attempt after backoff, with no retry after that.
   return Number(status.attempts) === 3 &&
