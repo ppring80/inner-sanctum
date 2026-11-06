@@ -93,7 +93,7 @@ function nextJob(rows, now = Date.now()) {
   if (critical) return critical;
   // Availability, projections and reporting have no defensive-statistics or snapshot
   // dependency. A failed rankings build must not starve these shared feeds.
-  const independent = ['player-data','weekly-projections','sage-role-events','sage-newswire'].map(store=>rows.find(row=>row.store===store&&!row.ready&&canRetry(row.status,now))).find(Boolean);
+  const independent = ['player-data','weekly-projections'].map(store=>rows.find(row=>row.store===store&&!row.ready&&canRetry(row.status,now))).find(Boolean);
   if (independent) return independent;
   for (const group of ['weekly-sage-schedule', 'offense', 'weekly-sage-defense', 'specialists', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'offense' ? ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot'].includes(row.store) : group === 'specialists' ? ['k-snapshot','def-snapshot'].includes(row.store) : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
