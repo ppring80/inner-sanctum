@@ -94,6 +94,16 @@ async function main() {
     'no other defensive week may replay');
   assert(!canRetry({...originalIdentityFailure,leaseUntil:Date.parse('2026-11-06T04:00:00Z')},Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
     'active lease must still prevent replay');
+  const replayRows = jobsForWeek(2026,9).map(j=>({...j,ready:true,status:null}));
+  const failedDefenseRow = replayRows.find(j=>j.store==='weekly-sage-defense'&&j.week===8);
+  failedDefenseRow.ready=false;
+  failedDefenseRow.status={retryPolicy:'defense-bounded-v1',attempts:1,leaseUntil:0,retryAfter:0,
+    failure:{category:'identity',retryable:false},finishedAt:'2026-11-03T06:10:47Z'};
+  assert.equal(nextJob(replayRows,Date.parse('2026-11-06T03:00:00Z'))?.week,8,
+    'coordinator must pass the job context to select the one-time Week 8 replay');
+  failedDefenseRow.status.attempts=2;
+  assert.equal(nextJob(replayRows,Date.parse('2026-11-06T03:00:00Z')),null,
+    'coordinator must stop after the diagnostic replay fails');
   process.env.TANK01_REFRESH_TOKEN = 'test-only-refresh-secret';
   const body=JSON.stringify({job:job.job,issuedAt:now}); const signature=sign(body);
   assert(verify(body,signature,now));
