@@ -339,3 +339,8 @@
 # One PHI depth-chart read per collection; zero Tank01 or LLM calls.
 [functions."refresh-team-backfield-roles"]
   schedule = "25 * * * *"
+
+# Super SAGE current evidence: native Netlify scheduler, no GitHub Actions credential.
+# Tuesday/Friday at 14:30 UTC during NFL season. Scheduled functions are not publicly URL-invokable.
+[functions."refresh-super-sage-evidence"]
+  schedule = "30 14 * 9-12 2,5"
