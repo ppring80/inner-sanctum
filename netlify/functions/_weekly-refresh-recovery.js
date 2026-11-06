@@ -66,19 +66,30 @@ async function inspectJobs(getStore, season, week, now = Date.now()) {
   }));
 }
 
-function canRetry(status, now = Date.now()) {
+// One-time incident diagnostic replay, scoped to the already-failed 2026 Week 8
+// defense job. Never repeat after a second attempt or for a newer failure.
+function eligibleWeek8IdentityReplay(status, job) {
+  const at = Date.parse(status?.lastFailure?.at || status?.finishedAt || '');
+  return job?.store === 'weekly-sage-defense' &&
+    String(job.season) === '2026' && job.week === 8 &&
+    status?.failure?.category === 'identity' &&
+    Number(status.attempts) === 1 &&
+    Number.isFinite(at) && at < Date.parse('2026-11-06T02:16:32Z');
+}
+
+function canRetry(status, now = Date.now(), job = null) {
   if (!status) return true;
   if (Number(status.leaseUntil) > now || Number(status.retryAfter) > now) return false;
   if (status.retryPolicy === DEFENSE_POLICY) {
     if (Number(status.attempts || 0) >= 4) return false;
     if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
-    return status.failure?.retryable !== false;
+    return status.failure?.retryable !== false || eligibleWeek8IdentityReplay(status, job);
   }
   return status.day !== new Date(now).toISOString().slice(0, 10) || Number(status.attempts || 0) < Number(status.attemptLimit || 2);
 }
 
 function nextJob(rows, now = Date.now()) {
-  const critical = rows.find(row=>row.store === 'player-data' && row.criticalDue && !row.ready && canRetry(row.status,now));
+  const critical = rows.find(row=>row.store === 'player-data' && row.criticalDue && !row.ready && canRetry(row.status,now,row));
   if (critical) return critical;
   // Availability, projections and reporting have no defensive-statistics or snapshot
   // dependency. A failed rankings build must not starve these shared feeds.
@@ -115,7 +126,7 @@ async function runJob(job, event, dependencies) {
   const previous = await state.getWithMetadata(key, { type: 'json' });
   const defensive = job.store === 'weekly-sage-defense';
   const priorStatus = previous && (defensive ? {...previous.data, retryPolicy: DEFENSE_POLICY, attemptLimit: 4} : job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
-  if (!canRetry(priorStatus, now)) return { status: 'waiting', skipped: true };
+  if (!canRetry(priorStatus, now, job)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const lastFailure=previous?.data?.lastFailure||null;
   const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, ...(defensive?{retryPolicy:DEFENSE_POLICY}:{}), attemptLimit: defensive ? 4 : job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && (defensive || previous.data.day === day) ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
