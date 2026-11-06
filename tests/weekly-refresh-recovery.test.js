@@ -78,6 +78,22 @@ async function main() {
   assert.equal(nextJob(rows,now).job,'refresh-rb-snapshot','one running position does not block other positions');
   rows[0].ready=false;
   assert.equal(nextJob(rows,now).job,'refresh-weekly-sage-schedule','missing schedule blocks downstream builds');
+  const defenseWeek8 = jobsForWeek(2026, 9).find(j => j.store === 'weekly-sage-defense' && j.week === 8);
+  const originalIdentityFailure = {
+    retryPolicy:'defense-bounded-v1',attempts:1,leaseUntil:0,retryAfter:0,
+    failure:{category:'identity',retryable:false},
+    lastFailure:{at:'2026-11-03T06:10:00Z'}
+  };
+  assert(canRetry(originalIdentityFailure,Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
+    'one replay is allowed for the known pre-deploy Week 8 failure');
+  assert(!canRetry({...originalIdentityFailure,attempts:2},Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
+    'second identity failure must remain blocked');
+  assert(!canRetry({...originalIdentityFailure,lastFailure:{at:'2026-11-06T03:00:00Z'}},Date.parse('2026-11-06T04:00:00Z'),defenseWeek8),
+    'new identity failures must not trigger a replay');
+  assert(!canRetry(originalIdentityFailure,Date.parse('2026-11-06T03:00:00Z'),{...defenseWeek8,week:7}),
+    'no other defensive week may replay');
+  assert(!canRetry({...originalIdentityFailure,leaseUntil:Date.parse('2026-11-06T04:00:00Z')},Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
+    'active lease must still prevent replay');
   process.env.TANK01_REFRESH_TOKEN = 'test-only-refresh-secret';
   const body=JSON.stringify({job:job.job,issuedAt:now}); const signature=sign(body);
   assert(verify(body,signature,now));
