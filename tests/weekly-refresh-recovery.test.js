@@ -94,6 +94,15 @@ async function main() {
     'no other defensive week may replay');
   assert(!canRetry({...originalIdentityFailure,leaseUntil:Date.parse('2026-11-06T04:00:00Z')},Date.parse('2026-11-06T03:00:00Z'),defenseWeek8),
     'active lease must still prevent replay');
+  const isolated = jobsForWeek(2026,9).map(j=>({...j,ready:true,status:null}));
+  const failedDefense = isolated.find(j=>j.store==='weekly-sage-defense'&&j.week===8);
+  failedDefense.ready=false;
+  failedDefense.status={retryPolicy:'defense-bounded-v1',attempts:2,leaseUntil:0,retryAfter:0,failure:{category:'identity',retryable:false}};
+  for(const store of ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot']) isolated.find(j=>j.store===store).ready=false;
+  assert.equal(nextJob(isolated)?.store,'qb-snapshot','QB builds even when defensive evidence is irrecoverable');
+  for(const store of ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot']) isolated.find(j=>j.store===store).ready=true;
+  isolated.find(j=>j.store==='k-snapshot').ready=false;
+  assert.equal(nextJob(isolated)?.store,'k-snapshot','K can attempt a partial-evidence build without being starved by defense failure');
   process.env.TANK01_REFRESH_TOKEN = 'test-only-refresh-secret';
   const body=JSON.stringify({job:job.job,issuedAt:now}); const signature=sign(body);
   assert(verify(body,signature,now));
