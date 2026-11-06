@@ -16,8 +16,8 @@ const { failure } = require('../netlify/functions/_weekly-defense-failure.js');
 
 const TANK01_HOST = 'tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com';
 const games = [
-  { gameID: '20261101_NYG@DAL', away: 'NYG', home: 'DAL', gameStatus: 'Completed', gameWeek: '8', season: '2026' },
-  { gameID: '20261101_SF@LAR', away: 'SF', home: 'LAR', gameStatus: 'Final', gameWeek: '8', season: '2026' }
+  { gameID: '20261101_NYG@DAL', away: 'NYG', home: 'DAL', gameStatus: 'Completed', gameWeek: 'Week 8', season: '2026' },
+  { gameID: '20261101_SF@LAR', away: 'SF', home: 'LAR', gameStatus: 'Final', gameWeek: 'Week 8', season: '2026' }
 ];
 
 function stats(team, yards) {
@@ -59,11 +59,29 @@ async function main() {
 
   // 2. Schedule identity protection is unchanged for genuinely bad IDs.
   for (const bad of ['', 'https://x.invalid/a?b=c', 'game id with spaces', 'a'.repeat(81), '20261101_NYG@DAL/../x']) {
-    games.splice(0, games.length, { gameID: bad, away: 'NYG', home: 'DAL', gameStatus: 'Final', gameWeek: '8', season: '2026' });
+    games.splice(0, games.length, { gameID: bad, away: 'NYG', home: 'DAL', gameStatus: 'Final', gameWeek: 'Week 8', season: '2026' });
     providerCalls = [];
     await assert.rejects(buildWeeklyDefense({ season: '2026', week: 8, seasonType: 'reg' }),
       error => error.defenseCategory === 'identity', `Rejected unsafe gameID: ${JSON.stringify(bad)}`);
     assert.deepEqual(providerCalls, ['getNFLGamesForWeek'], 'Identity failure stops before any box-score call');
+  }
+
+  // Tank01's actual getNFLGamesForWeek payload uses "Week 8", not numeric 8.
+  // Still accept numeric labels, but reject mismatched and malformed weeks
+  // before spending a box-score request.
+  for (const validWeek of ['8', 8, 'Week 8', 'week 8']) {
+    games.splice(0, games.length, { gameID: '20261029_CAR@GB', away: 'CAR', home: 'GB', gameStatus: 'Final', gameWeek: validWeek, season: '2026' });
+    providerCalls = [];
+    const result = await buildWeeklyDefense({ season: '2026', week: 8, seasonType: 'reg' });
+    assert.equal(result.schedule.processedGames, 1);
+    assert.deepEqual(providerCalls, ['getNFLGamesForWeek', 'getNFLBoxScore']);
+  }
+  for (const badWeek of ['Week 9', 'Week eight', 'Week 0', '8abc', 'Week 8 extra']) {
+    games.splice(0, games.length, { gameID: '20261029_CAR@GB', away: 'CAR', home: 'GB', gameStatus: 'Final', gameWeek: badWeek, season: '2026' });
+    providerCalls = [];
+    await assert.rejects(buildWeeklyDefense({ season: '2026', week: 8, seasonType: 'reg' }),
+      error => error.defenseCategory === 'identity');
+    assert.deepEqual(providerCalls, ['getNFLGamesForWeek']);
   }
 
   // 3. Persisted diagnostics retain real Tank01 IDs and still drop unsafe text.

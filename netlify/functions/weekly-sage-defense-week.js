@@ -465,7 +465,13 @@ async function buildWeeklyDefense({
     const duplicateGame = !invalidID && ids.has(game.gameID);
     const duplicateTeam = !invalidTeams && (teams.has(game.home) || teams.has(game.away));
     const wrongSeason = game?.season != null && String(game.season) !== normalizedSeason;
-    const wrongWeek = game?.gameWeek != null && Number(game.gameWeek) !== normalizedWeek;
+    const weekValue = game?.gameWeek;
+    const parsedWeek = typeof weekValue === 'number' && Number.isInteger(weekValue)
+      ? weekValue
+      : typeof weekValue === 'string' && /^(?:Week\s+)?(?:[1-9]|1[0-8])$/i.test(weekValue.trim())
+        ? Number(weekValue.trim().replace(/^Week\s+/i, ''))
+        : NaN;
+    const wrongWeek = weekValue != null && parsedWeek !== normalizedWeek;
     if (invalidID || invalidTeams || duplicateGame || duplicateTeam || wrongSeason || wrongWeek) {
       const reason = invalidID ? 'invalid_game_id' : invalidTeams ? 'invalid_teams' :
         duplicateGame ? 'duplicate_game' : duplicateTeam ? 'duplicate_team' :
