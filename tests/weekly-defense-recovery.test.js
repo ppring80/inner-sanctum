@@ -128,7 +128,7 @@ function loadPipeline(file) {
       if (/^\.\/refresh-(qb|rb|wr|te|k|def)-snapshot\.js$/.test(name)) return { handler: async incoming => {
         const job = jobsForWeek(2026, 9).find(j => name === './' + j.job + '.js');
         assert.equal(incoming.queryStringParameters.week, '9');
-        assert(recovery.completeCache(read(defense.store, cacheKey(defense)), defense), 'No positional build before complete defense');
+        if (['k-snapshot','def-snapshot'].includes(job.store)) assert(recovery.completeCache(read(defense.store, cacheKey(defense)), defense), 'Specialist evidence remains complete');
         progressed.push(job.store.split('-')[0].toUpperCase());
         await getStore({ name: job.store }).setJSON(cacheKey(job), positionSnapshot(job));
         return { statusCode: 200, body: JSON.stringify({ cached: true }) };
@@ -151,6 +151,7 @@ async function main() {
   const old = { generatedAt: 'old-good-evidence', schedule: { processedGames: 0 } };
   seed(defense.store, cacheKey(defense), old);
   await Promise.all(Array.from({ length: 8 }, tick));
+  assert.deepEqual(progressed.slice(0,4), ['QB','RB','WR','TE'], 'Offensive rankings build before defensive evidence');
   assert.equal(builds, 1, 'Concurrent watchdog deliveries execute only one provider build');
   assert.equal(status().statusCode, 422);
   assert.equal(status().failure.category, 'provider_incomplete');
