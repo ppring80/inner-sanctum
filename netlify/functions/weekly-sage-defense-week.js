@@ -19,7 +19,7 @@ const TANK01_HOST =
 const DEFAULT_SEASON_TYPE = "reg";
 const MAX_REGULAR_SEASON_GAMES_PER_WEEK = 16;
 const BOX_SCORE_CONCURRENCY = 4;
-const { buildError } = require('./_weekly-defense-failure');
+const { buildError, GAME_ID_PATTERN } = require('./_weekly-defense-failure');
 
 function tank01Headers() {
   return {
@@ -459,7 +459,7 @@ async function buildWeeklyDefense({
   const ids = new Set(), teams = new Set();
   for (const game of games) {
     const invalidID = !game || typeof game.gameID !== 'string' ||
-      !/^[A-Za-z0-9_-]{1,80}$/.test(game.gameID);
+      !GAME_ID_PATTERN.test(game.gameID);
     const invalidTeams = !game || !/^[A-Z]{2,3}$/.test(game.home || '') ||
       !/^[A-Z]{2,3}$/.test(game.away || '') || game.home === game.away;
     const duplicateGame = !invalidID && ids.has(game.gameID);
@@ -471,7 +471,7 @@ async function buildWeeklyDefense({
         duplicateGame ? 'duplicate_game' : duplicateTeam ? 'duplicate_team' :
         wrongSeason ? 'wrong_season' : 'wrong_week';
       console.error('WEEKLY_DEFENSE_IDENTITY', JSON.stringify({
-        stage: 'schedule', reason, gameID: /^[A-Za-z0-9_-]{1,80}$/.test(game?.gameID || '') ? game.gameID : null
+        stage: 'schedule', reason, gameID: GAME_ID_PATTERN.test(game?.gameID || '') ? game.gameID : null
       }));
       throw buildError('identity', [game?.gameID]);
     }

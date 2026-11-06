@@ -70,11 +70,15 @@ async function inspectJobs(getStore, season, week, now = Date.now()) {
 // defense job. Never repeat after a second attempt or for a newer failure.
 function eligibleWeek8IdentityReplay(status, job) {
   const at = Date.parse(status?.lastFailure?.at || status?.finishedAt || '');
-  return job?.store === 'weekly-sage-defense' &&
+  if (!(job?.store === 'weekly-sage-defense' &&
     String(job.season) === '2026' && job.week === 8 &&
-    status?.failure?.category === 'identity' &&
-    Number(status.attempts) === 1 &&
-    Number.isFinite(at) && at < Date.parse('2026-11-06T02:16:32Z');
+    status?.failure?.category === 'identity' && Number.isFinite(at))) return false;
+  if (Number(status.attempts) === 1) return at < Date.parse('2026-11-06T02:16:32Z');
+  // The #350 replay (2026-11-06T03:11Z) failed on the schedule game-ID guard
+  // rejecting Tank01's YYYYMMDD_AWAY@HOME IDs. Allow exactly one rebuild of
+  // that recorded failure with the corrected guard; any later failure stays blocked.
+  return Number(status.attempts) === 2 &&
+    at >= Date.parse('2026-11-06T02:16:32Z') && at < Date.parse('2026-11-06T03:30:00Z');
 }
 
 function canRetry(status, now = Date.now(), job = null) {
