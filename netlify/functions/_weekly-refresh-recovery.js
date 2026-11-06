@@ -95,9 +95,9 @@ function nextJob(rows, now = Date.now()) {
   // dependency. A failed rankings build must not starve these shared feeds.
   const independent = ['player-data','weekly-projections','sage-role-events','sage-newswire'].map(store=>rows.find(row=>row.store===store&&!row.ready&&canRetry(row.status,now))).find(Boolean);
   if (independent) return independent;
-  for (const group of ['weekly-sage-schedule', 'weekly-sage-defense', 'positions', 'auxiliary']) {
-    const pending = rows.filter(row => !row.ready && (group === 'positions' ? row.store.endsWith('-snapshot') : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
-    if (pending.length) return pending.find(row => canRetry(row.status, now) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))) || null;
+  for (const group of ['weekly-sage-schedule', 'offense', 'weekly-sage-defense', 'specialists', 'auxiliary']) {
+    const pending = rows.filter(row => !row.ready && (group === 'offense' ? ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot'].includes(row.store) : group === 'specialists' ? ['k-snapshot','def-snapshot'].includes(row.store) : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire'].includes(row.store) : row.store === group));
+    if (pending.length) { const eligible = pending.find(row => canRetry(row.status, now, row) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))); if (eligible) return eligible; if (group === 'weekly-sage-schedule') return null; }
   }
   return null;
 }
