@@ -116,6 +116,29 @@ function schemaFor(packet,{legacyReconsider=false,legacyBlockers=false}={}){
   reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed',...(canClear?['alternative_cleared']:[]),'evidence_resolves_blocker']}}};
 }
 const isV1=input=>input&&typeof input==='object'&&Object.hasOwn(input,'tradeoffFactor');
+// New requests bind the whole answer, not independent enums. Every branch is
+// accepted by the existing validator: selection, factor, blocker and reversal
+// cannot contradict each other. Legacy flat schemas remain cache identities.
+function requestSchemaFor(packet){
+ const schema=schemaFor(packet),fs=factors(packet),branches=[];
+ const branch=(selected,decidingFactor,blocker,reconsider)=>({
+  type:'object',additionalProperties:false,required:schema.required,
+  properties:{selected:{type:'string',enum:[selected]},confidence:schema.properties.confidence,
+   decidingFactor:{type:'string',enum:decidingFactor},blocker:{type:'string',enum:blocker},
+   reconsider:{type:'string',enum:reconsider}}
+ });
+ for(const p of packet.players){
+  const supported=FACTORS.filter(k=>fs[k]?.favoredId===p.id);
+  if(!supported.length||fact(p,'availability')?.value?.unavailable)continue;
+  const other=packet.players.find(q=>q.id!==p.id);
+  branches.push(branch(p.id,supported,['NONE'],['pick_ruled_out','alternative_more_work_confirmed',
+   ...(fact(other,'availability')?.value?.questionable?['alternative_cleared']:[])]));
+ }
+ const blockers=schema.properties.blocker.enum.filter(k=>k!=='NONE');
+ if(blockers.length)branches.push(branch('NO_CALL',['NONE'],blockers,['evidence_resolves_blocker']));
+ if(!branches.length)throw Error('no_supported_review_answer');
+ return {...schema,anyOf:branches};
+}
 function validateV2(input,packet){
  const errors=[],ps=packet.players,pick=ps.find(p=>p.id===input?.selected),fs=factors(packet),sch=schemaFor(packet);
  if(!input||Object.keys(input).some(k=>!sch.required.includes(k))||sch.required.some(k=>!Object.hasOwn(input,k)))return ['invalid_structured_answer'];
@@ -162,4 +185,4 @@ function renderV2(input,packet){
 function validate(input,packet){return isV1(input)?validateV1(input,packet):validateV2(input,packet);}
 function render(input,packet){return isV1(input)?renderV1(input,packet):renderV2(input,packet);}
 const schema=schema_V1; // legacy export name (v1 wire schema)
-module.exports={CONTRACT,CONTRACT_V1,SYSTEM,SYSTEM_V1,schema,schema_V1,schemaFor,advantages,isV1,decode,factors,validate,validateV1,validateV2,render,renderV1,renderV2};
+module.exports={CONTRACT,CONTRACT_V1,SYSTEM,SYSTEM_V1,schema,schema_V1,schemaFor,requestSchemaFor,advantages,isV1,decode,factors,validate,validateV1,validateV2,render,renderV1,renderV2};

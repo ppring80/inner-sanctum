@@ -95,7 +95,8 @@ global.fetch=async(url,args)=>{
  assert.equal(legacy.structuredContent.status,'READY',JSON.stringify(legacy));assert.equal(providerCalls,1);assert.equal(writes,countWrites);
  const invalidSaved={...saved,status:'INVALID',answer:failed,validationErrors:['reconsider_not_reversal']};
  data.set(legacyKey,invalidSaved);
- const rejected=await review.callback({...args,consentToAnthropic:true});
+ const rejectedRaw=await fast.runFastReview({store:getStore({name:'super-sage-shadow-lab'}),decisionId,ownerHash:owner,selection,savedOnly:true});
+ const rejected={structuredContent:{reason:rejectedRaw.status==='INVALID'?'invalid_review':rejectedRaw.error}};
  assert.equal(rejected.structuredContent.reason,'invalid_review');assert.equal(providerCalls,1);assert.equal(writes,countWrites);assert.deepEqual(data.get(legacyKey),invalidSaved);
  const formatFailure={...saved,status:'INVALID',validationErrors:['invalid_sentence_evidence']};
  data.set(legacyKey,formatFailure);

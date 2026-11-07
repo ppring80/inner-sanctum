@@ -9,6 +9,7 @@ function selectedReviewView(review){
  result.providerPhases=review.providerPhases?pick(review.providerPhases,['transport','deadlineMs','phase','headersMs','bodyMs','messageStartMs','firstOutputMs','completeMs','httpStatus','requestId','usage']):null;
  result.outgoing=review.outgoing?pick(review.outgoing,['model','maxTokens','strict','systemBytes','schemaBytes','evidenceBytes','requestBytes','systemHash','evidenceHash','schemaHash']):null;
  result.requestTiming=review.requestTiming?pick(review.requestTiming,['cacheReadMs','evidencePreparationMs','reservationMs','budgetMs','persistMs','providerMs','totalMs','scope']):null;
+ if(review.recoveryOf)result.recoveryOf=pick(review.recoveryOf,['requestId','evidenceHash','schemaHash','validationErrors']);
  return result;
 }
 async function readSelectedReviews({store,decisionId,ownerHash}){

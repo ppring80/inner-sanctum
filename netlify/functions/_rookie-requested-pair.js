@@ -36,8 +36,16 @@ async function requestPair({store,decisionId,ownerHash,players,consentToAnthropi
   // No unresolved-state restriction here: explicit customer judgment is allowed
   // even when SAGE already decided. Evidence and player legality still apply.
   const focused=await prepareSelectedPair(frozen,selection,{capturedAt:evidence.capturedAt,loadUsageSnapshot});
-  const review=await runFastReview({store,decisionId,ownerHash,selection,apiKey,fetchImpl,loadUsageSnapshot,now});
-  if(review.status!=='REVIEW_READY')return fail(review.error||'invalid_review',review.error==='daily_speed_benchmark_limit'?'Rookie’s current review limit has been reached. SAGE’s lineup is unchanged.':'Rookie could not return a validated opinion. SAGE’s lineup is unchanged.');
+  const review=await runFastReview({store,decisionId,ownerHash,selection,apiKey,fetchImpl,loadUsageSnapshot,now,
+   allowSchemaRecovery:consentToAnthropic===true});
+  if(review.status!=='REVIEW_READY'){
+   const message=review.error==='daily_speed_benchmark_limit'?'Rookie’s current review limit has been reached.':
+    review.error==='review_already_reserved'?'This Rookie review is already in progress.':
+    /timeout$/.test(review.error||'')?'Rookie’s review timed out.':
+    review.status==='INVALID'?(review.cached?'The saved Rookie review failed our evidence checks. No new review was run.':'Rookie’s new review failed our evidence checks and was not used.'):
+    'Rookie could not complete this review.';
+   return fail(review.error||'invalid_review',`${message} SAGE’s lineup is unchanged.`);
+  }
   // A saved v1 review is judged against the v1 packet rebuilt here from the same
   // frozen evidence and matched by hash; it is never re-scored under v2 rules.
   const contractFocused=review.legacyContract===structured.CONTRACT_V1?await prepareSelectedPair(frozen,selection,{capturedAt:evidence.capturedAt,loadUsageSnapshot,contract:'v1'}):focused;
