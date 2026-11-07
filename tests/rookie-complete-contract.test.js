@@ -12,6 +12,8 @@ const player=(id,points,usage,matchup,availability)=>({id,name:id,position:id===
  ['matchup',matchup],['availability',availability]
 ].map(([field,value])=>({field,value,factId:`${id}:${field}`}))});
 function matches(value,schema){
+ if(schema.anyOf)return schema.anyOf.some(branch=>matches(value,branch));
+ if(schema.properties?.decision)return Object.keys(value).length===1&&Object.hasOwn(value,'decision')&&matches(value.decision,schema.properties.decision);
  if(Object.keys(value).some(k=>!schema.properties[k])||schema.required.some(k=>!Object.hasOwn(value,k)))return false;
  if(!Object.entries(schema.properties).every(([k,v])=>v.enum.includes(value[k])))return false;
  return !schema.anyOf||schema.anyOf.some(branch=>matches(value,branch));
@@ -28,7 +30,7 @@ for(const a of [active,questionable,out,unknown])for(const b of [active,question
  for(const reconsider of ['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']){
   const wire={selected,confidence:'LOW',decidingFactor,blocker,reconsider};
   const valid=sp.validateV2(sp.decode(wire),packet).length===0;
-  assert.equal(schema?matches(wire,schema):false,valid,JSON.stringify({points,usage,matchup,a,b,wire}));answers++;
+  assert.equal(schema?matches({decision:wire},schema):false,valid,JSON.stringify({points,usage,matchup,a,b,wire}));answers++;
   if(valid)assert.doesNotThrow(()=>sp.render(sp.decode(wire),packet));
  }
 }

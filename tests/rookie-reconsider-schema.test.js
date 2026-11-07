@@ -51,12 +51,12 @@ const rows=[{name:'Blake Corum',position:'RB',team:'LAR',rank:30,recommendation:
 rows.forEach(r=>{r.projection={source:'synthetic',scoring:'half',week:8,fresh:true};});
 global.fetch=async(url,args)=>{
  if(!String(url).includes('anthropic'))return {ok:true,status:200,json:async()=>({positions:{QB:[],RB:[rows[0]],WR:[],TE:[rows[1]],K:[],DEF:[]},metadata:{complete:true}})};
- providerCalls++;const body=JSON.parse(args.body),schema=body.tools[0].input_schema;
+ providerCalls++;const body=JSON.parse(args.body),wireSchema=body.tools[0].input_schema,schema=wireSchema.properties.decision?wireSchema.properties.decision.anyOf[0]:wireSchema;
  assert.equal(schema.properties.reconsider.enum.includes('alternative_cleared'),false,'actual outgoing strict schema excludes the failure');
  assert.equal(body.tools[0].strict,true);
  const input={...failed,reconsider:mode==='invalid'?'alternative_cleared':'pick_ruled_out'};
  // Injecting a forbidden response simulates a misbehaving provider, not success.
- return new Response(JSON.stringify({id:'mock-reconsider',model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input}]}),{status:200});
+ return new Response(JSON.stringify({id:'mock-reconsider',model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:{decision:input}}]}),{status:200});
 };
 (async()=>{
  process.env.SUPER_SAGE_REVIEWER_PEEPHOLE='true';process.env.ANTHROPIC_API_KEY='synthetic-test-key';

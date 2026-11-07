@@ -13,6 +13,12 @@ const store={get:async k=>{gets.push(k);return data.get(k);},setJSON:()=>{writes
  const result=await readSavedReview({store,decisionId,ownerHash,kind:'selected-pairs'});assert.equal(result.reviews.length,2);assert.equal(result.reviews[0].requestTiming.totalMs,140);assert.equal(result.reviews[1].requestTiming,null);
  assert.equal(result.reviews[0].recoveryOf.requestId,'prior-safe-id');assert.equal(result.reviews[0].recoveryOf.ownerHash,undefined);
  const json=JSON.stringify(result);for(const text of [ownerHash,'NEVER RETURN THIS EVIDENCE','secretKey','frozenEvidence','llm-fast/','requestBody'])assert.equal(json.includes(text),false,text);
+ const rejectedKey=[...data.keys()][1];
+ data.set(rejectedKey,{...review,status:'UNAVAILABLE',error:'provider_http_400',providerErrorType:'invalid_request_error',
+  providerErrorMessage:'input_schema does not support anyOf at the top level: NEVER RETURN THIS EVIDENCE'});
+ const rejected=await readSavedReview({store,decisionId,ownerHash,kind:'selected-pairs'});
+ assert.equal(rejected.reviews[0].schemaRejection,'root_union_not_supported');
+ assert.equal(JSON.stringify(rejected).includes('NEVER RETURN THIS EVIDENCE'),false);
  const broken={...store,list:async function*(){throw Error(prefix+'private');}};
  const brokenRead=await readSavedReview({store:broken,decisionId,ownerHash,kind:'selected-pairs'});assert.equal(brokenRead.error,'selected_review_read_failed');assert.equal(JSON.stringify(brokenRead).includes(ownerHash),false);
  assert.equal(gets.includes(prefix+'not-a-hash'),false);assert.equal(writes,0);

@@ -10,6 +10,7 @@ function selectedReviewView(review){
  result.outgoing=review.outgoing?pick(review.outgoing,['model','maxTokens','strict','systemBytes','schemaBytes','evidenceBytes','requestBytes','systemHash','evidenceHash','schemaHash']):null;
  result.requestTiming=review.requestTiming?pick(review.requestTiming,['cacheReadMs','evidencePreparationMs','reservationMs','budgetMs','persistMs','providerMs','totalMs','scope']):null;
  if(review.recoveryOf)result.recoveryOf=pick(review.recoveryOf,['requestId','evidenceHash','schemaHash','validationErrors']);
+ if(require('./_rookie-structured-pair').rootUnionRejection(review))result.schemaRejection='root_union_not_supported';
  return result;
 }
 async function readSelectedReviews({store,decisionId,ownerHash}){

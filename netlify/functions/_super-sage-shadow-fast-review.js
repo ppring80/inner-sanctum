@@ -565,25 +565,26 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
     // Tightening new response choices must not orphan accepted or failed v2
     // history, spend again for the same request, or reinterpret a saved failure.
     if(!cached&&structured&&!structuredV1){
-      for(const options of [{},{legacyBlockers:true},{legacyBlockers:true,legacyReconsider:true}]){
-      const previousSchema=sp.schemaFor(focused.packet,options);
+      for(const previousSchema of [sp.requestSchemaFor(focused.packet,{legacyRoot:true}),sp.schemaFor(focused.packet),
+        sp.schemaFor(focused.packet,{legacyBlockers:true}),sp.schemaFor(focused.packet,{legacyBlockers:true,legacyReconsider:true})]){
       const previousKey=base+`/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(previousSchema))}))}`;
       if(previousKey!==key){
         try{cached=await store.get(previousKey,{type:'json'});}
         catch{return {status:'UNAVAILABLE',error:'legacy_review_read_failed'};}
-        if(cached?.status==='INVALID'){
+        if(cached?.status==='INVALID'||(previousSchema.anyOf&&sp.rootUnionRejection(cached))){
           // Only an explicit consenting customer request can recover a known
           // schema/validator mismatch. Never re-request a current-schema failure,
           // timeout, malformed JSON, v1 result or evidence/ownership failure.
           const recoverable=new Set(['invalid_selected','invalid_decidingFactor','invalid_blocker','invalid_reconsider',
             'deciding_factor_not_for_pick','unexpected_blocker','reconsider_not_reversal',
             'no_call_without_supported_blocker','invalid_no_call_shape','unavailable_player_selected']);
-          const errors=cached.validationErrors;
-          if(allowSchemaRecovery&&!savedOnly&&!sp.isV1(cached.answer)&&cached.answer&&
+          const rootRejected=Boolean(previousSchema.anyOf&&sp.rootUnionRejection(cached));
+          const errors=rootRejected?['root_union_not_supported']:cached.validationErrors;
+          if(allowSchemaRecovery&&!savedOnly&&(rootRejected||(!sp.isV1(cached.answer)&&cached.answer))&&
              cached.decisionId===decisionId&&cached.parentEvidenceHash===original.frozenEvidence.evidenceHash&&
              cached.evidenceHash===focused.evidenceHash&&Array.isArray(errors)&&errors.length&&
-             errors.every(e=>recoverable.has(e))&&sp.validateV2(cached.answer,focused.packet).length){
-            recoveryOf={requestId:cached.requestId||null,evidenceHash:cached.evidenceHash,
+             (rootRejected||(errors.every(e=>recoverable.has(e))&&sp.validateV2(cached.answer,focused.packet).length))){
+            recoveryOf||={requestId:cached.requestId||null,evidenceHash:cached.evidenceHash,
               schemaHash:hash(JSON.stringify(previousSchema)),validationErrors:[...errors]};
             cached=null;
           }else return {...cached,cached:true};

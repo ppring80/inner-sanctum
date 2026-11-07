@@ -14,7 +14,7 @@ const store={get:async k=>data.get(k),setJSON:async(k,v,o={})=>{if(o.onlyIfNew&&
  const empty=JSON.parse(JSON.stringify(frozenEvidence.packet));empty.players.forEach(p=>p.facts=[]);
  const emptyStore={get:async()=>({ownerHash,frozenEvidence:{packet:empty,evidenceHash:hash(JSON.stringify(empty))}}),setJSON:async()=>{throw Error('must not reserve without evidence');}};
  assert.equal((await runFastReview({store:emptyStore,decisionId,ownerHash,apiKey:'synthetic',selection:{players:['Alpha','Bravo'],slotId:'S1'},fetchImpl:async()=>{throw Error('must not send empty evidence');}})).error,'citation_evidence_missing');
- assert.equal(result.status,'REVIEW_READY');assert.equal(result.answer.selected,null);assert.equal(JSON.parse(result.rawText).selected,'NO_CALL');assert.equal(request.tools[0].input_schema.properties.selected.type,'string');assert.equal(request.tools[0].strict,true);
+ assert.equal(result.status,'REVIEW_READY');assert.equal(result.answer.selected,null);assert.equal(JSON.parse(result.rawText).selected,'NO_CALL');assert.equal(request.tools[0].input_schema.properties.decision.anyOf[0].properties.selected.type,'string');assert.equal(request.tools[0].strict,true);
  const packet=JSON.parse(request.messages[0].content),expected=[...new Set(packet.players.flatMap(p=>p.facts.map(f=>f.factId)))];
  const allowed=bindCitationSchema(strictSchema(boundRoleSchema(packet)),packet).properties.explanationSentences.items.properties.factIds.items.enum;
  assert.equal(request.tools[0].input_schema.additionalProperties,false);assert.equal(request.tools[0].input_schema.properties.explanationSentences,undefined);
