@@ -9,7 +9,10 @@ const SYSTEM_V1='Give an independent second opinion on this unresolved fantasy f
 const schema_V1={type:'object',additionalProperties:false,required:['selected','confidence','decidingFactor','tradeoffFactor','blocker','reconsider'],properties:{selected:{type:'string',enum:['A','B','NO_CALL']},confidence:{type:'string',enum:['LOW','MEDIUM','HIGH']},decidingFactor:{type:'string',enum:[...FACTORS,'NONE']},tradeoffFactor:{type:'string',enum:[...FACTORS,'NONE']},blocker:{type:'string',enum:['NONE','conflicting_evidence','insufficient_evidence','no_supported_factor']},reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed','alternative_cleared','evidence_resolves_blocker']}}};
 // Wire sentinel avoids the provider's rejected mixed-type enum. Internal and
 // customer-facing NO_CALL remains null; raw provider content is preserved.
-function decode(input){return input?.selected==='NO_CALL'?{...input,selected:null}:input;}
+function decode(input){
+ const value=input&&Object.keys(input).length===1&&input.decision?input.decision:input;
+ return value?.selected==='NO_CALL'?{...value,selected:null}:value;
+}
 const fact=(p,k)=>p.facts.find(f=>f.field===k);
 function factors(packet){
  const ps=packet.players, out={};
@@ -116,10 +119,15 @@ function schemaFor(packet,{legacyReconsider=false,legacyBlockers=false}={}){
   reconsider:{type:'string',enum:['pick_ruled_out','alternative_more_work_confirmed',...(canClear?['alternative_cleared']:[]),'evidence_resolves_blocker']}}};
 }
 const isV1=input=>input&&typeof input==='object'&&Object.hasOwn(input,'tradeoffFactor');
+function rootUnionRejection(review){
+ return review?.status==='UNAVAILABLE'&&review.error==='provider_http_400'&&
+  review.providerErrorType==='invalid_request_error'&&
+  /input_schema.*(?:oneOf|allOf|anyOf).*top level/i.test(review.providerErrorMessage||'');
+}
 // New requests bind the whole answer, not independent enums. Every branch is
 // accepted by the existing validator: selection, factor, blocker and reversal
 // cannot contradict each other. Legacy flat schemas remain cache identities.
-function requestSchemaFor(packet){
+function requestSchemaFor(packet,{legacyRoot=false}={}){
  const schema=schemaFor(packet),fs=factors(packet),branches=[];
  const branch=(selected,decidingFactor,blocker,reconsider)=>({
   type:'object',additionalProperties:false,required:schema.required,
@@ -137,7 +145,10 @@ function requestSchemaFor(packet){
  const blockers=schema.properties.blocker.enum.filter(k=>k!=='NONE');
  if(blockers.length)branches.push(branch('NO_CALL',['NONE'],blockers,['evidence_resolves_blocker']));
  if(!branches.length)throw Error('no_supported_review_answer');
- return {...schema,anyOf:branches};
+ if(legacyRoot)return {...schema,anyOf:branches}; // historical request identity only
+ // Anthropic tool schemas prohibit unions at the root. A required nested
+ // object keeps the same decision grammar without a root-level combinator.
+ return {type:'object',additionalProperties:false,required:['decision'],properties:{decision:{anyOf:branches}}};
 }
 function validateV2(input,packet){
  const errors=[],ps=packet.players,pick=ps.find(p=>p.id===input?.selected),fs=factors(packet),sch=schemaFor(packet);
@@ -185,4 +196,4 @@ function renderV2(input,packet){
 function validate(input,packet){return isV1(input)?validateV1(input,packet):validateV2(input,packet);}
 function render(input,packet){return isV1(input)?renderV1(input,packet):renderV2(input,packet);}
 const schema=schema_V1; // legacy export name (v1 wire schema)
-module.exports={CONTRACT,CONTRACT_V1,SYSTEM,SYSTEM_V1,schema,schema_V1,schemaFor,requestSchemaFor,advantages,isV1,decode,factors,validate,validateV1,validateV2,render,renderV1,renderV2};
+module.exports={CONTRACT,CONTRACT_V1,SYSTEM,SYSTEM_V1,schema,schema_V1,schemaFor,requestSchemaFor,rootUnionRejection,advantages,isV1,decode,factors,validate,validateV1,validateV2,render,renderV1,renderV2};

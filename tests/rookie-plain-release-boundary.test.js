@@ -11,7 +11,7 @@ let calls=0;
 async function invoke(s,reverse=false){return runSecondOpinion({store:s,decisionId,ownerHash,apiKey:'synthetic',fetchImpl:async(url,args)=>{
  calls++;const request=JSON.parse(args.body),packet=JSON.parse(request.messages[0].content);
  assert.equal(packet.presentation,'plain-v1');assert.match(request.system,/Do not generate prose/);
- assert.ok(request.tools[0].input_schema.properties.reconsider.enum.includes('pick_ruled_out'));
+ assert.ok(request.tools[0].input_schema.properties.decision.anyOf[0].properties.reconsider.enum.includes('pick_ruled_out'));
  assert.equal(packet.players[1].facts.find(f=>f.field==='establishedRole').value.plain,'steady recent role for his position');
  const answer={selected:'B',confidence:'MEDIUM',decidingFactor:reverse?'recentUsage':'projection',tradeoffFactor:'recentUsage',blocker:'NONE',reconsider:'alternative_more_work_confirmed'};
  return new Response(JSON.stringify({id:'mock-plain',model:'claude-sonnet-4-6',stop_reason:'tool_use',content:[{type:'tool_use',name:'submit_decision',input:answer}]}),{status:200});
