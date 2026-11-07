@@ -88,7 +88,7 @@ global.fetch=async(url,args)=>{
  const owner=hash('synthetic-reconsider-owner');
  const original=await getStore({name:'super-sage-shadow-lab'}).get(`evidence/${decisionId}/${owner}`);
  const focused=await fast.prepareSelectedPair(original.frozenEvidence,selection,{capturedAt:original.capturedAt});
- const fingerprint=hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(sp.SYSTEM),schemaHash:hash(JSON.stringify(sp.schemaFor(focused.packet,{legacyReconsider:true})))}));
+ const fingerprint=hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(sp.SYSTEM),schemaHash:hash(JSON.stringify(sp.schemaFor(focused.packet,{legacyReconsider:true,legacyBlockers:true})))}));
  const legacyKey=newKey.slice(0,newKey.lastIndexOf('/request/'))+`/request/${fingerprint}`;
  data.delete(newKey);data.set(legacyKey,saved);
  const legacy=await review.callback({...args,consentToAnthropic:true});
