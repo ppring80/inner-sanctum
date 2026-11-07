@@ -414,7 +414,7 @@ async function prepareSelectedPair(frozen, selection, {capturedAt, loadUsageSnap
   focused.evidenceHash=hash(JSON.stringify(focused.packet));
   return require('./_rookie-plain-presentation').plainPresentation(focused,{contract});
 }
-async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly = false, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
+async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly = false, allowSchemaRecovery = false, fetchImpl = fetch, now = new Date(), clock = () => performance.now(), drill = null, caseId = null, transport = "buffered", selection = null, loadUsageSnapshot = async key => require("@netlify/blobs").getStore({name:"opportunity-intel"}).get(key,{type:"json"}) }) {
   const start = clock();
   if(savedOnly&&!selection)return {status:'UNAVAILABLE',error:'saved_pair_selection_required'};
   if (!/^[a-f0-9]{64}$/.test(decisionId || "") || !/^[a-f0-9]{64}$/.test(ownerHash || "")) return { status: "UNAVAILABLE", error: "invalid_request" };
@@ -520,7 +520,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
   const system=structured?(structuredV1?sp.SYSTEM_V1:sp.SYSTEM):focused.packet.presentation==='plain-v1'?baseSystem+' '+require('./_rookie-plain-presentation').GUIDANCE:baseSystem;
   const grounded = focused.packet.requireSentenceEvidence === true;
   let schema = grounded ? strictSchema(focused.packet.requireBackfieldExplanation ? boundRoleSchema(focused.packet) : GROUNDED_SCHEMA) : SCHEMA;
-  if(structured){schema=structuredV1?sp.schema_V1:sp.schemaFor(focused.packet);if(!focused.packet.players.some(p=>p.facts.length))return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
+  if(structured){schema=structuredV1?sp.schema_V1:sp.requestSchemaFor(focused.packet);if(!focused.packet.players.some(p=>p.facts.length))return {status:'UNAVAILABLE',error:'citation_evidence_missing'};}
   if(selection&&grounded&&!structured){
     try{schema=bindCitationSchema(schema,focused.packet);
       if(focused.packet.presentation==='plain-v1')schema.properties.reconsider.description=require('./_rookie-plain-presentation').RECONSIDER_DESCRIPTION;
@@ -557,6 +557,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
   if (drill?.caseId === POST246.caseId && (transport !== 'stream' || hash(system) !== POST246.promptHash || hash(JSON.stringify(schema)) !== POST246.schemaHash || maxTokens > POST246.maxOutputTokens || deadlineMs !== POST246.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST246.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (drill?.caseId === POST248.caseId && (transport !== 'stream' || hash(system) !== POST248.promptHash || hash(JSON.stringify(schema)) !== POST248.schemaHash || maxTokens > POST248.maxOutputTokens || deadlineMs !== POST248.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > POST248.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
   if (drill?.caseId === FINAL_VOICE.caseId && (transport !== 'stream' || hash(system) !== FINAL_VOICE.promptHash || hash(JSON.stringify(schema)) !== FINAL_VOICE.schemaHash || maxTokens > FINAL_VOICE.maxOutputTokens || deadlineMs !== FINAL_VOICE.deadlineMs || Buffer.byteLength(JSON.stringify({ system, packet: focused.packet, schema }), 'utf8') > FINAL_VOICE.maxRequestBytes)) return { status: 'UNAVAILABLE', error: 'authorized_qualification_bound' };
+  let recoveryOf=null;
   if (selection) {
     const base=key;
     key += `/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(schema))}))}`;
@@ -564,20 +565,36 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
     // Tightening new response choices must not orphan accepted or failed v2
     // history, spend again for the same request, or reinterpret a saved failure.
     if(!cached&&structured&&!structuredV1){
-      for(const options of [{legacyBlockers:true},{legacyBlockers:true,legacyReconsider:true}]){
+      for(const options of [{},{legacyBlockers:true},{legacyBlockers:true,legacyReconsider:true}]){
       const previousSchema=sp.schemaFor(focused.packet,options);
       const previousKey=base+`/request/${hash(JSON.stringify({evidenceHash:focused.evidenceHash,promptHash:hash(system),schemaHash:hash(JSON.stringify(previousSchema))}))}`;
       if(previousKey!==key){
         try{cached=await store.get(previousKey,{type:'json'});}
         catch{return {status:'UNAVAILABLE',error:'legacy_review_read_failed'};}
-        if(cached?.status==='INVALID')return {...cached,cached:true};
+        if(cached?.status==='INVALID'){
+          // Only an explicit consenting customer request can recover a known
+          // schema/validator mismatch. Never re-request a current-schema failure,
+          // timeout, malformed JSON, v1 result or evidence/ownership failure.
+          const recoverable=new Set(['invalid_selected','invalid_decidingFactor','invalid_blocker','invalid_reconsider',
+            'deciding_factor_not_for_pick','unexpected_blocker','reconsider_not_reversal',
+            'no_call_without_supported_blocker','invalid_no_call_shape','unavailable_player_selected']);
+          const errors=cached.validationErrors;
+          if(allowSchemaRecovery&&!savedOnly&&!sp.isV1(cached.answer)&&cached.answer&&
+             cached.decisionId===decisionId&&cached.parentEvidenceHash===original.frozenEvidence.evidenceHash&&
+             cached.evidenceHash===focused.evidenceHash&&Array.isArray(errors)&&errors.length&&
+             errors.every(e=>recoverable.has(e))&&sp.validateV2(cached.answer,focused.packet).length){
+            recoveryOf={requestId:cached.requestId||null,evidenceHash:cached.evidenceHash,
+              schemaHash:hash(JSON.stringify(previousSchema)),validationErrors:[...errors]};
+            cached=null;
+          }else return {...cached,cached:true};
+        }
       }
       if(cached)break;
       }
     }
     // Saved v1 reviews keep their original key (v1 packet, prompt and schema). Read
     // them explicitly and judge them only by v1 rules; never rewrite or re-request.
-    if(!cached&&structured&&!structuredV1){
+    if(!cached&&!recoveryOf&&structured&&!structuredV1){
       try{
         const v1=await prepareSelectedPair(original.frozenEvidence,selection,{capturedAt:original.capturedAt,loadUsageSnapshot,contract:'v1'});
         const v1Key=base+`/request/${hash(JSON.stringify({evidenceHash:v1.evidenceHash,promptHash:hash(sp.SYSTEM_V1),schemaHash:hash(JSON.stringify(sp.schema_V1))}))}`;
@@ -598,7 +615,7 @@ async function runFastReview({ store, decisionId, ownerHash, apiKey, savedOnly =
   }
   if(savedOnly)return {status:'UNAVAILABLE',error:'saved_pair_review_unavailable'};
   if (!apiKey) return { status: "UNAVAILABLE", error: "model_not_configured" };
-  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), ...(focused.packet.replay ? {replay:focused.packet.replay,customerEligible:false} : {}), rules: RULES };
+  const base = { type: "SUPER_SAGE_FAST_PAIR_REVIEW", status: "PENDING", version: drill ? drill.version : VERSION, caseId: drill?.caseId || caseId || null, evidenceScope: focused.packet.scope, decisionId, parentEvidenceHash: original.frozenEvidence.evidenceHash, evidenceHash: focused.evidenceHash, capturedAt: now.toISOString(), model, scope: "PAIR_BENCHMARK", candidates: focused.packet.players.map(p => ({ id: p.id, name: p.name })), modelDeadlineMs: deadlineMs, ...(diagnostic ? { diagnosticOnly: true, customerEligible: false, deliveryTargetMs: 15000 } : {}), promptHash: hash(system), ...(focused.packet.replay ? {replay:focused.packet.replay,customerEligible:false} : {}), ...(recoveryOf?{recoveryOf}:{}), rules: RULES };
   if (focused.packet.replay) await store.setJSON(`usage-replay-evidence/${decisionId}/${ownerHash}/${focused.evidenceHash}`,{ownerHash,parentEvidenceHash:original.frozenEvidence.evidenceHash,frozenEvidence:focused},{onlyIfNew:true});
   // A denied daily budget is not a provider attempt or a review reservation.
   // The atomic budget acquisition below remains the concurrency authority.
