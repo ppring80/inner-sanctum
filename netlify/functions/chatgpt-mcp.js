@@ -3128,7 +3128,13 @@ function extractRosterEntries(snapshot) {
 
   return roster
     .map(
-      extractRosterEntry
+      entry => {
+        const normalized = extractRosterEntry(entry);
+        if (normalized && String(snapshot.provider || "").toLowerCase() === "espn") {
+          normalized.lineupContext = require("./_espn-lineup-context.js").espnLineupContext(snapshot, entry);
+        }
+        return normalized;
+      }
     )
     .filter(Boolean);
 }
@@ -7406,6 +7412,7 @@ function buildServer(
 // ===========================================================
 
 exports._test = {
+  extractRosterEntries,
   buildServer,
   getCurrentNFLWeek,
   resolveCurrentNFLWeek,

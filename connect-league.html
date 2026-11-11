@@ -1168,6 +1168,11 @@ function buildChatGptLeagueSnapshot(
   return {
     provider:
       provider,
+    ...(provider === "espn" ? { espnLineupSource: {
+      scoringPeriodId: league.scoringPeriodId ?? null,
+      week: connection.week ?? null,
+      capturedAt: connection.meta?.capturedAt ?? null
+    } } : {}),
 
     league:
       Object.assign(

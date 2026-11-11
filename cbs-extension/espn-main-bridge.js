@@ -160,6 +160,7 @@
         nflTeam: NFL_TEAM_BY_ID[proTeamId] || "",
         // Preserve ESPN lineup-slot identity separately from player position.
         lineupSlotId: entry?.lineupSlotId ?? null,
+        defaultPositionId: player.defaultPositionId ?? null,
         acquisitionType: entry?.acquisitionType || null,
         injuryStatus: player?.injuryStatus || null,
         projectedPoints: projectedPoints(player, scoringPeriodId)
