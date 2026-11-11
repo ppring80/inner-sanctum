@@ -558,7 +558,11 @@ exports.handler =
       });
 
       const scored =
-        snapshot.population.map(function (record) {
+        snapshot.population.filter(function (record) {
+          // Only defenses with a scheduled opponent enter ranks and projections.
+          const opponent = opponentMap.get(normalizeTeam(record.team));
+          return !!opponent && opponent !== "BYE";
+        }).map(function (record) {
           const opponent =
             opponentMap.get(
               normalizeTeam(
