@@ -946,6 +946,26 @@ async function fetchSeasonEvidence({
   }
 
   if (!response.ok) {
+    // A missing newest week must not hide otherwise ready offensive rankings.
+    // Keep the season endpoint strict; request the preceding complete sample.
+    const missing = data?.failedWeeks;
+    if (response.status === 502 && seasonType === "reg" && week >= 3 &&
+        missing?.length === 1 && missing[0].week === week - 1 &&
+        missing[0].error === `Week ${week - 1} cached defensive evidence is missing.`) {
+      const previous = await fetch(url.replace(`&week=${week}&`, `&week=${week - 1}&`), {
+        method: "GET", headers: { Accept: "application/json" }
+      });
+      if (previous.ok) {
+        const sample = await previous.json();
+        if (sample?.evidenceType === "weekly-sage-defense-season" &&
+            String(sample.season) === String(season) && sample.targetWeek === week - 1 &&
+            sample.weeksIncluded?.length === week - 2 &&
+            sample.weeksIncluded.every((value, i) => value === i + 1) &&
+            Object.keys(sample.defenses || {}).length > 0) {
+          return { ...sample, defensiveEvidenceThroughWeek: week - 2 };
+        }
+      }
+    }
     const detail =
       data &&
       (
@@ -1100,7 +1120,10 @@ async function buildMatchupDefense({
         evidence.weeksIncluded ||
         [],
 
-      methodology: {
+      ...(evidence.defensiveEvidenceThroughWeek ? {
+      defensiveEvidenceThroughWeek: evidence.defensiveEvidenceThroughWeek
+    } : {}),
+    methodology: {
         basis:
           "league-relative percentile scoring",
 
@@ -1230,6 +1253,9 @@ async function buildMatchupDefense({
       evidence.weeksIncluded ||
       [],
 
+    ...(evidence.defensiveEvidenceThroughWeek ? {
+      defensiveEvidenceThroughWeek: evidence.defensiveEvidenceThroughWeek
+    } : {}),
     methodology: {
       basis:
         "league-relative percentile scoring",
