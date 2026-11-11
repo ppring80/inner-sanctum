@@ -90,6 +90,15 @@ function canRetry(status, now = Date.now(), job = null) {
   if (!status) return true;
   if (Number(status.leaseUntil) > now || Number(status.retryAfter) > now) return false;
   if (status.retryPolicy === DEFENSE_POLICY) {
+    // One operator-approved replay of the exact Week 9 incomplete schedule incident.
+    // The existing atomic claim increments attempts before any provider work.
+    const failure = status.lastFailure;
+    if (status.status === 'failed' && job?.store === 'weekly-sage-defense' &&
+        String(job.season) === '2026' && job.week === 9 &&
+        Number(status.attempts) === 4 && failure?.at === '2026-11-10T10:00:24.998Z' &&
+        failure.statusCode === 422 && failure.failure?.category === 'schedule_incomplete' &&
+        failure.failure.counts?.returned === 15 && failure.failure.counts?.completed === 14 &&
+        failure.failure.counts?.processed === 14) return true;
     if (Number(status.attempts || 0) >= 4) return false;
     if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
     return status.failure?.retryable !== false || eligibleWeek8IdentityReplay(status, job);
