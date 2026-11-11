@@ -86,9 +86,17 @@ function eligibleWeek8IdentityReplay(status, job) {
     at >= Date.parse('2026-11-06T04:20:22Z') && at < Date.parse('2026-11-06T04:20:24Z');
 }
 
-function canRetry(status, now = Date.now(), job = null) {
+function isWeek10SpecialistReplay(status, job) {
+  const finished = { 'k-snapshot': '2026-11-11T00:30:24.478Z', 'def-snapshot': '2026-11-11T00:50:20.502Z' };
+  return job?.season === '2026' && job.week === 10 && job.seasonType === 'reg' &&
+    status?.status === 'failed' && status.attempts === 2 && !!finished[job.store] &&
+    status.startedAt === finished[job.store] && status.lastFailure?.statusCode === 422;
+}
+
+function canRetry(status, now = Date.now(), job = null, defenseReady = false) {
   if (!status) return true;
   if (Number(status.leaseUntil) > now || Number(status.retryAfter) > now) return false;
+  if (defenseReady && isWeek10SpecialistReplay(status, job)) return true;
   if (status.retryPolicy === DEFENSE_POLICY) {
     // One operator-approved replay of the exact Week 9 incomplete schedule incident.
     // The existing atomic claim increments attempts before any provider work.
@@ -115,7 +123,7 @@ function nextJob(rows, now = Date.now()) {
   if (independent) return independent;
   for (const group of ['weekly-sage-schedule', 'offense', 'weekly-sage-defense', 'specialists', 'auxiliary']) {
     const pending = rows.filter(row => !row.ready && (group === 'offense' ? ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot'].includes(row.store) : group === 'specialists' ? ['k-snapshot','def-snapshot'].includes(row.store) : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire','sage-role-events'].includes(row.store) : row.store === group));
-    if (pending.length) { const eligible = pending.find(row => canRetry(row.status, now, row) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))); if (eligible) return eligible; if (group === 'weekly-sage-schedule') return null; }
+    if (pending.length) { const eligible = pending.find(row => canRetry(row.status, now, row, group === 'specialists' && rows.some(d => d.store === 'weekly-sage-defense' && d.week === 9 && d.season === row.season && d.ready)) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))); if (eligible) return eligible; if (group === 'weekly-sage-schedule') return null; }
   }
   return null;
 }
@@ -144,7 +152,12 @@ async function runJob(job, event, dependencies) {
   const previous = await state.getWithMetadata(key, { type: 'json' });
   const defensive = job.store === 'weekly-sage-defense';
   const priorStatus = previous && (defensive ? {...previous.data, retryPolicy: DEFENSE_POLICY, attemptLimit: 4} : job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
-  if (!canRetry(priorStatus, now, job)) return { status: 'waiting', skipped: true };
+  let defenseReady = false;
+  if (isWeek10SpecialistReplay(priorStatus, job) && !canRetry(priorStatus, now, job)) {
+    const dependency = jobsForWeek(job.season, job.week).find(d => d.store === 'weekly-sage-defense' && d.week === 9);
+    defenseReady = !!dependency && completeCache(await getStore({ name: dependency.store }).get(cacheKey(dependency), { type: 'json' }), dependency, now);
+  }
+  if (!canRetry(priorStatus, now, job, defenseReady)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const lastFailure=previous?.data?.lastFailure||null;
   const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, ...(defensive?{retryPolicy:DEFENSE_POLICY}:{}), attemptLimit: defensive ? 4 : job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && (defensive || previous.data.day === day) ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
