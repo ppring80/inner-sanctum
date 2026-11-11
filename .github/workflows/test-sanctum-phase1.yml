@@ -1,0 +1,188 @@
+name: Test Sanctum Phase 1
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-sanctum-phase1.yml'
+      - 'scripts/test-sanctum*.js'
+      - 'tests/test-sanctum-phase1.test.js'
+      - 'docs/test-sanctum-phase1.md'
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact approved candidate commit SHA
+        required: true
+        type: string
+      operation:
+        description: Promote candidate or rebuild the recorded accepted test baseline
+        required: true
+        default: promote
+        type: choice
+        options: [promote, recover]
+permissions: {}
+jobs:
+  self-test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: node tests/test-sanctum-phase1.test.js
+  request:
+    if: github.repository == 'ppring80/inner-sanctum' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.comment.user.login == 'ppring80' && startsWith(github.event.comment.body, '/test-sanctum ')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      operation: ${{ steps.resolve.outputs.operation }}
+      verified: ${{ steps.resolve.outputs.verified }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - id: resolve
+        run: node scripts/test-sanctum-phase1.js --resolve
+        env:
+          TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          REQUEST_TOKEN: ${{ github.token }}
+  validation:
+    needs: request
+    if: github.repository == 'ppring80/inner-sanctum' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CANDIDATE_SHA: ${{ needs.request.outputs.sha }}
+      OPERATION: ${{ needs.request.outputs.operation }}
+      REQUEST_VERIFIED: ${{ needs.request.outputs.verified }}
+      TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: orchestrator
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Validate trusted dispatch and immutable input
+        run: node -e 'const m=require("./orchestrator/scripts/test-sanctum-phase1");m.trusted(process.env);m.approved(process.env.CANDIDATE_SHA)'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.request.outputs.sha }}
+          path: candidate
+          persist-credentials: false
+      - name: Confirm exact candidate checkout
+        run: test "$(git -C candidate rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - name: Existing regression, connection-lock and Chrome checks
+        working-directory: candidate
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          node tests/connected-stack-lock.test.js
+          node tests/chrome-web-store-package.test.js
+      - name: Existing browser and bundler dependencies
+        run: npm install --prefix /tmp/sage-phase1-tools --ignore-scripts --no-audit --no-fund playwright@1.58.2 @netlify/zip-it-and-ship-it@16.5.1
+      - name: Pinned full Chrome for Testing
+        if: needs.request.outputs.operation == 'promote'
+        timeout-minutes: 3
+        run: |
+          python3 - <<'PYTHON'
+          import urllib.request,hashlib,zipfile,pathlib
+          p=pathlib.Path('/tmp/sage-phase1-chrome.zip')
+          p.write_bytes(urllib.request.urlopen('https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.6/linux64/chrome-linux64.zip?download=sage332',timeout=90).read())
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='b5e3195041af345a668d110f5daf5581961fa3608626ea588c97dd0fe81c4e38'
+          with zipfile.ZipFile(p) as z: z.extractall('/tmp/sage-phase1-chrome')
+          PYTHON
+          chmod +x /tmp/sage-phase1-chrome/chrome-linux64/chrome /tmp/sage-phase1-chrome/chrome-linux64/chrome_crashpad_handler
+      - name: Existing synthetic browser and actual Netlify bundle checks
+        if: needs.request.outputs.operation == 'promote'
+        working-directory: candidate
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app node scripts/prepare-espn-synthetic.js
+          env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app SAGE_CHROME_EXECUTABLE=/tmp/sage-phase1-chrome/chrome-linux64/chrome SAGE_PLAYWRIGHT_MODULE=/tmp/sage-phase1-tools/node_modules/playwright node scripts/test-espn-synthetic-browser.js
+          env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ZISI_MODULE=/tmp/sage-phase1-tools/node_modules/@netlify/zip-it-and-ship-it/dist/main.js node scripts/test-espn-synthetic-bundle.js
+      - name: Recorded recovery baseline bundle checks
+        if: needs.request.outputs.operation == 'recover'
+        working-directory: candidate
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_MODE=isolated SAGE_ACCEPTANCE_SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ACCEPTANCE_ORIGIN=https://sprightly-chebakia-13d478.netlify.app node scripts/prepare-sage-acceptance.js
+          env -i PATH="$PATH" HOME="$HOME" SITE_ID=dcdb8384-114c-4f80-a2fe-acc0ecb39d57 SAGE_ZISI_MODULE=/tmp/sage-phase1-tools/node_modules/@netlify/zip-it-and-ship-it/dist/main.js node ../orchestrator/scripts/test-sanctum-recovery-bundle.js
+  promotion:
+    needs: [request, validation]
+    concurrency:
+      group: test-sanctum-phase1
+      cancel-in-progress: false
+    if: needs.validation.result == 'success' && github.repository == 'ppring80/inner-sanctum' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: test-sanctum-phase1
+    permissions:
+      contents: write
+      checks: read
+      statuses: read
+    outputs:
+      report: ${{ steps.deploy.outputs.report }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Promote approved SHA and verify Test Sanctum only
+        id: deploy
+        run: node scripts/test-sanctum-phase1.js
+        env:
+          CANDIDATE_SHA: ${{ needs.request.outputs.sha }}
+          OPERATION: ${{ needs.request.outputs.operation }}
+          REQUEST_VERIFIED: ${{ needs.request.outputs.verified }}
+          TRUSTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          PHASE1_ENABLED: ${{ vars.TEST_SANCTUM_PHASE1_ENABLED }}
+          HOOK_APPROVED_SITE_ID: ${{ vars.TEST_SANCTUM_HOOK_SITE_ID }}
+          TEST_BUILD_HOOK: ${{ secrets.TEST_SANCTUM_BUILD_HOOK }}
+          GH_TOKEN: ${{ github.token }}
+  report:
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.comment.user.login == 'ppring80' && startsWith(github.event.comment.body, '/test-sanctum ')))
+    needs: [request, validation, promotion]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Consolidated phase result and acceptance limitation
+        run: node scripts/test-sanctum-phase1.js --report
+        env:
+          CANDIDATE_SHA: ${{ needs.request.outputs.sha }}
+          OPERATION: ${{ needs.request.outputs.operation }}
+          REQUEST_VERIFIED: ${{ needs.request.outputs.verified }}
+          REQUEST_RESULT: ${{ needs.request.result }}
+          VALIDATION_RESULT: ${{ needs.validation.result }}
+          PROMOTION_REPORT: ${{ needs.promotion.outputs.report }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-sanctum-phase1-report
+          path: phase1-report.json
+          retention-days: 30
