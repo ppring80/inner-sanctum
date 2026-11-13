@@ -41,7 +41,6 @@ exports.handler = async (event) => {
 
   const authorizationError = requireTank01RefreshAuthorization(event);
   if (authorizationError) return authorizationError;
-  if (!process.env.TANK01_API_KEY?.trim()) return refreshFailed('Tank01 key unavailable');
   // Player status is the only workload allowed to use the final protected
   // 100-call pool. Customer traffic can never invoke this handler directly.
   const budgetError = await requireTank01Budget(event, {
