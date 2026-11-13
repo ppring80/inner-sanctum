@@ -11,23 +11,11 @@
 # 300 calls of safety below the 1,000-call PRO allowance. The reduced schedules
 # below fit within that ceiling; customer request paths remain cache-only.
 
-# PLAYER DATA REFRESH SCHEDULE (added — checklist #215)
-# The existing watchdog coordinates baseline and critical-window updates.
-# loops all 32 NFL teams' rosters in parallel and caches each player's
-# exp (rookie/veteran status) and injury designation to Netlify Blobs,
-# which chat.js then reads on every Sanctum request instead of hitting
-# Tank01 live (32 calls per chat message would be too slow and too
-# expensive). See refresh-player-data.js for the full rationale.
-#
-# Do not raise this cadence without revising and testing the shared budget.
-# Availability is now coordinated exclusively by recover-weekly-sage's
-# ten-minute cache checks: eight-hour baseline, 18:00 Eastern practice reports
-# Wed-Sat, and schedule-derived pregame checkpoints at T-75 and T-20 minutes.
-# There are no overlapping fixed roster cron jobs. All triggers share a job
-# reservation cap: four runs per UTC day, ten on Sunday (132/330 calls).
-
-# Each roster refresh reserves 33 possible calls before provider work.
-# The game-day alias remains available for authorized manual recovery.
+# Injury availability has a dedicated cache check. The weekly watchdog can
+# also recover it using the same lease, attempt cap and Tank01 budget.
+# Fresh data skips provider work. Practice and pregame checkpoints still apply.
+[functions."recover-player-availability"]
+  schedule = "5-59/10 * * * *"
 
 # Availability comes from the shared Tank01 full-player cache.
 # The retired NFL transaction scraper has no scheduled trigger.
