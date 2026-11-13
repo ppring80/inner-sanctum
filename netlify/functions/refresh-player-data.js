@@ -6,6 +6,16 @@ const { requireTank01Budget } = require("./_tank01-daily-budget.js");
 // Scheduled shared-cache refresh only; one budgeted call, no customer calls.
 // Provider errors or incomplete identity/coverage preserve the previous cache.
 
+function refreshFailed(reason) {
+  return {
+    statusCode: 502,
+    body: JSON.stringify({
+      cached: false,
+      error: `Full player availability refresh failed (${reason}); previous cache preserved.`
+    })
+  };
+}
+
 async function fetchTank01(endpoint, params = {}) {
   const baseUrl = "https://tank01-nfl-live-in-game-real-time-statistics-nfl.p.rapidapi.com";
   const queryString = new URLSearchParams(params).toString();
@@ -21,8 +31,7 @@ async function fetchTank01(endpoint, params = {}) {
     }
   });
 
-  if (!response.ok) throw new Error(`Tank01 API error: ${response.status}`);
-  return await response.json();
+  return response;
 }
 
 exports.handler = async (event) => {
@@ -44,17 +53,39 @@ exports.handler = async (event) => {
   });
   if (budgetError) return budgetError;
 
+  let response;
   try {
-    const response=await fetchTank01('getNFLPlayerList');
-    if(response.error || response.statusCode && Number(response.statusCode)!==200)throw Error('Provider rejected full player feed');
-    const cached=require('./_tank01-player-cache').buildPlayerCache(response.body);
+    response = await fetchTank01('getNFLPlayerList');
+  } catch (error) {
+    return refreshFailed(error.name === 'TimeoutError' ? 'Tank01 request timed out' : 'Tank01 request failed');
+  }
+  if (!response.ok) return refreshFailed(`Tank01 HTTP ${response.status}`);
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    return refreshFailed('Tank01 response was not valid JSON');
+  }
+  if (!data || data.error || (data.statusCode && Number(data.statusCode) !== 200)) {
+    return refreshFailed('Tank01 rejected the player-list request');
+  }
+
+  let cached;
+  try {
+    cached = require('./_tank01-player-cache').buildPlayerCache(data.body);
+  } catch {
+    return refreshFailed('Tank01 player list failed identity or coverage validation');
+  }
+
+  try {
     const store=getStore({name:'player-data'});
     const previous=await store.get('playerData',{type:'json'}).catch(()=>null);
     // Retain display metadata only when omitted; never carry old availability.
     for(const [id,p] of Object.entries(cached.players))if(p.exp===undefined&&previous?.players?.[id]?.exp!==undefined)p.exp=previous.players[id].exp;
     await store.setJSON('playerData',cached);
     return {statusCode:200,body:JSON.stringify({cached:true,teamsSucceeded:32,teamsFailed:0,playerCount:cached.playerCount,availabilityMode:cached.availabilityMode})};
-  } catch (_) {
-    return {statusCode:502,body:JSON.stringify({cached:false,error:'Full player availability refresh failed; previous cache preserved.'})};
+  } catch {
+    return refreshFailed('Netlify cache write failed');
   }
 };
