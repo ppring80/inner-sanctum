@@ -375,6 +375,38 @@ async function loadCentralAvailability() {
   }
 }
 
+function reconcileCurrentPlayerTeams(positions, availability) {
+  if (!availability?.fresh) return;
+  const teamCode = value => String(value || "").trim().toUpperCase();
+  for (const position of PLAYER_AVAILABILITY_POSITIONS) {
+    for (const row of positions[position] || []) {
+      const player = row.playerID && availability.players[String(row.playerID)];
+      const team = teamCode(player?.team);
+      const pos = teamCode(player?.pos || player?.position);
+      if (!/^[A-Z]{2,3}$/.test(team) || !row.team || team === teamCode(row.team) ||
+          (pos === "PK" ? "K" : pos) !== position ||
+          !normalizePlayerName(row.name) ||
+          normalizePlayerName(player.longName) !== normalizePlayerName(row.name)) continue;
+      const games = new Map();
+      for (const peer of Object.values(positions).flat()) {
+        if (peer === row || teamCode(peer.team) !== team ||
+            (peer.currentTeam && teamCode(peer.currentTeam) !== team) ||
+            !peer.gameID || !peer.opponent || !normalizeGameDate(peer.gameDate) ||
+            gameMinuteOfDay(peer.gameTime) === null) continue;
+        const key = JSON.stringify([peer.gameID, peer.opponent, peer.gameDate, peer.gameTime]);
+        games.set(key, peer);
+      }
+      const game = games.size === 1 ? games.values().next().value : null;
+      Object.assign(row, {
+        team, currentTeam:team, opponent:game?.opponent ?? null, gameID:game?.gameID ?? null,
+        gameDate:game?.gameDate ?? null, gameTime:game?.gameTime ?? null,
+        matchup: null, projectedPoints:null, projection:null,
+        sageTake:"Team changed. Previous matchup analysis no longer applies."
+      });
+    }
+  }
+}
+
 function applyCentralAvailability(positions, inactive, availability, season, week) {
   const applied = [];
   availability = availability || {players:{},byName:new Map(),available:false};
@@ -660,8 +692,9 @@ exports.handler = async function (event) {
     }
   });
 
-  const projectionCoverage = attachProjectionPositions(positions,projectionCache);
   const centralAvailability = await loadCentralAvailability();
+  reconcileCurrentPlayerTeams(positions, centralAvailability);
+  const projectionCoverage = attachProjectionPositions(positions,projectionCache);
   const availabilityExclusions = applyCentralAvailability(
     positions,
     inactive,
