@@ -375,6 +375,32 @@ async function loadCentralAvailability() {
   }
 }
 
+function reconcileCurrentPlayerTeams(positions, availability) {
+  if (!availability?.fresh) return;
+  const teamCode = value => String(value || "").trim().toUpperCase();
+  for (const position of PLAYER_AVAILABILITY_POSITIONS) {
+    for (const row of positions[position] || []) {
+      const player = row.playerID && availability.players[String(row.playerID)];
+      const team = teamCode(player?.team);
+      const pos = teamCode(player?.pos || player?.position);
+      if (!/^[A-Z]{2,3}$/.test(team) || !row.team || team === teamCode(row.team) ||
+          (pos === "PK" ? "K" : pos) !== position ||
+          !normalizePlayerName(row.name) ||
+          normalizePlayerName(player.longName) !== normalizePlayerName(row.name)) continue;
+      const games = (positions.DEF || []).filter(game => teamCode(game.team) === team &&
+        game.gameID && game.opponent && normalizeGameDate(game.gameDate) &&
+        gameMinuteOfDay(game.gameTime) !== null);
+      const game = games.length === 1 ? games[0] : null;
+      Object.assign(row, {
+        team, opponent:game?.opponent ?? null, gameID:game?.gameID ?? null,
+        gameDate:game?.gameDate ?? null, gameTime:game?.gameTime ?? null,
+        matchup: null, projectedPoints:null, projection:null,
+        sageTake:"Team changed. Previous matchup analysis no longer applies."
+      });
+    }
+  }
+}
+
 function applyCentralAvailability(positions, inactive, availability, season, week) {
   const applied = [];
   availability = availability || {players:{},byName:new Map(),available:false};
@@ -660,8 +686,9 @@ exports.handler = async function (event) {
     }
   });
 
-  const projectionCoverage = attachProjectionPositions(positions,projectionCache);
   const centralAvailability = await loadCentralAvailability();
+  reconcileCurrentPlayerTeams(positions, centralAvailability);
+  const projectionCoverage = attachProjectionPositions(positions,projectionCache);
   const availabilityExclusions = applyCentralAvailability(
     positions,
     inactive,
