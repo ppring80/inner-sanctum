@@ -387,12 +387,18 @@ function reconcileCurrentPlayerTeams(positions, availability) {
           (pos === "PK" ? "K" : pos) !== position ||
           !normalizePlayerName(row.name) ||
           normalizePlayerName(player.longName) !== normalizePlayerName(row.name)) continue;
-      const games = (positions.DEF || []).filter(game => teamCode(game.team) === team &&
-        game.gameID && game.opponent && normalizeGameDate(game.gameDate) &&
-        gameMinuteOfDay(game.gameTime) !== null);
-      const game = games.length === 1 ? games[0] : null;
+      const games = new Map();
+      for (const peer of Object.values(positions).flat()) {
+        if (peer === row || teamCode(peer.team) !== team ||
+            (peer.currentTeam && teamCode(peer.currentTeam) !== team) ||
+            !peer.gameID || !peer.opponent || !normalizeGameDate(peer.gameDate) ||
+            gameMinuteOfDay(peer.gameTime) === null) continue;
+        const key = JSON.stringify([peer.gameID, peer.opponent, peer.gameDate, peer.gameTime]);
+        games.set(key, peer);
+      }
+      const game = games.size === 1 ? games.values().next().value : null;
       Object.assign(row, {
-        team, opponent:game?.opponent ?? null, gameID:game?.gameID ?? null,
+        team, currentTeam:team, opponent:game?.opponent ?? null, gameID:game?.gameID ?? null,
         gameDate:game?.gameDate ?? null, gameTime:game?.gameTime ?? null,
         matchup: null, projectedPoints:null, projection:null,
         sageTake:"Team changed. Previous matchup analysis no longer applies."
@@ -706,7 +712,7 @@ exports.handler = async function (event) {
       rosterFresh: centralAvailability.fresh,
       rosterTeam: provider?.team ?? null,
       ranking: allen ? {
-        team: allen.team, opponent: allen.opponent, gameID: allen.gameID,
+        team: allen.team, currentTeam: allen.currentTeam, opponent: allen.opponent, gameID: allen.gameID,
         gameDate: allen.gameDate, gameTime: allen.gameTime
       } : null,
       locked: startedGameExclusions.some(row => String(row.playerID) === "15818")
