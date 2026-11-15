@@ -43,7 +43,12 @@ function normalizeProjectionResponse(payload, season, week, now = new Date()) {
         ? { standard: finite(value.fantasyPointsDefault?.standard), ppr: finite(value.fantasyPointsDefault?.PPR), half: finite(value.fantasyPointsDefault?.halfPPR) }
         : offensivePoints(value);
     if (!points || FORMATS.some(format => points[format] === null)) return;
-    rows.push({ playerID: defense ? null : value.playerID || null, name, position, team, points });
+    const carries = finite(value.Rushing?.rushAttempts ?? value.Rushing?.rushAtt);
+    const targets = finite(value.Receiving?.targets);
+    const projectedWorkload = position === 'RB' && carries !== null && carries >= 0 && targets !== null && targets >= 0
+      ? {carries, targets, rushYards:finite(value.Rushing?.rushYds), catches:finite(value.Receiving?.receptions), receivingYards:finite(value.Receiving?.recYds)}
+      : undefined;
+    rows.push({ ...(projectedWorkload ? {projectedWorkload} : {}), playerID: defense ? null : value.playerID || null, name, position, team, points });
   };
   Object.values(body.playerProjections).forEach(value => add(value));
   Object.values(body.teamDefenseProjections).forEach(value => add(value, true));
@@ -94,13 +99,17 @@ function previewLateRbRows(cache, pilot) {
       [format, Number((row.points[format] + delta[format]).toFixed(2))]))};
   });
 }
+async function readProjectionSnapshot(season, week) {
+  const cache = await getStore({ name: STORE }).get(keyFor(season,week), {type:'json'});
+  return validCache(cache,season,week) ? cache : null;
+}
 async function readWeeklyProjections(season, week, scoring, pilot) {
   const format = scoringKey(scoring);
   if (!format) return null;
   try {
-    const cache = await getStore({ name: STORE }).get(keyFor(season,week), { type:'json' });
-    if (!validCache(cache,season,week)) return null;
-    return { ...cache, scoring:format, fresh: Date.now()-Date.parse(cache.generatedAt) < REFRESH_MS, rows:previewLateRbRows(cache, pilot).map(row => ({...row,projectedPoints:row.points[format]})) };
+    const cache = await readProjectionSnapshot(season,week);
+    if (!cache) return null;
+    return { ...cache, scoring:format, fresh: Date.now()-Date.parse(cache.generatedAt) < REFRESH_MS, rows:previewLateRbRows(cache, pilot).map(({projectedWorkload, ...row}) => ({...row,projectedPoints:row.points[format]})) };
   } catch (_) { return null; }
 }
 function matchProjection(player, cache) {
@@ -138,4 +147,4 @@ function attachProjectionPositions(positions, cache) {
   }
   return counts;
 }
-module.exports = { offensivePoints, attachProjectionPositions, STORE, REFRESH_MS, MAX_AGE_MS, keyFor, finite, scoringKey, normalizeProjectionResponse, validCache, readWeeklyProjections, matchProjection, fillProjection };
+module.exports = { offensivePoints, attachProjectionPositions, STORE, REFRESH_MS, MAX_AGE_MS, keyFor, finite, scoringKey, normalizeProjectionResponse, validCache, readProjectionSnapshot, readWeeklyProjections, matchProjection, fillProjection };
