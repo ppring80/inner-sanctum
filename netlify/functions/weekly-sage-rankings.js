@@ -696,7 +696,24 @@ exports.handler = async function (event) {
     season,
     targetWeek
   );
-  const startedGameExclusions = applyGameEligibility(positions, new Date(), evidenceUsage);
+  const verifyAllen = process.env.CONTEXT === "deploy-preview" &&
+    query.verifyAllen === "1" && season === "2026" && targetWeek === 10 && seasonType === "reg";
+  const allen = verifyAllen ? (positions.WR || []).find(row => String(row.playerID) === "15818") : null;
+  const startedGameExclusions = applyGameEligibility(positions, new Date(), verifyAllen ? "rankings" : evidenceUsage);
+  if (verifyAllen) {
+    const provider = centralAvailability.players["15818"];
+    const result = jsonResponse(200, {
+      rosterFresh: centralAvailability.fresh,
+      rosterTeam: provider?.team ?? null,
+      ranking: allen ? {
+        team: allen.team, opponent: allen.opponent, gameID: allen.gameID,
+        gameDate: allen.gameDate, gameTime: allen.gameTime
+      } : null,
+      locked: startedGameExclusions.some(row => String(row.playerID) === "15818")
+    });
+    result.headers["Cache-Control"] = "no-store";
+    return result;
+  }
   const projectionOrderAudit = orderPositionsByDisplayedProjections(positions);
   reconcileRankedRecommendations(positions, scoring);
   // Shared read-time context: one cached status change reaches every weekly
