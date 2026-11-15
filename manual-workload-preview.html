@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Manual workload flag preview</title>
+<style>body{font:1rem system-ui;max-width:46rem;margin:2rem auto;padding:0 1rem}label{display:block;margin:.7rem 0}input:not([type=checkbox]){display:block;width:100%;box-sizing:border-box;padding:.35rem}button{margin:.5rem .4rem .5rem 0;padding:.5rem}pre{white-space:pre-wrap}</style>
+<h1>Flag workload change</h1><p>Admin deploy preview. Approvals here do not change customer recommendations.</p>
+<label>Preview access token<input id="token" type="password" autocomplete="off"></label>
+<form id="flag"><label>Season<input name="season" type="number" step="any" min="0" required></label>
+<label>Week<input name="week" type="number" step="any" min="0" required></label>
+<label>NFL team<input name="team" type="text"  required></label>
+<label>Starter Tank01 ID<input name="starterId" type="text"  required></label>
+<label>Backup Tank01 ID<input name="successorId" type="text"  required></label>
+<label>Kickoff (ISO timestamp with timezone)<input name="kickoff" type="text"  required></label>
+<label>OUT report timestamp (ISO with timezone)<input name="statusAt" type="text"  required></label>
+<label>Lead role report timestamp (ISO with timezone)<input name="roleAt" type="text"  required></label>
+<label>OUT source URL<input name="statusSource" type="url"  required></label>
+<label>Expected lead source URL<input name="roleSource" type="url"  required></label>
+<label>Tank01 snapshot timestamp (exact ISO value)<input name="asOf" type="text"  required></label>
+<label>Starter projected carries<input name="starterCarries" type="number" step="any" min="0" required></label>
+<label>Starter projected targets<input name="starterTargets" type="number" step="any" min="0" required></label>
+<label>Backup projected carries<input name="backupCarries" type="number" step="any" min="0" required></label>
+<label>Backup projected targets<input name="backupTargets" type="number" step="any" min="0" required></label>
+<label>Backup yards per carry<input name="yardsPerCarry" type="number" step="any" min="0" required></label>
+<label>Backup catch rate (0–1)<input name="catchRate" type="number" step="any" min="0" required></label>
+<label>Backup yards per catch<input name="yardsPerCatch" type="number" step="any" min="0" required></label>
+<label><input name="reviewed" type="checkbox" required> I reviewed both reports for this game.</label>
+<button id="preview">Preview points</button></form>
+<button id="approve" disabled>Approve preview</button><button id="withdraw" disabled>Withdraw approval</button>
+<pre id="result" role="status" aria-live="polite"></pre>
+<script>
+'use strict';
+const byId=id=>document.getElementById(id);
+const form=byId('flag'), result=byId('result'), approve=byId('approve'), withdraw=byId('withdraw'), token=byId('token');
+let draft=null, approved=null, busy=false;
+function buttons(){byId('preview').disabled=busy||!!approved;approve.disabled=busy||!draft||!!approved;withdraw.disabled=busy||!approved;}
+form.addEventListener('input',()=>{if(draft){draft=null;result.textContent='Inputs changed. Preview again before approving.';}buttons();});
+async function request(payload, onSuccess){
+  if(busy)return;
+  if(!token.value.trim()){result.textContent='Enter the preview access token.';return;}
+  busy=true;buttons();
+  try{
+    const response=await fetch('/.netlify/functions/manual-workload-flag',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token.value.trim()},body:JSON.stringify(payload)});
+    if(response.status===404){result.textContent='The workload flag service is unavailable in this deploy.';return;}
+    const data=await response.json();
+    if(!response.ok){result.textContent=data.error||'Request failed.';return;}
+    onSuccess(data);
+  }catch{result.textContent='Request failed. Check your connection and try again.';}
+  finally{busy=false;buttons();}
+}
+function show(data,label){result.textContent=label+'\nFlag ID: '+data.id+'\n'+Object.entries(data.points).map(([format,p])=>format+': '+p.before+' → '+p.after).join('\n');}
+form.addEventListener('submit',e=>{
+  e.preventDefault();if(busy||approved)return;
+  const f=new FormData(form), str=k=>String(f.get(k)).trim(), num=k=>Number(str(k));
+  const event={season:num('season'),week:num('week'),team:str('team').toUpperCase(),starterId:str('starterId'),successorId:str('successorId'),status:'OUT',successorRole:'EXPECTED_LEAD'};
+  for(const k of ['kickoff','statusAt','roleAt','statusSource','roleSource'])event[k]=str(k);
+  const workload=(id,prefix)=>({id,carries:num(prefix+'Carries'),targets:num(prefix+'Targets'),goalLineCarries:0});
+  const baseline={season:event.season,week:event.week,team:event.team,asOf:str('asOf'),starter:workload(event.starterId,'starter'),successor:workload(event.successorId,'backup')};
+  const efficiency={yardsPerCarry:num('yardsPerCarry'),catchRate:num('catchRate'),yardsPerCatch:num('yardsPerCatch')};
+  draft=null;
+  const before=JSON.stringify(Array.from(f));
+  request({action:'preview',event,baseline,efficiency,evidenceReviewed:f.has('reviewed')},data=>{
+    if(before!==JSON.stringify(Array.from(new FormData(form)))){result.textContent='Inputs changed. Preview again before approving.';return;}
+    draft=data.id;show(data,'Preview ready');
+  });
+});
+approve.onclick=()=>{if(draft)request({action:'approve',id:draft},data=>{approved=data.id;draft=null;show(data,'Approved in this preview');});};
+withdraw.onclick=()=>{if(approved)request({action:'withdraw',id:approved},data=>{approved=null;result.textContent='Approval withdrawn: '+data.id;});};
+</script></html>
