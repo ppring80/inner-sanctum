@@ -141,11 +141,15 @@
     return merged;
   }
 
-  async function fetchDocument(path) {
+  async function fetchDocument(path, requireExactPath = false) {
     const url = new URL(path, location.origin);
     if (url.origin !== location.origin) throw new Error("Cross-origin CBS request refused.");
     const res = await fetch(url.href, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "text/html" } });
     if (!res.ok) throw new Error("CBS returned " + res.status + " for " + path + ".");
+    if (requireExactPath && (!res.url || new URL(res.url).origin !== url.origin ||
+        new URL(res.url).pathname.replace(/\/$/, "") !== url.pathname)) {
+      throw new Error("CBS did not return the requested roster page.");
+    }
     return new DOMParser().parseFromString(await res.text(), "text/html");
   }
 
@@ -168,6 +172,33 @@
     return mergePlayers(groups);
   }
 
+  async function readLeagueOwnedIds(captured, readDocument = fetchDocument) {
+    const teamIds = [...new Set((captured.standings || []).map(t => clean(t.teamId)))];
+    const expected = Number(captured.league?.teamCount ?? captured.settings?.league?.teams);
+    if (!Number.isInteger(expected) || expected < 2 || expected > 32 ||
+        teamIds.length !== expected || !teamIds.every(id => /^\d+$/.test(id))) {
+      throw new Error("CBS league roster coverage could not be verified.");
+    }
+    const owned = new Set();
+    for (let i = 0; i < teamIds.length; i += 4) {
+      const rosters = await Promise.all(teamIds.slice(i, i + 4).map(async id => {
+        const doc = await readDocument("/teams/" + id, true);
+        const rows = Array.from(doc.querySelectorAll("tr.playerRow"));
+        const ids = rows.map(row => {
+          const link = row.querySelector(PLAYER_LINK);
+          return playerId(link?.href || link?.getAttribute?.("href"));
+        });
+        if (!ids.length || ids.some(id => !id)) throw new Error("CBS team roster could not be verified.");
+        return new Set(ids);
+      }));
+      for (const ids of rosters) for (const id of ids) {
+        if (owned.has(id)) throw new Error("CBS returned conflicting league roster ownership.");
+        owned.add(id);
+      }
+    }
+    return owned;
+  }
+
   function install() {
     const c = window.CBSBrowserConnector;
     if (!c || typeof c.captureAll !== "function" || c.__freeAgentCaptureInstalled) return Boolean(c?.__freeAgentCaptureInstalled);
@@ -175,7 +206,9 @@
     c.captureAll = async function () {
       const captured = await original();
       try {
-        const players = addCapturedProjections(await fetchPlayers(), captured.projections);
+        const candidates = await fetchPlayers();
+        const owned = await readLeagueOwnedIds(captured);
+        const players = addCapturedProjections(candidates.filter(p => !owned.has(p.cbsPlayerId)), captured.projections);
         captured.availablePlayers = players;
         captured.league = captured.league || {};
         captured.league.availablePlayers = players;
@@ -207,6 +240,7 @@
     mergePlayers,
     addCapturedProjections,
     fetchPlayers,
+    readLeagueOwnedIds,
     install
   };
   install();
