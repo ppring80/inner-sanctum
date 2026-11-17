@@ -141,6 +141,11 @@ async function main() {
   assert.equal(nextJob(week11, failedAt + 6 * 3600000 - 1), null);
   assert.equal(nextJob(week11, failedAt + 6 * 3600000), week10Defense);
   assert(!canRetry({ ...week10Defense.status, attempts: 7 }, failedAt + 7 * 3600000, week10Defense));
+  const budgetDenied = { ...week10Defense.status, day: '2026-11-17', attempts: 5,
+    retryAfter: Date.parse('2026-11-17T22:30:00Z'), failure: { category: 'budget' } };
+  assert(!canRetry(budgetDenied, Date.parse('2026-11-17T23:59:59Z'), week10Defense));
+  assert(canRetry(budgetDenied, Date.parse('2026-11-18T00:00:00Z'), week10Defense));
+  assert(!canRetry({ ...budgetDenied, attempts: 7 }, Date.parse('2026-11-18T00:00:00Z'), week10Defense));
   const exhausted = {
     status: 'failed', attempts: 2, day: '2026-11-17', startedAt: '2026-11-17T06:50:00Z',
     lastFailure: { statusCode: 422 }

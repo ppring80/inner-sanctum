@@ -17,7 +17,12 @@ function awaitingGameFinalization(status) {
 }
 
 function defenseAttemptLimit(status) {
-  return awaitingGameFinalization(status) ? FINALIZATION_ATTEMPT_LIMIT : DEFENSE_ATTEMPT_LIMIT;
+  // A budget denial during the extended window must preserve the remaining
+  // allowance. It made no provider call and can resume after the UTC reset.
+  const blockedDuringExtension = status?.failure?.category === 'budget' &&
+    Number(status.attempts) > DEFENSE_ATTEMPT_LIMIT;
+  return awaitingGameFinalization(status) || blockedDuringExtension
+    ? FINALIZATION_ATTEMPT_LIMIT : DEFENSE_ATTEMPT_LIMIT;
 }
 const { retryState, failure: defenseFailure, DEFENSE_POLICY, BACKOFF_MS } = require('./_weekly-defense-failure');
 const { dailyRuns, criticalCheckpoint } = require('./_availability-refresh-rhythm.js');
@@ -114,11 +119,11 @@ function canRetry(status, now = Date.now(), job = null) {
       job.defenseReadyAt > Date.parse(status.startedAt || '')) return true;
   if (status.retryPolicy === DEFENSE_POLICY) {
     if (Number(status.attempts || 0) >= defenseAttemptLimit(status)) return false;
+    if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
     if (Number(status.attempts || 0) >= DEFENSE_ATTEMPT_LIMIT) {
       const finishedAt = Date.parse(status.finishedAt || status.lastFailure?.at || '');
       return now >= finishedAt + FINALIZATION_RETRY_MS;
     }
-    if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
     return status.failure?.retryable !== false || eligibleWeek8IdentityReplay(status, job);
   }
   return status.day !== new Date(now).toISOString().slice(0, 10) || Number(status.attempts || 0) < Number(status.attemptLimit || 2);
