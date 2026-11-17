@@ -5,6 +5,20 @@ const { resolveCurrentNFLWeek } = require('./_current-nfl-week.js');
 const STATE_STORE = 'weekly-sage-refresh-status';
 const LEASE_MS = 20 * 60 * 1000;
 const RETRY_MS = 30 * 60 * 1000;
+const FINALIZATION_RETRY_MS = 6 * 60 * 60 * 1000;
+const DEFENSE_ATTEMPT_LIMIT = 4;
+const FINALIZATION_ATTEMPT_LIMIT = 7;
+const SPECIALIST_STORES = ['k-snapshot', 'def-snapshot'];
+
+function awaitingGameFinalization(status) {
+  const { category, counts } = status?.failure || {};
+  return category === 'schedule_incomplete' && counts?.completed > 0 &&
+    counts.completed < counts.returned && counts.processed === counts.completed;
+}
+
+function defenseAttemptLimit(status) {
+  return awaitingGameFinalization(status) ? FINALIZATION_ATTEMPT_LIMIT : DEFENSE_ATTEMPT_LIMIT;
+}
 const { retryState, failure: defenseFailure, DEFENSE_POLICY, BACKOFF_MS } = require('./_weekly-defense-failure');
 const { dailyRuns, criticalCheckpoint } = require('./_availability-refresh-rhythm.js');
 
@@ -56,14 +70,18 @@ async function inspectJobs(getStore, season, week, now = Date.now()) {
   const schedule = await getStore({name:'weekly-sage-schedule'}).get(`week:${season}:${week}:reg`,{type:'json'});
   const matchingSchedule = schedule && String(schedule.season) === String(season) && Number(schedule.week ?? schedule.targetWeek) === week ? schedule : null;
   const checkpoint = criticalCheckpoint(matchingSchedule, now);
-  return Promise.all(jobsForWeek(season,week).map(async job => {
+  const rows = await Promise.all(jobsForWeek(season,week).map(async job => {
     const [cached,status] = await Promise.all([
       getStore({name:job.store}).get(cacheKey(job),{type:'json'}),
       state.get(stateKey(job),{type:'json'})
     ]);
     const policyJob = job.store === 'player-data' ? {...job,criticalCheckpoint:checkpoint,criticalDue:Boolean(checkpoint)} : job;
-    return {...policyJob,ready:completeCache(cached,policyJob,now),status:job.store === 'weekly-sage-defense' && status ? {...status,retryPolicy:DEFENSE_POLICY,attemptLimit:4} : job.store === 'player-data' && status ? {...status,attemptLimit:dailyRuns(now)} : status};
+    return {...policyJob,ready:completeCache(cached,policyJob,now),status:job.store === 'weekly-sage-defense' && status ? {...status,retryPolicy:DEFENSE_POLICY,attemptLimit:defenseAttemptLimit(status)} : job.store === 'player-data' && status ? {...status,attemptLimit:dailyRuns(now)} : status};
   }));
+  const defense = rows.filter(row => row.store === 'weekly-sage-defense');
+  const defenseReady = defense.every(row => row.ready);
+  const defenseReadyAt = Math.max(0, ...defense.map(row => Date.parse(row.status?.finishedAt || '') || 0));
+  return rows.map(row => SPECIALIST_STORES.includes(row.store) ? { ...row, defenseReady, defenseReadyAt } : row);
 }
 
 // One-time incident diagnostic replay, scoped to the already-failed 2026 Week 8
@@ -86,28 +104,20 @@ function eligibleWeek8IdentityReplay(status, job) {
     at >= Date.parse('2026-11-06T04:20:22Z') && at < Date.parse('2026-11-06T04:20:24Z');
 }
 
-function isWeek10SpecialistReplay(status, job) {
-  const finished = { 'k-snapshot': '2026-11-11T00:30:24.478Z', 'def-snapshot': '2026-11-11T00:50:20.502Z' };
-  return job?.season === '2026' && job.week === 10 && job.seasonType === 'reg' &&
-    status?.status === 'failed' && status.attempts === 2 && !!finished[job.store] &&
-    status.startedAt === finished[job.store] && status.lastFailure?.statusCode === 422;
-}
-
-function canRetry(status, now = Date.now(), job = null, defenseReady = false) {
+function canRetry(status, now = Date.now(), job = null) {
+  if (job?.defenseReady === false) return false;
   if (!status) return true;
   if (Number(status.leaseUntil) > now || Number(status.retryAfter) > now) return false;
-  if (defenseReady && isWeek10SpecialistReplay(status, job)) return true;
+  // A specialist rejected for incomplete inputs can rebuild once those inputs
+  // have been published, even if it used its daily attempts before recovery.
+  if (job?.defenseReady && status.status === 'failed' && status.lastFailure?.statusCode === 422 &&
+      job.defenseReadyAt > Date.parse(status.startedAt || '')) return true;
   if (status.retryPolicy === DEFENSE_POLICY) {
-    // One operator-approved replay of the exact Week 9 incomplete schedule incident.
-    // The existing atomic claim increments attempts before any provider work.
-    const failure = status.lastFailure;
-    if (status.status === 'failed' && job?.store === 'weekly-sage-defense' &&
-        String(job.season) === '2026' && job.week === 9 &&
-        Number(status.attempts) === 4 && failure?.at === '2026-11-10T10:00:24.998Z' &&
-        failure.statusCode === 422 && failure.failure?.category === 'schedule_incomplete' &&
-        failure.failure.counts?.returned === 15 && failure.failure.counts?.completed === 14 &&
-        failure.failure.counts?.processed === 14) return true;
-    if (Number(status.attempts || 0) >= 4) return false;
+    if (Number(status.attempts || 0) >= defenseAttemptLimit(status)) return false;
+    if (Number(status.attempts || 0) >= DEFENSE_ATTEMPT_LIMIT) {
+      const finishedAt = Date.parse(status.finishedAt || status.lastFailure?.at || '');
+      return now >= finishedAt + FINALIZATION_RETRY_MS;
+    }
     if (status.failure?.category === 'budget') return status.day !== new Date(now).toISOString().slice(0, 10);
     return status.failure?.retryable !== false || eligibleWeek8IdentityReplay(status, job);
   }
@@ -122,8 +132,8 @@ function nextJob(rows, now = Date.now()) {
   const independent = ['player-data','weekly-projections'].map(store=>rows.find(row=>row.store===store&&!row.ready&&canRetry(row.status,now))).find(Boolean);
   if (independent) return independent;
   for (const group of ['weekly-sage-schedule', 'offense', 'weekly-sage-defense', 'specialists', 'auxiliary']) {
-    const pending = rows.filter(row => !row.ready && (group === 'offense' ? ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot'].includes(row.store) : group === 'specialists' ? ['k-snapshot','def-snapshot'].includes(row.store) : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire','sage-role-events'].includes(row.store) : row.store === group));
-    if (pending.length) { const eligible = pending.find(row => canRetry(row.status, now, row, group === 'specialists' && rows.some(d => d.store === 'weekly-sage-defense' && d.week === 9 && d.season === row.season && d.ready)) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))); if (eligible) return eligible; if (group === 'weekly-sage-schedule') return null; }
+    const pending = rows.filter(row => !row.ready && (group === 'offense' ? ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot'].includes(row.store) : group === 'specialists' ? SPECIALIST_STORES.includes(row.store) : group === 'auxiliary' ? ['player-data','opportunity-intel','risers-fallers','weekly-projections','sage-newswire','sage-role-events'].includes(row.store) : row.store === group));
+    if (pending.length) { const eligible = pending.find(row => canRetry(row.status, now, row) && (group !== 'specialists' || rows.every(d => d.store !== 'weekly-sage-defense' || d.ready || d.season !== row.season || d.week >= row.week)) && (row.store !== 'opportunity-intel' || !rows.some(prior => prior.store === row.store && prior.week < row.week && !prior.ready))); if (eligible) return eligible; if (group === 'weekly-sage-schedule') return null; }
   }
   return null;
 }
@@ -151,16 +161,11 @@ async function runJob(job, event, dependencies) {
   const key = stateKey(job);
   const previous = await state.getWithMetadata(key, { type: 'json' });
   const defensive = job.store === 'weekly-sage-defense';
-  const priorStatus = previous && (defensive ? {...previous.data, retryPolicy: DEFENSE_POLICY, attemptLimit: 4} : job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
-  let defenseReady = false;
-  if (isWeek10SpecialistReplay(priorStatus, job) && !canRetry(priorStatus, now, job)) {
-    const dependency = jobsForWeek(job.season, job.week).find(d => d.store === 'weekly-sage-defense' && d.week === 9);
-    defenseReady = !!dependency && completeCache(await getStore({ name: dependency.store }).get(cacheKey(dependency), { type: 'json' }), dependency, now);
-  }
-  if (!canRetry(priorStatus, now, job, defenseReady)) return { status: 'waiting', skipped: true };
+  const priorStatus = previous && (defensive ? {...previous.data, retryPolicy: DEFENSE_POLICY, attemptLimit: defenseAttemptLimit(previous.data)} : job.store === 'player-data' ? {...previous.data,attemptLimit:dailyRuns(now)} : previous.data);
+  if (!canRetry(priorStatus, now, job)) return { status: 'waiting', skipped: true };
   const day = new Date(now).toISOString().slice(0, 10);
   const lastFailure=previous?.data?.lastFailure||null;
-  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, ...(defensive?{retryPolicy:DEFENSE_POLICY}:{}), attemptLimit: defensive ? 4 : job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && (defensive || previous.data.day === day) ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
+  const value = { ...(lastFailure?{lastFailure}:{}), status: 'running', day, ...(defensive?{retryPolicy:DEFENSE_POLICY}:{}), attemptLimit: defensive ? defenseAttemptLimit(priorStatus) : job.store === 'player-data' ? dailyRuns(now) : ['weekly-projections','sage-newswire','sage-role-events'].includes(job.store) ? 8 : 2, attempts: previous && (defensive || previous.data.day === day) ? Number(previous.data.attempts || 0) + 1 : 1, startedAt: new Date(now).toISOString(), leaseUntil: now + LEASE_MS };
   const claimed = await state.setJSON(key, value, previous ? { onlyIfMatch: previous.etag } : { onlyIfNew: true });
   if (!claimed.modified) return { status: 'waiting', skipped: true };
   try {
@@ -180,7 +185,8 @@ async function runJob(job, event, dependencies) {
     const final = { ...value, status: ready ? 'ready' : 'failed', leaseUntil: 0, retryAfter: ready ? now + 2*60*1000 : (defensive ? Date.now() + BACKOFF_MS[Math.min(value.attempts-1,2)] : now + RETRY_MS), finishedAt: new Date().toISOString(), statusCode: result.statusCode, error: detail };
     if (failure) {
       final.failure = failure;
-      final.blockedReason = value.attempts >= 4 ? 'defense_attempt_limit' : !failure.retryable ? `defense_${failure.category}` : null;
+      final.attemptLimit = defenseAttemptLimit(final);
+      final.blockedReason = value.attempts >= final.attemptLimit ? 'defense_attempt_limit' : !failure.retryable ? `defense_${failure.category}` : null;
     }
     if(!ready)final.lastFailure={day,at:final.finishedAt,statusCode:result.statusCode,error:detail,budgetReason:response.budget?.reason||null,attempts:value.attempts,...(failure?{failure,blockedReason:final.blockedReason}:{})};
     await state.setJSON(key, final);
