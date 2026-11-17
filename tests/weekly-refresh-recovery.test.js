@@ -125,7 +125,30 @@ async function main() {
   assert.equal(nextJob(isolated)?.store,'qb-snapshot','QB builds even when defensive evidence is irrecoverable');
   for(const store of ['qb-snapshot','rb-snapshot','wr-snapshot','te-snapshot']) isolated.find(j=>j.store===store).ready=true;
   isolated.find(j=>j.store==='k-snapshot').ready=false;
-  assert.equal(nextJob(isolated)?.store,'k-snapshot','K can attempt a partial-evidence build without being starved by defense failure');
+  assert.equal(nextJob(isolated), null, 'K waits for verified defensive evidence');
+
+  const week11 = jobsForWeek(2026, 11).map(j => ({ ...j, ready: true }));
+  const week10Defense = week11.find(j => j.store === 'weekly-sage-defense' && j.week === 10);
+  const failedAt = Date.parse('2026-11-17T10:00:24.649Z');
+  week10Defense.ready = false;
+  week10Defense.status = {
+    status: 'failed', retryPolicy: 'defense-bounded-v1', attempts: 4,
+    finishedAt: new Date(failedAt).toISOString(),
+    failure: { category: 'schedule_incomplete', retryable: true, counts: { returned: 14, completed: 13, processed: 13 } }
+  };
+  const specialist = week11.find(j => j.store === 'k-snapshot');
+  specialist.ready = false;
+  assert.equal(nextJob(week11, failedAt + 6 * 3600000 - 1), null);
+  assert.equal(nextJob(week11, failedAt + 6 * 3600000), week10Defense);
+  assert(!canRetry({ ...week10Defense.status, attempts: 7 }, failedAt + 7 * 3600000, week10Defense));
+  const exhausted = {
+    status: 'failed', attempts: 2, day: '2026-11-17', startedAt: '2026-11-17T06:50:00Z',
+    lastFailure: { statusCode: 422 }
+  };
+  assert(!canRetry(exhausted, failedAt, { ...specialist, defenseReady: false }));
+  assert(canRetry(exhausted, failedAt, { ...specialist, defenseReady: true, defenseReadyAt: failedAt }));
+  assert(!canRetry({ ...exhausted, startedAt: new Date(failedAt).toISOString() },
+    failedAt, { ...specialist, defenseReady: true, defenseReadyAt: failedAt }));
   process.env.TANK01_REFRESH_TOKEN = 'test-only-refresh-secret';
   const body=JSON.stringify({job:job.job,issuedAt:now}); const signature=sign(body);
   assert(verify(body,signature,now));
