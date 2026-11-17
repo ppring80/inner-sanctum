@@ -89,7 +89,8 @@ exports.handler = async function(event) {
   try {
     // Reuse the existing, bounded SAGE Newswire source collector for fast-moving
     // injury/role evidence. It already limits sources and avoids arbitrary crawling.
-    const collected = await collectSources();
+    // Bound the two sequential source phases below the scheduled-function runtime limit.
+    const collected = await collectSources(fetch, { timeoutMs: 8000 });
     const fastMoving = normalizeCandidateStories(collected.items, now.getTime());
 
     // Structural scheme/personnel evidence is not guessed here. It is supplied by
