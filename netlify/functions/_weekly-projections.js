@@ -43,7 +43,12 @@ function normalizeProjectionResponse(payload, season, week, now = new Date()) {
         ? { standard: finite(value.fantasyPointsDefault?.standard), ppr: finite(value.fantasyPointsDefault?.PPR), half: finite(value.fantasyPointsDefault?.halfPPR) }
         : offensivePoints(value);
     if (!points || FORMATS.some(format => points[format] === null)) return;
-    rows.push({ playerID: defense ? null : value.playerID || null, name, position, team, points });
+    const carries = finite(value.Rushing?.rushAttempts ?? value.Rushing?.rushAtt);
+    const targets = finite(value.Receiving?.targets);
+    const projectedWorkload = position === 'RB' && carries !== null && carries >= 0 && targets !== null && targets >= 0
+      ? {carries, targets, rushYards:finite(value.Rushing?.rushYds), catches:finite(value.Receiving?.receptions), receivingYards:finite(value.Receiving?.recYds)}
+      : undefined;
+    rows.push({ ...(projectedWorkload ? {projectedWorkload} : {}), playerID: defense ? null : value.playerID || null, name, position, team, points });
   };
   Object.values(body.playerProjections).forEach(value => add(value));
   Object.values(body.teamDefenseProjections).forEach(value => add(value, true));
@@ -62,13 +67,49 @@ function validCache(cache, season, week, maxAge = MAX_AGE_MS, now = Date.now()) 
   const age = cache && now - Date.parse(cache.generatedAt);
   return Boolean(cache && cache.evidenceType === 'weekly-projection-cache' && String(cache.season) === String(season) && Number(cache.targetWeek) === Number(week) && cache.seasonType === 'reg' && Array.isArray(cache.rows) && cache.rows.length >= 100 && Number.isFinite(age) && age >= 0 && age < maxAge);
 }
-async function readWeeklyProjections(season, week, scoring) {
+// Preview callers must supply independently verified facts and a workload baseline
+// tied to this exact provider snapshot. No live caller supplies a pilot.
+function previewLateRbRows(cache, pilot) {
+  if (!pilot) return cache.rows;
+  const {event, baseline, asOf, efficiency} = pilot;
+  if (!event || !baseline || baseline.asOf !== cache.generatedAt ||
+      String(event.season) !== String(cache.season) || event.week !== cache.targetWeek ||
+      !efficiency || !['yardsPerCarry','catchRate','yardsPerCatch'].every(
+        key => Number.isFinite(efficiency[key]) && efficiency[key] >= 0) ||
+      efficiency.catchRate > 1) return cache.rows;
+  const find = id => cache.rows.filter(row => row.playerID === id && row.team === event.team && row.position === 'RB');
+  const starter = find(event.starterId);
+  const successor = find(event.successorId);
+  if (starter.length !== 1 || successor.length !== 1) return cache.rows;
+  const { replayLeadBack } = require('../../scripts/lib/late-rb-workload-replay');
+  const result = replayLeadBack({event, baseline, asOf});
+  if (!result.applied) return cache.rows;
+  // Conservative pilot: move 75% of vacated opportunities to the lead
+  // backup. Leave the remainder unassigned and don't project extra TDs.
+  const carries = (result.workload.carries - result.before.carries) * .75;
+  const targets = (result.workload.targets - result.before.targets) * .75;
+  const catches = targets * efficiency.catchRate;
+  const yardagePoints = (carries * efficiency.yardsPerCarry + catches * efficiency.yardsPerCatch) / 10;
+  if (!Number.isFinite(yardagePoints + catches)) return cache.rows;
+  const delta = {standard:yardagePoints, half:yardagePoints + catches * .5, ppr:yardagePoints + catches};
+  return cache.rows.map(row => {
+    if (row === starter[0]) return {...row, points:{standard:0, half:0, ppr:0}};
+    if (row !== successor[0]) return row;
+    return {...row, points:Object.fromEntries(FORMATS.map(format =>
+      [format, Number((row.points[format] + delta[format]).toFixed(2))]))};
+  });
+}
+async function readProjectionSnapshot(season, week) {
+  const cache = await getStore({ name: STORE }).get(keyFor(season,week), {type:'json'});
+  return validCache(cache,season,week) ? cache : null;
+}
+async function readWeeklyProjections(season, week, scoring, pilot) {
   const format = scoringKey(scoring);
   if (!format) return null;
   try {
-    const cache = await getStore({ name: STORE }).get(keyFor(season,week), { type:'json' });
-    if (!validCache(cache,season,week)) return null;
-    return { ...cache, scoring:format, fresh: Date.now()-Date.parse(cache.generatedAt) < REFRESH_MS, rows:cache.rows.map(row => ({...row,projectedPoints:row.points[format]})) };
+    const cache = await readProjectionSnapshot(season,week);
+    if (!cache) return null;
+    return { ...cache, scoring:format, fresh: Date.now()-Date.parse(cache.generatedAt) < REFRESH_MS, rows:previewLateRbRows(cache, pilot).map(({projectedWorkload, ...row}) => ({...row,projectedPoints:row.points[format]})) };
   } catch (_) { return null; }
 }
 function matchProjection(player, cache) {
@@ -106,4 +147,4 @@ function attachProjectionPositions(positions, cache) {
   }
   return counts;
 }
-module.exports = { offensivePoints, attachProjectionPositions, STORE, REFRESH_MS, MAX_AGE_MS, keyFor, finite, scoringKey, normalizeProjectionResponse, validCache, readWeeklyProjections, matchProjection, fillProjection };
+module.exports = { offensivePoints, attachProjectionPositions, STORE, REFRESH_MS, MAX_AGE_MS, keyFor, finite, scoringKey, normalizeProjectionResponse, validCache, readProjectionSnapshot, readWeeklyProjections, matchProjection, fillProjection };
