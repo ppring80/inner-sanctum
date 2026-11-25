@@ -16,6 +16,9 @@ exports.handler = async event => {
   const week = resolveCurrentNFLWeek(now, season);
   const job = jobsForWeek(season, week).find(row => row.store === 'player-data');
   if (!job) return { statusCode: 200, body: JSON.stringify({ skipped: true }) };
+  // Leave two hours for scheduled delivery and bounded retries before the
+  // existing eight-hour availability health/readiness limit is reached.
+  job.refreshBeforeExpiry = true;
 
   // Kickoff evidence is optional here. Cache age and practice checkpoints
   // remain enforceable if the weekly schedule store cannot be read.

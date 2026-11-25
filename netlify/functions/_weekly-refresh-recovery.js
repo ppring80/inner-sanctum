@@ -52,7 +52,11 @@ function completeCache(value, job, now = Date.now()) {
   if (job.store === 'player-data') {
     if(value?.availabilityMode!==require('./_tank01-player-cache').MODE)return false;
     const updated = value && Date.parse(value.updatedAt), age = now-updated;
-    return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < 8*60*60*1000 && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
+    // Recovery refreshes before expiry; public readiness keeps the established
+    // eight-hour limit. Using the same limit for both guaranteed a stale window
+    // between expiry and the next scheduled recovery invocation.
+    const maxAge = (job.refreshBeforeExpiry ? 6 : 8)*60*60*1000;
+    return Boolean(value && value.teamsSucceeded === 32 && value.teamsFailed === 0 && Object.keys(value.players || {}).length >= 1000 && Number.isFinite(age) && age >= 0 && age < maxAge && (!job.criticalCheckpoint || updated >= job.criticalCheckpoint.at || age < 30*60*1000));
   }
   if (job.store === 'sage-role-events') {
     const age=now-Date.parse(value?.dedicatedCollection?.checkedAt);
