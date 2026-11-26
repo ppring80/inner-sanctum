@@ -253,6 +253,20 @@ function weeklyRecommendation(position, rank) {
   return null;
 }
 
+// Current recommendations must not silently become a projection-free score board.
+// Historical evidence remains readable; this does not alter any ranking row.
+function rankingEvidenceBlockers({ season, targetWeek, seasonType, projectionCoverage, centralAvailability, now = new Date() }) {
+  const currentWeek = require('./_current-nfl-week').resolveCurrentNFLWeek(now, Number(season));
+  if (seasonType !== 'reg' || Number(season) !== now.getUTCFullYear() ||
+      !currentWeek || targetWeek < currentWeek || targetWeek === 1) return [];
+  const blockers = [];
+  if (!projectionCoverage.available || !projectionCoverage.fresh || projectionCoverage.matched === 0)
+    blockers.push('weekly_projections');
+  if (!centralAvailability.available || !centralAvailability.fresh)
+    blockers.push('player_availability');
+  return blockers;
+}
+
 function scoringLabel(scoring) {
   const key = String(scoring || "").toLowerCase();
   if (key === "half" || key === "half-ppr" || key === "halfppr") return "Half-PPR";
@@ -779,6 +793,19 @@ exports.handler = async function (event) {
     });
   }
 
+  const evidenceBlockers = rankingEvidenceBlockers({ season, targetWeek, seasonType, projectionCoverage, centralAvailability });
+  if (evidenceBlockers.length) {
+    const missing = evidenceBlockers.map(key => key === 'weekly_projections' ? 'current weekly projections' : 'current player availability');
+    const response = jsonResponse(503, {
+      evidenceType: 'weekly-sage-rankings', schemaVersion: 1, season, targetWeek, seasonType, scoring,
+      ready: false, errorCode: 'RANKING_EVIDENCE_UNAVAILABLE',
+      error: `Week ${targetWeek} rankings are temporarily unavailable: ${missing.join(' and ')} must be refreshed. SAGE cannot verify weekly start/sit recommendations from the remaining score data.`,
+      missingEvidence: evidenceBlockers
+    });
+    response.headers['Cache-Control'] = 'no-store';
+    return response;
+  }
+
   return jsonResponse(200, {
     evidenceType: "weekly-sage-rankings",
     schemaVersion: 1,
@@ -854,3 +881,5 @@ exports.weeklyRecommendation = weeklyRecommendation;
 exports.scoringLabel = scoringLabel;
 exports.orderPositionsByDisplayedProjections = orderPositionsByDisplayedProjections;
 exports.reconcileRankedRecommendations = reconcileRankedRecommendations;
+
+exports.rankingEvidenceBlockers = rankingEvidenceBlockers;
