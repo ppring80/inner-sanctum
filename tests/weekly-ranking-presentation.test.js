@@ -36,7 +36,7 @@ async function main() {
   assert(buildWeeklyRankingExplanation(genuine, request).includes(event.statement));
   for (const patch of [{ verified: false }, { fresh: false }, { player: 'Unrelated Player' }, { week: 7 }, { effectiveAt: null }, { kind: 'TEAMMATE_ABSENCE' }])
     assert(!buildWeeklyRankingExplanation({ ...genuine, roleContext: { ...genuine.roleContext, event: { ...event, ...patch } } }, request).includes(event.statement));
-  assert.match(buildWeeklyRankingExplanation({ ...other, availabilityVerified: false }, request), /availability is unverified/);
+  assert.match(buildWeeklyRankingExplanation({ ...other, availabilityVerified: false }, request), /availability is not verified/);
   assert.match(buildWeeklyRankingExplanation({ ...other, injuryStatus: 'DOUBTFUL' }, request), /Doubtful/);
   assert.equal(buildWeeklyRankingExplanation(kicker, request), kicker.sageTake);
   const observed = { ...other, components: { opportunity: { source: 'Inner Sanctum Opportunity Intelligence',

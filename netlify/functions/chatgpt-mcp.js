@@ -143,7 +143,7 @@ const SuperSageResponseGuidanceSchema = z.object({
   evidenceRule: z.string()
 });
 
-function buildSuperSageResponseGuidance(subject = "this recommendation") {
+function buildSuperSageResponseGuidance(subject = "this recommendation", conditional = false) {
   const cleanSubject = cleanString(subject) || "this recommendation";
   return {
     format: "1/3/10",
@@ -155,7 +155,7 @@ function buildSuperSageResponseGuidance(subject = "this recommendation") {
     noBehavior:
       "Stop after the concise recommendation. Do not volunteer additional analytics.",
     evidenceRule:
-      "Never invent an advanced metric. If deeper verified evidence is unavailable, say so."
+      "Never invent an advanced metric. If deeper verified evidence is unavailable, say so." + (conditional ? " State the injury or availability condition in the initial recommendation. Never present a conditional START as unconditional, or treat a projection as evidence of health or a normal workload." : "")
   };
 }
 
@@ -951,6 +951,8 @@ function flattenRankings(rankings) {
               entry.components ||
               null,
 
+            injuryStatus: entry.injuryStatus || null,
+            availabilityVerified: entry.availabilityVerified,
             sageTake:
               [weeklyAvailabilityNote(entry), cleanString(entry.sageTake)]
                 .filter(Boolean).join(" ") || null
@@ -1119,6 +1121,8 @@ function buildProfileModel(
   }
 
   const risks = [];
+  const injuryCondition = require('./sage-take').weeklyInjuryCondition(row);
+  if (injuryCondition) risks.push(injuryCondition);
 
   if (
     row.matchup === "Negative" ||
@@ -1184,7 +1188,7 @@ function buildProfileModel(
               null,
 
             reasons:
-              []
+              injuryCondition ? [injuryCondition] : []
           }
         : null,
 
@@ -3408,13 +3412,13 @@ function expandLineupSlots(slots) {
 function weeklyAvailabilityNote(row) {
   const status = String(row.injuryStatus || "").trim().toUpperCase();
   const notes = [];
+  const condition = require('./sage-take').weeklyInjuryCondition(row);
+  if (condition) notes.push(condition);
   if(row.roleContext?.note && !String(row.sageTake || "").includes(row.roleContext.note)) notes.push(row.roleContext.note);
   if (["Q", "QUESTIONABLE", "D", "DOUBTFUL"].includes(status)) {
     notes.push(`Injury status: ${status}${row.injuryDescription ? " — " + row.injuryDescription : ""}.`);
   }
-  if (row.availabilityVerified === false) {
-    notes.push("Availability is not verified by fresh roster/injury evidence; confirm game status before starting.");
-  }
+
   return notes.join(" ");
 }
 
@@ -4768,6 +4772,7 @@ function buildServer(
           );
 
         const structuredContent = {
+          ...(require('./sage-take').weeklyInjuryCondition(row) ? { superSageResponse: buildSuperSageResponseGuidance(requestedPlayer, true) } : {}),
           found: true,
           source: "Inner Sanctum",
           liveFantasyDataConnected: true,
@@ -5109,12 +5114,15 @@ function buildServer(
           chooseComparisonWinner(
             foundPlayers
           );
+        const preferred = foundPlayers.find(item => item.row.name === decision.preferredPlayer);
+        const injuryCondition = preferred && require('./sage-take').weeklyInjuryCondition(preferred.row);
+        if (injuryCondition) decision.explanation = `${preferred.row.name}: ${injuryCondition} ${decision.explanation || ''}`.trim();
         authority = buildComparisonAuthority(
           outsideRequested, needsFlexLineupContext(foundPlayers, missingPlayers, decision)
         );
 
         const structuredContent = {
-          superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. ")),
+          superSageResponse: buildSuperSageResponseGuidance(requestedPlayers.join(" vs. "), Boolean(injuryCondition)),
           source: "Inner Sanctum",
           liveFantasyDataConnected: true,
           season: resolvedSeason,
@@ -5413,7 +5421,7 @@ function buildServer(
             });
 
         const structuredContent = {
-          superSageResponse: buildSuperSageResponseGuidance(`${resolvedPosition} Week ${resolvedWeek} rankings`),
+          superSageResponse: buildSuperSageResponseGuidance(`${resolvedPosition} Week ${resolvedWeek} rankings`, sortedRows.slice(0, resolvedLimit).some(row => require('./sage-take').weeklyInjuryCondition(row))),
           source:
             "Inner Sanctum Weekly SAGE",
 

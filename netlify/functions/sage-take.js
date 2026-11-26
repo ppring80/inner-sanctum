@@ -278,6 +278,22 @@ function safe(builder) {
 exports.buildWeek1SageTake = safe(buildWeek1Take);
 exports.buildWeek2PlusSageTake = safe(buildWeek2PlusTake);
 
+function weeklyInjuryCondition(row) {
+  row = row || {};
+  var status = String(row.injuryStatus || row.injury || '').trim().toUpperCase();
+  if (row.eligibleForWeeklyRanking === false || String(row.recommendation || '').toUpperCase() === 'INELIGIBLE' ||
+      ['OUT', 'IR', 'INJURED RESERVE', 'RESERVE/INJURED', 'PUP', 'RESERVE/PUP', 'NFI', 'RESERVE/NFI', 'INACTIVE', 'SUSPENDED'].indexOf(status) !== -1) return null;
+  if (row.availabilityVerified === false)
+    return 'Current availability is not verified: this recommendation is conditional. Confirm current game status and check for workload restrictions before starting; keep a backup ready.';
+  if (status === 'D' || status === 'DOUBTFUL')
+    return 'Doubtful: this recommendation is conditional. Do not rely on this starter unless he is confirmed active and his expected workload is clear; keep a backup ready.';
+  if (status === 'Q' || status === 'QUESTIONABLE')
+    return 'Questionable: this recommendation is conditional. Confirm he is active and check for workload restrictions before starting; keep a backup ready.';
+  return null;
+}
+
+exports.weeklyInjuryCondition = safe(weeklyInjuryCondition);
+
 // Weekly Rankings display only. Call after ranking/selection, never on the
 // source rows supplied to the lineup authority or Rookie evidence packets.
 function buildWeeklyRankingExplanation(row, { season, week, scoring, now = new Date() } = {}) {
@@ -321,8 +337,9 @@ function buildWeeklyRankingExplanation(row, { season, week, scoring, now = new D
   parts.push(...roleNotes);
   const status = String(row.injuryStatus || '').trim().toUpperCase();
   const label = { Q: 'Questionable', QUESTIONABLE: 'Questionable', D: 'Doubtful', DOUBTFUL: 'Doubtful' }[status];
-  if (label) parts.push(`${label}; confirm game status before kickoff.`);
-  if (row.availabilityVerified === false) parts.push('Current availability is unverified.');
+  const condition = weeklyInjuryCondition(row);
+  if (condition) parts.unshift(condition);
+  if (label && row.availabilityVerified === false) parts.push(`${label}; confirm game status before kickoff.`);
   return [...new Set(parts.filter(Boolean))].join(' ') || null;
 }
 exports.buildWeeklyRankingExplanation = safe(buildWeeklyRankingExplanation);
