@@ -22,7 +22,7 @@ async function refreshDiagnostics(getStore,rows,now=Date.now()){
   const s=r.status||{};return {job:r.job,ready:r.ready,state:s.status||'pending',day:s.day||null,attempts:s.attempts??null,attemptLimit:s.attemptLimit??null,
    canRetry:canRetry(r.status,now),leaseUntil:s.leaseUntil||null,retryAfter:s.retryAfter||null,lastAttempt:s.startedAt||null,finishedAt:s.finishedAt||null,statusCode:s.statusCode??null,error:s.error||null,...(r.store==='weekly-sage-defense'?{failure:s.failure||null,blockedReason:s.blockedReason||null,retryPolicy:s.retryPolicy||null}:{}),lastFailure:s.lastFailure||null};
  });
- return {checkedAt:new Date(now).toISOString(),projectionPolicy:{protectedCalls:Math.min(budget.PROJECTION_RESERVE,budget.normalLimit()),normalLimit:budget.normalLimit(),totalLimit:budget.dailyLimit()},budgetDays:days,jobs,historicalJobFailuresAvailable:jobs.some(j=>j.lastFailure),
+ return {checkedAt:new Date(now).toISOString(),runtime:{productionContext:process.env.CONTEXT==='production',recoverySigningConfigured:Boolean(process.env.TANK01_REFRESH_TOKEN||process.env.TANK01_API_KEY),providerConfigured:Boolean(process.env.TANK01_API_KEY)},projectionPolicy:{protectedCalls:Math.min(budget.PROJECTION_RESERVE,budget.normalLimit()),normalLimit:budget.normalLimit(),totalLimit:budget.dailyLimit()},budgetDays:days,jobs,historicalJobFailuresAvailable:jobs.some(j=>j.lastFailure),
   limitation:'Only failures captured after lastFailure retention was deployed are available; older overwritten failures cannot be reconstructed from budget ledgers.'};
 }
 module.exports={refreshDiagnostics};
