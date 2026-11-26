@@ -140,8 +140,24 @@ function decisionEvidenceLine(slot) {
   return `${slot.starter.name}: ${a.join(", ")}. ${slot.comparator.name}: ${b.join(", ")}.`;
 }
 
+function weeklyInjuryCondition(row) {
+  row = row || {};
+  var status = String(row.injuryStatus || row.injury || '').trim().toUpperCase();
+  if (row.eligibleForWeeklyRanking === false || String(row.recommendation || '').toUpperCase() === 'INELIGIBLE' ||
+      ['OUT', 'IR', 'INJURED RESERVE', 'RESERVE/INJURED', 'PUP', 'RESERVE/PUP', 'NFI', 'RESERVE/NFI', 'INACTIVE', 'SUSPENDED'].indexOf(status) !== -1) return null;
+  if (row.availabilityVerified === false)
+    return 'Current availability is not verified: this recommendation is conditional. Confirm current game status and check for workload restrictions before starting; keep a backup ready.';
+  if (status === 'D' || status === 'DOUBTFUL')
+    return 'Doubtful: this recommendation is conditional. Do not rely on this starter unless he is confirmed active and his expected workload is clear; keep a backup ready.';
+  if (status === 'Q' || status === 'QUESTIONABLE')
+    return 'Questionable: this recommendation is conditional. Confirm he is active and check for workload restrictions before starting; keep a backup ready.';
+  return null;
+}
+
 function statusLine(p) {
   const a = (p && p.availability) || {};
+  const condition = weeklyInjuryCondition(a);
+  if (condition) return condition + (a.injuryDescription ? ` Reported injury: ${a.injuryDescription}` : '');
   if (!a.injuryStatus) return null;
   return `Status: ${a.injuryStatus}${a.injuryDescription ? ` — ${a.injuryDescription}` : ""}${a.availabilityVerified === false ? " (availability not verified)" : ""}`;
 }
@@ -149,7 +165,7 @@ function statusLine(p) {
 function toCustomerAnswer(record, evidenceStatus = null) {
   requireRecord(record);
   const decided = record.slots.filter((s) => s.starter);
-  const lineup = decided.map((s) => `${s.slotLabel} ${shortName(s.starter)}${STATE_TAG[s.decisionState] ? ` (${STATE_TAG[s.decisionState]})` : ""}`);
+  const lineup = decided.map((s) => `${s.slotLabel} ${shortName(s.starter)}${weeklyInjuryCondition(s.starter.availability) ? ' (conditional)' : ''}${STATE_TAG[s.decisionState] ? ` (${STATE_TAG[s.decisionState]})` : ""}`);
   const noEdge = decided.filter((s) => s.hasValidatedEdge === false);
   const noCall = record.slots.filter((s) => !s.starter);
   const oneSecond = [
